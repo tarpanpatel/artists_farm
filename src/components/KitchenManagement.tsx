@@ -1139,26 +1139,23 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
   return (
     <div>
-      {/* Unified Sub-Tab Navigation Bar - "merged panel" tab style (18 Aug
-          2026): the active tab and the content panel directly beneath it
-          share one solid background with no seam at all (not just a hairline
-          border trick) - the tab visually grows out of the panel below it,
-          like a real folder tab, while inactive tabs sit flush on the page
-          with no box of their own (only a hover preview), matching the
-          reference screenshot the user provided. Centered, not left-anchored.
-          The panel's own bg/border/rounding is applied on each of the three
-          tab-content wrapper divs below (kds-orders-container,
-          take-food-order-container, and the walk_in_bills root div) so this
-          bar and whichever content is active render as one continuous card. */}
+      {/* Unified Sub-Tab Navigation Bar - uniform enclosed pill per DESIGN.md
+          §8/§10/§20 (19 Aug 2026 rewrite, replacing the earlier "merged
+          panel" folder-tab style): every tab, active or inactive, is the
+          exact same fully-rounded box - same padding, same border on all 4
+          sides, same rounded-xl on all 4 corners, same position. Only fill/
+          text/shadow color changes on selection, so nothing shifts size or
+          shape when a tab is clicked (§20's no-jitter rule generalized
+          beyond just font-weight - see §21). Centered, not left-anchored. */}
       {(activeTab === 'new_order' || activeTab === 'kds' || activeTab === 'walk_in_bills') && (
-        <div className="flex items-end justify-center gap-1.5 px-2 overflow-x-auto no-scrollbar border-b border-slate-200 dark:border-slate-700">
+        <div className="flex items-center justify-center gap-1.5 px-2 py-1 overflow-x-auto no-scrollbar">
           <button
             type="button"
             onClick={() => setActiveTab('new_order')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer font-semibold relative -mb-px z-10 border-t border-x border-b-0 ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs whitespace-nowrap transition-colors cursor-pointer font-semibold border ${
               activeTab === 'new_order'
-                ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-slate-200 dark:border-slate-700 shadow-2xs'
-                : 'bg-slate-50/80 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 border-slate-200/80 dark:border-slate-700/60'
+                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
             }`}
           >
             <UtensilsCrossed className="w-4 h-4 shrink-0" />
@@ -1168,10 +1165,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('kds')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer font-semibold relative -mb-px z-10 border-t border-x border-b-0 ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs whitespace-nowrap transition-colors cursor-pointer font-semibold border ${
               activeTab === 'kds'
-                ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-slate-200 dark:border-slate-700 shadow-2xs'
-                : 'bg-slate-50/80 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 border-slate-200/80 dark:border-slate-700/60'
+                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
             }`}
           >
             <Clock className="w-4 h-4 shrink-0" />
@@ -1179,7 +1176,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             {pendingOrdersCount > 0 && (
               <span className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold ${
                 activeTab === 'kds'
-                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300'
+                  ? 'bg-white/20 text-white'
                   : 'bg-slate-200/80 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
               }`}>
                 {pendingOrdersCount}
@@ -1190,10 +1187,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('walk_in_bills')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer font-semibold relative -mb-px z-10 border-t border-x border-b-0 ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs whitespace-nowrap transition-colors cursor-pointer font-semibold border ${
               activeTab === 'walk_in_bills'
-                ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-slate-200 dark:border-slate-700 shadow-2xs'
-                : 'bg-slate-50/80 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 border-slate-200/80 dark:border-slate-700/60'
+                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
             }`}
           >
             <Receipt className="w-4 h-4 shrink-0" />
@@ -1201,7 +1198,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             {walkInTabs.filter((tab) => tab.status === 'open').length > 0 && (
               <span className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold ${
                 activeTab === 'walk_in_bills'
-                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300'
+                  ? 'bg-white/20 text-white'
                   : 'bg-slate-200/80 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
               }`}>
                 {walkInTabs.filter((tab) => tab.status === 'open').length}
@@ -1216,7 +1213,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         const activeOrders = orders.filter((o) => o.status === 'Pending' || o.status === 'Preparing');
 
         return (
-        <div className="kds-orders-container space-y-4 bg-white dark:bg-slate-800 rounded-2xl border-x border-b border-slate-200 dark:border-slate-700 p-3.5 sm:p-4">
+        <div className="kds-orders-container space-y-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-3.5 sm:p-4">
           <div className="kds-status-filter-bar flex flex-col sm:flex-row items-start sm:items-center justify-end text-xs gap-3">
             {/* Smart Polling / Live Sync Bar */}
             <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl w-full sm:w-auto justify-between sm:justify-start">
@@ -1636,7 +1633,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         const openTabs = walkInTabs.filter((tab) => tab.status === 'open');
 
         return (
-          <div className="take-food-order-container space-y-4 pb-48 lg:pb-0 bg-white dark:bg-slate-800 rounded-b-2xl border border-slate-200 dark:border-slate-700 p-3.5 sm:p-4">
+          <div className="take-food-order-container space-y-4 pb-48 lg:pb-0 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-3.5 sm:p-4">
 
             {/* Order Mode: Guest (room service, billed to the stay) vs Walk-in
                 (counter/dine-in, no room - joins a running tab, billed all at
@@ -2022,7 +2019,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           opens WalkInTabBillModal, the same itemized/GST/WhatsApp-share
           pattern a guest's checkout receipt already gets. */}
       {activeTab === 'walk_in_bills' && (
-        <div className="space-y-6 bg-white dark:bg-slate-800 rounded-2xl border-x border-b border-slate-200 dark:border-slate-700 p-3.5 sm:p-4">
+        <div className="space-y-6 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-3.5 sm:p-4">
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2">

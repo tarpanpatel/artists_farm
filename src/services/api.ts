@@ -2376,12 +2376,20 @@ export async function addAuditLogDB(log: {
   }
 }
 
-// Telegram template resolver — fetches from DB via manager.php and caches
+// Telegram template resolver — fetches from DB via manager.php and caches.
+// A kitchen POS terminal routinely stays open for a whole shift (this cache
+// living forever was confirmed 19 Aug 2026: a template edited/repaired in the
+// DB kept sending its pre-edit content from an already-open tab indefinitely,
+// since nothing here ever re-fetched without a full page reload). Expiring it
+// after a few minutes means an edit propagates to every open tab on its own
+// within a bounded window, without depending on anyone remembering to reload.
 let _templateCache: Record<string, string> | null = null;
+let _templateCacheFetchedAt = 0;
+const TEMPLATE_CACHE_TTL_MS = 3 * 60 * 1000;
 
 export async function resolveTelegramTemplate(dbKey: string, variables: Record<string, string>): Promise<string | null> {
   try {
-    if (!_templateCache) {
+    if (!_templateCache || Date.now() - _templateCacheFetchedAt > TEMPLATE_CACHE_TTL_MS) {
       const res = await apiFetch(`${API_ROOT_BASE}/php/telegram/manager.php?action=get_templates`);
       const json = await res.json();
       if (json.success && json.templates) {
@@ -2389,6 +2397,7 @@ export async function resolveTelegramTemplate(dbKey: string, variables: Record<s
         for (const key of Object.keys(json.templates)) {
           _templateCache[key] = json.templates[key].content;
         }
+        _templateCacheFetchedAt = Date.now();
       }
     }
     if (_templateCache && _templateCache[dbKey]) {
@@ -2406,6 +2415,7 @@ export async function resolveTelegramTemplate(dbKey: string, variables: Record<s
 
 export function invalidateTemplateCache() {
   _templateCache = null;
+  _templateCacheFetchedAt = 0;
 }
 
 export interface DbTelegramTemplate {

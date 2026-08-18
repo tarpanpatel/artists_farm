@@ -29,6 +29,31 @@ if (!function_exists('ensureOrderItemReminderColumns')) {
     }
 }
 
+// served_logs.ready_at (Current Guest Served Dishes' "Ready At"/Serve Delay
+// column) existed locally but was never captured in a self-heal block - on
+// any environment where it was never manually ALTER'd in (staging, 19 Aug
+// 2026: confirmed missing there), every add_served_log INSERT below hit an
+// "Unknown column 'ready_at'" PDOException, caught and returned as a normal
+// JSON error the frontend's fire-and-forget addServedLogToDB() never surfaces
+// to the user - item_status still correctly updated (separate table), so the
+// dish showed Served on the ticket while silently never reaching the Current
+// Guest Served Dishes table at all. Same failure shape as the
+// checkin_time/checkout_time gap CLAUDE.md already documents.
+if (!function_exists('ensureServedLogsColumns')) {
+    function ensureServedLogsColumns($pdo) {
+        if (isSchemaVerified('schema_served_logs_ready_at')) return;
+        try {
+            $cols = $pdo->query("SHOW COLUMNS FROM served_logs")->fetchAll(PDO::FETCH_COLUMN);
+            if (!in_array('ready_at', $cols)) {
+                $pdo->exec("ALTER TABLE served_logs ADD COLUMN ready_at DATETIME NULL DEFAULT NULL");
+            }
+            markSchemaVerified('schema_served_logs_ready_at');
+        } catch (Exception $e) {
+            error_log("served_logs ready_at column migration error: " . $e->getMessage());
+        }
+    }
+}
+
 // Backs walk-in/counter orders (no guest_id - food prepared for someone not
 // staying in a room). SUPERSEDED 17 Aug 2026 by walk_in_tabs.php: a walk-in
 // settling per-order (via walk_in_name/settled_at/payment_method here) turned
@@ -224,6 +249,7 @@ function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
 
         case 'get_served_logs':
             try {
+                ensureServedLogsColumns($pdo);
                 $stmt = $pdo->prepare("SELECT id, order_id, item_name, quantity, served_by, guest_name, room_number, served_at, ready_at FROM served_logs WHERE property_id = ? ORDER BY id DESC LIMIT 200");
                 $stmt->execute([$propertyId]);
                 $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -237,6 +263,7 @@ function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
+                    ensureServedLogsColumns($pdo);
                     // Ensure table exists
                     $guestName = $input['guest_name'] ?? '';
                     $roomNumber = $input['room_number'] ?? '';
