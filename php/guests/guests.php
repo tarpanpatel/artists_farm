@@ -705,31 +705,57 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         $changedLines = [];
                         foreach ($fieldLabels as $field => $label) {
                             $oldVal = $previousGuest[$field] ?? null;
-                            $newVal = $newValues[$field];
-                            // Normalise date fields from DB (may carry a time component) to
-                            // Y-m-d before comparing so identical calendar dates are never
-                            // reported as changed just because the time part differs.
+                            $newVal = $newValues[$field] ?? null;
+
+                            // Date fields
                             if (in_array($field, ['checkin_date', 'expected_checkout'])) {
                                 $oldNorm = $oldVal ? date('Y-m-d', strtotime($oldVal)) : '';
-                                $newNorm = (string)$newVal;
+                                $newNorm = $newVal ? date('Y-m-d', strtotime($newVal)) : '';
                                 if ($oldNorm === $newNorm) continue;
                                 $oldDisplay = $oldNorm ? date('d M Y', strtotime($oldNorm)) : '(none)';
                                 $newDisplay = $newNorm ? date('d M Y', strtotime($newNorm)) : '(none)';
                                 $changedLines[] = "• <b>{$label}:</b> {$oldDisplay} → {$newDisplay}";
                                 continue;
                             }
-                            // Loose comparison for other fields
-                            if ((string)$oldVal === (string)$newVal) continue;
-                            if ($field === 'is_foreign_guest') {
-                                $oldVal = $oldVal ? 'Yes' : 'No';
-                                $newVal = $newVal ? 'Yes' : 'No';
-                            } elseif (in_array($field, ['base_room_rent', 'advance_paid'])) {
-                                $oldVal = '₹' . number_format((float)$oldVal, 2);
-                                $newVal = '₹' . number_format((float)$newVal, 2);
-                            } elseif ($oldVal === null || $oldVal === '') {
-                                $oldVal = '(none)';
+
+                            // Numeric currency fields
+                            if (in_array($field, ['base_room_rent', 'advance_paid'])) {
+                                $oldFloat = floatval($oldVal ?? 0);
+                                $newFloat = floatval($newVal ?? 0);
+                                if (abs($oldFloat - $newFloat) < 0.01) continue;
+                                $oldDisplay = '₹' . number_format($oldFloat, 2);
+                                $newDisplay = '₹' . number_format($newFloat, 2);
+                                $changedLines[] = "• <b>{$label}:</b> {$oldDisplay} → {$newDisplay}";
+                                continue;
                             }
-                            $changedLines[] = "• <b>{$label}:</b> {$oldVal} → {$newVal}";
+
+                            // Integer count fields
+                            if ($field === 'no_of_guests') {
+                                $oldInt = intval($oldVal ?? 0);
+                                $newInt = intval($newVal ?? 0);
+                                if ($oldInt === $newInt) continue;
+                                $changedLines[] = "• <b>{$label}:</b> {$oldInt} → {$newInt}";
+                                continue;
+                            }
+
+                            // Boolean fields
+                            if ($field === 'is_foreign_guest') {
+                                $oldBool = !empty($oldVal) ? 1 : 0;
+                                $newBool = !empty($newVal) ? 1 : 0;
+                                if ($oldBool === $newBool) continue;
+                                $oldDisplay = $oldBool ? 'Yes' : 'No';
+                                $newDisplay = $newBool ? 'Yes' : 'No';
+                                $changedLines[] = "• <b>{$label}:</b> {$oldDisplay} → {$newDisplay}";
+                                continue;
+                            }
+
+                            // General string / text fields
+                            $oldStr = trim((string)($oldVal ?? ''));
+                            $newStr = trim((string)($newVal ?? ''));
+                            if ($oldStr === $newStr) continue;
+                            $oldDisplay = $oldStr !== '' ? $oldStr : '(none)';
+                            $newDisplay = $newStr !== '' ? $newStr : '(none)';
+                            $changedLines[] = "• <b>{$label}:</b> {$oldDisplay} → {$newDisplay}";
                         }
                         if (!empty($changedLines) && !empty($previousGuest)) {
                             require_once __DIR__ . '/../telegram/sender.php';
