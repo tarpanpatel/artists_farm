@@ -201,18 +201,6 @@ const FALLBACK_TEMPLATES: TelegramTemplateExtended[] = [
     ]
   },
   {
-    id: 'tpl-3',
-    dbKey: 'billing_admin_checkout_report',
-    eventName: 'Property Checkout Report',
-    category: 'Billing & Financial',
-    description: 'Comprehensive settlement report dispatched to Admin group upon guest checkout.',
-    variables: ['{guest_name}', '{base_rent}', '{advance_paid}', '{advance_collector}', '{accommodation_pending}', '{pending_collector}', '{items_list}', '{food_subtotal}', '{split_phrases}', '{cashier_name}', '{grand_total_due}'],
-    template: `🔔 <b>PROPERTY CHECKOUT SETTLEMENT REPORT</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Guest:</b> {guest_name}\n\n🏠 <b>ACCOMMODATION LOGISTICS:</b>\n• Contract Tariff: ₹{base_rent}\n• Advance Taken: ₹{advance_paid} (By: {advance_collector})\n• Pending Settled: ₹{accommodation_pending} (By: {pending_collector})\n\n🍽️ <b>FINAL ITEMIZED KOT & EXTRAS:</b>\n{items_list}\n• Incidentals Subtotal: <b>₹{food_subtotal}</b>\n\n💳 <b>FINAL PAYOUT SPLIT DISTRIBUTION:</b>\n{split_phrases}\n👤 <i>Desk Cashier Executing: {cashier_name}</i>\n━━━━━━━━━━━━━━━━━━\n<b>GRAND TOTAL PAYABLE SETTLED: ₹{grand_total_due}</b>`,
-    buttons: [
-      [{ id: 'b3', text: '📄 Download Guest Invoice PDF', url: 'https://artistsfarm.com/invoice' }]
-    ]
-  },
-  {
     id: 'tpl-4',
     dbKey: 'finance_revenue_credit',
     eventName: 'Revenue Credit Alert',
