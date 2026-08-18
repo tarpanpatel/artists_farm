@@ -108,6 +108,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
 
+        // SECURITY/CORRECTNESS (18 Aug 2026): a real session already exists
+        // for this browser but just isn't authorized for THIS property
+        // (session_property_mismatch) - do NOT fall through to demo
+        // auto-login below. PHP session cookies are shared across every tab
+        // on the same domain; login_user (which the demo path calls) issues
+        // a fresh cookie, silently overwriting whatever real session was
+        // active - including a root/tenant admin session open in a
+        // completely different tab. This is exactly how a tab sitting on the
+        // public-demo property could silently kick a Root Dashboard session
+        // in another tab back to "logged in as the demo account," making the
+        // dashboard show 0 tenants/properties and "session expired" even
+        // right after a fresh, correct root-admin login elsewhere. Only
+        // attempt demo auto-login when there's truly no session at all.
+        if (data?.session_property_mismatch) {
+          localStorage.removeItem(authKey());
+          localStorage.removeItem(userKey());
+          setIsAuthenticated(false);
+          setCurrentUser(null);
+          return;
+        }
+
         // Public demo mode (12 Aug 2026, replaced with this simpler design
         // later the same day): a designated property (see
         // properties.is_public_demo) lets anonymous visitors in without a
