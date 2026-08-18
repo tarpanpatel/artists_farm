@@ -764,7 +764,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 />
               </div>
 
-              <div className="divide-y divide-slate-100 dark:divide-slate-700 space-y-3">
+              <div className="space-y-3">
                 {visibleUsers.slice((staffPermissionsPage - 1) * 10, staffPermissionsPage * 10).map((row: any) => {
                   const isCurrentUser = currentUser?.id === row.id;
                   const canEdit = !isCurrentUser && canEditUser(currentUser?.role || 'Staff', row.role);
@@ -772,7 +772,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   const phoneVal = (row.username || '').replace(/\D/g, '');
 
                   return (
-                    <div key={row.id} className="pt-3 first:pt-0 space-y-2.5">
+                    <div key={row.id} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-3 space-y-2.5">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <h4 className="font-bold text-slate-900 dark:text-white text-sm truncate">{row.fullName}</h4>

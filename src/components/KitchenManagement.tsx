@@ -1155,10 +1155,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('new_order')}
-            className={`flex items-center gap-2 px-4 py-3 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer ${
               activeTab === 'new_order'
-                ? 'border-t border-x bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold border-slate-200 dark:border-slate-700'
-                : 'border bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 font-semibold border-slate-200/60 dark:border-slate-700/50'
+                ? 'relative -mb-px z-10 border-t border-x border-b-0 bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold border-slate-200 dark:border-slate-700 shadow-2xs'
+                : 'border bg-slate-50/50 dark:bg-slate-900/40 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 font-semibold border-slate-200/60 dark:border-slate-700/50'
             }`}
           >
             <UtensilsCrossed className="w-4 h-4" />
@@ -1168,10 +1168,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('kds')}
-            className={`flex items-center gap-2 px-4 py-3 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer ${
               activeTab === 'kds'
-                ? 'border-t border-x bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold border-slate-200 dark:border-slate-700'
-                : 'border bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 font-semibold border-slate-200/60 dark:border-slate-700/50'
+                ? 'relative -mb-px z-10 border-t border-x border-b-0 bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold border-slate-200 dark:border-slate-700 shadow-2xs'
+                : 'border bg-slate-50/50 dark:bg-slate-900/40 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 font-semibold border-slate-200/60 dark:border-slate-700/50'
             }`}
           >
             <Clock className="w-4 h-4" />
@@ -1190,10 +1190,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('walk_in_bills')}
-            className={`flex items-center gap-2 px-4 py-3 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer ${
               activeTab === 'walk_in_bills'
-                ? 'border-t border-x bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold border-slate-200 dark:border-slate-700'
-                : 'border bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 font-semibold border-slate-200/60 dark:border-slate-700/50'
+                ? 'relative -mb-px z-10 border-t border-x border-b-0 bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold border-slate-200 dark:border-slate-700 shadow-2xs'
+                : 'border bg-slate-50/50 dark:bg-slate-900/40 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 font-semibold border-slate-200/60 dark:border-slate-700/50'
             }`}
           >
             <Receipt className="w-4 h-4" />
@@ -1544,13 +1544,13 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   )}
                 </div>
 
-                <div>
-                  <h4 className="font-semibold text-slate-800 dark:text-slate-200 text-xs sm:text-[11px] leading-tight line-clamp-2 min-h-[28px]">
+                <div className="flex items-center justify-between gap-1 leading-tight">
+                  <h4 className="font-semibold text-slate-800 dark:text-slate-200 text-xs sm:text-[11px] truncate flex-1 m-0 p-0">
                     {item.name}
                   </h4>
-                  <p className="text-emerald-700 dark:text-emerald-400 font-extrabold text-xs sm:text-[11px] mt-0.5">
+                  <span className="text-emerald-700 dark:text-emerald-400 font-extrabold text-xs sm:text-[11px] shrink-0">
                     ₹{item.price}
-                  </p>
+                  </span>
                 </div>
               </div>
 
@@ -1620,7 +1620,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         const openTabs = walkInTabs.filter((tab) => tab.status === 'open');
 
         return (
-          <div className="take-food-order-container space-y-4 pb-48 lg:pb-0 bg-white dark:bg-slate-800 rounded-2xl border-x border-b border-slate-200 dark:border-slate-700 p-3.5 sm:p-4">
+          <div className="take-food-order-container space-y-4 pb-48 lg:pb-0 bg-white dark:bg-slate-800 rounded-b-2xl border border-slate-200 dark:border-slate-700 p-3.5 sm:p-4">
 
             {/* Order Mode: Guest (room service, billed to the stay) vs Walk-in
                 (counter/dine-in, no room - joins a running tab, billed all at
@@ -1724,9 +1724,9 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
               {/* Left Side (Desktop: 3 columns, Mobile: 1 column full width) */}
-              <div className="lg:col-span-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs p-3.5 sm:p-4 space-y-3.5">
+              <div className="lg:col-span-3 space-y-3.5">
                 {/* Sticky Search & Category Pills Bar */}
-                <div className="pos-category-filter-bar bg-white dark:bg-slate-800 pt-2 pb-3 space-y-3 -mx-1 px-1 sm:-mx-4 sm:px-4 border-b border-slate-100 dark:border-slate-700 shadow-2xs rounded-t-xl">
+                <div className="pos-category-filter-bar bg-white dark:bg-slate-800 pb-3 space-y-3 border-b border-slate-100 dark:border-slate-700">
                   {/* Quick Search Bar + Category Filter Toggle */}
                   <div className="flex items-center gap-2">
                     <div className="relative flex-1">
@@ -1844,15 +1844,15 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   </div>
 
                   {/* Cart Items List */}
-                  <div className="pos-cart-items-list space-y-2 max-h-[380px] overflow-y-auto pr-0.5 divide-y divide-slate-100 dark:divide-slate-700">
+                  <div className="pos-cart-items-list space-y-1 max-h-[380px] overflow-y-auto pr-0.5 divide-y divide-slate-100 dark:divide-slate-700/60">
                     {cartItems.length > 0 ? (
                       cartItems.map((ci) => (
                         <div
                           key={ci.menuItem.id}
-                          className="pt-2 first:pt-0 flex items-center justify-between gap-2 text-xs"
+                          className="py-1 px-1.5 first:pt-0 flex items-center justify-between gap-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-800/40 rounded-lg transition-colors"
                         >
-                          <div className="flex-1 pr-1">
-                            <h4 className="kitchen-management__caption font-semibold text-slate-900 dark:text-white text-xs leading-snug">
+                          <div className="flex-1 pr-1 truncate min-w-0">
+                            <h4 className="kitchen-management__caption font-semibold text-slate-900 dark:text-white text-xs truncate m-0 p-0 leading-tight">
                               {ci.menuItem.name} <span className="text-slate-400 dark:text-slate-500 font-normal">({`₹${ci.menuItem.price}`})</span>
                             </h4>
                           </div>
@@ -1860,18 +1860,18 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                           <div className="flex items-center gap-1 rounded-md bg-slate-100 dark:bg-slate-900 p-0.5 border border-slate-200 dark:border-slate-700 shrink-0">
                             <button
                               onClick={() => handleUpdateCartQuantity(ci.menuItem.id, -1)}
-                              className="btn-cart-qty-minus aspect-square w-8 h-8 rounded-sm shrink-0 bg-white dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 font-extrabold text-slate-700 dark:text-slate-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90 border border-slate-200 dark:border-slate-700"
+                              className="btn-cart-qty-minus aspect-square w-6 h-6 rounded-xs shrink-0 bg-white dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 font-extrabold text-slate-700 dark:text-slate-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90 border border-slate-200 dark:border-slate-700"
                             >
-                              <Minus className="w-3.5 h-3.5" />
+                              <Minus className="w-3 h-3" />
                             </button>
-                            <span className="w-6 text-center font-extrabold text-slate-900 dark:text-white text-xs">
+                            <span className="w-5 text-center font-extrabold text-slate-900 dark:text-white text-xs">
                               {ci.quantity}
                             </span>
                             <button
                               onClick={() => handleUpdateCartQuantity(ci.menuItem.id, 1)}
-                              className="btn-cart-qty-plus aspect-square w-8 h-8 rounded-sm shrink-0 bg-emerald-600 hover:bg-emerald-700 font-extrabold text-white flex items-center justify-center transition-colors cursor-pointer active:scale-90"
+                              className="btn-cart-qty-plus aspect-square w-6 h-6 rounded-xs shrink-0 bg-emerald-600 hover:bg-emerald-700 font-extrabold text-white flex items-center justify-center transition-colors cursor-pointer active:scale-90"
                             >
-                              <Plus className="w-3.5 h-3.5" />
+                              <Plus className="w-3 h-3" />
                             </button>
                           </div>
                         </div>
@@ -1928,7 +1928,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 </button>
 
                 {/* Items List (Displays Last 3 items in Collapsed mode, All items in 50vh Expanded mode) */}
-                <div className="pos-cart-items-list p-3 pt-4 flex-1 overflow-y-auto space-y-2">
+                <div className="pos-cart-items-list p-2.5 pt-3 flex-1 overflow-y-auto space-y-1.5">
                   {!isCartDrawerExpanded && cartItems.length > 3 && (
                     <p className="text-[10px] text-cyan-700 font-semibold tracking-wide uppercase text-center pb-1">
                       {t('showing_last_3_items_prefix')} {cartItems.length} {t('showing_last_3_items_suffix')}
@@ -1937,29 +1937,29 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   {visibleDrawerItems.map((ci) => (
                     <div
                       key={ci.menuItem.id}
-                      className="bg-slate-50 dark:bg-slate-900/60 p-2 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2 text-xs text-slate-900 dark:text-slate-100"
+                      className="bg-slate-50 dark:bg-slate-900/60 py-1 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2 text-xs text-slate-900 dark:text-slate-100"
                     >
-                      <div className="flex-1 pr-1 truncate">
-                        <h4 className="kitchen-management__caption font-semibold text-slate-900 dark:text-white text-xs truncate">
-                          {ci.menuItem.name} <span className="text-slate-500 font-normal">({`₹${ci.menuItem.price}`})</span>
+                      <div className="flex-1 pr-1 truncate min-w-0">
+                        <h4 className="kitchen-management__caption font-semibold text-slate-900 dark:text-white text-xs truncate m-0 p-0 leading-tight">
+                          {ci.menuItem.name} <span className="text-slate-500 dark:text-slate-400 font-normal">({`₹${ci.menuItem.price}`})</span>
                         </h4>
                       </div>
 
                       <div className="flex items-center gap-1 rounded-md bg-white dark:bg-slate-800 p-0.5 border border-slate-200 dark:border-slate-700 shrink-0">
                         <button
                           onClick={() => handleUpdateCartQuantity(ci.menuItem.id, -1)}
-                          className="btn-cart-qty-minus aspect-square w-8 h-8 rounded-sm shrink-0 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 font-extrabold text-slate-700 dark:text-slate-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90 border border-slate-200 dark:border-slate-600"
+                          className="btn-cart-qty-minus aspect-square w-6 h-6 rounded-xs shrink-0 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 font-extrabold text-slate-700 dark:text-slate-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90 border border-slate-200 dark:border-slate-600"
                         >
-                          <Minus className="w-3.5 h-3.5" />
+                          <Minus className="w-3 h-3" />
                         </button>
-                        <span className="w-6 text-center font-extrabold text-slate-900 dark:text-white text-xs">
+                        <span className="w-5 text-center font-extrabold text-slate-900 dark:text-white text-xs">
                           {ci.quantity}
                         </span>
                         <button
                           onClick={() => handleUpdateCartQuantity(ci.menuItem.id, 1)}
-                          className="btn-cart-qty-plus aspect-square w-8 h-8 rounded-sm shrink-0 bg-emerald-600 hover:bg-emerald-700 font-extrabold text-white flex items-center justify-center transition-colors cursor-pointer active:scale-90"
+                          className="btn-cart-qty-plus aspect-square w-6 h-6 rounded-xs shrink-0 bg-emerald-600 hover:bg-emerald-700 font-extrabold text-white flex items-center justify-center transition-colors cursor-pointer active:scale-90"
                         >
-                          <Plus className="w-3.5 h-3.5" />
+                          <Plus className="w-3 h-3" />
                         </button>
                       </div>
                     </div>
