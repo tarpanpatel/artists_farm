@@ -2158,8 +2158,8 @@ ${itemsStr}
         )}
 
         {showInstallBanner && (
-          <div className="fixed top-[72px] right-3 left-3 md:left-auto md:right-6 md:w-96 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl z-[60] flex items-center gap-4 transition-all duration-300 animate-slide-in">
-            <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+          <div className="fixed top-[72px] right-3 left-3 md:left-auto md:right-6 md:w-96 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xl z-[60] flex items-center gap-4 transition-all duration-300 animate-slide-in">
+            <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
               <Smartphone className="w-5 h-5" />
             </div>
             <div className="flex-1 min-w-0">
@@ -2186,9 +2186,9 @@ ${itemsStr}
 
         {/* iOS / OS-Specific PWA Install Instructions Banner */}
         {showIOSInstallBanner && (
-          <div className="fixed top-[72px] right-3 left-3 md:left-auto md:right-6 md:w-96 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl z-[60] transition-all duration-300 animate-slide-in overflow-hidden">
+          <div className="fixed top-[72px] right-3 left-3 md:left-auto md:right-6 md:w-96 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xl z-[60] transition-all duration-300 animate-slide-in overflow-hidden">
             <div className="p-4 flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
                 <Smartphone className="w-5 h-5" />
               </div>
               <div className="flex-1 min-w-0">

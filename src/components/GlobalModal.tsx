@@ -98,7 +98,7 @@ export const GlobalModal = () => {
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 global-modal">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200 global-modal__dialog">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200 global-modal__dialog">
         <div className="p-5 flex items-start gap-4 global-modal__header">
           <div className="shrink-0 bg-slate-50 p-2 rounded-full border border-slate-100 global-modal__icon-wrapper">
             {getIcon()}
@@ -113,13 +113,13 @@ export const GlobalModal = () => {
             <>
               <button
                 onClick={handleClose}
-                className="px-4 py-2 rounded-xl text-slate-600 font-semibold text-sm hover:bg-slate-200 transition-colors global-modal__btn global-modal__btn--cancel"
+                className="px-4 py-2 rounded-lg text-slate-600 font-semibold text-sm hover:bg-slate-200 transition-colors global-modal__btn global-modal__btn--cancel"
               >
                 {t('cancel_button')}
               </button>
               <button
                 onClick={handleConfirm}
-                className="px-4 py-2 rounded-xl bg-cyan-600 text-white font-semibold text-sm shadow-md hover:bg-cyan-700 transition-colors global-modal__btn global-modal__btn--confirm"
+                className="px-4 py-2 rounded-lg bg-cyan-600 text-white font-semibold text-sm shadow-md hover:bg-cyan-700 transition-colors global-modal__btn global-modal__btn--confirm"
               >
                 {t('confirm_button')}
               </button>
@@ -127,7 +127,7 @@ export const GlobalModal = () => {
           ) : (
               <button
                 onClick={handleClose}
-                className="px-5 py-2 rounded-xl bg-cyan-600 text-white font-semibold text-sm shadow-md hover:bg-cyan-700 transition-colors global-modal__btn global-modal__btn--ok"
+                className="px-5 py-2 rounded-lg bg-cyan-600 text-white font-semibold text-sm shadow-md hover:bg-cyan-700 transition-colors global-modal__btn global-modal__btn--ok"
               >
                 {t('okay_button')}
               </button>

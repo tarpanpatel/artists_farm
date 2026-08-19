@@ -191,7 +191,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
       if (data.status === 'success') {
         let msg = `iCal feed "${finalServiceName}" connected successfully`;
         if (data.sync_status === 'success') {
-          msg += ` — ${data.sync_message || 'Initial sync complete'}`;
+          msg += ` â€” ${data.sync_message || 'Initial sync complete'}`;
         }
         showToast(msg, { type: 'success', duration: 5000 });
         setNewImportUrl('');
@@ -222,7 +222,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
       });
       const data = await response.json();
       if (data.status === 'success') {
-        showToast(`Synced "${calName}" — ${data.message || 'Events updated'}`, { type: 'success' });
+        showToast(`Synced "${calName}" â€” ${data.message || 'Events updated'}`, { type: 'success' });
         loadCalendars();
       } else {
         showToast(`Sync failed for "${calName}": ${data.message || 'Unknown error'}`, { type: 'error' });
@@ -375,7 +375,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
   return (
     <div className="space-y-6 text-slate-800 dark:text-slate-200 ical-sync-manager__root">
       {/* Header Banner */}
-      <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-4 ical-sync-manager__header-banner">
+      <div className="bg-white dark:bg-slate-800 p-6 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs space-y-4 ical-sync-manager__header-banner">
         {/* Breadcrumb Navigation */}
         {!embedded && (
           <nav className="flex text-slate-400 text-[11px] font-semibold gap-1.5 items-center ical-sync-manager__breadcrumb">
@@ -409,7 +409,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
       {/* Top 3 Metric KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 ical-sync-manager__kpi-grid">
          {/* Card 1: Active Connected Channels */}
-         <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-2 ical-sync-manager__kpi-item">
+         <div className="bg-white dark:bg-slate-800 p-5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs space-y-2 ical-sync-manager__kpi-item">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{t('connected_ical_feeds_label', 'Connected iCal Feeds')}</span>
             <div className="p-2 bg-blue-50 dark:bg-blue-950/40 rounded-lg">
@@ -425,7 +425,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
         </div>
 
          {/* Card 2: Auto-Sync Worker Interval */}
-         <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-2 ical-sync-manager__kpi-item">
+         <div className="bg-white dark:bg-slate-800 p-5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs space-y-2 ical-sync-manager__kpi-item">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{t('background_worker_label', 'Background Worker')}</span>
             <div className="p-2 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg">
@@ -441,7 +441,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
         </div>
 
         {/* Card 3: Channel Health */}
-        <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-2">
+        <div className="bg-white dark:bg-slate-800 p-5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{t('integration_health_label', 'Integration Health')}</span>
             <div className="p-2 bg-indigo-50 dark:bg-indigo-950/40 rounded-lg">
@@ -456,7 +456,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
       </div>
 
       {/* Main Content Area: API Data Table */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
         {/* Table Filter Toolbar */}
         <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-900/50">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 ical-sync-manager__filter-toolbar flex-1">
@@ -614,7 +614,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
                     <p className="font-semibold text-xs">{t('no_ical_feeds_match_filter_message', 'No iCal integration feeds match your current filter.')}</p>
                       <button
                         onClick={() => setIsAddModalOpen(true)}
-                        className="button button--connect px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition text-xs inline-flex items-center gap-2 cursor-pointer shadow-xs"
+                        className="button button--connect px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition text-xs inline-flex items-center gap-2 cursor-pointer shadow-xs"
                       >
                         <span className="button__icon flex items-center">
                           <Plus className="w-4 h-4" />
@@ -667,7 +667,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
                     </button>
                   </div>
 
-                  <div className="flex items-center justify-between text-xs bg-slate-50 dark:bg-slate-900/60 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700">
+                  <div className="flex items-center justify-between text-xs bg-slate-50 dark:bg-slate-900/60 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700">
                     <div>
                       <span className="text-[10px] text-slate-400 uppercase font-semibold block">Sync Mode</span>
                       <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded font-mono text-[10px] font-semibold inline-block mt-0.5">
@@ -713,7 +713,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
                 <p className="font-semibold text-xs">{t('no_ical_feeds_match_filter_message', 'No iCal integration feeds match your current filter.')}</p>
                 <button
                   onClick={() => setIsAddModalOpen(true)}
-                  className="button button--connect px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition text-xs inline-flex items-center gap-2 cursor-pointer shadow-xs"
+                  className="button button--connect px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition text-xs inline-flex items-center gap-2 cursor-pointer shadow-xs"
                 >
                   <Plus className="w-4 h-4" />
                   <span>{t('connect_first_ical_feed_button', 'Connect First iCal Feed')}</span>
@@ -729,7 +729,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
                 type="button"
                 disabled={mobileFeedsPage === 1}
                 onClick={() => setMobileFeedsPage((p) => Math.max(1, p - 1))}
-                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+                className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
               >
                 Previous
               </button>
@@ -740,7 +740,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
                 type="button"
                 disabled={mobileFeedsPage >= Math.ceil(filteredCalendars.length / 10)}
                 onClick={() => setMobileFeedsPage((p) => Math.min(Math.ceil(filteredCalendars.length / 10), p + 1))}
-                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+                className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
               >
                 Next
               </button>
@@ -808,7 +808,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
               return (
                 <div
                   key={room.id}
-                  className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-2xs space-y-4"
+                  className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-5 shadow-2xs space-y-4"
                 >
                   <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
                     <div>
@@ -830,7 +830,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
                           const isSyncing = syncingId === cal.id;
                           const isCopiedUrl = copiedUrls.has(cal.id);
                           return (
-                            <div key={cal.id} className="flex items-center gap-2 p-2.5 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <div key={cal.id} className="flex items-center gap-2 p-2.5 bg-slate-50 dark:bg-slate-900/60 rounded-lg border border-slate-200 dark:border-slate-700">
                               <span className={`px-2 py-0.5 rounded-full border text-[10px] font-semibold flex items-center gap-1 shrink-0 ${badge.bg}`}>
                                 <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
                                 {badge.name}
@@ -908,7 +908,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
                           setRoomCustomNames((prev) => ({ ...prev, [room.id]: '' }));
                         }}
                         disabled={!url.trim()}
-                        className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold text-xs rounded-xl transition whitespace-nowrap cursor-pointer shadow-xs"
+                        className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold text-xs rounded-lg transition whitespace-nowrap cursor-pointer shadow-xs"
                       >
                         {t('add_feed_button', 'Add Feed')}
                       </button>

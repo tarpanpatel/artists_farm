@@ -1,14 +1,12 @@
 import { chromium } from 'playwright';
 
-const COOKIE_PATH = 'C:\\temp\\app-session.json';
-
 async function getStyles(page, selector) {
   try {
-    const elements = await page.$$(selector);
+    var elements = await page.$$(selector);
     if (!elements.length) return null;
-    const samples = [];
-    for (const el of elements.slice(0, 3)) {
-      const info = await el.evaluate(function(node) {
+    var samples = [];
+    for (var el of elements.slice(0, 3)) {
+      var info = await el.evaluate(function(node) {
         var cs = getComputedStyle(node);
         return {
           tag: node.tagName.toLowerCase(),
@@ -32,207 +30,139 @@ async function getStyles(page, selector) {
 }
 
 async function main() {
-  // === 1. Login via fetch to get session cookie ===
+  var browser = await chromium.launch({ headless: true });
+  var context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  var page = await context.newPage();
+
+  // === 1. Login via form ===
   console.log('=== Logging in ===');
-  var fetch;
-  try {
-    const { default: nodeFetch } = await import('node-fetch');
-    fetch = nodeFetch;
-  } catch(e) {
-    fetch = globalThis.fetch;
-  }
-
-  // Use node-fetch or built-in fetch with cookie jar
-  var cookieJar;
-  try {
-    const { CookieJar } = await import('tough-cookie');
-    const { wrapper } = await import('tough-cookie-fetch-cookie');
-    cookieJar = new CookieJar();
-    const wrappedFetch = wrapper(fetch, cookieJar);
-    var loginRes = await wrappedFetch('http://localhost:3000/php/api/router.php?action=login_user', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mobile_number: '9999999999', passcode: '368545' }),
-    });
-    var loginData = JSON.parse(await loginRes.text());
-    console.log('Login result:', loginData.success ? 'SUCCESS' : loginData.message);
-
-    // Get cookies
-    var cookies = await cookieJar.getCookies('http://localhost:3000');
-    console.log('Cookies:', cookies.map(function(c) { return c.name + '=' + c.value.substring(0,30); }).join(', '));
-  } catch(e) {
-    console.log('Cookie-based login error:', e.message);
-    // Fallback: use Playwright's API to login
-    const browser = await chromium.launch({ headless: true });
-    const context = await browser.newContext();
-
-    // Login via Playwright by intercepting the API call
-    var loginApi = await context.request;
-    var apiContext = await browser.newContext();
-    var apiReq = apiContext.request;
-
-    // Use the page to make the login request
-    var page = await context.newPage();
-    var [response] = await Promise.all([
-      page.waitForResponse(function(r) { return r.url().includes('login_user'); }),
-      page.evaluate(async function() {
-        return await fetch('/php/api/router.php?action=login_user', {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ mobile_number: '9999999999', passcode: '368545' }),
-        }).then(function(r) { return r.json(); });
-      }),
-    ]);
-    var loginData = JSON.parse(await response.text());
-    console.log('Login result:', loginData.success ? 'SUCCESS' : loginData.message);
-
-    // Get cookies from page context
-    var pageCookies = await page.context().cookies();
-    console.log('Page cookies:', pageCookies.map(function(c) { return c.name + '=' + c.value.substring(0,20) + '...'; }).join(', '));
-
-    // Navigate to the app
-    await page.goto('http://localhost:3000/artists_farm/vrikshawan/goa-homes/', { waitUntil: 'networkidle', timeout: 15000 });
-    await page.waitForTimeout(3000);
-
-    var isLogin = await page.$('input[type="password"]') !== null;
-    console.log('Is on login page:', isLogin);
-
-    if (isLogin) {
-      console.log('Filling login form...');
-      await page.fill('input[type="tel"]', '9999999999');
-      await page.fill('input[type="password"]', '368545');
-      await page.press('input[type="password"]', 'Enter');
-      await page.waitForTimeout(4000);
-      console.log('After login, URL:', page.url());
-    }
-
-    // Now search for billing/nav elements
-    var navItems = await page.evaluate(function() {
-      var items = document.querySelectorAll('a, button, [role="tab"]');
-      var result = [];
-      for (var i = 0; i < items.length; i++) {
-        var text = (items[i].textContent || '').trim();
-        if (text && (text.match(/bill/i) || text.match(/checkout/i) || text.match(/guest/i) || text.match(/dashboard/i) || text.match(/kitchen/i))) {
-          result.push(text.substring(0, 30));
-        }
-      }
-      return result;
-    });
-    console.log('Nav items found:', navItems.slice(0, 20));
-
-    await extractAndCompare(page, context);
-    await browser.close();
-    return;
-  }
-
-  // === 2. Launch browser with session cookie ===
-  const browser = await chromium.launch({ headless: true });
-  var cookieArr = cookies.map(function(c) {
-    return {
-      name: c.key, value: c.value, domain: 'localhost',
-      path: c.domain || '/',
-      httpOnly: c.httpOnly || false,
-      secure: false,
-      sameSite: 'Lax'
-    };
-  });
-
-  const context = await browser.newContext({
-    viewport: { width: 1280, height: 720 },
-    storageState: { cookies: cookieArr, origins: [] }
-  });
-
-  const page = await context.newPage();
-
-  // Load the app
-  console.log('\n=== Navigating to app ===');
   await page.goto('http://localhost:3000/artists_farm/vrikshawan/goa-homes/', { waitUntil: 'networkidle', timeout: 15000 });
+  await page.waitForTimeout(2000);
+
+  // The app renders a terminal login page. Fill in the credentials.
+  // The form has: input[type="tel"] for mobile_number, input[type="password"] for passcode
+  var mobileInput = await page.$('input[type="tel"]');
+  var passcodeInput = await page.$('input[type="password"]');
+
+  if (mobileInput && passcodeInput) {
+    console.log('Found login form - filling credentials');
+    await mobileInput.fill('9999999999');
+    await passcodeInput.fill('368545');
+
+    // Submit by pressing Enter on the passcode field
+    await passcodeInput.press('Enter');
+    await page.waitForTimeout(4000);
+
+    // Check if login succeeded
+    var isLogin = await page.$('input[type="password"]') !== null;
+    console.log('Still on login page:', isLogin);
+    console.log('Current URL:', page.url());
+  } else {
+    console.log('Login form not found');
+    var bodyText = await page.evaluate(function() { return (document.body.innerText || '').substring(0,200); });
+    console.log('Page body:', bodyText);
+  }
+
+  // Navigate to dashboard
+  await page.goto('http://localhost:3000/artists_farm/vrikshawan/goa-homes/#dashboard', { waitUntil: 'networkidle', timeout: 10000 }).catch(function(){});
   await page.waitForTimeout(3000);
 
-  var isLogin = await page.$('input[type="password"]') !== null;
-  console.log('Is on login page:', isLogin);
+  // Find nav items to identify available tabs
+  var navItems = await page.evaluate(function() {
+    var items = document.querySelectorAll('a, button, [role="tab"]');
+    var result = [];
+    for (var i = 0; i < items.length; i++) {
+      var text = (items[i].textContent || '').trim();
+      if (text && (text.match(/bill/i) || text.match(/checkout/i) || text.match(/guest/i) || text.match(/dashboard/i) || text.match(/kitchen/i) || text.match(/staff/i))) {
+        result.push(text.substring(0, 30));
+      }
+    }
+    return result;
+  });
+  console.log('Nav items:', navItems.slice(0, 20));
 
-  if (isLogin) {
-    console.log('Filling login form...');
-    await page.fill('input[type="tel"]', '9999999999');
-    await page.fill('input[type="password"]', '368545');
-    await page.press('input[type="password"]', 'Enter');
-    await page.waitForTimeout(4000);
-    console.log('After login, URL:', page.url());
-  }
-
-  // Find billing/checkout nav items and click
+  // Try clicking Billing/Checkout tab
   var navResult = await page.evaluate(function() {
     var items = document.querySelectorAll('a, button, [role="tab"]');
     for (var i = 0; i < items.length; i++) {
       var text = (items[i].textContent || '').trim();
-      if (text === 'Billing' || text === 'Checkout' || text === 'Guests' || text === 'Dashboard' || text.match(/bill/i) || text.match(/checkout/i)) {
+      if (text.match(/bill/i) || text === 'Checkout' || text.match(/checkout/i)) {
         items[i].click();
         return 'Clicked: ' + text;
       }
     }
-    return 'No matching nav item found';
+    return 'Not found - trying #billing hash';
   });
   console.log('Nav click:', navResult);
   await page.waitForTimeout(2000);
 
-  var hasBillingCheckout = await page.evaluate(function() {
-    return !!(document.querySelector('.billing-checkout__grid') ||
-      document.querySelector('.billing-checkout__guest-card') ||
-      document.querySelector('.react-data-table-component') ||
-      document.querySelector('[class*="billing-checkout"]'));
+  // Check what's on the page
+  var pageContent = await page.evaluate(function() {
+    var texts = [];
+    var headers = document.querySelectorAll('h1, h2, h3, h4');
+    for (var i = 0; i < Math.min(headers.length, 20); i++) {
+      texts.push(headers[i].textContent.trim());
+    }
+    return texts;
   });
-  console.log('Has BillingCheckout elements:', hasBillingCheckout);
+  console.log('Headers on page:', pageContent);
 
-  await extractAndCompare(page, context);
-  await browser.close();
-}
+  // Check for key UI component classes
+  var hasClasses = await page.evaluate(function() {
+    return {
+      billingCheckout: !!document.querySelector('[class*="billing-checkout"]'),
+      dataTable: !!document.querySelector('.react-data-table-component'),
+      card: !!document.querySelector('.card, [class*="card"]'),
+      badge: !!document.querySelector('.badge, span[class*="badge"]'),
+      flowbiteModal: !!document.querySelector('[data-modal]'),
+      datepicker: !!document.querySelector('.datepicker, [class*="datepicker"]'),
+      statCard: !!document.querySelector('[class*="stat-card"]'),
+    };
+  });
+  console.log('Component presence:', JSON.stringify(hasClasses));
 
-async function extractAndCompare(page, context) {
-  // Extract computed styles from app
+  // === 2. Extract app styles ===
   console.log('\n=== App Element Styles ===');
   var checks = [
-    { label: 'Guest Cards', selector: '.billing-checkout__guest-card, .billing-checkout__room-card' },
-    { label: 'DataTable Headers', selector: '.react-data-table-component th, th' },
-    { label: 'Badges', selector: 'span[class*="rounded-full"][class*="px"], .badge' },
-    { label: 'Primary Buttons', selector: 'button.bg-blue-600, button.bg-amber-500, button.bg-emerald-600' },
-    { label: 'Form Inputs', selector: 'input[type="text"], input[type="number"], select' },
-    { label: 'Modal Backdrops', selector: '[role="dialog"], .modal-backdrop, .fixed.inset-0' },
+    { label: 'Guest/Room Cards', selector: '.billing-checkout__guest-card, .billing-checkout__room-card, .stat-card, [class*="card"][class*="shadow"]' },
+    { label: 'Table Headers (th)', selector: 'th' },
+    { label: 'Table Cells (td)', selector: 'td' },
+    { label: 'Badges', selector: 'span[class*="rounded-full"], .badge, [class*="badge"]:not([class*="badge-"])' },
+    { label: 'Primary Buttons', selector: 'button.bg-blue-600, button.bg-amber-500, button.bg-emerald-600, button[class*="btn"]' },
+    { label: 'Form Inputs', selector: 'input[type="text"], input[type="number"], select, input[type="tel"]' },
     { label: 'DateRangePicker', selector: '.datepicker, [class*="datepicker"]' },
   ];
 
   for (var i = 0; i < checks.length; i++) {
-    var check = checks[i];
-    var result = await getStyles(page, check.selector);
+    var result = await getStyles(page, checks[i].selector);
     if (result) {
-      console.log('\n--- ' + check.label + ' (' + result.count + ' found) ---');
+      console.log('\n--- ' + checks[i].label + ' (' + result.count + ' found) ---');
       if (result.error) console.log('  Error:', result.error);
       for (var j = 0; j < result.samples.length; j++) {
         console.log('  ', JSON.stringify(result.samples[j]));
       }
     } else {
-      console.log('\n--- ' + check.label + ': No elements found ---');
+      console.log('\n--- ' + checks[i].label + ': No elements found ---');
     }
   }
 
-  // === 3. Flowbite reference comparison ===
+  // === 3. Flowbite reference styles ===
   console.log('\n\n=== Flowbite Reference Styles ===');
   var fpage = await context.newPage();
 
   var flowbiteRefs = [
-    { name: 'Badge docs', url: 'https://flowbite.com/docs/components/badge/', selector: 'span[class*="bg-blue-100"], span[class*="bg-green-100"], span[class*="rounded-full"]' },
-    { name: 'Button docs', url: 'https://flowbite.com/docs/components/button/', selector: 'button.bg-blue-700, button.bg-blue-600' },
-    { name: 'Card docs', url: 'https://flowbite.com/docs/components/card/', selector: '.bg-white.shadow, .bg-white.border' },
-    { name: 'Forms docs', url: 'https://flowbite.com/docs/forms/input/', selector: 'input[type="text"], input[type="number"]' },
-    { name: 'Modal docs', url: 'https://flowbite.com/docs/components/modal/', selector: '[role="dialog"], .modal' },
+    { name: 'Badge', url: 'https://flowbite.com/docs/components/badge/', selector: 'span[class*="rounded-full"]' },
+    { name: 'Button', url: 'https://flowbite.com/docs/components/button/', selector: 'button.bg-blue-700, button.bg-blue-600, button[class*="bg-blue"]' },
+    { name: 'Card', url: 'https://flowbite.com/docs/components/card/', selector: '.bg-white.shadow, .bg-white.border, .card' },
+    { name: 'Forms', url: 'https://flowbite.com/docs/forms/input/', selector: 'input[type="text"], input[type="number"]' },
+    { name: 'Table', url: 'https://flowbite.com/docs/components/table/', selector: 'th, td' },
   ];
 
   for (var fi = 0; fi < flowbiteRefs.length; fi++) {
     var ref = flowbiteRefs[fi];
     try {
       await fpage.goto(ref.url, { waitUntil: 'networkidle', timeout: 15000 });
-      await fpage.waitForTimeout(1500);
+      await fpage.waitForTimeout(2000);
       var result = await getStyles(fpage, ref.selector);
       if (result && result.count > 0) {
         console.log('\n  Flowbite ' + ref.name + ' (' + result.count + ' found):');
@@ -241,12 +171,14 @@ async function extractAndCompare(page, context) {
           console.log('  ', JSON.stringify(result.samples[si]));
         }
       } else {
-        console.log('\n  Flowbite ' + ref.name + ': No elements found for ' + ref.selector);
+        console.log('\n  Flowbite ' + ref.name + ': No elements found');
       }
     } catch(e) {
       console.log('\n  Flowbite ' + ref.name + ': Error -', e.message ? e.message.substring(0,100) : String(e));
     }
   }
+
+  await browser.close();
 }
 
 main().catch(function(e) { console.error('Fatal:', e); process.exit(1); });

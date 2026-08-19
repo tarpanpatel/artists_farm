@@ -286,7 +286,7 @@ export const EmailSettingsPanel: React.FC = () => {
           onChange={(e) => setTemplate(e.target.value)}
           placeholder={DEFAULT_TENANT_WELCOME_TEMPLATE}
           rows={10}
-          className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-white rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
         <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 mb-2">
           {t('template_helper_text', 'Blank = use the default shown above as a placeholder. Click a variable to insert it:')}

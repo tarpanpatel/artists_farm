@@ -143,7 +143,7 @@ export const AdminControlOverviewDashboard: React.FC<AdminControlOverviewDashboa
               className="admin-dashboard__card border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200 group"
             >
               <div className="flex items-start gap-3.5">
-                <div className={`p-3 rounded-xl border shrink-0 ${card.color} transition-transform group-hover:scale-105`}>
+                <div className={`p-3 rounded-lg border shrink-0 ${card.color} transition-transform group-hover:scale-105`}>
                   <IconComponent className="w-5 h-5" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -172,7 +172,7 @@ export const AdminControlOverviewDashboard: React.FC<AdminControlOverviewDashboa
       </div>
 
       {visibleCards.length === 0 && (
-        <div className="admin-dashboard__empty-state text-center py-12 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
+        <div className="admin-dashboard__empty-state text-center py-12 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
           <p className="admin-dashboard__empty-state-text text-slate-500 dark:text-slate-400 text-sm">
             {t('no_admin_modules_label', 'No administrative modules permitted for your current role.')}
           </p>

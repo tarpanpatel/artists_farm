@@ -159,7 +159,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     });
   }, []);
 
-  // Dedicated Bills Catalog managed by Root Admin → Default Bills (MK).
+  // Dedicated Bills Catalog managed by Root Admin â†’ Default Bills (MK).
   // Items here surface directly as Bills autocomplete suggestions without
   // needing any category-mapping step.
   const [billsCatalog, setBillsCatalog] = useState<{ label: string }[]>([]);
@@ -498,8 +498,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
         if (desc && !map[cat].includes(desc)) map[cat].push(desc);
       });
     });
-    // Merge dedicated Bills Catalog (Root Admin → Default Bills) directly
-    // into the Bills bucket — these are the primary source of bill-type
+    // Merge dedicated Bills Catalog (Root Admin â†’ Default Bills) directly
+    // into the Bills bucket â€” these are the primary source of bill-type
     // suggestions, so they go in first and take precedence over history.
     if (!map['Bills']) map['Bills'] = [];
     billsCatalog.forEach((item) => {
@@ -674,7 +674,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       }
 
       if (onDispatchTelegram) {
-        const msg = `<b>🍳 KITCHEN PURCHASE RECORDED</b>\n━━━━━━━━━━━━━━━━\n📦 <b>Item:</b> ${qty} ${unit} ${formState.description}\n🏪 <b>Vendor:</b> ${vendorName}\n💰 <b>Total:</b> ₹${totalPrice.toLocaleString('en-IN')}\n━━━━━━━━━━━━━━━━`;
+        const msg = `<b>ðŸ³ KITCHEN PURCHASE RECORDED</b>\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\nðŸ“¦ <b>Item:</b> ${qty} ${unit} ${formState.description}\nðŸª <b>Vendor:</b> ${vendorName}\nðŸ’° <b>Total:</b> â‚¹${totalPrice.toLocaleString('en-IN')}\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”`;
         onDispatchTelegram('Expense', msg, 'finance');
       }
 
@@ -761,12 +761,12 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       const s = Number(formState.staffAmount || 0);
       const isCashOrSplit = mode === 'Cash' || d > 0 || s > 0;
 
-      let paymentLine = `💳 <b>Payment Mode:</b> ${mode}`;
+      let paymentLine = `ðŸ’³ <b>Payment Mode:</b> ${mode}`;
       if (isCashOrSplit) {
-        paymentLine += `\n🏦 <b>Farm Cash:</b> ₹${d.toLocaleString('en-IN')}\n👝 <b>Out of Pocket:</b> ₹${s.toLocaleString('en-IN')}`;
+        paymentLine += `\nðŸ¦ <b>Farm Cash:</b> â‚¹${d.toLocaleString('en-IN')}\nðŸ‘ <b>Out of Pocket:</b> â‚¹${s.toLocaleString('en-IN')}`;
       }
 
-      const msg = `<b>💸 EXPENSE RECORDED</b>\n━━━━━━━━━━━━━━━━\n📂 <b>Category:</b> ${formState.category}\n📝 <b>Description:</b> ${finalDescription}\n👤 <b>Paid By:</b> ${formState.paidBy}\n${paymentLine}\n💰 <b>Total:</b> ₹${Number(formState.amount).toLocaleString('en-IN')}\n━━━━━━━━━━━━━━━━`;
+      const msg = `<b>ðŸ’¸ EXPENSE RECORDED</b>\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\nðŸ“‚ <b>Category:</b> ${formState.category}\nðŸ“ <b>Description:</b> ${finalDescription}\nðŸ‘¤ <b>Paid By:</b> ${formState.paidBy}\n${paymentLine}\nðŸ’° <b>Total:</b> â‚¹${Number(formState.amount).toLocaleString('en-IN')}\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”`;
 
       const allMedia = [
         ...(formState.invoiceBillUrls || []),
@@ -1021,7 +1021,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                           <span>{item}</span>
                           {itemPrices[item] !== undefined && (
                             <span className="text-2xs bg-slate-100 dark:bg-slate-800 text-slate-500 font-mono px-2 py-0.5 rounded">
-                              Last ₹{itemPrices[item]}
+                              Last â‚¹{itemPrices[item]}
                             </span>
                           )}
                         </div>
@@ -1068,7 +1068,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
             <div>
               <Input
-                label={formState.category === 'Kitchen' ? 'Total Price (₹) *' : t('expense_amount_rupees_required_label', 'Amount (₹) *')}
+                label={formState.category === 'Kitchen' ? 'Total Price (â‚¹) *' : t('expense_amount_rupees_required_label', 'Amount (â‚¹) *')}
                 type="number"
                 step="0.01"
                 required
@@ -1079,7 +1079,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               />
               {formState.category !== 'Kitchen' && formState.description.trim() && itemPrices[formState.description.trim()] !== undefined && (
                 <p className="text-2xs text-emerald-600 font-semibold mt-1">
-                  Last input price auto-filled: ₹{itemPrices[formState.description.trim()]} (Editable)
+                  Last input price auto-filled: â‚¹{itemPrices[formState.description.trim()]} (Editable)
                 </p>
               )}
             </div>
@@ -1174,11 +1174,11 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
             {formState.showDrawerSplit && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 bg-amber-50/50 dark:bg-amber-950/20 p-3 rounded-lg border border-amber-200/60 dark:border-amber-900/40">
-                {/* LEFT COLUMN: Property Cash in Hand (₹) */}
+                {/* LEFT COLUMN: Property Cash in Hand (â‚¹) */}
                 <div>
-                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('property_cash_in_hand_rupees_label', 'Property Cash in Hand (₹)')}</label>
+                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('property_cash_in_hand_rupees_label', 'Property Cash in Hand (â‚¹)')}</label>
                   <div className="p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-950 dark:text-white font-bold text-sm font-mono shadow-2xs h-[38px] flex items-center px-3">
-                    ₹{Number(formState.drawerAmount || 0).toFixed(2)}
+                    â‚¹{Number(formState.drawerAmount || 0).toFixed(2)}
                   </div>
                 </div>
 
@@ -1211,7 +1211,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                         const val = e.target.value === '' ? '' : Number(e.target.value);
                         dispatch({ type: 'SET_FIELD', field: 'staffAmount', value: val });
                       }}
-                      placeholder="Enter pocket amount (₹)"
+                      placeholder="Enter pocket amount (â‚¹)"
                       autoFocus
                     />
                   ) : (
@@ -1390,7 +1390,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       </Card>
 
       {/* Cost Logs Mobile Cards with 10-Item Pagination (md:hidden) */}
-      <div className="md:hidden bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-3 space-y-2.5">
+      <div className="md:hidden bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs p-3 space-y-2.5">
         <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-700">
           <h3 className="petty-cash-management__subtitle font-semibold text-slate-800 dark:text-white text-xs">
             {t('cost_logs_for_label', 'Cost Logs for')} {new Date(Number(selectedMonth.split('-')[0]), Number(selectedMonth.split('-')[1]) - 1).toLocaleString('en-US', { month: 'long', year: 'numeric' })}
@@ -1403,10 +1403,10 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
             const cat = entry.category || entry.costCategory || '';
             const payer = entry.paidBy || entry.vendor;
             return (
-              <div key={entry.id} className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200/80 dark:border-slate-700/80 space-y-2 text-xs">
+              <div key={entry.id} className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-lg border border-slate-200/80 dark:border-slate-700/80 space-y-2 text-xs">
                 <div className="flex items-center justify-between gap-2">
                   <div className="font-bold text-slate-900 dark:text-white">{entry.description}</div>
-                  <span className="font-mono font-bold text-slate-900 dark:text-white text-sm">₹{entry.amount.toFixed(2)}</span>
+                  <span className="font-mono font-bold text-slate-900 dark:text-white text-sm">â‚¹{entry.amount.toFixed(2)}</span>
                 </div>
 
                 {payer && (
@@ -1547,7 +1547,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 return isEditingAmount ? (
                   <Input type="number" value={editValue} onChange={e => setEditValue(e.target.value)} onBlur={() => handleCellSave(entry.id)} onKeyDown={e => e.key === 'Enter' && handleCellSave(entry.id)} autoFocus className="w-24" />
                 ) : (
-                  <span onDoubleClick={() => handleCellDoubleClick(entry.id, 'amount', entry.amount, entry.source)} className="cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-950 px-1 py-0.5 rounded transition-all font-mono font-semibold text-slate-950 dark:text-white text-sm border-b border-dashed border-slate-400" title={t('double_click_to_edit_tooltip', 'Double click to edit')}>₹{entry.amount.toFixed(2)}</span>
+                  <span onDoubleClick={() => handleCellDoubleClick(entry.id, 'amount', entry.amount, entry.source)} className="cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-950 px-1 py-0.5 rounded transition-all font-mono font-semibold text-slate-950 dark:text-white text-sm border-b border-dashed border-slate-400" title={t('double_click_to_edit_tooltip', 'Double click to edit')}>â‚¹{entry.amount.toFixed(2)}</span>
                 );
               },
             },
@@ -1562,7 +1562,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
                 if (isSplit) {
                   return (
-                    <span className="text-xs text-purple-700 dark:text-purple-400 whitespace-nowrap" title={`Till: ₹${entry.drawerAmount} | Out of Pocket: ₹${entry.staffAmount}`}>
+                    <span className="text-xs text-purple-700 dark:text-purple-400 whitespace-nowrap" title={`Till: â‚¹${entry.drawerAmount} | Out of Pocket: â‚¹${entry.staffAmount}`}>
                       Split (Till + Pocket)
                     </span>
                   );
@@ -1609,7 +1609,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               <h3 className="petty-cash-management__subtitle font-semibold text-slate-800 dark:text-white text-sm">
                 {t('cost_logs_for_label', 'Cost Logs for')} {new Date(Number(selectedMonth.split('-')[0]), Number(selectedMonth.split('-')[1]) - 1).toLocaleString('en-US', { month: 'long', year: 'numeric' })}
               </h3>
-              <span className="text-slate-400 font-semibold text-xs">{pettyCashLoading || kitchenPurchasesLoading ? '…' : filteredEntries.length} {t('entries_label', 'entries')}</span>
+              <span className="text-slate-400 font-semibold text-xs">{pettyCashLoading || kitchenPurchasesLoading ? 'â€¦' : filteredEntries.length} {t('entries_label', 'entries')}</span>
             </div>
           }
           customStyles={{
@@ -1625,7 +1625,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
             </div>
           }
           noDataComponent={
-            <div className="p-8 text-center bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 font-semibold text-xs">
+            <div className="p-8 text-center bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-400 font-semibold text-xs">
               {t('no_expenses_this_month_message', 'No expenses recorded for this month.')}
             </div>
           }
@@ -1691,7 +1691,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
                 <div>
                   <Input
-                    label={t('expense_amount_rupees_label', 'Amount (₹)')}
+                    label={t('expense_amount_rupees_label', 'Amount (â‚¹)')}
                     type="number"
                     required
                     step="any"
@@ -1990,7 +1990,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Default Amount (₹)</label>
+                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Default Amount (â‚¹)</label>
                     <Input
                       type="number"
                       step="any"
@@ -2095,7 +2095,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                             <span className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 px-2 py-0.5 rounded font-semibold text-[10px]">{p.category}</span>
                           </td>
                           <td className="px-4 py-3 text-right font-mono font-medium text-slate-700 dark:text-slate-300">
-                            ₹{p.default_amount}
+                            â‚¹{p.default_amount}
                           </td>
                           <td className="px-4 py-3 text-right">
                             <div className="flex items-center justify-end gap-1.5">

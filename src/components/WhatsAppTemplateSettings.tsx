@@ -46,26 +46,26 @@ export const WhatsAppTemplateSettings: React.FC<WhatsAppTemplateSettingsProps> =
     checkout_date: '11 Aug 2026',
     checkin_time: '14:00',
     checkout_time: '11:00',
-    total_amount: '₹4,500',
+    total_amount: 'â‚¹4,500',
     booking_id: 'BK-7892',
   };
 
-  const defaultTemplate = `Hello {guest_name}! 👋
+  const defaultTemplate = `Hello {guest_name}! ðŸ‘‹
 
 Thank you for booking with *{property_name}*! Your reservation is confirmed.
 
-📋 *Booking Details:*
-• Booking ID: {booking_id}
-• Room: {room_number}
-• Check-in: {checkin_date} from {checkin_time}
-• Check-out: {checkout_date} until {checkout_time}
-• Total Amount: {total_amount}
+ðŸ“‹ *Booking Details:*
+â€¢ Booking ID: {booking_id}
+â€¢ Room: {room_number}
+â€¢ Check-in: {checkin_date} from {checkin_time}
+â€¢ Check-out: {checkout_date} until {checkout_time}
+â€¢ Total Amount: {total_amount}
 
-📍 *Address:* {property_address}
-📞 *Contact:* {property_phone}
-🗺️ *Google Maps:* {google_maps_link}
+ðŸ“ *Address:* {property_address}
+ðŸ“ž *Contact:* {property_phone}
+ðŸ—ºï¸ *Google Maps:* {google_maps_link}
 
-📝 *Important Notes:*
+ðŸ“ *Important Notes:*
 {instructions}
 
 We look forward to welcoming you!`;
@@ -176,13 +176,13 @@ We look forward to welcoming you!`;
           <Textarea
             value={whatsappTemplate}
             onChange={(e) => setWhatsappTemplate(e.target.value)}
-            placeholder={t('whatsapp_voucher_template_placeholder', 'e.g. Welcome to {property_name}! Your booking is confirmed…')}
+            placeholder={t('whatsapp_voucher_template_placeholder', 'e.g. Welcome to {property_name}! Your booking is confirmedâ€¦')}
             rows={4}
-            className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y"
+            className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y"
           />
         </div>
 
-        <div className="mt-4 border border-slate-200 dark:border-slate-700/80 rounded-2xl overflow-hidden bg-slate-50/50 dark:bg-slate-900/60 p-4">
+        <div className="mt-4 border border-slate-200 dark:border-slate-700/80 rounded-lg overflow-hidden bg-slate-50/50 dark:bg-slate-900/60 p-4">
           <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-200/80 dark:border-slate-800">
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
@@ -216,17 +216,17 @@ We look forward to welcoming you!`;
           </div>
 
           {previewTab === 'whatsapp' ? (
-            <div className="bg-[#e5ddd5] dark:bg-[#111b21] p-3 rounded-xl max-w-md mx-auto shadow-inner border border-slate-300/40 dark:border-slate-800">
+            <div className="bg-[#e5ddd5] dark:bg-[#111b21] p-3 rounded-lg max-w-md mx-auto shadow-inner border border-slate-300/40 dark:border-slate-800">
               <div className="bg-white dark:bg-[#202c33] p-3 rounded-lg shadow-xs text-xs text-slate-800 dark:text-slate-100 whitespace-pre-wrap leading-relaxed border-l-4 border-emerald-500">
                 {getInterpolatedText()}
               </div>
             </div>
           ) : (
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-xs">
+            <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden shadow-xs">
               <div className="bg-indigo-600 p-3 text-white">
                 <p className="text-[10px] uppercase tracking-wider text-indigo-200">Guest Booking Confirmation</p>
                 <h3 className="whatsapp-template-settings__subtitle text-sm font-semibold mt-0.5">{property.name?.trim() || 'Property Name'}</h3>
-                <p className="text-xs text-indigo-100 mt-1">{property.email?.trim() || 'contact@property.com'} · {property.phone?.trim() || '+91 99999 99999'}</p>
+                <p className="text-xs text-indigo-100 mt-1">{property.email?.trim() || 'contact@property.com'} Â· {property.phone?.trim() || '+91 99999 99999'}</p>
               </div>
               <div className="p-4 text-xs text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-wrap font-sans">
                 {getInterpolatedText()}

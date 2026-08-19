@@ -22,7 +22,7 @@ interface NavMenuEditorProps {
   // True for properties with the kitchen module off: kitchen-related items
   // (Take Food Order, Stock Requests, Edit Food Menu, etc.) are hidden from
   // this list so they can't be confused for something manageable here, but
-  // they're never removed from `items` — every save still round-trips them
+  // they're never removed from `items` â€” every save still round-trips them
   // untouched (see extractFromDOM and handleSave), since nav_menu_items is one
   // shared config across every property, not a per-property one.
   hideKitchenItems?: boolean;
@@ -192,7 +192,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
     return roots;
   }, []);
 
-  // Kitchen items stay in `items` (and get saved) untouched — only what's
+  // Kitchen items stay in `items` (and get saved) untouched â€” only what's
   // rendered/selectable in the tree is restricted. See extractFromDOM below
   // for how drag-and-drop reorders avoid dropping the hidden ones.
   const hiddenItems = hideKitchenItems ? items.filter(isKitchenModuleNavItem) : [];
@@ -239,7 +239,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
     };
     const rootUl = sortableContainerRef.current?.querySelector(':scope > ul') as HTMLUListElement | null;
     if (rootUl) processList(rootUl, null);
-    // The DOM only contains rendered (visible) items — reappend anything hidden
+    // The DOM only contains rendered (visible) items â€” reappend anything hidden
     // by hideKitchenItems unchanged so a drag-reorder never drops it from state.
     return [...result, ...hiddenItems];
   }, [items, hiddenItems]);
@@ -633,7 +633,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
               })}
             </div>
             {filteredIcons.length > 120 && (
-              <div className="nav-menu-editor__picker-hint text-[9px] text-slate-400 text-center mt-1">Showing 120 of {filteredIcons.length} — type to narrow search</div>
+              <div className="nav-menu-editor__picker-hint text-[9px] text-slate-400 text-center mt-1">Showing 120 of {filteredIcons.length} â€” type to narrow search</div>
             )}
             <button onClick={() => { setShowIconPickerFor(null); setIconSearch(''); }} className="nav-menu-editor__picker-close mt-2 text-[10px] text-slate-400 hover:text-slate-600 cursor-pointer">{t('close_button', 'Close')}</button>
           </div>
@@ -735,7 +735,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
   };
 
   return (
-    <div className="nav-menu-editor bg-white rounded-2xl border border-slate-200 shadow-md overflow-hidden flex flex-col min-h-[600px]">
+    <div className="nav-menu-editor bg-white rounded-lg border border-slate-200 shadow-md overflow-hidden flex flex-col min-h-[600px]">
       {/* Header */}
       <div className="nav-menu-editor__header p-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
         <div className="nav-menu-editor__header-row flex items-center justify-between mb-2">
@@ -744,7 +744,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
             <h3 className="nav-menu-editor__heading font-semibold text-slate-900 text-sm">{t('nav_menu_structure_title', 'Menu Structure')}</h3>
             <span className="nav-menu-editor__count-badge text-[10px] font-semibold bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full">{visibleItems.length} items</span>
             {hiddenItems.length > 0 && (
-              <span className="nav-menu-editor__hidden-hint text-[10px] font-medium text-slate-400" title={t('nav_kitchen_hidden_tooltip', "Kitchen items are hidden here because this property's kitchen module is off — they're untouched and will still be saved as-is.")}>
+              <span className="nav-menu-editor__hidden-hint text-[10px] font-medium text-slate-400" title={t('nav_kitchen_hidden_tooltip', "Kitchen items are hidden here because this property's kitchen module is off â€” they're untouched and will still be saved as-is.")}>
                 ({hiddenItems.length} kitchen item{hiddenItems.length === 1 ? '' : 's'} hidden)
               </span>
             )}
@@ -890,7 +890,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
       {/* Menu Tree */}
       <div ref={sortableContainerRef} className="nav-menu-editor__tree flex-1 overflow-y-auto p-3">
         {tree.length === 0 ? (
-          <div className="nav-menu-editor__empty text-center py-16 border-2 border-dashed border-slate-200 rounded-xl">
+          <div className="nav-menu-editor__empty text-center py-16 border-2 border-dashed border-slate-200 rounded-lg">
             <LayoutDashboard className="w-12 h-12 text-slate-200 mx-auto mb-3" />
             <p className="text-slate-500 font-semibold text-sm mb-1">{t('nav_menu_empty_message', 'Menu is empty')}</p>
             <p className="text-slate-400 text-xs">{t('nav_menu_empty_subtitle', 'Click "Add Item" to start building your menu')}</p>
@@ -921,7 +921,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="nav-menu-editor__save-button flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-semibold text-sm rounded-2xl shadow-2xl transition-all cursor-pointer disabled:cursor-not-allowed hover:scale-105 active:scale-95"
+            className="nav-menu-editor__save-button flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-semibold text-sm rounded-lg shadow-2xl transition-all cursor-pointer disabled:cursor-not-allowed hover:scale-105 active:scale-95"
           >
             {isSaving ? (
               <>

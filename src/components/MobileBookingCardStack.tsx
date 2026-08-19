@@ -100,7 +100,7 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
     <div className="mobile-booking-card-stack md:hidden space-y-4">
       {/* Search & Filter Header Bar */}
       {!hideSearchAndFilter && (
-        <div className="bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-3">
+        <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs space-y-3">
           {/* Search Input with Native Keyboard Keypad */}
           <div className="relative flex items-center">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />

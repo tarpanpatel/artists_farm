@@ -88,7 +88,7 @@ export const StaffPropertyPicker: React.FC<StaffPropertyPickerProps> = ({
     <div className="staff-property-picker min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col">
       <div className="staff-property-picker__header bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4 flex items-center justify-between">
         <div className="staff-property-picker__user flex items-center gap-2.5">
-          <div className="staff-property-picker__user-icon w-9 h-9 rounded-xl bg-gradient-to-br from-teal-100 to-emerald-100 dark:from-teal-900/40 dark:to-emerald-900/40 flex items-center justify-center">
+          <div className="staff-property-picker__user-icon w-9 h-9 rounded-lg bg-gradient-to-br from-teal-100 to-emerald-100 dark:from-teal-900/40 dark:to-emerald-900/40 flex items-center justify-center">
             <Building2 className="w-5 h-5 text-teal-600 dark:text-teal-400" />
           </div>
           <div className="staff-property-picker__user-info">
@@ -131,9 +131,9 @@ export const StaffPropertyPicker: React.FC<StaffPropertyPickerProps> = ({
                 <button
                   key={property.id}
                   onClick={() => handleSelectProperty(property)}
-                  className="staff-property-picker__card text-left bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-xs hover:shadow-md transition-all group cursor-pointer"
+                  className="staff-property-picker__card text-left bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-5 shadow-xs hover:shadow-md transition-all group cursor-pointer"
                 >
-                  <div className={`staff-property-picker__card-icon w-11 h-11 rounded-xl flex items-center justify-center shadow-sm mb-4 ${isMultiKey ? 'bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/40 dark:to-purple-900/40' : 'bg-gradient-to-br from-teal-100 to-emerald-100 dark:from-teal-900/40 dark:to-emerald-900/40'}`}>
+                  <div className={`staff-property-picker__card-icon w-11 h-11 rounded-lg flex items-center justify-center shadow-sm mb-4 ${isMultiKey ? 'bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/40 dark:to-purple-900/40' : 'bg-gradient-to-br from-teal-100 to-emerald-100 dark:from-teal-900/40 dark:to-emerald-900/40'}`}>
                     {isMultiKey ? (
                       <Layers className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                     ) : (

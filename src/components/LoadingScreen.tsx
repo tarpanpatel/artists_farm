@@ -28,7 +28,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
       <div className="flex flex-col items-center gap-8 loading-screen__container">
         {/* Animated Logo */}
         <div className="relative w-16 h-16 loading-screen__logo">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl animate-pulse loading-screen__logo-bg" />
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg animate-pulse loading-screen__logo-bg" />
           <div className="absolute inset-0 flex items-center justify-center loading-screen__logo-icon">
             <Building2 className="w-8 h-8 text-white" />
           </div>

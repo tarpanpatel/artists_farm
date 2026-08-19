@@ -116,7 +116,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
       if (res) {
         if (onLogAudit) {
           const currentUserName = getLoggedInUserName();
-          onLogAudit(`${currentUserName} added new miscellaneous charge template: '${newForm.label}' (Category: ${newForm.category}, Amount: ₹${newForm.default_amount})`);
+          onLogAudit(`${currentUserName} added new miscellaneous charge template: '${newForm.label}' (Category: ${newForm.category}, Amount: â‚¹${newForm.default_amount})`);
         }
         setIsAddModalOpen(false);
         setNewForm({ label: '', default_amount: '' as unknown as number, category: 'Service' });
@@ -145,7 +145,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
       changes.push(`category from '${updatedCharge.category}' to '${editForm.category}'`);
     }
     if (editForm.default_amount !== undefined && editForm.default_amount !== updatedCharge.default_amount) {
-      changes.push(`amount from ₹${updatedCharge.default_amount} to ₹${editForm.default_amount}`);
+      changes.push(`amount from â‚¹${updatedCharge.default_amount} to â‚¹${editForm.default_amount}`);
     }
 
     saveToDB('add_misc_charge_template', finalData).then((res) => {
@@ -246,7 +246,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
       },
     },
     {
-      name: t('default_price_column', 'Default Price (₹)'),
+      name: t('default_price_column', 'Default Price (â‚¹)'),
       selector: (row: MiscChargeTemplate) => row.default_amount,
       cell: (row: MiscChargeTemplate) => {
         const editing = isEditing === row.id;
@@ -257,7 +257,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
             onChange={(e) => setEditForm({ ...editForm, default_amount: Number(e.target.value) })}
           />
         ) : (
-          <span className="font-semibold text-emerald-600 dark:text-emerald-400">₹{row.default_amount?.toLocaleString('en-IN') || 0}</span>
+          <span className="font-semibold text-emerald-600 dark:text-emerald-400">â‚¹{row.default_amount?.toLocaleString('en-IN') || 0}</span>
         );
       },
     },
@@ -318,7 +318,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
         </PageHeaderButton>
       </PageHeader>
 
-      <div className="misc-charges-management__table-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-4 sm:p-6">
+      <div className="misc-charges-management__table-card bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-4 sm:p-6">
         <div className="hidden md:block">
           <DataTable
             columns={columns}
@@ -370,7 +370,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
               <>
                 <div className="space-y-2.5">
                   {paginatedCharges.map((row) => (
-                    <div key={row.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 space-y-2 shadow-2xs">
+                    <div key={row.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3.5 space-y-2 shadow-2xs">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <h4 className="font-bold text-slate-900 dark:text-white text-sm truncate">{row.label}</h4>
@@ -379,7 +379,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
                               {row.category || 'Service'}
                             </span>
                             <span className="font-mono font-extrabold text-blue-600 dark:text-blue-400 text-xs">
-                              ₹{Number(row.default_amount).toFixed(2)}
+                              â‚¹{Number(row.default_amount).toFixed(2)}
                             </span>
                           </div>
                         </div>
@@ -426,7 +426,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
                       type="button"
                       disabled={mobilePage === 1}
                       onClick={() => setMobilePage((p) => Math.max(1, p - 1))}
-                      className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+                      className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
                     >
                       Previous
                     </button>
@@ -437,7 +437,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
                       type="button"
                       disabled={mobilePage >= Math.ceil(filteredCharges.length / 10)}
                       onClick={() => setMobilePage((p) => Math.min(Math.ceil(filteredCharges.length / 10), p + 1))}
-                      className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+                      className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
                     >
                       Next
                     </button>
@@ -480,7 +480,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
               />
             </div>
             <div>
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('default_price_label', 'Default Price (₹)')}</label>
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('default_price_label', 'Default Price (â‚¹)')}</label>
               <Input
                 type="number"
                 required

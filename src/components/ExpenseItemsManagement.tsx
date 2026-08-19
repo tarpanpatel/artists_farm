@@ -201,7 +201,7 @@ export const ExpenseItemsManagement: React.FC = () => {
                 </div>
                 <div>
                   <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-                    {t('default_amount_label', 'Default Amount (₹)')}
+                    {t('default_amount_label', 'Default Amount (â‚¹)')}
                   </label>
                   <Input
                     type="number"
@@ -251,7 +251,7 @@ export const ExpenseItemsManagement: React.FC = () => {
             if (filteredCategory.length === 0 && searchQuery) return null;
 
             return (
-              <div key={category} className="expense-items-management__category-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+              <div key={category} className="expense-items-management__category-card bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
                 <div className="bg-slate-100 dark:bg-slate-700 px-6 py-3">
                   <h3 className="expense-items-management__subtitle font-semibold text-slate-900 dark:text-white">{category}</h3>
                 </div>
@@ -260,7 +260,7 @@ export const ExpenseItemsManagement: React.FC = () => {
                     {(filteredCategory.length > 0 ? filteredCategory : categoryItems).map((item) => {
                       const ItemIcon = getExpenseItemIcon(item.label, category);
                       return (
-                      <div key={item.id} className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 hover:shadow-md dark:hover:bg-slate-700 transition-all">
+                      <div key={item.id} className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-lg border border-slate-200 dark:border-slate-700 hover:shadow-md dark:hover:bg-slate-700 transition-all">
                         <div className="space-y-2">
                           <div className="flex items-start justify-between gap-2">
                             <ItemIcon className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0 mt-0.5" />

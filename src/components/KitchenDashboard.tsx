@@ -245,15 +245,15 @@ export const KitchenDashboard: React.FC<KitchenDashboardProps> = ({ onNavigate, 
         subtitle={t('kitchen_dashboard_subtitle', 'Central command for food orders, staff meals, ingredient stock, and inventory logs.')}
       >
         {/* Live Quick Stats Badges */}
-        <div className="hidden md:flex items-center gap-1.5 px-2 py-1 md:px-3 md:py-2 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/60 rounded-lg md:rounded-xl text-[10px] md:text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+        <div className="hidden md:flex items-center gap-1.5 px-2 py-1 md:px-3 md:py-2 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/60 rounded-lg md:rounded-lg text-[10px] md:text-xs font-semibold text-emerald-700 dark:text-emerald-300">
           <Clock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
           <span>{pendingOrdersCount} {t('active_orders_label', 'Active Orders')}</span>
         </div>
-        <div className="hidden md:flex items-center gap-1.5 px-2 py-1 md:px-3 md:py-2 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/60 rounded-lg md:rounded-xl text-[10px] md:text-xs font-semibold text-amber-700 dark:text-amber-300">
+        <div className="hidden md:flex items-center gap-1.5 px-2 py-1 md:px-3 md:py-2 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/60 rounded-lg md:rounded-lg text-[10px] md:text-xs font-semibold text-amber-700 dark:text-amber-300">
           <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
           <span>{lowStockCount} {t('low_stock_label', 'Low Stock Items')}</span>
         </div>
-        <div className="hidden md:flex items-center gap-1.5 px-2 py-1 md:px-3 md:py-2 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800/60 rounded-lg md:rounded-xl text-[10px] md:text-xs font-semibold text-blue-700 dark:text-blue-300">
+        <div className="hidden md:flex items-center gap-1.5 px-2 py-1 md:px-3 md:py-2 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800/60 rounded-lg md:rounded-lg text-[10px] md:text-xs font-semibold text-blue-700 dark:text-blue-300">
           <Package className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
           <span>{pendingRequisitionsCount} {t('open_requests_label', 'Open Stock Req')}</span>
         </div>
@@ -289,7 +289,7 @@ export const KitchenDashboard: React.FC<KitchenDashboardProps> = ({ onNavigate, 
                 >
                   <GripVertical className="w-5 h-5" />
                 </div>
-                <div className={`p-3 rounded-xl border shrink-0 ${card.color} transition-transform group-hover:scale-105`}>
+                <div className={`p-3 rounded-lg border shrink-0 ${card.color} transition-transform group-hover:scale-105`}>
                   <IconComponent className="w-6 h-6" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -314,7 +314,7 @@ export const KitchenDashboard: React.FC<KitchenDashboardProps> = ({ onNavigate, 
                   variant="primary"
                   size="sm"
                   block
-                  className="justify-center gap-2 font-semibold cursor-pointer rounded-xl"
+                  className="justify-center gap-2 font-semibold cursor-pointer rounded-lg"
                   onClick={() => onNavigate(card.uniqueKey, card.tabKey)}
                   rightIcon={<ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />}
                 >

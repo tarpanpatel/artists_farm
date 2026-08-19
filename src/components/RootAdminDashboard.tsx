@@ -379,7 +379,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
             </div>
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-3 p-2.5 text-xs font-semibold rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/50 transition-all cursor-pointer shadow-2xs"
+              className="w-full flex items-center gap-3 p-2.5 text-xs font-semibold rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/50 transition-all cursor-pointer shadow-2xs"
               style={{ color: '#ff5252' }}
             >
               <LogOut className="w-4 h-4 text-red-500" />
@@ -422,7 +422,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
           </div>
         </header>
 
-        {/* ── Section Content ──────────────────────────────────────────────── */}
+        {/* â”€â”€ Section Content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div className="max-w-7xl mx-auto px-3 py-4 lg:px-8 lg:py-6">
 
           {/* Dashboard */}
@@ -431,17 +431,17 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <KpiCard
                   label={t('root_total_properties_label', 'Total Properties')}
-                  value="—"
+                  value="â€”"
                   icon={Building2}
                 />
                 <KpiCard
                   label={t('root_active_tenants_label', 'Active Tenants')}
-                  value="—"
+                  value="â€”"
                   icon={UserRound}
                 />
                 <KpiCard
                   label={t('root_appearance_menu_label', 'Appearance')}
-                  value="—"
+                  value="â€”"
                   icon={Paintbrush}
                 />
               </div>
@@ -535,7 +535,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
           {activeSection === 'db_sync' && (
             <Card className="max-w-2xl shadow-md space-y-4">
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-950/50 rounded-xl flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-950/50 rounded-lg flex items-center justify-center shrink-0">
                   <DatabaseBackup className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
@@ -551,7 +551,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                 type="button"
                 onClick={handleDownloadLiveDb}
                 disabled={isExportingDb}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-xl transition-all cursor-pointer shadow-xs"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg transition-all cursor-pointer shadow-xs"
               >
                 {isExportingDb ? <Loader2 className="w-4 h-4 animate-spin" /> : <DatabaseBackup className="w-4 h-4" />}
                 {isExportingDb ? t('root_db_sync_exporting', 'Exporting...') : t('root_db_sync_download_button', 'Download .sql File')}
@@ -566,7 +566,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
           {activeSection === 'demo_data' && (
             <Card className="max-w-2xl shadow-md space-y-4">
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 bg-amber-100 dark:bg-amber-950/50 rounded-xl flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 bg-amber-100 dark:bg-amber-950/50 rounded-lg flex items-center justify-center shrink-0">
                   <RefreshCw className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                 </div>
                 <div>
@@ -586,7 +586,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
               )}
 
               {!isLoadingDemoProperty && demoPropertyError && (
-                <div className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-xl p-3">
+                <div className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-lg p-3">
                   <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                   <span>{demoPropertyError}</span>
                 </div>
@@ -602,7 +602,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                     type="button"
                     onClick={handleResetDemoData}
                     disabled={isResettingDemo}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-xl transition-all cursor-pointer shadow-xs"
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg transition-all cursor-pointer shadow-xs"
                   >
                     {isResettingDemo ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                     {isResettingDemo ? t('root_demo_data_resetting', 'Resetting...') : t('root_demo_data_reset_button', 'Reset Demo Data Now')}

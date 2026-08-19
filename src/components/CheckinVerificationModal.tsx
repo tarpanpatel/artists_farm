@@ -147,7 +147,7 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
               {t('complete_checkin_heading_prefix')} {guest.guestName}
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              {guest.roomNumber} · {requiredCount} {t('id_documents_required_text')}{requiredCount > 1 ? 's' : ''} required
+              {guest.roomNumber} Â· {requiredCount} {t('id_documents_required_text')}{requiredCount > 1 ? 's' : ''} required
             </p>
           </div>
         </div>
@@ -187,7 +187,7 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
                 return (
                   <div key={index} className="space-y-1.5">
                     <label
-                      className={`relative flex flex-col items-center justify-center aspect-square rounded-xl border-2 overflow-hidden cursor-pointer transition-colors ${
+                      className={`relative flex flex-col items-center justify-center aspect-square rounded-lg border-2 overflow-hidden cursor-pointer transition-colors ${
                         doc
                           ? 'border-emerald-300 dark:border-emerald-700'
                           : 'border-dashed border-slate-300 dark:border-slate-600 hover:border-purple-400 dark:hover:border-purple-500 bg-slate-50 dark:bg-slate-700'

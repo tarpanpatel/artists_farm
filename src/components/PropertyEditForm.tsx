@@ -113,13 +113,13 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
   return (
     <div className="property-edit-form space-y-4">
       {error && (
-        <div className="property-edit-form__error flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-700 dark:text-red-300">
+        <div className="property-edit-form__error flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-300">
           <AlertCircle className="w-4 h-4 shrink-0" />
           {error}
         </div>
       )}
       {success && (
-        <div className="property-edit-form__success flex items-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-xl text-sm text-emerald-700 dark:text-emerald-300">
+        <div className="property-edit-form__success flex items-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg text-sm text-emerald-700 dark:text-emerald-300">
           <CheckCircle2 className="w-4 h-4 shrink-0" />
           {t('property_updated_success_message', 'Property details saved')}
         </div>
@@ -222,7 +222,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
         <div className="property-edit-form__field">
           <Input
             type="number"
-            label={t('default_tariff_label', 'Default Tariff / Night (₹, optional)')}
+            label={t('default_tariff_label', 'Default Tariff / Night (â‚¹, optional)')}
             value={defaultTariff}
             onChange={(e) => setDefaultTariff(e.target.value)}
             placeholder={t('default_tariff_placeholder', 'e.g. 2000')}
@@ -249,7 +249,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
         <WhatsAppEditor
           value={instructions}
           onChange={setInstructions}
-          placeholder={t('other_notes_placeholder', 'e.g. How to reach, check-in instructions, parking notes…')}
+          placeholder={t('other_notes_placeholder', 'e.g. How to reach, check-in instructions, parking notesâ€¦')}
           rows={4}
         />
         <p className="property-edit-form__field-help text-xs text-slate-400 dark:text-slate-500 mt-1">{t('other_notes_help', 'Supports WhatsApp formatting: *bold*, _italic_, ~strikethrough~, bullet lists, quotes, code.')}</p>

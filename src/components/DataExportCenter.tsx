@@ -336,7 +336,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
       {/* Control Card & Dropdowns */}
       <Card className="data-export-center__control-card border-gray-200 dark:border-gray-700 space-y-6">
         {/* Segment Tabs Selector */}
-        <div className="data-export-center__tabs flex bg-slate-100 dark:bg-slate-900/60 p-1.5 rounded-xl max-w-md">
+        <div className="data-export-center__tabs flex bg-slate-100 dark:bg-slate-900/60 p-1.5 rounded-lg max-w-md">
           <button
             onClick={() => setExportRangeType('month')}
             className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
@@ -449,7 +449,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
         {/* Action Export Cards List */}
         <div className="data-export-center__cards-list space-y-4">
           {/* Card 1: Bookings */}
-          <div className="data-export-center__export-card flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl gap-4 hover:border-slate-300 transition-colors">
+          <div className="data-export-center__export-card flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-lg gap-4 hover:border-slate-300 transition-colors">
             <div className="space-y-1">
               <h3 className="data-export-center__subtitle text-sm font-semibold text-slate-900 flex items-center gap-2">
                 <Hotel className="w-4 h-4 text-blue-600" />
@@ -472,7 +472,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
 
           {/* Card 2: Kitchen Purchases */}
           {kitchenModuleEnabled && (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl gap-4 hover:border-slate-300 transition-colors">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-lg gap-4 hover:border-slate-300 transition-colors">
               <div className="space-y-1">
                 <h3 className="data-export-center__subtitle text-sm font-semibold text-slate-900 flex items-center gap-2">
                   <Utensils className="w-4 h-4 text-amber-600" />
@@ -494,7 +494,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
           )}
 
           {/* Card 3: Farm Upkeep & Utilities */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl gap-4 hover:border-slate-300 transition-colors">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-lg gap-4 hover:border-slate-300 transition-colors">
             <div className="space-y-1">
               <h3 className="data-export-center__subtitle text-sm font-semibold text-slate-900 flex items-center gap-2">
                 <Wrench className="w-4 h-4 text-purple-600" />
@@ -515,7 +515,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
           </div>
 
           {/* Card 4: Payroll & Salaries */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl gap-4 hover:border-slate-300 transition-colors">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-lg gap-4 hover:border-slate-300 transition-colors">
             <div className="space-y-1">
               <h3 className="data-export-center__subtitle text-sm font-semibold text-slate-900 flex items-center gap-2">
                 <UserCheck className="w-4 h-4 text-indigo-600" />
@@ -536,7 +536,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
           </div>
 
           {/* Card 5: Master Ledger */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-sky-50 border border-sky-200 rounded-xl gap-4 hover:border-sky-300 transition-colors">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-sky-50 border border-sky-200 rounded-lg gap-4 hover:border-sky-300 transition-colors">
             <div className="space-y-1">
               <h3 className="data-export-center__subtitle text-sm font-semibold text-sky-900 flex items-center gap-2">
                 <FileText className="w-4 h-4 text-sky-700" />
@@ -558,14 +558,14 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
 
           {/* Card 6: SQL Snapshot Backup (Root Admin) */}
           {isRootAdmin && (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-rose-50 border border-rose-200 rounded-xl gap-4 mt-6 hover:border-rose-300 transition-colors">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-rose-50 border border-rose-200 rounded-lg gap-4 mt-6 hover:border-rose-300 transition-colors">
               <div className="space-y-1">
                 <h3 className="data-export-center__subtitle text-sm font-semibold text-rose-900 flex items-center gap-2">
                   <Database className="w-4 h-4 text-rose-700" />
                   <span>{t('snapshot_backup_export_title', 'Full System Snapshot Backup (Root Admin)')}</span>
                 </h3>
                 <p className="text-xs text-rose-700">
-                  {t('snapshot_backup_export_description', 'Generates an instant raw SQL dump of the entire database — every tenant and property, not just this one.')}
+                  {t('snapshot_backup_export_description', 'Generates an instant raw SQL dump of the entire database â€” every tenant and property, not just this one.')}
                 </p>
               </div>
               <button

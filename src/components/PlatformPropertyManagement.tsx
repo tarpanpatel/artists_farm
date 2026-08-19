@@ -688,7 +688,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 platform-property-management">
       {/* Success Toast */}
       {successMessage && (
-        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] bg-emerald-600 text-white px-6 py-3 rounded-xl shadow-2xl animate-pulse flex items-center gap-2">
+        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] bg-emerald-600 text-white px-6 py-3 rounded-lg shadow-2xl animate-pulse flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4" /> {successMessage}
         </div>
       )}
@@ -721,7 +721,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-lg border border-slate-200 dark:border-slate-700">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
@@ -735,7 +735,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-lg border border-slate-200 dark:border-slate-700">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
@@ -749,7 +749,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-lg border border-slate-200 dark:border-slate-700">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
@@ -791,7 +791,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
               return (
                 <div
                   key={tenant.id}
-                  className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden hover:shadow-lg transition-shadow"
+                  className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden hover:shadow-lg transition-shadow"
                 >
                   {/* Tenant Header - Clickable */}
                   <div
@@ -1336,7 +1336,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                 />
               </div>
 
-              <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200 dark:border-slate-700 min-h-[44px]">
+              <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-900/60 p-3 rounded-lg border border-slate-200 dark:border-slate-700 min-h-[44px]">
                 <input
                   type="checkbox"
                   id="editTenantActiveCheck"

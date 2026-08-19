@@ -99,12 +99,12 @@ export function ConfirmDialogProvider({ children }: { children: React.ReactNode 
           onClick={handleCancel}
         >
           <div
-            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl max-w-md w-full p-6 text-left transform transition-all animate-in zoom-in-95 duration-200 confirm-dialog__dialog"
+            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-2xl max-w-md w-full p-6 text-left transform transition-all animate-in zoom-in-95 duration-200 confirm-dialog__dialog"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start gap-4 confirm-dialog__header">
               <div
-                className={`p-3 rounded-xl shrink-0 confirm-dialog__icon-wrapper ${
+                className={`p-3 rounded-lg shrink-0 confirm-dialog__icon-wrapper ${
                   pendingDialog.options.variant === 'danger'
                     ? 'bg-red-100 text-red-600 dark:bg-red-950/60 dark:text-red-400'
                     : pendingDialog.options.variant === 'info'
@@ -146,7 +146,7 @@ export function ConfirmDialogProvider({ children }: { children: React.ReactNode 
                 <button
                   type="button"
                   onClick={handleCancel}
-                  className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer confirm-dialog__btn confirm-dialog__btn--cancel"
+                  className="px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer confirm-dialog__btn confirm-dialog__btn--cancel"
                 >
                   {pendingDialog.options.cancelText || t('cancel_button')}
                 </button>
@@ -154,7 +154,7 @@ export function ConfirmDialogProvider({ children }: { children: React.ReactNode 
               <button
                 type="button"
                 onClick={handleConfirm}
-                className={`px-5 py-2.5 rounded-xl font-semibold text-xs text-white transition-all shadow-md cursor-pointer confirm-dialog__btn confirm-dialog__btn--confirm ${
+                className={`px-5 py-2.5 rounded-lg font-semibold text-xs text-white transition-all shadow-md cursor-pointer confirm-dialog__btn confirm-dialog__btn--confirm ${
                   pendingDialog.options.variant === 'danger'
                     ? 'bg-red-600 hover:bg-red-700 active:bg-red-800'
                     : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'

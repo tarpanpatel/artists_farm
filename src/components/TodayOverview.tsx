@@ -287,7 +287,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
         {onAddBooking && (
           <button
             onClick={onAddBooking}
-            className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-semibold rounded-xl text-xs px-3.5 py-2 flex items-center gap-2 shadow-2xs transition-all cursor-pointer whitespace-nowrap shrink-0"
+            className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-semibold rounded-lg text-xs px-3.5 py-2 flex items-center gap-2 shadow-2xs transition-all cursor-pointer whitespace-nowrap shrink-0"
           >
             <Plus className="w-4 h-4" />
             <span>{t('add_booking_button', 'Add Booking')}</span>
@@ -298,9 +298,9 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
       {/* Metric Blocks Grid - Sleek 1-Row Horizontal Cards */}
       <div className={`today-overview__metrics grid grid-cols-1 ${isMultiKeyProperty ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'} gap-2.5 md:gap-4`}>
         {/* Arrivals Block */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
+        <div className="bg-white dark:bg-slate-800 rounded-lg md:rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/35 text-blue-600 dark:text-blue-400 shrink-0">
+            <div className="p-2.5 rounded-lg bg-blue-50 dark:bg-blue-900/35 text-blue-600 dark:text-blue-400 shrink-0">
               <Calendar className="w-5 h-5" />
             </div>
             <div className="min-w-0 flex-1">
@@ -314,7 +314,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           {onNavigate && (
             <button
               onClick={() => onNavigate('guests')}
-              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/60 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1 shadow-2xs"
+              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/60 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1 shadow-2xs"
               title="View Bookings"
             >
               <span>Bookings</span>
@@ -323,9 +323,9 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           )}
         </div>
 
-        <div className="bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
+        <div className="bg-white dark:bg-slate-800 rounded-lg md:rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-900/35 text-amber-600 dark:text-amber-400 shrink-0">
+            <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-900/35 text-amber-600 dark:text-amber-400 shrink-0">
               <LogOut className="w-5 h-5" />
             </div>
             <div className="min-w-0 flex-1">
@@ -339,7 +339,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           {onNavigate && (
             <button
               onClick={() => onNavigate('guests')}
-              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/60 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1 shadow-2xs"
+              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/60 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1 shadow-2xs"
               title="View Bookings"
             >
               <span>Bookings</span>
@@ -349,9 +349,9 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
         </div>
 
         {isMultiKeyProperty && (
-          <div className="bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
+          <div className="bg-white dark:bg-slate-800 rounded-lg md:rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 min-w-0 flex-1">
-              <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-900/35 text-emerald-600 dark:text-emerald-400 shrink-0">
+              <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/35 text-emerald-600 dark:text-emerald-400 shrink-0">
                 <User className="w-5 h-5" />
               </div>
               <div className="min-w-0 flex-1">
@@ -365,7 +365,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             {onNavigate && (
               <button
                 onClick={() => onNavigate('guests')}
-                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/60 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1 shadow-2xs"
+                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/60 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1 shadow-2xs"
                 title="View Bookings"
               >
                 <span>Guests</span>
@@ -375,9 +375,9 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           </div>
         )}
 
-        <div className="bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
+        <div className="bg-white dark:bg-slate-800 rounded-lg md:rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            <div className="p-2.5 rounded-xl bg-red-50 dark:bg-red-900/35 text-red-600 dark:text-red-400 shrink-0">
+            <div className="p-2.5 rounded-lg bg-red-50 dark:bg-red-900/35 text-red-600 dark:text-red-400 shrink-0">
               <Bell className="w-5 h-5" />
             </div>
             <div className="min-w-0 flex-1">
@@ -391,7 +391,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           {onNavigate && (
             <button
               onClick={() => onNavigate('service_requests')}
-              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/60 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1 shadow-2xs"
+              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/60 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1 shadow-2xs"
               title="View Service Requests"
             >
               <span>Requests</span>
@@ -401,7 +401,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
         </div>
       </div>
 
-      <div className="today-overview__calendar bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
+      <div className="today-overview__calendar bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
         <div className="flex justify-between items-center">
           <h2 className="today-overview__title text-base font-semibold text-slate-900 dark:text-white">{visibleMonthLabel}</h2>
           <div className="flex items-center gap-2">
@@ -423,7 +423,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
       <div
         ref={scrollRef}
         onScroll={() => updateVisibleMonthLabel(daysArray)}
-        className="today-overview__scroll-container overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-xl"
+        className="today-overview__scroll-container overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg"
       >
         <div className="min-w-max">
           <div className="flex border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80">
@@ -683,13 +683,13 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                             } pointer-events-auto shadow-xs flex items-center justify-between gap-1 z-20 overflow-hidden`}
                             style={commonStyle}
                             onClick={() => setSelectedGuest(guest)}
-                            title={`${guest.guestName} (₹${info.nightlyRate}/night)`}
+                            title={`${guest.guestName} (Ã¢â€šÂ¹${info.nightlyRate}/night)`}
                           >
                             <span className="font-semibold truncate text-[11px] leading-none flex items-center gap-1">
                               {isOtaBooking && <Globe className="w-2.5 h-2.5 shrink-0" />}
                               <span className="truncate">{guest.guestName}</span>
                             </span>
-                            <span className="text-[10px] font-medium opacity-90 whitespace-nowrap leading-none shrink-0">₹{info.nightlyRate}</span>
+                            <span className="text-[10px] font-medium opacity-90 whitespace-nowrap leading-none shrink-0">Ã¢â€šÂ¹{info.nightlyRate}</span>
                           </div>
                         );
                       })}

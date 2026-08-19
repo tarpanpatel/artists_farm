@@ -307,7 +307,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                           window.location.hash = '#dashboard';
                         }
                       }}
-                      className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 transition-all cursor-pointer shadow-2xs group hover:border-slate-300"
+                      className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 transition-all cursor-pointer shadow-2xs group hover:border-slate-300"
                     >
                       <ArrowLeft className="w-4 h-4 text-slate-500 dark:text-slate-400 group-hover:-translate-x-1 transition-transform" />
                       <span>Go Back</span>
@@ -315,7 +315,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                   </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="edit-room-page__form-card bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 sm:p-6">
+                    <div className="edit-room-page__form-card bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-5 sm:p-6">
                     <h2 className="edit-room-page__heading text-base font-semibold text-slate-900 dark:text-white mb-4">
                       {t('edit_room_page_heading', 'Edit Room')}
                     </h2>
@@ -377,7 +377,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                       this room's Export iCal Feed URL, which is addressed as
                       ?property=<parent>&room=<room>, not derivable from the
                       room's own slug alone. */}
-                  <div className="edit-room-page__ical-card bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 sm:p-6">
+                  <div className="edit-room-page__ical-card bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-5 sm:p-6">
                     <ICalSyncManager propertyId={selectedRoom.id} propertySlug={selectedRoom.slug} parentPropertySlug={propertySlug} embedded />
                   </div>
                 </div>
@@ -432,7 +432,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
            />
            <KpiCard
              label={t('monthly_revenue_label', 'Monthly Revenue')}
-             value={`₹${overview.total_revenue.toLocaleString('en-IN')}`}
+             value={`â‚¹${overview.total_revenue.toLocaleString('en-IN')}`}
              icon={DollarSign}
              badge={{ text: 'Revenue', color: 'success' }}
            />

@@ -64,7 +64,7 @@ export const RoomSelectorModal: React.FC<RoomSelectorModalProps> = ({
                       onClose();
                     }}
                     disabled={isLoading}
-                    className="group relative overflow-hidden rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-slate-600 transition-all duration-200 p-4 text-left disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    className="group relative overflow-hidden rounded-lg border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-slate-600 transition-all duration-200 p-4 text-left disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                   >
                     {/* Background accent */}
                     <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 group-hover:from-blue-500/10 to-transparent transition-all duration-200" />

@@ -32,7 +32,7 @@ interface TelegramHealthData {
 
 const StatusRow: React.FC<{ ok: boolean | null; label: string; detail: string }> = ({ ok, label, detail }) => (
   <div
-    className={`flex items-start gap-2.5 p-3 rounded-xl border ${
+    className={`flex items-start gap-2.5 p-3 rounded-lg border ${
       ok === true
         ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800'
         : ok === false
@@ -301,7 +301,7 @@ export const TelegramHealthPanel: React.FC = () => {
       </div>
 
       {toast && (
-        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-2xl animate-toast-in">
+        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-lg shadow-2xl animate-toast-in">
           {toast}
         </div>
       )}

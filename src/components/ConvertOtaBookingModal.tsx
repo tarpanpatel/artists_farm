@@ -166,7 +166,7 @@ export const ConvertOtaBookingModal: React.FC<ConvertOtaBookingModalProps> = ({
             </div>
           </div>
           <div>
-            <label className={fieldLabelClass}>{t('room_rent', 'Room Rent / Price (₹)')}</label>
+            <label className={fieldLabelClass}>{t('room_rent', 'Room Rent / Price (â‚¹)')}</label>
             <div className="mt-1">
               <Input type="number" min={0} value={roomRate} onChange={(e) => setRoomRate(e.target.value)} />
             </div>
@@ -178,7 +178,7 @@ export const ConvertOtaBookingModal: React.FC<ConvertOtaBookingModalProps> = ({
           type="button"
           onClick={handleConvert}
           disabled={isSaving}
-          className="h-9 px-5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs disabled:opacity-60 disabled:cursor-not-allowed"
+          className="h-9 px-5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
           <span>{t('convert_to_booking_button', 'Convert to Booking')}</span>

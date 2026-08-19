@@ -29,7 +29,7 @@ export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({ isOpen, onClos
               Tap <strong>Share</strong> {isIPad ? 'at the top of the screen' : 'in the bar at the bottom of your screen'}
             </p>
             {/* Mockup: Safari toolbar with Share highlighted */}
-            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 p-2.5 flex items-center justify-between">
+            <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 p-2.5 flex items-center justify-between">
               <ArrowLeft className="w-4 h-4 text-slate-400 dark:text-slate-500" />
               <ArrowRight className="w-4 h-4 text-slate-300 dark:text-slate-600" />
               <span className="relative flex items-center justify-center w-8 h-8 rounded-lg bg-blue-600 shadow-md ring-4 ring-blue-200 dark:ring-blue-900/50 animate-pulse">
@@ -49,7 +49,7 @@ export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({ isOpen, onClos
               Scroll the share sheet down and tap <strong>"Add to Home Screen"</strong>
             </p>
             {/* Mockup: share sheet with Add to Home Screen highlighted */}
-            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden shadow-xs">
+            <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden shadow-xs">
               <div className="flex justify-center pt-2 pb-1">
                 <div className="w-8 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
               </div>
@@ -84,14 +84,14 @@ export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({ isOpen, onClos
               Tap <strong>"Add"</strong> in the top-right corner
             </p>
             {/* Mockup: confirmation dialog with Add highlighted */}
-            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-xs overflow-hidden">
+            <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-xs overflow-hidden">
               <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100 dark:border-slate-700">
                 <span className="text-[11px] text-slate-400 dark:text-slate-500">Cancel</span>
                 <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">New Home Screen Icon</span>
                 <span className="text-[11px] font-semibold text-white bg-blue-600 px-2 py-0.5 rounded-md ring-2 ring-blue-200 dark:ring-blue-900/50">Add</span>
               </div>
               <div className="flex items-center gap-2.5 px-3 py-3">
-                <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs font-semibold shrink-0">AF</div>
+                <div className="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs font-semibold shrink-0">AF</div>
                 <div className="min-w-0">
                   <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">Ground Code App</p>
                   <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">artistic-sthan.com</p>

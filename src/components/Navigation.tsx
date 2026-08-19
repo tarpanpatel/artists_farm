@@ -69,7 +69,9 @@ interface FlatNavItem {
 const customSidebarTheme = {
   root: {
     base: 'h-full',
-    inner: 'h-full overflow-y-auto overflow-x-hidden bg-white dark:bg-gray-800',
+    // Keep the same surface, spacing, and scroll treatment as Flowbite's
+    // application-ui sidebar; the app only supplies its fixed positioning.
+    inner: 'h-full overflow-y-auto overflow-x-hidden bg-white px-3 py-4 dark:bg-gray-800',
   },
 };
 
@@ -377,11 +379,9 @@ export const Navigation: React.FC<NavigationProps> = ({
           label={node.title}
           open={isExpanded}
           onClick={handleHeaderClick}
-          className={`navigation__node-btn rounded-lg transition-colors cursor-pointer my-0.5 ${
-            isActive ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 font-semibold' : 'font-medium text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700'
-          }`}
+          className="navigation__node-btn cursor-pointer"
         >
-          <div className="space-y-1 py-1">
+          <div className="navigation__subnav">
             {node.children.map(child => renderNode(child, depth + 1))}
           </div>
         </SidebarCollapse>
@@ -398,13 +398,9 @@ export const Navigation: React.FC<NavigationProps> = ({
           e.preventDefault();
           handleTabClick({ tabKey: node.tabKey, uniqueKey: itemKey, customUrl: node.customUrl, openInNewTab: node.openInNewTab });
         }}
-        icon={ItemIcon as any}
+        icon={depth > 0 ? undefined : ItemIcon as any}
         active={isActive}
-        className={`navigation__leaf-btn rounded-lg my-0.5 transition-all cursor-pointer ${
-          isActive
-            ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 font-semibold [&>svg]:text-blue-600 dark:[&>svg]:text-blue-400'
-            : 'font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'
-        }`}
+        className="navigation__leaf-btn cursor-pointer"
       >
         <div className="flex items-center justify-between w-full">
           <span className="truncate">{node.title}</span>
@@ -470,7 +466,7 @@ export const Navigation: React.FC<NavigationProps> = ({
       <FlowbiteSidebar
         id="mainSidebarNavigationContainer"
         theme={customSidebarTheme}
-        className={`navigation fixed top-0 left-0 h-screen pt-16 z-[56] transition-all duration-200 bg-white dark:bg-gray-800 ${
+        className={`navigation fixed top-0 left-0 h-screen pt-16 z-[56] border-r border-slate-200 transition-all duration-200 bg-white dark:border-slate-700 dark:bg-gray-800 ${
           isIconOnly
             ? 'w-16 translate-x-0'
             : isSidebarOpen
@@ -505,10 +501,10 @@ export const Navigation: React.FC<NavigationProps> = ({
             </div>
           </div>
         ) : (
-          <div className="navigation__expanded min-h-full px-3 py-4 flex flex-col justify-between">
+          <div className="navigation__expanded min-h-full flex flex-col justify-between">
             <div className="navigation__expanded-top space-y-1">
               <SidebarItems>
-                <SidebarItemGroup className="space-y-2 mt-0 border-t-0 pt-0">
+                <SidebarItemGroup>
                   {tree.map(node => renderNode(node, 0))}
                 </SidebarItemGroup>
               </SidebarItems>

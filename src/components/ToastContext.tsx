@@ -98,7 +98,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
   // so the dismiss button calls onDismiss directly rather than using
   // <ToastToggle>, keeping one source of truth for "is this toast gone".
   return (
-    <FlowbiteToast className={`pointer-events-auto items-start gap-2.5 ${BG_CLASSES[toast.type]} text-white px-4 py-3 rounded-xl shadow-lg text-sm font-semibold animate-toast-in max-w-sm w-auto`}>
+    <FlowbiteToast className={`pointer-events-auto items-start gap-2.5 ${BG_CLASSES[toast.type]} text-white px-4 py-3 rounded-lg shadow-lg text-sm font-semibold animate-toast-in max-w-sm w-auto`}>
       {ICONS[toast.type]}
       <span className="flex-1 break-words">{toast.message}</span>
       <button

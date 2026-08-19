@@ -13,7 +13,7 @@ interface TooltipProps {
 // z-58 page modals, which is exactly the kind of stacking bug that scale
 // exists to prevent.
 const tooltipTheme = createTheme({
-  base: 'absolute z-[99999] inline-block w-max max-w-xs rounded-xl px-3 py-2 text-xs sm:text-sm font-medium leading-normal shadow-2xl',
+  base: 'absolute z-[99999] inline-block w-max max-w-xs rounded-lg px-3 py-2 text-xs sm:text-sm font-medium leading-normal shadow-2xl',
   arrow: {
     base: 'absolute z-[99999] h-2 w-2 rotate-45',
     style: {

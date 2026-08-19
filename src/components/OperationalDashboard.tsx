@@ -285,7 +285,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
     unsettledBills,
     'Unsettled Bill',
     'amber',
-    (g) => `Owes ₹${((g.totalAmount || 0) - (g.advanceAmount || 0)).toLocaleString('en-IN')}`
+    (g) => `Owes â‚¹${((g.totalAmount || 0) - (g.advanceAmount || 0)).toLocaleString('en-IN')}`
   );
   const combinedAlerts = Array.from(guestAlertMap.values()).sort((a, b) =>
     a.severity === b.severity ? 0 : a.severity === 'red' ? -1 : 1
@@ -385,7 +385,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
 
       {/* Room Info / Property Location Bar */}
       {!minimalMode && roomName ? (
-        <div className="operational-dashboard__room-info flex items-center justify-between gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs">
+        <div className="operational-dashboard__room-info flex items-center justify-between gap-4 bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs">
           <div className="operational-dashboard__room-info-content flex-1">
             {isEditingRoomName ? (
               <Input
@@ -445,7 +445,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
 
       {/* C-Form (FRRO) Filing Tracker for foreign guests */}
       {!minimalMode && cFormPending.length > 0 && (
-        <div className="operational-dashboard__cform-tracker bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5">
+        <div className="operational-dashboard__cform-tracker bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs p-5">
           <h3 className="operational-dashboard__cform-title font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2 mb-3 pb-2 border-b border-slate-100 dark:border-slate-700">
             <AlertTriangle className="w-4 h-4 text-red-600" />
             {t('cform_filing_due_heading', 'C-Form Filing Due')}
@@ -459,7 +459,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               return (
                 <li
                   key={g.id}
-                  className={`flex items-center justify-between gap-3 rounded-xl border p-2.5 ${
+                  className={`flex items-center justify-between gap-3 rounded-lg border p-2.5 ${
                     due.overdue
                       ? 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30'
                       : 'border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30'
@@ -494,7 +494,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       {!minimalMode && (
       <div className="operational-dashboard__columns grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Column 1: System Alerts Box (replaces Guest Currently Staying for single property) */}
-        <div className="operational-dashboard__col-alerts bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 flex flex-col justify-between">
+        <div className="operational-dashboard__col-alerts bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs p-5 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
               <h3 className="font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2">
@@ -527,7 +527,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center flex-wrap gap-1.5 font-bold text-xs text-slate-900 dark:text-slate-100">
                         <span>{g.guestName}</span>
-                        <span className="text-2xs font-normal text-slate-400 shrink-0">• {g.roomNumber}</span>
+                        <span className="text-2xs font-normal text-slate-400 shrink-0">â€¢ {g.roomNumber}</span>
                       </div>
                       <div className="flex flex-wrap items-center gap-x-2 text-[11px] mt-0.5">
                         {reasons.map((r, i) => (
@@ -588,7 +588,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                           className="w-full flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-2.5 text-left cursor-pointer hover:opacity-80 transition-opacity"
                         >
                           <span className="text-xs font-semibold text-emerald-900">
-                            {g.guestName} <span className="font-normal opacity-75">· {g.roomNumber}</span>
+                            {g.guestName} <span className="font-normal opacity-75">Â· {g.roomNumber}</span>
                           </span>
                           <span className="text-[10px] font-medium text-emerald-700 whitespace-nowrap inline-flex items-center gap-1">
                             {formatAlertDate(g.checkinDate)} <ArrowRight className="w-3 h-3" /> {formatAlertDate(g.checkoutDate || g.expectedCheckout)}
@@ -613,7 +613,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
 
         {/* Column 2: Kitchen KDS Card */}
         {kitchenModuleEnabled ? (
-          <div className="operational-dashboard__col-kitchen bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 flex flex-col justify-between">
+          <div className="operational-dashboard__col-kitchen bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs p-5 flex flex-col justify-between">
             <div className="operational-dashboard__col-kitchen-inner">
               <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
                 <h3 className="operational-dashboard__subtitle font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2">
@@ -669,14 +669,14 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             </button>
           </div>
         ) : (
-          <div className="operational-dashboard__col-kitchen-disabled bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 flex flex-col justify-center items-center text-center text-slate-400 text-xs">
+          <div className="operational-dashboard__col-kitchen-disabled bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs p-5 flex flex-col justify-center items-center text-center text-slate-400 text-xs">
             <Utensils className="w-8 h-8 text-slate-300 dark:text-slate-600 mb-2" />
             <p>{t('kitchen_module_disabled', 'Kitchen Module Disabled')}</p>
           </div>
         )}
 
         {/* Column 3: Requisitions Card */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 flex flex-col justify-between">
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs p-5 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
               <h3 className="operational-dashboard__subtitle font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2">
@@ -721,7 +721,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       )}
 
       {/* Booking Calendar Row - Full Width Spread Out at Bottom */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
+      <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
           <h3 className="operational-dashboard__subtitle font-semibold text-slate-900 dark:text-white text-base flex items-center gap-2">
@@ -831,7 +831,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                       {isOtaBooking && <Globe className="w-2.5 h-2.5 shrink-0" />}
                       <span className="truncate">{dayBooking.guestName.split(' ')[0]}</span>
                     </div>
-                    {nightlyRate > 0 && <div className="text-[10px] font-semibold opacity-90">₹{nightlyRate}</div>}
+                    {nightlyRate > 0 && <div className="text-[10px] font-semibold opacity-90">â‚¹{nightlyRate}</div>}
                   </button>
                 )}
                 {otaBlock && (
@@ -950,7 +950,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
 
       {/* Add Guest Modal */}
       <Modal show={showAddGuestModal} onClose={() => setShowAddGuestModal(false)} dismissible size="lg" className="z-[99999]">
-        <ModalBody className="p-0 max-h-[90vh] overflow-y-auto rounded-2xl">
+        <ModalBody className="p-0 max-h-[90vh] overflow-y-auto rounded-lg">
           <GuestManagement
             guests={guests}
             receipts={receipts}

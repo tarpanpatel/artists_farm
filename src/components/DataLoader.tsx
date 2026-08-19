@@ -344,7 +344,7 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
   if (error && !data) {
     return (
       <div className="fixed inset-0 bg-red-50 dark:bg-red-950 flex items-center justify-center z-50 data-loader__error">
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 max-w-md shadow-lg border border-red-200 dark:border-red-800 data-loader__error-container">
+        <div className="bg-white dark:bg-slate-800 rounded-lg p-8 max-w-md shadow-lg border border-red-200 dark:border-red-800 data-loader__error-container">
           <h2 className="text-lg font-semibold text-red-600 dark:text-red-400 mb-2 data-loader__error-title">
             {t('error_loading_application_heading')}
           </h2>

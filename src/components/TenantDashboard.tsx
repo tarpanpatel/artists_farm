@@ -312,7 +312,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 dark:from-slate-950 dark:to-indigo-950 flex items-center justify-center tenant-dashboard__loader-container">
         <div className="text-center space-y-3 tenant-dashboard__loader">
           <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mx-auto tenant-dashboard__loader-icon" />
-          <p className="text-sm text-slate-500 dark:text-slate-400 tenant-dashboard__loader-text">{t('loading_tenant_dashboard_message', 'Loading tenant dashboard…')}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 tenant-dashboard__loader-text">{t('loading_tenant_dashboard_message', 'Loading tenant dashboardÃ¢â‚¬Â¦')}</p>
         </div>
       </div>
     );
@@ -320,11 +320,11 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 dark:from-slate-950 dark:to-indigo-950 tenant-dashboard__container">
-      {/* ── Header ── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Header Ã¢â€â‚¬Ã¢â€â‚¬ */}
       <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/70 dark:border-slate-700/70 sticky top-0 z-40 tenant-dashboard__header">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between tenant-dashboard__header-inner">
           <div className="flex items-center gap-3 tenant-dashboard__header-left">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md tenant-dashboard__header-icon-container">
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md tenant-dashboard__header-icon-container">
               <Building2 className="w-5 h-5 text-white tenant-dashboard__header-icon" />
             </div>
             <div className="tenant-dashboard__header-title-container">
@@ -358,9 +358,9 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-8 space-y-8 tenant-dashboard__main">
-        {/* ── Success Toast ── */}
+        {/* Ã¢â€â‚¬Ã¢â€â‚¬ Success Toast Ã¢â€â‚¬Ã¢â€â‚¬ */}
         {successMsg && (
-          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-2xl text-sm font-medium flex items-center gap-2 animate-pulse tenant-dashboard__success-toast">
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] bg-emerald-600 text-white px-5 py-3 rounded-lg shadow-2xl text-sm font-medium flex items-center gap-2 animate-pulse tenant-dashboard__success-toast">
             <CheckCircle className="w-4 h-4 tenant-dashboard__success-toast-icon" />
             {successMsg}
           </div>
@@ -372,8 +372,8 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           </FlowbiteAlert>
         )}
 
-        {/* ── Slot Usage Widget ── */}
-        <section className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm tenant-dashboard__slot-widget">
+        {/* Ã¢â€â‚¬Ã¢â€â‚¬ Slot Usage Widget Ã¢â€â‚¬Ã¢â€â‚¬ */}
+        <section className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-4 shadow-sm tenant-dashboard__slot-widget">
           <div className="flex items-center justify-between tenant-dashboard__slot-widget-inner">
             <div className="flex items-center gap-3 tenant-dashboard__slot-widget-left">
               <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/30 flex items-center justify-center tenant-dashboard__slot-widget-icon-container">
@@ -399,7 +399,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           </div>
         </section>
 
-        {/* ── Metrics Grid ── */}
+        {/* Ã¢â€â‚¬Ã¢â€â‚¬ Metrics Grid Ã¢â€â‚¬Ã¢â€â‚¬ */}
         <section className="tenant-dashboard__metrics-section">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 tenant-dashboard__metrics-grid">
             {[
@@ -450,9 +450,9 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
               const colors = colorClasses[metric.color] || colorClasses.blue;
               const targetProp = properties.find((p) => p.slug === getPropertySlug()) || properties[0];
               return (
-                <div key={metric.label} className={`tenant-dashboard__metric-card stat-card-elevated bg-white dark:bg-slate-800 rounded-xl border border-slate-200/80 dark:border-slate-700/80 border-l-4 ${colors.border} shadow-2xs p-3 md:p-4 flex items-center justify-between gap-3`}>
+                <div key={metric.label} className={`tenant-dashboard__metric-card stat-card-elevated bg-white dark:bg-slate-800 rounded-lg border border-slate-200/80 dark:border-slate-700/80 border-l-4 ${colors.border} shadow-2xs p-3 md:p-4 flex items-center justify-between gap-3`}>
                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                    <div className={`p-2.5 rounded-xl ${colors.bg} ${colors.text} shrink-0`}>
+                    <div className={`p-2.5 rounded-lg ${colors.bg} ${colors.text} shrink-0`}>
                       <Icon className="w-5 h-5" />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -485,7 +485,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           </div>
         </section>
 
-          {/* ── Properties Section ── */}
+          {/* Ã¢â€â‚¬Ã¢â€â‚¬ Properties Section Ã¢â€â‚¬Ã¢â€â‚¬ */}
           <section className="tenant-dashboard__properties-section">
             <div className="flex items-center justify-between mb-5 tenant-dashboard__properties-header">
               <h2 className="text-xl font-semibold text-slate-900 dark:text-white tenant-dashboard__properties-title">{t('your_properties_heading', 'Your Properties')}</h2>
@@ -514,7 +514,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
             </div>
 
           {properties.length === 0 ? (
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-12 text-center tenant-dashboard__properties-empty">
+            <div className="bg-white dark:bg-slate-900 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 p-12 text-center tenant-dashboard__properties-empty">
               <Building2 className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3 tenant-dashboard__properties-empty-icon" />
               <p className="text-slate-500 dark:text-slate-400 font-medium tenant-dashboard__properties-empty-text">{t('tenant_no_properties_yet_message', 'No properties yet')}</p>
               <p className="text-sm text-slate-400 dark:text-slate-500 mt-1 tenant-dashboard__properties-empty-subtext">{t('add_first_property_help_text', 'Add your first property to get started')}</p>
@@ -532,10 +532,10 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 return (
                   <div
                     key={property.id}
-                    className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm hover:shadow-md transition-all group tenant-dashboard__property-card"
+                    className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-5 shadow-sm hover:shadow-md transition-all group tenant-dashboard__property-card"
                   >
                     <div className="flex items-start justify-between mb-4 tenant-dashboard__property-card-header">
-                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center shadow-sm ${isMultiKey ? 'bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/40 dark:to-purple-900/40' : 'bg-gradient-to-br from-teal-100 to-emerald-100 dark:from-teal-900/40 dark:to-emerald-900/40'} tenant-dashboard__property-card-icon-container`}>
+                      <div className={`w-11 h-11 rounded-lg flex items-center justify-center shadow-sm ${isMultiKey ? 'bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/40 dark:to-purple-900/40' : 'bg-gradient-to-br from-teal-100 to-emerald-100 dark:from-teal-900/40 dark:to-emerald-900/40'} tenant-dashboard__property-card-icon-container`}>
                         {isMultiKey ? (
                           <Layers className="w-5 h-5 text-indigo-600 dark:text-indigo-400 tenant-dashboard__property-card-icon" />
                         ) : (
@@ -558,7 +558,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                     <p className="text-xs text-slate-400 dark:text-slate-500 font-mono mb-1 tenant-dashboard__property-card-slug">/{property.slug}</p>
                     {isMultiKey && (
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 tenant-dashboard__property-card-rooms">
-                        {roomCount} room{roomCount !== 1 ? 's' : ''} · {roomCount} slot{roomCount !== 1 ? 's' : ''}
+                        {roomCount} room{roomCount !== 1 ? 's' : ''} Ã‚Â· {roomCount} slot{roomCount !== 1 ? 's' : ''}
                       </p>
                     )}
 
@@ -585,7 +585,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           )}
         </section>
 
-        {/* ── Quick Actions ── */}
+        {/* Ã¢â€â‚¬Ã¢â€â‚¬ Quick Actions Ã¢â€â‚¬Ã¢â€â‚¬ */}
         <section className="tenant-dashboard__quick-actions">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4 tenant-dashboard__quick-actions-heading">{t('quick_actions_heading', 'Quick Actions')}</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 tenant-dashboard__quick-actions-grid">
@@ -633,7 +633,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                       });
                     }
                   }}
-                  className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all active:scale-95 ${colorMap[action.color] ?? colorMap.slate} tenant-dashboard__quick-action-btn`}
+                  className={`flex flex-col items-center justify-center gap-2 p-4 rounded-lg border-2 transition-all active:scale-95 ${colorMap[action.color] ?? colorMap.slate} tenant-dashboard__quick-action-btn`}
                 >
                   <Icon className="w-6 h-6 tenant-dashboard__quick-action-icon" />
                   <span className="text-xs font-semibold text-center leading-tight tenant-dashboard__quick-action-label">{action.label}</span>
@@ -661,8 +661,8 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           )}
         </section>
 
-        {/* ── Combined Analytics (Placeholder) ── */}
-        <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm tenant-dashboard__analytics">
+        {/* Ã¢â€â‚¬Ã¢â€â‚¬ Combined Analytics (Placeholder) Ã¢â€â‚¬Ã¢â€â‚¬ */}
+        <section className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-6 shadow-sm tenant-dashboard__analytics">
           <div className="flex items-center justify-between mb-6 tenant-dashboard__analytics-header">
             <div className="tenant-dashboard__analytics-title-wrapper">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-white tenant-dashboard__analytics-title">{t('combined_analytics_heading', 'Combined Analytics')}</h2>
@@ -683,7 +683,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 tenant-dashboard__analytics-grid">
             {[t('total_bookings_label', 'Total Bookings'), t('combined_revenue_label', 'Combined Revenue'), t('avg_occupancy_label', 'Avg. Occupancy')].map((label) => (
-              <div key={label} className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 text-center border border-slate-100 dark:border-slate-700/50 tenant-dashboard__analytics-card">
+              <div key={label} className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 text-center border border-slate-100 dark:border-slate-700/50 tenant-dashboard__analytics-card">
                 <TrendingUp className="w-6 h-6 text-slate-300 dark:text-slate-600 mx-auto mb-2 tenant-dashboard__analytics-card-icon" />
                 <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 tenant-dashboard__analytics-card-label">{label}</p>
                 <p className="text-sm font-semibold text-slate-400 dark:text-slate-500 tenant-dashboard__analytics-card-value">{t('coming_soon_badge', 'Coming Soon')}</p>
@@ -693,7 +693,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
         </section>
       </main>
 
-      {/* ── Add Property Modal ── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Add Property Modal Ã¢â€â‚¬Ã¢â€â‚¬ */}
       <Modal show={modal.type === 'add'} onClose={() => setModal({ type: 'none' })} dismissible size="md" className="z-58">
         <ModalHeader>{t('add_new_property_heading', 'Add New Property')}</ModalHeader>
         <ModalBody className="space-y-5 tenant-dashboard__modal-body">
@@ -721,7 +721,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 <div className="grid grid-cols-2 gap-3 tenant-dashboard__type-selector">
                   <button
                     onClick={() => setNewPropType('SINGLE')}
-                    className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${newPropType === 'SINGLE' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300'} tenant-dashboard__type-btn`}
+                    className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${newPropType === 'SINGLE' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300'} tenant-dashboard__type-btn`}
                   >
                     <Home className={`w-5 h-5 ${newPropType === 'SINGLE' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'} tenant-dashboard__type-icon`} />
                     <span className={`text-xs font-semibold ${newPropType === 'SINGLE' ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-500 dark:text-slate-400'} tenant-dashboard__type-label`}>{t('single_type_label', 'Single')}</span>
@@ -729,7 +729,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                   </button>
                   <button
                     onClick={() => setNewPropType('MULTI_KEY')}
-                    className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${newPropType === 'MULTI_KEY' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300'} tenant-dashboard__type-btn`}
+                    className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${newPropType === 'MULTI_KEY' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300'} tenant-dashboard__type-btn`}
                   >
                     <Layers className={`w-5 h-5 ${newPropType === 'MULTI_KEY' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'} tenant-dashboard__type-icon`} />
                     <span className={`text-xs font-semibold ${newPropType === 'MULTI_KEY' ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-500 dark:text-slate-400'} tenant-dashboard__type-label`}>{t('multi_key_type_label', 'Multi-Key')}</span>
@@ -750,7 +750,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                     max={remaining}
                     value={newPropRooms}
                     onChange={e => setNewPropRooms(Math.max(1, parseInt(e.target.value) || 1))}
-                    helperText={newPropRooms > remaining ? `Not enough slots — you have ${remaining} remaining` : undefined}
+                    helperText={newPropRooms > remaining ? `Not enough slots Ã¢â‚¬â€ you have ${remaining} remaining` : undefined}
                     error={newPropRooms > remaining}
                     className="tenant-dashboard__input"
                   />
@@ -772,7 +772,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
         </ModalFooter>
       </Modal>
 
-      {/* ── Edit Modal ── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Edit Modal Ã¢â€â‚¬Ã¢â€â‚¬ */}
       <Modal show={modal.type === 'edit'} onClose={() => setModal({ type: 'none' })} dismissible size="md" className="z-58">
         <ModalHeader>{t('tenant_edit_property_heading', 'Edit Property')}</ModalHeader>
         <ModalBody className="space-y-4 tenant-dashboard__modal-body">
@@ -794,7 +794,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                   className="tenant-dashboard__input"
                 />
               </div>
-              <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200 dark:border-slate-700 min-h-[44px] tenant-dashboard__checkbox-label">
+              <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-900/60 p-3 rounded-lg border border-slate-200 dark:border-slate-700 min-h-[44px] tenant-dashboard__checkbox-label">
                 <input
                   type="checkbox"
                   id="editTelegramTemplateCustomizationCheck"
@@ -837,9 +837,9 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                   <Textarea
                     value={editInstructions}
                     onChange={e => setEditInstructions(e.target.value)}
-                    placeholder={t('other_notes_placeholder', 'e.g. How to reach, check-in instructions, parking notes…')}
+                    placeholder={t('other_notes_placeholder', 'e.g. How to reach, check-in instructions, parking notesÃ¢â‚¬Â¦')}
                     rows={3}
-                    className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y tenant-dashboard__textarea"
+                    className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y tenant-dashboard__textarea"
                   />
                 </div>
               </div>
@@ -857,12 +857,12 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
         </ModalFooter>
       </Modal>
 
-      {/* ── Delete Confirmation Modal ── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Delete Confirmation Modal Ã¢â€â‚¬Ã¢â€â‚¬ */}
       {modal.type === 'delete' && (
         <Modal show onClose={() => { setModal({ type: 'none' }); setError(null); }} dismissible size="md" className="z-58">
           <ModalHeader>{t('tenant_delete_property_heading', 'Delete Property')}</ModalHeader>
           <ModalBody className="space-y-3 tenant-dashboard__modal-body">
-              <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl tenant-dashboard__warning-box">
+              <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg tenant-dashboard__warning-box">
                 <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5 tenant-dashboard__warning-icon" />
                 <div className="text-sm text-red-800 dark:text-red-300 space-y-1 w-full tenant-dashboard__warning-content">
                   <p className="font-semibold text-red-700 dark:text-red-400 tenant-dashboard__warning-text">{t('permanent_irreversible_warning', 'This action is permanent and irreversible.')}</p>
@@ -914,7 +914,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
         </Modal>
       )}
 
-      {/* ── Slots Exceeded Modal ── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Slots Exceeded Modal Ã¢â€â‚¬Ã¢â€â‚¬ */}
       {modal.type === 'slots_exceeded' && (
         <Modal show onClose={() => setModal({ type: 'none' })} dismissible size="md" className="z-58">
           <ModalHeader as="div">
@@ -943,7 +943,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
         </Modal>
       )}
 
-      {/* ── Upgrade Modal (Roadmap Placeholder) ── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Upgrade Modal (Roadmap Placeholder) Ã¢â€â‚¬Ã¢â€â‚¬ */}
       <Modal show={modal.type === 'upgrade'} onClose={() => setModal({ type: 'none' })} dismissible size="sm" className="z-58">
         <ModalHeader as="div" />
         <ModalBody className="text-center space-y-4 tenant-dashboard__modal-body">
@@ -956,7 +956,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           </p>
           <div className="text-xs text-slate-400 dark:text-slate-500 flex items-center justify-center gap-1.5 mt-1 tenant-dashboard__upgrade-subtext">
             <ChevronRight className="w-3 h-3 tenant-dashboard__upgrade-subtext-icon" />
-            {t('upgrade_portal_coming_soon_message', 'Self-service upgrade portal — coming soon')}
+            {t('upgrade_portal_coming_soon_message', 'Self-service upgrade portal Ã¢â‚¬â€ coming soon')}
           </div>
         </ModalBody>
         <ModalFooter className="tenant-dashboard__modal-footer">

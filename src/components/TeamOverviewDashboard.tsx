@@ -84,7 +84,7 @@ export const TeamOverviewDashboard: React.FC<TeamOverviewDashboardProps> = ({
               className="team-overview-dashboard__card border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200 group"
             >
               <div className="flex items-start gap-3.5">
-                <div className={`p-3 rounded-xl border shrink-0 ${card.color} transition-transform group-hover:scale-105`}>
+                <div className={`p-3 rounded-lg border shrink-0 ${card.color} transition-transform group-hover:scale-105`}>
                   <IconComponent className="w-6 h-6" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -113,7 +113,7 @@ export const TeamOverviewDashboard: React.FC<TeamOverviewDashboardProps> = ({
       </div>
 
       {visibleCards.length === 0 && (
-        <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
+        <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
           <p className="text-slate-500 dark:text-slate-400 text-sm">
             {t('no_team_modules_label', 'No team modules configured for this property yet.')}
           </p>

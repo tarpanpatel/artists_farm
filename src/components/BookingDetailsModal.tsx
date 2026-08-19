@@ -344,7 +344,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               has this reservation (guest likely cancelled upstream). Informational
               only, staff decide what to do - never auto-cancels/checks out. */}
           {guest.otaCancelledDetectedAt && !isEditing && (
-            <div className="w-full mb-3 px-3.5 py-2.5 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 flex items-center gap-2 shadow-2xs">
+            <div className="w-full mb-3 px-3.5 py-2.5 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 flex items-center gap-2 shadow-2xs">
               <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
               <span className="text-xs font-semibold text-amber-900 dark:text-amber-200">
                 {t('ota_cancelled_detected_banner', 'This reservation appears to have been cancelled on {{source}} - verify with the guest before proceeding.').replace('{{source}}', guest.otaSourceLabel || guest.otaSource || 'the OTA')}
@@ -355,7 +355,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           {/* Action Banner 1: Check-in ID Verification */}
           {!isEditing && (
             <div
-              className={`booking-details-modal__id-btn w-full mb-3 px-3.5 py-2.5 rounded-xl border flex items-center justify-between gap-2 transition-colors ${
+              className={`booking-details-modal__id-btn w-full mb-3 px-3.5 py-2.5 rounded-lg border flex items-center justify-between gap-2 transition-colors ${
                 guest.idVerificationStatus === 'Complete'
                   ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800'
                   : 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800'
@@ -382,7 +382,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
 
           {/* Action Banner 1.5: Foreign Guest C-Form Warning */}
           {guest.isForeignGuest && !isCFormFiled && !isEditing && (
-            <div className="w-full mb-3 px-3.5 py-2.5 rounded-xl border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 flex items-center justify-between gap-2 shadow-2xs">
+            <div className="w-full mb-3 px-3.5 py-2.5 rounded-lg border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 flex items-center justify-between gap-2 shadow-2xs">
               <div className="flex items-center gap-2 text-xs font-semibold text-rose-900 dark:text-rose-200">
                 <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
                 <span>Foreign Guest: C-Form Filing Required</span>
@@ -421,12 +421,12 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             if (!showBanner) return null;
 
             return (
-              <div className="w-full mb-3 px-3.5 py-2.5 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 flex items-center justify-between gap-2 shadow-2xs">
+              <div className="w-full mb-3 px-3.5 py-2.5 rounded-lg border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 flex items-center justify-between gap-2 shadow-2xs">
                 <div className="flex items-center gap-2 text-xs font-semibold text-red-900 dark:text-red-200">
                   <CreditCard className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />
                   <span>
                     {isCheckedOutUnsettled
-                      ? `Unsettled Bill: Owes ₹${pendingDisplay.toLocaleString('en-IN')}`
+                      ? `Unsettled Bill: Owes â‚¹${pendingDisplay.toLocaleString('en-IN')}`
                       : `Payment Receiver Unassigned (${isAdvanceUnassigned ? 'Advance' : ''}${isAdvanceUnassigned && isPendingUnassigned ? ' & ' : ''}${isPendingUnassigned ? 'Pending' : ''})`}
                   </span>
                 </div>
@@ -502,7 +502,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   />
                 ) : (
                   <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
-                    {guest.phoneNumber || '—'}
+                    {guest.phoneNumber || 'â€”'}
                   </div>
                 )}
               </div>
@@ -545,12 +545,12 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
 
             {/* Room Rent */}
             <div>
-              <label className={fieldLabelClass}>{t('room_rent', 'Room Rent / Price (₹)')}</label>
+              <label className={fieldLabelClass}>{t('room_rent', 'Room Rent / Price (â‚¹)')}</label>
               {isEditing ? (
                 <Input type="number" min={0} value={editRoomRent} onChange={(e) => setEditRoomRent(e.target.value)} />
               ) : (
                 <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
-                  ₹{roomRent}
+                  â‚¹{roomRent}
                 </div>
               )}
             </div>
@@ -563,7 +563,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   <Input type="number" min={0} value={editAdvance} onChange={(e) => setEditAdvance(e.target.value)} />
                 ) : (
                   <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-emerald-600 dark:text-emerald-400 text-sm font-semibold">
-                    ₹{advancePaid}
+                    â‚¹{advancePaid}
                   </div>
                 )}
               </div>
@@ -585,7 +585,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   </div>
                 ) : (
                   <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
-                    {g.advance_received_by || guest.advanceReceivedBy || '—'}
+                    {g.advance_received_by || guest.advanceReceivedBy || 'â€”'}
                   </div>
                 )}
               </div>
@@ -596,7 +596,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               <div>
                 <label className={fieldLabelClass}>{t('today_pending_label', 'Pending')}</label>
                 <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-amber-600 dark:text-amber-400 text-sm font-semibold">
-                  ₹{pendingDisplay}
+                  â‚¹{pendingDisplay}
                 </div>
               </div>
               <div>
@@ -633,7 +633,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   </div>
                 ) : (
                   <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
-                    {guest.bookingSource || '—'}
+                    {guest.bookingSource || 'â€”'}
                   </div>
                 )}
               </div>
@@ -669,7 +669,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   {guest.isForeignGuest && (
                     <div
                       id="c-form-checkbox-container"
-                      className={`p-3 rounded-xl border transition-all ${
+                      className={`p-3 rounded-lg border transition-all ${
                         !isCFormFiled
                           ? 'border-rose-400 dark:border-rose-700 bg-rose-50/70 dark:bg-rose-950/40 ring-2 ring-rose-300 dark:ring-rose-800 animate-pulse'
                           : 'border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-950/30'
@@ -700,7 +700,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                             className="w-4.5 h-4.5 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
                           />
                           <span className={!isCFormFiled ? 'text-rose-700 dark:text-rose-300 font-extrabold' : 'text-emerald-800 dark:text-emerald-300 font-bold'}>
-                            {cFormFiledState ? 'C-Form Filed' : '⚠️ C-Form Pending — Check to Mark Filed'}
+                            {cFormFiledState ? 'C-Form Filed' : 'âš ï¸ C-Form Pending â€” Check to Mark Filed'}
                           </span>
                           {guest.cFormFiledAt && (
                             <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-normal">
@@ -780,7 +780,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                         showToast('Failed to check in guest', { type: 'error' });
                       }
                     }}
-                    className="w-full h-9 px-3.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 col-span-2"
+                    className="w-full h-9 px-3.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 col-span-2"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     <span>{t('mark_checked_in_button', 'Mark Checked In')}</span>
@@ -791,7 +791,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   <button
                     type="button"
                     onClick={onCheckout}
-                    className="w-full h-9 px-3.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 col-span-2"
+                    className="w-full h-9 px-3.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 col-span-2"
                   >
                     <LogOut className="w-4 h-4" />
                     <span>{t('checkout_settle_bill_button', 'Checkout & Settle Bill')}</span>
@@ -801,7 +801,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 <a href={buildWhatsAppShareUrl()} target="_blank" rel="noopener noreferrer" className="col-span-1 min-w-0 block">
                   <button
                     type="button"
-                    className="w-full h-9 px-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    className="w-full h-9 px-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                   >
                     <MessageCircle className="w-4 h-4 text-emerald-600 shrink-0" />
                     <span className="truncate">Share with guest</span>
@@ -811,7 +811,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 <button
                   type="button"
                   onClick={() => startEditing()}
-                  className="col-span-1 min-w-0 w-full h-9 px-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                  className="col-span-1 min-w-0 w-full h-9 px-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
                 >
                   <Pencil className="w-3.5 h-3.5 shrink-0" />
                   <span className="truncate">{t('edit_button', 'Edit')}</span>
@@ -822,7 +822,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                     type="button"
                     onClick={handleDelete}
                     disabled={isDeleting}
-                    className="w-full h-9 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 dark:text-rose-300 dark:border-rose-800 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 col-span-2"
+                    className="w-full h-9 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 dark:text-rose-300 dark:border-rose-800 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 col-span-2"
                   >
                     <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
                     <span>{isDeleting ? t('deleting_button', 'Deleting...') : t('today_delete_booking_button', 'Delete Booking')}</span>
@@ -835,7 +835,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   type="button"
                   onClick={() => setIsEditing(false)}
                   disabled={isSaving}
-                  className="h-9 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                  className="h-9 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
                 >
                   {t('cancel_button', 'Cancel')}
                 </button>
@@ -843,7 +843,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   type="button"
                   onClick={handleSave}
                   disabled={isSaving}
-                  className="h-9 px-5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                  className="h-9 px-5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
                 >
                   {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                   <span>{t('save_button', 'Save')}</span>

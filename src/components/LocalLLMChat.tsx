@@ -220,7 +220,7 @@ export const LocalLLMChat: React.FC<LocalLLMChatProps> = ({ propertyId, property
       )}
 
       {/* Messages */}
-      <div className="local-llm-chat__messages flex-1 overflow-y-auto bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm mb-4">
+      <div className="local-llm-chat__messages flex-1 overflow-y-auto bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm mb-4">
         <div className="local-llm-chat__messages-list p-4 space-y-4">
           {messages.map((msg, idx) => (
             <div key={idx} className={`local-llm-chat__message local-llm-chat__message--${msg.role} flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -229,7 +229,7 @@ export const LocalLLMChat: React.FC<LocalLLMChatProps> = ({ propertyId, property
                   <Bot className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                 </div>
               )}
-              <div className={`local-llm-chat__bubble max-w-[80%] rounded-2xl px-4 py-3 ${
+              <div className={`local-llm-chat__bubble max-w-[80%] rounded-lg px-4 py-3 ${
                 msg.role === 'user'
                   ? 'bg-blue-600 text-white rounded-br-md'
                   : 'bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100 rounded-bl-md'
@@ -251,7 +251,7 @@ export const LocalLLMChat: React.FC<LocalLLMChatProps> = ({ propertyId, property
               <div className="local-llm-chat__avatar local-llm-chat__avatar--bot w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center flex-shrink-0">
                 <Bot className="w-4 h-4 text-purple-600 dark:text-purple-400" />
               </div>
-              <div className="local-llm-chat__bubble max-w-[80%] rounded-2xl rounded-bl-md px-4 py-3 bg-slate-100 dark:bg-slate-700">
+              <div className="local-llm-chat__bubble max-w-[80%] rounded-lg rounded-bl-md px-4 py-3 bg-slate-100 dark:bg-slate-700">
                 <p className="local-llm-chat__bubble-text text-sm whitespace-pre-wrap">{streamingContent}</p>
               </div>
             </div>
@@ -261,7 +261,7 @@ export const LocalLLMChat: React.FC<LocalLLMChatProps> = ({ propertyId, property
               <div className="local-llm-chat__avatar local-llm-chat__avatar--bot w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center flex-shrink-0">
                 <Bot className="w-4 h-4 text-purple-600 dark:text-purple-400" />
               </div>
-              <div className="local-llm-chat__bubble rounded-2xl rounded-bl-md px-4 py-3 bg-slate-100 dark:bg-slate-700">
+              <div className="local-llm-chat__bubble rounded-lg rounded-bl-md px-4 py-3 bg-slate-100 dark:bg-slate-700">
                 <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
               </div>
             </div>
@@ -278,13 +278,13 @@ export const LocalLLMChat: React.FC<LocalLLMChatProps> = ({ propertyId, property
           onKeyDown={handleKeyDown}
           placeholder={t('local_llm_input_placeholder', 'Type your message...')}
           rows={1}
-          className="local-llm-chat__input flex-1 resize-none rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+          className="local-llm-chat__input flex-1 resize-none rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
           disabled={isLoading || connectionStatus !== 'connected'}
         />
         <button
           onClick={sendMessage}
           disabled={isLoading || !input.trim() || connectionStatus !== 'connected'}
-          className="local-llm-chat__send-btn bg-purple-600 hover:bg-purple-700 disabled:bg-slate-300 text-white font-semibold py-2 px-4 rounded-xl transition-colors flex items-center gap-2"
+          className="local-llm-chat__send-btn bg-purple-600 hover:bg-purple-700 disabled:bg-slate-300 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
         >
           {isLoading ? (
             <Loader2 className="w-5 h-5 animate-spin" />

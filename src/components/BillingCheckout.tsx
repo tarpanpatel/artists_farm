@@ -95,8 +95,8 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
 
   // Format date for display
   const formatDate = (dateStr: string): string => {
-    if (!dateStr) return '—';
-    return formatDateDDMMYYYY(dateStr) || '—';
+    if (!dateStr) return 'â€”';
+    return formatDateDDMMYYYY(dateStr) || 'â€”';
   };
 
   // Fine-grained status (used for per-guest badges, and to derive the
@@ -479,19 +479,19 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                       {(guest.totalAmount || guest.roomRate) ? (
                         <div className="flex justify-between text-slate-600 dark:text-slate-400 text-[11px]">
                           <span>{t('room_charges_label', 'Room Charges:')}</span>
-                          <span className="summary-line summary-line--room-rate font-semibold tabular-nums text-slate-800 dark:text-slate-200">₹{(guest.totalAmount ?? guest.roomRate ?? 0).toFixed(2)}</span>
+                          <span className="summary-line summary-line--room-rate font-semibold tabular-nums text-slate-800 dark:text-slate-200">â‚¹{(guest.totalAmount ?? guest.roomRate ?? 0).toFixed(2)}</span>
                         </div>
                       ) : null}
                       {guest.foodBill > 0 && (
                         <div className="flex justify-between text-slate-600 dark:text-slate-400 text-[11px]">
                           <span>{t('food_incidentals_label', 'Food & Incidentals:')}</span>
-                          <span className="summary-line summary-line--food-bill font-semibold tabular-nums text-slate-800 dark:text-slate-200">₹{guest.foodBill.toFixed(2)}</span>
+                          <span className="summary-line summary-line--food-bill font-semibold tabular-nums text-slate-800 dark:text-slate-200">â‚¹{guest.foodBill.toFixed(2)}</span>
                         </div>
                       )}
                       {guest.advanceAmount > 0 && (
                         <div className="flex justify-between text-slate-600 dark:text-slate-400 text-[11px]">
                           <span>{t('less_advance_paid_label', 'Less: Advance Paid')}</span>
-                          <span className="summary-line summary-line--advance-paid font-semibold tabular-nums text-slate-700 dark:text-slate-300">-₹{guest.advanceAmount.toFixed(2)}</span>
+                          <span className="summary-line summary-line--advance-paid font-semibold tabular-nums text-slate-700 dark:text-slate-300">-â‚¹{guest.advanceAmount.toFixed(2)}</span>
                         </div>
                       )}
                       <div className="flex justify-between items-center text-xs font-semibold pt-1 border-t border-dashed border-slate-200 dark:border-slate-700">
@@ -499,7 +499,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                           {amountDue < 0 ? t('refund_due_to_guest_label', 'Refund Due to Guest:') : t('amount_due_label', 'Amount Due:')}
                         </span>
                         <span className="summary-line summary-line--amount-due font-bold text-slate-900 dark:text-white text-sm tabular-nums">
-                          ₹{Math.abs(amountDue).toFixed(2)}
+                          â‚¹{Math.abs(amountDue).toFixed(2)}
                         </span>
                       </div>
                     </div>
@@ -605,7 +605,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
           </div>
           <div className="text-gray-500 dark:text-gray-400 flex items-center gap-1.5 mt-1">
             <span className="text-2xs font-semibold uppercase text-rose-700 bg-rose-50 dark:bg-rose-950/40 px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-800">{t('checkout_badge', 'OUT')}</span>
-            <span>{formatDateDDMMYY(row.checkoutDate || row.expectedCheckout) || '—'}</span>
+            <span>{formatDateDDMMYY(row.checkoutDate || row.expectedCheckout) || 'â€”'}</span>
           </div>
         </div>
       ),
@@ -645,11 +645,11 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
         <div className="flex flex-col py-1 text-xs">
           <div className="flex items-center gap-1 font-semibold text-gray-900 dark:text-white">
             <span>{t('bill_field', 'Bill:')}</span>
-            <span className="text-blue-600 dark:text-blue-400">₹{(row.totalAmount ?? row.roomRate ?? 0).toFixed(2)}</span>
+            <span className="text-blue-600 dark:text-blue-400">â‚¹{(row.totalAmount ?? row.roomRate ?? 0).toFixed(2)}</span>
           </div>
           <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex flex-wrap gap-x-2">
-            <span>{t('adv_short_label', 'Adv:')} ₹{(row.advanceAmount ?? 0).toFixed(2)}</span>
-            <span>•</span>
+            <span>{t('adv_short_label', 'Adv:')} â‚¹{(row.advanceAmount ?? 0).toFixed(2)}</span>
+            <span>â€¢</span>
             <span className={calculateGuestTotal(row) <= 0 ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-amber-600 dark:text-amber-400 font-semibold'}>
               {calculateGuestTotal(row) <= 0 ? t('paid_label', 'Paid') : t('due_label', 'Due')}
             </span>
@@ -731,7 +731,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       <Card className="billing-checkout__tabs shadow-md space-y-4">
         <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 dark:border-slate-700 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
               <ReceiptText className="h-5 w-5" />
             </div>
             <div>
@@ -739,7 +739,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
               <p className="text-xs text-slate-500 dark:text-slate-400">Review stays, balances, and checkout settlements in one place.</p>
             </div>
           </div>
-          <div className="inline-flex items-center gap-2 self-start rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300 sm:self-auto">
+          <div className="inline-flex items-center gap-2 self-start rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300 sm:self-auto">
             <CreditCard className="h-4 w-4" />
             {tabCounts.today} requiring attention today
           </div>
@@ -904,7 +904,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       {/* Add Booking Modal */}
       <React.Suspense fallback={null}>
         <Modal show={showAddBookingModal} onClose={() => setShowAddBookingModal(false)} dismissible size="lg" className="z-58">
-          <ModalBody className="p-0 max-h-[90vh] overflow-y-auto rounded-2xl">
+          <ModalBody className="p-0 max-h-[90vh] overflow-y-auto rounded-lg">
             <LazyGuestManagement
               guests={guests}
               receipts={receipts}

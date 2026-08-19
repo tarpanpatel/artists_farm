@@ -225,7 +225,7 @@ export const SystemStockManager: React.FC = () => {
   return (
     <div className="default-stocks-manager space-y-4 p-3 sm:p-6">
       {/* Header */}
-      <div className="default-stocks-manager__header bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
+      <div className="default-stocks-manager__header bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-5">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="min-w-0">
             <h2 className="default-stocks-manager__title text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
@@ -281,7 +281,7 @@ export const SystemStockManager: React.FC = () => {
 
       {/* Add New Item Form */}
       {isAddingNew && (
-        <div className="max-w-[550px] w-full bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 space-y-3">
+        <div className="max-w-[550px] w-full bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-5 space-y-3">
           <h3 className="default-stocks-manager__subtitle font-semibold text-slate-900 dark:text-white text-sm">{t('add_new_stock_item_title', 'Add New Stock Item')}</h3>
           <form onSubmit={handleAddItem} className="app-form app-form--add-stock-item space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -370,7 +370,7 @@ export const SystemStockManager: React.FC = () => {
       {categories.length > 0 && (
       <div className="default-stocks-manager__categories space-y-4">
         {categories.map((category) => (
-          <div key={category} className="default-stocks-manager__category-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <div key={category} className="default-stocks-manager__category-card bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
             <div className="bg-slate-100 dark:bg-slate-700 px-4 py-2">
               <h3 className="default-stocks-manager__subtitle font-semibold text-slate-900 dark:text-white text-sm">{category}</h3>
             </div>
@@ -379,7 +379,7 @@ export const SystemStockManager: React.FC = () => {
                 {filteredStocks[category].map((item) => {
                   const ItemIcon = Package;
                   return (
-                  <div key={item.id} className="bg-slate-50 dark:bg-slate-700/50 p-2 rounded-2xl border border-slate-200 dark:border-slate-700 hover:shadow-md dark:hover:bg-slate-700 transition-all">
+                  <div key={item.id} className="bg-slate-50 dark:bg-slate-700/50 p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:shadow-md dark:hover:bg-slate-700 transition-all">
                     <div className="space-y-1.5">
                       <div className="flex items-start justify-between gap-1">
                         <ItemIcon className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0 mt-0.5" />

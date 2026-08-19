@@ -350,7 +350,7 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
           <Loader2 className="w-5 h-5 animate-spin" /> {t('loading_licenses_label', 'Loading licenses...')}
         </div>
       ) : licenses.length === 0 ? (
-        <div className="license-management__empty flex flex-col items-center justify-center py-16 px-6 text-center bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700">
+        <div className="license-management__empty flex flex-col items-center justify-center py-16 px-6 text-center bg-white dark:bg-slate-800 rounded-lg border border-dashed border-slate-300 dark:border-slate-700">
           <ScrollText className="w-10 h-10 text-slate-300 dark:text-slate-600 mb-3" />
           <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">{t('no_licenses_label', 'No licenses added yet')}</p>
           <Button variant="primary" size="sm" className="mt-4" leftIcon={<Plus className="w-4 h-4" />} onClick={openAddModal}>
@@ -370,7 +370,7 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
             return (
               <div
                 key={license.id}
-                className={`license-management__card bg-white dark:bg-slate-800 rounded-2xl border ${meta.cardRingClass} shadow-sm p-5 flex flex-col gap-3`}
+                className={`license-management__card bg-white dark:bg-slate-800 rounded-lg border ${meta.cardRingClass} shadow-sm p-5 flex flex-col gap-3`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">

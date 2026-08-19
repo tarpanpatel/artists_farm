@@ -71,7 +71,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   // Properties with no food service have nothing to show on the Food POS /
   // Kitchen sub-tabs (kitchen orders + kitchen purchases are both blocked at
   // the API layer when the 'kitchen' module is off, so these would only ever
-  // render empty states) — bounce back to Overview if the module gets
+  // render empty states) Ã¢â‚¬â€ bounce back to Overview if the module gets
   // disabled while one of those tabs is active.
   useEffect(() => {
     if (!kitchenModuleEnabled && activeTab === 'kitchen') {
@@ -393,7 +393,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     return { label, bookings: inWeek.length, nights, revenue };
   });
 
-  // Room-by-room comparison (multi-key properties only) — how each sub-key
+  // Room-by-room comparison (multi-key properties only) Ã¢â‚¬â€ how each sub-key
   // room is performing against its siblings under the same parent property.
   const activeRooms = rooms.filter((r) => r.is_active !== 0);
   const periodDays = (() => {
@@ -415,7 +415,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     plotOptions: { bar: { borderRadius: 8, columnWidth: '50%' } },
     colors: ['#2563eb'],
     xaxis: { categories: roomPerformance.map((r) => r.name) },
-    yaxis: { labels: { formatter: (val: number) => `₹${Math.round(val).toLocaleString('en-IN')}` } },
+    yaxis: { labels: { formatter: (val: number) => `Ã¢â€šÂ¹${Math.round(val).toLocaleString('en-IN')}` } },
     grid: { strokeDashArray: 4 },
     dataLabels: { enabled: false },
     legend: { show: false },
@@ -472,7 +472,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     plotOptions: { bar: { borderRadius: 8, columnWidth: '50%' } },
     colors: [brandColor, successColor],
     xaxis: { categories: sortedBookingsByMonth.map(([month]) => month) },
-    yaxis: { labels: { formatter: (val: number) => `₹${Math.round(val).toLocaleString('en-IN')}` } },
+    yaxis: { labels: { formatter: (val: number) => `Ã¢â€šÂ¹${Math.round(val).toLocaleString('en-IN')}` } },
     grid: { strokeDashArray: 4 },
     dataLabels: { enabled: false },
     legend: { show: false },
@@ -518,7 +518,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     plotOptions: { bar: { borderRadius: 6, columnWidth: '50%' } },
     colors: [warningColor],
     xaxis: { categories: sortedBillsByMonth.map(([month]) => month) },
-    yaxis: { labels: { formatter: (val: number) => `₹${Math.round(val).toLocaleString('en-IN')}` } },
+    yaxis: { labels: { formatter: (val: number) => `Ã¢â€šÂ¹${Math.round(val).toLocaleString('en-IN')}` } },
     grid: { strokeDashArray: 4 },
     dataLabels: { enabled: false },
     legend: { show: false },
@@ -545,11 +545,11 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     plotOptions: { bar: { borderRadius: 6, columnWidth: '55%' } },
     colors: [brandColor],
     xaxis: { categories: paceWeeks.map((w) => w.label), title: { text: t('pace_week_starting_axis', 'Week starting') } },
-    yaxis: { labels: { formatter: (val: number) => `₹${Math.round(val).toLocaleString('en-IN')}` } },
+    yaxis: { labels: { formatter: (val: number) => `Ã¢â€šÂ¹${Math.round(val).toLocaleString('en-IN')}` } },
     grid: { strokeDashArray: 4 },
     dataLabels: { enabled: false },
     legend: { show: false },
-    tooltip: { y: { formatter: (val: number) => `₹${val.toLocaleString('en-IN')}` } },
+    tooltip: { y: { formatter: (val: number) => `Ã¢â€šÂ¹${val.toLocaleString('en-IN')}` } },
   };
 
   const paceWeeklySeries = [
@@ -561,7 +561,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     plotOptions: { bar: { borderRadius: 6, columnWidth: '60%' } },
     colors: [brandSecondary],
     xaxis: { categories: sortedMenuItems.slice(0, 10).map(([, data]) => data.name) },
-    yaxis: { labels: { formatter: (val: number) => `₹${Math.round(val).toLocaleString('en-IN')}` } },
+    yaxis: { labels: { formatter: (val: number) => `Ã¢â€šÂ¹${Math.round(val).toLocaleString('en-IN')}` } },
     grid: { strokeDashArray: 4 },
     dataLabels: { enabled: false },
     legend: { show: false },
@@ -582,7 +582,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     chart: { type: 'bar', height: 220, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
     plotOptions: { bar: { horizontal: true, barHeight: '55%', borderRadius: 4 } },
     colors: [successColor],
-    dataLabels: { enabled: true, formatter: (val: number) => `₹${val.toLocaleString('en-IN')}` },
+    dataLabels: { enabled: true, formatter: (val: number) => `Ã¢â€šÂ¹${val.toLocaleString('en-IN')}` },
     xaxis: { categories: mostProfitableDishes.map((d) => d.name), min: -dishProfitAbsMax, max: dishProfitAbsMax },
     grid: { strokeDashArray: 4 },
   };
@@ -592,7 +592,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     chart: { type: 'bar', height: 220, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
     plotOptions: { bar: { horizontal: true, barHeight: '55%', borderRadius: 4 } },
     colors: [dangerColor],
-    dataLabels: { enabled: true, formatter: (val: number) => `₹${val.toLocaleString('en-IN')}` },
+    dataLabels: { enabled: true, formatter: (val: number) => `Ã¢â€šÂ¹${val.toLocaleString('en-IN')}` },
     xaxis: { categories: leastProfitableDishes.map((d) => d.name), min: -dishProfitAbsMax, max: dishProfitAbsMax },
     grid: { strokeDashArray: 4 },
   };
@@ -661,11 +661,11 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     stroke: { curve: 'smooth', width: 2.5 },
     markers: { size: 3 },
     xaxis: { categories: kitchenTrendByDate.labels },
-    yaxis: { labels: { formatter: (val: number) => `₹${Math.round(val).toLocaleString('en-IN')}` } },
+    yaxis: { labels: { formatter: (val: number) => `Ã¢â€šÂ¹${Math.round(val).toLocaleString('en-IN')}` } },
     grid: { strokeDashArray: 4 },
     dataLabels: { enabled: false },
     legend: { position: 'top' },
-    tooltip: { y: { formatter: (val: number) => `₹${val.toLocaleString('en-IN')}` } },
+    tooltip: { y: { formatter: (val: number) => `Ã¢â€šÂ¹${val.toLocaleString('en-IN')}` } },
   };
 
   const kitchenTrendSeries = [
@@ -673,7 +673,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     { name: 'Kitchen Purchases', data: kitchenTrendByDate.purchases },
   ];
 
-  // ─── Fluctuations Tab: per-item purchase-price volatility & cadence ───
+  // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Fluctuations Tab: per-item purchase-price volatility & cadence Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   // Groups every kitchen purchase by item name (not date-filtered by the
   // Overview dateFilter - fluctuation is inherently a trend-over-time
   // question, so this always looks at the full purchase history available)
@@ -738,11 +738,11 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     stroke: { curve: 'smooth', width: 2.5 },
     markers: { size: 4 },
     xaxis: { type: 'datetime', title: { text: t('purchase_date_axis', 'Purchase Date') } },
-    yaxis: { title: { text: t('unit_cost_axis', 'Unit Cost (₹)') }, labels: { formatter: (v: number) => `₹${v.toFixed(0)}` } },
+    yaxis: { title: { text: t('unit_cost_axis', 'Unit Cost (Ã¢â€šÂ¹)') }, labels: { formatter: (v: number) => `Ã¢â€šÂ¹${v.toFixed(0)}` } },
     grid: { strokeDashArray: 4 },
     dataLabels: { enabled: false },
     legend: { position: 'top' },
-    tooltip: { x: { format: 'dd/MM/yyyy' }, y: { formatter: (val: number) => `₹${val.toLocaleString('en-IN')}` } },
+    tooltip: { x: { format: 'dd/MM/yyyy' }, y: { formatter: (val: number) => `Ã¢â€šÂ¹${val.toLocaleString('en-IN')}` } },
   };
 
   const fluctuationChartSeries = selectedFluctuationStats.map((s) => ({
@@ -755,7 +755,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     plotOptions: { bar: { borderRadius: 6, columnWidth: '60%' } },
     colors: [dangerColor],
     xaxis: { categories: sortedExpenseItems.slice(0, 15).map(([name]) => name) },
-    yaxis: { labels: { formatter: (val: number) => `₹${Math.round(val).toLocaleString('en-IN')}` } },
+    yaxis: { labels: { formatter: (val: number) => `Ã¢â€šÂ¹${Math.round(val).toLocaleString('en-IN')}` } },
     grid: { strokeDashArray: 4 },
     dataLabels: { enabled: false },
     legend: { show: false },
@@ -1061,8 +1061,8 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   })();
 
   const costChartSeries = costCatalogItems.length > 0
-    ? [{ name: 'Unit Cost (₹)', data: costCatalogItems.map(item => item.costPerUnit) }]
-    : [{ name: 'Unit Cost (₹)', data: [1200, 850, 450, 350, 280] }];
+    ? [{ name: 'Unit Cost (Ã¢â€šÂ¹)', data: costCatalogItems.map(item => item.costPerUnit) }]
+    : [{ name: 'Unit Cost (Ã¢â€šÂ¹)', data: [1200, 850, 450, 350, 280] }];
   const costChartLabels = costCatalogItems.length > 0
     ? costCatalogItems.map(item => item.name)
     : ['Premium Saffron', 'Olive Oil Can', 'Basmati Rice Bag', 'Fresh Salmon Fish', 'Dairy Butter Pack'];
@@ -1080,7 +1080,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     chart: { type: 'bar', height: 200, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
     plotOptions: { bar: { horizontal: true, barHeight: '55%', borderRadius: 4 } },
     colors: ['#ec4899'],
-    dataLabels: { enabled: true, formatter: (val: number) => `₹${val}` },
+    dataLabels: { enabled: true, formatter: (val: number) => `Ã¢â€šÂ¹${val}` },
     xaxis: { categories: costChartLabels },
     grid: { strokeDashArray: 4 }
   };
@@ -1162,7 +1162,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('overview')}
-          className={`btn-analytics-tab-overview px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
+          className={`btn-analytics-tab-overview px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
             activeTab === 'overview'
               ? 'border border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 shadow-xs'
               : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
@@ -1174,7 +1174,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('bookings')}
-          className={`btn-analytics-tab-bookings px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
+          className={`btn-analytics-tab-bookings px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
             activeTab === 'bookings'
               ? 'border border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 shadow-xs'
               : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
@@ -1186,7 +1186,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('pace')}
-          className={`btn-analytics-tab-pace px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
+          className={`btn-analytics-tab-pace px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
             activeTab === 'pace'
               ? 'border border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 shadow-xs'
               : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
@@ -1199,7 +1199,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('kitchen')}
-            className={`btn-analytics-tab-kitchen px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
+            className={`btn-analytics-tab-kitchen px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
               activeTab === 'kitchen'
                 ? 'border border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 shadow-xs'
                 : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
@@ -1212,7 +1212,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('expenses')}
-          className={`btn-analytics-tab-purchases px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
+          className={`btn-analytics-tab-purchases px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
             activeTab === 'expenses'
               ? 'border border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 shadow-xs'
               : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
@@ -1224,7 +1224,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('profit_loss')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
+          className={`px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
             activeTab === 'profit_loss'
               ? 'border border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 shadow-xs'
               : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
@@ -1236,7 +1236,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('fluctuations')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
+          className={`px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
             activeTab === 'fluctuations'
               ? 'border border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 shadow-xs'
               : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
@@ -1250,7 +1250,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
       {/* TAB 1: OVERVIEW */}
       {activeTab === 'overview' && (
         <div className="analytics-overview space-y-6">
-          <div className="analytics-overview__card bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+          <div className="analytics-overview__card bg-white dark:bg-slate-800 p-5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
             <h3 className="analytics-dashboard__subtitle analytics-overview__title font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
               <PieChart className="w-4 h-4 text-blue-600" /> {t('operational_financial_breakdown_heading', 'Operational Financial Breakdown & Margin Analysis')}
             </h3>
@@ -1264,7 +1264,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                 <div>
                   <div className="flex justify-between font-semibold text-slate-800 dark:text-slate-200 mb-1">
                     <span>{t('room_lodging_revenue_label', 'Room Lodging Revenue')}</span>
-                    <span className="font-extrabold">₹{roomRevenue.toLocaleString('en-IN')}</span>
+                    <span className="font-extrabold">Ã¢â€šÂ¹{roomRevenue.toLocaleString('en-IN')}</span>
                   </div>
                   <div className="w-full h-3 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden">
                     <div
@@ -1278,7 +1278,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                   <div>
                     <div className="flex justify-between font-semibold text-slate-800 dark:text-slate-200 mb-1">
                       <span>{t('kitchen_dining_pos_revenue_label', 'Kitchen & Dining POS Revenue')}</span>
-                      <span className="font-extrabold">₹{kitchenRevenue.toLocaleString('en-IN')}</span>
+                      <span className="font-extrabold">Ã¢â€šÂ¹{kitchenRevenue.toLocaleString('en-IN')}</span>
                     </div>
                     <div className="w-full h-3 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden">
                       <div
@@ -1292,7 +1292,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                 <div>
                   <div className="flex justify-between font-semibold text-slate-800 dark:text-slate-200 mb-1">
                     <span>{t('operational_outflow_expenses_label', 'Operational Outflow Expenses (Salaries, Bills, Other)')}</span>
-                    <span className="font-extrabold text-red-600">₹{totalOutflowExpenses.toLocaleString('en-IN')}</span>
+                    <span className="font-extrabold text-red-600">Ã¢â€šÂ¹{totalOutflowExpenses.toLocaleString('en-IN')}</span>
                   </div>
                   <div className="w-full h-3 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden">
                     <div
@@ -1305,7 +1305,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+          <div className="bg-white dark:bg-slate-800 p-5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <Users className="w-4 h-4 text-red-600" /> {t('labor_cost_ratio_heading', 'Labor Cost as % of Revenue (Trended)')}
@@ -1331,7 +1331,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
       {/* TAB 2: BOOKINGS */}
       {activeTab === 'bookings' && (
         <div className="analytics-bookings space-y-6">
-          <div className="analytics-bookings__card bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+          <div className="analytics-bookings__card bg-white dark:bg-slate-800 p-5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
             <h3 className="analytics-dashboard__subtitle analytics-bookings__title font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
               <span>{t('monthly_bookings_revenue_guests_heading', 'Monthly Bookings, Revenue & Guest Count')}</span>
             </h3>
@@ -1351,7 +1351,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Card Left: Booking Sources Share */}
-            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+            <div className="bg-white dark:bg-slate-800 p-5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
               <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <PieChart className="w-4 h-4 text-purple-600" /> {t('booking_sources_share_heading', 'Booking Sources Distribution')}
               </h3>
@@ -1363,32 +1363,32 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
             </div>
 
             {/* Card Right: Hospitality Key Performance Indicators (ARR, ALOS, Occupancy, Profit/Room Night) */}
-            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+            <div className="bg-white dark:bg-slate-800 p-5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
               <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-cyan-600" /> {t('hospitality_kpi_metrics_heading', 'Hospitality Performance Metrics (BI)')}
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
-                <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-xl border border-blue-200 dark:border-blue-800 text-center">
+                <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800 text-center">
                   <p className="text-[10px] font-semibold text-blue-800 dark:text-blue-300 uppercase tracking-wider">{t('arr_metric_label', 'Average Room Rate (ARR)')}</p>
-                  <p className="text-xl font-extrabold text-blue-700 dark:text-blue-400 mt-1">₹{adr.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
+                  <p className="text-xl font-extrabold text-blue-700 dark:text-blue-400 mt-1">Ã¢â€šÂ¹{adr.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
                   <p className="text-[9px] text-slate-500 mt-1">{t('arr_metric_subtext', 'Room revenue divided by occupied room nights')}</p>
                 </div>
 
-                <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800 text-center">
+                <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg border border-emerald-200 dark:border-emerald-800 text-center">
                   <p className="text-[10px] font-semibold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">{t('alos_metric_label', 'Avg Length of Stay (ALOS)')}</p>
                   <p className="text-xl font-extrabold text-emerald-700 dark:text-emerald-400 mt-1">{alos.toFixed(1)} {alos === 1 ? 'night' : 'nights'}</p>
                   <p className="text-[9px] text-slate-500 mt-1">{t('alos_metric_subtext', 'Total room nights divided by bookings')}</p>
                 </div>
 
-                <div className="p-4 bg-purple-50 dark:bg-purple-950/30 rounded-xl border border-purple-200 dark:border-purple-800 text-center">
+                <div className="p-4 bg-purple-50 dark:bg-purple-950/30 rounded-lg border border-purple-200 dark:border-purple-800 text-center">
                   <p className="text-[10px] font-semibold text-purple-800 dark:text-purple-300 uppercase tracking-wider">{t('occupancy_metric_label', 'Occupancy Rate')}</p>
                   <p className="text-xl font-extrabold text-purple-700 dark:text-purple-400 mt-1">{occupancyRate.toFixed(1)}%</p>
                   <p className="text-[9px] text-slate-500 mt-1">{t('occupancy_metric_subtext', 'Occupied room nights vs available inventory capacity')}</p>
                 </div>
 
-                <div className={`p-4 rounded-xl border text-center ${profitPerRoomNight >= 0 ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800' : 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800'}`}>
+                <div className={`p-4 rounded-lg border text-center ${profitPerRoomNight >= 0 ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800' : 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800'}`}>
                   <p className={`text-[10px] font-semibold uppercase tracking-wider ${profitPerRoomNight >= 0 ? 'text-amber-800 dark:text-amber-300' : 'text-rose-800 dark:text-rose-300'}`}>{t('profit_per_room_night_label', 'Profit per Room Night')}</p>
-                  <p className={`text-xl font-extrabold mt-1 ${profitPerRoomNight >= 0 ? 'text-amber-700 dark:text-amber-400' : 'text-rose-700 dark:text-rose-400'}`}>₹{Math.abs(Math.round(profitPerRoomNight)).toLocaleString('en-IN')}</p>
+                  <p className={`text-xl font-extrabold mt-1 ${profitPerRoomNight >= 0 ? 'text-amber-700 dark:text-amber-400' : 'text-rose-700 dark:text-rose-400'}`}>Ã¢â€šÂ¹{Math.abs(Math.round(profitPerRoomNight)).toLocaleString('en-IN')}</p>
                   <p className="text-[9px] text-slate-500 mt-1">{t('profit_per_room_night_subtext', 'Ledger P&L for')} {ledgerMonth} {t('profit_per_room_night_subtext_suffix', 'divided by room nights that month')}</p>
                 </div>
               </div>
@@ -1398,13 +1398,13 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+          <div className="bg-white dark:bg-slate-800 p-5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <IndianRupee className="w-4 h-4 text-amber-600" /> {t('additional_charges_breakdown_heading', 'Additional Charges Breakdown')}
               </h3>
               <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
-                ₹{extraChargesTotal.toLocaleString('en-IN')} {t('total_label', 'total')}
+                Ã¢â€šÂ¹{extraChargesTotal.toLocaleString('en-IN')} {t('total_label', 'total')}
               </span>
             </div>
             <p className="text-[10px] text-slate-400 leading-relaxed">
@@ -1418,7 +1418,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
           </div>
 
           {isMultiKeyProperty && activeRooms.length > 0 && (
-            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+            <div className="bg-white dark:bg-slate-800 p-5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
               <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <BedDouble className="w-4 h-4 text-blue-600" /> {t('room_by_room_performance_heading', 'Room-by-Room Performance Comparison')}
               </h3>
@@ -1436,18 +1436,18 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         <div className="analytics-pace space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {paceBuckets.map((b) => (
-              <div key={b.key} className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
+              <div key={b.key} className="bg-white dark:bg-slate-800 p-5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs">
                 <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{b.label}</p>
                 <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-center">
                   <IndianRupee className="w-5 h-5 text-blue-600" />
                   {b.revenue.toLocaleString('en-IN')}
                 </p>
-                <p className="text-[10px] text-slate-500 mt-1">{b.bookings} {t('pace_bookings_label', 'bookings')} · {b.nights} {t('pace_room_nights_label', 'room-nights')}</p>
+                <p className="text-[10px] text-slate-500 mt-1">{b.bookings} {t('pace_bookings_label', 'bookings')} Ã‚Â· {b.nights} {t('pace_room_nights_label', 'room-nights')}</p>
               </div>
             ))}
           </div>
 
-          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+          <div className="bg-white dark:bg-slate-800 p-5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
             <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
               <CalendarClock className="w-4 h-4 text-blue-600" /> {t('pace_weekly_heading', 'On-the-Books Revenue by Week (Next 12 Weeks)')}
             </h3>
@@ -1462,7 +1462,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
       {/* TAB 4: KITCHEN & FOOD POS */}
       {activeTab === 'kitchen' && (
         <div className="analytics-kitchen space-y-6">
-          <div className="analytics-kitchen__card bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-5">
+          <div className="analytics-kitchen__card bg-white dark:bg-slate-800 p-5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs space-y-5">
             <h3 className="analytics-dashboard__subtitle analytics-kitchen__title font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 border-b border-slate-100 dark:border-slate-700 pb-2">
               <Utensils className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               <span>{t('kitchen_sales_purchases_profit_heading', 'Kitchen Sales, Purchases & Net Profit')}</span>
@@ -1470,22 +1470,22 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
             {/* KPI Summary Rows */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800 shadow-2xs">
+              <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg border border-emerald-200 dark:border-emerald-800 shadow-2xs">
                 <p className="text-[10px] text-emerald-800 dark:text-emerald-300 font-semibold uppercase tracking-wider">{t('kitchen_pos_sales_income_label', 'Kitchen POS Sales Income')}</p>
-                <p className="text-2xl font-extrabold text-emerald-700 dark:text-emerald-400 mt-1">₹{kitchenRevenue.toLocaleString('en-IN')}</p>
+                <p className="text-2xl font-extrabold text-emerald-700 dark:text-emerald-400 mt-1">Ã¢â€šÂ¹{kitchenRevenue.toLocaleString('en-IN')}</p>
                 <p className="text-[10px] text-emerald-600 mt-1">{t('from_guest_dining_orders_subtext', 'From guest dining orders')}</p>
               </div>
 
-              <div className="p-4 bg-amber-50 dark:bg-amber-950/30 rounded-xl border border-amber-200 dark:border-amber-800 shadow-2xs">
+              <div className="p-4 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800 shadow-2xs">
                 <p className="text-[10px] text-amber-800 dark:text-amber-300 font-semibold uppercase tracking-wider">{t('kitchen_purchase_outflows_label', 'Kitchen Purchase Outflows')}</p>
-                <p className="text-2xl font-extrabold text-amber-700 dark:text-amber-400 mt-1">₹{totalKitchenPurchaseCost.toLocaleString('en-IN')}</p>
+                <p className="text-2xl font-extrabold text-amber-700 dark:text-amber-400 mt-1">Ã¢â€šÂ¹{totalKitchenPurchaseCost.toLocaleString('en-IN')}</p>
                 <p className="text-[10px] text-amber-600 mt-1">{t('groceries_gas_supplies_subtext', 'Groceries, gas, and supplies spend')}</p>
               </div>
 
-              <div className={`p-4 rounded-xl border shadow-2xs ${kitchenNetProfit >= 0 ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800' : 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'}`}>
+              <div className={`p-4 rounded-lg border shadow-2xs ${kitchenNetProfit >= 0 ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800' : 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'}`}>
                 <p className={`text-[10px] font-semibold uppercase tracking-wider ${kitchenNetProfit >= 0 ? 'text-blue-800 dark:text-blue-300' : 'text-red-800 dark:text-red-300'}`}>{t('kitchen_net_profit_label', 'Kitchen Net Profit')}</p>
                 <p className={`text-2xl font-extrabold mt-1 ${kitchenNetProfit >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-red-700 dark:text-red-400'}`}>
-                  ₹{kitchenNetProfit.toLocaleString('en-IN')}
+                  Ã¢â€šÂ¹{kitchenNetProfit.toLocaleString('en-IN')}
                 </p>
                 <p className="text-[10px] text-slate-500 mt-1">{t('kitchen_sales_minus_purchases_subtext', 'Kitchen Sales - Kitchen Purchases')}</p>
               </div>
@@ -1493,19 +1493,19 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
             {/* Side-by-Side Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
-              <div className="bg-slate-50/50 dark:bg-slate-900/20 p-4 rounded-xl border border-slate-100 dark:border-slate-800/80">
+              <div className="bg-slate-50/50 dark:bg-slate-900/20 p-4 rounded-lg border border-slate-100 dark:border-slate-800/80">
                 <h4 className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">{t('food_menu_performance_heading', 'Food Menu Performance')}</h4>
                 <ReactApexChart options={foodBarOptions} series={foodBarSeries} type="bar" height={300} />
               </div>
 
-              <div className="bg-slate-50/50 dark:bg-slate-900/20 p-4 rounded-xl border border-slate-100 dark:border-slate-800/80">
+              <div className="bg-slate-50/50 dark:bg-slate-900/20 p-4 rounded-lg border border-slate-100 dark:border-slate-800/80">
                 <h4 className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">{t('kitchen_sales_vs_purchases_heading', 'Sales vs Purchases Outflow')}</h4>
                 <ReactApexChart options={kitchenTrendOptions} series={kitchenTrendSeries} type="line" height={300} />
               </div>
             </div>
 
             {/* Dish Profitability & Popularity */}
-            <div className="bg-slate-50/20 dark:bg-slate-900/10 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4 mt-6">
+            <div className="bg-slate-50/20 dark:bg-slate-900/10 p-5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4 mt-6">
               <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-xs flex items-center gap-2">
                 <IndianRupee className="w-4 h-4 text-emerald-600" /> {t('dish_profitability_heading', 'Dish Profitability')}
               </h3>
@@ -1525,7 +1525,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                   </div>
                 </div>
               ) : (
-                <p className="text-slate-400 text-center py-6 text-xs">{t('no_dish_costing_data', 'No dishes have a costed recipe yet - add ingredient costs in Kitchen → Beta Recipe Builder to see profit per dish.')}</p>
+                <p className="text-slate-400 text-center py-6 text-xs">{t('no_dish_costing_data', 'No dishes have a costed recipe yet - add ingredient costs in Kitchen Ã¢â€ â€™ Beta Recipe Builder to see profit per dish.')}</p>
               )}
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4 mt-2 border-t border-slate-100 dark:border-slate-800">
@@ -1541,13 +1541,13 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
             </div>
 
             {/* Latency & Processing Speed Statistics */}
-            <div className="bg-slate-50/20 dark:bg-slate-900/10 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4 mt-6">
+            <div className="bg-slate-50/20 dark:bg-slate-900/10 p-5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4 mt-6">
               <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-xs flex items-center gap-2">
                 <Clock className="w-4 h-4 text-cyan-600 animate-pulse" /> {t('order_processing_latency_heading', 'Order Processing & Service Latency BI')}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Chef Prep Latency */}
-                <div className="p-4 bg-amber-50/40 dark:bg-amber-950/20 rounded-xl border border-amber-100 dark:border-amber-900/30 flex items-center gap-4">
+                <div className="p-4 bg-amber-50/40 dark:bg-amber-950/20 rounded-lg border border-amber-100 dark:border-amber-900/30 flex items-center gap-4">
                   <div className="p-3 bg-amber-100/60 dark:bg-amber-900/50 rounded-lg text-amber-700 dark:text-amber-300">
                     <Utensils className="w-5 h-5" />
                   </div>
@@ -1561,7 +1561,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                 </div>
 
                 {/* Server Collection Latency */}
-                <div className="p-4 bg-cyan-50/40 dark:bg-cyan-950/20 rounded-xl border border-cyan-100 dark:border-cyan-900/30 flex items-center gap-4">
+                <div className="p-4 bg-cyan-50/40 dark:bg-cyan-950/20 rounded-lg border border-cyan-100 dark:border-cyan-900/30 flex items-center gap-4">
                   <div className="p-3 bg-cyan-100/60 dark:bg-cyan-900/50 rounded-lg text-cyan-700 dark:text-cyan-300">
                     <Clock className="w-5 h-5" />
                   </div>
@@ -1595,7 +1595,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
       {/* TAB 5: EXPENSES */}
       {activeTab === 'expenses' && (
         <div className="analytics-expenses space-y-6">
-          <div className="analytics-expenses__card bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+          <div className="analytics-expenses__card bg-white dark:bg-slate-800 p-5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
             <h3 className="analytics-dashboard__subtitle analytics-expenses__title font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
               <ShoppingCart className="w-4 h-4 text-slate-500 dark:text-slate-400" />
               {t('expense_items_cost_breakdown_heading', 'Expense Items - Total Cost Breakdown')}
@@ -1607,14 +1607,14 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
             {/* Procurement Requisition Frequency & Unit Costs Analytics */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4">
-              <div className="bg-slate-50/50 dark:bg-slate-900/20 p-4 rounded-xl border border-slate-100 dark:border-slate-800/80">
+              <div className="bg-slate-50/50 dark:bg-slate-900/20 p-4 rounded-lg border border-slate-100 dark:border-slate-800/80">
                 <h4 className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                   <ShoppingBag className="w-3.5 h-3.5 text-purple-600" /> {t('most_requested_requisitions', 'Most Requested Supply Requisitions')}
                 </h4>
                 <ReactApexChart options={reqBarOptions} series={reqChartSeries} type="bar" height={200} />
               </div>
 
-              <div className="bg-slate-50/50 dark:bg-slate-900/20 p-4 rounded-xl border border-slate-100 dark:border-slate-800/80">
+              <div className="bg-slate-50/50 dark:bg-slate-900/20 p-4 rounded-lg border border-slate-100 dark:border-slate-800/80">
                 <h4 className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                   <IndianRupee className="w-3.5 h-3.5 text-pink-600" /> {t('highest_cost_catalog_items', 'Highest Unit Cost Catalog Items')}
                 </h4>
@@ -1623,13 +1623,13 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
             </div>
           </div>
 
-          <div className="analytics-expenses__card bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+          <div className="analytics-expenses__card bg-white dark:bg-slate-800 p-5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <Zap className="w-4 h-4 text-amber-600" /> {t('bills_utilities_heading', 'Bills & Utilities Analytics')}
               </h3>
               <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
-                {t('this_period_total_label', 'This period')}: ₹{totalBillsThisPeriod.toLocaleString('en-IN')}
+                {t('this_period_total_label', 'This period')}: Ã¢â€šÂ¹{totalBillsThisPeriod.toLocaleString('en-IN')}
               </span>
             </div>
             {sortedBillsByType.length > 0 ? (
@@ -1653,7 +1653,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
       {/* TAB 6: PROFIT & LOSS */}
       {activeTab === 'profit_loss' && (
         <div className="analytics-profit-loss space-y-6">
-          <div className="analytics-profit-loss__card bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+          <div className="analytics-profit-loss__card bg-white dark:bg-slate-800 p-5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
             <div className="analytics-profit-loss__header flex items-center justify-between">
               <h3 className="analytics-dashboard__subtitle analytics-profit-loss__title font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <BarChart3 className="w-4 h-4 text-emerald-600" /> {t('profit_loss_statement_heading', 'Profit & Loss Statement')}
@@ -1673,22 +1673,22 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
               return (
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800 flex flex-col justify-between">
+                    <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg border border-emerald-200 dark:border-emerald-800 flex flex-col justify-between">
                       <p className="text-[10px] font-semibold text-emerald-800 dark:text-emerald-300 uppercase">{t('total_income_label', 'Total Income')}</p>
-                      <p className="text-xl font-extrabold text-emerald-700 dark:text-emerald-400 mt-1">₹{income.toLocaleString('en-IN')}</p>
+                      <p className="text-xl font-extrabold text-emerald-700 dark:text-emerald-400 mt-1">Ã¢â€šÂ¹{income.toLocaleString('en-IN')}</p>
                     </div>
-                    <div className="p-4 bg-red-50 dark:bg-red-950/30 rounded-xl border border-red-200 dark:border-red-800 flex flex-col justify-between">
+                    <div className="p-4 bg-red-50 dark:bg-red-950/30 rounded-lg border border-red-200 dark:border-red-800 flex flex-col justify-between">
                       <p className="text-[10px] font-semibold text-red-800 dark:text-red-300 uppercase">{t('total_expenses_label', 'Total Expenses')}</p>
-                      <p className="text-xl font-extrabold text-red-700 dark:text-red-400 mt-1">₹{expensesPL.toLocaleString('en-IN')}</p>
+                      <p className="text-xl font-extrabold text-red-700 dark:text-red-400 mt-1">Ã¢â€šÂ¹{expensesPL.toLocaleString('en-IN')}</p>
                     </div>
-                    <div className={`p-4 rounded-xl border flex flex-col justify-between ${netPL >= 0 ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800' : 'bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800'}`}>
+                    <div className={`p-4 rounded-lg border flex flex-col justify-between ${netPL >= 0 ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800' : 'bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800'}`}>
                       <p className={`text-[10px] font-semibold uppercase ${netPL >= 0 ? 'text-blue-800 dark:text-blue-300' : 'text-orange-800 dark:text-orange-300'}`}>Net {netPL >= 0 ? t('net_profit_label', 'Net Profit') : t('net_loss_label', 'Loss')}</p>
-                      <p className={`text-xl font-extrabold mt-1 ${netPL >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-orange-700 dark:text-orange-400'}`}>₹{Math.abs(netPL).toLocaleString('en-IN')}</p>
+                      <p className={`text-xl font-extrabold mt-1 ${netPL >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-orange-700 dark:text-orange-400'}`}>Ã¢â€šÂ¹{Math.abs(netPL).toLocaleString('en-IN')}</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Donut Chart: Income Categories */}
-                    <div className="bg-slate-50/50 dark:bg-slate-900/20 p-4 rounded-xl border border-slate-100 dark:border-slate-800/80">
+                    <div className="bg-slate-50/50 dark:bg-slate-900/20 p-4 rounded-lg border border-slate-100 dark:border-slate-800/80">
                       <h4 className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4 text-center">{t('revenue_streams_breakdown_label', 'Income Sources Distribution')}</h4>
                       {pLIncomeSeries.length > 0 ? (
                         <ReactApexChart options={pLIncomeChartOptions} series={pLIncomeSeries} type="donut" height={280} />
@@ -1697,7 +1697,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                       )}
                     </div>
                     {/* Donut Chart: Expense Categories */}
-                    <div className="bg-slate-50/50 dark:bg-slate-900/20 p-4 rounded-xl border border-slate-100 dark:border-slate-800/80">
+                    <div className="bg-slate-50/50 dark:bg-slate-900/20 p-4 rounded-lg border border-slate-100 dark:border-slate-800/80">
                       <h4 className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4 text-center">{t('expense_categories_breakdown_label', 'Expense Categories Distribution')}</h4>
                       {pLExpenseSeries.length > 0 ? (
                         <ReactApexChart options={pLExpenseChartOptions} series={pLExpenseSeries} type="donut" height={280} />
@@ -1720,7 +1720,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
               ledger, settled at the time of the transaction, so there's no
               accrual/cash timing gap to show separately). This payment-method
               breakdown was the only piece that tab added on top. */}
-          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
+          <div className="bg-white dark:bg-slate-800 p-5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs">
             <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 mb-4">
               <PieChart className="w-4 h-4 text-emerald-600" /> {t('payment_methods_share_heading', 'Payment Methods Distribution')}
             </h3>
@@ -1736,7 +1736,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
       {/* TAB 8: FLUCTUATIONS - purchase price volatility & buying cadence */}
       {activeTab === 'fluctuations' && (
         <div className="analytics-fluctuations space-y-6">
-          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+          <div className="bg-white dark:bg-slate-800 p-5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <Activity className="w-4 h-4 text-blue-600" /> {t('price_fluctuation_trend_heading', 'Item Price Trend')}
@@ -1755,7 +1755,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
             </p>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+          <div className="bg-white dark:bg-slate-800 p-5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
             <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
               <ShoppingBag className="w-4 h-4 text-purple-600" /> {t('select_items_heading', 'Select Items')}
             </h3>
@@ -1767,7 +1767,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                   return (
                     <label
                       key={s.name}
-                      className={`flex items-start gap-2.5 p-3 rounded-xl border text-xs transition-colors ${
+                      className={`flex items-start gap-2.5 p-3 rounded-lg border text-xs transition-colors ${
                         isChecked
                           ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800'
                           : 'bg-slate-50/50 dark:bg-slate-900/20 border-slate-100 dark:border-slate-800'
@@ -1786,7 +1786,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                           {i < 5 && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300 shrink-0">{t('volatile_badge', 'Volatile')}</span>}
                         </div>
                         <p className="text-[9px] text-slate-400 mt-0.5">
-                          ±{s.fluctuationPct.toFixed(0)}% {t('fluctuation_label', 'fluctuation')} · {t('every_label', 'every')} ~{s.avgFrequencyDays.toFixed(1)}d · {s.count}x
+                          Ã‚Â±{s.fluctuationPct.toFixed(0)}% {t('fluctuation_label', 'fluctuation')} Ã‚Â· {t('every_label', 'every')} ~{s.avgFrequencyDays.toFixed(1)}d Ã‚Â· {s.count}x
                         </p>
                         <p className={`text-[9px] font-semibold mt-0.5 ${s.priceChangePct >= 0 ? 'text-red-500' : 'text-emerald-500'}`}>
                           {s.priceChangePct >= 0 ? '+' : ''}{s.priceChangePct.toFixed(1)}% {t('since_first_purchase_label', 'since first purchase')}
@@ -1805,21 +1805,21 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
           </div>
 
           {selectedFluctuationStats.length > 0 && (
-            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+            <div className="bg-white dark:bg-slate-800 p-5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
               <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <IndianRupee className="w-4 h-4 text-amber-600" /> {t('selected_items_summary_heading', 'Selected Items - Buying Pattern')}
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {selectedFluctuationStats.map((s, i) => (
-                  <div key={s.name} className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20">
+                  <div key={s.name} className="p-4 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20">
                     <div className="flex items-center gap-2 mb-2">
                       <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: fluctuationColors[i % fluctuationColors.length] }} />
                       <span className="font-bold text-slate-800 dark:text-slate-200 text-xs truncate">{s.name}</span>
                     </div>
                     <div className="space-y-1 text-[10px] text-slate-500 dark:text-slate-400">
                       <p>{t('bought_label', 'Bought')} <strong className="text-slate-700 dark:text-slate-300">{s.count}x</strong>, {t('avg_every_label', 'avg every')} <strong className="text-slate-700 dark:text-slate-300">{s.avgFrequencyDays.toFixed(1)} {t('days_label', 'days')}</strong></p>
-                      <p>{t('price_range_label', 'Price range')}: <strong className="text-slate-700 dark:text-slate-300">₹{s.minPrice.toFixed(0)} - ₹{s.maxPrice.toFixed(0)}</strong></p>
-                      <p>{t('avg_cost_label', 'Avg cost')}: <strong className="text-slate-700 dark:text-slate-300">₹{s.mean.toFixed(0)}</strong></p>
+                      <p>{t('price_range_label', 'Price range')}: <strong className="text-slate-700 dark:text-slate-300">Ã¢â€šÂ¹{s.minPrice.toFixed(0)} - Ã¢â€šÂ¹{s.maxPrice.toFixed(0)}</strong></p>
+                      <p>{t('avg_cost_label', 'Avg cost')}: <strong className="text-slate-700 dark:text-slate-300">Ã¢â€šÂ¹{s.mean.toFixed(0)}</strong></p>
                       <p>
                         {t('change_since_first_label', 'Change since first purchase')}:{' '}
                         <strong className={s.priceChangePct >= 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}>

@@ -99,7 +99,7 @@ export const ServiceRequestTypesManager: React.FC = () => {
     const ok = await saveSystemServiceRequestTypeInDB({ category, label });
     setSavingType(false);
     if (ok) {
-      flash('success', 'Request type added — changes cascade to all properties immediately');
+      flash('success', 'Request type added â€” changes cascade to all properties immediately');
       setNewTypeLabel('');
       setNewTypeCategory(STANDARD_CATEGORIES[0]);
       loadItems();
@@ -202,7 +202,7 @@ export const ServiceRequestTypesManager: React.FC = () => {
                 <h4 className="service-request-types-manager__category-heading text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 mb-2">{category}</h4>
                 <div className="service-request-types-manager__type-list space-y-1.5">
                   {items.filter((item) => item.category === category).map((item) => (
-                    <div key={item.id} className="service-request-types-manager__type-item flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700">
+                    <div key={item.id} className="service-request-types-manager__type-item flex items-center justify-between gap-2 p-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700">
                       {editingTypeId === item.id ? (
                         <div className="service-request-types-manager__type-item-edit flex items-center gap-2 w-full">
                           <input

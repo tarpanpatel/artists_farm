@@ -254,9 +254,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
         <div className="absolute -top-32 -left-32 w-80 h-80 bg-blue-500/10 dark:bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-32 -right-32 w-80 h-80 bg-indigo-500/10 dark:bg-indigo-600/20 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="login-page__card relative max-w-md w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-950/60 border border-slate-200/80 dark:border-slate-800 p-8 sm:p-9 transition-all">
+        <div className="login-page__card relative max-w-md w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-lg shadow-xl shadow-slate-200/50 dark:shadow-slate-950/60 border border-slate-200/80 dark:border-slate-800 p-8 sm:p-9 transition-all">
           <div className="flex justify-center mb-5">
-            <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl shadow-lg shadow-blue-500/25 ring-4 ring-blue-500/10">
+            <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg shadow-lg shadow-blue-500/25 ring-4 ring-blue-500/10">
               <Mail className="w-7 h-7 text-white" />
             </div>
           </div>
@@ -272,7 +272,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
 
           <form onSubmit={handleRequestLoginInfo} className="app-form app-form--request-login-info space-y-4">
             {forgotResult && (
-              <div className={`flex gap-3 p-3 rounded-xl border ${
+              <div className={`flex gap-3 p-3 rounded-lg border ${
                 forgotResult.type === 'success'
                   ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800'
                   : 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'
@@ -307,7 +307,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
                     setForgotResult(null);
                   }}
                   placeholder={t('mobile_number_placeholder', '10-digit mobile number')}
-                  className="w-full h-11 pl-[72px] pr-4 bg-slate-50/80 dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 rounded-xl text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 transition-all outline-none"
+                  className="w-full h-11 pl-[72px] pr-4 bg-slate-50/80 dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 rounded-lg text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 transition-all outline-none"
                   disabled={isSendingLoginInfo}
                   autoFocus
                 />
@@ -317,7 +317,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
             <button
               type="submit"
               disabled={isSendingLoginInfo || forgotMobile.length === 0}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:from-blue-800 active:to-indigo-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2.5 px-4 rounded-xl shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2 cursor-pointer select-none"
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:from-blue-800 active:to-indigo-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2.5 px-4 rounded-lg shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2 cursor-pointer select-none"
             >
               {isSendingLoginInfo ? (
                 <>
@@ -355,9 +355,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
         <div className="absolute -top-32 -left-32 w-80 h-80 bg-amber-500/10 dark:bg-amber-600/20 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-32 -right-32 w-80 h-80 bg-orange-500/10 dark:bg-orange-600/20 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="login-page__card relative max-w-md w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-950/60 border border-slate-200/80 dark:border-slate-800 p-8 sm:p-9 transition-all">
+        <div className="login-page__card relative max-w-md w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-lg shadow-xl shadow-slate-200/50 dark:shadow-slate-950/60 border border-slate-200/80 dark:border-slate-800 p-8 sm:p-9 transition-all">
           <div className="flex justify-center mb-5">
-            <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl shadow-lg shadow-amber-500/25 ring-4 ring-amber-500/10">
+            <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-amber-500 to-orange-600 rounded-lg shadow-lg shadow-amber-500/25 ring-4 ring-amber-500/10">
               <ShieldCheck className="w-7 h-7 text-white" />
             </div>
           </div>
@@ -373,7 +373,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
 
           <form onSubmit={handleSetNewPasscode} className="app-form app-form--set-passcode space-y-4">
             {error && (
-              <div className="flex gap-3 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl">
+              <div className="flex gap-3 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
                 <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
                 <p className="text-xs font-medium text-red-800 dark:text-red-300">{error}</p>
               </div>
@@ -392,11 +392,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
                   type="password"
                   value={newPasscode}
                   onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="••••••"
+                  placeholder="Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢"
                   maxLength={6}
                   inputMode="numeric"
                   autoFocus
-                  className="w-full h-11 pl-[72px] pr-4 bg-slate-50/80 dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-amber-500 dark:focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15 rounded-xl text-left text-sm tracking-[0.25em] font-mono text-slate-900 dark:text-white placeholder:text-slate-400 transition-all outline-none"
+                  className="w-full h-11 pl-[72px] pr-4 bg-slate-50/80 dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-amber-500 dark:focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15 rounded-lg text-left text-sm tracking-[0.25em] font-mono text-slate-900 dark:text-white placeholder:text-slate-400 transition-all outline-none"
                   disabled={isSavingPasscode}
                 />
               </div>
@@ -415,10 +415,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
                   type="password"
                   value={confirmPasscode}
                   onChange={(e) => setConfirmPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="••••••"
+                  placeholder="Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢"
                   maxLength={6}
                   inputMode="numeric"
-                  className="w-full h-11 pl-[72px] pr-4 bg-slate-50/80 dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-amber-500 dark:focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15 rounded-xl text-left text-sm tracking-[0.25em] font-mono text-slate-900 dark:text-white placeholder:text-slate-400 transition-all outline-none"
+                  className="w-full h-11 pl-[72px] pr-4 bg-slate-50/80 dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-amber-500 dark:focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15 rounded-lg text-left text-sm tracking-[0.25em] font-mono text-slate-900 dark:text-white placeholder:text-slate-400 transition-all outline-none"
                   disabled={isSavingPasscode}
                 />
               </div>
@@ -427,7 +427,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
             <button
               type="submit"
               disabled={isSavingPasscode || newPasscode.length !== 6 || confirmPasscode.length !== 6}
-              className="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 active:from-amber-800 active:to-orange-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2.5 px-4 rounded-xl shadow-md shadow-amber-500/20 hover:shadow-lg hover:shadow-amber-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2 cursor-pointer select-none"
+              className="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 active:from-amber-800 active:to-orange-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2.5 px-4 rounded-lg shadow-md shadow-amber-500/20 hover:shadow-lg hover:shadow-amber-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2 cursor-pointer select-none"
             >
               {isSavingPasscode ? (
                 <>
@@ -452,10 +452,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
       <div className="absolute -top-32 -left-32 w-80 h-80 bg-blue-500/10 dark:bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -right-32 w-80 h-80 bg-indigo-500/10 dark:bg-indigo-600/20 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="login-page__card relative max-w-md w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-950/60 border border-slate-200/80 dark:border-slate-800 p-8 sm:p-9 transition-all">
+      <div className="login-page__card relative max-w-md w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-lg shadow-xl shadow-slate-200/50 dark:shadow-slate-950/60 border border-slate-200/80 dark:border-slate-800 p-8 sm:p-9 transition-all">
         {/* Brand Icon */}
         <div className="flex justify-center mb-5">
-          <div className="relative inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg shadow-blue-500/25 ring-4 ring-blue-500/10">
+          <div className="relative inline-flex items-center justify-center w-16 h-16 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg shadow-blue-500/25 ring-4 ring-blue-500/10">
             {isTerminal ? (
               <Lock className="w-8 h-8 text-white stroke-[2.2]" />
             ) : (
@@ -477,7 +477,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
         {/* Login Form */}
         <form onSubmit={handleLogin} ref={loginFormRef} className="app-form app-form--login space-y-4">
           {error && (
-            <Alert color="failure" icon={AlertCircle} className="rounded-xl">
+            <Alert color="failure" icon={AlertCircle} className="rounded-lg">
               <span>{error}</span>
             </Alert>
           )}
@@ -497,7 +497,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
                 value={mobileNumber}
                 onChange={handleMobileChange}
                 placeholder={t('mobile_number_placeholder', '10-digit mobile number')}
-                className="w-full h-11 pl-[72px] pr-4 bg-slate-50/80 dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 rounded-xl text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 transition-all outline-none"
+                className="w-full h-11 pl-[72px] pr-4 bg-slate-50/80 dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 rounded-lg text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 transition-all outline-none"
                 disabled={isLoading}
                 autoFocus
                 autoComplete="username"
@@ -535,10 +535,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
                 type="password"
                 value={passcode}
                 onChange={handlePasscodeChange}
-                placeholder="••••••"
+                placeholder="Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢"
                 maxLength={6}
                 inputMode="numeric"
-                className="w-full h-11 pl-[72px] pr-4 bg-slate-50/80 dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 rounded-xl text-left text-sm tracking-[0.25em] font-mono text-slate-900 dark:text-white placeholder:text-slate-400 placeholder:tracking-normal transition-all outline-none"
+                className="w-full h-11 pl-[72px] pr-4 bg-slate-50/80 dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 rounded-lg text-left text-sm tracking-[0.25em] font-mono text-slate-900 dark:text-white placeholder:text-slate-400 placeholder:tracking-normal transition-all outline-none"
                 disabled={isLoading}
                 autoComplete="current-password"
                 ref={passcodeInputRef}
@@ -554,7 +554,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
                   key={num}
                   type="button"
                   onClick={() => handlePasscodeKey(num)}
-                  className="login-page__key login-page__key--number py-3 text-lg font-semibold bg-slate-50/80 dark:bg-slate-800/80 text-slate-800 dark:text-white rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:border-blue-300 hover:text-blue-600 transition-colors active:scale-95 cursor-pointer"
+                  className="login-page__key login-page__key--number py-3 text-lg font-semibold bg-slate-50/80 dark:bg-slate-800/80 text-slate-800 dark:text-white rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:border-blue-300 hover:text-blue-600 transition-colors active:scale-95 cursor-pointer"
                 >
                   {num}
                 </button>
@@ -562,21 +562,21 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
               <button
                 type="button"
                 onClick={handleClear}
-                className="login-page__key login-page__key--clear py-3 text-xs font-semibold bg-slate-50/80 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 transition-colors cursor-pointer"
+                className="login-page__key login-page__key--clear py-3 text-xs font-semibold bg-slate-50/80 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 transition-colors cursor-pointer"
               >
                 {t('clear_keypad_button')}
               </button>
               <button
                 type="button"
                 onClick={() => handlePasscodeKey('0')}
-                className="login-page__key login-page__key--number py-3 text-lg font-semibold bg-slate-50/80 dark:bg-slate-800/80 text-slate-800 dark:text-white rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:border-blue-300 hover:text-blue-600 transition-colors active:scale-95 cursor-pointer"
+                className="login-page__key login-page__key--number py-3 text-lg font-semibold bg-slate-50/80 dark:bg-slate-800/80 text-slate-800 dark:text-white rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:border-blue-300 hover:text-blue-600 transition-colors active:scale-95 cursor-pointer"
               >
                 0
               </button>
               <button
                 type="button"
                 onClick={handleBackspace}
-                className="login-page__key login-page__key--backspace py-3 text-xs font-semibold bg-slate-50/80 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-amber-50 dark:hover:bg-amber-900/30 hover:text-amber-600 transition-colors cursor-pointer"
+                className="login-page__key login-page__key--backspace py-3 text-xs font-semibold bg-slate-50/80 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-amber-50 dark:hover:bg-amber-900/30 hover:text-amber-600 transition-colors cursor-pointer"
               >
                 <Delete className="w-4 h-4 mx-auto" />
               </button>
@@ -588,7 +588,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
             <button
               type="submit"
               disabled={isLoading || mobileNumber.length === 0 || passcode.length === 0}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:from-blue-800 active:to-indigo-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2.5 px-4 rounded-xl shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2 cursor-pointer select-none"
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:from-blue-800 active:to-indigo-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2.5 px-4 rounded-lg shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2 cursor-pointer select-none"
             >
               {isLoading ? (
                 <>
@@ -609,7 +609,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
         {!isTerminal && (
           <div className="mt-7 pt-5 border-t border-slate-100 dark:border-slate-800/80 text-center space-y-2.5">
             <p className="text-[11px] text-slate-400 dark:text-slate-500">
-              {t('login_footer_copyright', '© 2026 Ground Code. All rights reserved.')}
+              {t('login_footer_copyright', 'Ã‚Â© 2026 Ground Code. All rights reserved.')}
             </p>
             <div>
               <a

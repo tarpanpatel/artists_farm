@@ -113,9 +113,9 @@ export const WalkInTabBillModal: React.FC<WalkInTabBillModalProps> = ({
     }
   };
 
-  const whatsappText = `🧾 *WALK-IN BILL*${bill.label ? `\n👤 *${bill.label}*` : ''}\n━━━━━━━━━━━━━━━━\n${bill.items
-    .map((it: any) => `${it.quantity}x ${it.name} - ₹${it.lineTotal.toFixed(2)}`)
-    .join('\n')}\n━━━━━━━━━━━━━━━━\n💵 *Subtotal:* ₹${bill.subtotal.toFixed(2)}${bill.discount > 0 ? `\n➖ *Discount:* ₹${bill.discount.toFixed(2)}` : ''}${bill.gstEnabled ? `\n➕ *GST (${bill.gstRate}%):* ₹${bill.gstAmount.toFixed(2)}` : ''}\n💰 *Grand Total:* ₹${bill.grandTotal.toFixed(2)}${propertyUpiId ? `\n💳 *Pay via UPI:* ${propertyUpiId}` : ''}\n━━━━━━━━━━━━━━━━\nThank you!`;
+  const whatsappText = `ðŸ§¾ *WALK-IN BILL*${bill.label ? `\nðŸ‘¤ *${bill.label}*` : ''}\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n${bill.items
+    .map((it: any) => `${it.quantity}x ${it.name} - â‚¹${it.lineTotal.toFixed(2)}`)
+    .join('\n')}\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\nðŸ’µ *Subtotal:* â‚¹${bill.subtotal.toFixed(2)}${bill.discount > 0 ? `\nâž– *Discount:* â‚¹${bill.discount.toFixed(2)}` : ''}${bill.gstEnabled ? `\nâž• *GST (${bill.gstRate}%):* â‚¹${bill.gstAmount.toFixed(2)}` : ''}\nðŸ’° *Grand Total:* â‚¹${bill.grandTotal.toFixed(2)}${propertyUpiId ? `\nðŸ’³ *Pay via UPI:* ${propertyUpiId}` : ''}\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\nThank you!`;
 
   return (
     <Modal show onClose={onClose} dismissible={!isSubmitting} size="md" className="z-58 walk-in-tab-bill-modal">
@@ -133,7 +133,7 @@ export const WalkInTabBillModal: React.FC<WalkInTabBillModalProps> = ({
                 {tab.items.map((it, idx) => (
                   <div key={idx} className="flex justify-between text-slate-700 dark:text-slate-300">
                     <span>{it.quantity}x {it.name}</span>
-                    <span className="font-medium">₹{it.lineTotal.toFixed(2)}</span>
+                    <span className="font-medium">â‚¹{it.lineTotal.toFixed(2)}</span>
                   </div>
                 ))}
               </div>
@@ -142,7 +142,7 @@ export const WalkInTabBillModal: React.FC<WalkInTabBillModalProps> = ({
             <div className="border-t border-slate-100 dark:border-slate-700 pt-3 space-y-2 text-sm">
               <div className="flex justify-between text-slate-600 dark:text-slate-400">
                 <span>{t('subtotal_label', 'Subtotal')}</span>
-                <span>₹{subtotal.toFixed(2)}</span>
+                <span>â‚¹{subtotal.toFixed(2)}</span>
               </div>
 
               <div className="flex items-center justify-between gap-3">
@@ -163,7 +163,7 @@ export const WalkInTabBillModal: React.FC<WalkInTabBillModalProps> = ({
               {gstEnabled && (
                 <div className="flex justify-between text-slate-500 dark:text-slate-500 text-xs pl-2">
                   <span>{t('cgst_sgst_label', 'CGST (50%) / SGST (50%):')}</span>
-                  <span>₹{cgstSgst.toFixed(2)} + ₹{cgstSgst.toFixed(2)}</span>
+                  <span>â‚¹{cgstSgst.toFixed(2)} + â‚¹{cgstSgst.toFixed(2)}</span>
                 </div>
               )}
 
@@ -184,7 +184,7 @@ export const WalkInTabBillModal: React.FC<WalkInTabBillModalProps> = ({
 
               <div className="flex justify-between text-base font-bold text-slate-900 dark:text-white pt-2 border-t border-slate-100 dark:border-slate-700">
                 <span>{t('grand_total_label', 'Grand Total')}</span>
-                <span>₹{grandTotal.toFixed(2)}</span>
+                <span>â‚¹{grandTotal.toFixed(2)}</span>
               </div>
             </div>
 
@@ -192,10 +192,10 @@ export const WalkInTabBillModal: React.FC<WalkInTabBillModalProps> = ({
               type="button"
               onClick={handleConfirmBill}
               disabled={isSubmitting}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-semibold text-sm py-2.5 rounded-xl flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-semibold text-sm py-2.5 rounded-lg flex items-center justify-center gap-2 cursor-pointer"
             >
               {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-              {t('confirm_bill_button', 'Confirm & Bill')} - ₹{grandTotal.toFixed(2)}
+              {t('confirm_bill_button', 'Confirm & Bill')} - â‚¹{grandTotal.toFixed(2)}
             </button>
           </div>
         ) : (
@@ -220,7 +220,7 @@ export const WalkInTabBillModal: React.FC<WalkInTabBillModalProps> = ({
               </a>
             </div>
 
-            <div id="walkInBillPrintable" className="bg-white rounded-xl border border-slate-200 p-4 space-y-3 text-xs text-black">
+            <div id="walkInBillPrintable" className="bg-white rounded-lg border border-slate-200 p-4 space-y-3 text-xs text-black">
               <div className="text-center pb-2 border-b border-slate-200">
                 <h3 className="font-extrabold text-base uppercase">{propertyName || 'Ground Code Resort'}</h3>
                 <p className="font-medium">{bill.gstEnabled ? t('tax_invoice_label', 'Tax Invoice') : t('walk_in_bill_title', 'Walk-in Bill')}</p>
@@ -236,7 +236,7 @@ export const WalkInTabBillModal: React.FC<WalkInTabBillModalProps> = ({
                 {bill.items.map((it: any, idx: number) => (
                   <div key={idx} className="flex justify-between">
                     <span>{it.quantity}x {it.name}</span>
-                    <span>₹{it.lineTotal.toFixed(2)}</span>
+                    <span>â‚¹{it.lineTotal.toFixed(2)}</span>
                   </div>
                 ))}
               </div>
@@ -244,23 +244,23 @@ export const WalkInTabBillModal: React.FC<WalkInTabBillModalProps> = ({
               <div className="space-y-1 border-t border-dashed border-slate-300 pt-2">
                 <div className="flex justify-between">
                   <span>{t('subtotal_label', 'Subtotal')}</span>
-                  <span>₹{bill.subtotal.toFixed(2)}</span>
+                  <span>â‚¹{bill.subtotal.toFixed(2)}</span>
                 </div>
                 {bill.discount > 0 && (
                   <div className="flex justify-between">
                     <span>{t('discount_label', 'Discount')}</span>
-                    <span>-₹{bill.discount.toFixed(2)}</span>
+                    <span>-â‚¹{bill.discount.toFixed(2)}</span>
                   </div>
                 )}
                 {bill.gstEnabled && bill.gstAmount > 0 && (
                   <div className="flex justify-between">
                     <span>{t('cgst_split_label', 'CGST (50% split):')} / SGST</span>
-                    <span>₹{bill.gstAmount.toFixed(2)}</span>
+                    <span>â‚¹{bill.gstAmount.toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-sm pt-1 border-t border-slate-200">
                   <span>{t('grand_total_label', 'Grand Total')}</span>
-                  <span>₹{bill.grandTotal.toFixed(2)}</span>
+                  <span>â‚¹{bill.grandTotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-slate-600">
                   <span>{t('payment_method_label', 'Payment Method')}</span>
@@ -276,7 +276,7 @@ export const WalkInTabBillModal: React.FC<WalkInTabBillModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold text-sm py-2.5 rounded-xl cursor-pointer"
+              className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold text-sm py-2.5 rounded-lg cursor-pointer"
             >
               {t('done_button', 'Done')}
             </button>

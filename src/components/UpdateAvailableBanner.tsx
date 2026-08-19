@@ -21,7 +21,7 @@ export const UpdateAvailableBanner: React.FC = () => {
 
   return (
     <div className="update-available-banner fixed bottom-4 left-1/2 -translate-x-1/2 z-[9999] w-[calc(100%-2rem)] max-w-md pointer-events-none">
-      <div className="pointer-events-auto flex items-center gap-3 bg-slate-900 dark:bg-slate-800 text-white px-4 py-3 rounded-xl shadow-lg border border-slate-700 animate-toast-in">
+      <div className="pointer-events-auto flex items-center gap-3 bg-slate-900 dark:bg-slate-800 text-white px-4 py-3 rounded-lg shadow-lg border border-slate-700 animate-toast-in">
         <RefreshCw className="w-4 h-4 text-blue-400 shrink-0" />
         <span className="flex-1 text-xs font-semibold">A new version of the app is available.</span>
         <button
