@@ -222,12 +222,15 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
       onLogAudit?.(`Recorded Cash Handover: ₹${handoverAmount} for ${staffMember.staffName} (handed to ${handedTo})`);
 
       if (onDispatchTelegram) {
-        const fallbackMsg = `🤝 <b>CASH DRAWER CASH HANDOVER</b>\n• Staff: <b>${staffMember.staffName}</b>\n• Amount: <b>₹${Number(handoverAmount).toLocaleString('en-IN')}</b>\n• Handed To: <b>${handedTo}</b>${handoverNotes ? `\n• Notes: ${handoverNotes}` : ''}\n• Net Balance After: <b>₹${(staffMember.netBalance - Number(handoverAmount)).toLocaleString('en-IN')}</b>`;
+        const netAfter = staffMember.netBalance - Number(handoverAmount);
+        const fallbackMsg = `🤝 <b>CASH DRAWER CASH HANDOVER</b>\n• Staff: <b>${staffMember.staffName}</b>\n• Amount: <b>₹${Number(handoverAmount).toLocaleString('en-IN')}</b>\n• Handed To: <b>${handedTo}</b>${handoverNotes ? `\n• Notes: ${handoverNotes}` : ''}\n• Net Balance After: <b>₹${netAfter.toLocaleString('en-IN')}</b>`;
         const templateVars: Record<string, string> = {
           staff_name: staffMember.staffName,
           action_type: 'Cash Handover',
           amount: String(Number(handoverAmount).toLocaleString('en-IN')),
+          handed_to: handedTo,
           remarks: handoverNotes || `Handed to ${handedTo}`,
+          net_balance_after: String(netAfter.toLocaleString('en-IN')),
         };
         const resolved = await resolveTelegramTemplate('finance_drawer_adjustment', templateVars);
         onDispatchTelegram('Cash Drawer', resolved || fallbackMsg, 'finance', undefined, 'finance_drawer_adjustment');
@@ -260,12 +263,15 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
       onLogAudit?.(`Recorded Manual Adjustment: ₹${adjustmentAmount} for ${staffMember.staffName}`);
 
       if (onDispatchTelegram) {
-        const fallbackMsg = `⚙️ <b>CASH DRAWER MANUAL ADJUSTMENT</b>\n• Staff: <b>${staffMember.staffName}</b>\n• Amount: <b>₹${Number(adjustmentAmount).toLocaleString('en-IN')}</b>${adjustmentNotes ? `\n• Notes: ${adjustmentNotes}` : ''}\n• Net Balance After: <b>₹${(staffMember.netBalance + Number(adjustmentAmount)).toLocaleString('en-IN')}</b>`;
+        const netAfter = staffMember.netBalance + Number(adjustmentAmount);
+        const fallbackMsg = `⚙️ <b>CASH DRAWER MANUAL ADJUSTMENT</b>\n• Staff: <b>${staffMember.staffName}</b>\n• Amount: <b>₹${Number(adjustmentAmount).toLocaleString('en-IN')}</b>${adjustmentNotes ? `\n• Notes: ${adjustmentNotes}` : ''}\n• Net Balance After: <b>₹${netAfter.toLocaleString('en-IN')}</b>`;
         const templateVars: Record<string, string> = {
           staff_name: staffMember.staffName,
           action_type: 'Manual Adjustment',
           amount: String(Number(adjustmentAmount).toLocaleString('en-IN')),
+          handed_to: 'N/A',
           remarks: adjustmentNotes || '',
+          net_balance_after: String(netAfter.toLocaleString('en-IN')),
         };
         const resolved = await resolveTelegramTemplate('finance_drawer_adjustment', templateVars);
         onDispatchTelegram('Cash Drawer', resolved || fallbackMsg, 'finance', undefined, 'finance_drawer_adjustment');

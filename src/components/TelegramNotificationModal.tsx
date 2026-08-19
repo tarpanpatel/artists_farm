@@ -182,8 +182,8 @@ const FALLBACK_TEMPLATES: TelegramTemplateExtended[] = [
     eventName: 'Cash Drawer Adjustment',
     category: 'Billing & Financial',
     description: 'Sent to Finance group when cash drawer additions or payouts occur.',
-    variables: ['{staff_name}', '{action_type}', '{remarks}', '{amount}'],
-    template: `<b>FINANCIAL TRANSACTION (DRAWER ADJUSTMENT)</b>\n━━━━━━━━━━━━━━━━━━\n<b>Staff Handler:</b> {staff_name}\n<b>Action Type:</b> {action_type}\n<b>Remarks:</b> {remarks}\n━━━━━━━━━━━━━━━━━━\n<b>AMOUNT MOVEMENT: ₹{amount}</b>`,
+    variables: ['{staff_name}', '{action_type}', '{amount}', '{handed_to}', '{remarks}', '{net_balance_after}'],
+    template: `🏧 <b>FINANCIAL TRANSACTION (DRAWER ADJUSTMENT)</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Staff Handler:</b> {staff_name}\n🔄 <b>Action Type:</b> {action_type}\n🤝 <b>Handed To:</b> {handed_to}\n📝 <b>Remarks:</b> {remarks}\n💰 <b>Amount Movement:</b> ₹{amount}\n━━━━━━━━━━━━━━━━━━\n📊 <b>Net Balance After: ₹{net_balance_after}</b>`,
     buttons: [
       [{ id: 'b1', text: '📊 Open Cash Drawer Logs', callback_data: 'view_cash_drawer' }]
     ]
