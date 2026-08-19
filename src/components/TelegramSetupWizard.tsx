@@ -16,6 +16,7 @@ import {
   Save,
   Lightbulb,
 } from 'lucide-react';
+import { Modal, ModalHeader, ModalBody, ModalFooter } from 'flowbite-react';
 import { Input } from './Input';
 import {
   fetchTelegramBotIdentity,
@@ -290,33 +291,26 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
     goNext();
   };
 
-  if (!isOpen) return null;
-
   const isLastStep = currentIndex === STEPS.length - 1;
   const isConnected = currentState.status === 'connected' || currentState.chatId !== null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 telegram-setup-wizard__root">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg border border-slate-200 dark:border-slate-700 flex flex-col max-h-[90vh]">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-sky-50 dark:bg-sky-950 border border-sky-200 dark:border-sky-800 flex items-center justify-center text-sky-600 dark:text-sky-400">
-              <Rocket className="w-4.5 h-4.5" />
-            </div>
-            <div>
-              <h2 className="telegram-setup-wizard__title text-base font-semibold text-slate-900 dark:text-white m-0">{t('telegram_setup_title', 'Telegram Setup')}</h2>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 m-0">{t('configure_bot_subtitle', 'Configure bot settings and pairing alerts')}</p>
-            </div>
+    // z-60: this wizard can be opened from a screen with another page modal
+    // already behind it, so it needs the "secondary modal above an open page
+    // modal" tier (see the z-index scale note in src/index.css).
+    <Modal show={isOpen} onClose={onClose} dismissible size="lg" className="z-60 telegram-setup-wizard__root">
+      <ModalHeader as="div">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-sky-50 dark:bg-sky-950 border border-sky-200 dark:border-sky-800 flex items-center justify-center text-sky-600 dark:text-sky-400">
+            <Rocket className="w-4.5 h-4.5" />
           </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 flex items-center justify-center transition-colors cursor-pointer"
-          >
-            <X className="w-4.5 h-4.5" />
-          </button>
+          <div>
+            <h2 className="telegram-setup-wizard__title text-base font-semibold text-slate-900 dark:text-white m-0">{t('telegram_setup_title', 'Telegram Setup')}</h2>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 m-0">{t('configure_bot_subtitle', 'Configure bot settings and pairing alerts')}</p>
+          </div>
         </div>
-
+      </ModalHeader>
+      <ModalBody className="p-0 flex flex-col max-h-[75vh]">
         {/* Progress Navigation */}
         <div className="flex items-center justify-center gap-2 px-6 pt-5 pb-2">
           {STEPS.map((step, idx) => {
@@ -633,35 +627,33 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
             </>
           )}
         </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between p-4 border-t border-slate-200 dark:border-slate-800">
-          <button
-            onClick={goBack}
-            disabled={currentIndex === 0}
-            className="text-xs font-semibold text-slate-500 dark:text-slate-400 disabled:opacity-0 flex items-center gap-1 cursor-pointer"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" /> {t('back_button', 'Back')}
-          </button>
-          <div className="flex items-center gap-3">
-            {currentStep.key !== 'settings' && !isConnected && (
-              <button
-                onClick={skipStep}
-                className="text-xs font-semibold text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer"
-              >
-                {t('skip_for_now_button', 'Skip for now')}
-              </button>
-            )}
+      </ModalBody>
+      <ModalFooter className="justify-between">
+        <button
+          onClick={goBack}
+          disabled={currentIndex === 0}
+          className="text-xs font-semibold text-slate-500 dark:text-slate-400 disabled:opacity-0 flex items-center gap-1 cursor-pointer"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" /> {t('back_button', 'Back')}
+        </button>
+        <div className="flex items-center gap-3">
+          {currentStep.key !== 'settings' && !isConnected && (
             <button
-              onClick={goNext}
-              className="bg-sky-600 hover:bg-sky-500 disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-semibold text-xs px-4 py-2 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer"
+              onClick={skipStep}
+              className="text-xs font-semibold text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer"
             >
-              {isLastStep ? t('finish_button', 'Finish') : t('next_button', 'Next')} <ArrowRight className="w-3.5 h-3.5" />
+              {t('skip_for_now_button', 'Skip for now')}
             </button>
-          </div>
+          )}
+          <button
+            onClick={goNext}
+            className="bg-sky-600 hover:bg-sky-500 disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-semibold text-xs px-4 py-2 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer"
+          >
+            {isLastStep ? t('finish_button', 'Finish') : t('next_button', 'Next')} <ArrowRight className="w-3.5 h-3.5" />
+          </button>
         </div>
-      </div>
-    </div>
+      </ModalFooter>
+    </Modal>
   );
 };
 

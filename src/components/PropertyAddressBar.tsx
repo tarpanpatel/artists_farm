@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { MapPin, Pencil, Loader2, CheckCircle2, X, ExternalLink, Building2 } from 'lucide-react';
+import { MapPin, Pencil, Loader2, CheckCircle2, ExternalLink, Building2 } from 'lucide-react';
+import { Modal, ModalHeader, ModalBody, ModalFooter } from 'flowbite-react';
 import { useAuth } from '../contexts/AuthContext';
 import { t } from '../i18n/en';
 import { Input } from './Input';
 import { Textarea } from './Textarea';
+import { Button } from './Button';
 
 interface PropertyAddressBarProps {
   address: string;
@@ -93,68 +95,56 @@ export const PropertyAddressBar: React.FC<PropertyAddressBarProps> = ({
         <p className="mt-1 px-1 text-xs text-slate-400 dark:text-slate-500 whitespace-pre-line property-address-bar__instructions">{instructions}</p>
       )}
 
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 property-address-bar__modal-backdrop">
-          <div className="absolute inset-0 bg-black/50 property-address-bar__overlay" onClick={() => !isSaving && setIsModalOpen(false)} />
-          <div className="relative bg-white dark:bg-slate-800 rounded-lg shadow-2xl w-full max-w-md p-6 property-address-bar__modal">
-            <div className="flex items-center justify-between mb-4 property-address-bar__modal-header">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2 property-address-bar__modal-title">
-                <Building2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                {t('property_details_header', 'Property Details')}
-              </h2>
-              <button
-                onClick={() => !isSaving && setIsModalOpen(false)}
-                className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer property-address-bar__modal-close"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="space-y-4 property-address-bar__modal-body">
-              <Input
-                label={t('address_label', 'Address')}
-                value={editAddress}
-                onChange={(e) => setEditAddress(e.target.value)}
-                placeholder={t('full_property_address_placeholder', 'Full property address')}
-                autoFocus
-              />
-              <Input
-                label={t('google_maps_link_optional_label', 'Google Maps Link (optional)')}
-                value={editMapsLink}
-                onChange={(e) => setEditMapsLink(e.target.value)}
-                placeholder={t('google_maps_link_placeholder', 'https://maps.app.goo.gl/...')}
-              />
-              <div className="property-address-bar__instructions-field">
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('instructions_label', 'Instructions')}</label>
-                <Textarea
-                  rows={4}
-                  value={editInstructions}
-                  onChange={(e) => setEditInstructions(e.target.value)}
-                  placeholder={t('instructions_placeholder', 'e.g. How to reach, check-in instructions, parking notes…')}
-                  className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y"
-                />
-              </div>
-            </div>
-            <div className="flex items-center gap-2 mt-5 property-address-bar__modal-footer">
-              <button
-                onClick={handleSave}
-                disabled={isSaving || !editAddress.trim()}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer property-address-bar__save-btn"
-              >
-                {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-                {t('save_address_button', 'Save Address')}
-              </button>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                disabled={isSaving}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 disabled:opacity-50 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer property-address-bar__cancel-btn"
-              >
-                <X className="w-3.5 h-3.5" />
-                {t('cancel_button', 'Cancel')}
-              </button>
-            </div>
+      <Modal
+        show={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        dismissible={!isSaving}
+        className="z-58 property-address-bar__modal"
+      >
+        <ModalHeader as="div">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2 property-address-bar__modal-title">
+            <Building2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+            {t('property_details_header', 'Property Details')}
+          </h2>
+        </ModalHeader>
+        <ModalBody className="space-y-4 property-address-bar__modal-body">
+          <Input
+            label={t('address_label', 'Address')}
+            value={editAddress}
+            onChange={(e) => setEditAddress(e.target.value)}
+            placeholder={t('full_property_address_placeholder', 'Full property address')}
+            autoFocus
+          />
+          <Input
+            label={t('google_maps_link_optional_label', 'Google Maps Link (optional)')}
+            value={editMapsLink}
+            onChange={(e) => setEditMapsLink(e.target.value)}
+            placeholder={t('google_maps_link_placeholder', 'https://maps.app.goo.gl/...')}
+          />
+          <div className="property-address-bar__instructions-field">
+            <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('instructions_label', 'Instructions')}</label>
+            <Textarea
+              rows={4}
+              value={editInstructions}
+              onChange={(e) => setEditInstructions(e.target.value)}
+              placeholder={t('instructions_placeholder', 'e.g. How to reach, check-in instructions, parking notes…')}
+              className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y"
+            />
           </div>
-        </div>
-      )}
+        </ModalBody>
+        <ModalFooter className="property-address-bar__modal-footer">
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleSave}
+            disabled={isSaving || !editAddress.trim()}
+            leftIcon={isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+            className="property-address-bar__save-btn"
+          >
+            {t('save_address_button', 'Save Address')}
+          </Button>
+        </ModalFooter>
+      </Modal>
     </>
   );
 };

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Modal } from 'flowbite-react';
 import {
   Send,
   ShieldCheck,
@@ -1521,10 +1522,10 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
   }
 
   return (
-    <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-2 sm:p-4 z-50 telegram-notification-modal__root">
+    <Modal show={isOpen ?? true} onClose={onClose} className="z-58 items-end sm:items-center telegram-notification-modal__root" size="4xl" dismissible>
       {contentBody}
       {setupWizard}
-    </div>
+    </Modal>
   );
 };
 

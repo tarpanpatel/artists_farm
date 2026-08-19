@@ -1,11 +1,55 @@
 @import "tailwindcss";
-@import "./theme-overrides.css";
+/* theme-overrides.css (per-tenant color remapping via --color-primary etc.)
+   deliberately disabled 19 Aug 2026 - the app is standardizing on Flowbite's
+   stock palette everywhere, not per-tenant re-tinted colors. File kept on
+   disk rather than deleted in case this is reversed later. */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Global: base font size 14px so 1rem = 14px */
-html {
-  font-size: 14px;
-}
+/* Flowbite migration (started 19 Aug 2026, see CLAUDE.md "Component Library").
+   Both packages are installed deliberately, not redundantly: flowbite-react's
+   plugin provides the classic Tailwind palette tokens (gray-*, blue-*, etc.)
+   that flowbite-react's own components rely on; the core flowbite plugin
+   additionally adds base-element styling (form inputs, checkboxes, tooltips,
+   datatables, charts) needed for any Flowbite component that has no
+   flowbite-react wrapper (e.g. Bottom Navigation, which flowbite-react
+   doesn't ship at all - checked its full component list). */
+@plugin "flowbite-react/plugin/tailwindcss";
+@plugin "flowbite/plugin";
+@source "../node_modules/flowbite";
+
+/* flowbite-datepicker (the vanilla-JS lib flowbite's own docs site uses for
+   its "Date Range Picker" demo - flowbite-react ships no range-picker
+   component at all) bakes real Flowbite utility classnames directly into its
+   JS template strings (js/picker/templates/*.js), e.g. "bg-brand
+   hover:bg-brand-strong rounded-base". Those files live in node_modules, so
+   Tailwind's scanner won't see them without this @source - without it every
+   class the picker's own JS renders generates no CSS and the popup shows up
+   completely unstyled. Used by src/components/DateRangePicker.tsx. */
+@source "../node_modules/flowbite-datepicker";
+
+/* plugin.js above only REFERENCES semantic tokens like var(--color-brand) in
+   its base styles - it never defines them. This is the piece that actually
+   defines them (via a real @theme block, including a .dark override block),
+   which is what makes bg-brand/text-fg-brand/border-default/rounded-base/etc.
+   resolve to real Tailwind utility classes at all. Without this import those
+   classes generate no CSS and every Flowbite-token-styled element renders
+   completely unstyled - confirmed 19 Aug 2026 by reading flowbite/plugin.js
+   directly (it only has var() references, no @theme definitions) and cross-
+   checking against flowbite/src/themes/default.css, which does. */
+@import "flowbite/src/themes/default";
+
+/* Root font-size deliberately left at the browser default (16px, so
+   1rem = 16px) - this used to be forced to 14px, which shrank every
+   rem-based Tailwind/Flowbite utility (padding, gaps, border-radius, text)
+   by 12.5% app-wide, including inside Flowbite's own component internals
+   that live in node_modules and can't be overridden per-component. That
+   was the actual root cause of the app looking systematically smaller/
+   denser than Flowbite's own reference UI no matter how many individual
+   component styles got cleaned up - removed 19 Aug 2026 after confirming
+   via computed-style inspection that Flowbite-rendered elements (badges,
+   inputs) were rendering at scaled-down, non-standard pixel values because
+   of this. If a more compact feel is wanted again, scale specific dense
+   screens individually rather than the whole document root. */
 
 /* ==========================================================================
    Design System Tokens (Buttons & Form Controls)
@@ -226,6 +270,104 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   h1, h2, h3, .heading-tight {
     letter-spacing: -0.02em;
   }
+}
+
+/* Flowbite Datepicker Popover Z-Index & Theme Styling */
+div[datepicker-popover],
+.datepicker-dropdown,
+[inline-datepicker] {
+  z-index: 999999 !important;
+}
+
+.datepicker-picker {
+  background-color: #ffffff !important;
+  border-radius: 1rem !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid #e2e8f0 !important;
+  padding: 1rem !important;
+}
+
+.dark .datepicker-picker {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+  color: #ffffff !important;
+}
+
+.datepicker-header .datepicker-controls button {
+  background-color: transparent !important;
+  border-radius: 0.5rem !important;
+  font-weight: 600 !important;
+  padding: 0.5rem !important;
+}
+
+.datepicker-header .datepicker-controls button:hover {
+  background-color: #f1f5f9 !important;
+}
+
+.dark .datepicker-header .datepicker-controls button:hover {
+  background-color: #334155 !important;
+}
+
+.datepicker-grid {
+  display: grid !important;
+  grid-template-cols: repeat(7, minmax(0, 1fr)) !important;
+  gap: 0.25rem !important;
+}
+
+.datepicker-cell {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 2.25rem !important;
+  width: 2.25rem !important;
+  border-radius: 0.5rem !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+}
+
+.datepicker-cell:hover {
+  background-color: #f1f5f9 !important;
+}
+
+.dark .datepicker-cell:hover {
+  background-color: #334155 !important;
+}
+
+.datepicker-cell.selected,
+.datepicker-cell.range-start,
+.datepicker-cell.range-end {
+  background-color: #1c64f2 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  border-radius: 0.5rem !important;
+}
+
+.datepicker-cell.range {
+  background-color: #ebf5ff !important;
+  color: #1e429f !important;
+  border-radius: 0 !important;
+}
+
+.dark .datepicker-cell.range {
+  background-color: rgba(30, 66, 159, 0.3) !important;
+  color: #a4cafe !important;
+  border-radius: 0 !important;
+}
+
+.datepicker-footer {
+  margin-top: 0.75rem !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 0.5rem !important;
+}
+
+.datepicker-footer button {
+  border-radius: 0.5rem !important;
+  font-weight: 600 !important;
+  padding: 0.375rem 0.75rem !important;
+  font-size: 0.75rem !important;
+  border: 1px solid #cbd5e1 !important;
 }
 
 /* Numeric & Financial Alignment */
@@ -1169,98 +1311,18 @@ html.dark .category-tab-active {
   border-color: #38bdf8;
 }
 
-/* Global Font Weight Mapping: Caps font weights at 600 (semibold) system-wide.
-   Mirrored in the Custom CSS Override (Appearance page) so it can be tuned there. */
-.font-extrabold,
-.font-black,
-strong,
-b,
-h1,
-h2,
-h3,
-h4,
-h5,
-h6,
-label {
-  font-weight: 600;
-}
-
-/* Global Font Size Constraint: No heading or text element across the application can exceed 14px regardless of screen size */
-h1,
-h2,
-h3,
-h4,
-h5,
-h6,
-.text-base,
-.text-lg,
-.text-xl,
-.text-2xl,
-.text-3xl,
-.text-4xl,
-.text-5xl,
-.text-6xl,
-.text-7xl,
-.text-8xl,
-.text-9xl,
-.sm\:text-base,
-.sm\:text-lg,
-.sm\:text-xl,
-.sm\:text-2xl,
-.sm\:text-3xl,
-.sm\:text-4xl,
-.sm\:text-5xl,
-.sm\:text-6xl,
-.sm\:text-7xl,
-.sm\:text-8xl,
-.sm\:text-9xl,
-.md\:text-base,
-.md\:text-lg,
-.md\:text-xl,
-.md\:text-2xl,
-.md\:text-3xl,
-.md\:text-4xl,
-.md\:text-5xl,
-.md\:text-6xl,
-.md\:text-7xl,
-.md\:text-8xl,
-.md\:text-9xl,
-.lg\:text-base,
-.lg\:text-lg,
-.lg\:text-xl,
-.lg\:text-2xl,
-.lg\:text-3xl,
-.lg\:text-4xl,
-.lg\:text-5xl,
-.lg\:text-6xl,
-.lg\:text-7xl,
-.lg\:text-8xl,
-.lg\:text-9xl,
-.xl\:text-base,
-.xl\:text-lg,
-.xl\:text-xl,
-.xl\:text-2xl,
-.xl\:text-3xl,
-.xl\:text-4xl,
-.xl\:text-5xl,
-.xl\:text-6xl,
-.xl\:text-7xl,
-.xl\:text-8xl,
-.xl\:text-9xl,
-.\32 xl\:text-base,
-.\32 xl\:text-lg,
-.\32 xl\:text-xl,
-.\32 xl\:text-2xl,
-.\32 xl\:text-3xl,
-.\32 xl\:text-4xl,
-.\32 xl\:text-5xl,
-.\32 xl\:text-6xl,
-.\32 xl\:text-7xl,
-.\32 xl\:text-8xl,
-.\32 xl\:text-9xl {
-  font-size: 14px;
-  line-height: 1.35;
-}
+/* Global Font Weight Mapping / Font Size Constraint rules (capped every
+   heading and every text-* utility at font-weight 600 / a flat 14px
+   regardless of the actual Tailwind class used, e.g. text-4xl computed the
+   same as text-sm) removed 19 Aug 2026 - confirmed via live computed-style
+   inspection that this was the dominant reason headings/stat numbers could
+   never match Flowbite's real typography scale no matter how many
+   individual component fixes were made, since it silently overrode every
+   text-size utility site-wide, including inside already-correct Flowbite
+   components. Headings/text now render at their real Tailwind size. If the
+   "Custom CSS Override" Appearance-page setting (src/components/
+   CustomCSSOverride.tsx) still documents/mirrors this cap, reconcile that
+   page's copy too - it was described as syncing with this exact rule. */
 
 /* Enforce Uniform Font Family Site-Wide: Ensure every element (including .font-mono, tables, inputs, codes, buttons) uses the exact same primary font family */
 *,

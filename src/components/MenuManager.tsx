@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Modal, ModalHeader, ModalBody, ModalFooter } from 'flowbite-react';
 import { Button } from './Button';
 import { Input } from './Input';
 import {
@@ -13,7 +14,6 @@ import {
   CheckSquare,
   Square,
   Grid,
-  Image as ImageIcon,
   Upload,
   LayoutDashboard,
   Users,
@@ -551,408 +551,373 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
       )}
 
       {/* ICON PICKER MODAL */}
-      {iconPickerTargetId && (
-        <div className="menu-manager__modal-overlay fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="menu-manager__icon-picker-modal bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl p-5 space-y-4">
-            <div className="menu-manager__modal-header flex items-center justify-between border-b border-slate-100 pb-2">
-              <h3 className="menu-manager__modal-title font-semibold text-slate-900 text-sm">{t('select_navigation_icon_heading', 'Select Navigation Icon')}</h3>
-              <button
-                onClick={() => setIconPickerTargetId(null)}
-                className="menu-manager__modal-close w-7 h-7 rounded-lg bg-slate-100 text-slate-400 hover:text-slate-700 flex items-center justify-center cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="menu-manager__icon-grid grid grid-cols-4 gap-3 p-2 bg-slate-50 rounded-xl max-h-80 overflow-y-auto">
-              {AVAILABLE_ICONS.map((item) => {
-                const IconComp = item.icon;
-                return (
-                  <button
-                    key={item.name}
-                    onClick={() => handleSelectIcon(iconPickerTargetId, item.name)}
-                    className="menu-manager__icon-option p-3 bg-white border border-slate-200 hover:border-emerald-500 hover:text-emerald-600 rounded-xl flex flex-col items-center gap-1 transition-all cursor-pointer active:scale-95 shadow-2xs"
-                  >
-                    <IconComp className="w-6 h-6" />
-                    <span className="text-[9px] font-semibold text-slate-500 truncate w-full text-center">
-                      {item.name}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+      <Modal show={Boolean(iconPickerTargetId)} onClose={() => setIconPickerTargetId(null)} className="z-58" size="md" dismissible>
+        <ModalHeader as="div">
+          <span>{t('select_navigation_icon_heading', 'Select Navigation Icon')}</span>
+        </ModalHeader>
+        <ModalBody>
+          <div className="menu-manager__icon-grid grid grid-cols-4 gap-3 p-2 bg-slate-50 dark:bg-slate-900 rounded-xl max-h-80 overflow-y-auto">
+            {AVAILABLE_ICONS.map((item) => {
+              const IconComp = item.icon;
+              return (
+                <button
+                  key={item.name}
+                  onClick={() => handleSelectIcon(iconPickerTargetId!, item.name)}
+                  className="menu-manager__icon-option p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-emerald-500 hover:text-emerald-600 rounded-xl flex flex-col items-center gap-1 transition-all cursor-pointer active:scale-95 shadow-2xs"
+                >
+                  <IconComp className="w-6 h-6" />
+                  <span className="text-[9px] font-semibold text-slate-500 dark:text-slate-400 truncate w-full text-center">
+                    {item.name}
+                  </span>
+                </button>
+              );
+            })}
           </div>
-        </div>
-      )}
+        </ModalBody>
+      </Modal>
 
       {/* ADD / EDIT MAIN MENU ITEM MODAL */}
-      {isNavModalOpen && (
-        <div className="menu-manager__modal-overlay fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="menu-manager__nav-modal bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl p-5 space-y-4">
-            <div className="menu-manager__modal-header flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="menu-manager__modal-title font-semibold text-slate-900 text-base">
-                {editingNavItem ? t('edit_main_menu_item_heading', 'Edit Main Menu Item') : t('add_new_main_menu_item_heading', 'Add New Main Menu Item')}
-              </h3>
-              <button
-                onClick={() => setIsNavModalOpen(false)}
-                className="menu-manager__modal-close w-8 h-8 rounded-lg bg-slate-100 text-slate-400 hover:text-slate-700 flex items-center justify-center cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+      <Modal show={isNavModalOpen} onClose={() => setIsNavModalOpen(false)} className="z-58" size="md" dismissible>
+        <ModalHeader as="div">
+          <span>{editingNavItem ? t('edit_main_menu_item_heading', 'Edit Main Menu Item') : t('add_new_main_menu_item_heading', 'Add New Main Menu Item')}</span>
+        </ModalHeader>
+        <form onSubmit={handleSaveNavItem} className="app-form app-form--save-nav-item menu-manager__nav-form">
+          <ModalBody className="space-y-3.5 text-xs">
+            <div>
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('menu_title_label', 'Menu Title / Label')}</label>
+              <Input
+                type="text"
+                required
+                value={navForm.title}
+                onChange={(e) => setNavForm({ ...navForm, title: e.target.value })}
+                placeholder={t('resident_registration_placeholder', 'e.g. Resident Registration')}
+              />
             </div>
 
-            <form onSubmit={handleSaveNavItem} className="app-form app-form--save-nav-item menu-manager__nav-form space-y-3.5 text-xs">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('menu_title_label', 'Menu Title / Label')}</label>
-                <Input
-                  type="text"
-                  required
-                  value={navForm.title}
-                  onChange={(e) => setNavForm({ ...navForm, title: e.target.value })}
-                  placeholder={t('resident_registration_placeholder', 'e.g. Resident Registration')}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('target_section_tab_label', 'Target Section / Tab')}</label>
-                  <StyledSelect
-                    value={navForm.tabKey}
-                    onChange={(val) => setNavForm({ ...navForm, tabKey: val })}
-                    options={[
-                      { value: 'dashboard', label: 'Dashboard' },
-                      { value: 'guests', label: 'Residents & Billing' },
-                      { value: 'kitchen', label: 'Kitchen & Orders' },
-                      { value: 'inventory', label: 'Inventory & Stock' },
-                      { value: 'petty_cash', label: 'Expenses' },
-                      { value: 'staff', label: 'Staff & HR' },
-                      { value: 'analytics', label: 'Analytics' },
-                      { value: 'audit_logs', label: 'Audit Logs' },
-                      { value: 'menu_manager', label: 'Menu Manager' },
-                      { value: 'telegram', label: 'Telegram Bot' },
-                    ]}
-                  />
-                </div>
-
-                <div>
-                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('category_group_label', 'Category Group')}</label>
-                  <StyledSelect
-                    value={navForm.category}
-                    onChange={(val) => setNavForm({ ...navForm, category: val })}
-                    options={NAV_CATEGORIES.filter((c) => c !== 'All Categories').map((cat) => ({ value: cat, label: cat }))}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('parent_menu_item_label', 'Parent Menu Item (Hierarchy)')}</label>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('target_section_tab_label', 'Target Section / Tab')}</label>
                 <StyledSelect
-                  value={navForm.parentId || ''}
-                  onChange={(val) => setNavForm({ ...navForm, parentId: val || null })}
+                  value={navForm.tabKey}
+                  onChange={(val) => setNavForm({ ...navForm, tabKey: val })}
                   options={[
-                    { value: '', label: t('root_level_no_parent_option', 'Root Level (no parent)') },
-                    ...navItems.filter((i) => i.id !== editingNavItem?.id).map((item) => ({
-                      value: item.id,
-                      label: item.parentId ? `\u00A0\u00A0\u21B3 ${item.title}` : item.title,
-                    })),
+                    { value: 'dashboard', label: 'Dashboard' },
+                    { value: 'guests', label: 'Residents & Billing' },
+                    { value: 'kitchen', label: 'Kitchen & Orders' },
+                    { value: 'inventory', label: 'Inventory & Stock' },
+                    { value: 'petty_cash', label: 'Expenses' },
+                    { value: 'staff', label: 'Staff & HR' },
+                    { value: 'analytics', label: 'Analytics' },
+                    { value: 'audit_logs', label: 'Audit Logs' },
+                    { value: 'menu_manager', label: 'Menu Manager' },
+                    { value: 'telegram', label: 'Telegram Bot' },
                   ]}
                 />
-                <p className="text-[10px] text-slate-400 mt-1">{t('nest_item_hierarchy_help', 'Nest this item under another menu item to create a hierarchy group.')}</p>
               </div>
 
               <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('icon_label', 'Icon')}</label>
-                <div className="grid grid-cols-6 gap-2 p-2 bg-slate-50 rounded-xl border border-slate-200">
-                  {AVAILABLE_ICONS.slice(0, 12).map((item) => {
-                    const IconC = item.icon;
-                    const isSelected = navForm.iconName === item.name;
-                    return (
-                      <button
-                        key={item.name}
-                        type="button"
-                        onClick={() => setNavForm({ ...navForm, iconName: item.name })}
-                        className={`p-2 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
-                          isSelected
-                            ? 'bg-emerald-600 text-white shadow-2xs'
-                            : 'bg-white text-slate-600 hover:bg-slate-200 border border-slate-200'
-                        }`}
-                      >
-                        <IconC className="w-5 h-5" />
-                      </button>
-                    );
-                  })}
-                </div>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('category_group_label', 'Category Group')}</label>
+                <StyledSelect
+                  value={navForm.category}
+                  onChange={(val) => setNavForm({ ...navForm, category: val })}
+                  options={NAV_CATEGORIES.filter((c) => c !== 'All Categories').map((cat) => ({ value: cat, label: cat }))}
+                />
               </div>
+            </div>
 
+            <div>
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('parent_menu_item_label', 'Parent Menu Item (Hierarchy)')}</label>
+              <StyledSelect
+                value={navForm.parentId || ''}
+                onChange={(val) => setNavForm({ ...navForm, parentId: val || null })}
+                options={[
+                  { value: '', label: t('root_level_no_parent_option', 'Root Level (no parent)') },
+                  ...navItems.filter((i) => i.id !== editingNavItem?.id).map((item) => ({
+                    value: item.id,
+                    label: item.parentId ? `\u00A0\u00A0\u21B3 ${item.title}` : item.title,
+                  })),
+                ]}
+              />
+              <p className="text-[10px] text-slate-400 mt-1">{t('nest_item_hierarchy_help', 'Nest this item under another menu item to create a hierarchy group.')}</p>
+            </div>
+
+            <div>
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('icon_label', 'Icon')}</label>
+              <div className="grid grid-cols-6 gap-2 p-2 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
+                {AVAILABLE_ICONS.slice(0, 12).map((item) => {
+                  const IconC = item.icon;
+                  const isSelected = navForm.iconName === item.name;
+                  return (
+                    <button
+                      key={item.name}
+                      type="button"
+                      onClick={() => setNavForm({ ...navForm, iconName: item.name })}
+                      className={`p-2 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-600 text-white shadow-2xs'
+                          : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
+                      }`}
+                    >
+                      <IconC className="w-5 h-5" />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('permitted_roles_rbac_label', 'Permitted Roles (RBAC)')}</label>
+              <div className="menu-manager__role-chips flex flex-wrap gap-1.5">
+                {SYSTEM_ROLES.map((role) => {
+                  const isChecked = navForm.roles.includes(role);
+                  return (
+                    <button
+                      key={role}
+                      type="button"
+                      onClick={() => {
+                        const updatedRoles = isChecked
+                          ? navForm.roles.filter((r) => r !== role)
+                          : [...navForm.roles, role];
+                        setNavForm({ ...navForm, roles: updatedRoles });
+                      }}
+                      className={`menu-manager__role-chip text-[11px] font-semibold px-2.5 py-1 rounded-lg border flex items-center gap-1 transition-all cursor-pointer ${
+                        isChecked
+                          ? 'bg-emerald-50 border-emerald-300 text-emerald-800 dark:bg-emerald-950/40 dark:border-emerald-700 dark:text-emerald-300'
+                          : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'
+                      }`}
+                    >
+                      {isChecked ? (
+                        <CheckSquare className="w-3.5 h-3.5 text-emerald-600" />
+                      ) : (
+                        <Square className="w-3.5 h-3.5 text-slate-300" />
+                      )}
+                      <span>{role}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <label className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={navForm.isVisible}
+                onChange={(e) => setNavForm({ ...navForm, isVisible: e.target.checked })}
+                className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+              />
+              <span className="font-semibold text-slate-800 dark:text-slate-200">{t('visible_in_system_navigation_label', 'Visible in System Navigation')}</span>
+            </label>
+
+            <div className="menu-manager__custom-link-box bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-3 space-y-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{t('custom_link_optional_heading', 'Custom Link (Optional)')}</p>
               <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('permitted_roles_rbac_label', 'Permitted Roles (RBAC)')}</label>
-                <div className="menu-manager__role-chips flex flex-wrap gap-1.5">
-                  {SYSTEM_ROLES.map((role) => {
-                    const isChecked = navForm.roles.includes(role);
-                    return (
-                      <button
-                        key={role}
-                        type="button"
-                        onClick={() => {
-                          const updatedRoles = isChecked
-                            ? navForm.roles.filter((r) => r !== role)
-                            : [...navForm.roles, role];
-                          setNavForm({ ...navForm, roles: updatedRoles });
-                        }}
-                        className={`menu-manager__role-chip text-[11px] font-semibold px-2.5 py-1 rounded-lg border flex items-center gap-1 transition-all cursor-pointer ${
-                          isChecked
-                            ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
-                            : 'bg-white border-slate-200 text-slate-400'
-                        }`}
-                      >
-                        {isChecked ? (
-                          <CheckSquare className="w-3.5 h-3.5 text-emerald-600" />
-                        ) : (
-                          <Square className="w-3.5 h-3.5 text-slate-300" />
-                        )}
-                        <span>{role}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('external_url_custom_link_label', 'External URL / Custom Link')}</label>
+                <Input
+                  type="url"
+                  value={navForm.customUrl}
+                  onChange={(e) => setNavForm({ ...navForm, customUrl: e.target.value })}
+                  placeholder={t('custom_link_url_placeholder', 'e.g. https://example.com or /some/path')}
+                />
+                <p className="text-[10px] text-slate-400 mt-1">{t('custom_link_help', 'If set, clicking this menu item opens this link instead of an internal tab.')}</p>
               </div>
-
-              <label className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer">
+              <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={navForm.isVisible}
-                  onChange={(e) => setNavForm({ ...navForm, isVisible: e.target.checked })}
+                  checked={navForm.openInNewTab}
+                  onChange={(e) => setNavForm({ ...navForm, openInNewTab: e.target.checked })}
                   className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
                 />
-                <span className="font-semibold text-slate-800">{t('visible_in_system_navigation_label', 'Visible in System Navigation')}</span>
+                <span className="font-semibold text-slate-700 dark:text-slate-300 text-xs">{t('open_link_new_browser_tab_label', 'Open link in new browser tab')}</span>
               </label>
-
-              <div className="menu-manager__custom-link-box bg-slate-50 rounded-xl border border-slate-200 p-3 space-y-3">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{t('custom_link_optional_heading', 'Custom Link (Optional)')}</p>
-                <div>
-                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('external_url_custom_link_label', 'External URL / Custom Link')}</label>
-                  <Input
-                    type="url"
-                    value={navForm.customUrl}
-                    onChange={(e) => setNavForm({ ...navForm, customUrl: e.target.value })}
-                    placeholder={t('custom_link_url_placeholder', 'e.g. https://example.com or /some/path')}
-                  />
-                  <p className="text-[10px] text-slate-400 mt-1">{t('custom_link_help', 'If set, clicking this menu item opens this link instead of an internal tab.')}</p>
-                </div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={navForm.openInNewTab}
-                    onChange={(e) => setNavForm({ ...navForm, openInNewTab: e.target.checked })}
-                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
-                  />
-                  <span className="font-semibold text-slate-700 text-xs">{t('open_link_new_browser_tab_label', 'Open link in new browser tab')}</span>
-                </label>
-              </div>
-
-              <div className="menu-manager__modal-footer pt-3 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsNavModalOpen(false)}
-                  className="menu-manager__modal-cancel px-4 py-2 rounded-xl border border-slate-300 font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
-                >
-                  {t('cancel_button', 'Cancel')}
-                </button>
-                <button
-                  type="submit"
-                  className="menu-manager__modal-submit px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-sm cursor-pointer"
-                >
-                  {editingNavItem ? t('save_changes_button', 'Save Changes') : t('create_item_button', 'Create Item')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            </div>
+          </ModalBody>
+          <ModalFooter className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setIsNavModalOpen(false)}
+            >
+              {t('cancel_button', 'Cancel')}
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+            >
+              {editingNavItem ? t('save_changes_button', 'Save Changes') : t('create_item_button', 'Create Item')}
+            </Button>
+          </ModalFooter>
+        </form>
+      </Modal>
 
       {/* ADD/EDIT FOOD ITEM MODAL */}
-      {isAddFoodModalOpen && (
-        <div className="menu-manager__modal-overlay fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="menu-manager__food-modal bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl p-5 space-y-4">
-            <div className="menu-manager__modal-header flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="menu-manager__modal-title font-semibold text-slate-900 text-base">
-                {editingFoodItem ? t('edit_food_menu_item_heading', 'Edit Food Menu Item') : t('add_new_food_menu_item_heading', 'Add New Food Menu Item')}
-              </h3>
-              <button
-                onClick={() => setIsAddFoodModalOpen(false)}
-                className="menu-manager__modal-close w-8 h-8 rounded-lg bg-slate-100 text-slate-400 hover:text-slate-700 flex items-center justify-center cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+      <Modal show={isAddFoodModalOpen} onClose={() => setIsAddFoodModalOpen(false)} className="z-58" size="md" dismissible>
+        <ModalHeader as="div">
+          <span>{editingFoodItem ? t('edit_food_menu_item_heading', 'Edit Food Menu Item') : t('add_new_food_menu_item_heading', 'Add New Food Menu Item')}</span>
+        </ModalHeader>
+        <form onSubmit={handleSaveFoodItem} className="app-form app-form--save-food-item menu-manager__food-form">
+          <ModalBody className="space-y-3 text-xs">
+            <div>
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('item_title_name_label', 'Item Title / Name')}</label>
+              <Input
+                type="text"
+                required
+                value={foodForm.name}
+                onChange={(e) => setFoodForm({ ...foodForm, name: e.target.value })}
+                placeholder={t('paneer_butter_masala_placeholder', 'e.g. Paneer Butter Masala')}
+              />
             </div>
 
-            <form onSubmit={handleSaveFoodItem} className="app-form app-form--save-food-item menu-manager__food-form space-y-3 text-xs">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('item_title_name_label', 'Item Title / Name')}</label>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('menu_category_label', 'Category')}</label>
+                <StyledSelect
+                  value={foodForm.category}
+                  onChange={(val) => setFoodForm({ ...foodForm, category: val })}
+                  options={foodCategories.filter((c) => c !== 'All').map((cat) => ({ value: cat, label: cat }))}
+                />
+              </div>
+
+              <div>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('price_rupees_label', 'Price (₹)')}</label>
                 <Input
-                  type="text"
+                  type="number"
+                  min="0"
+                  step="1"
                   required
-                  value={foodForm.name}
-                  onChange={(e) => setFoodForm({ ...foodForm, name: e.target.value })}
-                  placeholder={t('paneer_butter_masala_placeholder', 'e.g. Paneer Butter Masala')}
+                  value={foodForm.price}
+                  onChange={(e) => setFoodForm({ ...foodForm, price: Number(e.target.value) })}
                 />
               </div>
+            </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('menu_category_label', 'Category')}</label>
-                  <StyledSelect
-                    value={foodForm.category}
-                    onChange={(val) => setFoodForm({ ...foodForm, category: val })}
-                    options={foodCategories.filter((c) => c !== 'All').map((cat) => ({ value: cat, label: cat }))}
-                  />
-                </div>
-
-                <div>
-                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('price_rupees_label', 'Price (₹)')}</label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="1"
-                    required
-                    value={foodForm.price}
-                    onChange={(e) => setFoodForm({ ...foodForm, price: Number(e.target.value) })}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('item_image_upload_url_label', 'Item Image Upload / URL')}</label>
-                <div className="menu-manager__field space-y-2">
-                  <div className="menu-manager__upload-row flex items-center gap-2">
-                    <label className="menu-manager__upload-btn bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-2 rounded-xl cursor-pointer flex items-center gap-1.5 shadow-2xs text-xs shrink-0 transition-all">
-                      <Upload className="w-4 h-4" />
-                      <span>{t('upload_image_button', 'Upload Image')}</span>
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            const reader = new FileReader();
-                            reader.onloadend = () => {
-                              setFoodForm({ ...foodForm, imagePath: reader.result as string });
-                            };
-                            reader.readAsDataURL(file);
-                          }
-                        }}
-                      />
-                    </label>
-
+            <div>
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('item_image_upload_url_label', 'Item Image Upload / URL')}</label>
+              <div className="menu-manager__field space-y-2">
+                <div className="menu-manager__upload-row flex items-center gap-2">
+                  <label className="menu-manager__upload-btn bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-2 rounded-xl cursor-pointer flex items-center gap-1.5 shadow-2xs text-xs shrink-0 transition-all">
+                    <Upload className="w-4 h-4" />
+                    <span>{t('upload_image_button', 'Upload Image')}</span>
                     <Input
-                      type="text"
-                      value={foodForm.imagePath}
-                      onChange={(e) => setFoodForm({ ...foodForm, imagePath: e.target.value })}
-                      placeholder={t('or_enter_image_url_placeholder', 'Or enter image URL / asset path...')}
-                      className="flex-1"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setFoodForm({ ...foodForm, imagePath: reader.result as string });
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
                     />
-                  </div>
+                  </label>
 
-                  {/* Image Preview Box */}
-                  {foodForm.imagePath && (
-                    <div className="menu-manager__preview relative w-20 h-20 rounded-xl overflow-hidden border border-slate-300 bg-slate-50">
-                      <img
-                        src={foodForm.imagePath}
-                        alt="Preview"
-                        className="w-full h-full object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setFoodForm({ ...foodForm, imagePath: '' })}
-                        className="menu-manager__preview-remove absolute top-1 right-1 bg-slate-900/80 text-white p-0.5 rounded-full hover:bg-slate-900 cursor-pointer"
-                        title={t('remove_image_tooltip', 'Remove Image')}
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  )}
+                  <Input
+                    type="text"
+                    value={foodForm.imagePath}
+                    onChange={(e) => setFoodForm({ ...foodForm, imagePath: e.target.value })}
+                    placeholder={t('or_enter_image_url_placeholder', 'Or enter image URL / asset path...')}
+                    className="flex-1"
+                  />
                 </div>
-              </div>
 
-              <label className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={foodForm.available}
-                  onChange={(e) => setFoodForm({ ...foodForm, available: e.target.checked })}
-                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
-                />
-                <span className="font-semibold text-slate-800">{t('item_currently_available_label', 'Item Currently Available in Kitchen')}</span>
-              </label>
-
-              <div className="menu-manager__modal-footer pt-3 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsAddFoodModalOpen(false)}
-                  className="menu-manager__modal-cancel px-4 py-2 rounded-xl border border-slate-300 font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
-                >
-                  {t('cancel_button', 'Cancel')}
-                </button>
-                <button
-                  type="submit"
-                  className="menu-manager__modal-submit px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-sm cursor-pointer"
-                >
-                  {editingFoodItem ? t('save_changes_button', 'Save Changes') : t('create_item_button', 'Create Item')}
-                </button>
+                {/* Image Preview Box */}
+                {foodForm.imagePath && (
+                  <div className="menu-manager__preview relative w-20 h-20 rounded-xl overflow-hidden border border-slate-300 bg-slate-50">
+                    <img
+                      src={foodForm.imagePath}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setFoodForm({ ...foodForm, imagePath: '' })}
+                      className="menu-manager__preview-remove absolute top-1 right-1 bg-slate-900/80 text-white p-0.5 rounded-full hover:bg-slate-900 cursor-pointer"
+                      title={t('remove_image_tooltip', 'Remove Image')}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+            </div>
+
+            <label className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={foodForm.available}
+                onChange={(e) => setFoodForm({ ...foodForm, available: e.target.checked })}
+                className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+              />
+              <span className="font-semibold text-slate-800 dark:text-slate-200">{t('item_currently_available_label', 'Item Currently Available in Kitchen')}</span>
+            </label>
+          </ModalBody>
+          <ModalFooter className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setIsAddFoodModalOpen(false)}
+            >
+              {t('cancel_button', 'Cancel')}
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+            >
+              {editingFoodItem ? t('save_changes_button', 'Save Changes') : t('create_item_button', 'Create Item')}
+            </Button>
+          </ModalFooter>
+        </form>
+      </Modal>
 
       {/* PASSCODE VERIFICATION MODAL */}
-      {passcodeModalOpen && (
-        <div className="menu-manager__modal-overlay fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="menu-manager__passcode-modal bg-white rounded-2xl max-w-sm w-full border border-slate-200 shadow-2xl p-6 space-y-4">
-            <div className="menu-manager__passcode-heading flex items-center gap-3">
-              <div className="menu-manager__passcode-icon w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-                <ShieldCheck className="w-5 h-5 text-amber-600" />
-              </div>
-              <div>
-                <h3 className="menu-manager__passcode-title font-semibold text-slate-900 text-sm">{t('passcode_required_heading', 'Passcode Required')}</h3>
-                <p className="menu-manager__passcode-text text-slate-500 text-xs">{t('enter_staff_passcode_message', 'Enter any staff passcode to proceed')}</p>
-              </div>
+      <Modal show={passcodeModalOpen} onClose={() => { setPasscodeModalOpen(false); setPendingPasscodeAction(null); setPasscodeInput(''); setPasscodeError(''); }} className="z-58" size="sm" dismissible>
+        <ModalHeader as="div">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-4 h-4 text-amber-600" />
             </div>
-
-            <Input
-              type="password"
-              autoComplete="new-password"
-              autoFocus
-              maxLength={6}
-              value={passcodeInput}
-              onChange={e => { setPasscodeInput(e.target.value); setPasscodeError(''); }}
-              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleVerifyPasscode(); } }}
-              placeholder={t('enter_passcode_placeholder', 'Enter passcode')}
-              inputMode="numeric"
-              className="text-center"
-            />
-
-            {passcodeError && (
-              <p className="menu-manager__passcode-error text-red-500 text-xs font-semibold text-center">{passcodeError}</p>
-            )}
-
-            <div className="menu-manager__passcode-actions flex justify-end gap-2">
-              <button
-                onClick={() => { setPasscodeModalOpen(false); setPendingPasscodeAction(null); setPasscodeInput(''); setPasscodeError(''); }}
-                className="menu-manager__passcode-cancel px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold text-xs cursor-pointer transition-colors"
-              >
-                {t('cancel_button', 'Cancel')}
-              </button>
-              <button
-                onClick={handleVerifyPasscode}
-                className="menu-manager__passcode-verify px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-semibold text-xs cursor-pointer transition-colors shadow-sm"
-              >
-                {t('verify_continue_button', 'Verify & Continue')}
-              </button>
+            <div>
+              <h3 className="font-semibold text-slate-900 dark:text-white text-sm">{t('passcode_required_heading', 'Passcode Required')}</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-xs font-normal">{t('enter_staff_passcode_message', 'Enter any staff passcode to proceed')}</p>
             </div>
           </div>
-        </div>
-      )}
+        </ModalHeader>
+        <ModalBody className="space-y-4">
+          <Input
+            type="password"
+            autoComplete="new-password"
+            autoFocus
+            maxLength={6}
+            value={passcodeInput}
+            onChange={e => { setPasscodeInput(e.target.value); setPasscodeError(''); }}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleVerifyPasscode(); } }}
+            placeholder={t('enter_passcode_placeholder', 'Enter passcode')}
+            inputMode="numeric"
+            className="text-center"
+          />
+
+          {passcodeError && (
+            <p className="menu-manager__passcode-error text-red-500 text-xs font-semibold text-center">{passcodeError}</p>
+          )}
+        </ModalBody>
+        <ModalFooter className="flex justify-end gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => { setPasscodeModalOpen(false); setPendingPasscodeAction(null); setPasscodeInput(''); setPasscodeError(''); }}
+          >
+            {t('cancel_button', 'Cancel')}
+          </Button>
+          <Button
+            variant="warning"
+            onClick={handleVerifyPasscode}
+          >
+            {t('verify_continue_button', 'Verify & Continue')}
+          </Button>
+        </ModalFooter>
+      </Modal>
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Progress } from 'flowbite-react';
 import { MapPin, Users, DoorOpen, CheckCircle2, ArrowRight, Loader2, X } from 'lucide-react';
 import { Button } from './Button';
 import { Input } from './Input';
@@ -77,11 +78,8 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
           <p className="text-[11px] text-amber-700 dark:text-amber-300 mt-0.5">{stepsDone} {t('setup_steps_done_of_prefix', 'of')} {totalSteps} {t('setup_steps_done_suffix', 'steps done')}</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="w-28 sm:w-32 h-1.5 bg-amber-200 dark:bg-amber-800 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-amber-500 dark:bg-amber-400 transition-all duration-500"
-              style={{ width: `${(stepsDone / totalSteps) * 100}%` }}
-            />
+          <div className="w-28 sm:w-32">
+            <Progress progress={Math.round((stepsDone / totalSteps) * 100)} color="yellow" size="sm" />
           </div>
           <button
             type="button"

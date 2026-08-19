@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo, useReducer } from 'react';
+import { Modal, ModalHeader, ModalBody, ModalFooter, Card, TextInput, Label, Checkbox } from 'flowbite-react';
+import { Button } from './Button';
 import { X, Search, Edit2, FileText, ImageIcon, Landmark, Loader2, Clock, User, Scale, Building2, FolderOpen, Camera, Plus, Trash2, Settings } from 'lucide-react';
 import DataTable from 'react-data-table-component';
 import { PettyCashEntry } from '../types';
@@ -123,7 +125,6 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     kitchenUnit: '',
     isStaffAdvanceChecked: true,
   }));
-  const isAmountEntered = Boolean(formState.amount && Number(formState.amount) > 0);
   const [financialHandlers, setFinancialHandlers] = useState<any[]>(staff.filter(u => u.isFinancialHandler));
   const { inventory } = useInventoryContext();
 
@@ -327,28 +328,6 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       setIsSavingCustomItem(false);
     }
   };
-
-  const handleAddCustomItemFromInput = async (labelVal: string) => {
-    if (!labelVal) return;
-    try {
-      const payload = {
-        label: labelVal,
-        category: formState.category,
-        default_amount: 0,
-        description: 'Auto-registered custom item from input'
-      };
-      const success = await addPropertyCustomExpenseDB(payload);
-      if (success) {
-        showToast(`"${labelVal}" registered to your custom items list!`, { type: 'success' });
-        refreshCustomExpenses();
-      } else {
-        showToast('Failed to register custom item', { type: 'error' });
-      }
-    } catch (err) {
-      showToast('Error registering custom item', { type: 'error' });
-    }
-  };
-
   // Kitchen & Supplies entries submitted from this page are stored in
   // kitchen_purchases_log (via create_kitchen_purchase), not
   // farm_utility_expenses, so req_catalog stock keeps syncing correctly -
@@ -919,7 +898,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
           Logs table) on the right on wide screens - stacks to form-then-logs
           on narrow screens since a fixed side-by-side track can't fit. */}
       <div className="petty-cash-management__layout grid grid-cols-1 lg:grid-cols-[550px_1fr] gap-6 items-start">
-      <div className="add-expenses-container w-full bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5">
+      <Card className="add-expenses-container w-full shadow-md border-gray-200 dark:border-gray-700">
         <h3 className="petty-cash-management__subtitle font-semibold text-slate-900 dark:text-white text-sm mb-4 flex items-center gap-1.5">
           {t('add_expenses_heading', 'ADD EXPENSES')}
         </h3>
@@ -948,8 +927,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
             </div>
 
             <div className="col-span-2 sm:col-span-1">
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('cost_category_group_label', 'Cost Category Group')}</label>
               <StyledSelect
+                label={t('cost_category_group_label', 'Cost Category Group')}
                 value={formState.category}
                 onChange={val => dispatch({ type: 'SET_FIELD', field: 'category', value: val })}
                 options={[
@@ -965,8 +944,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             {formState.category === 'Kitchen' ? (
               <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Item (from Master Catalog) *</label>
                 <StyledSelect
+                  label="Item (from Master Catalog) *"
                   searchable
                   value={formState.description}
                   onChange={val => {
@@ -981,24 +960,14 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                   options={inventory.map(i => ({ value: i.name, label: i.name }))}
                 />
                 {formState.kitchenUnit && (
-                  <p className="text-[10px] text-slate-400 mt-1">Unit: <span className="font-semibold text-slate-500 dark:text-slate-300">{formState.kitchenUnit}</span></p>
+                  <p className="text-2xs text-slate-400 mt-1">Unit: <span className="font-semibold text-slate-500 dark:text-slate-300">{formState.kitchenUnit}</span></p>
                 )}
               </div>
             ) : formState.category === 'Staff Advance' ? (
               <div className="space-y-3">
                 <div>
-                  {/* A real staff record, not free text - handleSubmit matches
-                      this value against `staff` by name to also write a
-                      staff_advances row, which is what actually nets this
-                      advance against that person's month-end payout (Team tab's
-                      Payroll & Payee Control Center). Free text here (e.g. a
-                      role label like "Cook salary" from the suggestions list,
-                      or a generic "Cash Advance") would silently break that
-                      netting, so this is a picker instead of the usual
-                      Details Descriptions text field - same reasoning as
-                      Kitchen & Supplies' item picker above. */}
-                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Staff Member *</label>
                   <StyledSelect
+                    label="Staff Member *"
                     searchable
                     value={formState.description}
                     onChange={val => dispatch({ type: 'SET_FIELD', field: 'description', value: val })}
@@ -1008,26 +977,22 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 </div>
                 {formState.description && (
                   <div className="flex items-center gap-2 pt-1">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       id="is-staff-advance-checkbox"
                       checked={formState.isStaffAdvanceChecked !== false}
                       onChange={e => dispatch({ type: 'SET_FIELD', field: 'isStaffAdvanceChecked', value: e.target.checked })}
-                      className="w-4 h-4 text-blue-600 rounded cursor-pointer"
                     />
-                    <label htmlFor="is-staff-advance-checkbox" className="text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer select-none">
+                    <Label htmlFor="is-staff-advance-checkbox" className="text-xs font-semibold text-slate-700 dark:text-slate-200 cursor-pointer select-none">
                       Mark as Advance (Deductible from final month-end salary)
-                    </label>
+                    </Label>
                   </div>
                 )}
               </div>
             ) : (
               <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-                  {t('details_descriptions_label', 'Details Descriptions *')}
-                </label>
                 <div className="relative">
                   <Input
+                    label={t('details_descriptions_label', 'Details Descriptions *')}
                     type="text"
                     required
                     value={formState.description}
@@ -1040,12 +1005,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                     placeholder={t('description_search_placeholder', 'Type to search items... (e.g., MCB, Petrol, Water Bill)')}
                   />
 
-                  {/* Interactive Auto-suggestions Dropdown Menu - expenseItems is
-                      already scoped to the selected Cost Category Group (see
-                      expenseItemsByCategory above), so this doesn't need its own
-                      category restriction on top of that. */}
                   {showSuggestions && (
-                    <div className="absolute left-0 right-0 top-full mt-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl z-50 max-h-64 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+                    <div className="absolute left-0 right-0 top-full mt-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
                       {expenseItems.filter(item =>
                         item.toLowerCase().includes(formState.description.toLowerCase().trim())
                       ).map(item => (
@@ -1055,11 +1016,11 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                             handleDescriptionChange(item);
                             setShowSuggestions(false);
                           }}
-                          className="p-2.5 hover:bg-cyan-50 dark:hover:bg-slate-800 cursor-pointer font-medium text-slate-800 dark:text-slate-200 flex items-center justify-between transition-colors"
+                          className="p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer font-medium text-slate-800 dark:text-slate-200 flex items-center justify-between transition-colors text-xs"
                         >
                           <span>{item}</span>
                           {itemPrices[item] !== undefined && (
-                            <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 font-mono px-2 py-0.5 rounded">
+                            <span className="text-2xs bg-slate-100 dark:bg-slate-800 text-slate-500 font-mono px-2 py-0.5 rounded">
                               Last ₹{itemPrices[item]}
                             </span>
                           )}
@@ -1068,7 +1029,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                       {expenseItems.filter(item =>
                         item.toLowerCase().includes(formState.description.toLowerCase().trim())
                       ).length === 0 && (
-                        <div className="p-3 text-slate-400 italic text-center">
+                        <div className="p-3 text-slate-400 italic text-center text-xs">
                           {t('no_matching_items_message', 'No matching pre-stored items found. You can still type a custom description!')}
                         </div>
                       )}
@@ -1081,10 +1042,10 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                             setIsCustomItemsOpen(true);
                             setShowSuggestions(false);
                           }}
-                          className="p-3 text-blue-600 dark:text-blue-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between transition-colors border-t border-slate-200 dark:border-slate-700 text-[11px]"
+                          className="p-3 text-blue-600 dark:text-blue-400 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between transition-colors border-t border-slate-200 dark:border-slate-700 text-xs"
                         >
                           <span>Register "{formState.description.trim()}" to Custom Items list</span>
-                          <Plus className="w-4.5 h-4.5" />
+                          <Plus className="w-4 h-4" />
                         </div>
                       )}
                       <div
@@ -1093,10 +1054,10 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                           setIsCustomItemsOpen(true);
                           setShowSuggestions(false);
                         }}
-                        className="p-2.5 text-slate-650 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-850 cursor-pointer flex items-center justify-between transition-colors border-t border-slate-200 dark:border-slate-700 text-[10px] font-bold"
+                        className="p-2.5 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between transition-colors border-t border-slate-200 dark:border-slate-700 text-2xs font-semibold"
                       >
                         <span className="flex items-center gap-1.5">
-                          <Settings className="w-3.5 h-3.5 text-slate-450" /> Edit existing items
+                          <Settings className="w-3.5 h-3.5 text-slate-400" /> Edit existing items
                         </span>
                       </div>
                     </div>
@@ -1117,7 +1078,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 className="font-semibold"
               />
               {formState.category !== 'Kitchen' && formState.description.trim() && itemPrices[formState.description.trim()] !== undefined && (
-                <p className="text-[10px] text-emerald-600 font-semibold mt-1">
+                <p className="text-2xs text-emerald-600 font-semibold mt-1">
                   Last input price auto-filled: ₹{itemPrices[formState.description.trim()]} (Editable)
                 </p>
               )}
@@ -1155,7 +1116,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
           )}
 
           {/* Streamlined 2-Step Payment Source Selection */}
-          <div className="space-y-3 bg-slate-50/60 dark:bg-slate-900/40 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700">
+          <div className="space-y-3 bg-slate-50/60 dark:bg-slate-900/40 p-3.5 rounded-lg border border-slate-200 dark:border-slate-700">
             <div>
               <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">1. How are you paying?</label>
               <div className="grid grid-cols-3 gap-2">
@@ -1166,13 +1127,13 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                     dispatch({ type: 'SET_FIELD', field: 'showDrawerSplit', value: false });
                     dispatch({ type: 'SET_FIELD', field: 'staffAmount', value: 0 });
                   }}
-                  className={`p-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                  className={`p-2.5 rounded-lg border text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                     (formState.paymentSource || 'property') === 'property'
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
                       : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
                   }`}
                 >
-                  <Building2 className="w-3.5 h-3.5 shrink-0" />
+                  <Building2 className="w-4 h-4 shrink-0" />
                   <span>Property Funds</span>
                 </button>
 
@@ -1183,13 +1144,13 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                     dispatch({ type: 'SET_FIELD', field: 'showDrawerSplit', value: false });
                     dispatch({ type: 'SET_FIELD', field: 'staffAmount', value: formState.amount });
                   }}
-                  className={`p-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                  className={`p-2.5 rounded-lg border text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                     formState.paymentSource === 'pocket'
-                      ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
+                      ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
                       : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
                   }`}
                 >
-                  <User className="w-3.5 h-3.5 shrink-0" />
+                  <User className="w-4 h-4 shrink-0" />
                   <span>My Own Pocket</span>
                 </button>
 
@@ -1199,24 +1160,24 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                     dispatch({ type: 'SET_FIELD', field: 'paymentSource', value: 'split' });
                     dispatch({ type: 'SET_FIELD', field: 'showDrawerSplit', value: true });
                   }}
-                  className={`p-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                  className={`p-2.5 rounded-lg border text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                     formState.paymentSource === 'split'
-                      ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                      ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
                       : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
                   }`}
                 >
-                  <Scale className="w-3.5 h-3.5 shrink-0" />
+                  <Scale className="w-4 h-4 shrink-0" />
                   <span>Split</span>
                 </button>
               </div>
             </div>
 
             {formState.showDrawerSplit && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 bg-amber-50/50 dark:bg-amber-950/20 p-3 rounded-xl border border-amber-200/60 dark:border-amber-900/40">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 bg-amber-50/50 dark:bg-amber-950/20 p-3 rounded-lg border border-amber-200/60 dark:border-amber-900/40">
                 {/* LEFT COLUMN: Property Cash in Hand (₹) */}
                 <div>
                   <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('property_cash_in_hand_rupees_label', 'Property Cash in Hand (₹)')}</label>
-                  <div className="p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-950 dark:text-white font-bold text-sm font-mono shadow-2xs h-[38px] flex items-center px-3">
+                  <div className="p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-950 dark:text-white font-bold text-sm font-mono shadow-2xs h-[38px] flex items-center px-3">
                     ₹{Number(formState.drawerAmount || 0).toFixed(2)}
                   </div>
                 </div>
@@ -1224,8 +1185,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 {/* RIGHT COLUMN: Any payment out of your own pocket? */}
                 <div>
                   <label className="flex items-center gap-2 cursor-pointer select-none text-slate-700 dark:text-slate-200 font-semibold text-xs mb-1.5 min-h-[18px]">
-                    <input
-                      type="checkbox"
+                    <Checkbox
+                      id="out-of-pocket-split-cb"
                       checked={formState.isOutofPocketChecked || Number(formState.staffAmount || 0) > 0}
                       onChange={e => {
                         const checked = e.target.checked;
@@ -1234,9 +1195,10 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                           dispatch({ type: 'SET_FIELD', field: 'staffAmount', value: 0 });
                         }
                       }}
-                      className="w-4 h-4 text-amber-600 rounded cursor-pointer"
                     />
-                    <span>Any payment out of your own pocket?</span>
+                    <Label htmlFor="out-of-pocket-split-cb" className="cursor-pointer font-semibold text-xs">
+                      Any payment out of your own pocket?
+                    </Label>
                   </label>
 
                   {(formState.isOutofPocketChecked || Number(formState.staffAmount || 0) > 0) ? (
@@ -1253,7 +1215,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                       autoFocus
                     />
                   ) : (
-                    <div className="text-[11px] text-slate-400 dark:text-slate-500 italic p-2 rounded-xl bg-white dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800 h-[38px] flex items-center px-3">
+                    <div className="text-2xs text-slate-400 dark:text-slate-500 italic p-2 rounded-lg bg-white dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800 h-[38px] flex items-center px-3">
                       Check box to enter pocket portion
                     </div>
                   )}
@@ -1263,8 +1225,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
               <div>
-                <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">2. Payment Mode</label>
                 <StyledSelect
+                  label="2. Payment Mode"
                   value={normalizePaymentMode(formState.paymentMode)}
                   onChange={val => dispatch({ type: 'SET_FIELD', field: 'paymentMode', value: val })}
                   options={[
@@ -1277,8 +1239,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               </div>
 
               <div>
-                <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Vendor / Payee Name (Optional)</label>
                 <StyledSelect
+                  label="Vendor / Payee Name (Optional)"
                   searchable
                   value={formState.paidBy === currentUserName ? '' : formState.paidBy}
                   onChange={val => dispatch({ type: 'SET_FIELD', field: 'paidBy', value: val || currentUserName })}
@@ -1288,7 +1250,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsPayeeManagerOpen(true)}
-                  className="mt-1.5 text-[10px] font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 cursor-pointer transition-colors"
+                  className="mt-1.5 text-2xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 cursor-pointer transition-colors"
                 >
                   <Settings className="w-3 h-3" />
                   <span>Manage Payees</span>
@@ -1296,32 +1258,27 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               </div>
             </div>
 
-            <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 pt-1">
+            <div className="text-2xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 pt-1">
               <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
               <span>Logged by logged-in staff member: <strong>{currentUserName}</strong></span>
             </div>
           </div>
 
-          {/* Proof uploads - each accepts multiple files (Telegram's
-              sendMediaGroup carries them in one notification, see
-              sendPropertyTelegramPhoto in petty_cash.php's add_petty_cash
-              handler) so a multi-page invoice or several payment screenshots
-              don't have to be squeezed into one attachment. */}
+          {/* Proof uploads */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="border border-dashed border-slate-300 dark:border-slate-700 p-4 rounded-xl text-center space-y-2">
-              <label className="app-label text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 flex items-center justify-center gap-1.5"><FolderOpen className="w-3.5 h-3.5" /> {t('capture_upload_invoice_bill_label_plain', 'Capture / Upload Invoice Bill')}</label>
-              <label htmlFor="invoice-upload-input" className="block bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-3 rounded-lg text-slate-500 font-semibold flex items-center justify-center gap-1.5 cursor-pointer">
+            <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800/50 p-4 rounded-lg text-center space-y-2 transition-colors">
+              <label className="app-label text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5 flex items-center justify-center gap-1.5"><FolderOpen className="w-3.5 h-3.5" /> {t('capture_upload_invoice_bill_label_plain', 'Capture / Upload Invoice Bill')}</label>
+              <label htmlFor="invoice-upload-input" className="block bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-2.5 rounded-lg text-slate-600 dark:text-slate-300 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs hover:bg-slate-50">
                 <FileText className="w-4 h-4 text-slate-400" />
                 <span>{formState.invoiceBillUrls.length > 0 ? `+ Add Another (${formState.invoiceBillUrls.length} attached)` : t('choose_document_button', 'Choose Image or PDF')}</span>
               </label>
-              <Input
+              <input
                 id="invoice-upload-input"
                 type="file"
                 accept="image/*,application/pdf"
                 multiple
                 onChange={e => {
                   const files = Array.from(e.target.files || []);
-                  console.log('[PettyCash] invoice file input onChange', { files: files.length, fileNames: files.map(f => f.name) });
                   files.forEach(f => handleCompressFile(f, 'invoice'));
                   e.target.value = '';
                 }}
@@ -1351,20 +1308,19 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               )}
             </div>
 
-            <div className="border border-dashed border-slate-300 dark:border-slate-700 p-4 rounded-xl text-center space-y-2">
-              <label className="app-label text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 flex items-center justify-center gap-1.5"><Camera className="w-3.5 h-3.5" /> {t('upload_payment_screenshot_label_plain', 'Upload Payment Screenshot')}</label>
-              <label htmlFor="screenshot-upload-input" className="block bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-3 rounded-lg text-slate-500 font-semibold flex items-center justify-center gap-1.5 cursor-pointer">
+            <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800/50 p-4 rounded-lg text-center space-y-2 transition-colors">
+              <label className="app-label text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5 flex items-center justify-center gap-1.5"><Camera className="w-3.5 h-3.5" /> {t('upload_payment_screenshot_label_plain', 'Upload Payment Screenshot')}</label>
+              <label htmlFor="screenshot-upload-input" className="block bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-2.5 rounded-lg text-slate-600 dark:text-slate-300 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs hover:bg-slate-50">
                 <ImageIcon className="w-4 h-4 text-slate-400" />
                 <span>{formState.paymentScreenshotUrls.length > 0 ? `+ Add Another (${formState.paymentScreenshotUrls.length} attached)` : t('select_screenshot_button', 'Select Screenshot')}</span>
               </label>
-              <Input
+              <input
                 id="screenshot-upload-input"
                 type="file"
                 accept="image/*"
                 multiple
                 onChange={e => {
                   const files = Array.from(e.target.files || []);
-                  console.log('[PettyCash] screenshot file input onChange', { files: files.length, fileNames: files.map(f => f.name) });
                   files.forEach(f => handleCompressFile(f, 'screenshot'));
                   e.target.value = '';
                 }}
@@ -1390,44 +1346,48 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
           </div>
 
           <div className="pt-2">
-            <button
+            <Button
               type="submit"
-              className="btn-submit-expense bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-3 rounded-xl shadow-2xs flex items-center gap-2 cursor-pointer transition-colors"
+              variant="primary"
+              size="md"
+              className="shadow-sm font-semibold px-6"
             >
-              <span>{t('add_expense_button', 'ADD EXPENSE')}</span>
-            </button>
+              {t('add_expense_button', 'ADD EXPENSE')}
+            </Button>
           </div>
         </form>
-      </div>
+      </Card>
 
       <div className="petty-cash-management__right-panel space-y-6 min-w-0">
       {/* Live Search & Filter Panel */}
-      <div className="expenses-filter-bar bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 shadow-2xs flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-2 w-full md:w-auto">
-          <span className="font-semibold text-slate-700 dark:text-slate-300">{t('select_ledger_month_label', 'Select Ledger Month')}</span>
-          <StyledSelect
-            value={selectedMonth}
-            onChange={setSelectedMonth}
-            options={uniqueMonths.map(m => {
-              const [y, mm] = m.split('-');
-              const dateObj = new Date(Number(y), Number(mm) - 1, 1);
-              const label = dateObj.toLocaleString('en-US', { month: 'long', year: 'numeric' });
-              return { value: m, label };
-            })}
-          />
-        </div>
+      <Card className="expenses-filter-bar shadow-md border-gray-200 dark:border-gray-700">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <span className="font-semibold text-xs text-slate-700 dark:text-slate-300">{t('select_ledger_month_label', 'Select Ledger Month')}</span>
+            <StyledSelect
+              value={selectedMonth}
+              onChange={setSelectedMonth}
+              options={uniqueMonths.map(m => {
+                const [y, mm] = m.split('-');
+                const dateObj = new Date(Number(y), Number(mm) - 1, 1);
+                const label = dateObj.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+                return { value: m, label };
+              })}
+            />
+          </div>
 
-        <div className="relative flex-1 max-w-md w-full">
-          <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400 z-10" />
-          <Input
-            type="text"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            placeholder={t('search_expenses_placeholder', 'Search descriptions, payment modes, payees...')}
-            className="pl-9"
-          />
+          <div className="flex-1 max-w-md w-full">
+            <TextInput
+              id="expenses-search"
+              type="text"
+              icon={Search}
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder={t('search_expenses_placeholder', 'Search descriptions, payment modes, payees...')}
+            />
+          </div>
         </div>
-      </div>
+      </Card>
 
       {/* Cost Logs Mobile Cards with 10-Item Pagination (md:hidden) */}
       <div className="md:hidden bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-3 space-y-2.5">
@@ -1493,7 +1453,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               type="button"
               disabled={costLogsPage === 1}
               onClick={() => setCostLogsPage((p) => Math.max(1, p - 1))}
-              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
             >
               Previous
             </button>
@@ -1504,7 +1464,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               type="button"
               disabled={costLogsPage >= Math.ceil(filteredEntries.length / 10)}
               onClick={() => setCostLogsPage((p) => Math.min(Math.ceil(filteredEntries.length / 10), p + 1))}
-              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
             >
               Next
             </button>
@@ -1513,7 +1473,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       </div>
 
       {/* Cost Logs Desktop DataTable (hidden md:block) */}
-      <div className="petty-cash-management__table hidden md:block bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
+      <div className="petty-cash-management__table hidden md:block bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
         <DataTable
           columns={[
             {
@@ -1632,7 +1592,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                   <button onClick={() => setEditingEntry({ ...entry, time: entry.time || new Date().toTimeString().slice(0, 5) })} className="bg-slate-100 hover:bg-blue-50 dark:bg-slate-700 dark:hover:bg-blue-900/40 text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors border border-slate-200 dark:border-slate-600 whitespace-nowrap shadow-2xs">
                     <Edit2 className="w-3 h-3" /> {t('edit_button', 'Edit')}
                   </button>
-                  <button onClick={() => handleDeleteExpense(entry.id, entry.description)} className="bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors border border-red-200 dark:border-red-800 whitespace-nowrap shadow-2xs">
+                  <button onClick={() => entry.source === 'kitchen' ? handleDeleteKitchenPurchase(entry.id, entry.description) : handleDeleteExpense(entry.id, entry.description)} className="bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors border border-red-200 dark:border-red-800 whitespace-nowrap shadow-2xs">
                     {t('delete_button', 'Delete')}
                   </button>
                 </div>
@@ -1675,535 +1635,495 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       </div>
 
       {/* Edit Entry Modal for Admin & Super Admin */}
-      {editingEntry && (
-        <div className="petty-cash-management__edit-modal fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden p-6 space-y-4">
-            <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-700 pb-3">
-              <h3 className="petty-cash-management__subtitle font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-                <Edit2 className="w-4 h-4 text-blue-600" /> {t('edit_expense_record_heading', 'EDIT EXPENSE RECORD #')}{editingEntry.id}
-              </h3>
-              <button onClick={() => setEditingEntry(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveModalEdit} className="app-form app-form--edit-expense space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <Input
-                  label={t('expense_date_label', 'Expense Date')}
-                  type="date"
-                  required
-                  value={editingEntry.date}
-                  onChange={e => setEditingEntry({ ...editingEntry, date: e.target.value })}
-                />
-                <Input
-                  label={t('expense_time_label', 'Expense Time')}
-                  type="time"
-                  required
-                  value={editingEntry.time || '12:00'}
-                  onChange={e => setEditingEntry({ ...editingEntry, time: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('category_label', 'Category')}</label>
-                <StyledSelect
-                  value={editingEntry.category || editingEntry.costCategory || 'Other'}
-                  onChange={val => setEditingEntry({ ...editingEntry, category: val, costCategory: val })}
-                  options={[
-                    { value: 'Other', label: t('category_other_label', 'Other') },
-                    { value: 'Bills', label: t('category_bills_label', 'Bills & Utilities') },
-                    { value: 'Staff Advance', label: t('category_staff_salaries_adv_label', 'Staff Salaries & Adv.') },
-                    { value: 'Kitchen', label: t('category_kitchen_label', 'Kitchen & Supplies') },
-                  ]}
-                />
-              </div>
-
-              <div>
-                <Input
-                  label={t('details_description_label', 'Details Description')}
-                  type="text"
-                  required
-                  list="expense-items-list"
-                  value={editingEntry.description}
-                  onChange={e => setEditingEntry({ ...editingEntry, description: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <Input
-                  label={t('expense_amount_rupees_label', 'Amount (₹)')}
-                  type="number"
-                  required
-                  step="any"
-                  value={editingEntry.amount}
-                  onChange={e => setEditingEntry({ ...editingEntry, amount: Number(e.target.value) })}
-                  className="font-semibold"
-                />
-              </div>
-
-              <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('payment_mode_label', 'Payment Mode')}</label>
-                <StyledSelect
-                  value={normalizePaymentMode(editingEntry.paymentMode)}
-                  onChange={val => setEditingEntry({ ...editingEntry, paymentMode: val })}
-                  options={[
-                    { value: 'UPI / QR', label: t('payment_mode_online_upi_qr_label', 'Online / UPI / QR') },
-                    { value: 'Cash', label: t('payment_mode_cash_label', 'Cash') },
-                    { value: 'Bank Transfer', label: t('payment_mode_bank_transfer_label', 'Bank Transfer') },
-                    { value: 'Card', label: t('payment_mode_card_label', 'Card') },
-                  ]}
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setEditingEntry(null)}
-                  className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-semibold cursor-pointer"
-                >
-                  {t('cancel_button', 'Cancel')}
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold cursor-pointer transition-colors"
-                >
-                  {t('save_changes_button', 'Save Changes')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-      {/* PAYEE MANAGER MODAL */}
-      {isPayeeManagerOpen && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-2xl w-full border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden my-8 flex flex-col max-h-[85vh]">
-            {/* Modal Header */}
-            <div className="p-5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
+      <Modal show={Boolean(editingEntry)} onClose={() => setEditingEntry(null)} className="z-58" dismissible>
+        {editingEntry && (
+          <>
+            <ModalHeader as="div">
               <div className="flex items-center gap-2">
-                <Landmark className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                <div>
-                  <h3 className="font-extrabold text-slate-900 dark:text-white text-base">Registered Payees (Vendors & Third Parties)</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Manage operational suppliers, business vendors, and pass-through entities.</p>
-                </div>
+                <Edit2 className="w-4 h-4 text-blue-600" />
+                <span>{t('edit_expense_record_heading', 'EDIT EXPENSE RECORD #')}{editingEntry.id}</span>
               </div>
-              <button
-                onClick={() => setIsPayeeManagerOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+            </ModalHeader>
+
+            <form onSubmit={handleSaveModalEdit} className="app-form app-form--edit-expense">
+              <ModalBody className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    label={t('expense_date_label', 'Expense Date')}
+                    type="date"
+                    required
+                    value={editingEntry.date}
+                    onChange={e => setEditingEntry({ ...editingEntry, date: e.target.value })}
+                  />
+                  <Input
+                    label={t('expense_time_label', 'Expense Time')}
+                    type="time"
+                    required
+                    value={editingEntry.time || '12:00'}
+                    onChange={e => setEditingEntry({ ...editingEntry, time: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('category_label', 'Category')}</label>
+                  <StyledSelect
+                    value={editingEntry.category || editingEntry.costCategory || 'Other'}
+                    onChange={val => setEditingEntry({ ...editingEntry, category: val, costCategory: val })}
+                    options={[
+                      { value: 'Other', label: t('category_other_label', 'Other') },
+                      { value: 'Bills', label: t('category_bills_label', 'Bills & Utilities') },
+                      { value: 'Staff Advance', label: t('category_staff_salaries_adv_label', 'Staff Salaries & Adv.') },
+                      { value: 'Kitchen', label: t('category_kitchen_label', 'Kitchen & Supplies') },
+                    ]}
+                  />
+                </div>
+
+                <div>
+                  <Input
+                    label={t('details_description_label', 'Details Description')}
+                    type="text"
+                    required
+                    list="expense-items-list"
+                    value={editingEntry.description}
+                    onChange={e => setEditingEntry({ ...editingEntry, description: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <Input
+                    label={t('expense_amount_rupees_label', 'Amount (₹)')}
+                    type="number"
+                    required
+                    step="any"
+                    value={editingEntry.amount}
+                    onChange={e => setEditingEntry({ ...editingEntry, amount: Number(e.target.value) })}
+                    className="font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('payment_mode_label', 'Payment Mode')}</label>
+                  <StyledSelect
+                    value={normalizePaymentMode(editingEntry.paymentMode)}
+                    onChange={val => setEditingEntry({ ...editingEntry, paymentMode: val })}
+                    options={[
+                      { value: 'UPI / QR', label: t('payment_mode_online_upi_qr_label', 'Online / UPI / QR') },
+                      { value: 'Cash', label: t('payment_mode_cash_label', 'Cash') },
+                      { value: 'Bank Transfer', label: t('payment_mode_bank_transfer_label', 'Bank Transfer') },
+                      { value: 'Card', label: t('payment_mode_card_label', 'Card') },
+                    ]}
+                  />
+                </div>
+              </ModalBody>
+
+              <ModalFooter className="flex justify-end gap-2">
+                <Button type="submit" variant="primary">
+                  {t('save_changes_button', 'Save Changes')}
+                </Button>
+              </ModalFooter>
+            </form>
+          </>
+        )}
+      </Modal>
+      {/* PAYEE MANAGER MODAL */}
+      <Modal show={isPayeeManagerOpen} onClose={() => setIsPayeeManagerOpen(false)} className="z-58" size="2xl" dismissible>
+        <ModalHeader as="div">
+          <div className="flex items-center gap-2">
+            <Landmark className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            <div>
+              <h3 className="font-extrabold text-slate-900 dark:text-white text-base">Registered Payees (Vendors & Third Parties)</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">Manage operational suppliers, business vendors, and pass-through entities.</p>
             </div>
+          </div>
+        </ModalHeader>
+        <ModalBody className="space-y-6 text-xs">
+          {/* Add / Edit Payee Form Area */}
+          {isAddingNewPayee || editingPayee ? (
+            <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4 space-y-4">
+              <h4 className="font-bold text-slate-850 dark:text-slate-200 text-sm flex items-center gap-1.5">
+                {editingPayee ? <Edit2 className="w-4 h-4 text-blue-600" /> : <Plus className="w-4 h-4 text-blue-600" />}
+                {editingPayee ? 'Edit Payee Settings' : 'Register New Account Payee'}
+              </h4>
+              <form onSubmit={handleSavePayee} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Payee Account Name *</label>
+                    <Input
+                      type="text"
+                      required
+                      value={editingPayee ? editingPayee.name : newPayeeForm.name}
+                      onChange={e => {
+                        if (editingPayee) {
+                          setEditingPayee({ ...editingPayee, name: e.target.value });
+                        } else {
+                          setNewPayeeForm({ ...newPayeeForm, name: e.target.value });
+                        }
+                      }}
+                      placeholder="e.g. Raju Grocery, Pool Supplier"
+                    />
+                  </div>
+                  <div>
+                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">UPI ID (Optional)</label>
+                    <Input
+                      type="text"
+                      value={editingPayee ? (editingPayee.upiId || '') : newPayeeForm.upiId}
+                      onChange={e => {
+                        if (editingPayee) {
+                          setEditingPayee({ ...editingPayee, upiId: e.target.value });
+                        } else {
+                          setNewPayeeForm({ ...newPayeeForm, upiId: e.target.value });
+                        }
+                      }}
+                      placeholder="e.g. raju@upi"
+                    />
+                  </div>
+                </div>
 
-            {/* Modal Body */}
-            <div className="p-6 overflow-y-auto space-y-6 flex-1 text-xs">
-              {/* Add / Edit Payee Form Area */}
-              {isAddingNewPayee || editingPayee ? (
-                <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 space-y-4">
-                  <h4 className="font-bold text-slate-850 dark:text-slate-200 text-sm flex items-center gap-1.5">
-                    {editingPayee ? <Edit2 className="w-4 h-4 text-blue-600" /> : <Plus className="w-4 h-4 text-blue-600" />}
-                    {editingPayee ? 'Edit Payee Settings' : 'Register New Account Payee'}
-                  </h4>
-                  <form onSubmit={handleSavePayee} className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Payee Account Name *</label>
-                        <Input
-                          type="text"
-                          required
-                          value={editingPayee ? editingPayee.name : newPayeeForm.name}
-                          onChange={e => {
-                            if (editingPayee) {
-                              setEditingPayee({ ...editingPayee, name: e.target.value });
-                            } else {
-                              setNewPayeeForm({ ...newPayeeForm, name: e.target.value });
-                            }
-                          }}
-                          placeholder="e.g. Raju Grocery, Pool Supplier"
-                        />
-                      </div>
-                      <div>
-                        <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">UPI ID (Optional)</label>
-                        <Input
-                          type="text"
-                          value={editingPayee ? (editingPayee.upiId || '') : newPayeeForm.upiId}
-                          onChange={e => {
-                            if (editingPayee) {
-                              setEditingPayee({ ...editingPayee, upiId: e.target.value });
-                            } else {
-                              setNewPayeeForm({ ...newPayeeForm, upiId: e.target.value });
-                            }
-                          }}
-                          placeholder="e.g. raju@upi"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">UPI QR Code Graphic (Optional)</label>
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        onChange={e => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            const reader = new FileReader();
-                            reader.onloadend = () => {
-                              if (editingPayee) {
-                                setEditingPayee({ ...editingPayee, qrCodeUrl: reader.result as string });
-                              } else {
-                                setNewPayeeForm({ ...newPayeeForm, qrCodeUrl: reader.result as string });
-                              }
-                            };
-                            reader.readAsDataURL(file);
+                <div>
+                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">UPI QR Code Graphic (Optional)</label>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          if (editingPayee) {
+                            setEditingPayee({ ...editingPayee, qrCodeUrl: reader.result as string });
+                          } else {
+                            setNewPayeeForm({ ...newPayeeForm, qrCodeUrl: reader.result as string });
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                  {(editingPayee?.qrCodeUrl || newPayeeForm.qrCodeUrl) && (
+                    <div className="mt-2 flex items-center gap-3">
+                      <img
+                        src={editingPayee ? editingPayee.qrCodeUrl : newPayeeForm.qrCodeUrl}
+                        alt="UPI QR Code preview"
+                        className="h-16 w-16 object-contain border rounded p-1 bg-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (editingPayee) {
+                            setEditingPayee({ ...editingPayee, qrCodeUrl: '' });
+                          } else {
+                            setNewPayeeForm({ ...newPayeeForm, qrCodeUrl: '' });
                           }
                         }}
-                      />
-                      {(editingPayee?.qrCodeUrl || newPayeeForm.qrCodeUrl) && (
-                        <div className="mt-2 flex items-center gap-3">
-                          <img
-                            src={editingPayee ? editingPayee.qrCodeUrl : newPayeeForm.qrCodeUrl}
-                            alt="UPI QR Code preview"
-                            className="h-16 w-16 object-contain border rounded p-1 bg-white"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (editingPayee) {
-                                setEditingPayee({ ...editingPayee, qrCodeUrl: '' });
-                              } else {
-                                setNewPayeeForm({ ...newPayeeForm, qrCodeUrl: '' });
-                              }
-                            }}
-                            className="text-xs text-red-500 font-semibold hover:underline"
-                          >
-                            Remove QR
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-2 pt-2 justify-end border-t border-slate-200 dark:border-slate-800">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingPayee(null);
-                          setIsAddingNewPayee(false);
-                          setNewPayeeForm({ name: '', upiId: '', qrCodeUrl: '' });
-                        }}
-                        className="px-4 py-2 border border-slate-300 rounded-xl text-slate-700 font-semibold hover:bg-slate-100 transition-colors cursor-pointer"
+                        className="text-xs text-red-500 font-semibold hover:underline"
                       >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={isSavingPayee}
-                        className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold cursor-pointer transition-colors"
-                      >
-                        {isSavingPayee ? 'Saving...' : editingPayee ? 'Save Updates' : 'Register Payee'}
+                        Remove QR
                       </button>
                     </div>
-                  </form>
+                  )}
                 </div>
-              ) : (
-                <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-200 dark:border-slate-850">
-                  <div className="relative flex-1 max-w-xs">
-                    <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
-                    <Input
-                      type="text"
-                      value={searchPayeeQuery}
-                      onChange={e => setSearchPayeeQuery(e.target.value)}
-                      placeholder="Search by name..."
-                      className="pl-9"
-                    />
-                  </div>
-                  <button
-                    onClick={() => setIsAddingNewPayee(true)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+
+                <div className="flex items-center gap-2 pt-2 justify-end border-t border-slate-200 dark:border-slate-800">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      setEditingPayee(null);
+                      setIsAddingNewPayee(false);
+                      setNewPayeeForm({ name: '', upiId: '', qrCodeUrl: '' });
+                    }}
                   >
-                    <Plus className="w-4 h-4" />
-                    Register Account Payee
-                  </button>
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    disabled={isSavingPayee}
+                  >
+                    {isSavingPayee ? 'Saving...' : editingPayee ? 'Save Updates' : 'Register Payee'}
+                  </Button>
                 </div>
-              )}
-
-              {/* Payees Table / List Grid */}
-              {!isAddingNewPayee && !editingPayee && (
-                <div className="border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden bg-white dark:bg-slate-900">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="bg-slate-50 dark:bg-slate-800 text-[10px] text-slate-500 font-bold uppercase border-b border-slate-200 dark:border-slate-700">
-                          <th className="px-4 py-3">Payee Name</th>
-                          <th className="px-4 py-3 text-center">UPI QR Code</th>
-                          <th className="px-4 py-3 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                        {dbVendors.filter(p => !searchPayeeQuery || p.name.toLowerCase().includes(searchPayeeQuery.toLowerCase())).length === 0 ? (
-                          <tr>
-                            <td colSpan={3} className="text-center py-8 text-slate-400 font-semibold italic">No registered payees found.</td>
-                          </tr>
-                        ) : (
-                          dbVendors.filter(p => !searchPayeeQuery || p.name.toLowerCase().includes(searchPayeeQuery.toLowerCase())).map(p => (
-                            <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                              <td className="px-4 py-3">
-                                <div className="flex flex-col">
-                                  <span className="font-semibold text-slate-900 dark:text-white">{p.name}</span>
-                                  {p.upiId && <span className="text-[10px] text-slate-400 font-mono select-all mt-0.5">UPI: {p.upiId}</span>}
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 text-center">
-                                {p.qrCodeUrl ? (
-                                  <button
-                                    onClick={() => setPayeeLightboxUrl(p.qrCodeUrl!)}
-                                    className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 font-semibold flex items-center justify-center gap-1 mx-auto"
-                                  >
-                                    <Camera className="w-3.5 h-3.5" /> View QR
-                                  </button>
-                                ) : (
-                                  <span className="text-slate-400 italic">None</span>
-                                )}
-                              </td>
-                              <td className="px-4 py-3 text-right">
-                                <div className="flex items-center justify-end gap-1.5">
-                                  <button
-                                    onClick={() => setEditingPayee(p)}
-                                    className="bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors border border-sky-100 dark:border-sky-900/60"
-                                  >
-                                    <Edit2 className="w-3 h-3" /> Edit
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeletePayee(p.id, p.name)}
-                                    disabled={isSavingPayee}
-                                    className="bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors border border-red-100 dark:border-red-900/60"
-                                  >
-                                    <Trash2 className="w-3 h-3" /> Delete
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
+              </form>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* PROPERTY CUSTOM ITEMS LEDGER MODAL */}
-      {isCustomItemsOpen && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-2xl w-full border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden my-8 flex flex-col max-h-[85vh]">
-            {/* Modal Header */}
-            <div className="p-5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
-              <div className="flex items-center gap-2">
-                <FolderOpen className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                <div>
-                  <h3 className="font-extrabold text-slate-900 dark:text-white text-base">Property Custom Expense Items</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Manage your property's custom expense descriptions. These do not affect root default expenses.</p>
-                </div>
+          ) : (
+            <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-200 dark:border-slate-850">
+              <div className="flex-1 max-w-xs">
+                <TextInput
+                  icon={Search}
+                  value={searchPayeeQuery}
+                  onChange={e => setSearchPayeeQuery(e.target.value)}
+                  placeholder="Search by name..."
+                />
               </div>
-              <button
-                onClick={() => setIsCustomItemsOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              <Button
+                variant="primary"
+                onClick={() => setIsAddingNewPayee(true)}
               >
-                <X className="w-5 h-5" />
-              </button>
+                <Plus className="w-4 h-4 mr-1 inline-block" />
+                Register Account Payee
+              </Button>
             </div>
+          )}
 
-            {/* Modal Body */}
-            <div className="p-6 overflow-y-auto space-y-6 flex-1 text-xs">
-              {/* Add / Edit Custom Item Form Area */}
-              {isAddingCustomItem || editingCustomItem ? (
-                <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 space-y-4">
-                  <h4 className="font-bold text-slate-850 dark:text-slate-200 text-sm flex items-center gap-1.5">
-                    {editingCustomItem ? <Edit2 className="w-4 h-4 text-blue-600" /> : <Plus className="w-4 h-4 text-blue-600" />}
-                    {editingCustomItem ? 'Edit Custom Item Settings' : 'Create Custom Expense Item'}
-                  </h4>
-                  <form onSubmit={handleSaveCustomItem} className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Item Name / Label *</label>
-                        <Input
-                          type="text"
-                          required
-                          value={editingCustomItem ? editingCustomItem.label : newCustomItemForm.label}
-                          onChange={e => {
-                            if (editingCustomItem) {
-                              setEditingCustomItem({ ...editingCustomItem, label: e.target.value });
-                            } else {
-                              setNewCustomItemForm({ ...newCustomItemForm, label: e.target.value });
-                            }
-                          }}
-                          placeholder="e.g. Special Cleaning Agent, Local Transport Fee"
-                        />
-                      </div>
-                      <div>
-                        <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Cost Category Group</label>
-                        <StyledSelect
-                          value={editingCustomItem ? editingCustomItem.category : newCustomItemForm.category}
-                          onChange={val => {
-                            if (editingCustomItem) {
-                              setEditingCustomItem({ ...editingCustomItem, category: val });
-                            } else {
-                              setNewCustomItemForm({ ...newCustomItemForm, category: val });
-                            }
-                          }}
-                          options={[
-                            { value: 'Other', label: 'Other' },
-                            { value: 'Bills', label: 'Bills' },
-                            { value: 'Kitchen', label: 'Kitchen' },
-                          ]}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Default Amount (Optional)</label>
-                        <Input
-                          type="number"
-                          step="any"
-                          value={editingCustomItem ? editingCustomItem.defaultAmount : newCustomItemForm.defaultAmount}
-                          onChange={e => {
-                            if (editingCustomItem) {
-                              setEditingCustomItem({ ...editingCustomItem, defaultAmount: e.target.value });
-                            } else {
-                              setNewCustomItemForm({ ...newCustomItemForm, defaultAmount: e.target.value });
-                            }
-                          }}
-                          placeholder="e.g. 150.00"
-                        />
-                      </div>
-                      <div>
-                        <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Short Notes / Description (Optional)</label>
-                        <Input
-                          type="text"
-                          value={editingCustomItem ? (editingCustomItem.description || '') : newCustomItemForm.description}
-                          onChange={e => {
-                            if (editingCustomItem) {
-                              setEditingCustomItem({ ...editingCustomItem, description: e.target.value });
-                            } else {
-                              setNewCustomItemForm({ ...newCustomItemForm, description: e.target.value });
-                            }
-                          }}
-                          placeholder="e.g. Daily transport fare"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 pt-2 justify-end border-t border-slate-200 dark:border-slate-800">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingCustomItem(null);
-                          setIsAddingCustomItem(false);
-                          setNewCustomItemForm({ label: '', category: 'Other', defaultAmount: '0.00', description: '' });
-                        }}
-                        className="px-4 py-2 border border-slate-300 rounded-xl text-slate-700 font-semibold hover:bg-slate-100 transition-colors cursor-pointer"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={isSavingCustomItem}
-                        className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold cursor-pointer transition-colors"
-                      >
-                        {isSavingCustomItem ? 'Saving...' : editingCustomItem ? 'Save Updates' : 'Create Item'}
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              ) : (
-                <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-200 dark:border-slate-850">
-                  <div className="relative flex-1 max-w-xs">
-                    <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
-                    <Input
-                      type="text"
-                      value={searchCustomQuery}
-                      onChange={e => setSearchCustomQuery(e.target.value)}
-                      placeholder="Search items by name..."
-                      className="pl-9"
-                    />
-                  </div>
-                  <button
-                    onClick={() => setIsAddingCustomItem(true)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Create Custom Item
-                  </button>
-                </div>
-              )}
-
-              {/* Custom Items Table / List Grid */}
-              {!isAddingCustomItem && !editingCustomItem && (
-                <div className="border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden bg-white dark:bg-slate-900">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="bg-slate-50 dark:bg-slate-800 text-[10px] text-slate-500 font-bold uppercase border-b border-slate-200 dark:border-slate-700">
-                          <th className="px-4 py-3">Item name</th>
-                          <th className="px-4 py-3">Category</th>
-                          <th className="px-4 py-3 text-right">Default Amount</th>
-                          <th className="px-4 py-3 text-right">Actions</th>
+          {/* Payees Table / List Grid */}
+          {!isAddingNewPayee && !editingPayee && (
+            <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden bg-white dark:bg-slate-900">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-800 text-[10px] text-slate-500 font-bold uppercase border-b border-slate-200 dark:border-slate-700">
+                      <th className="px-4 py-3">Payee Name</th>
+                      <th className="px-4 py-3 text-center">UPI QR Code</th>
+                      <th className="px-4 py-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                    {dbVendors.filter(p => !searchPayeeQuery || p.name.toLowerCase().includes(searchPayeeQuery.toLowerCase())).length === 0 ? (
+                      <tr>
+                        <td colSpan={3} className="text-center py-8 text-slate-400 font-semibold italic">No registered payees found.</td>
+                      </tr>
+                    ) : (
+                      dbVendors.filter(p => !searchPayeeQuery || p.name.toLowerCase().includes(searchPayeeQuery.toLowerCase())).map(p => (
+                        <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className="px-4 py-3">
+                            <div className="flex flex-col">
+                              <span className="font-semibold text-slate-900 dark:text-white">{p.name}</span>
+                              {p.upiId && <span className="text-[10px] text-slate-400 font-mono select-all mt-0.5">UPI: {p.upiId}</span>}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {p.qrCodeUrl ? (
+                              <button
+                                onClick={() => setPayeeLightboxUrl(p.qrCodeUrl!)}
+                                className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 font-semibold flex items-center justify-center gap-1 mx-auto cursor-pointer"
+                              >
+                                <Camera className="w-3.5 h-3.5" /> View QR
+                              </button>
+                            ) : (
+                              <span className="text-slate-400 italic">None</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => setEditingPayee(p)}
+                                className="bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors border border-sky-100 dark:border-sky-900/60"
+                              >
+                                <Edit2 className="w-3 h-3" /> Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeletePayee(p.id, p.name)}
+                                disabled={isSavingPayee}
+                                className="bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors border border-red-100 dark:border-red-900/60"
+                              >
+                                <Trash2 className="w-3 h-3" /> Delete
+                              </button>
+                            </div>
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                        {customExpenses.filter(p => !searchCustomQuery || p.label.toLowerCase().includes(searchCustomQuery.toLowerCase())).length === 0 ? (
-                          <tr>
-                            <td colSpan={4} className="text-center py-8 text-slate-400 font-semibold italic">No custom items found.</td>
-                          </tr>
-                        ) : (
-                          customExpenses.filter(p => !searchCustomQuery || p.label.toLowerCase().includes(searchCustomQuery.toLowerCase())).map(p => (
-                            <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                              <td className="px-4 py-3">
-                                <div className="flex flex-col">
-                                  <span className="font-semibold text-slate-900 dark:text-white">{p.label}</span>
-                                  {p.description && <span className="text-[10px] text-slate-450 dark:text-slate-400">{p.description}</span>}
-                                </div>
-                              </td>
-                              <td className="px-4 py-3">
-                                <span className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 px-2 py-0.5 rounded font-semibold text-[10px]">{p.category}</span>
-                              </td>
-                              <td className="px-4 py-3 text-right font-mono font-medium text-slate-750 dark:text-slate-350">
-                                ₹{p.default_amount}
-                              </td>
-                              <td className="px-4 py-3 text-right">
-                                <div className="flex items-center justify-end gap-1.5">
-                                  <button
-                                    onClick={() => setEditingCustomItem({ id: p.id, label: p.label, category: p.category, defaultAmount: p.default_amount.toString(), description: p.description || '' })}
-                                    className="bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors border border-sky-100 dark:border-sky-900/60"
-                                  >
-                                    <Edit2 className="w-3 h-3" /> Edit
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteCustomItem(p.id, p.label)}
-                                    disabled={isSavingCustomItem}
-                                    className="bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors border border-red-100 dark:border-red-900/60"
-                                  >
-                                    <Trash2 className="w-3 h-3" /> Delete
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </ModalBody>
+      </Modal>
+
+      {/* CUSTOM ITEMS MODAL */}
+      <Modal show={isCustomItemsOpen} onClose={() => setIsCustomItemsOpen(false)} className="z-58" size="2xl" dismissible>
+        <ModalHeader as="div">
+          <div className="flex items-center gap-2">
+            <Settings className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            <div>
+              <h3 className="font-extrabold text-slate-900 dark:text-white text-base">Custom Expense Items Catalog</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">Manage recurring items and quick-fill suggestions for your property.</p>
             </div>
           </div>
-        </div>
-      )}
+        </ModalHeader>
+        <ModalBody className="space-y-6 text-xs">
+          {isAddingCustomItem || editingCustomItem ? (
+            <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4 space-y-4">
+              <h4 className="font-bold text-slate-850 dark:text-slate-200 text-sm flex items-center gap-1.5">
+                {editingCustomItem ? <Edit2 className="w-4 h-4 text-blue-600" /> : <Plus className="w-4 h-4 text-blue-600" />}
+                {editingCustomItem ? 'Edit Custom Item' : 'Register Custom Expense Item'}
+              </h4>
+              <form onSubmit={handleSaveCustomItem} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Item Name *</label>
+                    <Input
+                      type="text"
+                      required
+                      value={editingCustomItem ? editingCustomItem.label : newCustomItemForm.label}
+                      onChange={e => {
+                        if (editingCustomItem) {
+                          setEditingCustomItem({ ...editingCustomItem, label: e.target.value });
+                        } else {
+                          setNewCustomItemForm({ ...newCustomItemForm, label: e.target.value });
+                        }
+                      }}
+                      placeholder="e.g. Pool Chlorine, Diesel Can"
+                    />
+                  </div>
+                  <div>
+                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Category</label>
+                    <StyledSelect
+                      value={editingCustomItem ? editingCustomItem.category : newCustomItemForm.category}
+                      onChange={val => {
+                        if (editingCustomItem) {
+                          setEditingCustomItem({ ...editingCustomItem, category: val });
+                        } else {
+                          setNewCustomItemForm({ ...newCustomItemForm, category: val });
+                        }
+                      }}
+                      options={[
+                        { value: 'Other', label: 'Other' },
+                        { value: 'Bills', label: 'Bills & Utilities' },
+                        { value: 'Kitchen', label: 'Kitchen & Supplies' },
+                        { value: 'Staff Advance', label: 'Staff Salaries & Adv.' },
+                      ]}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Default Amount (₹)</label>
+                    <Input
+                      type="number"
+                      step="any"
+                      value={editingCustomItem ? editingCustomItem.defaultAmount : newCustomItemForm.defaultAmount}
+                      onChange={e => {
+                        if (editingCustomItem) {
+                          setEditingCustomItem({ ...editingCustomItem, defaultAmount: e.target.value });
+                        } else {
+                          setNewCustomItemForm({ ...newCustomItemForm, defaultAmount: e.target.value });
+                        }
+                      }}
+                      placeholder="e.g. 150.00"
+                    />
+                  </div>
+                  <div>
+                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Short Notes / Description (Optional)</label>
+                    <Input
+                      type="text"
+                      value={editingCustomItem ? (editingCustomItem.description || '') : newCustomItemForm.description}
+                      onChange={e => {
+                        if (editingCustomItem) {
+                          setEditingCustomItem({ ...editingCustomItem, description: e.target.value });
+                        } else {
+                          setNewCustomItemForm({ ...newCustomItemForm, description: e.target.value });
+                        }
+                      }}
+                      placeholder="e.g. Daily transport fare"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2 justify-end border-t border-slate-200 dark:border-slate-800">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      setEditingCustomItem(null);
+                      setIsAddingCustomItem(false);
+                      setNewCustomItemForm({ label: '', category: 'Other', defaultAmount: '0.00', description: '' });
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    disabled={isSavingCustomItem}
+                  >
+                    {isSavingCustomItem ? 'Saving...' : editingCustomItem ? 'Save Updates' : 'Create Item'}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-200 dark:border-slate-850">
+              <div className="flex-1 max-w-xs">
+                <TextInput
+                  icon={Search}
+                  value={searchCustomQuery}
+                  onChange={e => setSearchCustomQuery(e.target.value)}
+                  placeholder="Search items by name..."
+                />
+              </div>
+              <Button
+                variant="primary"
+                onClick={() => setIsAddingCustomItem(true)}
+              >
+                <Plus className="w-4 h-4 mr-1 inline-block" />
+                Create Custom Item
+              </Button>
+            </div>
+          )}
+
+          {/* Custom Items Table / List Grid */}
+          {!isAddingCustomItem && !editingCustomItem && (
+            <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden bg-white dark:bg-slate-900">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-800 text-[10px] text-slate-500 font-bold uppercase border-b border-slate-200 dark:border-slate-700">
+                      <th className="px-4 py-3">Item Name</th>
+                      <th className="px-4 py-3">Category</th>
+                      <th className="px-4 py-3 text-right">Default Amount</th>
+                      <th className="px-4 py-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                    {customExpenses.filter(p => !searchCustomQuery || p.label.toLowerCase().includes(searchCustomQuery.toLowerCase())).length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="text-center py-8 text-slate-400 font-semibold italic">No custom items found.</td>
+                      </tr>
+                    ) : (
+                      customExpenses.filter(p => !searchCustomQuery || p.label.toLowerCase().includes(searchCustomQuery.toLowerCase())).map(p => (
+                        <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className="px-4 py-3">
+                            <div className="flex flex-col">
+                              <span className="font-semibold text-slate-900 dark:text-white">{p.label}</span>
+                              {p.description && <span className="text-[10px] text-slate-400">{p.description}</span>}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 px-2 py-0.5 rounded font-semibold text-[10px]">{p.category}</span>
+                          </td>
+                          <td className="px-4 py-3 text-right font-mono font-medium text-slate-700 dark:text-slate-300">
+                            ₹{p.default_amount}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => setEditingCustomItem({ id: p.id, label: p.label, category: p.category, defaultAmount: p.default_amount.toString(), description: p.description || '' })}
+                                className="bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors border border-sky-100 dark:border-sky-900/60"
+                              >
+                                <Edit2 className="w-3 h-3" /> Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteCustomItem(p.id, p.label)}
+                                disabled={isSavingCustomItem}
+                                className="bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors border border-red-100 dark:border-red-900/60"
+                              >
+                                <Trash2 className="w-3 h-3" /> Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </ModalBody>
+      </Modal>
 
       {/* LIGHTBOX FOR UPI QR CODE */}
       {payeeLightboxUrl && (
@@ -2211,14 +2131,14 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
           onClick={() => setPayeeLightboxUrl(null)}
           className="fixed inset-0 bg-slate-950/90 backdrop-blur-xs flex items-center justify-center p-4 z-100 animate-in fade-in cursor-zoom-out"
         >
-          <div className="relative max-w-sm w-full bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl">
+          <div className="relative max-w-sm w-full bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xl">
             <button
               onClick={() => setPayeeLightboxUrl(null)}
               className="absolute top-2 right-2 p-1 bg-slate-100 dark:bg-slate-700 rounded-full text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-650 transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
-            <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 p-2 bg-slate-50">
+            <div className="rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 p-2 bg-slate-50">
               <img src={payeeLightboxUrl} alt="UPI QR Code" className="w-full h-auto rounded-lg" />
             </div>
           </div>

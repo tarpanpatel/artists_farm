@@ -1,4 +1,5 @@
 import React from 'react';
+import { Card } from 'flowbite-react';
 import { t } from '../i18n/en';
 import { PropertyEditForm } from './PropertyEditForm';
 import { RoomsManagement } from './RoomsManagement';
@@ -49,7 +50,7 @@ export const EditPropertyPage: React.FC<EditPropertyPageProps> = ({ property, on
 
       <div className="edit-property-page__grid grid grid-cols-1 lg:grid-cols-2 gap-6">
       {property.property_type === 'MULTI_KEY' && (
-        <div className="edit-property-page__rooms-card bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 sm:p-6">
+        <Card className="edit-property-page__rooms-card">
           <RoomsManagement
             propertyId={property.id}
             propertySlug={property.slug || ''}
@@ -57,16 +58,16 @@ export const EditPropertyPage: React.FC<EditPropertyPageProps> = ({ property, on
             onUpdated={() => window.location.reload()}
             onNavigateToRoom={onNavigateToRoom}
           />
-        </div>
+        </Card>
       )}
 
-        <div className="edit-property-page__form-card bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 sm:p-6">
+        <Card className="edit-property-page__form-card">
           <PropertyEditForm
             property={property}
             onSaved={() => window.location.reload()}
             isRoom={isRoom}
           />
-        </div>
+        </Card>
       </div>
 
       {/* Calendar Sync (formerly its own standalone "iCal Sync" sidebar page,

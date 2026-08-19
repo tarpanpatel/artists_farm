@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Card } from 'flowbite-react';
 import { Plus, Trash2, RefreshCw, Loader2, Lock } from 'lucide-react';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
@@ -142,7 +143,7 @@ export const ExpenseItemsManagement: React.FC = () => {
 
       {/* Toolbar */}
       {allItems.length > 0 && (
-        <div className="expense-items-management__toolbar bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 space-y-4">
+        <Card className="expense-items-management__toolbar space-y-4">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Button
@@ -230,7 +231,7 @@ export const ExpenseItemsManagement: React.FC = () => {
               </div>
             </form>
           )}
-        </div>
+        </Card>
       )}
 
       {/* Categories Display */}

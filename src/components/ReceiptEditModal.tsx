@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, IndianRupee, Home, Calendar, AlertCircle, Plus, Trash2, CheckCircle2, Share2, Printer, QrCode, Loader2, CornerDownRight, MessageSquare } from 'lucide-react';
+import { X, IndianRupee, Home, AlertCircle, Plus, Trash2, CheckCircle2, Share2, Printer, QrCode, Loader2, CornerDownRight, MessageSquare, CreditCard } from 'lucide-react';
 import { Guest, BillingReceipt, PayeeEntity } from '../types';
-import { GUEST_STATUS_CHECKEDOUT_LEGACY, GUEST_STATUS_CHECKED_OUT } from '../constants/guestStatus';
 import { StyledSelect } from './StyledSelect';
 import { DateRangePicker } from './DateRangePicker';
-import { Button } from './Button';
 import { Input } from './Input';
 import { fetchMenuFromDB, fetchPayeesFromDB, fetchServiceRequestsFromDB } from '../services/api';
 import { useToast } from './ToastContext';
@@ -14,6 +12,7 @@ import * as htmlToImage from 'html-to-image';
 import { t } from '../i18n/en';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import { UpiPaymentBlock } from '../utils/upiQrCode';
+import { Modal as FlowbiteModal, ModalHeader, ModalBody, ModalFooter } from 'flowbite-react';
 
 interface ReceiptEditModalProps {
   isOpen: boolean;
@@ -78,7 +77,7 @@ interface SplitPaymentRow {
 export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   isOpen,
   guest,
-  allGuests = [],
+  allGuests: _allGuests = [],
   onClose,
   onCheckout,
   onUpdateGuest,
@@ -93,6 +92,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   const isRootAdmin = activeRole?.toLowerCase().trim() === 'root admin';
   const { showToast } = useToast();
   const { staff } = useStaff();
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   // Only staff marked as a cash handler can be attributed as having
   // received money - a free-text field let anyone type any name, which
   // isn't real accountability for who actually took the payment.
@@ -116,50 +116,6 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   const [checkoutDate, setCheckoutDate] = useState('');
   const [advanceReceivedBy, setAdvanceReceivedBy] = useState('');
   const [pendingReceivedBy, setPendingReceivedBy] = useState('');
-  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
-
-  // Calculate blocked dates for the room of this guest
-  const blockedDates = useMemo(() => {
-    if (!guest || !allGuests.length) return [];
-    const blocked = new Set<string>();
-    const roomName = guest.roomNumber;
-
-    allGuests.forEach((g) => {
-      if (g.status === GUEST_STATUS_CHECKEDOUT_LEGACY || (g.status as string) === GUEST_STATUS_CHECKED_OUT || (g.status as string) === 'Cancelled') return;
-      if (g.id === guest.id) return; // Skip current guest being edited!
-
-      const gRoom = (g.roomNumber || '').toLowerCase().trim();
-      const targetRoom = (roomName || '').toLowerCase().trim();
-      if (gRoom !== targetRoom && !gRoom.includes(targetRoom) && !targetRoom.includes(gRoom)) return;
-
-      const checkinStr = (g.checkinDate || '').split(' ')[0].split('T')[0];
-      const checkoutStr = (g.expectedCheckout || g.checkoutDate || g.checkinDate || '').split(' ')[0].split('T')[0];
-
-      if (!checkinStr || checkinStr.length < 8) return;
-
-      let cur = new Date(checkinStr);
-      const end = new Date(checkoutStr || checkinStr);
-
-      while (cur <= end) {
-        const y = cur.getFullYear();
-        const m = String(cur.getMonth() + 1).padStart(2, '0');
-        const d = String(cur.getDate()).padStart(2, '0');
-        blocked.add(`${y}-${m}-${d}`);
-        cur.setDate(cur.getDate() + 1);
-      }
-    });
-
-    return Array.from(blocked);
-  }, [guest, allGuests]);
-
-  const formatDisplayDate = (dateStr: string) => {
-    if (!dateStr) return t('select_date_label', 'Select Date');
-    const parts = dateStr.split('-');
-    if (parts.length !== 3) return dateStr;
-    return `${parts[2]}/${parts[1]}/${parts[0]}`;
-  };
-
   // Kitchen / Incidentals State
   const [menuList, setMenuList] = useState<Array<{ id: string; name: string; price: number }>>([]);
   const [selectedMenuId, setSelectedMenuId] = useState('');
@@ -305,13 +261,13 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
       // Auto-load charged service requests for this guest / room
       fetchServiceRequestsFromDB().then((allReqs) => {
         if (!allReqs || !Array.isArray(allReqs)) return;
-        const gRoomId = guest.roomId;
+        const gRoomId = (guest as any).roomId || (guest as any).room_id;
         const gRoomName = (guest.roomNumber || '').toLowerCase().trim();
 
         const chargedReqs = allReqs.filter((r) => {
           const amt = Number(r.chargeAmount || (r as any).charge_amount || 0);
           if (amt <= 0) return false;
-          if (r.status === 'Cancelled') return false;
+          if ((r.status as string) === 'Cancelled') return false;
 
           if (gRoomId && Number(r.roomId) === Number(gRoomId)) return true;
           const reqRoom = String(r.roomName || '').toLowerCase().trim();
@@ -628,32 +584,28 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto receipt-edit-modal__root">
-      <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl max-w-4xl w-full max-h-[92vh] overflow-y-auto border border-slate-200 dark:border-slate-700 my-auto">
-        {/* Header */}
-        <div className="sticky top-0 z-10 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4 flex items-center justify-between">
-          <div>
-            <h2 className="receipt-edit-modal__title text-xl font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-              <IndianRupee className="w-5 h-5 text-blue-600" />
-              {internalMode === 'edit-only' ? t('edit_booking_billing_heading', 'Edit Guest Booking & Billing Details') : t('checkout_settlement_heading', 'Guest Billing & Final Checkout Settlement')}
-            </h2>
-            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
-              Room: {guest.roomNumber} • Guest: {editGuestName || guest.guestName} ({editPhoneNumber || guest.phoneNumber})
-            </p>
-          </div>
-          <Button
-            onClick={onClose}
-            size="xs"
-            variant="ghost"
-            className="text-slate-400 hover:text-slate-600"
-          >
-            <X className="w-5 h-5" />
-          </Button>
+    <>
+      {/* z-[58] matches the app's "real full-page modal" z-index tier (see the
+          scale note in src/index.css) - Flowbite's Modal portals to
+          document.body at a bare z-50, which the CSS rule that auto-bumps
+          `fixed inset-0 z-50` backdrops can't reach (different class tokens),
+          so every Flowbite modal needs this override or it renders behind
+          the header/sidebar. */}
+      <FlowbiteModal show={isOpen} onClose={onClose} size="5xl" dismissible className="z-58">
+      <ModalHeader>
+        <div>
+          <h2 className="receipt-edit-modal__title text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+            <IndianRupee className="w-5 h-5 text-blue-600" />
+            {internalMode === 'edit-only' ? t('edit_booking_billing_heading', 'Edit Guest Booking & Billing Details') : t('checkout_settlement_heading', 'Guest Billing & Final Checkout Settlement')}
+          </h2>
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
+            Room: {guest.roomNumber} • Guest: {editGuestName || guest.guestName} ({editPhoneNumber || guest.phoneNumber})
+          </p>
         </div>
+      </ModalHeader>
 
-        {/* Content Body Grid */}
-        <div className="p-6 space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <ModalBody className="p-4 sm:p-6 space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
             {/* LEFT COLUMN: Accommodation + Food Orders (LG: 7 cols) */}
             <div className="lg:col-span-7 space-y-6">
@@ -667,8 +619,8 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 uppercase mb-1">{t('guest_name_only_label', 'Guest Name')}</label>
                     <Input
+                      label={t('guest_name_only_label', 'Guest Name')}
                       type="text"
                       value={editGuestName}
                       onChange={(e) => setEditGuestName(e.target.value)}
@@ -676,8 +628,8 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 uppercase mb-1">{t('phone_number_label', 'Phone Number')}</label>
                     <Input
+                      label={t('phone_number_label', 'Phone Number')}
                       type="tel"
                       value={editPhoneNumber}
                       onChange={(e) => setEditPhoneNumber(e.target.value)}
@@ -686,40 +638,16 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 uppercase mb-1">{t('checkin_date_only_label', 'Check-In Date')}</label>
-                    <Button
-                      type="button"
-                      onClick={() => setIsDatePickerOpen(true)}
-                      block
-                      size="sm"
-                      variant="secondary"
-                      className="text-slate-900 dark:text-white flex items-center justify-between hover:border-blue-500 font-semibold"
-                    >
-                      <span>{checkinDate ? formatDisplayDate(checkinDate) : 'Select Date'}</span>
-                      <Calendar className="w-4 h-4 text-blue-600" />
-                    </Button>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 uppercase mb-1">{t('checkout_date_only_label', 'Check-Out Date')}</label>
-                    <Button
-                      type="button"
-                      onClick={() => setIsDatePickerOpen(true)}
-                      block
-                      size="sm"
-                      variant="secondary"
-                      className="text-slate-900 dark:text-white flex items-center justify-between hover:border-blue-500 font-semibold"
-                    >
-                      <span>{checkoutDate ? formatDisplayDate(checkoutDate) : 'Select Date'}</span>
-                      <Calendar className="w-4 h-4 text-blue-600" />
-                    </Button>
-                  </div>
-                </div>
+                <DateRangePicker
+                  checkinDate={checkinDate}
+                  checkoutDate={checkoutDate}
+                  onCheckinChange={setCheckinDate}
+                  onCheckoutChange={setCheckoutDate}
+                />
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 uppercase mb-1">{t('base_lodging_charges_label', 'Base Lodging Charges (₹)')}</label>
                   <Input
+                    label={t('base_lodging_charges_label', 'Base Lodging Charges (₹)')}
                     type="number"
                     value={roomCharges}
                     onChange={(e) => setRoomCharges(Math.max(0, parseFloat(e.target.value) || 0))}
@@ -743,8 +671,8 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                     </div>
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-500 uppercase mb-1">{t('received_by_booking_label', 'Received By (Booking)')}</label>
                     <StyledSelect
+                      label={t('received_by_booking_label', 'Received By (Booking)')}
                       value={advanceReceivedBy}
                       onChange={setAdvanceReceivedBy}
                       placeholder={t('choose_cash_handler_placeholder', '-- Choose cash handler --')}
@@ -758,20 +686,9 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                     <span className="text-slate-700 dark:text-slate-300">{t('pending_lodging_due_label', 'Pending Lodging Due:')}</span>
                     <span className="summary-line summary-line--pending-lodging-due text-amber-700 dark:text-amber-400 text-sm font-semibold">₹{lodgingPendingDue.toFixed(2)}</span>
                   </div>
-                  {/* Who's expected to collect this at checkout - same
-                      guests.pending_received_by column set at booking time
-                      (GuestManagement's "Pending Received By") and editable
-                      later via BookingDetailsModal, so it stays one
-                      consistent field across the whole guest lifecycle
-                      instead of a separate checkout-only record. Moved here
-                      (19 Aug 2026) to sit right below the amount it applies
-                      to, same as "Received By (Booking)" does for Advance
-                      Paid above - was previously buried deep inside the
-                      Final Checkout Split Settlement box further down,
-                      disconnected from Pending Lodging Due itself. */}
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-500 uppercase mb-1">{t('pending_received_by_label', 'Pending Received By')}</label>
                     <StyledSelect
+                      label={t('pending_received_by_label', 'Pending Received By')}
                       value={pendingReceivedBy}
                       onChange={handlePendingReceivedByChange}
                       placeholder={t('choose_cash_handler_placeholder', '-- Choose cash handler --')}
@@ -797,8 +714,8 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                   {/* Dish / Item Selector Controls */}
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
                     <div className="sm:col-span-7">
-                      <label className="block text-[11px] font-semibold text-slate-500 uppercase mb-1">{t('select_dish_item_label', 'Select Dish / Item')}</label>
                       <StyledSelect
+                        label={t('select_dish_item_label', 'Select Dish / Item')}
                         value={selectedMenuId}
                         onChange={setSelectedMenuId}
                         options={[
@@ -808,8 +725,8 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                       />
                     </div>
                     <div className="sm:col-span-2">
-                      <label className="block text-[11px] font-semibold text-slate-500 uppercase mb-1">{t('quantity_label', 'Quantity')}</label>
                       <Input
+                        label={t('quantity_label', 'Quantity')}
                         type="number"
                         min="1"
                         value={itemQty}
@@ -885,7 +802,19 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
             </div>
 
             {/* RIGHT COLUMN: Strategy Adjustments + Final Split Settlement (LG: 5 cols) */}
-            <div className="lg:col-span-5 space-y-6">
+            <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-0 self-start">
+
+              {internalMode === 'edit-and-checkout' && (
+                <div className="flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs dark:border-blue-900 dark:bg-blue-950/30">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
+                    <CreditCard className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-900 dark:text-white">Ready to settle this stay</p>
+                    <p className="mt-0.5 text-slate-600 dark:text-slate-300">Confirm the balance, choose a payment method, then close the booking.</p>
+                  </div>
+                </div>
+              )}
 
               {/* Strategy Type Custom Adjustments */}
               <div className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 space-y-3">
@@ -895,8 +824,8 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
                 <form onSubmit={handleAddAdjustment} className="app-form app-form--add-adjustment space-y-3 text-xs">
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 uppercase mb-1">{t('strategy_type_label', 'Strategy Type')}</label>
                     <StyledSelect
+                      label={t('strategy_type_label', 'Strategy Type')}
                       value={adjType}
                       onChange={(val) => setAdjType(val as 'charge' | 'discount')}
                       placeholder={t('choose_placeholder', '-- Choose --')}
@@ -909,8 +838,8 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
                   {adjType === 'charge' && (
                     <div>
-                      <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 uppercase mb-1">{t('charge_category_label', 'Charge Category')}</label>
                       <StyledSelect
+                        label={t('charge_category_label', 'Charge Category')}
                         value={adjReasonCharge}
                         onChange={setAdjReasonCharge}
                         options={[
@@ -986,7 +915,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
               </div>
 
               {/* Final Checkout Split Settlement Box */}
-              <div className="bg-emerald-50/70 dark:bg-emerald-950/30 rounded-2xl border-2 border-emerald-500/80 p-5 space-y-4">
+              <div className="bg-emerald-50/70 dark:bg-emerald-950/30 rounded-xl border-2 border-emerald-500/80 p-5 space-y-4 shadow-sm">
                 <div className="flex items-center gap-2 text-[10px] font-semibold text-emerald-900 dark:text-emerald-200 uppercase tracking-wide border-b border-emerald-200/60 pb-2">
                   <IndianRupee className="w-4 h-4 text-emerald-600" />
                   <span>{t('final_checkout_split_heading', 'Final Checkout Split Settlement')}</span>
@@ -1283,78 +1212,63 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
               </div>
 
-            </div>
-
           </div>
         </div>
+      </ModalBody>
 
-        {/* Footer Actions */}
-        <div className="sticky bottom-0 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 px-4 py-3 sm:px-6 flex items-center gap-3">
-          {internalMode === 'edit-and-checkout' && (
-            <button
-              type="button"
-              onClick={() => setIsPrintModalOpen(true)}
-              className="flex-1 h-12 py-3 px-4 bg-cyan-600 hover:bg-cyan-700 active:scale-98 text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md shrink-0"
-            >
-              <Printer className="w-4 h-4 shrink-0" />
-              <span>{t('preview_share_bill_button', 'Preview & Share Bill')}</span>
-            </button>
-          )}
-
+      {/* Footer Actions */}
+      <ModalFooter className="flex items-center gap-3">
+        {internalMode === 'edit-and-checkout' && (
           <button
             type="button"
-            onClick={handleSaveOrCheckout}
-            disabled={isProcessing || (internalMode === 'edit-and-checkout' && !isSplitMatching)}
-            className={`flex-1 h-12 py-3 px-4 text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-2 shrink-0 ${
-              internalMode === 'edit-only'
-                ? 'bg-blue-600 hover:bg-blue-700 active:scale-98 cursor-pointer'
-                : !isSplitMatching
-                ? 'bg-slate-400 dark:bg-slate-700 cursor-not-allowed opacity-75'
-                : 'bg-emerald-600 hover:bg-emerald-700 active:scale-98 cursor-pointer'
-            }`}
+            onClick={() => setIsPrintModalOpen(true)}
+            className="flex-1 h-12 py-3 px-4 bg-cyan-600 hover:bg-cyan-700 active:scale-98 text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md shrink-0"
           >
-            {isProcessing ? <Loader2 className="w-4 h-4 animate-spin shrink-0" /> : <CheckCircle2 className="w-4 h-4 shrink-0" />}
-            <span>
-              {isProcessing
-                ? (internalMode === 'edit-only' ? 'Saving Changes...' : 'Processing Checkout...')
-                : internalMode === 'edit-only'
-                ? t('save_booking_changes_button', 'Save Booking Changes')
-                : !isSplitMatching
-                ? `Split Total Must Equal ₹${grandTargetDue.toFixed(2)}`
-                : t('checkout_close_booking_button', 'Checkout & Close Booking')
-              }
-            </span>
+            <Printer className="w-4 h-4 shrink-0" />
+            <span>{t('preview_share_bill_button', 'Preview & Share Bill')}</span>
           </button>
+        )}
 
-          {internalMode === 'edit-only' && (
-            <button
-              type="button"
-              onClick={handleSaveAndProceedToCheckout}
-              disabled={isProcessing}
-              className="flex-1 h-12 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold text-xs rounded-xl transition-all cursor-pointer shadow-md flex items-center justify-center gap-2 shrink-0"
-            >
-              <CheckCircle2 className="w-4 h-4 shrink-0" />
-              <span>{t('save_and_proceed_checkout_button', 'Save and Proceed to Checkout')}</span>
-            </button>
-          )}
-        </div>
+        <button
+          type="button"
+          onClick={handleSaveOrCheckout}
+          disabled={isProcessing || (internalMode === 'edit-and-checkout' && !isSplitMatching)}
+          className={`flex-1 h-12 py-3 px-4 text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-2 shrink-0 ${
+            internalMode === 'edit-only'
+              ? 'bg-blue-600 hover:bg-blue-700 active:scale-98 cursor-pointer'
+              : !isSplitMatching
+              ? 'bg-slate-400 dark:bg-slate-700 cursor-not-allowed opacity-75'
+              : 'bg-emerald-600 hover:bg-emerald-700 active:scale-98 cursor-pointer'
+          }`}
+        >
+          {isProcessing ? <Loader2 className="w-4 h-4 animate-spin shrink-0" /> : <CheckCircle2 className="w-4 h-4 shrink-0" />}
+          <span>
+            {isProcessing
+              ? (internalMode === 'edit-only' ? 'Saving Changes...' : 'Processing Checkout...')
+              : internalMode === 'edit-only'
+              ? t('save_booking_changes_button', 'Save Booking Changes')
+              : !isSplitMatching
+              ? `Split Total Must Equal ₹${grandTargetDue.toFixed(2)}`
+              : t('checkout_close_booking_button', 'Checkout & Close Booking')
+            }
+          </span>
+        </button>
 
-      </div>
+        {internalMode === 'edit-only' && (
+          <button
+            type="button"
+            onClick={handleSaveAndProceedToCheckout}
+            disabled={isProcessing}
+            className="flex-1 h-12 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold text-xs rounded-xl transition-all cursor-pointer shadow-md flex items-center justify-center gap-2 shrink-0"
+          >
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <span>{t('save_and_proceed_checkout_button', 'Save and Proceed to Checkout')}</span>
+          </button>
+        )}
+      </ModalFooter>
+    </FlowbiteModal>
 
-      {/* Date Range Picker Modal with Blocked Date Indicators */}
-      <DateRangePicker
-        isOpen={isDatePickerOpen}
-        onClose={() => setIsDatePickerOpen(false)}
-        checkinDate={checkinDate}
-        checkoutDate={checkoutDate}
-        onCheckinChange={setCheckinDate}
-        onCheckoutChange={setCheckoutDate}
-        onClear={() => {
-          setCheckinDate('');
-          setCheckoutDate('');
-        }}
-        blockedDates={blockedDates}
-      />
+
 
       {/* ========================================================================= */}
       {/* POPUP MODAL: CLEAN PRINT-FRIENDLY RECEIPT                                 */}
@@ -1539,7 +1453,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 

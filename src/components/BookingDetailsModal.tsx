@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2, MessageCircle, LogOut, Upload, CreditCard, Globe, AlertTriangle } from 'lucide-react';
+import { Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2, MessageCircle, LogOut, Upload, CreditCard, Globe, AlertTriangle } from 'lucide-react';
+import { Modal, ModalHeader, ModalBody } from 'flowbite-react';
 import { Guest } from '../types';
 import { markCFormFiled, checkinGuestInDB } from '../services/api';
 import { useStaff } from '../contexts/StaffContext';
@@ -107,7 +108,6 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
   // Set only when edit mode is entered via the "Settle / Assign Receiver"
   // banner, so the empty received-by field(s) it's pointing at get a visual
   // highlight - the generic Edit button shouldn't highlight anything.
@@ -208,27 +208,6 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     setEditShowNotes(!!guest.notes);
     setEditIsForeignGuest(!!guest.isForeignGuest);
     setIsEditing(true);
-  };
-
-  const getBlockedDateStrings = () => {
-    const guestRoomId = g.roomId ?? g.room_id;
-    const blocked: string[] = [];
-    checkedInGuests
-      .filter((other) => other.id !== guest.id)
-      .filter((other) => {
-        const otherRoomId = (other as any).roomId ?? (other as any).room_id;
-        return guestRoomId ? Number(otherRoomId) === Number(guestRoomId) : other.roomNumber === guest.roomNumber;
-      })
-      .forEach((other) => {
-        const start = new Date(other.checkinDate);
-        const end = new Date(other.expectedCheckout || other.checkoutDate || other.checkinDate);
-        const cur = new Date(start);
-        while (cur < end) {
-          blocked.push(`${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`);
-          cur.setDate(cur.getDate() + 1);
-        }
-      });
-    return blocked;
   };
 
   const handleSave = async () => {
@@ -335,38 +314,32 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
 
   return (
     <>
-      <div className="booking-details-modal__overlay fixed inset-0 bg-black/50 z-60 flex items-center justify-center p-4" onClick={() => { onClose(); setIsEditing(false); }}>
-        <div
-          id="printableBookingDetailsContent"
-          className="booking-details-modal__content relative bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Modal Top Header Bar with Non-Squeezable Close Button */}
-          <div className="booking-details-modal__header flex items-start justify-between gap-3 mb-4 border-b border-slate-100 dark:border-slate-700 pb-3">
-            <h2 className="booking-details-modal__title text-base font-semibold text-slate-900 dark:text-white flex flex-wrap items-center gap-2 pr-2">
-              <span>{isEditing ? t('edit_booking_header', 'Edit Booking') : t('today_booking_details_heading', 'Booking Details')}</span>
-              {guest.otaSource && (
-                <span
-                  className="booking-details-modal__ota-badge inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 text-[10px] font-semibold"
-                  title={t('ota_converted_badge_tooltip', 'Converted from an OTA calendar sync - editing this only changes this app, not the original platform')}
-                >
-                  <Globe className="w-3 h-3 shrink-0" />
-                  {guest.otaSourceLabel || guest.otaSource}
-                  {guest.roomNumber && <span className="opacity-70">&middot; {guest.roomNumber}</span>}
-                </span>
-              )}
-            </h2>
-
-            <button
-              type="button"
-              onClick={() => { onClose(); setIsEditing(false); }}
-              className="booking-details-modal__close-btn shrink-0 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white flex items-center justify-center transition-colors cursor-pointer shadow-xs"
-              title="Close Modal"
-            >
-              <X className="w-4 h-4 shrink-0" />
-            </button>
-          </div>
-
+      {/* z-60: opened from the calendar/bookings screen with an underlying
+          page modal sometimes already open (see the z-index scale note in
+          src/index.css). */}
+      <Modal
+        show
+        onClose={() => { onClose(); setIsEditing(false); }}
+        dismissible={!isSaving}
+        size="md"
+        className="z-60 booking-details-modal__overlay"
+      >
+        <ModalHeader as="div">
+          <h2 className="booking-details-modal__title text-base font-semibold text-slate-900 dark:text-white flex flex-wrap items-center gap-2 pr-2">
+            <span>{isEditing ? t('edit_booking_header', 'Edit Booking') : t('today_booking_details_heading', 'Booking Details')}</span>
+            {guest.otaSource && (
+              <span
+                className="booking-details-modal__ota-badge inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 text-[10px] font-semibold"
+                title={t('ota_converted_badge_tooltip', 'Converted from an OTA calendar sync - editing this only changes this app, not the original platform')}
+              >
+                <Globe className="w-3 h-3 shrink-0" />
+                {guest.otaSourceLabel || guest.otaSource}
+                {guest.roomNumber && <span className="opacity-70">&middot; {guest.roomNumber}</span>}
+              </span>
+            )}
+          </h2>
+        </ModalHeader>
+        <ModalBody id="printableBookingDetailsContent">
           {/* Action Banner 0: OTA cancellation drift - the source calendar no longer
               has this reservation (guest likely cancelled upstream). Informational
               only, staff decide what to do - never auto-cancels/checks out. */}
@@ -546,32 +519,29 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             </div>
 
             {/* Row: Check-in + Check-out */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={fieldLabelClass}>{t('today_check_in_label', 'Check-in')}</label>
-                {isEditing ? (
-                  <button type="button" onClick={() => setShowDatePicker(true)} className={`${inputClass} text-left hover:border-blue-500 transition cursor-pointer`}>
-                    {editCheckin ? formatDate(editCheckin) : t('today_add_date_button', 'Add date')}
-                  </button>
-                ) : (
+            {isEditing ? (
+              <DateRangePicker
+                checkinDate={editCheckin}
+                checkoutDate={editCheckout}
+                onCheckinChange={setEditCheckin}
+                onCheckoutChange={setEditCheckout}
+              />
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={fieldLabelClass}>{t('today_check_in_label', 'Check-in')}</label>
                   <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
                     {formatDate(guest.checkinDate?.split(' ')[0] || '')}
                   </div>
-                )}
-              </div>
-              <div>
-                <label className={fieldLabelClass}>{t('today_check_out_label', 'Check-out')}</label>
-                {isEditing ? (
-                  <button type="button" onClick={() => setShowDatePicker(true)} className={`${inputClass} text-left hover:border-blue-500 transition cursor-pointer`}>
-                    {editCheckout ? formatDate(editCheckout) : t('today_add_date_button', 'Add date')}
-                  </button>
-                ) : (
+                </div>
+                <div>
+                  <label className={fieldLabelClass}>{t('today_check_out_label', 'Check-out')}</label>
                   <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
                     {formatDate(guest.expectedCheckout?.split(' ')[0] || '')}
                   </div>
-                )}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Room Rent */}
             <div>
@@ -881,20 +851,8 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               </div>
             )}
           </div>
-        </div>
-      </div>
-
-      <DateRangePicker
-        isOpen={showDatePicker}
-        onClose={() => setShowDatePicker(false)}
-        checkinDate={editCheckin}
-        checkoutDate={editCheckout}
-        onCheckinChange={setEditCheckin}
-        onCheckoutChange={setEditCheckout}
-        onClear={() => { setEditCheckin(''); setEditCheckout(''); }}
-        blockedDates={getBlockedDateStrings()}
-        heading={t('select_dates_for_room_heading', 'Select dates - {{room}}').replace('{{room}}', guest.roomNumber || t('this_property_label', 'this property'))}
-      />
+        </ModalBody>
+      </Modal>
 
       {isIdModalOpen && (
         <CheckinVerificationModal

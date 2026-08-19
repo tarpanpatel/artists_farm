@@ -54,8 +54,6 @@ function getDefaultPageOptions(): PageOption[] {
     { label: 'Staff Directory', tabKey: 'staff', uniqueKey: 'staff_directory_salaries' },
     { label: 'Analytics', tabKey: 'analytics', uniqueKey: 'dashboard_analytics' },
     { label: 'Past Receipts', tabKey: 'audit_logs', uniqueKey: 'past_receipts_log' },
-    { label: 'Login Logs', tabKey: 'audit_logs', uniqueKey: 'login_logs' },
-    { label: 'System Health', tabKey: 'audit_logs', uniqueKey: 'system_health' },
     { label: 'Telegram Bot', tabKey: 'telegram', uniqueKey: 'telegram' },
     { label: 'Edit Food Menu', tabKey: 'menu_manager', uniqueKey: 'edit_food_menu' },
     { label: 'Edit Kitchen Stock', tabKey: 'inventory', uniqueKey: 'edit_kitchen_stock' },
@@ -737,7 +735,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
   };
 
   return (
-    <div className="nav-menu-editor bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden flex flex-col min-h-[600px]">
+    <div className="nav-menu-editor bg-white rounded-2xl border border-slate-200 shadow-md overflow-hidden flex flex-col min-h-[600px]">
       {/* Header */}
       <div className="nav-menu-editor__header p-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
         <div className="nav-menu-editor__header-row flex items-center justify-between mb-2">

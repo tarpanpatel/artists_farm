@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Card, Table, TableHead, TableBody, TableRow, TableCell } from 'flowbite-react';
 import { ShieldCheck, RefreshCw, Save, Loader2, CheckCircle2, XCircle, HelpCircle, FolderCog } from 'lucide-react';
 import { t } from '../i18n/en';
 import { Input } from './Input';
@@ -113,37 +114,37 @@ export const TelegramHealthPanel: React.FC = () => {
       const res = await fetch(`/php/api/router.php?action=save_system_settings`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json', 'X-User-Role': 'root_admin' },
-        body: JSON.stringify({ setting_key: 'telegram_fallback_source_path', setting_value: fallbackPath.trim() }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          setting_key: 'telegram_fallback_source_path',
+          setting_value: fallbackPath.trim(),
+        }),
       });
       const data = await res.json();
       if (data.status === 'success') {
         setSavedFallbackPath(fallbackPath.trim());
-        setToast(t('telegram_fallback_path_saved', 'Fallback file path saved'));
+        setToast(t('telegram_fallback_path_saved', 'Fallback path saved successfully.'));
+        setTimeout(() => setToast(null), 3000);
         runHealthCheck();
-      } else {
-        setToast(t('telegram_fallback_path_save_failed', 'Failed to save'));
       }
     } catch (err) {
-      console.error('Failed to save Telegram fallback path:', err);
-      setToast(t('telegram_fallback_path_save_failed', 'Failed to save'));
+      console.error('Failed to save fallback path:', err);
     } finally {
       setSaving(false);
-      setTimeout(() => setToast(null), 2500);
     }
   };
 
-  const hasPathChanges = fallbackPath.trim() !== savedFallbackPath;
+  const hasPathChanges = fallbackPath.trim() !== savedFallbackPath.trim();
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
-      <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-700 flex items-start justify-between flex-wrap gap-3">
+    <Card className="border-gray-200 dark:border-gray-700 telegram-health-panel">
+      <div className="pb-4 border-b border-gray-200 dark:border-gray-700 flex items-start justify-between flex-wrap gap-3">
         <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-blue-600" />
+          <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             {t('telegram_platform_health_title', 'Telegram Platform Health')}
           </h3>
-          <p className="text-xs text-slate-500 mt-1 max-w-2xl">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-2xl">
             {t(
               'telegram_platform_health_subtitle',
               "This server's malware scanner has quarantined php/telegram/telegram.php before - if it happens again, only the whitelisted copy at the path below can be trusted to still exist. Check status here before assuming a broken \"Save\" button on a property's Telegram Setup is a code bug."
@@ -153,21 +154,21 @@ export const TelegramHealthPanel: React.FC = () => {
         <button
           onClick={runHealthCheck}
           disabled={checking}
-          className="px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-xs font-semibold text-slate-700 dark:text-slate-200 rounded-lg cursor-pointer transition-colors flex items-center gap-1.5 disabled:opacity-60 shrink-0"
+          className="px-3 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-xs font-semibold text-gray-700 dark:text-gray-200 rounded-lg cursor-pointer transition-colors flex items-center gap-1.5 disabled:opacity-60 shrink-0"
         >
           {checking ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
           {t('run_health_check_button', 'Run Health Check')}
         </button>
       </div>
 
-      <div className="p-5 space-y-5">
+      <div className="space-y-5">
         <div>
-          <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+          <label className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
             <FolderCog className="w-3.5 h-3.5" />
             {t('telegram_fallback_path_label', 'Whitelisted fallback file path (staging self-heal)')}
           </label>
           {loadingSettings ? (
-            <p className="text-xs text-slate-400">{t('loading_message', 'Loading...')}</p>
+            <p className="text-xs text-gray-400">{t('loading_message', 'Loading...')}</p>
           ) : (
             <div className="flex items-center gap-2">
               <Input
@@ -183,7 +184,7 @@ export const TelegramHealthPanel: React.FC = () => {
                 className={`px-4 py-2 text-xs font-semibold rounded-lg cursor-pointer transition-colors flex items-center gap-1.5 shrink-0 ${
                   hasPathChanges
                     ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                    : 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed'
+                    : 'bg-gray-200 dark:bg-slate-700 text-gray-400 cursor-not-allowed'
                 }`}
               >
                 {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
@@ -191,7 +192,7 @@ export const TelegramHealthPanel: React.FC = () => {
               </button>
             </div>
           )}
-          <p className="text-[11px] text-slate-400 mt-1.5">
+          <p className="text-[11px] text-gray-400 mt-1.5">
             {t(
               'telegram_fallback_path_hint',
               "When staging's own copy of telegram.php goes missing (the scanner only ever spares the exact path above), the server automatically copies it back from here before the next request that needs it."
@@ -200,7 +201,7 @@ export const TelegramHealthPanel: React.FC = () => {
         </div>
 
         {health && (
-          <div className="space-y-4 border-t border-slate-100 dark:border-slate-700/60 pt-4">
+          <div className="space-y-4 border-t border-gray-100 dark:border-gray-700 pt-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <StatusRow
                 ok={health.moduleLoaded}
@@ -236,23 +237,23 @@ export const TelegramHealthPanel: React.FC = () => {
 
             {health.properties.length > 0 && (
               <div>
-                <h4 className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                <h4 className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
                   {t('telegram_bot_reachability_heading', 'Bot reachability by property')}
                 </h4>
-                <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
-                  <table className="w-full text-xs">
-                    <thead className="bg-slate-50 dark:bg-slate-900/60 text-slate-500">
-                      <tr>
-                        <th className="text-left font-semibold px-3 py-2">{t('property_column_label', 'Property')}</th>
-                        <th className="text-left font-semibold px-3 py-2">{t('status_column_label', 'Status')}</th>
-                        <th className="text-left font-semibold px-3 py-2">{t('detail_column_label', 'Detail')}</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                  <Table className="w-full">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell className="text-left font-semibold">{t('property_column_label', 'Property')}</TableCell>
+                        <TableCell className="text-left font-semibold">{t('status_column_label', 'Status')}</TableCell>
+                        <TableCell className="text-left font-semibold">{t('detail_column_label', 'Detail')}</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody className="divide-y divide-gray-100 dark:divide-gray-700">
                       {health.properties.map((p) => (
-                        <tr key={p.propertyId}>
-                          <td className="px-3 py-2 text-slate-700 dark:text-slate-200 font-medium whitespace-nowrap">{p.propertyName}</td>
-                          <td className="px-3 py-2 whitespace-nowrap">
+                        <TableRow key={p.propertyId}>
+                          <TableCell className="font-medium whitespace-nowrap text-gray-700 dark:text-gray-200">{p.propertyName}</TableCell>
+                          <TableCell className="whitespace-nowrap">
                             {p.botReachable ? (
                               <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold">
                                 <CheckCircle2 className="w-3.5 h-3.5" /> {t('reachable_label', 'Reachable')}
@@ -262,28 +263,28 @@ export const TelegramHealthPanel: React.FC = () => {
                                 <XCircle className="w-3.5 h-3.5" /> {t('unreachable_label', 'Unreachable')}
                               </span>
                             )}
-                          </td>
-                          <td className="px-3 py-2 text-slate-500 dark:text-slate-400">
+                          </TableCell>
+                          <TableCell className="text-gray-500 dark:text-gray-400">
                             {p.botReachable ? `@${p.botUsername}` : p.error}
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </Table>
                 </div>
               </div>
             )}
 
             {health.recentEvents.length > 0 && (
               <div>
-                <h4 className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                <h4 className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
                   {t('telegram_recent_events_heading', 'Recent Telegram-related events')}
                 </h4>
                 <div className="space-y-1.5 max-h-48 overflow-y-auto">
                   {health.recentEvents.map((e, i) => (
-                    <div key={i} className="flex items-start gap-2 text-[11px] bg-slate-50 dark:bg-slate-900/40 px-3 py-2 rounded-lg">
-                      <span className="font-mono text-slate-400 shrink-0">{e.timestamp}</span>
-                      <span className="text-slate-600 dark:text-slate-300">{e.msg}</span>
+                    <div key={i} className="flex items-start gap-2 text-[11px] bg-gray-50 dark:bg-slate-900/40 px-3 py-2 rounded-lg">
+                      <span className="font-mono text-gray-400 shrink-0">{e.timestamp}</span>
+                      <span className="text-gray-600 dark:text-gray-300">{e.msg}</span>
                     </div>
                   ))}
                 </div>
@@ -291,7 +292,7 @@ export const TelegramHealthPanel: React.FC = () => {
             )}
 
             {checkedAt && (
-              <p className="text-[10px] text-slate-400">
+              <p className="text-[10px] text-gray-400">
                 {t('checked_at_label', 'Checked at')} {checkedAt}
               </p>
             )}
@@ -304,6 +305,6 @@ export const TelegramHealthPanel: React.FC = () => {
           {toast}
         </div>
       )}
-    </div>
+    </Card>
   );
 };

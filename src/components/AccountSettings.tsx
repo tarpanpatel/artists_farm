@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Card } from 'flowbite-react';
 import { UserCog, User, Phone, Mail, ShieldCheck, KeyRound, Loader2, Save } from 'lucide-react';
 import { Input } from './Input';
 import { Button } from './Button';
@@ -29,13 +30,6 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ username, onUs
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Username and phone number are the SAME value everywhere else in the app
-  // (staff, tenant users all log in with "Phone Number (Login Username)" as
-  // one field - see StaffManagement.tsx) - this screen used to treat them as
-  // two independently-editable fields, which is how a root admin account
-  // could end up with a username that didn't match its own phone number
-  // and therefore couldn't be typed into the numeric-only login field at
-  // all. One field now; phone_number is sent identical to username.
   const [profileUsername, setProfileUsername] = useState(username);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -105,48 +99,55 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ username, onUs
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           username: profileUsername.trim(),
-          full_name: fullName.trim(),
           phone_number: profileUsername.trim(),
-          email: email.trim(),
-          gstin: gstin.trim().toUpperCase(),
-          current_passcode: currentPasscode,
-          new_passcode: newPasscode,
+          full_name: fullName.trim() || null,
+          email: email.trim() || null,
+          gstin: gstin.trim() || null,
+          current_passcode: currentPasscode || undefined,
+          new_passcode: newPasscode || undefined,
         }),
       });
       const json = await res.json();
       if (json.success) {
-        showToast(json.message || 'Account details updated', { type: 'success' });
-        onUsernameChange(profileUsername.trim());
+        showToast('Account details saved successfully', { type: 'success' });
+        if (profileUsername.trim() !== username) {
+          onUsernameChange(profileUsername.trim());
+        }
         setCurrentPasscode('');
         setNewPasscode('');
         setConfirmPasscode('');
       } else {
-        showToast(json.message || 'Failed to update account details', { type: 'error' });
+        showToast(json.message || 'Failed to save account details', { type: 'error' });
       }
     } catch (err) {
       console.error('Failed to save account settings:', err);
-      showToast('Failed to update account details', { type: 'error' });
+      showToast('Failed to save account details', { type: 'error' });
     } finally {
       setIsSaving(false);
     }
   };
 
   if (isLoading) {
-    return <div className="account-settings__loading p-8 text-center text-slate-400 dark:text-slate-500 text-sm">Loading account settings...</div>;
+    return (
+      <div className="account-settings flex items-center justify-center p-12 text-gray-500 dark:text-gray-400">
+        <Loader2 className="w-5 h-5 animate-spin mr-2" />
+        <span>Loading account details...</span>
+      </div>
+    );
   }
 
   return (
-    <div className="account-settings space-y-4">
+    <div className="account-settings space-y-6 max-w-3xl">
       {/* Profile Details */}
-      <div className="account-settings__section account-settings__section--profile bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
-        <h3 className="account-settings__section-title text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-1">
-          <UserCog className="account-settings__section-icon w-4 h-4 text-blue-500" /> Profile Details
+      <Card className="account-settings__section border-gray-200 dark:border-gray-700">
+        <h3 className="account-settings__section-title text-base font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-1">
+          <UserCog className="account-settings__section-icon w-5 h-5 text-blue-600 dark:text-blue-400" /> Platform Admin Profile
         </h3>
-        <p className="account-settings__section-desc text-xs text-slate-500 dark:text-slate-400 mb-4">
-          Your platform login and contact details. GSTIN appears on the platform owner's records and can be edited anytime.
+        <p className="account-settings__section-desc text-xs text-gray-500 dark:text-gray-400 mb-4">
+          Personal details and contact information for your root administrative account.
         </p>
 
-        <div className="account-settings__grid grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="account-settings__grid grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="account-settings__field">
             <Input
               label="Phone Number (Login Username)"
@@ -157,7 +158,7 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ username, onUs
               placeholder="10-digit mobile number"
               inputMode="numeric"
               leftIcon={<Phone className="w-4 h-4" />}
-              helperText="Used to log in - same value everywhere in the app, no separate username. Changing it takes effect immediately."
+              helperText="Used to log in - same value everywhere in the app, no separate username."
             />
           </div>
           <div className="account-settings__field">
@@ -190,14 +191,14 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ username, onUs
             />
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Passcode */}
-      <div className="account-settings__section account-settings__section--passcode bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
-        <h3 className="account-settings__section-title text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-1">
-          <KeyRound className="account-settings__section-icon w-4 h-4 text-amber-500" /> Change Passcode
+      <Card className="account-settings__section border-gray-200 dark:border-gray-700">
+        <h3 className="account-settings__section-title text-base font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-1">
+          <KeyRound className="account-settings__section-icon w-5 h-5 text-amber-500" /> Change Passcode
         </h3>
-        <p className="account-settings__section-desc text-xs text-slate-500 dark:text-slate-400 mb-4">
+        <p className="account-settings__section-desc text-xs text-gray-500 dark:text-gray-400 mb-4">
           Leave the passcode fields blank to keep your current passcode. The current passcode is required to set a new one.
         </p>
 
@@ -233,7 +234,7 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ username, onUs
             />
           </div>
         </div>
-      </div>
+      </Card>
 
       <div className="account-settings__actions flex flex-wrap items-center gap-3">
         <Button variant="primary" size="md" onClick={handleSave} disabled={isSaving}>

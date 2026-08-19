@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ArrowRightLeft, Loader2, Search, AlertTriangle, CheckCircle2, IndianRupee, Handshake, Sliders, ChevronUp, ChevronDown, Plus, Trash2, Check, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Modal, ModalHeader, ModalBody, ModalFooter } from 'flowbite-react';
+import { ArrowRightLeft, Loader2, Search, AlertTriangle, CheckCircle2, IndianRupee, Handshake, Sliders, ChevronUp, ChevronDown, Plus, Trash2, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { CashDrawerEntry, CashDrawerSummary, StaffAdvance, StaffMember } from '../types';
 import { PageHeader } from './PageHeader';
+import { KpiCard } from './KpiCard';
 import { t } from '../i18n/en';
 import { fetchCashDrawerSummaryFromDB, addDrawerEntryToDB, fetchDrawerEntriesFromDB, resolveTelegramTemplate, fetchStaffAdvancesFromDB, addStaffAdvanceToDB, deleteStaffAdvanceFromDB, saveAttendanceToDB, generateSalaryEntry } from '../services/api';
 import DataTable from 'react-data-table-component';
@@ -307,39 +309,26 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
       />
 
       {/* System Totals Bar */}
-      <div className="analytics-kpi-grid grid grid-cols-3 gap-2 sm:gap-4">
-        <div className="analytics-kpi-card bg-white dark:bg-slate-800 p-2.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs min-w-0">
-          <p className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">{t('total_cash_collected_label', 'Total Cash Collected')}</p>
-          <p className="text-sm sm:text-2xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-center gap-0.5 sm:gap-1">
-            <IndianRupee className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-emerald-600 dark:text-emerald-500 shrink-0" />
-            <span className="truncate">{totalCollected.toLocaleString('en-IN', { minimumFractionDigits: 0 })}</span>
-          </p>
-          <p className="text-[9px] sm:text-xs text-emerald-600 dark:text-emerald-400 font-semibold mt-1 truncate">
-            {t('from_guest_checkouts_label', 'From Guest Checkouts')}
-          </p>
-        </div>
-
-        <div className="analytics-kpi-card bg-white dark:bg-slate-800 p-2.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs min-w-0">
-          <p className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">{t('total_handed_over_label', 'Total Handed Over')}</p>
-          <p className="text-sm sm:text-2xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-center gap-0.5 sm:gap-1">
-            <IndianRupee className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-amber-600 dark:text-amber-500 shrink-0" />
-            <span className="truncate">{totalHandedOver.toLocaleString('en-IN', { minimumFractionDigits: 0 })}</span>
-          </p>
-          <p className="text-[9px] sm:text-xs text-slate-500 font-semibold mt-1 truncate">
-            {t('to_owner_next_shift_label', 'To Owner / Next Shift')}
-          </p>
-        </div>
-
-        <div className="analytics-kpi-card bg-white dark:bg-slate-800 p-2.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs min-w-0">
-          <p className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">{t('net_cash_in_system_label', 'Net Cash In System')}</p>
-          <p className="text-sm sm:text-2xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-center gap-0.5 sm:gap-1">
-            <IndianRupee className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-500 shrink-0" />
-            <span className="truncate">{totalCashInSystem.toLocaleString('en-IN', { minimumFractionDigits: 0 })}</span>
-          </p>
-          <p className="text-[9px] sm:text-xs text-blue-600 dark:text-blue-400 font-semibold mt-1 truncate">
-            {t('unaccounted_should_match_label', 'Should Match Physical Cash Box')}
-          </p>
-        </div>
+      <div className="analytics-kpi-grid grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
+        <KpiCard
+          label={t('total_cash_collected_label', 'Total Cash Collected')}
+          value={<><IndianRupee className="w-6 h-6 text-emerald-600 mr-0.5" />{totalCollected.toLocaleString('en-IN')}</>}
+          subtext={t('from_guest_checkouts_label', 'From Guest Checkouts')}
+          badge={{ text: 'Collected', color: 'success' }}
+        />
+        <KpiCard
+          label={t('handed_over_to_safe_label', 'Handed Over to Safe')}
+          value={<><IndianRupee className="w-6 h-6 text-blue-600 mr-0.5" />{totalHandedOver.toLocaleString('en-IN')}</>}
+          subtext={t('deposited_by_staff_label', 'Deposited by Staff')}
+          badge={{ text: 'Safe Handovers', color: 'info' }}
+        />
+        <KpiCard
+          label={t('net_in_staff_hands_label', 'Net in Staff Hands')}
+          value={<><IndianRupee className="w-6 h-6 mr-0.5" />{totalCashInSystem.toLocaleString('en-IN')}</>}
+          valueClassName={totalCashInSystem > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-900 dark:text-white'}
+          subtext={t('active_drawer_balances_label', 'Active Drawer Balances')}
+          badge={{ text: 'In Hands', color: 'warning' }}
+        />
       </div>
 
       {/* Side-by-Side Forms Grid */}
@@ -990,56 +979,53 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
       </div>
 
       {/* GIVE ADVANCE MODAL */}
-      {isAdvanceModalOpen && advanceStaff && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-sm w-full border border-slate-200 dark:border-slate-700 shadow-2xl p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="cash-drawer-manager__subtitle font-semibold text-slate-900 dark:text-white text-sm">{t('give_advance_heading', 'Give Advance —')} {advanceStaff.name}</h3>
-              <button onClick={() => setIsAdvanceModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      <Modal show={isAdvanceModalOpen && Boolean(advanceStaff)} onClose={() => setIsAdvanceModalOpen(false)} className="z-58" size="sm" dismissible>
+        {advanceStaff && (
+          <>
+            <ModalHeader as="div">
+              <span>{t('give_advance_heading', 'Give Advance —')} {advanceStaff.name}</span>
+            </ModalHeader>
+            <ModalBody className="space-y-4">
+              <div>
+                <Input
+                  label="Amount (₹) *"
+                  type="number"
+                  min={0}
+                  value={advanceAmount || ''}
+                  onChange={(e) => setAdvanceAmount(Number(e.target.value))}
+                  placeholder="e.g. 2000"
+                  className="text-sm font-semibold"
+                />
+              </div>
 
-            <div>
-              <Input
-                label="Amount (₹) *"
-                type="number"
-                min={0}
-                value={advanceAmount || ''}
-                onChange={(e) => setAdvanceAmount(Number(e.target.value))}
-                placeholder="e.g. 2000"
-                className="text-sm font-semibold"
-              />
-            </div>
-
-            <div>
-              <Input
-                label={t('reason_label', 'Reason')}
-                type="text"
-                value={advanceReason}
-                onChange={(e) => setAdvanceReason(e.target.value)}
-                placeholder="e.g. Personal emergency"
-              />
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
+              <div>
+                <Input
+                  label={t('reason_label', 'Reason')}
+                  type="text"
+                  value={advanceReason}
+                  onChange={(e) => setAdvanceReason(e.target.value)}
+                  placeholder="e.g. Personal emergency"
+                />
+              </div>
+            </ModalBody>
+            <ModalFooter className="flex items-center justify-end gap-2">
+              <Button
+                variant="secondary"
                 onClick={() => setIsAdvanceModalOpen(false)}
-                className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs cursor-pointer"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="primary"
                 onClick={handleGiveAdvance}
                 disabled={advanceAmount <= 0}
-                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:opacity-50 text-white font-semibold text-xs shadow-sm cursor-pointer"
               >
                 Confirm Advance
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+              </Button>
+            </ModalFooter>
+          </>
+        )}
+      </Modal>
     </div>
   );
 };

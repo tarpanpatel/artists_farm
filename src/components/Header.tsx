@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Badge, Tooltip } from 'flowbite-react';
 import {
   Building2,
   AlertTriangle,
@@ -213,7 +214,7 @@ export const Header: React.FC<HeaderProps> = ({
     // toggle button stays usable while the drawer is open, and below real
     // page modals (bumped to z-[58] by that same CSS rule) and toasts/
     // confirm dialog (z-[9999]/[99999]).
-    <header className={`header fixed top-0 left-0 right-0 z-[57] bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-2xs h-16 pt-[env(safe-area-inset-top,0px)] transition-transform duration-300 ${isHeaderVisible ? 'translate-y-0' : '-translate-y-full'}`}>
+    <header className={`header fixed top-0 left-0 right-0 z-57 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 h-16 pt-[env(safe-area-inset-top,0px)] transition-transform duration-300 ${isHeaderVisible ? 'translate-y-0' : '-translate-y-full'}`}>
       <div className="header__inner px-3 py-2.5 lg:px-5 flex items-center justify-between h-full">
         {/* Left Section: Sidebar Toggle + Brand Logo */}
         <div className="header__left flex items-center gap-2">
@@ -235,15 +236,15 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Logo */}
           <div className="header__logo pos-logo-container flex items-center gap-2.5">
-            <div className="header__logo-icon w-9 h-9 rounded-xl bg-[var(--app-primary-600)] text-white flex items-center justify-center shadow-xs font-semibold">
+            <div className="header__logo-icon w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs font-semibold">
               <Building2 className="w-5 h-5" />
             </div>
             <div className="header__logo-text block">
               <span className="text-sm font-semibold text-slate-700 dark:text-white tracking-tight flex items-center gap-2">
                 {propertyName}
-                <span className="header__pos-badge hidden sm:inline-block bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 text-[10px] font-semibold px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800">
+                <Badge color="info" size="xs" className="hidden sm:inline-flex">
                   {t('pos_badge', 'POS')}
-                </span>
+                </Badge>
               </span>
             </div>
           </div>
@@ -259,36 +260,33 @@ export const Header: React.FC<HeaderProps> = ({
               overlaid in the corner - same layered-badge technique the
               notification dot next to it uses. */}
           {showInstallIcon && (
-            <button
-              onClick={onInstallIconClick}
-              title={t('install_app_tooltip', 'Install App')}
-              aria-label={t('install_app_aria', 'Install app on this device')}
-              className="header__install-app relative p-2 text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
-            >
-              <span className="relative inline-flex items-center justify-center w-5 h-5">
-                <Smartphone className="w-5 h-5" />
-                <span className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full bg-blue-600 flex items-center justify-center ring-2 ring-white dark:ring-slate-800">
-                  <Download className="w-2 h-2 text-white" strokeWidth={3} />
+            <Tooltip content={t('install_app_tooltip', 'Install App')}>
+              <button
+                onClick={onInstallIconClick}
+                aria-label={t('install_app_aria', 'Install app on this device')}
+                className="header__install-app relative p-2 text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
+              >
+                <span className="relative inline-flex items-center justify-center w-5 h-5">
+                  <Smartphone className="w-5 h-5" />
+                  <span className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full bg-blue-600 flex items-center justify-center ring-2 ring-white dark:ring-slate-800">
+                    <Download className="w-2 h-2 text-white" strokeWidth={3} />
+                  </span>
                 </span>
-              </span>
-            </button>
+              </button>
+            </Tooltip>
           )}
 
-          {/* Sync Calendars Button - only shown once at least one iCal feed
-              exists anywhere on this property (see icalCalendars effect
-              above). Spins the icon and disables itself while a sync is in
-              flight, same "Sync All" semantics as ICalSyncManager's own
-              button, just reachable from anywhere instead of only its page. */}
           {icalCalendars.length > 0 && (
-            <button
-              onClick={handleSyncAllCalendars}
-              disabled={isSyncingIcal}
-              title={isSyncingIcal ? 'Syncing calendars...' : `Sync ${icalCalendars.length} calendar${icalCalendars.length !== 1 ? 's' : ''}`}
-              aria-label="Sync calendars"
-              className="header__sync-calendars relative p-2 text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <RefreshCw className={`w-5 h-5 ${isSyncingIcal ? 'animate-spin' : ''}`} />
-            </button>
+            <Tooltip content={isSyncingIcal ? 'Syncing calendars...' : `Sync ${icalCalendars.length} calendar${icalCalendars.length !== 1 ? 's' : ''}`}>
+              <button
+                onClick={handleSyncAllCalendars}
+                disabled={isSyncingIcal}
+                aria-label="Sync calendars"
+                className="header__sync-calendars relative p-2 text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <RefreshCw className={`w-5 h-5 ${isSyncingIcal ? 'animate-spin' : ''}`} />
+              </button>
+            </Tooltip>
           )}
 
           {/* Help Link Button */}
@@ -330,7 +328,7 @@ export const Header: React.FC<HeaderProps> = ({
                 positioning (pinned under the header, small side margins)
                 instead of anchor-relative. */}
             {showNotificationDropdown && (
-              <div className="header__dropdown notifications-popover-dropdown fixed left-2 right-2 top-16 max-sm:w-auto sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-96 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 py-2 z-50 animate-in fade-in slide-in-from-top-2">
+              <div className="header__dropdown notifications-popover-dropdown fixed left-2 right-2 top-16 max-sm:w-auto sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-96 bg-white dark:bg-slate-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 py-2 z-50 animate-in fade-in slide-in-from-top-2">
                 <div className="header__dropdown-header px-4 py-2.5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
                   <span className="header__dropdown-title text-[10px] font-semibold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
                     <Bell className="w-3.5 h-3.5 text-blue-600" />

@@ -27,6 +27,8 @@
     "chrome-remote-interface": "^0.34.0",
     "clsx": "^2.1.1",
     "express": "^5.2.1",
+    "flowbite": "^4.0.2",
+    "flowbite-react": "^0.12.17",
     "html-to-image": "^1.11.13",
     "html2canvas": "^1.4.1",
     "lucide-react": "^1.26.0",

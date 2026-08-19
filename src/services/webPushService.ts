@@ -67,7 +67,7 @@ export const sendBrowserNotification = (options: PushNotificationOptions): void 
         tag: options.tag || 'groundcode-alert',
         renotify: true,
         data: { url: options.url || '/#dashboard' },
-      });
+      } as any);
     });
   } else {
     try {

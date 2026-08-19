@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { Card, Alert } from 'flowbite-react';
 import { Paintbrush, Save, RotateCcw, Copy, Check, Trash2, Download, Upload, Eye, Code, Search, ChevronDown, ChevronUp, Palette, Minus, Plus, X, Lock, Loader2 } from 'lucide-react';
 import { t } from '../i18n/en';
 import { Input } from './Input';
@@ -47,43 +48,21 @@ function removeLucideGlobal() {
 }
 
 const DEFAULT_CSS = `/* Ground Code — Custom CSS Override
-   Base typography rules are defined below so they can be tuned from this page.
    These rules are unlayered, so they already beat Tailwind utility classes;
    no force-priority flags are needed anywhere in the site. The override style
    block is injected after the main stylesheet, so anything here also wins the
    cascade.
 
-   Edit the values below to restyle headings, labels and emphasis site-wide.
-*/
+   Empty by default (19 Aug 2026) - this used to ship with a global 14px
+   text-size cap and a 600 font-weight cap on every heading, which flattened
+   Flowbite's entire typography scale site-wide (a text-4xl heading computed
+   identically to text-sm) and was the dominant reason headings/stat numbers
+   never matched Flowbite's real reference sizing no matter how many
+   individual component fixes were made. Removed so headings/large text
+   render at their real size by default; add rules below only for an
+   intentional, tenant-specific typography override.
 
-/* Global Font Weight Mapping: caps font weights at 600 (semibold) system-wide */
-.font-semibold,
-.font-semibold,
-.font-semibold,
-strong,
-b,
-h1,
-h2,
-h3,
-h4,
-h5,
-h6,
-label {
-  font-weight: 600;
-}
-
-/* Global Font Size Constraint: no text exceeds 14px regardless of screen size */
-h1, h2, h3, h4, h5, h6,
-.text-4xl, .text-3xl, .text-2xl, .text-xl, .text-lg,
-.md\\:text-4xl, .md\\:text-3xl, .md\\:text-2xl, .md\\:text-xl, .md\\:text-lg,
-.lg\\:text-4xl, .lg\\:text-3xl, .lg\\:text-2xl, .lg\\:text-xl, .lg\\:text-lg,
-.sm\\:text-4xl, .sm\\:text-3xl, .sm\\:text-2xl, .sm\\:text-xl, .sm\\:text-lg,
-.text-base {
-  font-size: 14px;
-  line-height: 1.35;
-}
-
-/* Examples:
+   Examples:
    body { font-family: 'Inter', sans-serif; }
    .bg-white { background-color: #f8fafc; }
    .text-slate-900 { color: #1e293b; }
@@ -411,15 +390,12 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
   if (!isRootAdmin) {
     return (
       <div className="space-y-6 custom-css-override__root">
-        <div className="bg-red-50 dark:bg-red-950/30 rounded-2xl border border-red-200 dark:border-red-800 p-6 flex items-start gap-4 custom-css-override__access-denied">
-          <Lock className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-          <div>
-            <h3 className="custom-cssoverride__subtitle font-semibold text-red-900 dark:text-red-100 mb-1">{t('access_restricted_heading', 'Access Restricted')}</h3>
-            <p className="text-sm text-red-800 dark:text-red-300">
-              {t('access_restricted_description', 'Only root administrators can modify system-wide settings like custom CSS and icon configurations. These changes apply to all properties under all tenants.')}
-            </p>
-          </div>
-        </div>
+        <Alert color="failure" icon={Lock} className="custom-css-override__access-denied">
+          <h3 className="custom-cssoverride__subtitle font-semibold mb-1">{t('access_restricted_heading', 'Access Restricted')}</h3>
+          <p className="text-sm">
+            {t('access_restricted_description', 'Only root administrators can modify system-wide settings like custom CSS and icon configurations. These changes apply to all properties under all tenants.')}
+          </p>
+        </Alert>
       </div>
     );
   }
@@ -427,9 +403,9 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
   if (loading) {
     return (
       <div className="space-y-6 custom-css-override__root">
-        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 custom-css-override__loading">
+        <Card className="custom-css-override__loading">
           <p className="text-slate-600 dark:text-slate-400">{t('loading_system_settings_message', 'Loading system settings...')}</p>
-        </div>
+        </Card>
       </div>
     );
   }
@@ -437,7 +413,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
   return (
     <div className="space-y-6 custom-css-override__root">
       {/* Header */}
-      <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs custom-css-override__header">
+      <Card className="custom-css-override__header">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h2 className="custom-cssoverride__title text-xl font-semibold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
@@ -462,7 +438,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
             )}
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Editor */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden custom-css-override__editor">

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Alert } from 'flowbite-react';
 import { Save, RotateCcw, Loader2 } from 'lucide-react';
 import { fetchThemeSettings, saveThemeSettings, applyThemeSettings, ThemeSettings } from '../services/themeService';
 import { Button } from './Button';
@@ -100,7 +101,7 @@ export const ThemeManagement: React.FC = () => {
         darkMode: {
           background: '#0f172a',
           surface: '#1e293b',
-          text: '#f1f5f9',
+          text: '#f8fafc',
           textMuted: '#94a3b8',
         },
         typography: {
@@ -123,20 +124,16 @@ export const ThemeManagement: React.FC = () => {
         },
       };
 
-      setSettings(defaultTheme);
-
-      // Save the defaults
       try {
         setIsSaving(true);
         const success = await saveThemeSettings(defaultTheme, '');
         if (success) {
+          setSettings(defaultTheme);
           applyThemeSettings(defaultTheme);
-          setMessage({ type: 'success', text: 'Reset to Tailwind default colors!' });
-        } else {
-          setMessage({ type: 'error', text: 'Failed to save defaults' });
+          setMessage({ type: 'success', text: 'Theme reset to defaults!' });
         }
       } catch (error) {
-        setMessage({ type: 'error', text: 'Error resetting theme' });
+        setMessage({ type: 'error', text: 'Failed to reset theme' });
       } finally {
         setIsSaving(false);
       }
@@ -152,20 +149,20 @@ export const ThemeManagement: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 p-6 theme-management">
+    <div className="space-y-6 theme-management">
       {/* Header */}
       <div className="theme-management__header">
-        <h2 className="text-2xl font-semibold text-slate-900 dark:text-white theme-management__title">{t('theme_settings_heading', 'Theme Settings')}</h2>
-        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 theme-management__description">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white theme-management__title">{t('theme_settings_heading', 'Theme Settings')}</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 theme-management__description">
           {t('theme_settings_description', 'Customize the platform appearance for all users')}
         </p>
       </div>
 
       {/* Message */}
       {message && (
-        <div className={`p-4 rounded-lg ${message.type === 'success' ? 'bg-green-50 dark:bg-green-950 text-green-800 dark:text-green-200' : 'bg-red-50 dark:bg-red-950 text-red-800 dark:text-red-200'} theme-management__message theme-management__message--${message.type}`}>
-          {message.text}
-        </div>
+        <Alert color={message.type === 'success' ? 'success' : 'failure'}>
+          <span>{message.text}</span>
+        </Alert>
       )}
 
       {/* Content */}

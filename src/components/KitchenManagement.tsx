@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { Modal, ModalHeader, ModalBody, ModalFooter } from 'flowbite-react';
 import {
   UtensilsCrossed,
   Plus,
@@ -12,7 +13,6 @@ import {
   Search,
   ShoppingCart,
   ArrowUp,
-  ArrowLeft,
   Save,
   Bookmark,
   Trash2,
@@ -29,8 +29,6 @@ import {
   Loader2,
   Receipt,
   User,
-  BookOpen,
-  Package,
   Filter
 } from 'lucide-react';
 import { Guest, Order, OrderItem, MenuItem, Requisition, InventoryItem, WalkInTab } from '../types';
@@ -47,11 +45,11 @@ import { useKitchenContext } from '../contexts/KitchenContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useStaff } from '../contexts/StaffContext';
-import { PageHeader, PageHeaderButton } from './PageHeader';
 import { Input } from './Input';
 import { Button } from './Button';
 import { t } from '../i18n/en';
 import { formatDateTimeDDMMYYYY } from '../utils/dateUtils';
+import { TextInput as FlowbiteTextInput } from 'flowbite-react';
 
 const mapWalkInTabFromApi = (raw: any): WalkInTab => ({
   id: Number(raw.id),
@@ -1150,64 +1148,70 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           shape when a tab is clicked (§20's no-jitter rule generalized
           beyond just font-weight - see §21). Centered, not left-anchored. */}
       {(activeTab === 'new_order' || activeTab === 'kds' || activeTab === 'walk_in_bills') && (
-        <div className="flex items-center justify-center gap-1.5 px-2 py-1 overflow-x-auto no-scrollbar">
-          <button
-            type="button"
-            onClick={() => setActiveTab('new_order')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs whitespace-nowrap transition-colors cursor-pointer font-semibold border ${
-              activeTab === 'new_order'
-                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
-            }`}
-          >
-            <UtensilsCrossed className="w-4 h-4 shrink-0" />
-            <span>{t('create_resident_order_button', 'Take Order')}</span>
-          </button>
+        <ul className="flex flex-wrap text-xs font-semibold text-center text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 mb-4 overflow-x-auto no-scrollbar">
+          <li className="me-2">
+            <button
+              type="button"
+              onClick={() => setActiveTab('new_order')}
+              className={`inline-flex items-center gap-2 px-4 py-3 rounded-t-lg transition-colors cursor-pointer whitespace-nowrap ${
+                activeTab === 'new_order'
+                  ? 'text-blue-600 bg-slate-100 dark:bg-slate-800 dark:text-blue-400 font-bold border-b-2 border-blue-600 dark:border-blue-400'
+                  : 'hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60'
+              }`}
+            >
+              <UtensilsCrossed className="w-4 h-4 shrink-0" />
+              <span>{t('create_resident_order_button', 'Take Order')}</span>
+            </button>
+          </li>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('kds')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs whitespace-nowrap transition-colors cursor-pointer font-semibold border ${
-              activeTab === 'kds'
-                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
-            }`}
-          >
-            <Clock className="w-4 h-4 shrink-0" />
-            <span>{t('live_active_orders_label', 'Live Tickets')}</span>
-            {pendingOrdersCount > 0 && (
-              <span className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold ${
+          <li className="me-2">
+            <button
+              type="button"
+              onClick={() => setActiveTab('kds')}
+              className={`inline-flex items-center gap-2 px-4 py-3 rounded-t-lg transition-colors cursor-pointer whitespace-nowrap ${
                 activeTab === 'kds'
-                  ? 'bg-white/20 text-white'
-                  : 'bg-slate-200/80 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
-              }`}>
-                {pendingOrdersCount}
-              </span>
-            )}
-          </button>
+                  ? 'text-blue-600 bg-slate-100 dark:bg-slate-800 dark:text-blue-400 font-bold border-b-2 border-blue-600 dark:border-blue-400'
+                  : 'hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60'
+              }`}
+            >
+              <Clock className="w-4 h-4 shrink-0" />
+              <span>{t('live_active_orders_label', 'Live Tickets')}</span>
+              {pendingOrdersCount > 0 && (
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                  activeTab === 'kds'
+                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200'
+                    : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                }`}>
+                  {pendingOrdersCount}
+                </span>
+              )}
+            </button>
+          </li>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('walk_in_bills')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs whitespace-nowrap transition-colors cursor-pointer font-semibold border ${
-              activeTab === 'walk_in_bills'
-                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
-            }`}
-          >
-            <Receipt className="w-4 h-4 shrink-0" />
-            <span>{t('walk_in_bills_button', 'Walk-in Bills & Tabs')}</span>
-            {walkInTabs.filter((tab) => tab.status === 'open').length > 0 && (
-              <span className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold ${
+          <li className="me-2">
+            <button
+              type="button"
+              onClick={() => setActiveTab('walk_in_bills')}
+              className={`inline-flex items-center gap-2 px-4 py-3 rounded-t-lg transition-colors cursor-pointer whitespace-nowrap ${
                 activeTab === 'walk_in_bills'
-                  ? 'bg-white/20 text-white'
-                  : 'bg-slate-200/80 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
-              }`}>
-                {walkInTabs.filter((tab) => tab.status === 'open').length}
-              </span>
-            )}
-          </button>
-        </div>
+                  ? 'text-blue-600 bg-slate-100 dark:bg-slate-800 dark:text-blue-400 font-bold border-b-2 border-blue-600 dark:border-blue-400'
+                  : 'hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60'
+              }`}
+            >
+              <Receipt className="w-4 h-4 shrink-0" />
+              <span>{t('walk_in_bills_button', 'Walk-ins')}</span>
+              {walkInTabs.filter((tab) => tab.status === 'open').length > 0 && (
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                  activeTab === 'walk_in_bills'
+                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200'
+                    : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                }`}>
+                  {walkInTabs.filter((tab) => tab.status === 'open').length}
+                </span>
+              )}
+            </button>
+          </li>
+        </ul>
       )}
 
       {/* TAB 1: KDS TICKET QUEUE */}
@@ -1543,35 +1547,35 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           return (
             <div
               key={item.id}
-              className="pos-food-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 hover:border-blue-400 hover:shadow-sm p-2.5 flex flex-col justify-between gap-2 transition-all"
+              className="pos-food-card bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-400 hover:shadow-xs p-2.5 flex flex-col justify-between gap-2 transition-all"
             >
               <div className="space-y-1.5">
-                <div className="relative w-full h-20 sm:h-16 rounded-xl bg-slate-100 dark:bg-slate-700 border border-slate-200/80 dark:border-slate-600 overflow-hidden flex items-center justify-center text-slate-400 dark:text-slate-500">
+                <div className="relative w-full h-20 sm:h-16 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 overflow-hidden flex items-center justify-center text-gray-400 dark:text-gray-500">
                   {item.imagePath ? (
                     <img
                       src={item.imagePath}
                       alt={item.name}
-                      className="w-full h-full object-cover rounded-xl"
+                      className="w-full h-full object-cover rounded-lg"
                       onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
                     />
                   ) : (
-                    <UtensilsCrossed className="w-5 h-5 text-slate-300 dark:text-slate-500" />
+                    <UtensilsCrossed className="w-5 h-5 text-gray-300 dark:text-gray-500" />
                   )}
                 </div>
 
                 <div className="flex items-center justify-between gap-1 leading-tight">
-                  <h4 className="font-semibold text-slate-800 dark:text-slate-200 text-xs sm:text-[11px] truncate flex-1 m-0 p-0">
+                  <h4 className="font-semibold text-gray-900 dark:text-white text-xs sm:text-[11px] truncate flex-1 m-0 p-0">
                     {item.name}
                   </h4>
-                  <span className="text-emerald-700 dark:text-emerald-400 font-extrabold text-xs sm:text-[11px] shrink-0">
+                  <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs sm:text-[11px] shrink-0">
                     ₹{item.price}
                   </span>
                 </div>
               </div>
 
-              {/* Mobile-First Touch Stepper (Always showing minus, quantity, plus) */}
-              <div className="pt-1 border-t border-slate-100 dark:border-slate-700/60">
-                <div className="flex items-center justify-between bg-slate-100 dark:bg-slate-700/60 rounded-xl p-0.5 w-full">
+              {/* Flowbite Touch Stepper */}
+              <div className="pt-1 border-t border-gray-100 dark:border-gray-700/60">
+                <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-700/60 rounded-lg p-0.5 w-full border border-gray-200 dark:border-gray-600">
                   <button
                     type="button"
                     onClick={(e) => {
@@ -1581,19 +1585,19 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       }
                     }}
                     disabled={inCartQty === 0}
-                    className={`aspect-square w-8 h-8 rounded-sm shrink-0 font-extrabold text-xs flex items-center justify-center transition-all shadow-2xs ${
+                    className={`aspect-square w-7 h-7 rounded-md shrink-0 font-bold text-xs flex items-center justify-center transition-all ${
                       inCartQty === 0
-                        ? 'bg-slate-200/60 dark:bg-slate-800 text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-50'
-                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-rose-50 hover:text-rose-600 active:scale-90 cursor-pointer'
+                        ? 'bg-transparent text-gray-300 dark:text-gray-600 cursor-not-allowed opacity-40'
+                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 active:scale-90 cursor-pointer shadow-2xs'
                     }`}
                     title="Decrease quantity"
                   >
-                    <Minus className="w-3.5 h-3.5" />
+                    <Minus className="w-3 h-3" />
                   </button>
-                  <span className={`font-extrabold text-xs px-1 ${
+                  <span className={`font-bold text-xs px-1 ${
                     inCartQty > 0
-                      ? 'text-emerald-800 dark:text-emerald-300'
-                      : 'text-slate-400 dark:text-slate-500'
+                      ? 'text-gray-900 dark:text-white'
+                      : 'text-gray-400 dark:text-gray-500'
                   }`}>
                     {inCartQty}
                   </span>
@@ -1603,14 +1607,14 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       e.stopPropagation();
                       handleAddToCartWithFeedback(item);
                     }}
-                    className={`aspect-square w-8 h-8 rounded-sm shrink-0 font-extrabold text-xs flex items-center justify-center active:scale-90 transition-all cursor-pointer shadow-2xs ${
+                    className={`aspect-square w-7 h-7 rounded-md shrink-0 font-bold text-xs flex items-center justify-center active:scale-90 transition-all cursor-pointer shadow-2xs ${
                       isRecentlyAdded
-                        ? 'bg-emerald-600 text-white scale-95 animate-pulse'
-                        : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                        ? 'bg-blue-600 text-white scale-95 animate-pulse'
+                        : 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600'
                     }`}
                     title="Increase quantity"
                   >
-                    <Plus className="w-3.5 h-3.5" />
+                    <Plus className="w-3 h-3" />
                   </button>
                 </div>
               </div>
@@ -1635,27 +1639,19 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         const openTabs = walkInTabs.filter((tab) => tab.status === 'open');
 
         return (
-          <div className="take-food-order-container space-y-4 pb-48 lg:pb-0 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-3.5 sm:p-4">
+          <div className="take-food-order-container space-y-4 pb-48 lg:pb-0 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-3.5 sm:p-4">
 
-            {/* Order Mode: Guest (room service, billed to the stay) vs Walk-in
-                (counter/dine-in, no room - joins a running tab, billed all at
-                once from the Walk-in Bills tab). Deliberately NOT styled as its
-                own bordered/shadowed card or in the tab bar's blue - that made
-                it look like a second row of page-level tabs stacked under the
-                real one above (found confusing 18 Aug 2026). A plain inline
-                row with a neutral (not blue) active state reads as "a setting
-                for this order", not "another nav bar". */}
+            {/* Order Mode: Guest vs Walk-in Segmented Switcher */}
             <div className="flex flex-wrap items-center justify-between gap-2.5 px-0.5">
               <div className="flex items-center gap-2 shrink-0">
-                {/* Segmented Switcher */}
-                <div className="inline-flex items-center bg-slate-100 dark:bg-slate-900 p-1 rounded-xl shrink-0 border border-slate-200 dark:border-slate-700">
+                <div className="inline-flex items-center bg-gray-100 dark:bg-gray-700 p-1 rounded-lg shrink-0">
                   <button
                     type="button"
                     onClick={() => setOrderMode('guest')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-md text-xs transition-all cursor-pointer ${
                       orderMode === 'guest'
-                        ? 'bg-blue-600 text-white shadow-xs'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                        ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 font-bold shadow-xs'
+                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white font-medium'
                     }`}
                   >
                     {t('order_mode_guest_button', 'In-House Guest')}
@@ -1663,10 +1659,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   <button
                     type="button"
                     onClick={() => setOrderMode('walkin')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-md text-xs transition-all cursor-pointer ${
                       orderMode === 'walkin'
-                        ? 'bg-blue-600 text-white shadow-xs'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                        ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 font-bold shadow-xs'
+                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white font-medium'
                     }`}
                   >
                     {t('order_mode_walkin_button', 'Walk-in / Counter')}
@@ -1678,13 +1674,13 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               {orderMode === 'guest' && (
                 <div className="flex items-center gap-2 text-xs">
                   {selectedGuest ? (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 font-semibold border border-blue-200 dark:border-blue-800/60">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold border border-blue-200 dark:border-blue-800">
                       <User className="w-3.5 h-3.5" />
                       {selectedGuest.guestName}
                       {selectedGuest.roomNumber ? ` (${selectedGuest.roomNumber})` : ''}
                     </span>
                   ) : (
-                    <span className="text-slate-500 dark:text-slate-400 text-xs">
+                    <span className="text-gray-500 dark:text-gray-400 text-xs">
                       {t('no_active_resident_tooltip', 'No active resident selected')}
                     </span>
                   )}
@@ -1693,26 +1689,26 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
               {/* Walk-in Tab Controls */}
               {orderMode === 'walkin' && (
-                <div className="w-full pt-2.5 mt-0.5 border-t border-slate-100 dark:border-slate-700/80 flex flex-wrap items-center gap-2">
+                <div className="w-full pt-2.5 mt-0.5 border-t border-gray-100 dark:border-gray-700/80 flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setSelectedWalkInTabId(null)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
                       selectedWalkInTabId === null
-                        ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs'
-                        : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-400'
+                        ? 'bg-blue-600 border-blue-600 text-white shadow-xs'
+                        : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-blue-400'
                     }`}
                   >
                     + {t('new_tab_button', 'New Tab')}
                   </button>
                   {selectedWalkInTabId === null && (
                     <div className="w-full sm:w-auto sm:flex-1 sm:max-w-xs mt-1 sm:mt-0">
-                      <Input
+                      <FlowbiteTextInput
                         type="text"
                         value={newTabLabel}
                         onChange={(e) => setNewTabLabel(e.target.value)}
                         placeholder={t('walk_in_name_placeholder', 'Table / customer name')}
-                        className="h-8 text-xs"
+                        sizing="sm"
                       />
                     </div>
                   )}
@@ -1721,10 +1717,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       key={tab.id}
                       type="button"
                       onClick={() => setSelectedWalkInTabId(tab.id)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
                         selectedWalkInTabId === tab.id
-                          ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs'
-                          : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-400'
+                          ? 'bg-blue-600 border-blue-600 text-white shadow-xs'
+                          : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-blue-400'
                       }`}
                     >
                       {tab.label || t('walk_in_badge', 'Walk-in')} · ₹{tab.subtotal.toLocaleString('en-IN')}
@@ -1738,11 +1734,11 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               {/* Left Side (Desktop: 3 columns, Mobile: 1 column full width) */}
               <div className="lg:col-span-3 space-y-3.5">
                 {/* Sticky Search & Category Pills Bar */}
-                <div className="pos-category-filter-bar bg-white dark:bg-slate-800 pb-3 space-y-3 border-b border-slate-100 dark:border-slate-700">
+                <div className="pos-category-filter-bar bg-white dark:bg-gray-800 pb-3 space-y-3 border-b border-gray-100 dark:border-gray-700">
                   {/* Quick Search Bar + Category Filter Toggle */}
                   <div className="flex items-center gap-2">
                     <div className="relative flex-1">
-                      <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-3 z-10" />
+                      <Search className="w-4 h-4 text-gray-400 dark:text-gray-500 absolute left-3.5 top-3 z-10" />
                       <Input
                         type="text"
                         value={posSearch}
@@ -1753,7 +1749,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       {posSearch && (
                         <button
                           onClick={() => setPosSearch('')}
-                          className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer z-10"
+                          className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 cursor-pointer z-10"
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -1762,10 +1758,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     <button
                       type="button"
                       onClick={() => setShowCategoryFilters((v) => !v)}
-                      className={`relative h-10 w-10 shrink-0 rounded-xl border flex items-center justify-center transition-all cursor-pointer ${
+                      className={`relative h-10 w-10 shrink-0 rounded-lg border flex items-center justify-center transition-all cursor-pointer ${
                         showCategoryFilters
                           ? 'bg-blue-600 border-blue-600 text-white shadow-2xs'
-                          : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600'
+                          : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
                       }`}
                       title={t('toggle_category_filters_tooltip', 'Filter by category')}
                       aria-label="Toggle category filters"
@@ -1773,12 +1769,12 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     >
                       <Filter className="w-4 h-4" />
                       {selectedPosCategory !== 'all' && !showCategoryFilters && (
-                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-cyan-500 border-2 border-white dark:border-slate-800" />
+                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-blue-500 border-2 border-white dark:border-gray-800" />
                       )}
                     </button>
                   </div>
 
-                  {/* Category Pills Bar - hidden by default, revealed via the Filter button above */}
+                  {/* Category Pills Bar */}
                   {showCategoryFilters && (
                     <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
                       {posCategories.map((cat) => {
@@ -1787,10 +1783,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                           <button
                             key={cat.id}
                             onClick={() => setSelectedPosCategory(cat.id)}
-                            className={`px-3 py-1.5 rounded-xl text-xs whitespace-nowrap transition-all cursor-pointer ${
+                            className={`px-3 py-1.5 rounded-lg text-xs whitespace-nowrap transition-all cursor-pointer ${
                               isSelected
                                 ? 'border border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 font-bold shadow-xs'
-                                : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 font-medium'
+                                : 'bg-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 font-medium'
                             }`}
                           >
                             {cat.label}
@@ -1801,13 +1797,11 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   )}
                 </div>
 
-
-
                 {/* Menu Items Grid with Dish Thumbnails (Compact POS Layout) */}
                 {filteredPosMenuItems.length === 0 ? (
-                  <div className="text-center py-10 border-2 border-dashed border-slate-200 dark:border-slate-600 rounded-xl">
-                    <UtensilsCrossed className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
-                    <p className="text-slate-600 dark:text-slate-400 font-semibold text-xs">{t('no_food_items_found_text')} "{posSearch}"</p>
+                  <div className="text-center py-10 border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl">
+                    <UtensilsCrossed className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+                    <p className="text-gray-600 dark:text-gray-400 font-semibold text-xs">{t('no_food_items_found_text')} "{posSearch}"</p>
                   </div>
                 ) : selectedPosCategory === 'all' ? (
                   /* Grouped by category when "All Menu" is selected */
@@ -1821,9 +1815,9 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       }, {})
                     ).map(([category, items]) => (
                       <div key={category}>
-                        <h4 className="kitchen-management__caption text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 pb-1 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2">
+                        <h4 className="kitchen-management__caption text-2xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 pb-1 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2">
                           {category}
-                          <span className="text-slate-400 dark:text-slate-500 font-semibold normal-case tracking-normal">({items.length})</span>
+                          <span className="text-gray-400 dark:text-gray-500 font-semibold normal-case tracking-normal">({items.length})</span>
                         </h4>
                         <div className="pos-menu-grid grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
                           {items.map((item) => renderFoodCard(item))}
@@ -1842,46 +1836,46 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               {/* Right Side: DESKTOP ONLY Sticky Floating ORDER CART Panel (lg:col-span-1 hidden lg:flex) */}
               <div
                 id="pos-order-cart-panel"
-                className="hidden lg:flex lg:col-span-1 bg-white dark:bg-slate-800 rounded-xl border border-slate-200/90 dark:border-slate-700 shadow-2xs p-4 flex-col justify-between space-y-4 min-h-[450px] sticky top-20 max-h-[calc(100vh-100px)] overflow-y-auto"
+                className="hidden lg:flex lg:col-span-1 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 flex-col justify-between space-y-4 min-h-[450px] sticky top-20 max-h-[calc(100vh-100px)] overflow-y-auto"
               >
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-2.5">
-                    <h3 className="kitchen-management__subtitle font-semibold text-slate-900 dark:text-white text-xs tracking-wider flex items-center gap-1.5">
-                      <ShoppingCart className="w-4 h-4 text-slate-700 dark:text-slate-400" />
+                  <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-2.5">
+                    <h3 className="kitchen-management__subtitle font-semibold text-gray-900 dark:text-white text-xs tracking-wider flex items-center gap-1.5">
+                      <ShoppingCart className="w-4 h-4 text-gray-700 dark:text-gray-400" />
                       <span>{t('order_cart_header')}</span>
                     </h3>
-                    <span className="text-[10px] font-semibold bg-cyan-50 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 px-2 py-0.5 rounded-full border border-cyan-200 dark:border-cyan-800">
+                    <span className="text-2xs font-semibold bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full border border-blue-200 dark:border-blue-800">
                       {totalCartCount} Items
                     </span>
                   </div>
 
                   {/* Cart Items List */}
-                  <div className="pos-cart-items-list space-y-1 max-h-[380px] overflow-y-auto pr-0.5 divide-y divide-slate-100 dark:divide-slate-700/60">
+                  <div className="pos-cart-items-list space-y-1 max-h-[380px] overflow-y-auto pr-0.5 divide-y divide-gray-100 dark:divide-gray-700/60">
                     {cartItems.length > 0 ? (
                       cartItems.map((ci) => (
                         <div
                           key={ci.menuItem.id}
-                          className="py-1 px-1.5 first:pt-0 flex items-center justify-between gap-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-800/40 rounded-lg transition-colors"
+                          className="py-1.5 px-1.5 first:pt-0 flex items-center justify-between gap-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-700/40 rounded-lg transition-colors"
                         >
                           <div className="flex-1 pr-1 truncate min-w-0">
-                            <h4 className="kitchen-management__caption font-semibold text-slate-900 dark:text-white text-xs truncate m-0 p-0 leading-tight">
-                              {ci.menuItem.name} <span className="text-slate-400 dark:text-slate-500 font-normal">({`₹${ci.menuItem.price}`})</span>
+                            <h4 className="kitchen-management__caption font-semibold text-gray-900 dark:text-white text-xs truncate m-0 p-0 leading-tight">
+                              {ci.menuItem.name} <span className="text-gray-400 dark:text-gray-500 font-normal">({`₹${ci.menuItem.price}`})</span>
                             </h4>
                           </div>
 
-                          <div className="flex items-center gap-1 rounded-md bg-slate-100 dark:bg-slate-900 p-0.5 border border-slate-200 dark:border-slate-700 shrink-0">
+                          <div className="flex items-center gap-1 rounded-md bg-gray-50 dark:bg-gray-700/60 p-0.5 border border-gray-200 dark:border-gray-600 shrink-0">
                             <button
                               onClick={() => handleUpdateCartQuantity(ci.menuItem.id, -1)}
-                              className="btn-cart-qty-minus aspect-square w-6 h-6 rounded-xs shrink-0 bg-white dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 font-extrabold text-slate-700 dark:text-slate-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90 border border-slate-200 dark:border-slate-700"
+                              className="btn-cart-qty-minus aspect-square w-6 h-6 rounded-md shrink-0 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 font-bold text-gray-700 dark:text-gray-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90 border border-gray-200 dark:border-gray-600"
                             >
                               <Minus className="w-3 h-3" />
                             </button>
-                            <span className="w-5 text-center font-extrabold text-slate-900 dark:text-white text-xs">
+                            <span className="w-5 text-center font-bold text-gray-900 dark:text-white text-xs">
                               {ci.quantity}
                             </span>
                             <button
                               onClick={() => handleUpdateCartQuantity(ci.menuItem.id, 1)}
-                              className="btn-cart-qty-plus aspect-square w-6 h-6 rounded-xs shrink-0 bg-emerald-600 hover:bg-emerald-700 font-extrabold text-white flex items-center justify-center transition-colors cursor-pointer active:scale-90"
+                              className="btn-cart-qty-plus aspect-square w-6 h-6 rounded-md shrink-0 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 font-bold text-white flex items-center justify-center transition-colors cursor-pointer active:scale-90"
                             >
                               <Plus className="w-3 h-3" />
                             </button>
@@ -1889,20 +1883,20 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                         </div>
                       ))
                     ) : (
-                      <div className="text-center py-10 text-slate-400 dark:text-slate-500">
-                        <ShoppingCart className="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
-                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t('order_cart_empty_text')}</p>
-                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{t('click_add_from_menu_hint')}</p>
+                      <div className="text-center py-10 text-gray-400 dark:text-gray-500">
+                        <ShoppingCart className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
+                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">{t('order_cart_empty_text')}</p>
+                        <p className="text-2xs text-gray-400 dark:text-gray-500 mt-0.5">{t('click_add_from_menu_hint')}</p>
                       </div>
                     )}
                   </div>
                 </div>
 
                 {/* Cart Total & Submit Button */}
-                <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-700">
+                <div className="space-y-3 pt-3 border-t border-gray-100 dark:border-gray-700">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide text-[10px]">{t('total_label')}</span>
-                    <span className="font-semibold text-emerald-600 text-base">
+                    <span className="font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide text-2xs">{t('total_label')}</span>
+                    <span className="font-bold text-gray-900 dark:text-white text-base">
                       ₹{totalCartSum.toFixed(2)}
                     </span>
                   </div>
@@ -1911,7 +1905,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     onClick={handleOrderSubmit}
                     disabled={isOrderSubmitDisabled}
                     title={orderSubmitTitle}
-                    className="btn-send-order-kitchen w-full bg-amber-500 hover:bg-amber-600 disabled:bg-slate-300 disabled:text-slate-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-xs py-3.5 rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2 uppercase tracking-wider active:scale-[0.98] min-h-[42px]"
+                    className="btn-send-order-kitchen w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:bg-gray-200 dark:disabled:bg-gray-700 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:cursor-not-allowed text-white font-medium text-xs py-3 rounded-lg shadow-sm transition-all cursor-pointer flex items-center justify-center gap-2 uppercase tracking-wider active:scale-[0.98] min-h-[42px]"
                   >
                     <span>{isSubmittingOrder ? t('sending_order_button', 'Sending...') : t('send_order_to_kitchen_button')}</span>
                   </button>
@@ -1922,54 +1916,54 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             {/* MOBILE ONLY Light-Theme Bottom Cart Drawer (lg:hidden, Collapsible & 50vh Expandable, Floats Above MobileBottomNav) */}
             {cartItems.length > 0 && (
               <div
-                className={`fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-[55] lg:hidden bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-t-2xl shadow-[0_-8px_24px_-6px_rgba(0,0,0,0.15)] border-t border-slate-200 dark:border-slate-700 transition-all duration-300 flex flex-col ${
+                className={`fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-[55] lg:hidden bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-t-2xl shadow-lg border-t border-gray-200 dark:border-gray-700 transition-all duration-300 flex flex-col ${
                   isCartDrawerExpanded ? 'h-[50vh]' : 'max-h-[260px]'
                 }`}
               >
                 {/* Right-Aligned White Pull-Tab Attached to Top Edge of Cart */}
                 <button
                   onClick={() => setIsCartDrawerExpanded(!isCartDrawerExpanded)}
-                  className="absolute top-0 right-4 -translate-y-full bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold px-4 py-1.5 rounded-t-xl border-t border-x border-b-0 border-slate-200 dark:border-slate-700 shadow-[0_-4px_6px_-2px_rgba(0,0,0,0.06)] flex items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 z-20"
+                  className="absolute top-0 right-4 -translate-y-full bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-bold px-4 py-1.5 rounded-t-xl border-t border-x border-b-0 border-gray-200 dark:border-gray-700 shadow-sm flex items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 z-20"
                   aria-label="Toggle Cart Drawer"
                 >
                   {isCartDrawerExpanded ? (
-                    <ChevronDown className="w-4 h-4 text-slate-700 dark:text-slate-300 stroke-[2.5]" />
+                    <ChevronDown className="w-4 h-4 text-gray-700 dark:text-gray-300 stroke-[2.5]" />
                   ) : (
-                    <ChevronUp className="w-4 h-4 text-slate-700 dark:text-slate-300 stroke-[2.5]" />
+                    <ChevronUp className="w-4 h-4 text-gray-700 dark:text-gray-300 stroke-[2.5]" />
                   )}
                 </button>
 
                 {/* Items List (Displays Last 3 items in Collapsed mode, All items in 50vh Expanded mode) */}
                 <div className="pos-cart-items-list p-2.5 pt-3 flex-1 overflow-y-auto space-y-1.5">
                   {!isCartDrawerExpanded && cartItems.length > 3 && (
-                    <p className="text-[10px] text-cyan-700 font-semibold tracking-wide uppercase text-center pb-1">
+                    <p className="text-2xs text-blue-700 dark:text-blue-400 font-semibold tracking-wide uppercase text-center pb-1">
                       {t('showing_last_3_items_prefix')} {cartItems.length} {t('showing_last_3_items_suffix')}
                     </p>
                   )}
                   {visibleDrawerItems.map((ci) => (
                     <div
                       key={ci.menuItem.id}
-                      className="bg-slate-50 dark:bg-slate-900/60 h-[35px] px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2 text-xs text-slate-900 dark:text-slate-100"
+                      className="bg-gray-50 dark:bg-gray-700/60 min-h-[38px] py-1 px-2.5 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center justify-between gap-2 text-xs text-gray-900 dark:text-gray-100"
                     >
                       <div className="flex-1 pr-1 truncate min-w-0">
-                        <h4 className="kitchen-management__caption font-semibold text-slate-900 dark:text-white text-xs truncate m-0 p-0 leading-tight">
-                          {ci.menuItem.name} <span className="text-slate-500 dark:text-slate-400 font-normal">({`₹${ci.menuItem.price}`})</span>
+                        <h4 className="kitchen-management__caption font-semibold text-gray-900 dark:text-white text-xs truncate m-0 p-0 leading-tight">
+                          {ci.menuItem.name} <span className="text-gray-400 dark:text-gray-500 font-normal">({`₹${ci.menuItem.price}`})</span>
                         </h4>
                       </div>
 
-                      <div className="flex items-center gap-1 rounded-md bg-white dark:bg-slate-800 p-0 border border-slate-200 dark:border-slate-700 shrink-0">
+                      <div className="flex items-center gap-1 rounded-md bg-white dark:bg-gray-800 p-0.5 border border-gray-200 dark:border-gray-600 shrink-0">
                         <button
                           onClick={() => handleUpdateCartQuantity(ci.menuItem.id, -1)}
-                          className="btn-cart-qty-minus btn-compact-stepper w-9 h-6 rounded-xs shrink-0 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 font-extrabold text-slate-700 dark:text-slate-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90 border border-slate-200 dark:border-slate-600"
+                          className="btn-cart-qty-minus btn-compact-stepper w-8 h-6 rounded-md shrink-0 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 font-bold text-gray-700 dark:text-gray-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90 border border-gray-200 dark:border-gray-600"
                         >
                           <Minus className="w-3 h-3" />
                         </button>
-                        <span className="w-5 text-center font-extrabold text-slate-900 dark:text-white text-xs">
+                        <span className="w-5 text-center font-bold text-gray-900 dark:text-white text-xs">
                           {ci.quantity}
                         </span>
                         <button
                           onClick={() => handleUpdateCartQuantity(ci.menuItem.id, 1)}
-                          className="btn-cart-qty-plus btn-compact-stepper w-9 h-6 rounded-xs shrink-0 bg-emerald-600 hover:bg-emerald-700 font-extrabold text-white flex items-center justify-center transition-colors cursor-pointer active:scale-90"
+                          className="btn-cart-qty-plus btn-compact-stepper w-8 h-6 rounded-md shrink-0 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 font-bold text-white flex items-center justify-center transition-colors cursor-pointer active:scale-90"
                         >
                           <Plus className="w-3 h-3" />
                         </button>
@@ -1979,14 +1973,14 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 </div>
 
                 {/* Action Footer */}
-                <div className="p-3 pb-3.5 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 shrink-0">
+                <div className="p-3 pb-3.5 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shrink-0">
                   <button
                     onClick={handleOrderSubmit}
                     disabled={isOrderSubmitDisabled}
                     title={orderSubmitTitle}
-                    className="btn-send-order-kitchen w-full bg-amber-500 hover:bg-amber-600 disabled:bg-slate-200 disabled:text-slate-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-xs py-2.5 rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 uppercase tracking-wider active:scale-[0.98] min-h-[42px]"
+                    className="btn-send-order-kitchen w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:bg-gray-200 dark:disabled:bg-gray-700 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:cursor-not-allowed text-white font-medium text-xs py-3 rounded-lg shadow-sm transition-all cursor-pointer flex items-center justify-center gap-2 uppercase tracking-wider active:scale-[0.98] min-h-[42px]"
                   >
-                    <span>{isSubmittingOrder ? t('sending_order_button', 'Sending...') : 'Send Order to Kitchen'}</span>
+                    <span>{isSubmittingOrder ? t('sending_order_button', 'Sending...') : t('send_order_to_kitchen_button')}</span>
                   </button>
                 </div>
               </div>
@@ -2535,83 +2529,62 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         </div>
       )}
         {/* CUSTOM MEAL MODAL */}
-        {isCustomMealModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200">
-              <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
-                <h3 className="kitchen-management__subtitle font-semibold text-slate-800 dark:text-slate-200 text-xs tracking-wide flex items-center gap-2">
-                  <Plus className="w-4 h-4" /> {t('create_custom_meal_heading')}
-                </h3>
-              </div>
-              
-              <div className="p-6 space-y-5">
-                <Input 
-                  label={t('combo_meal_name_label')}
-                  type="text"
-                  placeholder={t('e_g_roti_placeholder')}
-                  value={newMealName}
-                  onChange={(e) => setNewMealName(e.target.value)}
-                />
-                <Input 
-                  label={t('default_estimated_price_label')}
-                  type="number"
-                  placeholder="50.00"
-                  value={newMealCost}
-                  onChange={(e) => setNewMealCost(e.target.value)}
-                />
-              </div>
-              
-              <div className="p-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-700 flex justify-end gap-3">
-                <button 
-                  onClick={() => setIsCustomMealModalOpen(false)}
-                  className="px-5 py-2 text-[11px] font-semibold text-slate-600 dark:text-slate-400 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 rounded-lg transition-colors cursor-pointer"
-                >
-                  {t('cancel_button')}
-                </button>
-                <button 
-                  onClick={handleSaveCustomMeal}
-                  className="px-5 py-2 text-[11px] font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-colors cursor-pointer"
-                >
-                  {t('save_to_database_button')}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <Modal show={isCustomMealModalOpen} onClose={() => setIsCustomMealModalOpen(false)} dismissible size="sm" className="z-58">
+          <ModalHeader as="div">
+            <h3 className="kitchen-management__subtitle font-semibold text-slate-800 dark:text-slate-200 text-xs tracking-wide flex items-center gap-2">
+              <Plus className="w-4 h-4" /> {t('create_custom_meal_heading')}
+            </h3>
+          </ModalHeader>
+          <ModalBody className="space-y-5">
+            <Input
+              label={t('combo_meal_name_label')}
+              type="text"
+              placeholder={t('e_g_roti_placeholder')}
+              value={newMealName}
+              onChange={(e) => setNewMealName(e.target.value)}
+            />
+            <Input
+              label={t('default_estimated_price_label')}
+              type="number"
+              placeholder="50.00"
+              value={newMealCost}
+              onChange={(e) => setNewMealCost(e.target.value)}
+            />
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="success" size="sm" onClick={handleSaveCustomMeal}>
+              {t('save_to_database_button')}
+            </Button>
+          </ModalFooter>
+        </Modal>
 
       {/* TAB: BETA RECIPE BUILDER */}
       {activeTab === 'beta_recipe_builder' && (
     <div className="space-y-6 kitchen-management">
           {/* Recipe Preset Save Modal */}
-          {showPresetModal && (
-            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-              <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-sm w-full border border-slate-200 dark:border-slate-700 shadow-2xl p-6 space-y-4">
-                <div className="flex justify-between items-center">
-<h3 className="kitchen-management__subtitle font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-                  <Bookmark className="w-4 h-4 text-indigo-500" /> {t('save_recipe_preset_heading')}
-                </h3>
-                  <button onClick={() => setShowPresetModal(false)} className="cursor-pointer">
-                    <X className="w-4 h-4 text-slate-400 hover:text-slate-600" />
-                  </button>
-                </div>
-                <p className="text-[11px] text-slate-500">{t('save_preset_description')}</p>
-                <Input
-                  type="text"
-                  value={presetNameInput}
-                  onChange={(e) => setPresetNameInput(e.target.value)}
-                  placeholder={t('e_g_butter_chicken_placeholder')}
-                  autoFocus
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleSavePreset(); }}
-                />
-                <div className="flex gap-2 justify-end">
-                  <button onClick={() => setShowPresetModal(false)} className="px-3 py-1.5 text-[11px] font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg cursor-pointer">{t('cancel_button')}</button>
-                  <button onClick={handleSavePreset} className="px-3 py-1.5 text-[11px] font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg cursor-pointer flex items-center gap-1.5">
-                    <Save className="w-3 h-3" /> {t('save_preset_button')}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+          <Modal show={showPresetModal} onClose={() => setShowPresetModal(false)} dismissible size="sm" className="z-58">
+            <ModalHeader as="div">
+              <h3 className="kitchen-management__subtitle font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                <Bookmark className="w-4 h-4 text-indigo-500" /> {t('save_recipe_preset_heading')}
+              </h3>
+            </ModalHeader>
+            <ModalBody className="space-y-4">
+              <p className="text-[11px] text-slate-500">{t('save_preset_description')}</p>
+              <Input
+                type="text"
+                value={presetNameInput}
+                onChange={(e) => setPresetNameInput(e.target.value)}
+                placeholder={t('e_g_butter_chicken_placeholder')}
+                autoFocus
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSavePreset(); }}
+              />
+            </ModalBody>
+            <ModalFooter>
+              <Button variant="primary" size="sm" leftIcon={<Save className="w-3 h-3" />} onClick={handleSavePreset}>
+                {t('save_preset_button')}
+              </Button>
+            </ModalFooter>
+          </Modal>
 
           {/* Header */}
           <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
@@ -2973,17 +2946,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       )}
 
       {/* NEW MENU ITEM MODAL */}
-      {isNewMenuModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl p-6 space-y-4">
-            <div className="flex justify-between items-center border-b pb-2">
-              <h3 className="kitchen-management__subtitle font-semibold text-slate-800 text-sm">{t('add_new_food_menu_item_heading')}</h3>
-              <button onClick={() => setIsNewMenuModalOpen(false)}>
-                <X className="w-5 h-5 text-slate-400" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateMenuItem} className="app-form app-form--create-menu-item space-y-3 text-xs">
+      <Modal show={isNewMenuModalOpen} onClose={() => setIsNewMenuModalOpen(false)} dismissible size="md" className="z-58">
+        <ModalHeader>{t('add_new_food_menu_item_heading')}</ModalHeader>
+        <form onSubmit={handleCreateMenuItem} className="app-form app-form--create-menu-item">
+          <ModalBody className="space-y-3 text-xs">
               <div>
                 <Input
                   label={t('item_name_required_label')}
@@ -3074,38 +3040,20 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 </div>
               </div>
 
-              <div className="pt-3 border-t flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsNewMenuModalOpen(false)}
-                  className="px-4 py-2 border border-slate-200 rounded-lg"
-                >
-                  {t('cancel_button')}
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
-                >
-                  {t('save_item_button')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+          </ModalBody>
+          <ModalFooter>
+            <Button type="submit" variant="success">
+              {t('save_item_button')}
+            </Button>
+          </ModalFooter>
+        </form>
+      </Modal>
 
       {/* MATERIAL REQUISITION MODAL */}
-      {isReqModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl p-6 space-y-4">
-            <div className="flex justify-between items-center border-b pb-2">
-              <h3 className="kitchen-management__subtitle font-semibold text-slate-800 text-sm">{t('request_raw_material_heading')}</h3>
-              <button onClick={() => setIsReqModalOpen(false)}>
-                <X className="w-5 h-5 text-slate-400" />
-              </button>
-            </div>
-
-            <form onSubmit={handleReqSubmit} className="app-form app-form--submit-requisition space-y-3 text-xs">
+      <Modal show={isReqModalOpen} onClose={() => setIsReqModalOpen(false)} dismissible size="md" className="z-58">
+        <ModalHeader>{t('request_raw_material_heading')}</ModalHeader>
+        <form onSubmit={handleReqSubmit} className="app-form app-form--submit-requisition">
+          <ModalBody className="space-y-3 text-xs">
               <div>
                 <Input
                   label={t('material_name_required_label')}
@@ -3141,26 +3089,14 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   />
                 </div>
               </div>
-
-              <div className="pt-3 border-t flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsReqModalOpen(false)}
-                  className="px-4 py-2 border border-slate-200 rounded-lg"
-                >
-                  {t('cancel_button')}
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
-                >
-                  {t('submit_requisition_button')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+          </ModalBody>
+          <ModalFooter>
+            <Button type="submit" variant="success">
+              {t('submit_requisition_button')}
+            </Button>
+          </ModalFooter>
+        </form>
+      </Modal>
     </div>
   );
 };

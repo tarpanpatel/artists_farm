@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Card, Alert } from 'flowbite-react';
 import {
   Download,
   Calendar,
@@ -326,15 +327,14 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
         subtitle={t('data_export_center_subtitle', 'Download master auditing spreadsheets or generate snapshot recovery files for your records workbook.')}
       >
         {downloadSuccessMsg && (
-          <div className="flex items-center gap-2 bg-emerald-50 text-emerald-800 border border-emerald-300 px-3 py-2 rounded-lg text-xs font-semibold animate-fade-in">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <Alert color="success" icon={CheckCircle2} className="py-2">
             <span>{downloadSuccessMsg}</span>
-          </div>
+          </Alert>
         )}
       </PageHeader>
 
       {/* Control Card & Dropdowns */}
-      <div className="data-export-center__control-card bg-white p-6 rounded-lg border border-slate-200 shadow-2xs space-y-6">
+      <Card className="data-export-center__control-card border-gray-200 dark:border-gray-700 space-y-6">
         {/* Segment Tabs Selector */}
         <div className="data-export-center__tabs flex bg-slate-100 dark:bg-slate-900/60 p-1.5 rounded-xl max-w-md">
           <button
@@ -579,7 +579,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
             </div>
           )}
         </div>
-      </div>
+      </Card>
     </div>
   );
 };

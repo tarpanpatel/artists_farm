@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { Card, Modal, ModalBody, TextInput } from 'flowbite-react';
 import DataTable from 'react-data-table-component';
 import {
   Calendar,
@@ -13,12 +14,13 @@ import {
   Home,
   Loader2,
   Globe,
+  CreditCard,
+  ReceiptText,
 } from 'lucide-react';
 import { Guest, BillingReceipt } from '../types';
 import { t } from '../i18n/en';
 import { GUEST_STATUS_CHECKEDOUT_LEGACY, GUEST_STATUS_CHECKED_OUT } from '../constants/guestStatus';
 import { Button } from './Button';
-import { Input } from './Input';
 import { Badge } from './Badge';
 import { useToast } from './ToastContext';
 import { MobileBookingCardStack } from './MobileBookingCardStack';
@@ -290,36 +292,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     [searchedGuests, rooms]
   );
 
-  // Upcoming: date-first, rooms within each date - "what's happening when"
-  // matters more than "what's in room X" when you're planning ahead, unlike
-  // Today/Past where the room is the more useful anchor.
-  const upcomingByDate = useMemo(() => {
-    if (activeTab !== 'upcoming') return [];
 
-    const byDate = new Map<string, Guest[]>();
-    searchedGuests.forEach((g) => {
-      const checkin = (g.checkinDate || '').split(' ')[0].split('T')[0];
-      if (!byDate.has(checkin)) byDate.set(checkin, []);
-      byDate.get(checkin)!.push(g);
-    });
-
-    const tomorrowStr = (() => {
-      const d = new Date(todayStr);
-      d.setDate(d.getDate() + 1);
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${y}-${m}-${day}`;
-    })();
-
-    return Array.from(byDate.keys())
-      .sort()
-      .map((dateStr) => ({
-        dateStr,
-        label: dateStr === tomorrowStr ? t('tomorrow_label', 'Tomorrow') : formatDate(dateStr),
-        roomGroups: buildRoomGroups(byDate.get(dateStr)!),
-      }));
-  }, [activeTab, searchedGuests, rooms, todayStr]);
 
   // Calculate totals for a guest
   const calculateGuestTotal = (guest: Guest): number => {
@@ -386,20 +359,20 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     <div className="billing-checkout__grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
       {groups.map((group) => {
         return (
-          <div
+          <Card
             key={`${group.roomId}-${group.roomSlug}`}
-            className="billing-checkout__room-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs hover:shadow-md transition-all overflow-hidden flex flex-col justify-between"
+            className="billing-checkout__room-card shadow-md overflow-hidden flex flex-col justify-between !p-0"
           >
             {/* Room Header */}
-            <div className="billing-checkout__room-card-header bg-slate-50 dark:bg-slate-800/80 px-4 py-3 border-b border-slate-200/80 dark:border-slate-700 flex justify-between items-center">
-              <h3 className="billing-checkout__room-card-title text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
-                <Building className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
+            <div className="billing-checkout__room-card-header bg-gray-50 dark:bg-gray-700 px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+              <h3 className="billing-checkout__room-card-title text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5 truncate">
+                <Building className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
                 {group.roomName}
               </h3>
             </div>
 
             {/* Guest Card(s) stacked inside Room Column */}
-            <div className="billing-checkout__room-card-body p-3.5 space-y-3.5">
+            <div className="billing-checkout__room-card-body p-4 space-y-4">
               {group.guests.map((guest) => {
                 const amountDue = calculateGuestTotal(guest);
                 const nights = calculateNights(guest.checkinDate, guest.expectedCheckout);
@@ -410,14 +383,14 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                 return (
                   <div
                     key={guest.id}
-                    className="billing-checkout__guest-card bg-slate-50/70 dark:bg-slate-900/50 rounded-xl p-3 border border-slate-200/80 dark:border-slate-700/80 hover:border-slate-300 dark:hover:border-slate-600 transition-all flex flex-col justify-between space-y-3"
+                    className="billing-checkout__guest-card bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 shadow-xs hover:border-gray-300 dark:hover:border-gray-600 transition-all flex flex-col justify-between space-y-3"
                   >
                     {/* Top Header: Guest Name & Status Badge */}
                     <div>
                       <div className="billing-checkout__guest-card-header flex items-start justify-between gap-2 mb-1">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center flex-wrap gap-x-2 gap-y-1">
-                            <h4 className="text-sm font-semibold text-slate-900 dark:text-white truncate m-0">
+                            <h4 className="text-sm font-semibold text-slate-900 dark:text-white m-0">
                               {guest.guestName}
                             </h4>
                             <span className="text-xs text-slate-500 dark:text-slate-400 font-normal shrink-0">
@@ -577,24 +550,18 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                 );
               })}
             </div>
-          </div>
+          </Card>
         );
       })}
     </div>
   );
 
-  // Past Bookings: a flat searchable/sortable/paginated table (matching the
-  // removed "Past Guests" archive page's format) rather than the room-grid
-  // cards Today/Upcoming use - once a stay is history, scanning/sorting a
-  // large flat list beats hunting through per-room cards, and this is also
-  // where C-Form filing status needs to be visible at a glance across every
-  // past guest at once, not one room-card at a time.
   const pastBookingsTableStyles = {
     subHeader: { style: { padding: 0, minHeight: 0, backgroundColor: 'transparent' } },
-    headRow: { style: { backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' } },
-    headCells: { style: { fontSize: '11px', fontWeight: 600, color: '#64748b', paddingLeft: '12px' } },
-    cells: { style: { fontSize: '13px', color: '#334155', padding: '12px' } },
-    rows: { style: { minHeight: '52px' } },
+    headRow: { style: { backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb' } },
+    headCells: { style: { fontSize: '12px', fontWeight: 600, color: '#374151', textTransform: 'uppercase', paddingLeft: '16px', paddingRight: '16px' } },
+    cells: { style: { fontSize: '14px', color: '#4b5563', padding: '16px' } },
+    rows: { style: { minHeight: '56px' } },
   };
 
   const pastBookingsColumns = [
@@ -604,16 +571,10 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       sortable: true,
       grow: 2,
       cell: (row: Guest) => (
-        <div className="flex flex-col py-2">
-          <div className="flex items-center gap-1.5 font-semibold text-slate-900 dark:text-white">
-            <span>{row.guestName}</span>
-            {row.isForeignGuest && (
-              <span className="px-1.5 py-0.5 text-[9px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 rounded-sm">
-                {t('passport_badge', 'Passport')}
-              </span>
-            )}
-          </div>
-          <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-0.5">
+        <div className="flex flex-col py-1">
+          <div className="font-bold text-gray-900 dark:text-white text-sm">{row.guestName}</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2 mt-0.5">
+            <span>({row.numberOfGuests || 1} {(row.numberOfGuests || 1) === 1 ? 'guest' : 'guests'})</span>
             {row.phoneNumber ? (
               <a
                 href={`tel:${row.phoneNumber}`}
@@ -637,13 +598,13 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       sortable: true,
       grow: 2,
       cell: (row: Guest) => (
-        <div className="flex flex-col py-2">
-          <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-            <span className="text-[10px] uppercase text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-1 py-0.5 rounded-sm">{t('checkin_badge', 'IN')}</span>
+        <div className="flex flex-col py-1 text-xs">
+          <div className="font-medium text-gray-900 dark:text-white flex items-center gap-1.5">
+            <span className="text-2xs font-semibold uppercase text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">{t('checkin_badge', 'IN')}</span>
             <span>{formatDateDDMMYY(row.checkinDate)}</span>
           </div>
-          <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mt-1">
-            <span className="text-[10px] uppercase text-rose-600 bg-rose-50 dark:bg-rose-950/20 px-1 py-0.5 rounded-sm">{t('checkout_badge', 'OUT')}</span>
+          <div className="text-gray-500 dark:text-gray-400 flex items-center gap-1.5 mt-1">
+            <span className="text-2xs font-semibold uppercase text-rose-700 bg-rose-50 dark:bg-rose-950/40 px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-800">{t('checkout_badge', 'OUT')}</span>
             <span>{formatDateDDMMYY(row.checkoutDate || row.expectedCheckout) || '—'}</span>
           </div>
         </div>
@@ -655,8 +616,8 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       sortable: true,
       grow: 1,
       cell: (row: Guest) => (
-        <div className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200">
-          <Home className="w-3.5 h-3.5 text-slate-400" />
+        <div className="flex items-center gap-1.5 font-medium text-gray-900 dark:text-white text-xs">
+          <Home className="w-4 h-4 text-gray-400" />
           <span>{row.roomNumber || t('unassigned_label', 'Unassigned')}</span>
         </div>
       ),
@@ -681,12 +642,12 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       sortable: true,
       grow: 2,
       cell: (row: Guest) => (
-        <div className="flex flex-col py-2">
-          <div className="flex items-center gap-1 font-semibold text-slate-900 dark:text-white">
+        <div className="flex flex-col py-1 text-xs">
+          <div className="flex items-center gap-1 font-semibold text-gray-900 dark:text-white">
             <span>{t('bill_field', 'Bill:')}</span>
             <span className="text-blue-600 dark:text-blue-400">₹{(row.totalAmount ?? row.roomRate ?? 0).toFixed(2)}</span>
           </div>
-          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex flex-wrap gap-x-2">
+          <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex flex-wrap gap-x-2">
             <span>{t('adv_short_label', 'Adv:')} ₹{(row.advanceAmount ?? 0).toFixed(2)}</span>
             <span>•</span>
             <span className={calculateGuestTotal(row) <= 0 ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-amber-600 dark:text-amber-400 font-semibold'}>
@@ -703,7 +664,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       grow: 2,
       cell: (row: Guest) => {
         if (!row.isForeignGuest) {
-          return <span className="text-slate-400 dark:text-slate-600 text-xs">{t('na_indian_national_label', 'N/A (Indian National)')}</span>;
+          return <span className="text-gray-400 dark:text-gray-500 text-xs">{t('na_indian_national_label', 'N/A (Indian National)')}</span>;
         }
         const isFiled = !!row.cFormFiledAt;
         const isSaving = savingCFormId === row.id;
@@ -714,32 +675,32 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
               checked={isFiled}
               disabled={isSaving}
               onChange={(e) => handleToggleCForm(row, e.target.checked)}
-              className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer disabled:opacity-50"
+              className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer disabled:opacity-50"
             />
             <span className={`font-semibold ${isFiled ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
               {isFiled ? (
                 <span className="flex items-center gap-1">
                   <span>{t('filed_badge', 'Filed')}</span>
-                  <span className="text-[10px] text-slate-400 font-normal">({formatDateDDMMYYYY(row.cFormFiledAt)})</span>
+                  <span className="text-2xs text-gray-400 font-normal">({formatDateDDMMYYYY(row.cFormFiledAt)})</span>
                 </span>
               ) : (
                 <span>{t('pending_filing_badge', 'Pending Filing')}</span>
               )}
             </span>
-            {isSaving && <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />}
+            {isSaving && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400" />}
           </label>
         );
       },
     },
     {
       name: t('actions_column', 'Actions'),
-      width: '130px',
+      width: '140px',
       cell: (row: Guest) => (
         <button
           onClick={() => handleEditGuest(row)}
-          className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-600 font-semibold py-1.5 px-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5 text-xs shadow-2xs cursor-pointer"
+          className="bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 font-semibold py-1.5 px-3 rounded-lg transition-colors flex items-center justify-center gap-1.5 text-xs shadow-xs cursor-pointer"
         >
-          <CheckCircle2 className="w-3.5 h-3.5 text-slate-500" />
+          <CheckCircle2 className="w-3.5 h-3.5 text-gray-500" />
           {t('edit_booking_button', 'Edit Booking')}
         </button>
       ),
@@ -767,9 +728,25 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       </PageHeader>
 
       {/* Tabs Navigation & Search Bar */}
-      <div className="billing-checkout__tabs bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
+      <Card className="billing-checkout__tabs shadow-md space-y-4">
+        <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 dark:border-slate-700 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+              <ReceiptText className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-extrabold tracking-wide text-slate-900 dark:text-white">Booking desk</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Review stays, balances, and checkout settlements in one place.</p>
+            </div>
+          </div>
+          <div className="inline-flex items-center gap-2 self-start rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300 sm:self-auto">
+            <CreditCard className="h-4 w-4" />
+            {tabCounts.today} requiring attention today
+          </div>
+        </div>
+
         {/* Navigation Tabs */}
-        <div className="billing-checkout__tab-list flex flex-wrap items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-3">
+        <div className="billing-checkout__tab-list no-scrollbar flex items-center gap-2 overflow-x-auto border-b border-gray-200 pb-3 dark:border-gray-700">
           <Button
             variant={activeTab === 'today' ? 'primary' : 'ghost'}
             size="sm"
@@ -798,20 +775,20 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
           </Button>
         </div>
 
-        {/* Search Bar - covers room too (guest name, phone, OR room number),
-            so the separate "Filter Room" dropdown next to it was pure
-            redundant UI - removed 12 Aug 2026. */}
-        <div className="billing-checkout__search flex flex-col sm:flex-row gap-3 items-center">
+        {/* Search Bar - covers room too (guest name, phone, OR room number) */}
+        <div className="billing-checkout__search flex flex-col items-center gap-3 sm:flex-row">
           <div className="billing-checkout__search-input flex-1 w-full">
-            <Input
-              leftIcon={<Search className="w-4 h-4 text-slate-400" />}
-              placeholder={t('search_guest_placeholder', 'Search guest name, phone, or room...')}
+            <TextInput
+              id="bookings-search"
+              type="text"
+              icon={Search}
+              placeholder={t('search_guest_placeholder', 'Search by guest, phone, or room...')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Upcoming & Past Bookings: Mobile Card Stack on phone viewports (md:hidden), Desktop DataTable on md+ */}
       {(activeTab === 'upcoming' || activeTab === 'past_bookings') ? (
@@ -835,7 +812,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
             />
           </div>
 
-          <div className="hidden md:block billing-checkout__past-table bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-xs">
+          <Card className="hidden md:block billing-checkout__past-table shadow-md overflow-hidden p-0!">
             <DataTable
               columns={pastBookingsColumns}
               data={searchedGuests}
@@ -845,17 +822,17 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
               paginationRowsPerPageOptions={[10, 15, 20, 30, 50]}
               noDataComponent={
                 <div className="p-12 text-center">
-                  <Search className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-                  <h3 className="billing-checkout__subtitle text-lg font-semibold text-slate-800 dark:text-slate-200 mb-1">
+                  <Search className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                  <h3 className="billing-checkout__subtitle text-lg font-semibold text-gray-800 dark:text-gray-200 mb-1">
                     {t('no_guest_records_found', 'No Guest Records Found')}
                   </h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
                     {t('no_guest_records_description', 'No guest records match the current tab filter or search term. Switch tabs or room filter to view other reservations.')}
                   </p>
                 </div>
               }
             />
-          </div>
+          </Card>
         </>
       ) : (
         renderRoomGroupsGrid(filteredGroups)
@@ -864,15 +841,15 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       {/* Empty Search Result - Today room-grid only; the Upcoming/Past
           Bookings table has its own noDataComponent above. */}
       {activeTab === 'today' && filteredGroups.length === 0 && (
-        <div className="billing-checkout__empty-state bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-12 text-center">
-          <Search className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-          <h3 className="billing-checkout__subtitle text-lg font-semibold text-slate-800 dark:text-slate-200 mb-1">
+        <Card className="billing-checkout__empty-state shadow-md p-12 text-center">
+          <Search className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+          <h3 className="billing-checkout__subtitle text-lg font-semibold text-gray-800 dark:text-gray-200 mb-1">
             {t('no_guest_records_found', 'No Guest Records Found')}
           </h3>
-          <p className="text-sm text-slate-600 dark:text-slate-400">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
             {t('no_guest_records_description', 'No guest records match the current tab filter or search term. Switch tabs or room filter to view other reservations.')}
           </p>
-        </div>
+        </Card>
       )}
 
       {/* Receipt Edit Modal with Blocked Dates Calendar */}
@@ -925,36 +902,28 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       )}
 
       {/* Add Booking Modal */}
-      {showAddBookingModal && (
-        <React.Suspense fallback={null}>
-          <div
-            className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
-            onClick={() => setShowAddBookingModal(false)}
-          >
-            <div
-              className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <LazyGuestManagement
-                guests={guests}
-                receipts={receipts}
-                menu={[]}
-                rooms={rooms}
-                onAddGuest={(guest) => {
-                  onAddGuest?.(guest);
-                  setShowAddBookingModal(false);
-                }}
-                onCheckoutGuest={onCheckoutGuest}
-                activeMenuItemKey="guest_registration"
-                isMultiKeyProperty={isMultiKeyProperty}
-                onClose={() => setShowAddBookingModal(false)}
-                propertyName={propertyName}
-                propertyUpiId={propertyUpiId}
-              />
-            </div>
-          </div>
-        </React.Suspense>
-      )}
+      <React.Suspense fallback={null}>
+        <Modal show={showAddBookingModal} onClose={() => setShowAddBookingModal(false)} dismissible size="lg" className="z-58">
+          <ModalBody className="p-0 max-h-[90vh] overflow-y-auto rounded-2xl">
+            <LazyGuestManagement
+              guests={guests}
+              receipts={receipts}
+              menu={[]}
+              rooms={rooms}
+              onAddGuest={(guest) => {
+                onAddGuest?.(guest);
+                setShowAddBookingModal(false);
+              }}
+              onCheckoutGuest={onCheckoutGuest}
+              activeMenuItemKey="guest_registration"
+              isMultiKeyProperty={isMultiKeyProperty}
+              onClose={() => setShowAddBookingModal(false)}
+              propertyName={propertyName}
+              propertyUpiId={propertyUpiId}
+            />
+          </ModalBody>
+        </Modal>
+      </React.Suspense>
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Card } from 'flowbite-react';
 import {
   BarChart3,
   Receipt,
@@ -18,19 +19,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { NavMenuItem } from '../types';
 
 interface AdminControlOverviewDashboardProps {
-  // Single callback through App.tsx's centralized handleNavigateTab (same
-  // as KitchenDashboard's onNavigate) - see TeamOverviewDashboard.tsx for
-  // why two separate setters would desync window.location.hash.
   onNavigate: (uniqueKey: string, tabKey?: string) => void;
   navItems?: NavMenuItem[];
 }
 
-/**
- * Launchpad hub for the "Admin Control" sidebar section - same pattern as
- * TeamOverviewDashboard/KitchenDashboard: fixed card catalog, filtered
- * against the real DB-driven navItems (nav-header-admin's children) rather
- * than assumed. 0ms load - no data fetching.
- */
 export const AdminControlOverviewDashboard: React.FC<AdminControlOverviewDashboardProps> = ({
   onNavigate,
   navItems = [],
@@ -55,7 +47,6 @@ export const AdminControlOverviewDashboard: React.FC<AdminControlOverviewDashboa
       icon: BarChart3,
       color: 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800/60',
     },
-
     {
       uniqueKey: 'past_receipts_log',
       tabKey: 'audit_logs',
@@ -147,35 +138,35 @@ export const AdminControlOverviewDashboard: React.FC<AdminControlOverviewDashboa
         {visibleCards.map((card) => {
           const IconComponent = card.icon;
           return (
-            <div
+            <Card
               key={card.uniqueKey}
-              className="admin-dashboard__card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all duration-200 p-5 flex flex-col justify-between group"
+              className="admin-dashboard__card border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200 group"
             >
               <div className="flex items-start gap-3.5">
                 <div className={`p-3 rounded-xl border shrink-0 ${card.color} transition-transform group-hover:scale-105`}>
                   <IconComponent className="w-5 h-5" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="admin-control-overview-dashboard__subtitle text-base font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                  <h3 className="admin-control-overview-dashboard__subtitle text-base font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                     {card.title}
                   </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">{card.description}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">{card.description}</p>
                 </div>
               </div>
 
-              <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-700/60">
+              <div className="pt-4 mt-2 border-t border-gray-100 dark:border-gray-700">
                 <Button
                   variant="primary"
                   size="sm"
                   block
-                  className="justify-center gap-2 font-semibold cursor-pointer rounded-xl"
+                  className="justify-center gap-2 font-semibold cursor-pointer rounded-lg"
                   onClick={() => handleNavigate(card.tabKey, card.uniqueKey)}
                   rightIcon={<ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />}
                 >
                   <span>{t('open_prefix', 'Open')} {card.title}</span>
                 </Button>
               </div>
-            </div>
+            </Card>
           );
         })}
       </div>

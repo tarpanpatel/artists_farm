@@ -3,8 +3,7 @@ import {
   Copy,
   Check,
   Trash2,
-  X, 
-  Plus, 
+  Plus,
   RefreshCw, 
   Globe,
   Clock,
@@ -12,6 +11,7 @@ import {
   ShieldCheck,
   Search,
   Layers} from 'lucide-react';
+import { Modal, ModalHeader, ModalBody, ModalFooter } from 'flowbite-react';
 import { getPropertySlug, getPropertyAndRoomSlugs, API_ROOT_BASE } from '../services/api';
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
@@ -19,6 +19,7 @@ import { useToast } from './ToastContext';
 import { PageHeader, PageHeaderButton } from './PageHeader';
 import { t } from '../i18n/en';
 import { Input } from './Input';
+import { Button } from './Button';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
 
 interface Calendar {
@@ -921,105 +922,92 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
       )}
 
       {/* Modal for Connecting New iCal Feed */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
-              <h3 className="ical-sync-manager__subtitle text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                <Plus className="w-5 h-5 text-blue-600" />
-                <span>{t('connect_new_ical_feed_heading', 'Connect New iCal Feed')}</span>
-              </h3>
-              <button
-                onClick={() => setIsAddModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4 text-xs">
-              <div>
-                <label className="block font-extrabold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider text-[10px]">
-                  {t('select_channel_platform_label', '1. Select Channel Platform')}
-                </label>
-                <StyledSelect
-                  value={newServiceName}
-                  onChange={setNewServiceName}
-                  options={[
-                    { value: 'Airbnb Calendar', label: t('modal_platform_airbnb_calendar_label', 'Airbnb Calendar') },
-                    { value: 'Booking.com Calendar', label: t('modal_platform_booking_calendar_label', 'Booking.com Calendar') },
-                    { value: 'Google Calendar', label: t('modal_platform_google_calendar_label', 'Google Calendar') },
-                    { value: 'VRBO / HomeAway', label: t('modal_platform_vrbo_homeaway_label', 'VRBO / HomeAway') },
-                    { value: 'Agoda Calendar', label: t('modal_platform_agoda_label', 'Agoda Calendar') },
-                    { value: 'Other', label: t('modal_platform_other_ota_label', 'Other Custom OTA') },
-                  ]}
-                />
-              </div>
-
-              {newServiceName === 'Other' && (
-                <div>
-                  <Input
-                    label={t('custom_feed_name_label', 'Custom Feed Name')}
-                    type="text"
-                    value={customServiceName}
-                    onChange={(e) => setCustomServiceName(e.target.value)}
-                    placeholder={t('custom_feed_name_placeholder', 'e.g. Direct Booking Channel')}
-                  />
-                </div>
-              )}
-
-              {propertyRooms.length > 0 && (
-                <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider text-[10px]">
-                    {t('target_room_assignment_label', '2. Target Room Assignment')}
-                  </label>
-                  <StyledSelect
-                    value={selectedRoomForImport}
-                    onChange={setSelectedRoomForImport}
-                    options={[
-                      { value: 'all', label: t('entire_resort_property_label', 'Entire Resort Property') },
-                      ...propertyRooms.map((r) => ({ value: r.name, label: `${t('room_option_prefix', 'Room:')} ${r.name}` })),
-                    ]}
-                  />
-                </div>
-              )}
-
-              <div>
-                <Input
-                  label={`${propertyRooms.length > 0 ? '3' : '2'}. ${t('paste_ical_feed_url_label', 'Paste iCal Feed URL')}`}
-                  type="url"
-                  value={newImportUrl}
-                  onChange={(e) => setNewImportUrl(e.target.value)}
-                  placeholder={t('ical_url_example_placeholder', 'https://www.airbnb.com/calendar/ical/...')}
-                  className="font-mono"
-                />
-                <p className="text-[10px] text-slate-400 mt-1">
-                  {t('ical_url_helper_text', 'Copy the export .ics calendar link from your OTA host dashboard and paste it here.')}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-700">
-              <button
-                type="button"
-                onClick={() => setIsAddModalOpen(false)}
-                className="px-4 py-2 text-slate-600 dark:text-slate-300 font-semibold hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition cursor-pointer text-xs"
-              >
-                {t('cancel_button', 'Cancel')}
-              </button>
-              <button
-                type="button"
-                onClick={() => handleAddCalendar()}
-                disabled={isAdding || !newImportUrl.trim()}
-                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold rounded-xl transition cursor-pointer text-xs shadow-xs flex items-center gap-2"
-              >
-                {isAdding ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                <span>{isAdding ? t('connecting_button', 'Connecting...') : t('connect_feed_button', 'Connect Feed')}</span>
-              </button>
-            </div>
+      <Modal
+        show={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        dismissible={!isAdding}
+        size="lg"
+        className="z-58 ical-sync-manager__add-modal"
+      >
+        <ModalHeader as="div">
+          <h3 className="ical-sync-manager__subtitle text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+            <Plus className="w-5 h-5 text-blue-600" />
+            <span>{t('connect_new_ical_feed_heading', 'Connect New iCal Feed')}</span>
+          </h3>
+        </ModalHeader>
+        <ModalBody className="space-y-4 text-xs">
+          <div>
+            <label className="block font-extrabold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider text-[10px]">
+              {t('select_channel_platform_label', '1. Select Channel Platform')}
+            </label>
+            <StyledSelect
+              value={newServiceName}
+              onChange={setNewServiceName}
+              options={[
+                { value: 'Airbnb Calendar', label: t('modal_platform_airbnb_calendar_label', 'Airbnb Calendar') },
+                { value: 'Booking.com Calendar', label: t('modal_platform_booking_calendar_label', 'Booking.com Calendar') },
+                { value: 'Google Calendar', label: t('modal_platform_google_calendar_label', 'Google Calendar') },
+                { value: 'VRBO / HomeAway', label: t('modal_platform_vrbo_homeaway_label', 'VRBO / HomeAway') },
+                { value: 'Agoda Calendar', label: t('modal_platform_agoda_label', 'Agoda Calendar') },
+                { value: 'Other', label: t('modal_platform_other_ota_label', 'Other Custom OTA') },
+              ]}
+            />
           </div>
-        </div>
-      )}
+
+          {newServiceName === 'Other' && (
+            <div>
+              <Input
+                label={t('custom_feed_name_label', 'Custom Feed Name')}
+                type="text"
+                value={customServiceName}
+                onChange={(e) => setCustomServiceName(e.target.value)}
+                placeholder={t('custom_feed_name_placeholder', 'e.g. Direct Booking Channel')}
+              />
+            </div>
+          )}
+
+          {propertyRooms.length > 0 && (
+            <div>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider text-[10px]">
+                {t('target_room_assignment_label', '2. Target Room Assignment')}
+              </label>
+              <StyledSelect
+                value={selectedRoomForImport}
+                onChange={setSelectedRoomForImport}
+                options={[
+                  { value: 'all', label: t('entire_resort_property_label', 'Entire Resort Property') },
+                  ...propertyRooms.map((r) => ({ value: r.name, label: `${t('room_option_prefix', 'Room:')} ${r.name}` })),
+                ]}
+              />
+            </div>
+          )}
+
+          <div>
+            <Input
+              label={`${propertyRooms.length > 0 ? '3' : '2'}. ${t('paste_ical_feed_url_label', 'Paste iCal Feed URL')}`}
+              type="url"
+              value={newImportUrl}
+              onChange={(e) => setNewImportUrl(e.target.value)}
+              placeholder={t('ical_url_example_placeholder', 'https://www.airbnb.com/calendar/ical/...')}
+              className="font-mono"
+            />
+            <p className="text-[10px] text-slate-400 mt-1">
+              {t('ical_url_helper_text', 'Copy the export .ics calendar link from your OTA host dashboard and paste it here.')}
+            </p>
+          </div>
+        </ModalBody>
+        <ModalFooter className="justify-end">
+          <Button
+            type="button"
+            variant="primary"
+            onClick={() => handleAddCalendar()}
+            disabled={isAdding || !newImportUrl.trim()}
+            leftIcon={isAdding ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+          >
+            {isAdding ? t('connecting_button', 'Connecting...') : t('connect_feed_button', 'Connect Feed')}
+          </Button>
+        </ModalFooter>
+      </Modal>
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, Suspense, lazy } from 'react';
+import { Modal, ModalHeader, ModalBody } from 'flowbite-react';
 import { Header } from './components/Header';
 import { Navigation, TabType } from './components/Navigation';
 import { MobileBottomNav } from './components/MobileBottomNav';
@@ -26,7 +27,7 @@ import { fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fet
 import { ConfigurationDataProvider } from './contexts/ConfigurationDataContext';
 import { ModulesProvider, useModules } from './contexts/ModulesContext';
 import { DataLoader, PreloadedData } from './components/DataLoader';
-import { Smartphone, Download, X as CloseIcon, Share, ChevronDown, PlusSquare, MoreVertical } from 'lucide-react';
+import { Smartphone, Download, X as CloseIcon, Share, PlusSquare, MoreVertical } from 'lucide-react';
 import { LoadingScreen } from './components/LoadingScreen';
 import { LoginPage } from './components/LoginPage';
 import { MultiKeyPropertyOverview } from './components/MultiKeyPropertyOverview';
@@ -182,8 +183,6 @@ function AppBody({ preloadedData }: AppBodyProps) {
         analytics: { tab: 'analytics', key: 'admin_control_overview' },
         purchase_analytics: { tab: 'analytics', key: 'dashboard_analytics' },
         past_receipts_log: { tab: 'audit_logs', key: 'past_receipts_log' },
-        login_logs: { tab: 'audit_logs', key: 'login_logs' },
-        system_health: { tab: 'audit_logs', key: 'system_health' },
         edit_main_menu: { tab: 'menu_manager', key: 'edit_main_menu' },
         admin_control_group: { tab: 'analytics', key: 'admin_control_overview' },
         edit_items_group: { tab: 'menu_manager', key: 'edit_main_menu' },
@@ -1024,8 +1023,6 @@ function AppBody({ preloadedData }: AppBodyProps) {
         analytics: { tab: 'analytics', key: 'admin_control_overview' },
         purchase_analytics: { tab: 'analytics', key: 'dashboard_analytics' },
         past_receipts_log: { tab: 'audit_logs', key: 'past_receipts_log' },
-        login_logs: { tab: 'audit_logs', key: 'login_logs' },
-        system_health: { tab: 'audit_logs', key: 'system_health' },
         edit_food_menu: { tab: 'menu_manager', key: 'edit_food_menu' },
         edit_expense_items: { tab: 'petty_cash', key: 'edit_expense_items' },
         edit_main_menu: { tab: 'menu_manager', key: 'edit_main_menu' },
@@ -1378,7 +1375,20 @@ ${itemsStr}
   Total Bill: <b>₹${receipt.grandTotal}</b>
   Payment Mode: <b>${receipt.paymentMethod || 'Cash'}</b>`;
     logAudit(`Settled billing receipt ${receipt.id} (₹${receipt.grandTotal}) for ${receipt.guestName}`);
-    if (telegramConfig.enabledEvents.guestCheckout) {
+    // `telegramConfig.enabledEvents` was a leftover of the old single-global
+    // Telegram config (TelegramConfig type) - superseded by the per-property
+    // DB-driven groups/routing config (PropertyTelegramConfig) that
+    // fetchTelegramConfigDB() actually returns now, which has no
+    // `enabledEvents` field. Nothing in TelegramNotificationModal.tsx (the
+    // only settings UI) ever reads or writes `enabledEvents` either, so this
+    // gate could never be turned on and was unconditionally crashing every
+    // checkout instead (`Cannot read properties of undefined (reading
+    // 'guestCheckout')`) - found 19 Aug 2026. Whether a property actually
+    // wants this notification is already decided server-side by its saved
+    // routing config; dispatchTelegramAlert/sendTelegramAlertDB no-ops there
+    // if nothing's configured, same as the kotOrders/pettyCashExpenses
+    // notifications elsewhere that never went through this gate at all.
+    {
       const checkoutVars: Record<string, string> = {
         guest_name: receipt.guestName,
         room_number: receipt.roomNumber,
@@ -1501,7 +1511,9 @@ ${itemsStr}
     addRequisition(req);
     logAudit(`Created material requisition ${req.id} for ${req.requestedQty} ${req.unit} of ${req.itemName}`);
 
-    if (telegramConfig.enabledEvents.materialRequisitions) {
+    // See handleCheckoutGuest's comment above `dispatchTelegramAlert('Checkout', ...)`
+    // for why this no longer gates on `telegramConfig.enabledEvents`.
+    {
       const reqVars: Record<string, string> = {
         req_id: req.id,
         requested_by: req.requestedBy || activeRole,
@@ -1531,7 +1543,9 @@ ${itemsStr}
     const currentUserName = currentUser?.name || activeRole;
     logAudit(`${currentUserName} updated stock of ${item?.name || itemId} from ${oldStock} ${item?.unit || ''} to ${newStock} ${item?.unit || ''}`);
 
-    if (item && newStock <= item.minThreshold && telegramConfig.enabledEvents.lowStockAlerts) {
+    // See handleCheckoutGuest's comment above `dispatchTelegramAlert('Checkout', ...)`
+    // for why this no longer gates on `telegramConfig.enabledEvents`.
+    if (item && newStock <= item.minThreshold) {
       const lowStockVars: Record<string, string> = {
         item_name: item.name,
         current_stock: String(newStock),
@@ -2103,39 +2117,40 @@ ${itemsStr}
         )}
 
         {/* Global Add Booking Modal Overlay */}
-        {isAddBookingModalOpen && (
-          <div
-            className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
-            onClick={() => setIsAddBookingModalOpen(false)}
-          >
-            <div
-              className="w-full max-w-[550px] max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl bg-white dark:bg-slate-800 p-4"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <GuestManagement
-                guests={guests}
-                receipts={receipts}
-                menu={menu}
-                rooms={preloadedData.currentProperty?.rooms || []}
-                onAddGuest={async (guest) => {
-                  await handleAddGuest(guest);
-                  setIsAddBookingModalOpen(false);
-                }}
-                onCheckoutGuest={handleCheckoutGuest}
-                onDispatchTelegram={dispatchTelegramAlert}
-                activeMenuItemKey="guest_registration"
-                isMultiKeyProperty={preloadedData.isMultiKeyProperty}
-                selectedRoomSlug={preloadedData.currentRoomSlug}
-                onClose={() => setIsAddBookingModalOpen(false)}
-                propertyName={preloadedData.currentProperty?.name || ''}
-                propertyMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
-                propertyPhone={preloadedData.currentProperty?.phone || ''}
-                propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template || ''}
-                propertyUpiId={preloadedData.currentProperty?.upi_id || ''}
-              />
-            </div>
-          </div>
-        )}
+        <Modal
+          show={isAddBookingModalOpen}
+          onClose={() => setIsAddBookingModalOpen(false)}
+          size="lg"
+          dismissible
+          className="z-58"
+        >
+          <ModalHeader className="border-b border-gray-200 dark:border-gray-700 p-4">
+            Add Guest Booking
+          </ModalHeader>
+          <ModalBody className="p-6 max-h-[85vh] overflow-y-auto">
+            <GuestManagement
+              guests={guests}
+              receipts={receipts}
+              menu={menu}
+              rooms={preloadedData.currentProperty?.rooms || []}
+              onAddGuest={async (guest) => {
+                await handleAddGuest(guest);
+                setIsAddBookingModalOpen(false);
+              }}
+              onCheckoutGuest={handleCheckoutGuest}
+              onDispatchTelegram={dispatchTelegramAlert}
+              activeMenuItemKey="guest_registration"
+              isMultiKeyProperty={preloadedData.isMultiKeyProperty}
+              selectedRoomSlug={preloadedData.currentRoomSlug}
+              onClose={() => setIsAddBookingModalOpen(false)}
+              propertyName={preloadedData.currentProperty?.name || ''}
+              propertyMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
+              propertyPhone={preloadedData.currentProperty?.phone || ''}
+              propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template || ''}
+              propertyUpiId={preloadedData.currentProperty?.upi_id || ''}
+            />
+          </ModalBody>
+        </Modal>
 
         {/* Unauthenticated: show login-only content */}
         {!isAuthenticated && (

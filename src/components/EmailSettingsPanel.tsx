@@ -1,4 +1,5 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Card } from 'flowbite-react';
 import { Mail, Send, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { StyledSelect } from './StyledSelect';
 import { Button } from './Button';
@@ -128,11 +129,11 @@ export const EmailSettingsPanel: React.FC = () => {
   return (
     <div className="space-y-4">
       {/* SMTP Connection */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
-        <h3 className="email-settings-panel__subtitle text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-1">
-          <Mail className="w-4 h-4 text-indigo-500" /> {t('smtp_connection_heading', 'SMTP Connection')}
+      <Card className="border-gray-200 dark:border-gray-700">
+        <h3 className="email-settings-panel__subtitle text-base font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-1">
+          <Mail className="w-5 h-5 text-indigo-500" /> {t('smtp_connection_heading', 'SMTP Connection')}
         </h3>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
           {t('smtp_connection_description', 'Used to send the tenant welcome email (login link, username, temporary passcode) when a new tenant is created.')}
         </p>
 
@@ -214,7 +215,7 @@ export const EmailSettingsPanel: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-slate-100 dark:border-slate-700 email-settings-panel__actions">
+        <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-gray-100 dark:border-gray-700 email-settings-panel__actions">
           <Button
             variant="primary"
             size="md"
@@ -262,21 +263,21 @@ export const EmailSettingsPanel: React.FC = () => {
             {testResult.message}
           </p>
         )}
-      </div>
+      </Card>
 
       {/* Welcome Template */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 email-settings-panel__section email-settings-panel__section--welcome">
+      <Card className="border-gray-200 dark:border-gray-700 email-settings-panel__section email-settings-panel__section--welcome">
         <div className="flex items-center justify-between mb-1.5 email-settings-panel__welcome-header">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-white email-settings-panel__section-title">{t('tenant_welcome_message_heading', 'Tenant Welcome Message')}</h3>
+          <h3 className="text-base font-bold text-gray-900 dark:text-white email-settings-panel__section-title">{t('tenant_welcome_message_heading', 'Tenant Welcome Message')}</h3>
           <button
             type="button"
             onClick={() => setTemplate('')}
-            className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+            className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer font-semibold"
           >
             {t('reset_to_default_button', 'Reset to default')}
           </button>
         </div>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
           {t('tenant_welcome_message_description', 'Sent as the welcome email and used to build the "Share via WhatsApp" message when a new tenant is created.')}
         </p>
 
@@ -285,9 +286,9 @@ export const EmailSettingsPanel: React.FC = () => {
           onChange={(e) => setTemplate(e.target.value)}
           placeholder={DEFAULT_TENANT_WELCOME_TEMPLATE}
           rows={10}
-          className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-white rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
-        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 mb-2">
+        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 mb-2">
           {t('template_helper_text', 'Blank = use the default shown above as a placeholder. Click a variable to insert it:')}
         </p>
         <div className="flex flex-wrap gap-1.5 mb-3">
@@ -297,7 +298,7 @@ export const EmailSettingsPanel: React.FC = () => {
               type="button"
               onClick={() => setTemplate((prev) => (prev || DEFAULT_TENANT_WELCOME_TEMPLATE) + v.token)}
               title={v.label}
-              className="text-[10px] font-mono px-2 py-1 rounded-md bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 cursor-pointer"
+              className="text-xs font-mono px-2 py-1 rounded-md bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 cursor-pointer"
             >
               + {v.token}
             </button>
@@ -305,8 +306,8 @@ export const EmailSettingsPanel: React.FC = () => {
         </div>
 
         <details className="text-xs">
-          <summary className="cursor-pointer text-slate-500 dark:text-slate-400 font-semibold">{t('preview_sample_data_label', 'Preview with sample data')}</summary>
-          <pre className="mt-2 whitespace-pre-wrap font-mono bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-slate-700 dark:text-slate-300">
+          <summary className="cursor-pointer text-gray-500 dark:text-gray-400 font-semibold">{t('preview_sample_data_label', 'Preview with sample data')}</summary>
+          <pre className="mt-2 whitespace-pre-wrap font-mono bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-gray-700 dark:text-gray-300">
             {renderTenantWelcomeTemplate(template || DEFAULT_TENANT_WELCOME_TEMPLATE, {
               tenant_name: 'Vrikshawan',
               login_url: 'https://example.com/artists_farm/',
@@ -316,16 +317,17 @@ export const EmailSettingsPanel: React.FC = () => {
           </pre>
         </details>
 
-        <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-700">
-          <button
+        <div className="pt-3 mt-3 border-t border-gray-100 dark:border-gray-700">
+          <Button
+            variant="primary"
+            size="md"
             onClick={handleSave}
             disabled={isSaving}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer"
           >
             {isSaving ? t('saving_ellipsis_button', 'Saving...') : t('save_settings_button', 'Save Settings')}
-          </button>
+          </Button>
         </div>
-      </div>
+      </Card>
     </div>
   );
 };

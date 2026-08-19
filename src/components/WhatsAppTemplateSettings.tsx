@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Card, Alert } from 'flowbite-react';
 import { Loader2, CheckCircle2, AlertCircle, MessageCircle } from 'lucide-react';
 import { t } from '../i18n/en';
 import { Button } from './Button';
@@ -100,27 +101,27 @@ We look forward to welcoming you!`;
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          property_id: property.id,
-          whatsapp_voucher_template: whatsappTemplate,
-          telegram_template_customization_enabled: telegramCustomization,
+          id: property.id,
+          whatsapp_voucher_template: whatsappTemplate.trim(),
+          telegram_template_customization_enabled: telegramCustomization ? 1 : 0,
         }),
       });
       const data = await res.json();
-      if (data.success) {
+      if (data.status === 'success') {
         setSuccess(true);
         if (onSaved) onSaved();
       } else {
-        setError(data.message || 'Failed to save WhatsApp template');
+        setError(data.message || 'Failed to save template');
       }
-    } catch {
-      setError('Network error. Please try again.');
+    } catch (err: any) {
+      setError(err?.message || 'Error saving template');
     } finally {
       setIsSaving(false);
     }
   };
 
   return (
-    <div className="whatsapp-template-settings bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 sm:p-6 space-y-4">
+    <Card className="border-gray-200 dark:border-gray-700 space-y-4 whatsapp-template-settings">
       <div>
         <h2 className="whatsapp-template-settings__heading text-base font-semibold text-slate-900 dark:text-white">
           {t('whatsapp_guest_messaging_heading', 'WhatsApp Guest Messaging')}
@@ -131,16 +132,14 @@ We look forward to welcoming you!`;
       </div>
 
       {error && (
-        <div className="whatsapp-template-settings__error flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-700 dark:text-red-300">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          {error}
-        </div>
+        <Alert color="failure" icon={AlertCircle}>
+          <span>{error}</span>
+        </Alert>
       )}
       {success && (
-        <div className="whatsapp-template-settings__success flex items-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-xl text-sm text-emerald-700 dark:text-emerald-300">
-          <CheckCircle2 className="w-4 h-4 shrink-0" />
-          {t('whatsapp_template_saved_message', 'WhatsApp template saved')}
-        </div>
+        <Alert color="success" icon={CheckCircle2}>
+          <span>{t('whatsapp_template_saved_message', 'WhatsApp template saved')}</span>
+        </Alert>
       )}
 
       <label className="whatsapp-template-settings__telegram-toggle flex items-start gap-2.5 cursor-pointer">
@@ -252,6 +251,6 @@ We look forward to welcoming you!`;
           {t('save_changes_button', 'Save Changes')}
         </Button>
       </div>
-    </div>
+    </Card>
   );
 };

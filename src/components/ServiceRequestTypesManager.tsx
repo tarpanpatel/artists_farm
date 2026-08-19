@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Card, Alert } from 'flowbite-react';
 import { Bell, Plus, Trash2, Loader2, Pencil, Check, X, Globe } from 'lucide-react';
 import {
   SystemServiceRequestCatalogItem,
@@ -136,14 +137,14 @@ export const ServiceRequestTypesManager: React.FC = () => {
 
   return (
     <div className="service-request-types-manager space-y-6 max-w-3xl">
-      <div className="service-request-types-manager__card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
+      <Card className="border-gray-200 dark:border-gray-700">
         <div className="service-request-types-manager__header flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div>
-            <h2 className="service-request-types-manager__heading text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-              <Bell className="w-5 h-5 text-blue-600" />
+            <h2 className="service-request-types-manager__heading text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <Bell className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               {t('service_request_types_heading', 'Service Request Types')}
             </h2>
-            <p className="service-request-types-manager__subtitle text-xs text-slate-500 dark:text-slate-400 mt-1">
+            <p className="service-request-types-manager__subtitle text-xs text-gray-500 dark:text-gray-400 mt-1">
               {t('service_request_types_description', 'Global service request types. Changes cascade to all properties instantly.')}
             </p>
           </div>
@@ -153,7 +154,7 @@ export const ServiceRequestTypesManager: React.FC = () => {
           </div>
         </div>
 
-        <form onSubmit={handleSaveType} className="app-form app-form--save-request-type service-request-types-manager__form grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 border-b border-slate-200 dark:border-slate-700 pb-4 mb-4 items-end">
+        <form onSubmit={handleSaveType} className="app-form app-form--save-request-type service-request-types-manager__form grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 border-b border-gray-200 dark:border-gray-700 pb-4 mb-4 items-end">
           <div>
             <Input
               label={t('type_label_field', 'Label')}
@@ -164,7 +165,7 @@ export const ServiceRequestTypesManager: React.FC = () => {
             />
           </div>
           <div>
-            <label className="service-request-types-manager__category-label block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            <label className="service-request-types-manager__category-label block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
               {t('type_category_field', 'Category')}
             </label>
             <StyledSelect
@@ -185,15 +186,9 @@ export const ServiceRequestTypesManager: React.FC = () => {
         </form>
 
         {notice && (
-          <div
-            className={`service-request-types-manager__notice mb-4 px-4 py-2.5 rounded-xl text-sm font-semibold border ${
-              notice.type === 'success'
-                ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-700'
-                : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-700'
-            }`}
-          >
-            {notice.text}
-          </div>
+          <Alert color={notice.type === 'success' ? 'success' : 'failure'} className="mb-4">
+            <span>{notice.text}</span>
+          </Alert>
         )}
 
         {items.length === 0 ? (
@@ -273,7 +268,7 @@ export const ServiceRequestTypesManager: React.FC = () => {
             ))}
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import React, { forwardRef } from 'react';
 import { AlertTriangle } from 'lucide-react';
+import { TextInput as FlowbiteTextInput, Label as FlowbiteLabel } from 'flowbite-react';
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -7,6 +8,7 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   error?: string | boolean;
   helperText?: string;
   leftIcon?: React.ReactNode;
+  icon?: React.ComponentType<{ className?: string }>;
   rightIcon?: React.ReactNode;
   fullWidth?: boolean;
 }
@@ -19,73 +21,60 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       error,
       helperText,
       leftIcon,
+      icon,
       rightIcon,
       fullWidth = true,
       className = '',
       disabled,
       id,
+      color,
+      placeholder,
       ...props
     },
     ref
   ) => {
-    const inputId = id || (label ? `input-${label.toLowerCase().replace(/\s+/g, '-')}` : undefined);
+    const inputId = id || (label ? `input-${label.toLowerCase().replace(/[^a-z0-9]/g, '-')}` : undefined);
     const hasError = Boolean(error);
     const errorMessage = typeof error === 'string' ? error : undefined;
+
+    // Resolve icon component for Flowbite TextInput
+    const resolvedIcon = icon || (leftIcon && React.isValidElement(leftIcon) ? () => leftIcon as React.ReactElement : undefined);
 
     return (
       <div className={`app-input-wrapper ${fullWidth ? 'w-full' : 'inline-block'} input`}>
         {label && (
-          <label
-            htmlFor={inputId}
-            className={`app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 ${labelClassName || ''} input__label`}
-          >
-            {label}
-          </label>
+          <div className="mb-1 block">
+            <FlowbiteLabel
+              htmlFor={inputId}
+              className={`app-label text-xs font-semibold text-slate-700 dark:text-slate-200 ${labelClassName || ''} input__label`}
+            >
+              {label}
+            </FlowbiteLabel>
+          </div>
         )}
         <div className="input__field-wrapper relative flex items-center">
-          {leftIcon && (
-            <div className="input__icon input__icon--left absolute left-3 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
-              {leftIcon}
-            </div>
-          )}
-          <input
+          <FlowbiteTextInput
             ref={ref}
             id={inputId}
             disabled={disabled}
-            aria-invalid={hasError}
-            aria-describedby={
-              errorMessage ? `${inputId}-error` : helperText ? `${inputId}-helper` : undefined
-            }
-            className={`
-              app-input ${hasError ? 'app-input-error' : ''} ${disabled ? 'app-input-disabled' : ''}
-              w-full h-10 px-3.5 text-sm font-normal rounded-xl transition-all duration-200 outline-none
-              bg-[var(--input-bg-default)] text-[var(--input-text-default)] placeholder:text-[var(--input-placeholder)]
-              border ${
-                disabled
-                  ? 'border-[var(--input-border-disabled)] bg-[var(--input-bg-disabled)] text-[var(--input-text-disabled)] cursor-not-allowed opacity-60'
-                  : hasError
-                  ? 'border-[var(--input-border-error)] focus:ring-4 focus:ring-[var(--input-ring-error)]'
-                  : 'border-[var(--input-border-default)] hover:border-slate-400 dark:hover:border-slate-500 focus:border-[var(--input-border-focus)] focus:ring-4 focus:ring-[var(--input-ring-focus)]'
-              }
-              ${leftIcon ? 'pl-10' : ''}
-              ${rightIcon ? 'pr-10' : ''}
-              ${className}
-              input__field form-field__input
-            `}
-            {...props}
+            placeholder={placeholder}
+            icon={resolvedIcon}
+            color={hasError ? 'failure' : (color as any)}
+            className={`w-full ${className}`}
+            {...(props as any)}
           />
           {rightIcon && (
-            <div className="input__icon input__icon--right absolute right-3 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
+            <div className="input__icon input__icon--right absolute right-3 flex items-center pointer-events-none text-slate-400 dark:text-slate-500 z-10">
               {rightIcon}
             </div>
           )}
         </div>
         {errorMessage ? (
-          <p id={`${inputId}-error`} className="app-error-text mt-1.5 text-xs text-red-600 dark:text-red-400 flex items-center gap-1 input__error">
+          <p id={`${inputId}-error`} className="app-error-text mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1 input__error">
             <AlertTriangle className="w-3.5 h-3.5" /> {errorMessage}
           </p>
         ) : helperText ? (
-          <p id={`${inputId}-helper`} className="app-helper-text mt-1.5 text-xs text-slate-500 dark:text-slate-400 input__helper">
+          <p id={`${inputId}-helper`} className="app-helper-text mt-1 text-xs text-slate-500 dark:text-slate-400 input__helper">
             {helperText}
           </p>
         ) : null}

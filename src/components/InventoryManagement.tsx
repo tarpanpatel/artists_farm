@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { Modal, ModalHeader, ModalBody, ModalFooter } from 'flowbite-react';
+import { Button } from './Button';
 import DataTable from 'react-data-table-component';
-import { Boxes, PackagePlus, AlertTriangle, Plus, CheckCircle2, X, Upload, Search, ShoppingCart, Settings, Landmark, Wallet, Coins, Package, Check, ClipboardEdit, Pencil, ChevronDown, ChevronUp, ArrowRight, Loader2, FlaskConical, Coffee, Milk, Apple, Banana, Cake, Carrot, Wheat, SprayCan, Drumstick, UtensilsCrossed, Croissant, Soup, Droplet, Snowflake, Fish, Wrench, Balloon, Refrigerator, Microwave, Fan, Blend, Bean, HandPlatter, GlassWater, LeafyGreen, Trash2, Candy, Flame, Cherry, Grape, Citrus, Egg, CupSoda, Utensils, Sandwich, Cookie, Nut, Filter, Calendar, Eye, type LucideIcon } from 'lucide-react';
+import { Boxes, PackagePlus, AlertTriangle, Plus, CheckCircle2, X, Upload, Search, ShoppingCart, Settings, Package, Check, ClipboardEdit, Pencil, ChevronDown, ChevronUp, ArrowRight, Loader2, FlaskConical, Coffee, Milk, Apple, Banana, Cake, Carrot, Wheat, SprayCan, Drumstick, UtensilsCrossed, Croissant, Soup, Droplet, Snowflake, Fish, Wrench, Balloon, Refrigerator, Microwave, Fan, Blend, Bean, HandPlatter, GlassWater, LeafyGreen, Trash2, Candy, Flame, Cherry, Grape, Citrus, Egg, CupSoda, Utensils, Sandwich, Cookie, Nut, Filter, Calendar, Eye, type LucideIcon } from 'lucide-react';
 import { InventoryItem, CatalogItem } from '../types';
 import { t } from '../i18n/en';
 import { PageHeader } from './PageHeader';
@@ -14,7 +16,7 @@ import { useConfirm } from './ConfirmDialogContext';
 import { useStaff } from '../contexts/StaffContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
-import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../utils/dateUtils';
+import { formatDateDDMMYYYY } from '../utils/dateUtils';
 
 
 // Matched against the item NAME first (most specific), since real catalogs
@@ -669,7 +671,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   const [fulfillSearch, setFulfillSearch] = useState('');
 
   const [fulfillRangeOpen, setFulfillRangeOpen] = useState(false);
-  const [fulfillFilterRange, setFulfillFilterRange] = useState<{ from: string; to: string } | null>(null);
 
   const todayDate = new Date();
   const padDate = (n: number) => String(n).padStart(2, '0');
@@ -677,26 +678,19 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   const weekAgoDate = new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate() - 6);
   const weekAgoStr = `${weekAgoDate.getFullYear()}-${padDate(weekAgoDate.getMonth() + 1)}-${padDate(weekAgoDate.getDate())}`;
 
-  // Draft from/to while the picker is open - only committed to
-  // fulfillFilterRange (which actually drives the table) via "Enter", same
-  // apply-on-demand behavior the old ref-based inputs had.
   const [fulfillFromDraft, setFulfillFromDraft] = useState(weekAgoStr);
   const [fulfillToDraft, setFulfillToDraft] = useState(todayStr);
 
-  const handleFilterFulfill = () => {
-    setFulfillFilterRange({ from: fulfillFromDraft, to: fulfillToDraft });
-  };
-
-  const filteredFulfillSheets = fulfillFilterRange
-    ? recentSheets.filter(sheet => {
-        const sheetDateStr = sheet.date.split(' - ')[0].trim();
-        const sheetDate = new Date(sheetDateStr);
-        const from = new Date(fulfillFilterRange.from);
-        const to = new Date(fulfillFilterRange.to);
-        to.setHours(23, 59, 59, 999);
-        return sheetDate >= from && sheetDate <= to;
-      })
-    : recentSheets;
+  const filteredFulfillSheets = useMemo(() => {
+    return recentSheets.filter(sheet => {
+      const sheetDateStr = sheet.date.split(' - ')[0].trim();
+      const sheetDate = new Date(sheetDateStr);
+      const from = new Date(fulfillFromDraft);
+      const to = new Date(fulfillToDraft);
+      to.setHours(23, 59, 59, 999);
+      return isNaN(sheetDate.getTime()) || (sheetDate >= from && sheetDate <= to);
+    });
+  }, [recentSheets, fulfillFromDraft, fulfillToDraft]);
 
 
   useEffect(() => {
@@ -857,7 +851,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   const [wastedQty, setWastedQty] = useState<number | ''>('');
   const [wastedUnit, setWastedUnit] = useState('Kg');
   const [wastedReason, setWastedReason] = useState('Spillage / Leakage');
-  const [wastedReportedBy, setWastedReportedBy] = useState('Tarpan');
+  const wastedReportedBy = 'Tarpan';
   const [wastedNotes, setWastedNotes] = useState('');
 
   useEffect(() => {
@@ -1168,34 +1162,36 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             items-center) is required so the active tab's bottom edge -
             shorter than inactive tabs since it has no bottom border - still
             lands flush with the panel below instead of floating above it. */}
-        <div className="flex items-center justify-center gap-2 mb-4">
-          <div className="inline-flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
+        <ul className="flex flex-wrap text-xs font-semibold text-center text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 mb-4 overflow-x-auto no-scrollbar">
+          <li className="me-2">
             <button
               type="button"
               onClick={() => setCatalogView('items')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              className={`inline-flex items-center gap-2 px-4 py-3 rounded-t-lg transition-colors cursor-pointer whitespace-nowrap ${
                 catalogView === 'items'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-transparent hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+                  ? 'text-blue-600 bg-slate-100 dark:bg-slate-800 dark:text-blue-400 font-bold border-b-2 border-blue-600 dark:border-blue-400'
+                  : 'hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60'
               }`}
             >
               <Package className="w-4 h-4 shrink-0" />
               <span>{t('master_materials_catalog_header')}</span>
             </button>
+          </li>
+          <li className="me-2">
             <button
               type="button"
               onClick={() => setCatalogView('categories')}
-              className={`btn-manage-categories flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              className={`inline-flex items-center gap-2 px-4 py-3 rounded-t-lg transition-colors cursor-pointer whitespace-nowrap ${
                 catalogView === 'categories'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-transparent hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+                  ? 'text-blue-600 bg-slate-100 dark:bg-slate-800 dark:text-blue-400 font-bold border-b-2 border-blue-600 dark:border-blue-400'
+                  : 'hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60'
               }`}
             >
               <Settings className="w-4 h-4 shrink-0" />
               <span>{t('manage_categories_button')}</span>
             </button>
-          </div>
-        </div>
+          </li>
+        </ul>
 
         {/* Categories Tab */}
         {catalogView === 'categories' && (
@@ -1716,73 +1712,64 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         )}
 
         {/* Add/Edit Modal */}
-        {isCatalogModalOpen && (
-          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95">
-              <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-700">
-                <h3 className="inventory-management__subtitle font-semibold text-slate-800 dark:text-white">
-                  {editingCatalogItem ? t('edit_catalog_item_heading') : t('register_new_material_heading')}
-                </h3>
-                <button onClick={() => setIsCatalogModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
-                  <X className="w-5 h-5" />
-                </button>
+        <Modal show={isCatalogModalOpen} onClose={() => setIsCatalogModalOpen(false)} className="z-58" size="md" dismissible>
+          <ModalHeader as="div">
+            <span>{editingCatalogItem ? t('edit_catalog_item_heading') : t('register_new_material_heading')}</span>
+          </ModalHeader>
+          <form onSubmit={handleSaveCatalogItem} className="app-form app-form--save-catalog-item">
+            <ModalBody className="space-y-4 text-xs">
+              <div>
+                <Input label={t('item_name_label')} type="text" required value={catItemName} onChange={e => setCatItemName(e.target.value)} placeholder="e.g. Tomato Puree" />
               </div>
 
-              <form onSubmit={handleSaveCatalogItem} className="app-form app-form--save-catalog-item p-4 space-y-4 text-xs">
-                <div>
-                  <Input label={t('item_name_label')} type="text" required value={catItemName} onChange={e => setCatItemName(e.target.value)} placeholder="e.g. Tomato Puree" />
-                </div>
+              <div>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('category_label')}</label>
+                <StyledSelect
+                  value={catCategory}
+                  onChange={setCatCategory}
+                  placeholder="Select category..."
+                  error={!catCategory}
+                  options={catalogCategories.map(cat => ({ value: cat, label: cat }))}
+                />
+              </div>
 
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('category_label')}</label>
-                  <StyledSelect
-                    value={catCategory}
-                    onChange={setCatCategory}
-                    placeholder="Select category..."
-                    error={!catCategory}
-                    options={catalogCategories.map(cat => ({ value: cat, label: cat }))}
-                  />
+                  <Input label={t('base_price_label')} type="number" step="0.01" required value={catPrice} onChange={e => setCatPrice(Number(e.target.value))} />
                 </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Input label={t('base_price_label')} type="number" step="0.01" required value={catPrice} onChange={e => setCatPrice(Number(e.target.value))} />
+                <div className="flex gap-2">
+                  <div className="w-1/2">
+                    <Input label={t('pack_size_label')} type="number" step="0.01" required value={catPackSize} onChange={e => setCatPackSize(Number(e.target.value))} />
                   </div>
-                  <div className="flex gap-2">
-                    <div className="w-1/2">
-                      <Input label={t('pack_size_label')} type="number" step="0.01" required value={catPackSize} onChange={e => setCatPackSize(Number(e.target.value))} />
-                    </div>
-                    <div className="w-1/2">
-                      <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('unit_label')}</label>
-                      <StyledSelect
-                        value={catUnit}
-                        onChange={setCatUnit}
-                        options={['Kg', 'Gms', 'Liter', 'Ml', 'Packets', 'Pc', 'Box', 'Dozen'].map(u => ({ value: u, label: u }))}
-                      />
-                    </div>
+                  <div className="w-1/2">
+                    <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('unit_label')}</label>
+                    <StyledSelect
+                      value={catUnit}
+                      onChange={setCatUnit}
+                      options={['Kg', 'Gms', 'Liter', 'Ml', 'Packets', 'Pc', 'Box', 'Dozen'].map(u => ({ value: u, label: u }))}
+                    />
                   </div>
                 </div>
+              </div>
 
-                <div>
-                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('upload_image_label')}</label>
-                  <Input type="file" accept="image/*" onChange={handleImageUpload} className="w-full p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 rounded-lg text-slate-500 dark:text-slate-400" />
-                  {catImagePath && (
-                    <div className="mt-2">
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400 mb-1">{t('preview_label')}</p>
-                      <img src={catImagePath} alt="Preview" className="w-[150px] h-[50px] object-cover border border-slate-200 dark:border-slate-700 rounded shadow-xs" />
-                    </div>
-                  )}
-                </div>
-
-                <div className="pt-2">
-                  <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl shadow-2xs transition-colors cursor-pointer">
-                    {t('save_commit_updates_button')}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+              <div>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('upload_image_label')}</label>
+                <Input type="file" accept="image/*" onChange={handleImageUpload} className="w-full p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 rounded-lg text-slate-500 dark:text-slate-400" />
+                {catImagePath && (
+                  <div className="mt-2">
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mb-1">{t('preview_label')}</p>
+                    <img src={catImagePath} alt="Preview" className="w-[150px] h-[50px] object-cover border border-slate-200 dark:border-slate-700 rounded shadow-xs" />
+                  </div>
+                )}
+              </div>
+            </ModalBody>
+            <ModalFooter className="flex justify-end">
+              <Button type="submit" variant="primary">
+                {t('save_commit_updates_button')}
+              </Button>
+            </ModalFooter>
+          </form>
+        </Modal>
       </div>
     );
   }
@@ -2128,19 +2115,13 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             </div>
 
             {/* Fulfill Edit Modal */}
-            {selectedFulfillSheet && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-                  <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-                    <h3 className="inventory-management__subtitle font-semibold text-slate-700 dark:text-slate-200 text-sm tracking-wide uppercase">
-                      {t('modify_stock_request_header', `Modify Requisition #${selectedFulfillSheet.id}`)}
-                    </h3>
-                    <button onClick={() => setSelectedFulfillSheet(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer">
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-
-                  <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar flex-1">
+            <Modal show={Boolean(selectedFulfillSheet)} onClose={() => setSelectedFulfillSheet(null)} className="z-58" size="2xl" dismissible>
+              {selectedFulfillSheet && (
+                <>
+                  <ModalHeader as="div">
+                    <span className="uppercase">{t('modify_stock_request_header', `Modify Requisition #${selectedFulfillSheet.id}`)}</span>
+                  </ModalHeader>
+                  <ModalBody className="space-y-6">
                     <div className="pt-2">
                       <h4 className="inventory-management__caption text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-4">{t('costing_delivery_manifest_header', 'Costing & Delivery Manifest')}</h4>
 
@@ -2199,19 +2180,18 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                         })}
                       </div>
                     </div>
-                  </div>
-
-                  <div className="p-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 flex justify-end gap-3">
-                    <button onClick={() => setSelectedFulfillSheet(null)} className="px-6 py-2 text-sm font-semibold text-white bg-slate-500 hover:bg-slate-600 rounded-lg transition-colors shadow-xs cursor-pointer">
+                  </ModalBody>
+                  <ModalFooter className="flex justify-end gap-3">
+                    <Button onClick={() => setSelectedFulfillSheet(null)} variant="secondary">
                       {t('cancel_button', 'Cancel')}
-                    </button>
-                    <button onClick={handleSaveFulfillQuantities} className="px-6 py-2 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 rounded-lg transition-colors shadow-xs cursor-pointer">
+                    </Button>
+                    <Button onClick={handleSaveFulfillQuantities} variant="primary">
                       {t('save_commit_updates_button', 'Save & Commit Updates')}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+                    </Button>
+                  </ModalFooter>
+                </>
+              )}
+            </Modal>
           </div>
         ) : (
           <>
@@ -2796,150 +2776,140 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       </div>
 
       {/* Add Item Modal */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl p-6 space-y-4 text-xs">
-            <div className="flex justify-between items-center border-b pb-2">
-              <h3 className="inventory-management__subtitle font-semibold text-slate-800 text-sm">{t('add_new_item_button')}</h3>
-              <button onClick={() => setIsAddModalOpen(false)}>
-                <X className="w-5 h-5 text-slate-400" />
-              </button>
+      <Modal show={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} className="z-58" size="md" dismissible>
+        <ModalHeader as="div">
+          <span>{t('add_new_item_button')}</span>
+        </ModalHeader>
+        <form onSubmit={handleCreateItem} className="app-form app-form--create-item">
+          <ModalBody className="space-y-3 text-xs">
+            <div>
+              <Input
+                label={`${t('item_name_label')} *`}
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Milk or Basmati Rice"
+              />
             </div>
 
-            <form onSubmit={handleCreateItem} className="app-form app-form--create-item space-y-3">
+            <div>
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('category_label')}</label>
+              <StyledSelect
+                value={category}
+                onChange={setCategory}
+                options={[
+                  { value: 'Groceries', label: 'Groceries' },
+                  { value: 'Dairy', label: 'Dairy' },
+                  { value: 'Oils', label: 'Oils & Spices' },
+                  { value: 'Kitchen Fuel', label: 'Kitchen Fuel' },
+                  { value: 'Maintenance', label: 'Maintenance & Cleaning' },
+                ]}
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
               <div>
                 <Input
-                  label={`${t('item_name_label')} *`}
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Milk or Basmati Rice"
+                  label={t('stock_level_label')}
+                  type="number"
+                  value={currentStock}
+                  onChange={(e) => setCurrentStock(Number(e.target.value))}
                 />
               </div>
 
               <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('category_label')}</label>
+                <Input
+                  label={t('min_threshold_column_header')}
+                  type="number"
+                  value={minThreshold}
+                  onChange={(e) => setMinThreshold(Number(e.target.value))}
+                />
+              </div>
+
+              <div>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('unit_label')}</label>
                 <StyledSelect
-                  value={category}
-                  onChange={setCategory}
+                  value={unit}
+                  onChange={setUnit}
                   options={[
-                    { value: 'Groceries', label: 'Groceries' },
-                    { value: 'Dairy', label: 'Dairy' },
-                    { value: 'Oils', label: 'Oils & Spices' },
-                    { value: 'Kitchen Fuel', label: 'Kitchen Fuel' },
-                    { value: 'Maintenance', label: 'Maintenance & Cleaning' },
+                    { value: 'kg', label: 'kg' },
+                    { value: 'liters', label: 'liters' },
+                    { value: 'pcs', label: 'pcs' },
+                    { value: 'packets', label: 'packets' },
                   ]}
                 />
               </div>
+            </div>
 
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <Input
-                    label={t('stock_level_label')}
-                    type="number"
-                    value={currentStock}
-                    onChange={(e) => setCurrentStock(Number(e.target.value))}
-                  />
-                </div>
-
-                <div>
-                  <Input
-                    label={t('min_threshold_column_header')}
-                    type="number"
-                    value={minThreshold}
-                    onChange={(e) => setCurrentStock(Number(e.target.value))}
-                  />
-                </div>
-
-                <div>
-                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('unit_label')}</label>
-                  <StyledSelect
-                    value={unit}
-                    onChange={setUnit}
-                    options={[
-                      { value: 'kg', label: 'kg' },
-                      { value: 'liters', label: 'liters' },
-                      { value: 'pcs', label: 'pcs' },
-                      { value: 'packets', label: 'packets' },
-                    ]}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('item_image_upload_label')}</label>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <label className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-2 rounded-xl cursor-pointer flex items-center gap-1.5 shadow-2xs text-xs shrink-0 transition-all">
-                      <Upload className="w-4 h-4" />
-                      <span>{t('upload_image_button')}</span>
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            const reader = new FileReader();
-                            reader.onloadend = () => {
-                              setImagePath(reader.result as string);
-                            };
-                            reader.readAsDataURL(file);
-                          }
-                        }}
-                      />
-                    </label>
-
+            <div>
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('item_image_upload_label')}</label>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <label className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-2 rounded-xl cursor-pointer flex items-center gap-1.5 shadow-2xs text-xs shrink-0 transition-all">
+                    <Upload className="w-4 h-4" />
+                    <span>{t('upload_image_button')}</span>
                     <Input
-                      type="text"
-                      value={imagePath}
-                      onChange={(e) => setImagePath(e.target.value)}
-                      placeholder={t('or_enter_image_url_placeholder')}
-                      className="flex-1 font-mono text-[11px]"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setImagePath(reader.result as string);
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
                     />
-                  </div>
+                  </label>
 
-                  {/* Image Preview Box */}
-                  {imagePath && (
-                    <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-300 bg-slate-50">
-                      <img
-                        src={imagePath}
-                        alt="Preview"
-                        className="w-full h-full object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setImagePath('')}
-                        className="absolute top-1 right-1 bg-slate-900/80 text-white p-0.5 rounded-full hover:bg-slate-900"
-                        title="Remove Image"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  )}
+                  <Input
+                    type="text"
+                    value={imagePath}
+                    onChange={(e) => setImagePath(e.target.value)}
+                    placeholder={t('or_enter_image_url_placeholder')}
+                    className="flex-1 font-mono text-[11px]"
+                  />
                 </div>
-              </div>
 
-              <div className="pt-3 border-t flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 border border-slate-200 rounded-lg"
-                >
-                  {t('cancel_button')}
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg"
-                >
-                  {t('save_item_button')}
-                </button>
+                {/* Image Preview Box */}
+                {imagePath && (
+                  <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-300 bg-slate-50">
+                    <img
+                      src={imagePath}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setImagePath('')}
+                      className="absolute top-1 right-1 bg-slate-900/80 text-white p-0.5 rounded-full hover:bg-slate-900"
+                      title="Remove Image"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+            </div>
+          </ModalBody>
+          <ModalFooter className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setIsAddModalOpen(false)}
+            >
+              {t('cancel_button')}
+            </Button>
+            <Button type="submit" variant="primary">
+              {t('save_item_button')}
+            </Button>
+          </ModalFooter>
+        </form>
+      </Modal>
     </div>
   );
 };

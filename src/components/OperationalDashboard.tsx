@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { Modal, ModalHeader, ModalBody, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell } from 'flowbite-react';
 import {
   AlertTriangle,
   User,
-  Phone,
   Calendar,
   Utensils,
   ArrowRight,
@@ -11,7 +11,6 @@ import {
   Pencil,
   LogOut,
   Bell,
-  X,
   ChevronUp,
   ChevronDown,
   Globe,
@@ -33,6 +32,7 @@ import { CheckinVerificationModal } from './CheckinVerificationModal';
 import { BookingDetailsModal } from './BookingDetailsModal';
 import { useToast } from './ToastContext';
 import { PageHeader, PageHeaderButton } from './PageHeader';
+import { KpiCard } from './KpiCard';
 import { Input } from './Input';
 import { t } from '../i18n/en';
 
@@ -197,17 +197,6 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
   const todayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  const todaysCheckins = guests.filter((g) => (g.checkinDate || '').split(' ')[0] === todayStr);
-
-  // Active resident profile - must be currently staying (today is between checkin and checkout)
-  const checkedInGuest = guests.find((g) => {
-    if (g.status !== GUEST_STATUS_ACTIVE_LEGACY && (g.status as string) !== GUEST_STATUS_CHECKED_IN) return false;
-    const checkinDate = new Date(g.checkinDate);
-    const checkoutDate = new Date(g.expectedCheckout);
-    checkinDate.setHours(0, 0, 0, 0);
-    checkoutDate.setHours(0, 0, 0, 0);
-    return today >= checkinDate && today < checkoutDate;
-  });
 
   // --- Front-desk alerts: bookings needing attention, with no time cutoff so
   // stale/forgotten bookings from any point in the past still surface. ---
@@ -361,103 +350,36 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       {/* Metric Blocks Grid - Sleek 1-Row Horizontal Cards */}
       {!minimalMode && (
       <div className={`operational-dashboard__metrics grid grid-cols-1 ${isMultiKeyProperty ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'} gap-2.5 md:gap-4`}>
-        {/* Arrivals Block */}
-        <div className="operational-dashboard__metric operational-dashboard__metric--arrivals stat-card-elevated bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200/80 dark:border-slate-700/80 border-l-4 border-l-blue-500 shadow-2xs p-3 md:p-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/35 text-blue-600 dark:text-blue-400 shrink-0">
-              <Calendar className="w-5 h-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Arrivals:</span>
-                <span className="text-sm font-extrabold text-slate-900 dark:text-white tabular-nums">{todaysArrivalsCount}</span>
-                <span className="text-xs text-slate-500 dark:text-slate-400 truncate">checking in today</span>
-              </div>
-            </div>
-          </div>
-          <button
-            onClick={() => onNavigate('guests')}
-            className="operational-dashboard__metric-action px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/60 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1 shadow-2xs"
-            title="View Bookings"
-          >
-            <span>Bookings</span>
-            <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
-          </button>
-        </div>
-
-        {/* Departures Block */}
-        <div className="operational-dashboard__metric operational-dashboard__metric--departures stat-card-elevated bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200/80 dark:border-slate-700/80 border-l-4 border-l-amber-500 shadow-2xs p-3 md:p-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-900/35 text-amber-600 dark:text-amber-400 shrink-0">
-              <LogOut className="w-5 h-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Departures:</span>
-                <span className="text-sm font-extrabold text-slate-900 dark:text-white tabular-nums">{todaysDeparturesCount}</span>
-                <span className="text-xs text-slate-500 dark:text-slate-400 truncate">checking out today</span>
-              </div>
-            </div>
-          </div>
-          <button
-            onClick={() => onNavigate('guests')}
-            className="operational-dashboard__metric-action px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/60 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1 shadow-2xs"
-            title="View Bookings"
-          >
-            <span>Bookings</span>
-            <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
-          </button>
-        </div>
-
-        {/* Guests in-house Block (Only for multi-key property) */}
+        <KpiCard
+          label="Arrivals"
+          icon={Calendar}
+          badge={{ text: 'Today', color: 'info' }}
+          value={todaysArrivalsCount}
+          subtext="checking in today"
+        />
+        <KpiCard
+          label="Departures"
+          icon={LogOut}
+          badge={{ text: 'Today', color: 'warning' }}
+          value={todaysDeparturesCount}
+          subtext="checking out today"
+        />
         {isMultiKeyProperty && (
-          <div className="operational-dashboard__metric operational-dashboard__metric--inhouse stat-card-elevated bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200/80 dark:border-slate-700/80 border-l-4 border-l-emerald-500 shadow-2xs p-3 md:p-4 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5 min-w-0 flex-1">
-              <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-900/35 text-emerald-600 dark:text-emerald-400 shrink-0">
-                <User className="w-5 h-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Guests In-House:</span>
-                  <span className="text-sm font-extrabold text-slate-900 dark:text-white tabular-nums">{inHouseCount}</span>
-                  <span className="text-xs text-slate-500 dark:text-slate-400 truncate">active guests</span>
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={() => onNavigate('guests')}
-              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/60 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1 shadow-2xs"
-              title="View Bookings"
-            >
-              <span>Guests</span>
-              <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
-            </button>
-          </div>
+          <KpiCard
+            label="Guests In-House"
+            icon={User}
+            badge={{ text: 'Active', color: 'success' }}
+            value={inHouseCount}
+            subtext="active guests"
+          />
         )}
-
-        {/* Service Requests Block */}
-        <div className="operational-dashboard__metric operational-dashboard__metric--service-requests stat-card-elevated bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200/80 dark:border-slate-700/80 border-l-4 border-l-rose-500 shadow-2xs p-3 md:p-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            <div className="p-2.5 rounded-xl bg-red-50 dark:bg-red-900/35 text-red-600 dark:text-red-400 shrink-0">
-              <Bell className="w-5 h-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Service Requests:</span>
-                <span className="text-sm font-extrabold text-slate-900 dark:text-white tabular-nums">{pendingRequestsCount}</span>
-                <span className="text-xs text-slate-500 dark:text-slate-400 truncate">active requests</span>
-              </div>
-            </div>
-          </div>
-          <button
-            onClick={() => onNavigate('service_requests')}
-            className="operational-dashboard__metric-action px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/60 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1 shadow-2xs"
-            title="View Service Requests"
-          >
-            <span>Requests</span>
-            <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
-          </button>
-        </div>
+        <KpiCard
+          label="Service Requests"
+          icon={Bell}
+          badge={{ text: 'Active', color: 'failure' }}
+          value={pendingRequestsCount}
+          subtext="active requests"
+        />
       </div>
       )}
 
@@ -603,9 +525,9 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                     className="py-2.5 px-1 flex items-center justify-between gap-3 hover:bg-slate-50/80 dark:hover:bg-slate-700/30 rounded-lg transition-colors"
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900 dark:text-slate-100 truncate">
-                        <span className="truncate">{g.guestName}</span>
-                        <span className="text-[10px] font-normal text-slate-400 shrink-0">• {g.roomNumber}</span>
+                      <div className="flex items-center flex-wrap gap-1.5 font-bold text-xs text-slate-900 dark:text-slate-100">
+                        <span>{g.guestName}</span>
+                        <span className="text-2xs font-normal text-slate-400 shrink-0">• {g.roomNumber}</span>
                       </div>
                       <div className="flex flex-wrap items-center gap-x-2 text-[11px] mt-0.5">
                         {reasons.map((r, i) => (
@@ -1027,119 +949,96 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       )}
 
       {/* Add Guest Modal */}
-      {showAddGuestModal && (
-        <div
-          className="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
-          onClick={() => setShowAddGuestModal(false)}
-        >
-          <div
-            className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl relative z-[100000]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <GuestManagement
-              guests={guests}
-              receipts={receipts}
-              menu={menu}
-              rooms={rooms}
-              onAddGuest={(guest) => {
-                onAddGuest?.(guest);
-                setShowAddGuestModal(false);
-              }}
-              onCheckoutGuest={onCheckoutGuest || (() => {})}
-              onDispatchTelegram={onDispatchTelegram}
-              activeMenuItemKey="guest_registration"
-              isMultiKeyProperty={!!roomName}
-              selectedRoomSlug={roomName}
-              preSelectRoom={roomName}
-              onClose={() => setShowAddGuestModal(false)}
-              propertyName={propertyName}
-              propertyMapsLink={propertyMapsLink}
-              propertyPhone={propertyPhone}
-              propertyWhatsappTemplate={propertyWhatsappTemplate}
-              propertyUpiId={propertyUpiId}
-            />
-          </div>
-        </div>
-      )}
+      <Modal show={showAddGuestModal} onClose={() => setShowAddGuestModal(false)} dismissible size="lg" className="z-[99999]">
+        <ModalBody className="p-0 max-h-[90vh] overflow-y-auto rounded-2xl">
+          <GuestManagement
+            guests={guests}
+            receipts={receipts}
+            menu={menu}
+            rooms={rooms}
+            onAddGuest={(guest) => {
+              onAddGuest?.(guest);
+              setShowAddGuestModal(false);
+            }}
+            onCheckoutGuest={onCheckoutGuest || (() => {})}
+            onDispatchTelegram={onDispatchTelegram}
+            activeMenuItemKey="guest_registration"
+            isMultiKeyProperty={!!roomName}
+            selectedRoomSlug={roomName}
+            preSelectRoom={roomName}
+            onClose={() => setShowAddGuestModal(false)}
+            propertyName={propertyName}
+            propertyMapsLink={propertyMapsLink}
+            propertyPhone={propertyPhone}
+            propertyWhatsappTemplate={propertyWhatsappTemplate}
+            propertyUpiId={propertyUpiId}
+          />
+        </ModalBody>
+      </Modal>
 
       {/* All System Alerts Modal */}
-      {showAllAlertsModal && (
-        <div
-          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
-          onClick={() => setShowAllAlertsModal(false)}
-        >
-          <div
-            className="w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl shadow-2xl bg-white dark:bg-slate-800 p-6 space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
-              <h3 className="operational-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-red-600" />
-                <span>All System Alerts ({combinedAlerts.length})</span>
-              </h3>
-              <button
-                onClick={() => setShowAllAlertsModal(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse operational-dashboard__table operational-dashboard__table--alerts">
-                <thead className="operational-dashboard__table-header">
-                  <tr className="text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700 operational-dashboard__table-header-row">
-                    <th className="pb-2 pr-3 operational-dashboard__table-header-cell">{t('alerts_col_guest_room', 'Guest / Room')}</th>
-                    <th className="pb-2 pr-3 operational-dashboard__table-header-cell">{t('alerts_col_issue', 'Issue')}</th>
-                    <th className="pb-2 w-36 operational-dashboard__table-header-cell">{t('alerts_col_action', 'Action')}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60 operational-dashboard__table-body">
-                  {combinedAlerts.map(({ guest: g, severity, reasons }) => (
-                    <tr
-                      key={g.id}
-                      className={severity === 'red' ? 'bg-red-50/60 dark:bg-red-900/10' : 'bg-amber-50/60 dark:bg-amber-900/10'}
-                    >
-                      <td className="operational-dashboard__cell py-3 pr-3 align-top">
-                        <div className={`text-sm font-semibold ${severity === 'red' ? 'text-red-800 dark:text-red-300' : 'text-amber-800 dark:text-amber-300'}`}>
-                          {g.guestName}
-                        </div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">{g.roomNumber}</div>
-                      </td>
-                      <td className="operational-dashboard__cell py-3 pr-3 align-top">
-                        <div className="space-y-1">
-                          {reasons.map((r, i) => (
-                            <div
-                              key={i}
-                              className={`text-xs font-medium ${severity === 'red' ? 'text-red-700 dark:text-red-400' : 'text-amber-700 dark:text-amber-400'}`}
-                            >
-                              <div>{r.label}</div>
-                              <div className="text-[10px] opacity-80">{r.detail}</div>
-                            </div>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="operational-dashboard__cell py-3 align-top">
-                        <button
-                          onClick={() => {
-                            setShowAllAlertsModal(false);
-                            setSelectedBooking(g);
-                          }}
-                          className={`text-xs font-semibold px-3 py-1.5 rounded-lg text-white transition-colors cursor-pointer whitespace-nowrap ${
-                            severity === 'red' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'
-                          }`}
-                        >
-                          {t('view_resolve_button', 'View & Resolve')}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+      <Modal show={showAllAlertsModal} onClose={() => setShowAllAlertsModal(false)} dismissible size="2xl" className="z-58">
+        <ModalHeader as="div">
+          <h3 className="operational-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-red-600" />
+            <span>All System Alerts ({combinedAlerts.length})</span>
+          </h3>
+        </ModalHeader>
+        <ModalBody className="max-h-[85vh] overflow-y-auto">
+          <div className="overflow-x-auto">
+            <Table className="operational-dashboard__table operational-dashboard__table--alerts">
+              <TableHead>
+                <TableRow>
+                  <TableHeadCell>{t('alerts_col_guest_room', 'Guest / Room')}</TableHeadCell>
+                  <TableHeadCell>{t('alerts_col_issue', 'Issue')}</TableHeadCell>
+                  <TableHeadCell className="w-36">{t('alerts_col_action', 'Action')}</TableHeadCell>
+                </TableRow>
+              </TableHead>
+              <TableBody className="divide-y divide-slate-100 dark:divide-slate-700/60 operational-dashboard__table-body">
+                {combinedAlerts.map(({ guest: g, severity, reasons }) => (
+                  <TableRow
+                    key={g.id}
+                    className={severity === 'red' ? 'bg-red-50/60 dark:bg-red-900/10' : 'bg-amber-50/60 dark:bg-amber-900/10'}
+                  >
+                    <TableCell className="operational-dashboard__cell align-top">
+                      <div className={`text-sm font-semibold ${severity === 'red' ? 'text-red-800 dark:text-red-300' : 'text-amber-800 dark:text-amber-300'}`}>
+                        {g.guestName}
+                      </div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">{g.roomNumber}</div>
+                    </TableCell>
+                    <TableCell className="operational-dashboard__cell align-top">
+                      <div className="space-y-1">
+                        {reasons.map((r, i) => (
+                          <div
+                            key={i}
+                            className={`text-xs font-medium ${severity === 'red' ? 'text-red-700 dark:text-red-400' : 'text-amber-700 dark:text-amber-400'}`}
+                          >
+                            <div>{r.label}</div>
+                            <div className="text-[10px] opacity-80">{r.detail}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </TableCell>
+                    <TableCell className="operational-dashboard__cell align-top">
+                      <button
+                        onClick={() => {
+                          setShowAllAlertsModal(false);
+                          setSelectedBooking(g);
+                        }}
+                        className={`text-xs font-semibold px-3 py-1.5 rounded-lg text-white transition-colors cursor-pointer whitespace-nowrap ${
+                          severity === 'red' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'
+                        }`}
+                      >
+                        {t('view_resolve_button', 'View & Resolve')}
+                      </button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
-        </div>
-      )}
+        </ModalBody>
+      </Modal>
     </div>
   );
 };

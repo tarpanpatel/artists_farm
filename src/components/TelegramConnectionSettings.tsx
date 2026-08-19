@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Card } from 'flowbite-react';
 import { Plus, Trash2, Save, CheckCircle2, Loader2 } from 'lucide-react';
 import { PropertyTelegramConfig, TelegramGroup } from '../types';
 import { t } from '../i18n/en';
@@ -26,9 +27,6 @@ interface TelegramConnectionSettingsProps {
   saved: boolean;
 }
 
-// Connection-level settings only: on/off, bot token, and the list of named
-// group chats. Which notification goes to which group is configured per
-// template, right in the template editor (see TelegramNotificationModal).
 export const TelegramConnectionSettings: React.FC<TelegramConnectionSettingsProps> = ({
   config,
   onChange,
@@ -61,12 +59,12 @@ export const TelegramConnectionSettings: React.FC<TelegramConnectionSettingsProp
   };
 
   return (
-    <div className="bg-slate-900 text-white p-4 rounded-xl space-y-4 border border-slate-700 animate-fade-in shadow-inner telegram-connection-settings">
+    <Card className="border-gray-200 dark:border-gray-700 space-y-4 telegram-connection-settings">
       {/* Master toggle */}
-      <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+      <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-700">
         <div>
-          <div className="text-sm font-semibold text-slate-100">{t('telegram_notifications_heading')}</div>
-          <div className="text-[11px] text-slate-400 mt-0.5">
+          <div className="text-sm font-semibold text-gray-900 dark:text-white">{t('telegram_notifications_heading')}</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
             {t('telegram_toggle_description')}
           </div>
         </div>
@@ -104,7 +102,7 @@ export const TelegramConnectionSettings: React.FC<TelegramConnectionSettingsProp
 
       {/* Groups */}
       <div>
-        <label className="text-[11px] font-semibold text-slate-300 block mb-2">
+        <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 block mb-2">
           {t('group_chats_label')}
         </label>
         <div className="space-y-2">
@@ -133,10 +131,10 @@ export const TelegramConnectionSettings: React.FC<TelegramConnectionSettingsProp
             </div>
           ))}
           {config.groups.length === 0 && (
-            <div className="text-[11px] text-slate-500 italic">{t('no_groups_configured_text')}</div>
+            <div className="text-xs text-gray-500 italic">{t('no_groups_configured_text')}</div>
           )}
         </div>
-        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-800">
+        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
           <Input
             type="text"
             value={newGroupName}
@@ -162,9 +160,9 @@ export const TelegramConnectionSettings: React.FC<TelegramConnectionSettingsProp
         </div>
       </div>
 
-      <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+      <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100 dark:border-gray-700">
         {saved && (
-          <span className="text-[11px] text-emerald-400 flex items-center gap-1">
+          <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
             <CheckCircle2 className="w-3.5 h-3.5" /> {t('saved_badge')}
           </span>
         )}
@@ -179,6 +177,6 @@ export const TelegramConnectionSettings: React.FC<TelegramConnectionSettingsProp
           <span>{saving ? t('saving_ellipsis_text') : t('save_connection_settings_button')}</span>
         </Button>
       </div>
-    </div>
+    </Card>
   );
 };

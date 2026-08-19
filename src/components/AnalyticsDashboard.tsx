@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { KpiCard } from './KpiCard';
 import {
   BarChart3,
   TrendingUp,
@@ -1124,45 +1125,36 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
       {/* Summary KPI Cards (Always Visible) */}
       <div className={`analytics-kpi-grid grid grid-cols-1 sm:grid-cols-2 ${kitchenModuleEnabled ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4`}>
-        <div className="analytics-kpi-card bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
-          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{t('gross_total_revenue_kpi', 'Gross Total Revenue')}</p>
-          <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-center">
-            <IndianRupee className="w-5 h-5 text-emerald-600" />
-            {totalGrossRevenue.toLocaleString('en-IN')}
-          </p>
-          <p className="text-[10px] text-emerald-600 font-semibold mt-1">
-            {kitchenModuleEnabled ? t('room_plus_kitchen_revenue_subtext', 'Room Accommodations + Kitchen Orders') : t('room_only_revenue_subtext', 'Room Accommodations')}
-          </p>
-        </div>
+        <KpiCard
+          label={t('gross_total_revenue_kpi', 'Gross Total Revenue')}
+          badge={{ text: 'Revenue', color: 'success' }}
+          value={<><IndianRupee className="w-6 h-6 text-emerald-600 mr-0.5" />{totalGrossRevenue.toLocaleString('en-IN')}</>}
+          subtext={kitchenModuleEnabled ? t('room_plus_kitchen_revenue_subtext', 'Room Accommodations + Kitchen Orders') : t('room_only_revenue_subtext', 'Room Accommodations')}
+        />
 
-        <div className="analytics-kpi-card bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
-          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{t('room_accommodations_kpi', 'Room Accommodations')}</p>
-          <p className="text-xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-center">
-            <IndianRupee className="w-4 h-4 text-blue-600" />
-            {roomRevenue.toLocaleString('en-IN')}
-          </p>
-          <p className="text-[10px] text-slate-500 mt-1">{filteredReceipts.length} {t('settled_billing_receipts_count', 'Settled Billing Receipts')}</p>
-        </div>
+        <KpiCard
+          label={t('room_accommodations_kpi', 'Room Accommodations')}
+          badge={{ text: `${filteredReceipts.length} receipts`, color: 'info' }}
+          value={<><IndianRupee className="w-6 h-6 text-blue-600 mr-0.5" />{roomRevenue.toLocaleString('en-IN')}</>}
+          subtext={`${filteredReceipts.length} ${t('settled_billing_receipts_count', 'Settled Billing Receipts')}`}
+        />
 
         {kitchenModuleEnabled && (
-          <div className="analytics-kpi-card bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
-            <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{t('kitchen_pos_sales_kpi', 'Kitchen POS Sales')}</p>
-            <p className="text-xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-center">
-              <IndianRupee className="w-4 h-4 text-cyan-600" />
-              {kitchenRevenue.toLocaleString('en-IN')}
-            </p>
-            <p className="text-[10px] text-cyan-600 font-semibold mt-1">{filteredOrders.length} {t('kitchen_orders_count', 'Kitchen Orders')}</p>
-          </div>
+          <KpiCard
+            label={t('kitchen_pos_sales_kpi', 'Kitchen POS Sales')}
+            badge={{ text: `${filteredOrders.length} orders`, color: 'purple' }}
+            value={<><IndianRupee className="w-6 h-6 text-cyan-600 mr-0.5" />{kitchenRevenue.toLocaleString('en-IN')}</>}
+            subtext={`${filteredOrders.length} ${t('kitchen_orders_count', 'Kitchen Orders')}`}
+          />
         )}
 
-        <div className="analytics-kpi-card bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
-          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{t('net_operating_margin_kpi', 'Net Operating Margin')}</p>
-          <p className={`text-xl font-extrabold mt-1 flex items-center ${netOperatingMargin >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-            <IndianRupee className="w-4 h-4" />
-            {netOperatingMargin.toLocaleString('en-IN')}
-          </p>
-          <p className="text-[10px] text-slate-500 font-semibold mt-1">{t('gross_revenue_minus_outflows_subtext', 'Gross Revenue - Utility Outflows')}</p>
-        </div>
+        <KpiCard
+          label={t('net_operating_margin_kpi', 'Net Operating Margin')}
+          badge={{ text: netOperatingMargin >= 0 ? "Profitable" : "Deficit", color: netOperatingMargin >= 0 ? "success" : "failure" }}
+          value={<><IndianRupee className="w-6 h-6 mr-0.5" />{netOperatingMargin.toLocaleString('en-IN')}</>}
+          valueClassName={netOperatingMargin >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}
+          subtext={t('gross_revenue_minus_outflows_subtext', 'Gross Revenue - Utility Outflows')}
+        />
       </div>
 
       {/* Dynamic Navigation Tabs (High-Affordance Touch-Friendly Buttons) */}

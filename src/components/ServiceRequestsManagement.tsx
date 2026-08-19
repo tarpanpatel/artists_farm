@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, CheckCircle2, Clock, X, Home, ChevronLeft, ChevronRight, Pencil, Trash2, Settings } from 'lucide-react';
+import { Plus, CheckCircle2, Clock, Home, ChevronLeft, ChevronRight, Pencil, Trash2, Settings } from 'lucide-react';
 import {
   ServiceRequestType,
   createServiceRequestInDB,
@@ -17,7 +17,6 @@ import { useServiceRequestContext } from '../contexts/ServiceRequestContext';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
-import { Textarea } from './Textarea';
 import { t } from '../i18n/en';
 import { Button } from './Button';
 import { PageHeader, PageHeaderButton } from './PageHeader';
@@ -25,6 +24,7 @@ import { formatDateTimeDDMMYYYY } from '../utils/dateUtils';
 
 import { useConfigurationData } from '../contexts/ConfigurationDataContext';
 import { Input } from './Input';
+import { Card, Badge, TextInput as FlowbiteTextInput, Textarea as FlowbiteTextarea, Checkbox as FlowbiteCheckbox, Label as FlowbiteLabel, Modal as FlowbiteModal, ModalHeader, ModalBody, ModalFooter } from 'flowbite-react';
 
 interface Room {
   id: number;
@@ -293,7 +293,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
   };
 
   return (
-    <div className="space-y-6 max-w-[550px] service-requests-management__container">
+    <div className="space-y-6 service-requests-management__container">
       <PageHeader
         title={t('guest_service_requests_heading', 'Guest Service Requests')}
         subtitle={t('service_requests_description', 'Housekeeping, maintenance, and other ad-hoc requests — logged by any staff member, nudged to Admin on Telegram.')}
@@ -309,7 +309,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
         </div>
       </PageHeader>
 
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 service-requests-management__list-card">
+      <Card className="shadow-md border-gray-200 dark:border-gray-700 service-requests-management__list-card">
         {loading ? (
           <div className="text-center py-6 text-slate-500 dark:text-slate-400 text-sm service-requests-management__loading">{t('loading_spinner_default_message', 'Loading...')}</div>
         ) : requests.length === 0 ? (
@@ -317,36 +317,40 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
         ) : (
           <div className="space-y-6 service-requests-management__sections">
             {pending.length > 0 && (
-              <div className="space-y-2 service-requests-management__section">
-                <h3 className="text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400 service-requests-management__section-header">{t('pending_status_badge', 'Pending')} ({pending.length})</h3>
-                <div className="space-y-2 service-requests-management__request-list">
+              <div className="space-y-3 service-requests-management__section">
+                <div className="flex items-center gap-2">
+                  <Badge color="warning" size="xs" className="font-semibold uppercase tracking-wide">
+                    {t('pending_status_badge', 'Pending')} ({pending.length})
+                  </Badge>
+                </div>
+                <div className="space-y-2.5 service-requests-management__request-list">
                   {pending.map((r) => (
-                    <div key={r.id} className="flex items-center justify-between gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl service-requests-management__request-item service-requests-management__request-item--pending">
+                    <div key={r.id} className="flex items-center justify-between gap-3 p-4 bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg service-requests-management__request-item service-requests-management__request-item--pending shadow-2xs">
                       <div className="flex-1 min-w-0 service-requests-management__request-details">
                         <div className="flex items-center gap-2 flex-wrap service-requests-management__request-header">
-                          <span className="font-semibold text-slate-900 dark:text-white text-sm service-requests-management__request-type">{getRequestTypeLabel(r.requestType)}</span>
-                          <span className="inline-flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 service-requests-management__request-room">
-                            <Home className="w-3 h-3" /> {r.roomName}
+                          <span className="font-bold text-slate-900 dark:text-white text-sm service-requests-management__request-type">{getRequestTypeLabel(r.requestType)}</span>
+                          <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 service-requests-management__request-room border border-slate-200 dark:border-slate-600">
+                            <Home className="w-3 h-3 text-slate-400" /> {r.roomName}
                           </span>
                           {Boolean(r.chargeAmount && r.chargeAmount > 0) && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+                            <Badge color="success" size="xs" className="font-bold">
                               ₹{Number(r.chargeAmount).toFixed(2)}
-                            </span>
+                            </Badge>
                           )}
                         </div>
-                        {r.description && <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5 service-requests-management__request-description">{r.description}</p>}
-                        <p className="text-[11px] text-slate-400 mt-0.5 service-requests-management__request-meta">{t('requested_by_text', 'Requested by')} {r.requestedBy} · {formatDateTimeDDMMYYYY(r.createdAt)}</p>
+                        {r.description && <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 service-requests-management__request-description">{r.description}</p>}
+                        <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 service-requests-management__request-meta">{t('requested_by_text', 'Requested by')} {r.requestedBy} · {formatDateTimeDDMMYYYY(r.createdAt)}</p>
                       </div>
-                        <Button
-                          variant="success"
-                          size="sm"
-                          disabled={fulfillingId === r.id}
-                          onClick={() => handleFulfill(r.id, r.requestType, r.roomName)}
-                          className="shrink-0 service-requests-management__fulfill-button"
-                        >
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          {fulfillingId === r.id ? t('updating_button', 'Updating...') : t('mark_fulfilled_button', 'Mark Fulfilled')}
-                        </Button>
+                      <Button
+                        variant="success"
+                        size="sm"
+                        disabled={fulfillingId === r.id}
+                        onClick={() => handleFulfill(r.id, r.requestType, r.roomName)}
+                        className="shrink-0 service-requests-management__fulfill-button rounded-lg text-xs font-semibold"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                        {fulfillingId === r.id ? t('updating_button', 'Updating...') : t('mark_fulfilled_button', 'Mark Fulfilled')}
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -354,35 +358,39 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
             )}
 
             {fulfilled.length > 0 && (
-              <div className="space-y-2 service-requests-management__section">
-                <h3 className="text-[10px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400 service-requests-management__section-header">{t('fulfilled_status_badge', 'Fulfilled')} ({fulfilled.length})</h3>
-                <div className="space-y-2 service-requests-management__request-list">
+              <div className="space-y-3 service-requests-management__section">
+                <div className="flex items-center gap-2">
+                  <Badge color="success" size="xs" className="font-semibold uppercase tracking-wide">
+                    {t('fulfilled_status_badge', 'Fulfilled')} ({fulfilled.length})
+                  </Badge>
+                </div>
+                <div className="space-y-2.5 service-requests-management__request-list">
                   {paginatedFulfilled.map((r) => (
-                    <div key={r.id} className="flex items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl opacity-75 service-requests-management__request-item service-requests-management__request-item--fulfilled">
+                    <div key={r.id} className="flex items-center justify-between gap-3 p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-lg opacity-85 service-requests-management__request-item service-requests-management__request-item--fulfilled shadow-2xs">
                       <div className="flex-1 min-w-0 service-requests-management__request-details">
                         <div className="flex items-center gap-2 flex-wrap service-requests-management__request-header">
                           <span className="font-semibold text-slate-900 dark:text-white text-sm service-requests-management__request-type">{getRequestTypeLabel(r.requestType)}</span>
-                          <span className="inline-flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 service-requests-management__request-room">
-                            <Home className="w-3 h-3" /> {r.roomName}
+                          <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 service-requests-management__request-room border border-slate-200 dark:border-slate-600">
+                            <Home className="w-3 h-3 text-slate-400" /> {r.roomName}
                           </span>
                           {Boolean(r.chargeAmount && r.chargeAmount > 0) && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+                            <Badge color="success" size="xs" className="font-bold">
                               ₹{Number(r.chargeAmount).toFixed(2)}
-                            </span>
+                            </Badge>
                           )}
                         </div>
-                        <p className="text-[11px] text-slate-400 mt-0.5 service-requests-management__request-meta">
+                        <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 service-requests-management__request-meta">
                           {t('fulfilled_by_text', 'Fulfilled by')} {r.fulfilledBy} · {r.fulfilledAt}
                         </p>
                       </div>
-                      <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 text-xs font-semibold shrink-0 service-requests-management__done-badge">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> {t('done_badge', 'Done')}
-                      </span>
+                      <Badge color="success" size="xs" icon={CheckCircle2} className="shrink-0 font-semibold">
+                        {t('done_badge', 'Done')}
+                      </Badge>
                     </div>
                   ))}
                 </div>
                 {fulfilledPageCount > 1 && (
-                  <div className="flex items-center justify-between pt-1 service-requests-management__fulfilled-pagination">
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700 service-requests-management__fulfilled-pagination">
                     <button
                       type="button"
                       onClick={() => setFulfilledPage((p) => Math.max(0, p - 1))}
@@ -391,7 +399,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                     >
                       <ChevronLeft className="w-3.5 h-3.5" /> {t('previous_button', 'Previous')}
                     </button>
-                    <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                    <span className="text-xs text-slate-400 dark:text-slate-500">
                       {t('page_label', 'Page')} {clampedFulfilledPage + 1} {t('of_label', 'of')} {fulfilledPageCount}
                     </span>
                     <button
@@ -408,193 +416,181 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
             )}
           </div>
         )}
-      </div>
+      </Card>
 
-      {isAddModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in service-requests-management__modal-overlay">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 service-requests-management__modal">
-            <div className="flex items-center justify-between mb-4 service-requests-management__modal-header">
-              <h3 className="font-semibold text-lg text-slate-900 dark:text-white flex items-center gap-2 service-requests-management__modal-title">
-                <Clock className="w-5 h-5 text-indigo-500" />
-                {t('new_service_request_heading', 'New Service Request')}
-              </h3>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer service-requests-management__modal-close">
-                <X className="w-5 h-5" />
-              </button>
+      <FlowbiteModal show={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} size="md" className="z-58" dismissible>
+        <ModalHeader>
+          <span className="flex items-center gap-2">
+            <Clock className="w-5 h-5 text-indigo-500" />
+            {t('new_service_request_heading', 'New Service Request')}
+          </span>
+        </ModalHeader>
+        <form onSubmit={handleCreate} className="app-form app-form--create-service-request">
+          <ModalBody className="space-y-4">
+            {isMultiKeyProperty && rooms.length > 0 && (
+              <div className="service-requests-management__form-group">
+                <StyledSelect
+                  label={t('room_field_label', 'Room')}
+                  value={newRoomId}
+                  onChange={setNewRoomId}
+                  placeholder={t('select_room_optional_placeholder', '-- Select Room (optional) --')}
+                  options={rooms.map((room) => ({ value: String(room.id), label: room.name }))}
+                />
+              </div>
+            )}
+            <div className="service-requests-management__form-group space-y-1">
+              <div className="flex items-center justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsManageModalOpen(true)}
+                  className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 font-medium cursor-pointer"
+                >
+                  <Settings className="w-3 h-3" /> Edit / Delete Custom Types
+                </button>
+              </div>
+              <StyledSelect
+                label={t('request_type_label', 'Request Type')}
+                value={newRequestType}
+                onChange={setNewRequestType}
+                options={typeOptions}
+                searchable
+              />
             </div>
-            <form onSubmit={handleCreate} className="app-form app-form--create-service-request space-y-4 service-requests-management__form">
-              {isMultiKeyProperty && rooms.length > 0 && (
-                <div className="service-requests-management__form-group">
-                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 service-requests-management__form-label">{t('room_field_label', 'Room')}</label>
-                  <StyledSelect
-                    value={newRoomId}
-                    onChange={setNewRoomId}
-                    placeholder={t('select_room_optional_placeholder', '-- Select Room (optional) --')}
-                    options={rooms.map((room) => ({ value: String(room.id), label: room.name }))}
+            {newRequestType === '__CUSTOM__' && (
+              <div className="service-requests-management__form-group p-3 bg-indigo-50/70 dark:bg-indigo-950/40 rounded-lg border border-indigo-200 dark:border-indigo-800 space-y-3">
+                <div>
+                  <div className="mb-1 block">
+                    <FlowbiteLabel htmlFor="customRequestLabel" className="text-xs font-semibold text-indigo-900 dark:text-indigo-200">Custom Service / Charge Name *</FlowbiteLabel>
+                  </div>
+                  <FlowbiteTextInput
+                    id="customRequestLabel"
+                    type="text"
+                    value={customRequestLabel}
+                    onChange={(e) => setCustomRequestLabel(e.target.value)}
+                    placeholder="e.g. Bonfire & Setup, Pool Towel..."
+                    required
                   />
                 </div>
-              )}
-              <div className="service-requests-management__form-group">
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 service-requests-management__form-label">{t('request_type_label', 'Request Type')}</label>
-                  <button
-                    type="button"
-                    onClick={() => setIsManageModalOpen(true)}
-                    className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 font-medium cursor-pointer"
-                  >
-                    <Settings className="w-3 h-3" /> Edit / Delete Custom Types
-                  </button>
+                <div className="flex items-center gap-2 pt-0.5">
+                  <FlowbiteCheckbox
+                    id="saveToCatalogCb"
+                    checked={saveToCatalog}
+                    onChange={(e) => setSaveToCatalog(e.target.checked)}
+                  />
+                  <FlowbiteLabel htmlFor="saveToCatalogCb" className="text-xs text-slate-700 dark:text-slate-300 cursor-pointer font-medium">
+                    Save to property catalog for future selection
+                  </FlowbiteLabel>
                 </div>
-                <StyledSelect
-                  value={newRequestType}
-                  onChange={setNewRequestType}
-                  options={typeOptions}
-                  searchable
-                />
               </div>
-              {newRequestType === '__CUSTOM__' && (
-                <div className="service-requests-management__form-group p-3 bg-indigo-50/70 dark:bg-indigo-950/40 rounded-xl border border-indigo-200 dark:border-indigo-800 space-y-3">
-                  <div>
-                    <label className="app-label block text-xs font-semibold text-indigo-900 dark:text-indigo-200 mb-1">
-                      Custom Service / Charge Name <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      type="text"
-                      value={customRequestLabel}
-                      onChange={(e) => setCustomRequestLabel(e.target.value)}
-                      placeholder="e.g. Bonfire & Setup, Pool Towel..."
-                      className="w-full"
-                      required
-                    />
-                  </div>
-                  <div className="flex items-center gap-2 pt-0.5">
-                    <input
-                      type="checkbox"
-                      id="saveToCatalogCb"
-                      checked={saveToCatalog}
-                      onChange={(e) => setSaveToCatalog(e.target.checked)}
-                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4 cursor-pointer"
-                    />
-                    <label htmlFor="saveToCatalogCb" className="text-xs text-slate-700 dark:text-slate-300 cursor-pointer font-medium">
-                      Save to property catalog for future selection
-                    </label>
-                  </div>
-                </div>
-              )}
-              <div className="service-requests-management__form-group">
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 service-requests-management__form-label">
-                  Charge Amount (₹) <span className="text-xs font-normal text-slate-400 dark:text-slate-500">(Optional - added to checkout bill if set)</span>
-                </label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={newChargeAmount}
-                  onChange={(e) => setNewChargeAmount(e.target.value)}
-                  placeholder="0.00 (leave blank for free)"
-                  className="w-full"
-                />
+            )}
+            <div className="service-requests-management__form-group">
+              <div className="mb-1.5 block">
+                <FlowbiteLabel htmlFor="newChargeAmount">Charge Amount (₹) (Optional - added to checkout bill if set)</FlowbiteLabel>
               </div>
-              <div className="service-requests-management__form-group">
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 service-requests-management__form-label">{t('details_label', 'Details')}</label>
-                <Textarea
-                  value={newDescription}
-                  onChange={(e) => setNewDescription(e.target.value)}
-                  placeholder={t('service_request_details_placeholder', 'Describe the request (optional)...')}
-                  rows={3}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm service-requests-management__form-textarea"
-                />
-              </div>
-              <div className="flex justify-end gap-2 pt-2 service-requests-management__form-actions">
-                <Button variant="secondary" size="md" onClick={() => setIsAddModalOpen(false)}>
-                  {t('cancel_button', 'Cancel')}
-                </Button>
-                <Button type="submit" variant="primary" size="md" disabled={saving} className="shadow-sm service-requests-management__submit-button">
-                  {saving ? t('logging_button', 'Logging...') : t('log_request_button', 'Log Request')}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {isManageModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-lg text-slate-900 dark:text-white flex items-center gap-2">
-                <Settings className="w-5 h-5 text-indigo-500" />
-                Manage Custom Service Types
-              </h3>
-              <button onClick={() => setIsManageModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
-                <X className="w-5 h-5" />
-              </button>
+              <FlowbiteTextInput
+                id="newChargeAmount"
+                type="number"
+                min="0"
+                step="0.01"
+                value={newChargeAmount}
+                onChange={(e) => setNewChargeAmount(e.target.value)}
+                placeholder="0.00 (leave blank for free)"
+              />
             </div>
+            <div className="service-requests-management__form-group">
+              <div className="mb-1.5 block">
+                <FlowbiteLabel htmlFor="newDescription">{t('details_label', 'Details')}</FlowbiteLabel>
+              </div>
+              <FlowbiteTextarea
+                id="newDescription"
+                value={newDescription}
+                onChange={(e) => setNewDescription(e.target.value)}
+                placeholder={t('service_request_details_placeholder', 'Describe the request (optional)...')}
+                rows={3}
+              />
+            </div>
+          </ModalBody>
+          <ModalFooter className="flex justify-end gap-2">
+            <Button variant="secondary" size="md" onClick={() => setIsAddModalOpen(false)}>
+              {t('cancel_button', 'Cancel')}
+            </Button>
+            <Button type="submit" variant="primary" size="md" disabled={saving} className="shadow-sm service-requests-management__submit-button">
+              {saving ? t('logging_button', 'Logging...') : t('log_request_button', 'Log Request')}
+            </Button>
+          </ModalFooter>
+        </form>
+      </FlowbiteModal>
 
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Edit or delete custom charges & service request types added for your property.
-            </p>
+      <FlowbiteModal show={isManageModalOpen} onClose={() => setIsManageModalOpen(false)} size="md" className="z-58" dismissible>
+        <ModalHeader>
+          <span className="flex items-center gap-2">
+            <Settings className="w-5 h-5 text-indigo-500" />
+            Manage Custom Service Types
+          </span>
+        </ModalHeader>
+        <ModalBody className="space-y-4">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Edit or delete custom charges & service request types added for your property.
+          </p>
 
-            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-              {requestTypes.filter((rt) => !rt.isSystemDefault || rt.source === 'custom').length === 0 ? (
-                <div className="text-center py-6 text-slate-500 dark:text-slate-400 text-xs">
-                  No custom service types added yet. Use "➕ Add Custom Service / Charge..." in the request modal to create your first custom type.
-                </div>
-              ) : (
-                requestTypes.filter((rt) => !rt.isSystemDefault || rt.source === 'custom').map((rt) => (
-                  <div key={rt.id} className="flex items-center justify-between gap-2 p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-700">
-                    {editingTypeId === rt.id ? (
-                      <div className="flex-1 flex items-center gap-2">
-                        <Input
-                          type="text"
-                          value={editingTypeLabel}
-                          onChange={(e) => setEditingTypeLabel(e.target.value)}
-                          className="w-full text-xs"
-                        />
-                        <Button size="sm" variant="success" onClick={() => handleSaveTypeEdit(rt)}>
-                          Save
-                        </Button>
-                        <Button size="sm" variant="secondary" onClick={() => setEditingTypeId(null)}>
-                          Cancel
-                        </Button>
+          <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+            {requestTypes.filter((rt) => !rt.isSystemDefault || rt.source === 'custom').length === 0 ? (
+              <div className="text-center py-6 text-slate-500 dark:text-slate-400 text-xs">
+                No custom service types added yet. Use "➕ Add Custom Service / Charge..." in the request modal to create your first custom type.
+              </div>
+            ) : (
+              requestTypes.filter((rt) => !rt.isSystemDefault || rt.source === 'custom').map((rt) => (
+                <div key={rt.id} className="flex items-center justify-between gap-2 p-3 bg-slate-50 dark:bg-slate-900/60 rounded-lg border border-slate-200 dark:border-slate-700">
+                  {editingTypeId === rt.id ? (
+                    <div className="flex-1 flex items-center gap-2">
+                      <Input
+                        type="text"
+                        value={editingTypeLabel}
+                        onChange={(e) => setEditingTypeLabel(e.target.value)}
+                        className="w-full text-xs"
+                      />
+                      <Button size="sm" variant="success" onClick={() => handleSaveTypeEdit(rt)}>
+                        Save
+                      </Button>
+                      <Button size="sm" variant="secondary" onClick={() => setEditingTypeId(null)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex-1 min-w-0">
+                        <span className="font-semibold text-xs text-slate-800 dark:text-slate-200 block truncate">{rt.label}</span>
+                        <span className="text-[10px] text-slate-400 block">{rt.category}</span>
                       </div>
-                    ) : (
-                      <>
-                        <div className="flex-1 min-w-0">
-                          <span className="font-semibold text-xs text-slate-800 dark:text-slate-200 block truncate">{rt.label}</span>
-                          <span className="text-[10px] text-slate-400 block">{rt.category}</span>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            onClick={() => { setEditingTypeId(rt.id); setEditingTypeLabel(rt.label); }}
-                            className="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg hover:bg-slate-200/60 dark:hover:bg-slate-800 cursor-pointer"
-                            title="Edit"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteType(rt)}
-                            className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-slate-200/60 dark:hover:bg-slate-800 cursor-pointer"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className="flex justify-end pt-2">
-              <Button variant="secondary" size="md" onClick={() => setIsManageModalOpen(false)}>
-                Close
-              </Button>
-            </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => { setEditingTypeId(rt.id); setEditingTypeLabel(rt.label); }}
+                          className="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg hover:bg-slate-200/60 dark:hover:bg-slate-800 cursor-pointer"
+                          title="Edit"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteType(rt)}
+                          className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-slate-200/60 dark:hover:bg-slate-800 cursor-pointer"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))
+            )}
           </div>
-        </div>
-      )}
+        </ModalBody>
+        <ModalFooter className="flex justify-end">
+          <Button variant="secondary" size="md" onClick={() => setIsManageModalOpen(false)}>
+            Close
+          </Button>
+        </ModalFooter>
+      </FlowbiteModal>
     </div>
   );
 };

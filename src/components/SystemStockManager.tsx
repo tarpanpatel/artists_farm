@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, AlertCircle, Loader2, Search, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Modal, ModalHeader, ModalBody, Alert } from 'flowbite-react';
 import { t } from '../i18n/en';
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
@@ -267,17 +268,15 @@ export const SystemStockManager: React.FC = () => {
 
       {/* Messages */}
       {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex gap-3">
-          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-          <p className="text-red-700 dark:text-red-300">{error}</p>
-        </div>
+        <Alert color="failure" icon={AlertCircle} className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300">
+          {error}
+        </Alert>
       )}
 
       {success && (
-        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 flex gap-2 items-center">
-          <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
-          <p className="text-green-700 dark:text-green-300">{success}</p>
-        </div>
+        <Alert color="success" icon={CheckCircle2} className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300">
+          {success}
+        </Alert>
       )}
 
       {/* Add New Item Form */}
@@ -423,72 +422,52 @@ export const SystemStockManager: React.FC = () => {
       )}
 
       {/* Edit Modal */}
-      {editingItem && (
-        <div className="default-stocks-manager__edit-modal fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-lg p-6 max-w-md w-full shadow-2xl">
-            <h3 className="default-stocks-manager__subtitle text-lg font-semibold text-slate-900 dark:text-white mb-4">{t('edit_stock_item_title', 'Edit Stock Item')}</h3>
-            <form onSubmit={handleEditItem} className="app-form app-form--edit-stock-item space-y-4">
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-                    {t('item_name_name', 'Item Name')}
-                  </label>
-                  <Input
-                    name={t('item_name_name', 'Item Name')}
-                    value={editForm.name}
-                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-                    Category
-                  </label>
-                  <StyledSelect
-                    value={editForm.categoryId.toString()}
-                    onChange={(value) => setEditForm({ ...editForm, categoryId: parseInt(value) })}
-                    searchable
-                    options={dbCategories.map((cat) => ({ value: cat.id.toString(), label: cat.name }))}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-                    Unit
-                  </label>
-                  <StyledSelect
-                    value={editForm.unit}
-                    onChange={(value) => setEditForm({ ...editForm, unit: value })}
-                    options={[
-                      { value: 'Kg', label: 'Kg' },
-                      { value: 'Gm', label: 'Gm' },
-                      { value: 'Liter', label: 'Liter' },
-                      { value: 'Packets', label: 'Packets' },
-                      { value: 'Pcs', label: 'Pcs' },
-                      { value: 'Box', label: 'Box' },
-                      { value: 'Doz', label: 'Doz' },
-                    ]}
-                  />
-                </div>
+      <Modal show={!!editingItem} onClose={() => setEditingItem(null)} dismissible={!saving} size="md" className="z-58 default-stocks-manager__edit-modal">
+        <ModalHeader>{t('edit_stock_item_title', 'Edit Stock Item')}</ModalHeader>
+        <ModalBody>
+          <form onSubmit={handleEditItem} className="app-form app-form--edit-stock-item space-y-4">
+            <div className="grid grid-cols-1 gap-4">
+              <Input
+                label={t('item_name_name', 'Item Name')}
+                value={editForm.name}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+              />
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
+                  Category
+                </label>
+                <StyledSelect
+                  value={editForm.categoryId.toString()}
+                  onChange={(value) => setEditForm({ ...editForm, categoryId: parseInt(value) })}
+                  searchable
+                  options={dbCategories.map((cat) => ({ value: cat.id.toString(), label: cat.name }))}
+                />
               </div>
-              <div className="flex gap-2">
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50"
-                >
-                  {saving ? t('saving_button', 'Saving...') : t('update_button', 'Update')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEditingItem(null)}
-                  className="flex-1 bg-slate-400 hover:bg-slate-500 text-white px-4 py-2 rounded-lg"
-                >
-                  {t('cancel_button', 'Cancel')}
-                </button>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
+                  Unit
+                </label>
+                <StyledSelect
+                  value={editForm.unit}
+                  onChange={(value) => setEditForm({ ...editForm, unit: value })}
+                  options={[
+                    { value: 'Kg', label: 'Kg' },
+                    { value: 'Gm', label: 'Gm' },
+                    { value: 'Liter', label: 'Liter' },
+                    { value: 'Packets', label: 'Packets' },
+                    { value: 'Pcs', label: 'Pcs' },
+                    { value: 'Box', label: 'Box' },
+                    { value: 'Doz', label: 'Doz' },
+                  ]}
+                />
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+            </div>
+            <Button type="submit" variant="primary" block disabled={saving}>
+              {saving ? t('saving_button', 'Saving...') : t('update_button', 'Update')}
+            </Button>
+          </form>
+        </ModalBody>
+      </Modal>
     </div>
   );
 };

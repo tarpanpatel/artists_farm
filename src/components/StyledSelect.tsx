@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Check, ChevronDown, Search } from 'lucide-react';
+import { Dropdown, DropdownItem, DropdownHeader } from 'flowbite-react';
 import { t } from '../i18n/en';
 
 export interface StyledSelectOption {
@@ -11,6 +12,7 @@ export interface StyledSelectOption {
 }
 
 interface StyledSelectProps {
+  label?: string;
   value: string;
   onChange: (value: string) => void;
   options: StyledSelectOption[];
@@ -23,7 +25,42 @@ interface StyledSelectProps {
   id?: string;
 }
 
+// Own component instance per open, since Flowbite's Dropdown fully unmounts
+// its floating content on close (no controlled open/close prop is exposed to
+// hook a "just opened" effect off of otherwise) - mounting this fresh each
+// time an open happens IS that signal: it clears the parent's search filter
+// and grabs focus exactly once per open, matching the old requestAnimationFrame
+// behavior without needing Dropdown to expose its internal open state.
+const SelectSearchBox: React.FC<{ onSearch: (value: string) => void }> = ({ onSearch }) => {
+  const [value, setValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    onSearch('');
+    requestAnimationFrame(() => inputRef.current?.focus());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--select-dropdown-border)] styled-select__search">
+      <Search className="w-4 h-4 text-slate-400 shrink-0" />
+      <input
+        ref={inputRef}
+        type="text"
+        value={value}
+        onChange={(e) => {
+          setValue(e.target.value);
+          onSearch(e.target.value);
+        }}
+        placeholder={t('searchable_select_placeholder')}
+        className="w-full bg-transparent outline-none text-[var(--input-text-default)] placeholder:text-slate-400 styled-select__search-input"
+      />
+    </div>
+  );
+};
+
 export const StyledSelect: React.FC<StyledSelectProps> = ({
+  label,
   value,
   onChange,
   options,
@@ -35,54 +72,7 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
   searchable = false,
   id,
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [dropdownPos, setDropdownPos] = useState<{ openUpward: boolean; maxHeight: number }>({ openUpward: false, maxHeight: 240 });
-  const containerRef = useRef<HTMLDivElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsOpen(false);
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleEscape);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (isOpen && searchable) {
-      setSearch('');
-      requestAnimationFrame(() => searchInputRef.current?.focus());
-    }
-  }, [isOpen, searchable]);
-
-  // Flip the panel above the trigger (and cap its scroll height to whatever
-  // room is actually available) whenever there isn't enough space below -
-  // without this, a select near the bottom of a scrollable modal opens
-  // downward regardless and gets clipped by the modal's own overflow, so
-  // most of a long option list is unreachable no matter how the user
-  // scrolls. Recomputed each time the panel opens rather than tracked
-  // continuously, since the trigger's position only matters at open time.
-  useEffect(() => {
-    if (!isOpen || !containerRef.current) return;
-    const margin = 12;
-    const rect = containerRef.current.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - rect.bottom - margin;
-    const spaceAbove = rect.top - margin;
-    const openUpward = spaceBelow < 180 && spaceAbove > spaceBelow;
-    const available = openUpward ? spaceAbove : spaceBelow;
-    const maxHeight = Math.max(120, Math.min(240, available));
-    setDropdownPos({ openUpward, maxHeight });
-  }, [isOpen]);
 
   const selected = options.find((o) => o.value === value);
 
@@ -90,99 +80,84 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
     ? options.filter((o) => (o.searchText ?? String(o.label)).toLowerCase().includes(search.toLowerCase()))
     : options;
 
-return (
-    <div className={`app-select-wrapper relative ${className} styled-select`} ref={containerRef}>
-      <button
-        type="button"
-        id={id}
-        disabled={disabled}
-        onClick={() => setIsOpen((prev) => !prev)}
-        className={`app-select-button w-full flex items-center justify-between gap-2 px-3.5 border transition-all duration-200 outline-none ${
-          disabled
-            ? 'opacity-60 cursor-not-allowed border-[var(--select-border-default)] text-[var(--input-text-disabled)]'
-            : error
-            ? 'border-[var(--input-border-error)] focus:ring-4 focus:ring-[var(--input-ring-error)] cursor-pointer'
-            : buttonClassName.includes('border-slate-200')
-            ? 'border-[var(--select-border-default)] hover:border-[var(--select-border-hover)] cursor-pointer'
-            : 'border-[var(--select-border-default)] hover:border-[var(--select-border-hover)] focus:border-[var(--select-border-focus)] focus:ring-4 focus:ring-[var(--select-ring-focus)] cursor-pointer'
-        } ${isOpen && !buttonClassName.includes('ring-blue') ? 'border-[var(--select-border-focus)] ring-4 ring-[var(--select-ring-focus)]' : ''} ${
-          isOpen && buttonClassName.includes('ring-blue') ? 'border-blue-500 ring-2 ring-blue-500/20' : ''
-        } ${/(^|\s)(!?)h-/.test(buttonClassName) ? '' : 'h-10'} ${/(^|\s)(!?)rounded-/.test(buttonClassName) ? '' : 'rounded-xl'} ${
-          /(^|\s)(!?)font-/.test(buttonClassName) ? '' : 'font-normal'
-        } ${
-          /(^|\s)(!?)text-/.test(buttonClassName)
-            ? '' 
-            : 'text-sm'
-        } ${buttonClassName} styled-select__trigger form-field__select`}
-      >
-        <span className={`truncate text-inherit ${selected ? 'text-[var(--input-text-default)]' : 'text-[var(--input-placeholder)]'} styled-select__value`}>
-          {selected ? selected.label : placeholder}
-        </span>
-        <ChevronDown
-          className={`w-4 h-4 text-[var(--input-placeholder)] shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''} styled-select__chevron`}
-        />
-      </button>
-
-      {isOpen && (
-        <div
-          className={`app-select-dropdown absolute z-50 ${dropdownPos.openUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-full bg-[var(--select-dropdown-bg)] border border-[var(--select-dropdown-border)] rounded-lg shadow-lg overflow-hidden text-sm styled-select__dropdown`}
-        >
-          {searchable && (
-            <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--select-dropdown-border)] styled-select__search">
-              <Search className="w-4 h-4 text-slate-400 shrink-0" />
-              <input
-                ref={searchInputRef}
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                 placeholder={t('searchable_select_placeholder')}
-                className="w-full bg-transparent outline-none text-[var(--input-text-default)] placeholder:text-slate-400 styled-select__search-input"
-              />
-            </div>
-          )}
-          <div className="overflow-auto py-1 styled-select__options" style={{ maxHeight: dropdownPos.maxHeight }}>
-            {filteredOptions.length === 0 ? (
-              <div className="px-3 py-2 text-[var(--input-placeholder)] styled-select__empty">{t('no_matches_text')}</div>
-            ) : (
-              filteredOptions.map((option, idx) => {
-                const isSelected = option.value === value;
-                const prevGroup = idx > 0 ? filteredOptions[idx - 1].group : undefined;
-                const showGroupHeader = !!option.group && option.group !== prevGroup;
-                return (
-                  <React.Fragment key={option.value}>
-                    {showGroupHeader && (
-                      <div className="px-3 pt-2 pb-1 text-[10px] font-normal uppercase tracking-wide text-[var(--input-placeholder)] styled-select__group-header">
-                        {option.group}
-                      </div>
-                    )}
-                    <button
-                      type="button"
-                      disabled={option.disabled}
-                      onClick={() => {
-                        if (option.disabled) return;
-                        onChange(option.value);
-                        setIsOpen(false);
-                      }}
-                      className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left transition styled-select__option ${
-                        option.disabled
-                          ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
-                          : isSelected
-                          ? 'bg-[var(--select-option-selected-bg)] text-[var(--select-option-selected-text)] font-normal cursor-pointer'
-                          : 'text-[var(--input-text-default)] hover:bg-[var(--select-option-hover)] cursor-pointer'
-                      }`}
-                    >
-                      <span className="truncate styled-select__option-label">{option.label}</span>
-                      {isSelected && <Check className="w-4 h-4 shrink-0 styled-select__option-check" />}
-                    </button>
-                  </React.Fragment>
-                );
-              })
-            )}
-          </div>
+  return (
+    <div className={`app-select-wrapper ${className} styled-select`}>
+      {label && (
+        <div className="mb-1 block">
+          <label
+            htmlFor={id}
+            className="app-label text-xs font-semibold text-slate-700 dark:text-slate-200"
+          >
+            {label}
+          </label>
         </div>
       )}
+      <Dropdown
+        placement="bottom-start"
+        disabled={disabled}
+        dismissOnClick
+        label=""
+        className="app-select-dropdown z-50 bg-[var(--select-dropdown-bg)] border border-[var(--select-dropdown-border)] rounded-lg shadow-lg overflow-hidden text-sm p-0 styled-select__dropdown"
+        renderTrigger={() => (
+          <button
+            type="button"
+            id={id}
+            className={`app-select-button peer group w-full flex items-center justify-between gap-2 px-3.5 border transition-all duration-200 outline-none h-10 rounded-lg font-normal text-sm ${
+              disabled
+                ? 'opacity-60 cursor-not-allowed border-[var(--select-border-default)] text-[var(--input-text-disabled)]'
+                : error
+                ? 'border-[var(--input-border-error)] focus:ring-4 focus:ring-[var(--input-ring-error)] cursor-pointer'
+                : 'border-[var(--select-border-default)] hover:border-[var(--select-border-hover)] focus:border-[var(--select-border-focus)] focus:ring-4 focus:ring-[var(--select-ring-focus)] cursor-pointer'
+            } ${buttonClassName} styled-select__trigger form-field__select`}
+          >
+            <span className={`truncate text-inherit ${selected ? 'text-[var(--input-text-default)]' : 'text-[var(--input-placeholder)]'} styled-select__value`}>
+              {selected ? selected.label : placeholder}
+            </span>
+            <ChevronDown className="w-4 h-4 text-[var(--input-placeholder)] shrink-0 transition-transform group-focus:rotate-180 styled-select__chevron" />
+          </button>
+        )}
+      >
+        {searchable && <SelectSearchBox onSearch={setSearch} />}
+        <div className="overflow-auto max-h-60 py-1 styled-select__options">
+          {filteredOptions.length === 0 ? (
+            <DropdownHeader className="px-3 py-2 text-[var(--input-placeholder)] normal-case tracking-normal font-normal styled-select__empty">
+              {t('no_matches_text')}
+            </DropdownHeader>
+          ) : (
+            filteredOptions.map((option, idx) => {
+              const isSelected = option.value === value;
+              const prevGroup = idx > 0 ? filteredOptions[idx - 1].group : undefined;
+              const showGroupHeader = !!option.group && option.group !== prevGroup;
+              return (
+                <React.Fragment key={option.value}>
+                  {showGroupHeader && (
+                    <DropdownHeader className="px-3 pt-2 pb-1 text-[10px] font-normal uppercase tracking-wide text-[var(--input-placeholder)] styled-select__group-header">
+                      {option.group}
+                    </DropdownHeader>
+                  )}
+                  <DropdownItem
+                    disabled={option.disabled}
+                    onClick={() => {
+                      if (option.disabled) return;
+                      onChange(option.value);
+                    }}
+                    className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left transition styled-select__option ${
+                      option.disabled
+                        ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
+                        : isSelected
+                        ? 'bg-[var(--select-option-selected-bg)] text-[var(--select-option-selected-text)] font-normal cursor-pointer'
+                        : 'text-[var(--input-text-default)] hover:bg-[var(--select-option-hover)] cursor-pointer'
+                    }`}
+                  >
+                    <span className="truncate styled-select__option-label">{option.label}</span>
+                    {isSelected && <Check className="w-4 h-4 shrink-0 styled-select__option-check" />}
+                  </DropdownItem>
+                </React.Fragment>
+              );
+            })
+          )}
+        </div>
+      </Dropdown>
     </div>
   );
 };
-
-

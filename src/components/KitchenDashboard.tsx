@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Card } from 'flowbite-react';
 import {
   UtensilsCrossed,
   Soup,
@@ -266,17 +267,17 @@ export const KitchenDashboard: React.FC<KitchenDashboardProps> = ({ onNavigate, 
           const isDragOver = dragOverCardId === card.id;
 
           return (
-            <div
+            <Card
               key={card.id}
               onDragOver={(e) => handleDragOver(e, card.id)}
               onDrop={(e) => handleDrop(e, card.id)}
               onDragEnd={handleDragEnd}
-              className={`kitchen-dashboard__card bg-white dark:bg-slate-800 rounded-2xl border transition-all duration-200 p-5 flex flex-col justify-between group relative select-none ${
+              className={`kitchen-dashboard__card border transition-all duration-200 group relative select-none ${
                 isDragging
                   ? 'opacity-30 scale-[0.98] border-dashed border-blue-400 shadow-none'
                   : isDragOver
                   ? 'ring-2 ring-blue-500 ring-offset-2 border-blue-400 dark:border-blue-500 scale-[1.01] shadow-lg'
-                  : 'border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md'
+                  : 'border-gray-200 dark:border-gray-700 hover:shadow-lg'
               }`}
             >
               <div className="flex items-start gap-3">
@@ -320,7 +321,7 @@ export const KitchenDashboard: React.FC<KitchenDashboardProps> = ({ onNavigate, 
                   <span>Open {card.title}</span>
                 </Button>
               </div>
-            </div>
+            </Card>
           );
         })}
       </div>

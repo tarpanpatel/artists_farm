@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { X, Share2, Loader2, CheckCircle2 } from 'lucide-react';
+import { Share2, Loader2, CheckCircle2 } from 'lucide-react';
+import { Modal, ModalHeader, ModalBody } from 'flowbite-react';
 import * as htmlToImage from 'html-to-image';
 import { WalkInTab } from '../types';
 import { billWalkInTabDB } from '../services/api';
@@ -117,17 +118,11 @@ export const WalkInTabBillModal: React.FC<WalkInTabBillModalProps> = ({
     .join('\n')}\n━━━━━━━━━━━━━━━━\n💵 *Subtotal:* ₹${bill.subtotal.toFixed(2)}${bill.discount > 0 ? `\n➖ *Discount:* ₹${bill.discount.toFixed(2)}` : ''}${bill.gstEnabled ? `\n➕ *GST (${bill.gstRate}%):* ₹${bill.gstAmount.toFixed(2)}` : ''}\n💰 *Grand Total:* ₹${bill.grandTotal.toFixed(2)}${propertyUpiId ? `\n💳 *Pay via UPI:* ${propertyUpiId}` : ''}\n━━━━━━━━━━━━━━━━\nThank you!`;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-start justify-center p-4 z-50 overflow-y-auto pt-8">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full border border-slate-200 dark:border-slate-700 shadow-2xl relative">
-        <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-700">
-          <h3 className="font-semibold text-slate-900 dark:text-white text-sm">
-            {isBilled ? t('walk_in_bill_title', 'Walk-in Bill') : t('bill_this_tab_heading', 'Bill This Tab')}
-          </h3>
-          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 cursor-pointer">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
+    <Modal show onClose={onClose} dismissible={!isSubmitting} size="md" className="z-58 walk-in-tab-bill-modal">
+      <ModalHeader>
+        {isBilled ? t('walk_in_bill_title', 'Walk-in Bill') : t('bill_this_tab_heading', 'Bill This Tab')}
+      </ModalHeader>
+      <ModalBody className="p-0">
         {!isBilled ? (
           <div className="p-4 space-y-4">
             <div>
@@ -287,7 +282,7 @@ export const WalkInTabBillModal: React.FC<WalkInTabBillModalProps> = ({
             </button>
           </div>
         )}
-      </div>
-    </div>
+      </ModalBody>
+    </Modal>
   );
 };

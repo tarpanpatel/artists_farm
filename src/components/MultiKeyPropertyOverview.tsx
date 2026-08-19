@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Loader2, AlertCircle, Users, TrendingUp, BarChart3, DollarSign, ArrowLeft } from 'lucide-react';
 import { apiFetch } from '../services/api';
 import { t } from '../i18n/en';
+import { KpiCard } from './KpiCard';
 import { OperationalDashboard } from './OperationalDashboard';
 import { GuestManagement } from './GuestManagement';
 import { PropertyEditForm } from './PropertyEditForm';
@@ -222,7 +223,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
             const guestRoomId = g.roomId || g.room_id;
             return guestRoomId && Number(guestRoomId) === Number(selectedRoom.id);
           });
-          const roomReceipts = receipts.filter((r) => roomGuests.some((g) => g.id === r.guest_id));
+          const roomReceipts = receipts.filter((r) => roomGuests.some((g) => g.id === (r.guestId || r.guest_id)));
 
           return (
             <>
@@ -411,45 +412,30 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
        {/* Stats - hide on dashboard overview */}
        {!hideHeader && overview && (
          <div className="multi-key-property-overview__stats grid grid-cols-2 md:grid-cols-4 gap-4">
-           <div className="multi-key-property-overview__stat-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
-             <div className="flex items-center gap-3">
-               <Users className="w-8 h-8 text-blue-600 dark:text-blue-400 opacity-60" />
-               <div>
-                 <p className="text-xs text-slate-600 dark:text-slate-400">{t('total_rooms_label', 'Total Rooms')}</p>
-                 <p className="text-2xl font-semibold text-slate-900 dark:text-white">{overview.total_rooms}</p>
-               </div>
-             </div>
-           </div>
-
-           <div className="multi-key-property-overview__stat-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
-             <div className="flex items-center gap-3">
-               <TrendingUp className="w-8 h-8 text-green-600 dark:text-green-400 opacity-60" />
-               <div>
-                 <p className="text-xs text-slate-600 dark:text-slate-400">{t('occupied_label', 'Occupied')}</p>
-                 <p className="text-2xl font-semibold text-slate-900 dark:text-white">{overview.total_occupied}</p>
-               </div>
-             </div>
-           </div>
-
-           <div className="multi-key-property-overview__stat-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
-             <div className="flex items-center gap-3">
-               <BarChart3 className="w-8 h-8 text-purple-600 dark:text-purple-400 opacity-60" />
-               <div>
-                 <p className="text-xs text-slate-600 dark:text-slate-400">{t('occupancy_label', 'Occupancy')}</p>
-                 <p className="text-2xl font-semibold text-slate-900 dark:text-white">{overview.occupancy_rate}%</p>
-               </div>
-             </div>
-           </div>
-
-           <div className="multi-key-property-overview__stat-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
-             <div className="flex items-center gap-3">
-               <DollarSign className="w-8 h-8 text-amber-600 dark:text-amber-400 opacity-60" />
-               <div>
-                 <p className="text-xs text-slate-600 dark:text-slate-400">{t('revenue_label', 'Revenue')}</p>
-                 <p className="text-2xl font-semibold text-slate-900 dark:text-white">{property.currency} {overview.total_revenue.toFixed(0)}</p>
-               </div>
-             </div>
-           </div>
+           <KpiCard
+             label={t('total_rooms_label', 'Total Rooms')}
+             value={overview.total_rooms}
+             icon={Users}
+             badge={{ text: 'Inventory', color: 'info' }}
+           />
+           <KpiCard
+             label={t('occupied_label', 'Occupied')}
+             value={overview.total_occupied}
+             icon={BarChart3}
+             badge={{ text: 'In-House', color: 'success' }}
+           />
+           <KpiCard
+             label={t('occupancy_rate_label', 'Occupancy Rate')}
+             value={`${overview.occupancy_rate}%`}
+             icon={TrendingUp}
+             badge={{ text: 'Occupancy', color: 'purple' }}
+           />
+           <KpiCard
+             label={t('monthly_revenue_label', 'Monthly Revenue')}
+             value={`₹${overview.total_revenue.toLocaleString('en-IN')}`}
+             icon={DollarSign}
+             badge={{ text: 'Revenue', color: 'success' }}
+           />
          </div>
        )}
      </div>

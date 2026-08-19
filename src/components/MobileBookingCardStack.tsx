@@ -110,7 +110,7 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search guest, room, or phone..."
-              className="w-full h-11 pl-9 pr-4 text-sm bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full h-11 pl-9 pr-4 text-sm bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white rounded-lg border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
@@ -166,14 +166,14 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
 
       {/* Booking Cards List */}
       {filteredGuests.length === 0 ? (
-        <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl border border-slate-200 dark:border-slate-700 text-center space-y-3">
-          <Building className="w-10 h-10 text-slate-300 mx-auto" />
-          <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">No bookings match filter</p>
+        <div className="bg-white dark:bg-gray-800 p-8 rounded-lg border border-gray-200 dark:border-gray-700 text-center space-y-3 shadow-md">
+          <Building className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto" />
+          <p className="text-sm font-semibold text-gray-600 dark:text-gray-300">No bookings match filter</p>
           {onAddBooking && (
             <button
               type="button"
               onClick={onAddBooking}
-              className="px-4 py-2.5 bg-blue-600 text-white text-xs font-semibold rounded-xl"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm"
             >
               + Create New Booking
             </button>
@@ -196,10 +196,10 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
               <div
                 key={guest.id}
                 onClick={() => onSelectGuest?.(guest.id)}
-                className={`bg-white dark:bg-slate-800 rounded-2xl border transition-all p-4 space-y-3 cursor-pointer ${
+                className={`bg-white dark:bg-gray-800 rounded-lg border transition-all p-4 space-y-3 cursor-pointer ${
                   isSelected
                     ? 'border-blue-500 dark:border-blue-500 ring-2 ring-blue-500/20 shadow-md'
-                    : 'border-slate-200 dark:border-slate-700 shadow-2xs hover:border-slate-300'
+                    : 'border-gray-200 dark:border-gray-700 shadow-md hover:border-gray-300 dark:hover:border-gray-600'
                 }`}
               >
                 {/* Header Row: Guest Name, Room Pill, Guest Count, Status */}
@@ -228,7 +228,7 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
 
                 {/* Sub-Grid: Check-In & Check-Out Dates */}
                 <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 dark:text-slate-300">
-                  <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900/50 p-2 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900/50 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
                     <LogIn className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                     <div className="min-w-0">
                       <div className="text-[9px] text-slate-400 font-semibold uppercase">Check-In</div>
@@ -238,7 +238,7 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900/50 p-2 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900/50 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
                     <LogOut className="w-3.5 h-3.5 text-rose-500 shrink-0" />
                     <div className="min-w-0">
                       <div className="text-[9px] text-slate-400 font-semibold uppercase">Check-Out</div>
@@ -251,7 +251,7 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
 
                 {/* C-Form Filing Badge (if foreign guest or past booking) */}
                 {guest.isForeignGuest && (
-                  <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900/40 p-2 rounded-xl border border-slate-100 dark:border-slate-800 text-xs">
+                  <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900/40 p-2 rounded-lg border border-slate-100 dark:border-slate-800 text-xs">
                     <span className="text-[10px] text-slate-400 uppercase font-semibold">C-Form Filing:</span>
                     {guest.cFormFiledAt ? (
                       <span className="text-emerald-600 dark:text-emerald-400 font-semibold text-[11px] inline-flex items-center gap-1">
@@ -268,7 +268,7 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                 )}
 
                 {/* Financial Summary Bar */}
-                <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-lg border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
                   <div>
                     <span className="text-slate-400 text-[10px] uppercase font-semibold block">Total Tariff</span>
                     <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-0.5">
@@ -300,7 +300,7 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                     <a
                       href={`tel:${guest.phoneNumber}`}
                       onClick={(e) => e.stopPropagation()}
-                      className="min-h-[44px] px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shrink-0 whitespace-nowrap"
+                      className="min-h-[44px] px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shrink-0 whitespace-nowrap"
                       title="Call Guest"
                     >
                       <Phone className="w-4 h-4 text-slate-500 dark:text-slate-400" />
@@ -315,7 +315,7 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                         e.stopPropagation();
                         onOpenWhatsApp(guest);
                       }}
-                      className="min-h-[44px] px-3 py-2 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                      className="min-h-[44px] px-3 py-2 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
                       title="WhatsApp Voucher"
                     >
                       <MessageSquare className="w-4 h-4 text-emerald-600" />
@@ -329,7 +329,7 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                       e.stopPropagation();
                       onSelectGuest?.(guest.id);
                     }}
-                    className="min-h-[44px] flex-1 px-3 py-2 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                    className="min-h-[44px] flex-1 px-3 py-2 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
                   >
                     <CreditCard className="w-4 h-4 text-blue-600 shrink-0" />
                     <span>Edit Booking</span>
@@ -342,7 +342,7 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                         e.stopPropagation();
                         onCheckoutGuest(guest.id);
                       }}
-                      className="min-h-[44px] px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shrink-0"
+                      className="min-h-[44px] px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shrink-0"
                     >
                       <LogOut className="w-4 h-4" />
                       <span>Checkout</span>

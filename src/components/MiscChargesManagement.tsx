@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Loader2 } from 'lucide-react';
 import DataTable from 'react-data-table-component';
+import { Modal, ModalHeader, ModalBody, ModalFooter } from 'flowbite-react';
 import { getPropertySlug } from '../services/api';
 import { useConfigurationData } from '../contexts/ConfigurationDataContext';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { PageHeader, PageHeaderButton } from './PageHeader';
 import { Input } from './Input';
+import { Button } from './Button';
 import { t } from '../i18n/en';
 
 interface MiscChargeTemplate {
@@ -398,7 +400,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
                           {!row.is_system_default && (
                             <button
                               type="button"
-                              onClick={() => handleDelete(row.id, row.label)}
+                              onClick={() => handleDelete(row.id)}
                               className="px-2 py-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 border border-slate-200 dark:border-slate-700 font-semibold text-xs rounded-lg transition cursor-pointer flex items-center gap-1 shrink-0"
                             >
                               <Trash2 className="w-3 h-3" />
@@ -447,47 +449,53 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
         </div>
       </div>
 
-      {isAddModalOpen && (
-        <div className="misc-charges-management__modal fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700">
-            <h3 className="misc-charges-management__subtitle font-semibold text-lg text-slate-900 dark:text-white mb-4">{t('add_extra_service_title', 'Add Extra Service')}</h3>
-            <form onSubmit={handleAdd} className="app-form app-form--add-misc-charge space-y-4">
-              <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('service_name_label', 'Service Name')}</label>
-                <Input
-                  type="text"
-                  required
-                  value={newForm.label}
-                  onChange={(e) => setNewForm({ ...newForm, label: e.target.value })}
-                  placeholder={t('service_name_placeholder', 'e.g. Pet Fee')}
-                />
-              </div>
-              <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('category_label', 'Category')}</label>
-                <Input
-                  type="text"
-                  required
-                  value={newForm.category}
-                  onChange={(e) => setNewForm({ ...newForm, category: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('default_price_label', 'Default Price (₹)')}</label>
-                <Input
-                  type="number"
-                  required
-                  value={newForm.default_amount === '' as unknown as number ? '' : newForm.default_amount}
-                  onChange={(e) => setNewForm({ ...newForm, default_amount: e.target.value === '' ? ('' as unknown as number) : Number(e.target.value) })}
-                />
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 dark:text-white transition-colors cursor-pointer">{t('cancel_button', 'Cancel')}</button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-sm transition-colors cursor-pointer">{t('add_service_button', 'Add Service')}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <Modal
+        show={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        dismissible
+        className="z-58 misc-charges-management__modal"
+      >
+        <ModalHeader as="div">
+          <h3 className="misc-charges-management__subtitle font-semibold text-lg text-slate-900 dark:text-white">{t('add_extra_service_title', 'Add Extra Service')}</h3>
+        </ModalHeader>
+        <form onSubmit={handleAdd} className="app-form app-form--add-misc-charge">
+          <ModalBody className="space-y-4">
+            <div>
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('service_name_label', 'Service Name')}</label>
+              <Input
+                type="text"
+                required
+                value={newForm.label}
+                onChange={(e) => setNewForm({ ...newForm, label: e.target.value })}
+                placeholder={t('service_name_placeholder', 'e.g. Pet Fee')}
+              />
+            </div>
+            <div>
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('category_label', 'Category')}</label>
+              <Input
+                type="text"
+                required
+                value={newForm.category}
+                onChange={(e) => setNewForm({ ...newForm, category: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('default_price_label', 'Default Price (₹)')}</label>
+              <Input
+                type="number"
+                required
+                value={newForm.default_amount === '' as unknown as number ? '' : newForm.default_amount}
+                onChange={(e) => setNewForm({ ...newForm, default_amount: e.target.value === '' ? ('' as unknown as number) : Number(e.target.value) })}
+              />
+            </div>
+          </ModalBody>
+          <ModalFooter className="justify-end">
+            <Button type="submit" variant="primary">
+              {t('add_service_button', 'Add Service')}
+            </Button>
+          </ModalFooter>
+        </form>
+      </Modal>
     </div>
   );
 };

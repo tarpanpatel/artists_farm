@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Building2, Plus, Loader2, AlertCircle, AlertTriangle, BarChart3, ChevronDown, ChevronRight, Edit2, Eye, CheckCircle2, Share2, Copy, XCircle, ExternalLink, KeyRound, X, DoorOpen, RotateCcw, Mail, MessageCircle } from 'lucide-react';
+import { Modal, ModalHeader, ModalBody, ModalFooter, Alert } from 'flowbite-react';
 import { ToggleSwitch } from './ToggleSwitch';
 import { StyledSelect } from './StyledSelect';
 import { Button } from './Button';
@@ -1247,14 +1248,11 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
       </main>
 
       {/* Edit Tenant Modal */}
-      {showEditTenantModal && editingTenant && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="platform-property-management__subtitle text-lg font-semibold text-slate-900 dark:text-white mb-4">
-              {t('edit_tenant_heading', 'Edit Tenant')}
-            </h3>
-
-            <div className="space-y-4 mb-6">
+      <Modal show={showEditTenantModal && !!editingTenant} onClose={() => setShowEditTenantModal(false)} dismissible size="md" className="z-58">
+        <ModalHeader>{t('edit_tenant_heading', 'Edit Tenant')}</ModalHeader>
+        {editingTenant && (
+          <ModalBody>
+            <div className="space-y-4">
               <div>
                 <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                   {t('tenant_name_label', 'Tenant Name')}
@@ -1356,38 +1354,31 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                 </label>
               </div>
             </div>
-
-            <div className="flex gap-3">
-              <Button
-                onClick={() => setShowEditTenantModal(false)}
-                className="flex-1"
-                variant="secondary"
-                size="md"
-              >
-                {t('cancel_button', 'Cancel')}
-              </Button>
-              <Button
-                onClick={handleSaveTenant}
-                className="flex-1"
-                variant="primary"
-                size="md"
-              >
-                {t('save_button', 'Save')}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+          </ModalBody>
+        )}
+        {editingTenant && (
+          <ModalFooter>
+            <Button onClick={handleSaveTenant} className="flex-1" variant="primary" size="md">
+              {t('save_button', 'Save')}
+            </Button>
+          </ModalFooter>
+        )}
+      </Modal>
 
       {/* Property Add/Edit Modal */}
-      {showPropertyModal && editingProperty && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="platform-property-management__subtitle text-lg font-semibold text-slate-900 dark:text-white mb-4">
-              {showPropertyModal === 'add' ? t('add_property_heading', 'Add Property') : t('edit_property_heading', 'Edit Property')}
-            </h3>
-
-            <div className="space-y-4 mb-6">
+      <Modal
+        show={!!showPropertyModal && !!editingProperty}
+        onClose={() => { setShowPropertyModal(null); setEditingProperty(null); }}
+        dismissible={!operationLoading}
+        size="md"
+        className="z-58"
+      >
+        <ModalHeader>
+          {showPropertyModal === 'add' ? t('add_property_heading', 'Add Property') : t('edit_property_heading', 'Edit Property')}
+        </ModalHeader>
+        {editingProperty && (
+          <ModalBody>
+            <div className="space-y-4">
               <div>
                 <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                   {t('property_name_label', 'Property Name')}
@@ -1550,193 +1541,160 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                 </div>
               )}
             </div>
-
-            <div className="flex gap-3">
-              <Button
-                onClick={() => {
-                  setShowPropertyModal(null);
-                  setEditingProperty(null);
-                }}
-                className="flex-1"
-                variant="secondary"
-                size="md"
-              >
-                {t('cancel_button', 'Cancel')}
-              </Button>
-              <Button
-                onClick={showPropertyModal === 'add' ? handleAddProperty : handleEditProperty}
-                disabled={operationLoading}
-                className="flex-1 flex items-center justify-center gap-2"
-                variant="primary"
-                size="md"
-              >
-                {operationLoading ? (
-                  <>
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  showPropertyModal === 'add' ? t('add_button', 'Add') : t('update_button', 'Update')
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+          </ModalBody>
+        )}
+        {editingProperty && (
+          <ModalFooter>
+            <Button
+              onClick={showPropertyModal === 'add' ? handleAddProperty : handleEditProperty}
+              disabled={operationLoading}
+              block
+              className="flex items-center justify-center gap-2"
+              variant="primary"
+              size="md"
+            >
+              {operationLoading ? (
+                <>
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                showPropertyModal === 'add' ? t('add_button', 'Add') : t('update_button', 'Update')
+              )}
+            </Button>
+          </ModalFooter>
+        )}
+      </Modal>
 
       {/* Delete Property Confirmation */}
-      {showDeletePropertyModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="platform-property-management__subtitle text-lg font-semibold text-slate-900 dark:text-white mb-4">
-              {t('delete_property_heading', 'Delete Property?')}
-            </h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 font-semibold text-red-600 flex items-center gap-1.5">
-              <AlertTriangle className="w-4 h-4 flex-shrink-0" /> {t('deletion_consequences_label', 'Deletion Consequences for this Property:')}
-            </p>
-            <ul className="text-sm text-slate-600 dark:text-slate-400 mb-4 list-disc list-inside space-y-1">
-              <li>All <strong>active and upcoming bookings</strong> will be permanently deleted.</li>
-              <li>Past bookings and financial ledger records <strong>will remain intact</strong> for historical audits.</li>
-              <li>Menus, inventory stock, staff assignments, and modules will be removed.</li>
-            </ul>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">
-              Type <span className="font-semibold font-mono text-slate-900 dark:text-white">DELETE</span> to confirm:
-            </p>
-            <Input
-              type="text"
-              autoFocus
-              placeholder={t('type_here_placeholder', 'Type here...')}
-              value={deleteConfirmText}
-              onChange={(e) => setDeleteConfirmText(e.target.value)}
-              className="mb-4 font-mono"
-            />
+      <Modal
+        show={!!showDeletePropertyModal}
+        onClose={() => { setShowDeletePropertyModal(null); setDeleteConfirmText(''); setError(null); }}
+        dismissible={!operationLoading}
+        size="md"
+        className="z-58"
+      >
+        <ModalHeader>{t('delete_property_heading', 'Delete Property?')}</ModalHeader>
+        <ModalBody>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 font-semibold text-red-600 flex items-center gap-1.5">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" /> {t('deletion_consequences_label', 'Deletion Consequences for this Property:')}
+          </p>
+          <ul className="text-sm text-slate-600 dark:text-slate-400 mb-4 list-disc list-inside space-y-1">
+            <li>All <strong>active and upcoming bookings</strong> will be permanently deleted.</li>
+            <li>Past bookings and financial ledger records <strong>will remain intact</strong> for historical audits.</li>
+            <li>Menus, inventory stock, staff assignments, and modules will be removed.</li>
+          </ul>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">
+            Type <span className="font-semibold font-mono text-slate-900 dark:text-white">DELETE</span> to confirm:
+          </p>
+          <Input
+            type="text"
+            autoFocus
+            placeholder={t('type_here_placeholder', 'Type here...')}
+            value={deleteConfirmText}
+            onChange={(e) => setDeleteConfirmText(e.target.value)}
+            className="font-mono"
+          />
 
-            {/* Surfaced inline (23 Aug 2026): this modal is a full-screen fixed
-                overlay, so the page-level error banner further up the tree was
-                rendering behind it - a failed delete looked like nothing
-                happened at all except a console network error. */}
-            {error && (
-              <div className="mb-4 flex gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
-                <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-red-800 dark:text-red-300">{error}</p>
-              </div>
+          {/* Now structurally impossible to render behind the modal - Flowbite's
+              Modal portals to document.body at the correct z-index tier,
+              unlike the old fixed-overlay div this used to be. */}
+          {error && (
+            <Alert color="failure" icon={AlertCircle} className="mt-4 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 text-red-800 dark:text-red-300">
+              <p className="text-sm">{error}</p>
+            </Alert>
+          )}
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            onClick={() => {
+              handleDeleteProperty(showDeletePropertyModal);
+              setDeleteConfirmText('');
+            }}
+            disabled={operationLoading || deleteConfirmText !== 'DELETE'}
+            block
+            className="flex items-center justify-center gap-2"
+            variant="danger"
+            size="md"
+          >
+            {operationLoading ? (
+              <>
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              t('delete_property_button', 'Delete Property')
             )}
-
-            <div className="flex gap-3">
-              <Button
-                onClick={() => {
-                  setShowDeletePropertyModal(null);
-                  setDeleteConfirmText('');
-                  setError(null);
-                }}
-                className="flex-1"
-                variant="secondary"
-                size="md"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() => {
-                  handleDeleteProperty(showDeletePropertyModal);
-                  setDeleteConfirmText('');
-                }}
-                disabled={operationLoading || deleteConfirmText !== 'DELETE'}
-                className="flex-1 flex items-center justify-center gap-2"
-                variant="danger"
-                size="md"
-              >
-                {operationLoading ? (
-                  <>
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    Deleting...
-                  </>
-                ) : (
-                  t('delete_property_button', 'Delete Property')
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+          </Button>
+        </ModalFooter>
+      </Modal>
 
       {/* Delete Tenant Confirmation */}
-      {showDeleteTenantModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="platform-property-management__subtitle text-lg font-semibold text-slate-900 dark:text-white mb-4">
-              {t('delete_tenant_heading', 'Delete Tenant?')}
-            </h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 font-semibold text-red-600 flex items-center gap-1.5">
-              <AlertTriangle className="w-4 h-4 flex-shrink-0" /> {t('deletion_consequences_label', 'Deletion Consequences for this Property:').replace('this Property', 'this Tenant')}
-            </p>
-            <ul className="text-sm text-slate-600 dark:text-slate-400 mb-4 list-disc list-inside space-y-1">
-              <li><strong>Every property under this tenant</strong> (
-                {properties.filter((p) => p.tenant_id === showDeleteTenantModal).length} total) will be permanently deleted too - not just the tenant record.
-              </li>
-              <li>For each of those properties: all <strong>active and upcoming bookings</strong> will be permanently deleted.</li>
-              <li>Past bookings and financial ledger records <strong>will remain intact</strong> for historical audits.</li>
-              <li>Menus, inventory stock, staff assignments, and modules for every property will be removed.</li>
-            </ul>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">
-              Type <span className="font-semibold font-mono text-slate-900 dark:text-white">DELETE</span> to confirm:
-            </p>
-            <Input
-              type="text"
-              autoFocus
-              placeholder={t('type_here_placeholder', 'Type here...')}
-              value={deleteConfirmText}
-              onChange={(e) => setDeleteConfirmText(e.target.value)}
-              className="mb-4 font-mono"
-            />
+      <Modal
+        show={!!showDeleteTenantModal}
+        onClose={() => { setShowDeleteTenantModal(null); setDeleteConfirmText(''); setError(null); }}
+        dismissible={!operationLoading}
+        size="md"
+        className="z-58"
+      >
+        <ModalHeader>{t('delete_tenant_heading', 'Delete Tenant?')}</ModalHeader>
+        <ModalBody>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 font-semibold text-red-600 flex items-center gap-1.5">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" /> {t('deletion_consequences_label', 'Deletion Consequences for this Property:').replace('this Property', 'this Tenant')}
+          </p>
+          <ul className="text-sm text-slate-600 dark:text-slate-400 mb-4 list-disc list-inside space-y-1">
+            <li><strong>Every property under this tenant</strong> (
+              {properties.filter((p) => p.tenant_id === showDeleteTenantModal).length} total) will be permanently deleted too - not just the tenant record.
+            </li>
+            <li>For each of those properties: all <strong>active and upcoming bookings</strong> will be permanently deleted.</li>
+            <li>Past bookings and financial ledger records <strong>will remain intact</strong> for historical audits.</li>
+            <li>Menus, inventory stock, staff assignments, and modules for every property will be removed.</li>
+          </ul>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">
+            Type <span className="font-semibold font-mono text-slate-900 dark:text-white">DELETE</span> to confirm:
+          </p>
+          <Input
+            type="text"
+            autoFocus
+            placeholder={t('type_here_placeholder', 'Type here...')}
+            value={deleteConfirmText}
+            onChange={(e) => setDeleteConfirmText(e.target.value)}
+            className="font-mono"
+          />
 
-            {error && (
-              <div className="mb-4 flex gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
-                <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-red-800 dark:text-red-300">{error}</p>
-              </div>
+          {error && (
+            <Alert color="failure" icon={AlertCircle} className="mt-4 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 text-red-800 dark:text-red-300">
+              <p className="text-sm">{error}</p>
+            </Alert>
+          )}
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            onClick={() => {
+              handleDeleteTenant(showDeleteTenantModal);
+              setDeleteConfirmText('');
+            }}
+            disabled={operationLoading || deleteConfirmText !== 'DELETE'}
+            block
+            className="flex items-center justify-center gap-2"
+            variant="danger"
+            size="md"
+          >
+            {operationLoading ? (
+              <>
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              t('delete_tenant_button', 'Delete Tenant')
             )}
-
-            <div className="flex gap-3">
-              <Button
-                onClick={() => {
-                  setShowDeleteTenantModal(null);
-                  setDeleteConfirmText('');
-                  setError(null);
-                }}
-                className="flex-1"
-                variant="secondary"
-                size="md"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() => {
-                  handleDeleteTenant(showDeleteTenantModal);
-                  setDeleteConfirmText('');
-                }}
-                disabled={operationLoading || deleteConfirmText !== 'DELETE'}
-                className="flex-1 flex items-center justify-center gap-2"
-                variant="danger"
-                size="md"
-              >
-                {operationLoading ? (
-                  <>
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    Deleting...
-                  </>
-                ) : (
-                  t('delete_tenant_button', 'Delete Tenant')
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+          </Button>
+        </ModalFooter>
+      </Modal>
 
       {/* Add Tenant Modal */}
-      {showAddTenantModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+      <Modal show={showAddTenantModal} onClose={() => setShowAddTenantModal(false)} dismissible={!operationLoading} size="md" className="z-58">
+        <ModalBody>
             {newTenantCredentials ? (
               <>
                 <div className="flex items-center gap-2 mb-1">
@@ -1913,9 +1871,8 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                 </div>
               </>
             )}
-          </div>
-        </div>
-      )}
+        </ModalBody>
+      </Modal>
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import React from 'react';
-import { Building2, X, ArrowRight, Lightbulb } from 'lucide-react';
+import { Building2, ArrowRight, Lightbulb } from 'lucide-react';
+import { Modal, ModalHeader, ModalBody, Alert } from 'flowbite-react';
 import { t } from '../i18n/en';
 
 interface Room {
@@ -25,38 +26,26 @@ export const RoomSelectorModal: React.FC<RoomSelectorModalProps> = ({
   onClose,
   isLoading = false,
 }) => {
-  if (!isOpen) return null;
-
   const activeRooms = rooms.filter((r) => r.is_active !== 0);
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in room-selector-modal__root">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-2xl w-full border border-slate-200 dark:border-slate-700 shadow-2xl p-6 space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-              <Building2 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <h3 className="room-selector-modal__subtitle text-lg font-semibold text-slate-800 dark:text-slate-100">
-                {t('select_room_heading')}
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                {t('select_room_subtext')}
-              </p>
-            </div>
+    <Modal show={isOpen} onClose={onClose} dismissible={!isLoading} size="2xl" className="z-58 room-selector-modal__root">
+      <ModalHeader as="div">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+            <Building2 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
           </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-2 rounded-lg transition-colors cursor-pointer"
-            disabled={isLoading}
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div>
+            <h3 className="room-selector-modal__subtitle text-lg font-semibold text-slate-800 dark:text-slate-100">
+              {t('select_room_heading')}
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              {t('select_room_subtext')}
+            </p>
+          </div>
         </div>
-
-        {/* Room Grid */}
+      </ModalHeader>
+      <ModalBody className="space-y-6">
         <div>
           {activeRooms.length === 0 ? (
             <div className="text-center py-12">
@@ -100,22 +89,10 @@ export const RoomSelectorModal: React.FC<RoomSelectorModalProps> = ({
           )}
         </div>
 
-        {/* Footer Info */}
-        <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-          <p className="text-xs text-blue-700 dark:text-blue-300 font-medium">
-            <Lightbulb className="w-3.5 h-3.5 inline-block mr-1" /> {t('room_selector_tip')}
-          </p>
-        </div>
-
-        {/* Cancel Button */}
-        <button
-          onClick={onClose}
-          disabled={isLoading}
-          className="w-full py-2.5 bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 text-slate-700 dark:text-slate-100 font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {t('cancel_room_selection_button')}
-        </button>
-      </div>
-    </div>
+        <Alert color="blue" icon={Lightbulb} className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+          <p className="text-xs font-medium">{t('room_selector_tip')}</p>
+        </Alert>
+      </ModalBody>
+    </Modal>
   );
 };

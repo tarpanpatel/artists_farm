@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import { CheckCircle2, XCircle, AlertTriangle, Info, X } from 'lucide-react';
+import { Toast as FlowbiteToast } from 'flowbite-react';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -92,10 +93,12 @@ const BG_CLASSES: Record<ToastType, string> = {
 };
 
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string) => void }) {
+  // Removal is driven by ToastProvider's own `toasts` state/timer (see
+  // removeToast above), not Flowbite's internal isClosed/isRemoved toggle -
+  // so the dismiss button calls onDismiss directly rather than using
+  // <ToastToggle>, keeping one source of truth for "is this toast gone".
   return (
-    <div
-      className={`pointer-events-auto flex items-start gap-2.5 ${BG_CLASSES[toast.type]} text-white px-4 py-3 rounded-xl shadow-lg text-sm font-semibold animate-toast-in max-w-sm`}
-    >
+    <FlowbiteToast className={`pointer-events-auto items-start gap-2.5 ${BG_CLASSES[toast.type]} text-white px-4 py-3 rounded-xl shadow-lg text-sm font-semibold animate-toast-in max-w-sm w-auto`}>
       {ICONS[toast.type]}
       <span className="flex-1 break-words">{toast.message}</span>
       <button
@@ -104,6 +107,6 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
       >
         <X className="w-3.5 h-3.5" />
       </button>
-    </div>
+    </FlowbiteToast>
   );
 }

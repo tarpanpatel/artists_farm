@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send, Mail, Bell, UserCog, Pencil, DatabaseBackup, Loader2, RefreshCw, AlertTriangle, UserRound, Receipt, Package } from 'lucide-react';
+import { Card } from 'flowbite-react';
+import { KpiCard } from './KpiCard';
 import { t } from '../i18n/en';
 import { AppearanceSettings } from './AppearanceSettings';
 import { PlatformPropertyManagement } from './PlatformPropertyManagement';
@@ -72,6 +74,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
       document.body.scrollTop = 0;
     }
   }, [activeSection]);
+
   const [navItems, setNavItems] = useState<any[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   // Kept in local state so a username change in Account Settings reflects
@@ -242,7 +245,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
     {
       id: 'edit_main_menu',
       label: t('root_edit_main_menu_label', 'Edit Main Menu'),
-      icon: Menu,
+      icon: Pencil,
       section: 'edit_main_menu' as SectionType,
     },
     {
@@ -298,13 +301,13 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
       {isSidebarOpen && (
         <div
           onClick={() => setIsSidebarOpen(false)}
-          className="fixed inset-0 z-30 bg-slate-900/50 backdrop-blur-xs md:hidden transition-opacity"
+          className="fixed inset-0 z-[55] bg-slate-900/50 backdrop-blur-xs md:hidden transition-opacity"
         />
       )}
 
       {/* Sidebar */}
       <aside
-        className={`root-admin-dashboard__sidebar fixed top-0 left-0 z-30 h-screen w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col transition-all duration-200 ${
+        className={`root-admin-dashboard__sidebar fixed top-0 left-0 z-[55] h-screen w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col transition-all duration-200 ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
@@ -330,11 +333,11 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                   onClick={() => goToSection(item.section)}
                   className={`w-full flex items-center gap-2.5 p-2.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-blue-600 text-white shadow-xs dark:bg-blue-600 dark:text-white font-semibold'
+                      ? 'bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white font-semibold'
                       : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400 dark:text-slate-400'}`} />
+                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-400'}`} />
                   <span className="truncate">{item.label}</span>
                 </button>
               );
@@ -413,123 +416,69 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                 {activeSection === 'account_settings' && t('root_account_settings_label', 'Account Settings')}
                 {activeSection === 'db_sync' && t('root_db_sync_label', 'Sync to Local')}
                 {activeSection === 'demo_data' && t('root_demo_data_label', 'Reset Demo Data')}
+                {activeSection === 'system_stock' && t('root_system_stock_label', 'System Stock Catalog')}
               </h2>
-              <p className="hidden sm:block text-sm text-slate-500 dark:text-slate-400 mt-1 truncate">
-                {activeSection === 'dashboard' && t('root_dashboard_subtitle', 'System overview and analytics')}
-                {activeSection === 'tenants_properties' && t('root_tenants_properties_subtitle', 'Manage all tenants and their properties')}
-                {activeSection === 'edit_main_menu' && t('root_edit_main_menu_subtitle', 'Global navigation menu for all properties')}
-                {activeSection === 'default_expenses' && t('root_default_expenses_subtitle', 'System expense categories and defaults')}
-                {activeSection === 'default_bills' && 'Manage bill types that appear as autocomplete suggestions on the Expenses form'}
-                {activeSection === 'service_request_types' && t('root_service_request_types_subtitle', 'Per-property service request quick-pick categories')}
-                {activeSection === 'appearance' && t('root_appearance_subtitle', 'Customize theme colors and CSS styling')}
-                {activeSection === 'telegram_templates' && t('root_telegram_templates_subtitle', "One shared template set for the whole platform - edit wording here. Group routing, test pings, and bot setup are configured per-property, on that property's own Telegram Alerts Config page.")}
-                {activeSection === 'email_settings' && t('root_email_settings_subtitle', 'SMTP connection and the tenant welcome email/WhatsApp message template')}
-                {activeSection === 'account_settings' && t('root_account_settings_subtitle', 'Edit your root admin username, passcode, email, phone and GSTIN')}
-                {activeSection === 'db_sync' && t('root_db_sync_subtitle', 'Download a full copy of the live database to keep local dev in sync')}
-                {activeSection === 'demo_data' && t('root_demo_data_subtitle', 'Regenerate sample guests, menu, inventory and staff on the public demo property')}
-              </p>
             </div>
           </div>
         </header>
 
-        {/* Content Area */}
-        <div className="root-admin-dashboard__content max-w-7xl mx-auto px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
-          {/* Dashboard Section */}
+        {/* ── Section Content ──────────────────────────────────────────────── */}
+        <div className="max-w-7xl mx-auto px-3 py-4 lg:px-8 lg:py-6">
+
+          {/* Dashboard */}
           {activeSection === 'dashboard' && (
             <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">{t('system_status_label', 'System Status')}</p>
-                      <p className="text-3xl font-semibold text-slate-900 dark:text-white">{t('online_status', 'Online')}</p>
-                    </div>
-                    <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-950/50 rounded-xl flex items-center justify-center">
-                      <div className="w-3 h-3 bg-emerald-600 rounded-full animate-pulse"></div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">{t('global_css_configured_label', 'Global CSS Configured')}</p>
-                      <p className="text-3xl font-semibold text-slate-900 dark:text-white">{t('yes_status', 'Yes')}</p>
-                    </div>
-                    <div className="w-12 h-12 bg-blue-100 dark:bg-blue-950/50 rounded-xl flex items-center justify-center">
-                      <Paintbrush className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">{t('admin_level_label', 'Admin Level')}</p>
-                      <p className="text-3xl font-semibold text-slate-900 dark:text-white">{t('root_level', 'Root')}</p>
-                    </div>
-                    <div className="w-12 h-12 bg-purple-100 dark:bg-purple-950/50 rounded-xl flex items-center justify-center">
-                      <span className="text-lg font-semibold text-purple-600 dark:text-purple-400">∞</span>
-                    </div>
-                  </div>
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <KpiCard
+                  label={t('root_total_properties_label', 'Total Properties')}
+                  value="—"
+                  icon={Building2}
+                />
+                <KpiCard
+                  label={t('root_active_tenants_label', 'Active Tenants')}
+                  value="—"
+                  icon={UserRound}
+                />
+                <KpiCard
+                  label={t('root_appearance_menu_label', 'Appearance')}
+                  value="—"
+                  icon={Paintbrush}
+                />
               </div>
-
-              <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="root-admin-dashboard__subtitle text-lg font-semibold text-slate-900 dark:text-white">{t('system_information_heading', 'System Information')}</h3>
-                  <button
-                    type="button"
-                    onClick={() => goToSection('account_settings')}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
-                  >
-                    <Pencil className="w-3.5 h-3.5" /> {t('edit_account_button', 'Edit')}
-                  </button>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-slate-700">
-                    <span className="text-slate-600 dark:text-slate-400">{t('current_role_label', 'Current Role')}</span>
-                    <span className="font-semibold text-slate-900 dark:text-white">{activeRole}</span>
-                  </div>
-                  <div className="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-slate-700">
-                    <span className="text-slate-600 dark:text-slate-400">{t('username_label', 'Username')}</span>
-                    <span className="font-semibold text-slate-900 dark:text-white">{displayUsername}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-600 dark:text-slate-400">{t('access_level_label', 'Access Level')}</span>
-                    <span className="font-semibold text-purple-600 dark:text-purple-400">{t('full_system_access_label', 'Full System Access')}</span>
-                  </div>
-                </div>
-              </div>
+              <Card className="shadow-md">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {t('root_dashboard_hint', 'Use the sidebar to navigate to any section. Select "Tenants & Properties" to manage all properties and tenants.')}
+                </p>
+              </Card>
             </div>
           )}
 
-          {/* Tenants & Properties Section */}
+          {/* Tenants & Properties */}
           {activeSection === 'tenants_properties' && (
-            <PlatformPropertyManagement username={username} onLogout={onLogout} />
+            <PlatformPropertyManagement username={displayUsername} onLogout={handleLogout} />
           )}
 
-          {/* Default Expenses Section */}
+          {/* Default Expenses */}
           {activeSection === 'default_expenses' && (
             <DefaultExpensesManager />
           )}
 
-          {/* System Stock Catalog Section */}
-          {activeSection === 'system_stock' && (
-            <SystemStockManager />
-          )}
-
-          {/* Default Bills Section */}
+          {/* Default Bills */}
           {activeSection === 'default_bills' && (
             <DefaultBillsManager />
           )}
 
-          {/* Service Request Types Section */}
+          {/* System Stock */}
+          {activeSection === 'system_stock' && (
+            <SystemStockManager />
+          )}
+
+          {/* Service Request Types */}
           {activeSection === 'service_request_types' && (
             <ServiceRequestTypesManager />
           )}
 
-          {/* Edit Main Menu Section */}
+          {/* Edit Main Menu */}
           {activeSection === 'edit_main_menu' && (
             <NavMenuEditor
               navItems={navItems}
@@ -539,12 +488,12 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
             />
           )}
 
-          {/* Appearance Settings Section */}
+          {/* Appearance Settings */}
           {activeSection === 'appearance' && (
             <AppearanceSettings activeRole={activeRole} />
           )}
 
-          {/* Telegram Templates Section - wording only. This page edits the one
+          {/* Telegram Templates - wording only. This page edits the one
               shared template set for the whole platform; per-property "Send
               to:" group routing, test pings, and bot setup are all property-
               specific and live on that property's own Telegram Alerts Config
@@ -574,17 +523,17 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
             </div>
           )}
 
-          {/* Email Settings Section */}
+          {/* Email Settings */}
           {activeSection === 'email_settings' && <EmailSettingsPanel />}
 
-          {/* Account Settings Section */}
+          {/* Account Settings */}
           {activeSection === 'account_settings' && (
             <AccountSettings username={displayUsername} onUsernameChange={handleUsernameChange} />
           )}
 
-          {/* DB Sync Section */}
+          {/* DB Sync */}
           {activeSection === 'db_sync' && (
-            <div className="max-w-2xl bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 space-y-4">
+            <Card className="max-w-2xl shadow-md space-y-4">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 bg-blue-100 dark:bg-blue-950/50 rounded-xl flex items-center justify-center shrink-0">
                   <DatabaseBackup className="w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -610,12 +559,12 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
               <p className="text-[11px] text-slate-400 dark:text-slate-500">
                 {t('root_db_sync_import_hint', 'After downloading, import it into your local MySQL (e.g. via phpMyAdmin\'s Import tab, or `mysql -u root artists_farm_resort < file.sql`).')}
               </p>
-            </div>
+            </Card>
           )}
 
-          {/* Reset Demo Data Section */}
+          {/* Reset Demo Data */}
           {activeSection === 'demo_data' && (
-            <div className="max-w-2xl bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 space-y-4">
+            <Card className="max-w-2xl shadow-md space-y-4">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 bg-amber-100 dark:bg-amber-950/50 rounded-xl flex items-center justify-center shrink-0">
                   <RefreshCw className="w-5 h-5 text-amber-600 dark:text-amber-400" />
@@ -656,11 +605,11 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                     className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-xl transition-all cursor-pointer shadow-xs"
                   >
                     {isResettingDemo ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                    {isResettingDemo ? t('root_demo_data_resetting', 'Resetting...') : t('root_demo_data_reset_button', 'Reset Demo Data')}
+                    {isResettingDemo ? t('root_demo_data_resetting', 'Resetting...') : t('root_demo_data_reset_button', 'Reset Demo Data Now')}
                   </button>
                 </>
               )}
-            </div>
+            </Card>
           )}
         </div>
       </main>

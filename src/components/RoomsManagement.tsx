@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Loader2, AlertCircle, Pencil, Check, X } from 'lucide-react';
+import { Modal, ModalHeader, ModalBody, ModalFooter, Alert } from 'flowbite-react';
 import { t } from '../i18n/en';
 import { Button } from './Button';
 import { Input } from './Input';
@@ -253,12 +254,11 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
       </div>
 
       {property.rooms.length === 0 && (
-        <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
-          <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-amber-800 dark:text-amber-300">
+        <Alert color="warning" icon={AlertCircle} className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300">
+          <p className="text-xs">
             {t('no_units_yet_description', 'No units yet. Add your first room to start taking bookings.')}
           </p>
-        </div>
+        </Alert>
       )}
 
       {property.rooms.length === 0 ? null : (
@@ -369,77 +369,64 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
       )}
 
       {/* Add Room Modal */}
-      {showAddRoomModal && (
-        <div className="rooms-management__modal fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-lg p-6 max-w-md w-full shadow-2xl">
-            <h3 className="rooms-management__subtitle text-lg font-semibold text-slate-900 dark:text-white mb-4">{t('add_new_room_title', 'Add New Room')}</h3>
+      <Modal
+        show={showAddRoomModal}
+        onClose={() => {
+          setShowAddRoomModal(false);
+          setNewRoom({ name: '', slug: '', default_tariff: '' });
+        }}
+        dismissible={!addingRoom}
+        size="md"
+        className="z-58 rooms-management__modal"
+      >
+        <ModalHeader>{t('add_new_room_title', 'Add New Room')}</ModalHeader>
+        <ModalBody className="space-y-4">
+          {property.room_count >= 10 && (
+            <Alert color="failure" className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 text-red-800 dark:text-red-300">
+              <p className="text-sm">{t('max_rooms_allowed_message', 'Maximum 10 rooms allowed')}</p>
+            </Alert>
+          )}
 
-            {property.room_count >= 10 && (
-              <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded">
-                <p className="text-sm text-red-800 dark:text-red-300">{t('max_rooms_allowed_message', 'Maximum 10 rooms allowed')}</p>
-              </div>
-            )}
+          <Input
+            label={t('room_name_label', 'Room Name *')}
+            value={newRoom.name}
+            onChange={(e) => {
+              const slug = e.target.value
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-|-$/g, '');
+              setNewRoom({ ...newRoom, name: e.target.value, slug });
+            }}
+            placeholder={t('room_name_placeholder', 'e.g., Suite A')}
+          />
 
-            <div className="space-y-4 mb-6">
-              <div>
-                <Input
-                  label={t('room_name_label', 'Room Name *')}
-                  value={newRoom.name}
-                  onChange={(e) => {
-                    const slug = e.target.value
-                      .toLowerCase()
-                      .replace(/[^a-z0-9]+/g, '-')
-                      .replace(/^-|-$/g, '');
-                    setNewRoom({ ...newRoom, name: e.target.value, slug });
-                  }}
-                  placeholder={t('room_name_placeholder', 'e.g., Suite A')}
-                />
-              </div>
+          <Input
+            label={t('room_slug_label', 'Room Slug')}
+            value={newRoom.slug}
+            onChange={(e) => setNewRoom({ ...newRoom, slug: e.target.value })}
+            placeholder={t('room_slug_placeholder', 'e.g., suite-a')}
+          />
 
-              <div>
-                <Input
-                  label={t('room_slug_label', 'Room Slug')}
-                  value={newRoom.slug}
-                  onChange={(e) => setNewRoom({ ...newRoom, slug: e.target.value })}
-                  placeholder={t('room_slug_placeholder', 'e.g., suite-a')}
-                />
-              </div>
-
-              <div>
-                <Input
-                  label={t('default_tariff_label', 'Default Tariff / Night (₹, optional)')}
-                  type="number"
-                  value={newRoom.default_tariff}
-                  onChange={(e) => setNewRoom({ ...newRoom, default_tariff: e.target.value })}
-                  placeholder={t('default_tariff_placeholder', 'e.g. 2000')}
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <Button
-                variant="secondary"
-                className="flex-1"
-                onClick={() => {
-                  setShowAddRoomModal(false);
-                  setNewRoom({ name: '', slug: '', default_tariff: '' });
-                }}
-              >
-                {t('cancel_button', 'Cancel')}
-              </Button>
-              <Button
-                variant="primary"
-                className="flex-1"
-                onClick={handleAddRoom}
-                disabled={addingRoom || !newRoom.name || !newRoom.slug}
-                leftIcon={addingRoom ? <Loader2 className="w-3 h-3 animate-spin" /> : undefined}
-              >
-                {addingRoom ? t('adding_room_button', 'Adding...') : t('add_room_button', 'Add Room')}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+          <Input
+            label={t('default_tariff_label', 'Default Tariff / Night (₹, optional)')}
+            type="number"
+            value={newRoom.default_tariff}
+            onChange={(e) => setNewRoom({ ...newRoom, default_tariff: e.target.value })}
+            placeholder={t('default_tariff_placeholder', 'e.g. 2000')}
+          />
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            variant="primary"
+            block
+            onClick={handleAddRoom}
+            disabled={addingRoom || !newRoom.name || !newRoom.slug}
+            leftIcon={addingRoom ? <Loader2 className="w-3 h-3 animate-spin" /> : undefined}
+          >
+            {addingRoom ? t('adding_room_button', 'Adding...') : t('add_room_button', 'Add Room')}
+          </Button>
+        </ModalFooter>
+      </Modal>
     </div>
   );
 };

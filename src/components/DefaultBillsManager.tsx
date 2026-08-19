@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Receipt, AlertCircle, Loader2, Search, CheckCircle2, FileText } from 'lucide-react';
+import { Modal, ModalHeader, ModalBody, Alert } from 'flowbite-react';
 import { useConfirm } from './ConfirmDialogContext';
 import { Button } from './Button';
 import { Input } from './Input';
@@ -193,16 +194,14 @@ export const DefaultBillsManager: React.FC = () => {
 
       {/* Messages */}
       {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex gap-3">
-          <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-          <p className="text-red-700 dark:text-red-300 text-sm">{error}</p>
-        </div>
+        <Alert color="failure" icon={AlertCircle} className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300">
+          <span className="text-sm">{error}</span>
+        </Alert>
       )}
       {success && (
-        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 flex gap-2 items-center">
-          <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
-          <p className="text-green-700 dark:text-green-300 text-sm">{success}</p>
-        </div>
+        <Alert color="success" icon={CheckCircle2} className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300">
+          <span className="text-sm">{success}</span>
+        </Alert>
       )}
 
       {/* Add New Form */}
@@ -312,50 +311,33 @@ export const DefaultBillsManager: React.FC = () => {
       )}
 
       {/* Edit Modal */}
-      {editingItem && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-              <Edit2 className="w-4 h-4 text-blue-600" />
-              Edit Bill Item
-            </h3>
-            <form onSubmit={handleEditItem} className="space-y-4">
-              <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Bill Name</label>
-                <Input
-                  value={editForm.label}
-                  onChange={(e) => setEditForm({ ...editForm, label: e.target.value })}
-                  autoFocus
-                />
-              </div>
-              <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Description / Notes (Optional)</label>
-                <Input
-                  value={editForm.description}
-                  onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                  placeholder="e.g., Monthly electricity charges"
-                />
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50 cursor-pointer transition-colors"
-                >
-                  {saving ? 'Saving...' : 'Update'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEditingItem(null)}
-                  className="flex-1 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-lg cursor-pointer transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <Modal show={!!editingItem} onClose={() => setEditingItem(null)} dismissible={!saving} size="md" className="z-58">
+        <ModalHeader as="div">
+          <span className="flex items-center gap-2">
+            <Edit2 className="w-4 h-4 text-blue-600" />
+            Edit Bill Item
+          </span>
+        </ModalHeader>
+        <ModalBody>
+          <form onSubmit={handleEditItem} className="space-y-4">
+            <Input
+              label="Bill Name"
+              value={editForm.label}
+              onChange={(e) => setEditForm({ ...editForm, label: e.target.value })}
+              autoFocus
+            />
+            <Input
+              label="Description / Notes (Optional)"
+              value={editForm.description}
+              onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+              placeholder="e.g., Monthly electricity charges"
+            />
+            <Button type="submit" variant="primary" block disabled={saving}>
+              {saving ? 'Saving...' : 'Update'}
+            </Button>
+          </form>
+        </ModalBody>
+      </Modal>
     </div>
   );
 };

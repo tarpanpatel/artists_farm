@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { Alert } from 'flowbite-react';
 import { AlertCircle, Lock, Phone, KeyRound, Building2, ShieldCheck, Mail, CheckCircle2, ArrowLeft, Loader2, Delete } from 'lucide-react';
 import { t } from '../i18n/en';
 
@@ -476,10 +477,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
         {/* Login Form */}
         <form onSubmit={handleLogin} ref={loginFormRef} className="app-form app-form--login space-y-4">
           {error && (
-            <div className="flex gap-3 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl">
-              <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
-              <p className="text-xs font-medium text-red-800 dark:text-red-300">{error}</p>
-            </div>
+            <Alert color="failure" icon={AlertCircle} className="rounded-xl">
+              <span>{error}</span>
+            </Alert>
           )}
 
           {/* Mobile Number Input */}

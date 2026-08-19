@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { IdCard, X, Upload, Trash2, CheckCircle2, AlertCircle, Loader2, Plus } from 'lucide-react';
+import { IdCard, Upload, Trash2, CheckCircle2, AlertCircle, Loader2, Plus } from 'lucide-react';
+import { Modal, ModalHeader, ModalBody, ModalFooter, Alert } from 'flowbite-react';
 import { Guest } from '../types';
 import {
   GuestIdDocument,
@@ -61,8 +62,6 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
       setLoading(false);
     });
   }, [isOpen, guest.id]);
-
-  if (!isOpen) return null;
 
   const docForIndex = (index: number) => documents.find((d) => d.guestIndex === index);
 
@@ -134,50 +133,42 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
   const totalSlotCount = Math.max(initialSlotCount, highestUploadedIndex + 1) + extraSlots;
 
   return (
-    <div className="checkin-verification-modal__overlay fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-70 animate-in fade-in">
-      <div className="checkin-verification-modal__content bg-white dark:bg-slate-800 rounded-2xl max-w-2xl w-full border border-slate-200 dark:border-slate-700 shadow-2xl p-6 space-y-5 max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="checkin-verification-modal__header flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
-              <IdCard className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-            </div>
-            <div>
-              <h3 className="checkin-verification-modal__subtitle text-lg font-semibold text-slate-800 dark:text-slate-100">
-                {t('complete_checkin_heading_prefix')} {guest.guestName}
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                {guest.roomNumber} · {requiredCount} {t('id_documents_required_text')}{requiredCount > 1 ? 's' : ''} required
-              </p>
-            </div>
+    // z-70: opened from within the already-open guest check-in flow modal,
+    // so it stacks above that z-58 page modal (see the z-index scale note
+    // in src/index.css).
+    <Modal show={isOpen} onClose={onClose} dismissible={!completing} size="2xl" className="z-70 checkin-verification-modal__overlay">
+      <ModalHeader as="div">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
+            <IdCard className="w-5 h-5 text-purple-600 dark:text-purple-400" />
           </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-2 rounded-lg transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {successMsg && (
-          <div className="flex items-start gap-2 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-            <p className="text-xs text-emerald-700 dark:text-emerald-300 font-medium">{successMsg}</p>
-          </div>
-        )}
-        {errorMsg && (
-          <div className="flex items-start gap-2 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-3">
-            <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
-            <p className="text-xs text-red-700 dark:text-red-300 font-medium">{errorMsg}</p>
-          </div>
-        )}
-        {alreadyComplete && !successMsg && (
-          <div className="flex items-start gap-2 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-            <p className="text-xs text-emerald-700 dark:text-emerald-300 font-medium">
-              {t('already_verified_message', "This booking's check-in is already verified. You can still replace a photo below if needed.")}
+          <div>
+            <h3 className="checkin-verification-modal__subtitle text-lg font-semibold text-slate-800 dark:text-slate-100">
+              {t('complete_checkin_heading_prefix')} {guest.guestName}
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              {guest.roomNumber} · {requiredCount} {t('id_documents_required_text')}{requiredCount > 1 ? 's' : ''} required
             </p>
           </div>
+        </div>
+      </ModalHeader>
+      <ModalBody className="space-y-5">
+        {successMsg && (
+          <Alert color="success" icon={CheckCircle2} className="border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
+            <p className="text-xs font-medium">{successMsg}</p>
+          </Alert>
+        )}
+        {errorMsg && (
+          <Alert color="failure" icon={AlertCircle} className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300">
+            <p className="text-xs font-medium">{errorMsg}</p>
+          </Alert>
+        )}
+        {alreadyComplete && !successMsg && (
+          <Alert color="success" icon={CheckCircle2} className="border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
+            <p className="text-xs font-medium">
+              {t('already_verified_message', "This booking's check-in is already verified. You can still replace a photo below if needed.")}
+            </p>
+          </Alert>
         )}
 
         {/* Upload slots */}
@@ -262,37 +253,27 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
             </button>
           </>
         )}
-
-        {/* Footer */}
-        <div className="border-t border-slate-100 dark:border-slate-700 pt-4 space-y-3">
-          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium text-center">
-            {requiredUploadedCount} of {requiredCount} required ID document uploaded
-          </p>
-          <div className="flex gap-2">
-            <button
-              onClick={onClose}
-              className="flex-1 py-2.5 bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 text-slate-700 dark:text-slate-100 font-semibold rounded-lg transition-colors cursor-pointer"
-            >
-              {t('close_button', 'Close')}
-            </button>
-            <button
-              onClick={handleCompleteCheckin}
-              disabled={!allUploaded || completing}
-              className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 dark:disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-2"
-            >
-              {completing ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" /> {t('completing_button', 'Completing...')}
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="w-4 h-4" /> {t('checkin_complete_button', 'Check-in Complete')}
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+      </ModalBody>
+      <ModalFooter className="flex-col items-stretch gap-3">
+        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium text-center">
+          {requiredUploadedCount} of {requiredCount} required ID document uploaded
+        </p>
+        <button
+          onClick={handleCompleteCheckin}
+          disabled={!allUploaded || completing}
+          className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 dark:disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-2"
+        >
+          {completing ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" /> {t('completing_button', 'Completing...')}
+            </>
+          ) : (
+            <>
+              <CheckCircle2 className="w-4 h-4" /> {t('checkin_complete_button', 'Check-in Complete')}
+            </>
+          )}
+        </button>
+      </ModalFooter>
+    </Modal>
   );
 };

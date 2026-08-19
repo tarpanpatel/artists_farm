@@ -18,6 +18,7 @@ import {
   ExternalLink,
   Upload,
 } from 'lucide-react';
+import { Modal, ModalHeader, ModalBody, ModalFooter } from 'flowbite-react';
 import { apiFetch, API_ROOT_BASE, uploadDocumentDB } from '../services/api';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
@@ -461,148 +462,140 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
         </div>
       )}
 
-      {isModalOpen && (
-        <div className="license-management__modal fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-lg text-slate-900 dark:text-white">
-                {editingLicense ? t('edit_license_heading', 'Edit License') : t('add_new_license_heading', 'Add New License')}
-              </h3>
-              <button
-                type="button"
-                onClick={closeModal}
-                className="p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
+      <Modal
+        show={isModalOpen}
+        onClose={closeModal}
+        dismissible={!isSaving && !isUploadingDoc}
+        className="z-58 license-management__modal"
+      >
+        <ModalHeader as="div">
+          <h3 className="font-semibold text-lg text-slate-900 dark:text-white">
+            {editingLicense ? t('edit_license_heading', 'Edit License') : t('add_new_license_heading', 'Add New License')}
+          </h3>
+        </ModalHeader>
+        <form onSubmit={handleSubmit} className="app-form app-form--license">
+          <ModalBody className="space-y-4">
+            <div>
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
+                {t('license_type_label', 'License Type *')}
+              </label>
+              <StyledSelect
+                value={form.license_type}
+                onChange={(v) => setForm({ ...form, license_type: v })}
+                options={LICENSE_TYPES.map((lt) => ({ value: lt.value, label: t(lt.labelKey, lt.fallback) }))}
+              />
             </div>
-
-            <form onSubmit={handleSubmit} className="app-form app-form--license space-y-4">
-              <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-                  {t('license_type_label', 'License Type *')}
-                </label>
-                <StyledSelect
-                  value={form.license_type}
-                  onChange={(v) => setForm({ ...form, license_type: v })}
-                  options={LICENSE_TYPES.map((lt) => ({ value: lt.value, label: t(lt.labelKey, lt.fallback) }))}
-                />
-              </div>
-              <div>
-                <Input
-                  label={t('license_name_label', 'License Name')}
-                  type="text"
-                  value={form.license_name}
-                  onChange={(e) => setForm({ ...form, license_name: e.target.value })}
-                  placeholder={t('license_name_placeholder', 'e.g., Homestay License - Rajasthan')}
-                />
-              </div>
-              <div>
-                <Input
-                  label={t('license_number_label', 'License Number *')}
-                  type="text"
-                  required
-                  value={form.license_number}
-                  onChange={(e) => setForm({ ...form, license_number: e.target.value })}
-                  placeholder={t('license_number_placeholder', 'e.g., HM/2024/00123')}
-                />
-              </div>
-              <div>
-                <Input
-                  label={t('issuing_authority_label', 'Issuing Authority')}
-                  type="text"
-                  value={form.issuing_authority}
-                  onChange={(e) => setForm({ ...form, issuing_authority: e.target.value })}
-                  placeholder={t('issuing_authority_placeholder', 'e.g., Department of Tourism, Rajasthan')}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Input
-                  label={t('license_start_date_label', 'Start Date *')}
-                  type="date"
-                  required
-                  value={form.start_date}
-                  onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-                />
-                <Input
-                  label={t('license_expiry_date_label', 'Expiry Date *')}
-                  type="date"
-                  required
-                  value={form.end_date}
-                  onChange={(e) => setForm({ ...form, end_date: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-                  {t('license_notes_label', 'Notes')}
-                </label>
-                <textarea
-                  value={form.notes}
-                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                  placeholder={t('notes_placeholder', 'Any additional information...')}
-                  rows={2}
-                  className="app-input w-full px-3.5 py-2.5 text-sm rounded-lg border border-[var(--input-border-default)] bg-[var(--input-bg-default)] text-[var(--input-text-default)] placeholder:text-[var(--input-placeholder)] hover:border-slate-400 dark:hover:border-slate-500 focus:border-[var(--input-border-focus)] focus:ring-4 focus:ring-[var(--input-ring-focus)] outline-none transition-all duration-200 resize-none"
-                />
-              </div>
-              <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-                  {t('license_document_label', 'License Document')}
-                </label>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="application/pdf,image/jpeg,image/png,image/webp"
-                  onChange={handleDocumentSelected}
-                  className="hidden"
-                />
-                {isUploadingDoc ? (
-                  <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400 border border-dashed border-slate-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5">
-                    <Loader2 className="w-4 h-4 animate-spin" /> {t('license_doc_uploading_label', 'Uploading...')}
-                  </div>
-                ) : form.document_url ? (
-                  <div className="license-management__doc-attached flex items-center justify-between gap-2 border border-slate-200 dark:border-slate-600 rounded-lg px-3.5 py-2.5 bg-slate-50 dark:bg-slate-700/50">
-                    <a
-                      href={form.document_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 min-w-0 text-xs font-semibold text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                    >
-                      {isImageUrl(form.document_url) ? <ImageIcon className="w-4 h-4 shrink-0" /> : <FileText className="w-4 h-4 shrink-0" />}
-                      <span className="truncate">{t('view_document_label', 'View Document')}</span>
-                      <ExternalLink className="w-3 h-3 shrink-0" />
-                    </a>
-                    <button
-                      type="button"
-                      onClick={() => setForm((prev) => ({ ...prev, document_url: null }))}
-                      title={t('remove_document_label', 'Remove')}
-                      className="p-1 rounded-full text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors cursor-pointer shrink-0"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ) : (
+            <div>
+              <Input
+                label={t('license_name_label', 'License Name')}
+                type="text"
+                value={form.license_name}
+                onChange={(e) => setForm({ ...form, license_name: e.target.value })}
+                placeholder={t('license_name_placeholder', 'e.g., Homestay License - Rajasthan')}
+              />
+            </div>
+            <div>
+              <Input
+                label={t('license_number_label', 'License Number *')}
+                type="text"
+                required
+                value={form.license_number}
+                onChange={(e) => setForm({ ...form, license_number: e.target.value })}
+                placeholder={t('license_number_placeholder', 'e.g., HM/2024/00123')}
+              />
+            </div>
+            <div>
+              <Input
+                label={t('issuing_authority_label', 'Issuing Authority')}
+                type="text"
+                value={form.issuing_authority}
+                onChange={(e) => setForm({ ...form, issuing_authority: e.target.value })}
+                placeholder={t('issuing_authority_placeholder', 'e.g., Department of Tourism, Rajasthan')}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label={t('license_start_date_label', 'Start Date *')}
+                type="date"
+                required
+                value={form.start_date}
+                onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+              />
+              <Input
+                label={t('license_expiry_date_label', 'Expiry Date *')}
+                type="date"
+                required
+                value={form.end_date}
+                onChange={(e) => setForm({ ...form, end_date: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
+                {t('license_notes_label', 'Notes')}
+              </label>
+              <textarea
+                value={form.notes}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                placeholder={t('notes_placeholder', 'Any additional information...')}
+                rows={2}
+                className="app-input w-full px-3.5 py-2.5 text-sm rounded-lg border border-[var(--input-border-default)] bg-[var(--input-bg-default)] text-[var(--input-text-default)] placeholder:text-[var(--input-placeholder)] hover:border-slate-400 dark:hover:border-slate-500 focus:border-[var(--input-border-focus)] focus:ring-4 focus:ring-[var(--input-ring-focus)] outline-none transition-all duration-200 resize-none"
+              />
+            </div>
+            <div>
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
+                {t('license_document_label', 'License Document')}
+              </label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/pdf,image/jpeg,image/png,image/webp"
+                onChange={handleDocumentSelected}
+                className="hidden"
+              />
+              {isUploadingDoc ? (
+                <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400 border border-dashed border-slate-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5">
+                  <Loader2 className="w-4 h-4 animate-spin" /> {t('license_doc_uploading_label', 'Uploading...')}
+                </div>
+              ) : form.document_url ? (
+                <div className="license-management__doc-attached flex items-center justify-between gap-2 border border-slate-200 dark:border-slate-600 rounded-lg px-3.5 py-2.5 bg-slate-50 dark:bg-slate-700/50">
+                  <a
+                    href={form.document_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 min-w-0 text-xs font-semibold text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                  >
+                    {isImageUrl(form.document_url) ? <ImageIcon className="w-4 h-4 shrink-0" /> : <FileText className="w-4 h-4 shrink-0" />}
+                    <span className="truncate">{t('view_document_label', 'View Document')}</span>
+                    <ExternalLink className="w-3 h-3 shrink-0" />
+                  </a>
                   <button
                     type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-full flex items-center justify-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 border border-dashed border-slate-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
+                    onClick={() => setForm((prev) => ({ ...prev, document_url: null }))}
+                    title={t('remove_document_label', 'Remove')}
+                    className="p-1 rounded-full text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors cursor-pointer shrink-0"
                   >
-                    <Upload className="w-4 h-4" />
-                    {t('upload_document_button', 'Upload PDF, JPG, or PNG')}
+                    <X className="w-3.5 h-3.5" />
                   </button>
-                )}
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="secondary" onClick={closeModal} disabled={isSaving || isUploadingDoc}>
-                  {t('cancel_button', 'Cancel')}
-                </Button>
-                <Button type="submit" variant="primary" disabled={isSaving || isUploadingDoc} leftIcon={isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}>
-                  {editingLicense ? t('update_license_button', 'Update License') : t('add_license_button', 'Add License')}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full flex items-center justify-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 border border-dashed border-slate-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
+                >
+                  <Upload className="w-4 h-4" />
+                  {t('upload_document_button', 'Upload PDF, JPG, or PNG')}
+                </button>
+              )}
+            </div>
+          </ModalBody>
+          <ModalFooter className="justify-end">
+            <Button type="submit" variant="primary" disabled={isSaving || isUploadingDoc} leftIcon={isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}>
+              {editingLicense ? t('update_license_button', 'Update License') : t('add_license_button', 'Add License')}
+            </Button>
+          </ModalFooter>
+        </form>
+      </Modal>
     </div>
   );
 };
