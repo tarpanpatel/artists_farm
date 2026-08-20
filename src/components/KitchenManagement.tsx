@@ -90,6 +90,11 @@ interface KitchenManagementProps {
   propertyUpiQrCodeUrl?: string;
 }
 
+// Sentinel dropdown value for the "New Customer" row in the walk-in tab
+// picker (20 Aug 2026) - distinct from any real tab id (which are numbers
+// serialized as strings), so it can never collide with a DB-assigned tab.
+const NEW_WALKIN_CUSTOMER_VALUE = '__new_customer__';
+
 export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   guests,
   menu,
@@ -1041,6 +1046,12 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   // so it appears immediately next to "Walk-in · ₹..." while the guest is
   // still building their cart.
   const [isStartingNewTab, setIsStartingNewTab] = useState(false);
+  // "+ Add New" popup (20 Aug 2026, replaced an earlier inline text-field
+  // version): the walk-in picker is now a closed dropdown of existing tabs,
+  // so there's no free-text box left on the page itself to type a brand-new
+  // name into - this small modal is that name entry, reusing the same
+  // newTabLabel state and handleStartWalkInOrder create-tab logic below.
+  const [isAddNewWalkInOpen, setIsAddNewWalkInOpen] = useState(false);
   const handleStartWalkInOrder = async () => {
     const trimmedLabel = newTabLabel.trim();
     if (!trimmedLabel || isStartingNewTab) return;
@@ -1054,6 +1065,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     await refreshWalkInTabs();
     setSelectedWalkInTabId(newTabId);
     setNewTabLabel('');
+    setIsAddNewWalkInOpen(false);
   };
 
   useEffect(() => {
@@ -1821,71 +1833,63 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 </div>
               )}
 
-              {/* Walk-in Tab Controls - Table/Customer field and New Customer button in the SAME row */}
-              {orderMode === 'walkin' && (
-                <div className="w-full pt-2.5 mt-0.5 border-t border-gray-100 dark:border-gray-700/80 space-y-2">
-                  <div className="flex items-center gap-2 w-full">
-                    {selectedWalkInTabId === null && (
+              {/* Walk-in Tab Picker - dropdown of open tabs (newest first) plus
+                  a "New Customer" row, with a button beside it whose label/
+                  action follows whatever's currently selected (20 Aug 2026,
+                  replaced the old free-text field + pill-row layout). */}
+              {orderMode === 'walkin' && (() => {
+                const sortedOpenTabs = [...openTabs].sort((a, b) => b.id - a.id);
+                const walkInDropdownOptions = [
+                  { value: NEW_WALKIN_CUSTOMER_VALUE, label: t('new_customer_button', 'New Customer') },
+                  ...(sortedOpenTabs.length > 0
+                    ? sortedOpenTabs.map((tab) => ({
+                        value: String(tab.id),
+                        label: `${tab.label || t('walk_in_badge', 'Walk-in')} · ₹${tab.subtotal.toLocaleString('en-IN')}`,
+                      }))
+                    : [{ value: '__no_active_tables__', label: t('no_active_tables_option', 'No active tables'), disabled: true }]),
+                ];
+                const selectedTabForBilling = selectedWalkInTabId != null
+                  ? walkInTabs.find((tab) => tab.id === selectedWalkInTabId)
+                  : null;
+
+                return (
+                  <div className="w-full pt-2.5 mt-0.5 border-t border-gray-100 dark:border-gray-700/80">
+                    <div className="flex items-center gap-2 w-full">
                       <div className="flex-1 min-w-0">
-                        <FlowbiteTextInput
-                          type="text"
-                          value={newTabLabel}
-                          onChange={(e) => setNewTabLabel(e.target.value)}
-                          placeholder={t('walk_in_name_placeholder', 'Table / customer name')}
-                          sizing="sm"
-                          className="w-full"
+                        <StyledSelect
+                          value={selectedWalkInTabId === null ? NEW_WALKIN_CUSTOMER_VALUE : String(selectedWalkInTabId)}
+                          onChange={(val) => setSelectedWalkInTabId(val === NEW_WALKIN_CUSTOMER_VALUE ? null : Number(val))}
+                          searchable
+                          options={walkInDropdownOptions}
+                          buttonClassName="!h-9 !text-xs"
                         />
                       </div>
-                    )}
-                    {selectedWalkInTabId === null ? (
-                      // "Start Order" (20 Aug 2026) - once a name is typed,
-                      // this button opens the tab right away (rather than
-                      // waiting for the first order to be sent) so it shows
-                      // up as its own pill below immediately, next to any
-                      // other open tab like "Walk-in".
-                      <button
-                        type="button"
-                        onClick={handleStartWalkInOrder}
-                        disabled={!newTabLabel.trim() || isStartingNewTab}
-                        className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-all shrink-0 whitespace-nowrap ${
-                          newTabLabel.trim() && !isStartingNewTab
-                            ? 'bg-blue-600 border-blue-600 text-white shadow-md hover:bg-blue-700 cursor-pointer'
-                            : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600 cursor-not-allowed'
-                        }`}
-                      >
-                        {isStartingNewTab ? t('starting_order_button', 'Starting…') : t('start_order_button', 'Start Order')}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedWalkInTabId(null)}
-                        className="px-3 py-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer shrink-0 whitespace-nowrap bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-blue-400"
-                      >
-                        + {t('new_customer_button', 'New Customer')}
-                      </button>
-                    )}
-                  </div>
-
-                  {openTabs.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-2 pt-0.5">
-                      {openTabs.map((tab) => (
+                      {selectedWalkInTabId === null ? (
                         <button
-                          key={tab.id}
                           type="button"
-                          onClick={() => setSelectedWalkInTabId(tab.id)}
-                          className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
-                            selectedWalkInTabId === tab.id
-                              ? 'bg-blue-600 border-blue-600 text-white shadow-md'
-                              : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-blue-400'
-                          }`}
+                          onClick={() => setIsAddNewWalkInOpen(true)}
+                          className="px-3 py-2 rounded-lg text-xs font-semibold border border-blue-600 bg-blue-600 hover:bg-blue-700 text-white shadow-md transition-all cursor-pointer shrink-0 whitespace-nowrap"
                         >
-                          {tab.label || t('walk_in_badge', 'Walk-in')} · ₹{tab.subtotal.toLocaleString('en-IN')}
+                          + {t('add_new_button', 'Add New')}
                         </button>
-                      ))}
+                      ) : (
+                        // "Bill This Table" (20 Aug 2026) - lets staff jump
+                        // straight to checkout for whichever tab is picked
+                        // above, without switching to the separate Walk-ins
+                        // tab first. Opens the same WalkInTabBillModal drawer
+                        // that tab already uses (see billingTab state).
+                        <button
+                          type="button"
+                          onClick={() => selectedTabForBilling && setBillingTab(selectedTabForBilling)}
+                          className="px-3 py-2 rounded-lg text-xs font-semibold border border-emerald-600 bg-emerald-600 hover:bg-emerald-700 text-white shadow-md transition-all cursor-pointer shrink-0 whitespace-nowrap"
+                        >
+                          {t('bill_this_table_button', 'Bill This Table')}
+                        </button>
+                      )}
                     </div>
-                  )}
-                </div>
-              )}
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
@@ -2718,6 +2722,45 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           </div>
         </div>
       )}
+        {/* ADD NEW WALK-IN CUSTOMER MODAL - the walk-in picker above is a
+            closed dropdown, so this small popup is the only place left to
+            type a brand-new table/customer name (20 Aug 2026). */}
+        <Modal
+          show={isAddNewWalkInOpen}
+          onClose={() => { setIsAddNewWalkInOpen(false); setNewTabLabel(''); }}
+          dismissible={!isStartingNewTab}
+          size="sm"
+          className="z-58"
+        >
+          <ModalHeader as="div">
+            <h3 className="kitchen-management__subtitle font-semibold text-slate-800 dark:text-slate-200 text-xs tracking-wide flex items-center gap-2">
+              <Plus className="w-4 h-4" /> {t('add_new_walk_in_heading', 'Add New Walk-in')}
+            </h3>
+          </ModalHeader>
+          <ModalBody className="space-y-4">
+            <Input
+              label={t('walk_in_name_placeholder', 'Table / customer name')}
+              type="text"
+              placeholder={t('e_g_table_5_placeholder', 'e.g. Table 5, Rahul')}
+              value={newTabLabel}
+              onChange={(e) => setNewTabLabel(e.target.value)}
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && newTabLabel.trim() && !isStartingNewTab) handleStartWalkInOrder();
+              }}
+            />
+            <Button
+              variant="primary"
+              size="md"
+              block
+              onClick={handleStartWalkInOrder}
+              disabled={!newTabLabel.trim() || isStartingNewTab}
+            >
+              {isStartingNewTab ? t('starting_order_button', 'Starting…') : t('start_order_button', 'Start Order')}
+            </Button>
+          </ModalBody>
+        </Modal>
+
         {/* CUSTOM MEAL MODAL */}
         <Modal show={isCustomMealModalOpen} onClose={() => setIsCustomMealModalOpen(false)} dismissible size="sm" className="z-58">
           <ModalHeader as="div">

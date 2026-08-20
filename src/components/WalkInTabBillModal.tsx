@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Share2, Loader2, CheckCircle2 } from 'lucide-react';
-import { Modal, ModalHeader, ModalBody, Checkbox } from 'flowbite-react';
+import { Share2, Loader2, CheckCircle2, X } from 'lucide-react';
+import { Drawer as FlowbiteDrawer, DrawerItems, Checkbox } from 'flowbite-react';
 import * as htmlToImage from 'html-to-image';
 import { WalkInTab } from '../types';
 import { billWalkInTabDB } from '../services/api';
@@ -121,13 +121,37 @@ export const WalkInTabBillModal: React.FC<WalkInTabBillModalProps> = ({
     .join('\n')}\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\nðŸ’µ *Subtotal:* ₹${bill.subtotal.toFixed(2)}${bill.discount > 0 ? `\nâž– *Discount:* ₹${bill.discount.toFixed(2)}` : ''}${bill.gstEnabled ? `\nâž• *GST (${bill.gstRate}%):* ₹${bill.gstAmount.toFixed(2)}` : ''}\nðŸ’° *Grand Total:* ₹${bill.grandTotal.toFixed(2)}${propertyUpiId ? `\nðŸ’³ *Pay via UPI:* ${propertyUpiId}` : ''}\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\nThank you!`;
 
   return (
-    <Modal show onClose={onClose} dismissible={!isSubmitting} size="md" className="z-58 walk-in-tab-bill-modal">
-      <ModalHeader>
-        {isBilled ? t('walk_in_bill_title', 'Walk-in Bill') : t('bill_this_tab_heading', 'Bill This Tab')}
-      </ModalHeader>
-      <ModalBody className="p-0">
+    // Right-side drawer (converted from a centered Modal 20 Aug 2026) so
+    // billing a walk-in tab reads the same everywhere it's triggered from -
+    // both this component's original call site (Walk-ins tab's "Bill This
+    // Tab" button) and Take Order's "Bill This Table" button - instead of
+    // two different popup styles for the same action. Mirrors the exact
+    // Drawer shell BookingDetailsModal.tsx already established
+    // (position="right", custom header row + close button, DrawerItems as
+    // the scrollable body) rather than inventing a second convention.
+    <FlowbiteDrawer
+      open
+      onClose={isSubmitting ? () => {} : onClose}
+      position="right"
+      className="walk-in-tab-bill-modal z-60 w-full sm:max-w-md h-full bg-white dark:bg-gray-800 p-0 flex flex-col shadow-2xl transition-transform border-l border-gray-200 dark:border-gray-700"
+    >
+      <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 dark:border-gray-700 shrink-0 bg-white dark:bg-gray-800">
+        <h2 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">
+          {isBilled ? t('walk_in_bill_title', 'Walk-in Bill') : t('bill_this_tab_heading', 'Bill This Tab')}
+        </h2>
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={isSubmitting}
+          className="text-gray-400 bg-transparent hover:bg-gray-100 hover:text-gray-900 rounded-lg text-sm w-8 h-8 inline-flex items-center justify-center dark:hover:bg-gray-700 dark:hover:text-white cursor-pointer transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+          aria-label="Close drawer"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+      <DrawerItems className="flex-1 overflow-y-auto">
         {!isBilled ? (
-          <div className="p-4 space-y-4">
+          <div className="p-4 sm:p-5 space-y-4">
             <div>
               <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
                 {tab.label || t('walk_in_badge', 'Walk-in')}
@@ -203,7 +227,7 @@ export const WalkInTabBillModal: React.FC<WalkInTabBillModalProps> = ({
             </button>
           </div>
         ) : (
-          <div className="p-4 space-y-4">
+          <div className="p-4 sm:p-5 space-y-4">
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -286,7 +310,7 @@ export const WalkInTabBillModal: React.FC<WalkInTabBillModalProps> = ({
             </button>
           </div>
         )}
-      </ModalBody>
-    </Modal>
+      </DrawerItems>
+    </FlowbiteDrawer>
   );
 };
