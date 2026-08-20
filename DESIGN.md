@@ -99,4 +99,33 @@ All log tables, financial ledgers, receipts, and management tables across the ap
 7. **Pagination Dropdown**:
    - Rows-per-page dropdown is styled with opaque backgrounds (`#ffffff` light / `#1f2937` dark) and custom Flowbite arrows so options never render with transparent or glitchy overlays.
 
+## Attached Tabs Specification (Default Variant)
+
+Canonical Flowbite Tabs reference: https://github.com/themesberg/flowbite/blob/main/content/components/tabs.md
+
+All primary sub-page and section tab bars across the platform (e.g. `#take_food_order` / `#kitchen_orders` in `KitchenManagement.tsx`, Master Materials vs Categories in `InventoryManagement.tsx`, Appearance/Theme settings, the booking-status tabs in `BillingCheckout.tsx`) start from `variant="default"` on `<Tabs>`, but where a tab bar sits directly above the card/table it controls, it must use the **attached-tabs** treatment rather than Flowbite's bare default styling - reference implementation: `src/utils/tabsTheme.ts`'s `attachedTabsTheme` (20 Aug 2026, superseding the earlier plain bottom-border spec this section used to describe). Import that constant rather than re-deriving the theme object per page.
+- **Tabs always sit on the card, never inside it**: the `<Tabs>` and the card/table below it are siblings with zero gap between them (no shared border/bg wrapper around both - that reads as "tabs stuck inside a box", not "tabs attached to the box"). The card gets `rounded-t-none` since the tabs own the rounded top edge of the whole unit.
+- **Every tab has its own border, active or inactive** - not just the container. This is what lets an inactive tab read as a distinct, closed tab shape next to the open one, unlike Flowbite's stock default variant which puts no border on inactive tabs at all.
+- **Active tab**: white background (`dark:bg-gray-800`, matching the card's own background) and **no bottom border** - the tab visually "opens" straight into the card below it with no dividing line. This is the actual mechanism behind "sitting on the card", not just visual proximity.
+- **Inactive tabs**: fully transparent background (no fill) so only the border outline shows, plus a bottom border (closing the box) that the active tab deliberately omits.
+- **Tab Content Isolation**: each `TabItem` stays childless where the tab bar is attached to a card this way - the actual tab content lives in the card below (driven by the same active-tab state), not as the `Tabs` component's own tabpanel.
+
+## Buttons
+
+- **No button ever has a box-shadow**, in any state (default/hover/active/focus) - flat fill + border only. This is a deliberate departure from Flowbite's own `Button` theme.js, which puts `shadow-sm` on its base and additional `shadow-sm`/`shadow-xs` on solid color variants; the shared `src/components/Button.tsx` explicitly cancels all of it with `shadow-none` per color (20 Aug 2026).
+- Any hand-rolled `<button>` styled to look like an action button (rather than a plain icon-only control) should be migrated to `src/components/Button.tsx` when touched, both for this shadow rule and for the DataTable Action Buttons rule below - don't hand-copy its color classes onto a raw `<button>`.
+
+## Flowbite Modals & Drawers Specification (Right Slide-over Drawers)
+
+Canonical Flowbite Drawer reference: https://github.com/themesberg/flowbite/blob/main/content/components/drawer.md
+
+All action modals, creation forms, and secondary management dialogs across the site (e.g. `New Service Request`, `Manage Custom Types`, item configurations, edit sheets):
+- **Right Position**: Modals and form dialogs must open as a **Right-Side Drawer** (`<Drawer position="right" open={...} onClose={...}>`).
+- **Structure**:
+  - Top header with title, iconography, and explicit close button (`X`).
+  - Scrollable content body (`flex-1 overflow-y-auto p-4`).
+  - Fixed footer with Cancel & Action buttons (`p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850`).
+- **Z-Index**: Modals and right drawers operate at `z-58` per application z-index layering scale.
+- **In-Drawer Management**: When a drawer presents a list of entities (such as custom service types, material categories, or payment accounts), users must be able to **add new items directly from inside the drawer** via an inline creation form at the top, alongside inline edit and delete actions.
+
 
