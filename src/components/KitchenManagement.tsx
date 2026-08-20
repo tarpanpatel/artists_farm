@@ -1256,7 +1256,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         <Tabs
           ref={tabsRef}
           aria-label="Kitchen Management Tabs"
-          variant="underline"
+          variant="default"
           onActiveTabChange={(tabIndex: number) => {
             const tabs: ('kds' | 'new_order')[] = ['kds', 'new_order'];
             if (tabs[tabIndex]) {

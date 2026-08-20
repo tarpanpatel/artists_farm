@@ -1566,6 +1566,7 @@ export interface ServiceRequestType {
   typeId: string;
   category: string;
   label: string;
+  defaultAmount?: number;
   isSystemDefault: boolean;
   displayOrder: number;
   source?: 'system' | 'custom';
@@ -1589,6 +1590,7 @@ export async function saveServiceRequestTypeInDB(
     type_id?: string;
     category: string;
     label: string;
+    default_amount?: number;
   },
   propertyId?: number,
 ): Promise<boolean> {

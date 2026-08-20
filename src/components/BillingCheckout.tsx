@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Modal, ModalHeader, ModalBody, TextInput, Checkbox } from 'flowbite-react';
+import { Card, Modal, ModalHeader, ModalBody, TextInput, Checkbox, Tabs, TabItem } from 'flowbite-react';
 import { Button } from './Button';
 import DataTable from 'react-data-table-component';
 import { flowbiteTableCustomStyles } from '../utils/tableStyles';
+import { attachedTabsTheme } from '../utils/tabsTheme';
 import {
   Calendar,
   CheckCircle2,
@@ -17,7 +18,6 @@ import {
   Loader2,
   Globe,
   CreditCard,
-  ReceiptText,
   Edit2,
   Pencil,
 } from 'lucide-react';
@@ -540,7 +540,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                         <button
                           onClick={() => handleEditAndCheckoutGuest(guest)}
                           disabled={isProcessing}
-                          className="bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-semibold py-1.5 px-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5 text-xs shadow-md cursor-pointer"
+                          className="bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-semibold py-1.5 px-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5 text-xs cursor-pointer"
                         >
                           <LogOut className="w-3.5 h-3.5" />
                           {t('checkout_button', 'Checkout')}
@@ -548,14 +548,16 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                       </div>
                     ) : (
                       <div className="billing-checkout__guest-card-actions pt-0.5">
-                        <button
-                          onClick={() => handleEditGuest(guest)}
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          block
                           disabled={isProcessing}
-                          className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-600 font-semibold py-1.5 px-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5 text-xs shadow-md cursor-pointer"
+                          onClick={() => handleEditGuest(guest)}
+                          leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
                         >
-                          <Pencil className="w-3.5 h-3.5 text-slate-500" />
                           {t('edit_booking_button', 'Edit Booking')}
-                        </button>
+                        </Button>
                       </div>
                     )}
 
@@ -585,6 +587,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       selector: (row: Guest) => row.guestName,
       sortable: true,
       grow: 2,
+      minWidth: '200px',
       cell: (row: Guest) => (
         <div className="flex flex-col py-1">
           <div className="font-bold text-gray-900 dark:text-white text-sm">{row.guestName}</div>
@@ -611,7 +614,8 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       name: t('stay_dates_column', 'Stay Dates'),
       selector: (row: Guest) => row.checkinDate,
       sortable: true,
-      grow: 2,
+      width: '150px',
+      minWidth: '130px',
       cell: (row: Guest) => (
         <div className="flex flex-col py-1 text-xs">
           <div className="font-medium text-gray-900 dark:text-white flex items-center gap-1.5">
@@ -629,7 +633,8 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       name: t('cottage_room_column', 'Cottage / Room'),
       selector: (row: Guest) => row.roomNumber,
       sortable: true,
-      grow: 1,
+      width: '140px',
+      minWidth: '110px',
       cell: (row: Guest) => (
         <div className="flex items-center gap-1.5 font-medium text-gray-900 dark:text-white text-xs">
           <Home className="w-4 h-4 text-gray-400" />
@@ -641,7 +646,8 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       name: t('stay_status_column', 'Stay Status'),
       selector: (row: Guest) => row.status,
       sortable: true,
-      width: '130px',
+      width: '150px',
+      minWidth: '110px',
       cell: (row: Guest) => {
         const status = getGuestStayStatus(row);
         return (
@@ -656,11 +662,12 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       selector: (row: Guest) => calculateGuestTotal(row),
       sortable: true,
       grow: 2,
+      minWidth: '180px',
       cell: (row: Guest) => (
         <div className="flex flex-col py-1 text-xs">
           <div className="flex items-center gap-1 font-semibold text-gray-900 dark:text-white">
             <span>{t('bill_field', 'Bill:')}</span>
-            <span className="text-blue-600 dark:text-blue-400">₹{(row.totalAmount ?? row.roomRate ?? 0).toFixed(2)}</span>
+            <span className="tabular-nums text-blue-600 dark:text-blue-400">₹{(row.totalAmount ?? row.roomRate ?? 0).toFixed(2)}</span>
           </div>
           <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex flex-wrap gap-x-2">
             <span>{t('adv_short_label', 'Adv:')} ₹{(row.advanceAmount ?? 0).toFixed(2)}</span>
@@ -677,6 +684,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       selector: (row: Guest) => row.cFormFiledAt || '',
       sortable: true,
       grow: 2,
+      minWidth: '160px',
       cell: (row: Guest) => {
         if (!row.isForeignGuest) {
           return <span className="text-gray-400 dark:text-gray-500 text-xs">{t('na_indian_national_label', 'N/A (Indian National)')}</span>;
@@ -707,15 +715,22 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     },
     {
       name: t('actions_column', 'Actions'),
-      width: '140px',
+      width: '160px',
       cell: (row: Guest) => (
-        <button
-          onClick={() => handleEditGuest(row)}
-          className="bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 font-semibold py-1.5 px-3 rounded-lg transition-colors flex items-center justify-center gap-1.5 text-xs shadow-md cursor-pointer"
-        >
-          <Pencil className="w-3.5 h-3.5 text-gray-500" />
-          {t('edit_booking_button', 'Edit Booking')}
-        </button>
+        // Standard <Button size="sm"> per DESIGN.md's DataTable Action
+        // Buttons rule (20 Aug 2026) - was a hand-rolled <button> that had
+        // drifted from the shared Button component used for this exact same
+        // action elsewhere on this page (the room-card Edit button above).
+        <div className="whitespace-nowrap flex items-center gap-2">
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => handleEditGuest(row)}
+            leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
+          >
+            {t('edit_booking_button', 'Edit Booking')}
+          </Button>
+        </div>
       ),
     },
   ];
@@ -740,176 +755,152 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
         </PageHeaderButton>
       </PageHeader>
 
-      {/* Tabs Navigation & Search Bar */}
-      <Card className="billing-checkout__tabs shadow-md space-y-4">
-        <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 dark:border-slate-700 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
-              <ReceiptText className="h-5 w-5" />
+      {/* Booking desk: tabs are their own floating elements attached to the
+          top of the card below (touching, zero gap) rather than sharing one
+          outer bordered box with it - see DESIGN.md's "Attached Tabs
+          Specification" and utils/tabsTheme.ts's attachedTabsTheme (which
+          this reuses rather than redefining) for the full mechanism (20 Aug
+          2026). This wrapper div carries NO border/bg/shadow of its own -
+          it's purely a layout grouping so Tabs+Card behave as one zero-gap
+          unit inside the page's outer space-y-6 flow, without visually
+          enclosing the tabs inside the card the way a shared border would.
+          Each TabItem is deliberately childless: the actual tab content
+          (room grid / table / empty state) renders in the Card below,
+          driven by the same activeTab state, rather than as this
+          component's own tabpanel. */}
+      <div className="billing-checkout__desk">
+        <Tabs
+          aria-label="Booking Status Tabs"
+          variant="default"
+          theme={attachedTabsTheme}
+          onActiveTabChange={(tabIndex: number) => {
+            const tabs: ('today' | 'upcoming' | 'past_bookings')[] = ['today', 'upcoming', 'past_bookings'];
+            if (tabs[tabIndex]) setActiveTab(tabs[tabIndex]);
+          }}
+        >
+          <TabItem
+            active={activeTab === 'today'}
+            title={`${t('today_tab', 'Today')}${tabCounts.today ? ` (${tabCounts.today})` : ''}`}
+          />
+          <TabItem
+            active={activeTab === 'upcoming'}
+            title={`${t('upcoming_tab', 'Upcoming')}${tabCounts.upcoming ? ` (${tabCounts.upcoming})` : ''}`}
+          />
+          <TabItem
+            active={activeTab === 'past_bookings'}
+            title={`${t('past_bookings_tab', 'Past Bookings')}${tabCounts.past_bookings ? ` (${tabCounts.past_bookings})` : ''}`}
+          />
+        </Tabs>
+
+        {/* rounded-t-none: the tabs above already own the rounded top edge
+            of the whole unit (attachedTabsTheme's rounded-t-lg tab shapes),
+            so the card itself only needs rounding at the bottom - keeping
+            rounded-lg on all 4 corners here would fight the flat seam where
+            the tabs sit on top of it. "Booking desk" icon/title/subtitle
+            header removed (20 Aug 2026) - the tabs above and the page's own
+            "Bookings" PageHeader already identify this section, so the
+            intro row was redundant. The "today" attention-count badge it
+            was paired with still applies regardless of tab, so it stays as
+            the lead-in row rather than being removed with it. */}
+        <Card className="billing-checkout__desk-body shadow-md space-y-4 rounded-t-none">
+          <div className="flex justify-end border-b border-slate-200 pb-4 dark:border-slate-700">
+            <div className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">
+              <CreditCard className="h-4 w-4" />
+              {tabCounts.today} requiring attention today
             </div>
-            <div>
-              <h2 className="text-sm font-extrabold tracking-wide text-slate-900 dark:text-white">Booking desk</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Review stays, balances, and checkout settlements in one place.</p>
+          </div>
+
+          {/* Search Bar - covers room too (guest name, phone, OR room number) */}
+          <div className="billing-checkout__search flex flex-col items-center gap-3 sm:flex-row">
+            <div className="billing-checkout__search-input flex-1 w-full">
+              <TextInput
+                id="bookings-search"
+                type="text"
+                icon={Search}
+                placeholder={t('search_guest_placeholder', 'Search by guest, phone, or room...')}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
           </div>
-          <div className="inline-flex items-center gap-2 self-start rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300 sm:self-auto">
-            <CreditCard className="h-4 w-4" />
-            {tabCounts.today} requiring attention today
+
+          {/* Rooms & booking content live inside the same card as the
+              header/search above (merged 20 Aug 2026) rather than as
+              separate cards stacked below it - this border-t is the only
+              remaining seam between the two, matching the header row's own
+              border-b above. Individual room tiles below keep their own
+              Card framing (a grid of distinct rooms, not a duplicate box
+              around the same content), but the past-bookings table and the
+              empty-state message had their own redundant outer Card removed
+              since they fill this whole area rather than sitting alongside
+              other items in it. */}
+          <div className="billing-checkout__list-content border-t border-gray-200 pt-4 dark:border-gray-700">
+          {/* Upcoming & Past Bookings: Mobile Card Stack on phone viewports (md:hidden), Desktop DataTable on md+ */}
+          {(activeTab === 'upcoming' || activeTab === 'past_bookings') ? (
+            <>
+              <div className="md:hidden">
+                <MobileBookingCardStack
+                  guests={searchedGuests}
+                  rooms={rooms}
+                  hideSearchAndFilter
+                  onSelectGuest={(guestId) => {
+                    const guest = searchedGuests.find((g) => g.id === guestId);
+                    if (guest) setSelectedGuestForDetails(guest);
+                  }}
+                  onCheckoutGuest={(guestId) => {
+                    const guest = searchedGuests.find((g) => g.id === guestId);
+                    if (guest) {
+                      setGuestForReceipt(guest);
+                      setReceiptModalOpen(true);
+                    }
+                  }}
+                />
+              </div>
+
+              <div className="hidden md:block billing-checkout__past-table overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+                <DataTable
+                  columns={pastBookingsColumns}
+                  data={searchedGuests}
+                  customStyles={flowbiteTableCustomStyles}
+                  highlightOnHover
+                  persistTableHead
+                  pagination
+                  paginationPerPage={15}
+                  paginationRowsPerPageOptions={[10, 15, 20, 30, 50]}
+                  noDataComponent={
+                    <div className="p-12 text-center">
+                      <Search className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                      <h3 className="billing-checkout__subtitle text-lg font-semibold text-gray-800 dark:text-gray-200 mb-1">
+                        {t('no_guest_records_found', 'No Guest Records Found')}
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {t('no_guest_records_description', 'No guest records match the current tab filter or search term. Switch tabs or room filter to view other reservations.')}
+                      </p>
+                    </div>
+                  }
+                />
+              </div>
+            </>
+          ) : (
+            renderRoomGroupsGrid(filteredGroups)
+          )}
+
+          {/* Empty Search Result - Today room-grid only; the Upcoming/Past
+              Bookings table has its own noDataComponent above. */}
+          {activeTab === 'today' && filteredGroups.length === 0 && (
+            <div className="billing-checkout__empty-state p-12 text-center">
+              <Search className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+              <h3 className="billing-checkout__subtitle text-lg font-semibold text-gray-800 dark:text-gray-200 mb-1">
+                {t('no_guest_records_found', 'No Guest Records Found')}
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {t('no_guest_records_description', 'No guest records match the current tab filter or search term. Switch tabs or room filter to view other reservations.')}
+              </p>
+            </div>
+          )}
           </div>
-        </div>
-
-        {/* Navigation Tabs */}
-        {/* overflow-x-auto with no overflow-y specified makes the browser
-            compute overflow-y as auto too (CSS spec: 'visible' on one axis
-            is forced to 'auto' whenever the other axis isn't 'visible' -
-            overflow-y-visible can't override this, the two truly can't
-            coexist), which clips the active tab's own shadow/focus-ring
-            flush against this row's top edge since there's no pt-* to give
-            it headroom (only pb-3, for spacing below) - reading as a
-            "cropped" button (found 20 Aug 2026). pt-1 gives the shadow
-            enough room to render before it reaches the clip boundary. */}
-        <div className="billing-checkout__tab-list no-scrollbar flex items-center gap-2 overflow-x-auto pt-1 border-b border-gray-200 pb-3 dark:border-gray-700">
-          <button
-            type="button"
-            onClick={() => setActiveTab('today')}
-            className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${
-              activeTab === 'today'
-                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
-            }`}
-          >
-            <span>{t('today_tab', 'Today')}</span>
-            <span
-              className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                activeTab === 'today'
-                  ? 'bg-blue-700 text-white'
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-              }`}
-            >
-              {tabCounts.today}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('upcoming')}
-            className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${
-              activeTab === 'upcoming'
-                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
-            }`}
-          >
-            <span>{t('upcoming_tab', 'Upcoming')}</span>
-            <span
-              className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                activeTab === 'upcoming'
-                  ? 'bg-blue-700 text-white'
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-              }`}
-            >
-              {tabCounts.upcoming}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('past_bookings')}
-            className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${
-              activeTab === 'past_bookings'
-                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
-            }`}
-          >
-            <span>{t('past_bookings_tab', 'Past Bookings')}</span>
-            <span
-              className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                activeTab === 'past_bookings'
-                  ? 'bg-blue-700 text-white'
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-              }`}
-            >
-              {tabCounts.past_bookings}
-            </span>
-          </button>
-        </div>
-
-        {/* Search Bar - covers room too (guest name, phone, OR room number) */}
-        <div className="billing-checkout__search flex flex-col items-center gap-3 sm:flex-row">
-          <div className="billing-checkout__search-input flex-1 w-full">
-            <TextInput
-              id="bookings-search"
-              type="text"
-              icon={Search}
-              placeholder={t('search_guest_placeholder', 'Search by guest, phone, or room...')}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </div>
-      </Card>
-
-      {/* Upcoming & Past Bookings: Mobile Card Stack on phone viewports (md:hidden), Desktop DataTable on md+ */}
-      {(activeTab === 'upcoming' || activeTab === 'past_bookings') ? (
-        <>
-          <div className="md:hidden">
-            <MobileBookingCardStack
-              guests={searchedGuests}
-              rooms={rooms}
-              hideSearchAndFilter
-              onSelectGuest={(guestId) => {
-                const guest = searchedGuests.find((g) => g.id === guestId);
-                if (guest) setSelectedGuestForDetails(guest);
-              }}
-              onCheckoutGuest={(guestId) => {
-                const guest = searchedGuests.find((g) => g.id === guestId);
-                if (guest) {
-                  setGuestForReceipt(guest);
-                  setReceiptModalOpen(true);
-                }
-              }}
-            />
-          </div>
-
-          <Card className="hidden md:block billing-checkout__past-table shadow-md overflow-hidden p-0!">
-            <DataTable
-              columns={pastBookingsColumns}
-              data={searchedGuests}
-              customStyles={flowbiteTableCustomStyles}
-              highlightOnHover
-              pagination
-              paginationPerPage={15}
-              paginationRowsPerPageOptions={[10, 15, 20, 30, 50]}
-              noDataComponent={
-                <div className="p-12 text-center">
-                  <Search className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-                  <h3 className="billing-checkout__subtitle text-lg font-semibold text-gray-800 dark:text-gray-200 mb-1">
-                    {t('no_guest_records_found', 'No Guest Records Found')}
-                  </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {t('no_guest_records_description', 'No guest records match the current tab filter or search term. Switch tabs or room filter to view other reservations.')}
-                  </p>
-                </div>
-              }
-            />
-          </Card>
-        </>
-      ) : (
-        renderRoomGroupsGrid(filteredGroups)
-      )}
-
-      {/* Empty Search Result - Today room-grid only; the Upcoming/Past
-          Bookings table has its own noDataComponent above. */}
-      {activeTab === 'today' && filteredGroups.length === 0 && (
-        <Card className="billing-checkout__empty-state shadow-md p-12 text-center">
-          <Search className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-          <h3 className="billing-checkout__subtitle text-lg font-semibold text-gray-800 dark:text-gray-200 mb-1">
-            {t('no_guest_records_found', 'No Guest Records Found')}
-          </h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            {t('no_guest_records_description', 'No guest records match the current tab filter or search term. Switch tabs or room filter to view other reservations.')}
-          </p>
         </Card>
-      )}
+      </div>
 
       {/* Receipt Edit Modal with Blocked Dates Calendar */}
       <ReceiptEditModal

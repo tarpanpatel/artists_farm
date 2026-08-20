@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, CheckCircle2, Clock, Home, ChevronLeft, ChevronRight, Pencil, Trash2, Settings } from 'lucide-react';
+import { Plus, CheckCircle2, Clock, Home, ChevronLeft, ChevronRight, Pencil, Trash2, Settings, X } from 'lucide-react';
 import {
   ServiceRequestType,
   createServiceRequestInDB,
@@ -22,9 +22,7 @@ import { PageHeader, PageHeaderButton } from './PageHeader';
 import { formatDateTimeDDMMYYYY } from '../utils/dateUtils';
 
 import { useConfigurationData } from '../contexts/ConfigurationDataContext';
-import { Input } from './Input';
-import { Button } from './Button';
-import { Card, Badge, TextInput as FlowbiteTextInput, Textarea as FlowbiteTextarea, Checkbox as FlowbiteCheckbox, Label as FlowbiteLabel, Modal as FlowbiteModal, ModalHeader, ModalBody, ModalFooter } from 'flowbite-react';
+import { Card, Badge, TextInput as FlowbiteTextInput, Textarea as FlowbiteTextarea, Checkbox as FlowbiteCheckbox, Label as FlowbiteLabel, Drawer } from 'flowbite-react';
 
 interface Room {
   id: number;
@@ -54,6 +52,8 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
   const [editingTypeId, setEditingTypeId] = useState<number | null>(null);
   const [editingTypeLabel, setEditingTypeLabel] = useState('');
+  const [editingTypeCategory, setEditingTypeCategory] = useState('Guest Charges');
+  const [editingTypeAmount, setEditingTypeAmount] = useState('');
   const [newRoomId, setNewRoomId] = useState<string>('');
   const [newRequestType, setNewRequestType] = useState('');
   const [newDescription, setNewDescription] = useState('');
@@ -121,6 +121,10 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
       return;
     }
     const selectedOption = requestTypes.find((rt) => rt.typeId === newRequestType || rt.typeId.toLowerCase() === newRequestType.toLowerCase());
+    if (selectedOption && selectedOption.defaultAmount !== undefined && selectedOption.defaultAmount > 0) {
+      setNewChargeAmount(String(selectedOption.defaultAmount));
+      return;
+    }
     const matchedCharge = (miscCharges as any[])?.find((c) => {
       const labelMatch = c.label?.toLowerCase() === selectedOption?.label?.toLowerCase();
       const idMatch = String(c.id) === newRequestType || c.type_id === newRequestType;
@@ -132,13 +136,21 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
     }
   }, [newRequestType, requestTypes, miscCharges]);
 
+  const handleStartEditType = (rt: ServiceRequestType) => {
+    setEditingTypeId(rt.id);
+    setEditingTypeLabel(rt.label);
+    setEditingTypeCategory(rt.category || 'Guest Charges');
+    setEditingTypeAmount(rt.defaultAmount !== undefined && rt.defaultAmount > 0 ? String(rt.defaultAmount) : '');
+  };
+
   const handleSaveTypeEdit = async (rt: ServiceRequestType) => {
     if (!editingTypeLabel.trim()) return;
     const ok = await saveServiceRequestTypeInDB(
       {
         id: rt.id,
-        category: rt.category || 'Guest Charges',
+        category: editingTypeCategory || 'Guest Charges',
         label: editingTypeLabel.trim(),
+        default_amount: editingTypeAmount ? parseFloat(editingTypeAmount) : 0,
       },
       rt.propertyId
     );
@@ -292,6 +304,54 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
       .replace(/\b\w/g, (c) => c.toUpperCase());
   };
 
+  const [newTypeLabel, setNewTypeLabel] = useState('');
+  const [newTypeCategory, setNewTypeCategory] = useState('Guest Charges');
+  const [newTypeChargeAmount, setNewTypeChargeAmount] = useState('');
+  const [isCreatingType, setIsCreatingType] = useState(false);
+
+  const handleCreateNewType = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const labelTrimmed = newTypeLabel.trim();
+    if (!labelTrimmed) {
+      showToast('Please enter a service type name', { type: 'error' });
+      return;
+    }
+    setIsCreatingType(true);
+    const typeId = labelTrimmed.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+    const charge = newTypeChargeAmount ? parseFloat(newTypeChargeAmount) : 0;
+
+    const ok = await saveServiceRequestTypeInDB({
+      type_id: typeId,
+      category: newTypeCategory || 'Guest Charges',
+      label: labelTrimmed,
+    });
+
+    if (charge > 0) {
+      try {
+        await fetch('/php/api/router.php?action=add_misc_charge_template', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            label: labelTrimmed,
+            category: newTypeCategory || 'Guest Charges',
+            default_amount: charge,
+          }),
+        });
+      } catch (err) {}
+    }
+
+    setIsCreatingType(false);
+    if (ok) {
+      showToast('New service type created successfully', { type: 'success' });
+      setNewTypeLabel('');
+      setNewTypeChargeAmount('');
+      loadTypes();
+    } else {
+      showToast('Failed to create service type', { type: 'error' });
+    }
+  };
+
   return (
     <div className="space-y-6 service-requests-management__container">
       <PageHeader
@@ -299,10 +359,9 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
         subtitle={t('service_requests_description', 'Housekeeping, maintenance, and other ad-hoc requests — logged by any staff member, nudged to Admin on Telegram.')}
       >
         <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="secondary" size="sm" onClick={() => setIsManageModalOpen(true)} className="flex items-center gap-1.5 shadow-md text-xs">
-            <Settings className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+          <PageHeaderButton variant="secondary" onClick={() => setIsManageModalOpen(true)} icon={Settings}>
             Manage Custom Types
-          </Button>
+          </PageHeaderButton>
           <PageHeaderButton onClick={() => setIsAddModalOpen(true)} icon={Plus}>
             {t('new_request_button', 'New Request')}
           </PageHeaderButton>
@@ -418,15 +477,29 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
         )}
       </Card>
 
-      <FlowbiteModal show={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} size="md" className="z-58" dismissible>
-        <ModalHeader>
-          <span className="flex items-center gap-2">
-            <Clock className="w-5 h-5 text-indigo-500" />
+      {/* New Service Request Right Drawer */}
+      <Drawer
+        open={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        position="right"
+        className="z-58 w-full sm:w-[480px] p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <span className="flex items-center gap-2 font-bold text-gray-900 dark:text-white text-base">
+            <Clock className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             {t('new_service_request_heading', 'New Service Request')}
           </span>
-        </ModalHeader>
-        <form onSubmit={handleCreate} className="app-form app-form--create-service-request">
-          <ModalBody className="space-y-4">
+          <button
+            type="button"
+            onClick={() => setIsAddModalOpen(false)}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleCreate} className="app-form flex-1 flex flex-col justify-between overflow-y-auto">
+          <div className="p-4 space-y-4">
             {isMultiKeyProperty && rooms.length > 0 && (
               <div className="service-requests-management__form-group">
                 <StyledSelect
@@ -443,9 +516,9 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                 <button
                   type="button"
                   onClick={() => setIsManageModalOpen(true)}
-                  className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 font-medium cursor-pointer"
+                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 font-medium cursor-pointer"
                 >
-                  <Settings className="w-3 h-3" /> Edit / Delete Custom Types
+                  <Settings className="w-3.5 h-3.5" /> Manage Custom Types
                 </button>
               </div>
               <StyledSelect
@@ -456,11 +529,12 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                 searchable
               />
             </div>
+
             {newRequestType === '__CUSTOM__' && (
-              <div className="service-requests-management__form-group p-3 bg-indigo-50/70 dark:bg-indigo-950/40 rounded-lg border border-indigo-200 dark:border-indigo-800 space-y-3">
+              <div className="service-requests-management__form-group p-3.5 bg-blue-50/70 dark:bg-blue-950/40 rounded-lg border border-blue-200 dark:border-blue-800 space-y-3">
                 <div>
                   <div className="mb-1 block">
-                    <FlowbiteLabel htmlFor="customRequestLabel" className="text-xs font-semibold text-indigo-900 dark:text-indigo-200">Custom Service / Charge Name *</FlowbiteLabel>
+                    <FlowbiteLabel htmlFor="customRequestLabel" className="text-xs font-semibold text-blue-900 dark:text-blue-200">Custom Service / Charge Name *</FlowbiteLabel>
                   </div>
                   <FlowbiteTextInput
                     id="customRequestLabel"
@@ -483,6 +557,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                 </div>
               </div>
             )}
+
             <div className="service-requests-management__form-group">
               <div className="mb-1.5 block">
                 <FlowbiteLabel htmlFor="newChargeAmount">Charge Amount (₹) (Optional - added to checkout bill if set)</FlowbiteLabel>
@@ -497,6 +572,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                 placeholder="0.00 (leave blank for free)"
               />
             </div>
+
             <div className="service-requests-management__form-group">
               <div className="mb-1.5 block">
                 <FlowbiteLabel htmlFor="newDescription">{t('details_label', 'Details')}</FlowbiteLabel>
@@ -509,84 +585,196 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                 rows={3}
               />
             </div>
-          </ModalBody>
-          <ModalFooter className="flex justify-end gap-2">
+          </div>
+
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
             <Button variant="secondary" size="md" onClick={() => setIsAddModalOpen(false)}>
               {t('cancel_button', 'Cancel')}
             </Button>
-            <Button type="submit" variant="primary" size="md" disabled={saving} className="shadow-sm service-requests-management__submit-button">
+            <Button type="submit" variant="primary" size="md" disabled={saving} className="shadow-sm">
               {saving ? t('logging_button', 'Logging...') : t('log_request_button', 'Log Request')}
             </Button>
-          </ModalFooter>
+          </div>
         </form>
-      </FlowbiteModal>
+      </Drawer>
 
-      <FlowbiteModal show={isManageModalOpen} onClose={() => setIsManageModalOpen(false)} size="md" className="z-58" dismissible>
-        <ModalHeader>
-          <span className="flex items-center gap-2">
-            <Settings className="w-5 h-5 text-indigo-500" />
+      {/* Manage Custom Service Types Right Drawer */}
+      <Drawer
+        open={isManageModalOpen}
+        onClose={() => setIsManageModalOpen(false)}
+        position="right"
+        className="z-58 w-full sm:w-[480px] p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <span className="flex items-center gap-2 font-bold text-gray-900 dark:text-white text-base">
+            <Settings className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             Manage Custom Service Types
           </span>
-        </ModalHeader>
-        <ModalBody className="space-y-4">
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Edit or delete custom charges & service request types added for your property.
-          </p>
+          <button
+            type="button"
+            onClick={() => setIsManageModalOpen(false)}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
-          <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-            {requestTypes.filter((rt) => !rt.isSystemDefault || rt.source === 'custom').length === 0 ? (
-              <div className="text-center py-6 text-slate-500 dark:text-slate-400 text-xs">
-                No custom service types added yet. Use "➕ Add Custom Service / Charge..." in the request modal to create your first custom type.
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* Add New Custom Type Inline Form */}
+          <form onSubmit={handleCreateNewType} className="p-3.5 bg-blue-50/60 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800 space-y-3">
+            <h4 className="font-semibold text-xs text-blue-900 dark:text-blue-200 flex items-center gap-1.5">
+              <Plus className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" /> Add New Service / Charge Type
+            </h4>
+            <div>
+              <Input
+                label="Service Type Name *"
+                type="text"
+                value={newTypeLabel}
+                onChange={(e) => setNewTypeLabel(e.target.value)}
+                placeholder="e.g. Bonfire Setup, Extra Towels, Airport Drop"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Category</label>
+                <select
+                  value={newTypeCategory}
+                  onChange={(e) => setNewTypeCategory(e.target.value)}
+                  className="h-10 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs rounded-lg block w-full px-2.5 cursor-pointer"
+                >
+                  <option value="Guest Charges">Guest Charges</option>
+                  <option value="Housekeeping">Housekeeping</option>
+                  <option value="Maintenance">Maintenance</option>
+                  <option value="Food & Extras">Food & Extras</option>
+                  <option value="Activities & Tours">Activities & Tours</option>
+                  <option value="Other">Other</option>
+                </select>
               </div>
-            ) : (
-              requestTypes.filter((rt) => !rt.isSystemDefault || rt.source === 'custom').map((rt) => (
-                <div key={rt.id} className="flex items-center justify-between gap-2 p-3 bg-slate-50 dark:bg-slate-900/60 rounded-lg border border-slate-200 dark:border-slate-700">
-                  {editingTypeId === rt.id ? (
-                    <div className="flex-1 flex items-center gap-2">
-                      <Input
-                        type="text"
-                        value={editingTypeLabel}
-                        onChange={(e) => setEditingTypeLabel(e.target.value)}
-                        className="w-full text-xs"
-                      />
-                      <Button size="sm" variant="success" onClick={() => handleSaveTypeEdit(rt)}>
-                        Save
-                      </Button>
-                      <Button size="sm" variant="secondary" onClick={() => setEditingTypeId(null)}>
-                        Cancel
-                      </Button>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex-1 min-w-0">
-                        <span className="font-semibold text-xs text-slate-800 dark:text-slate-200 block truncate">{rt.label}</span>
-                        <span className="text-[10px] text-slate-400 block">{rt.category}</span>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <Button variant="primary" size="sm" onClick={() => { setEditingTypeId(rt.id); setEditingTypeLabel(rt.label); }} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
-                      Edit
-                    </Button>
-                        <button
-                          onClick={() => handleDeleteType(rt)}
-                          className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-slate-200/60 dark:hover:bg-slate-800 cursor-pointer"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </>
-                  )}
+              <div>
+                <Input
+                  label="Default Price (₹)"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={newTypeChargeAmount}
+                  onChange={(e) => setNewTypeChargeAmount(e.target.value)}
+                  placeholder="0.00 (Optional)"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end pt-1">
+              <Button type="submit" variant="primary" size="sm" disabled={isCreatingType}>
+                {isCreatingType ? 'Adding...' : '+ Add Custom Type'}
+              </Button>
+            </div>
+          </form>
+
+          {/* List of Custom Types */}
+          <div className="space-y-2">
+            <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+              Existing Custom Service Types ({requestTypes.filter((rt) => !rt.isSystemDefault || rt.source === 'custom').length})
+            </h4>
+
+            <div className="space-y-2">
+              {requestTypes.filter((rt) => !rt.isSystemDefault || rt.source === 'custom').length === 0 ? (
+                <div className="text-center py-6 text-slate-500 dark:text-slate-400 text-xs bg-gray-50 dark:bg-gray-900/40 rounded-lg border border-dashed border-gray-200 dark:border-gray-700 p-4">
+                  No custom service types added yet. Use the form above to add your first type.
                 </div>
-              ))
-            )}
+              ) : (
+                requestTypes.filter((rt) => !rt.isSystemDefault || rt.source === 'custom').map((rt) => (
+                  <div key={rt.id} className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-lg border border-slate-200 dark:border-slate-700">
+                    {editingTypeId === rt.id ? (
+                      <div className="space-y-3 p-1">
+                        <div>
+                          <Input
+                            label="Service Type Name *"
+                            type="text"
+                            value={editingTypeLabel}
+                            onChange={(e) => setEditingTypeLabel(e.target.value)}
+                            className="w-full text-xs"
+                            required
+                          />
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Category</label>
+                            <select
+                              value={editingTypeCategory}
+                              onChange={(e) => setEditingTypeCategory(e.target.value)}
+                              className="h-10 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs rounded-lg block w-full px-2.5 cursor-pointer"
+                            >
+                              <option value="Guest Charges">Guest Charges</option>
+                              <option value="Housekeeping">Housekeeping</option>
+                              <option value="Maintenance">Maintenance</option>
+                              <option value="Food & Extras">Food & Extras</option>
+                              <option value="Activities & Tours">Activities & Tours</option>
+                              <option value="Other">Other</option>
+                            </select>
+                          </div>
+                          <div>
+                            <Input
+                              label="Default Price (₹)"
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={editingTypeAmount}
+                              onChange={(e) => setEditingTypeAmount(e.target.value)}
+                              placeholder="0.00 (Optional)"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex justify-end gap-2 pt-1">
+                          <Button size="sm" variant="secondary" onClick={() => setEditingTypeId(null)}>
+                            Cancel
+                          </Button>
+                          <Button size="sm" variant="success" onClick={() => handleSaveTypeEdit(rt)}>
+                            Save Changes
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-xs text-slate-800 dark:text-slate-200 truncate">{rt.label}</span>
+                            {Boolean(rt.defaultAmount && rt.defaultAmount > 0) ? (
+                              <Badge color="success" size="xs" className="font-semibold">
+                                ₹{Number(rt.defaultAmount).toFixed(2)}
+                              </Badge>
+                            ) : (
+                              <span className="text-2xs font-medium text-slate-400 dark:text-slate-500">Free / On Request</span>
+                            )}
+                          </div>
+                          <span className="text-2xs text-slate-400 block mt-0.5">{rt.category}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Button variant="primary" size="sm" onClick={() => handleStartEditType(rt)} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                            Edit
+                          </Button>
+                          <button
+                            onClick={() => handleDeleteType(rt)}
+                            className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-slate-200/60 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
           </div>
-        </ModalBody>
-        <ModalFooter className="flex justify-end">
+        </div>
+
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end bg-gray-50 dark:bg-gray-850">
           <Button variant="secondary" size="md" onClick={() => setIsManageModalOpen(false)}>
             Close
           </Button>
-        </ModalFooter>
-      </FlowbiteModal>
+        </div>
+      </Drawer>
     </div>
   );
 };

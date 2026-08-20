@@ -232,6 +232,13 @@ function handleServiceRequestActions($pdo, $request_method, $action, $propertyId
             //   1. Global system catalog items (source='system')
             //   2. Property-specific custom items not already in global catalog (source='custom')
             ensureSystemServiceRequestCatalogSchema($pdo);
+            try {
+                $cols = $pdo->query("SHOW COLUMNS FROM service_request_types LIKE 'default_amount'")->fetchAll();
+                if (empty($cols)) {
+                    $pdo->exec("ALTER TABLE service_request_types ADD COLUMN default_amount DECIMAL(10,2) DEFAULT 0.00");
+                }
+            } catch (PDOException $e) {}
+
             if ($propertyId) {
                 $stmt = $pdo->prepare("
                     SELECT
@@ -240,6 +247,7 @@ function handleServiceRequestActions($pdo, $request_method, $action, $propertyId
                         s.type_id,
                         s.category,
                         s.label,
+                        0.00 AS default_amount,
                         TRUE AS is_system_default,
                         s.display_order,
                         'system' AS source
@@ -251,6 +259,7 @@ function handleServiceRequestActions($pdo, $request_method, $action, $propertyId
                         p.type_id,
                         p.category,
                         p.label,
+                        COALESCE(p.default_amount, 0.00) AS default_amount,
                         FALSE AS is_system_default,
                         p.display_order,
                         'custom' AS source
@@ -262,7 +271,7 @@ function handleServiceRequestActions($pdo, $request_method, $action, $propertyId
                 $stmt->execute([$propertyId, $propertyId]);
             } else {
                 // No property context: return global catalog only
-                $stmt = $pdo->query("SELECT *, 'system' AS source FROM system_service_request_catalog ORDER BY category ASC, display_order ASC, label ASC");
+                $stmt = $pdo->query("SELECT *, 0.00 AS default_amount, 'system' AS source FROM system_service_request_catalog ORDER BY category ASC, display_order ASC, label ASC");
             }
             echo json_encode(['status' => 'success', 'data' => array_map('convertSnakeToCamel', $stmt->fetchAll(PDO::FETCH_ASSOC))]);
             break;
@@ -273,6 +282,7 @@ function handleServiceRequestActions($pdo, $request_method, $action, $propertyId
                 $typeId = trim($input['type_id'] ?? '');
                 $category = trim($input['category'] ?? '');
                 $label = trim($input['label'] ?? '');
+                $defaultAmount = floatval($input['default_amount'] ?? $input['defaultAmount'] ?? 0);
                 $id = intval($input['id'] ?? 0);
                 if (!$category || !$label) {
                     http_response_code(400);
@@ -280,24 +290,42 @@ function handleServiceRequestActions($pdo, $request_method, $action, $propertyId
                     break;
                 }
                 $targetPropertyId = $propertyId ?: 1;
+                try {
+                    $cols = $pdo->query("SHOW COLUMNS FROM service_request_types LIKE 'default_amount'")->fetchAll();
+                    if (empty($cols)) {
+                        $pdo->exec("ALTER TABLE service_request_types ADD COLUMN default_amount DECIMAL(10,2) DEFAULT 0.00");
+                    }
+                } catch (PDOException $e) {}
+
                 if ($id > 0) {
                     $stmt = $pdo->prepare("
                         UPDATE service_request_types 
-                        SET category = ?, label = ? 
+                        SET category = ?, label = ?, default_amount = ? 
                         WHERE id = ? AND property_id = ?
                     ");
-                    $stmt->execute([$category, $label, $id, $targetPropertyId]);
+                    $stmt->execute([$category, $label, $defaultAmount, $id, $targetPropertyId]);
                 } else {
                     if (!$typeId) {
                         $typeId = strtolower(preg_replace('/[^a-z0-9]+/i', '_', trim($label)));
                     }
                     $stmt = $pdo->prepare("
-                        INSERT INTO service_request_types (property_id, type_id, category, label, is_system_default, display_order)
-                        VALUES (?, ?, ?, ?, FALSE, 999)
-                        ON DUPLICATE KEY UPDATE category = VALUES(category), label = VALUES(label)
+                        INSERT INTO service_request_types (property_id, type_id, category, label, default_amount, is_system_default, display_order)
+                        VALUES (?, ?, ?, ?, ?, FALSE, 999)
+                        ON DUPLICATE KEY UPDATE category = VALUES(category), label = VALUES(label), default_amount = VALUES(default_amount)
                     ");
-                    $stmt->execute([$targetPropertyId, $typeId, $category, $label]);
+                    $stmt->execute([$targetPropertyId, $typeId, $category, $label, $defaultAmount]);
                 }
+
+                // Keep miscellaneous_catalog in sync
+                try {
+                    $stmt = $pdo->prepare("
+                        INSERT INTO miscellaneous_catalog (property_id, label, default_amount, category, description)
+                        VALUES (?, ?, ?, ?, '')
+                        ON DUPLICATE KEY UPDATE default_amount = VALUES(default_amount), category = VALUES(category)
+                    ");
+                    $stmt->execute([$targetPropertyId, $label, $defaultAmount, $category]);
+                } catch (PDOException $e) {}
+
                 echo json_encode(['status' => 'success', 'message' => 'Service request type saved']);
             }
             break;

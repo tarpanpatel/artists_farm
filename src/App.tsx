@@ -39,7 +39,6 @@ import { getPropertyAndRoomSlugs } from './services/api';
 // dashboards, Platform property management). Keeping these out of the main
 // bundle is what lets the initial paint (login + default dashboard tab) ship
 // a much smaller slice of JS - see TabContentFallback/Suspense usage below.
-const KitchenDashboard = lazy(() => import('./components/KitchenDashboard').then(m => ({ default: m.KitchenDashboard })));
 const KitchenManagement = lazy(() => import('./components/KitchenManagement').then(m => ({ default: m.KitchenManagement })));
 const InventoryManagement = lazy(() => import('./components/InventoryManagement').then(m => ({ default: m.InventoryManagement })));
 const PettyCashManagement = lazy(() => import('./components/PettyCashManagement').then(m => ({ default: m.PettyCashManagement })));
@@ -166,8 +165,14 @@ function AppBody({ preloadedData }: AppBodyProps) {
         staff_meals: { tab: 'kitchen', key: 'staff_meals' },
         edit_food_menu: { tab: 'menu_manager', key: 'edit_food_menu' },
         menu_manager: { tab: 'menu_manager', key: 'edit_food_menu' },
-        kitchen_overview: { tab: 'kitchen', key: 'kitchen_overview' },
-        kitchen: { tab: 'kitchen', key: 'kitchen_overview' },
+        // kitchen_overview's own landing page (KitchenDashboard - a card of
+        // shortcuts to Food Orders/Stock Requests/etc.) was removed
+        // permanently (20 Aug 2026): purely redundant with the sidebar's own
+        // Kitchen sub-items, so both the parent "Kitchen" sidebar click and
+        // any old #kitchen_overview link now land directly on Take Food
+        // Order instead.
+        kitchen_overview: { tab: 'kitchen', key: 'take_food_order' },
+        kitchen: { tab: 'kitchen', key: 'take_food_order' },
         stock_requests: { tab: 'inventory', key: 'stock_requests' },
         // fulfill_stock_req page removed - integrated into stock_requests
         fulfill_stock_req: { tab: 'inventory', key: 'stock_requests' },
@@ -239,7 +244,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
           if (matched.itemType === 'header' || key.startsWith('custom_nav-') || key.startsWith('nav-header-')) {
             if (tab === 'staff') key = 'team_overview';
             else if (tab === 'analytics') key = 'admin_control_overview';
-            else if (tab === 'kitchen') key = 'kitchen_overview';
+            else if (tab === 'kitchen') key = 'take_food_order';
           }
 
           return { tab, key };
@@ -930,17 +935,16 @@ function AppBody({ preloadedData }: AppBodyProps) {
     // ('custom_nav-...' / 'admin_control_group') to these keys for its own
     // sidebar-click routing, but that rename may not have propagated back
     // into this visibleNavItems array yet (React state timing) - so an
-    // items.find() lookup here is unreliable and the bypass is required,
-    // same as kitchen_overview already gets via its synthetic nav item.
+    // items.find() lookup here is unreliable and the bypass is required.
     // 'edit_main_menu' is a synthetic key too: it's an internal MenuManager
     // sub-tab (see MenuManager.tsx's isStandalonePage/tab handling), not a
     // separately-registered nav item - only 'edit_food_menu' is in
-    // NavMenuEditor's default list. The "Edit Menu & Items" admin-control
-    // card navigates via hash 'edit_items_group', which Guard Effect 2's
-    // routeMap below remaps to key 'edit_main_menu' - without this bypass
-    // that remapped key fails the items.find() lookup below and this guard
-    // effect immediately bounces the user back to Dashboard on every click
-    // (found 20 Aug 2026).
+    // NavMenuEditor's default list. Still reachable directly via hash
+    // '#edit_main_menu' (see the routeMap below), which is why this bypass
+    // stays even though 'edit_items_group' ("Menu & Pricing") no longer
+    // remaps to it - that card was routing to the wrong destination
+    // (the sidebar-structure editor instead of food pricing) and got fixed
+    // to remap to 'edit_food_menu' instead (found 20 Aug 2026).
     // 'kitchen_orders' is a legacy synthetic key too: the standalone Kitchen
     // Orders page was folded into the unified take_food_order screen's "Live
     // Tickets" tab (see KitchenManagement.tsx's activeMenuItemKey handling,
@@ -953,7 +957,14 @@ function AppBody({ preloadedData }: AppBodyProps) {
     // isVisible check runs before the root-admin bypass further down. That
     // silently bounced the button straight back to Dashboard on every click
     // (found 20 Aug 2026).
-    if (key === 'admin_control_group' || key === 'edit_items_group' || key === 'edit_main_menu' || key === 'team_overview' || key === 'admin_control_overview' || key === 'kitchen_overview' || key === 'kitchen_orders') return true;
+    // 'take_food_order' bypasses for the same reason: the sidebar/mobile-nav
+    // "Kitchen" parent button now routes straight here (its own former
+    // landing page, kitchen_overview/KitchenDashboard, was a purely
+    // redundant shortcut card and got removed permanently, 20 Aug 2026) -
+    // without the bypass, any role not individually granted this specific
+    // item (even if granted Kitchen access generally) would get silently
+    // bounced back to Dashboard on every "Kitchen" click.
+    if (key === 'admin_control_group' || key === 'edit_items_group' || key === 'edit_main_menu' || key === 'team_overview' || key === 'admin_control_overview' || key === 'kitchen_orders' || key === 'take_food_order') return true;
     // Preserve old bookmarked Attendance & Salaries links while the navigation uses
     // the canonical attendance calendar route.
     const routeKey = key === 'attendance_salaries' ? 'attendance_calendar' : key;
@@ -1047,14 +1058,15 @@ function AppBody({ preloadedData }: AppBodyProps) {
         live_kitchen_orders: { tab: 'kitchen', key: 'kitchen_orders' },
         live_tickets: { tab: 'kitchen', key: 'kitchen_orders' },
         staff_meals: { tab: 'kitchen', key: 'staff_meals' },
-        // Must match getInitialActiveState()'s routeMap ('kitchen_overview',
-        // not 'kitchen_orders') - kitchen_overview is the synthetic launchpad
-        // key that isRouteAllowed() above explicitly bypasses RBAC for.
-        // 'kitchen_orders' is a real DB-driven nav item and fails the RBAC
-        // check for any role that isn't granted it specifically, which was
-        // silently bouncing the mobile bottom nav's "Kitchen" button (itemKey
-        // 'kitchen') straight back to #dashboard on every click.
-        kitchen: { tab: 'kitchen', key: 'kitchen_overview' },
+        // Must match getInitialActiveState()'s routeMap - 'take_food_order'
+        // is a real DB-driven nav item, so it's also in isRouteAllowed()'s
+        // bypass list above (same reason 'kitchen_orders' already was): a
+        // role missing that specific item's own grant would otherwise get
+        // silently bounced back to #dashboard on every click of the sidebar/
+        // mobile-nav "Kitchen" button (itemKey 'kitchen') - the exact bug
+        // this comment originally documented for kitchen_overview, now
+        // retired (20 Aug 2026) along with its landing page.
+        kitchen: { tab: 'kitchen', key: 'take_food_order' },
         stock_requests: { tab: 'inventory', key: 'stock_requests' },
         fulfill_stock_req: { tab: 'inventory', key: 'stock_requests' },
         deficit_shortfalls_log: { tab: 'inventory', key: 'deficit_shortfalls_log' },
@@ -1971,16 +1983,17 @@ ${itemsStr}
                 </ErrorBoundary>
               )}
 
-              {!selectedRoomSlugOverride && activeTab === 'kitchen' && (activeMenuItemKey === 'kitchen_overview' || activeMenuItemKey === 'kitchen' || activeMenuItemKey.startsWith('custom_nav-') || activeMenuItemKey.startsWith('nav-header-')) && (
-                <ErrorBoundary section="Kitchen Dashboard">
-                  <KitchenDashboard
-                    onNavigate={(uniqueKey, tabKey) => handleNavigateTab((tabKey as TabType) || 'kitchen', uniqueKey)}
-                    navItems={visibleNavItems}
-                  />
-                </ErrorBoundary>
-              )}
-
-              {!selectedRoomSlugOverride && activeTab === 'kitchen' && activeMenuItemKey !== 'kitchen_overview' && activeMenuItemKey !== 'kitchen' && !activeMenuItemKey.startsWith('custom_nav-') && !activeMenuItemKey.startsWith('nav-header-') && (
+              {/* kitchen_overview's own landing page (KitchenDashboard - a card
+                  of shortcuts to Food Orders/Stock Requests/etc., purely
+                  redundant with the sidebar's own Kitchen sub-items) was
+                  removed permanently (20 Aug 2026). KitchenManagement now
+                  renders unconditionally for every kitchen-tab key,
+                  including the parent "Kitchen" click and any leftover
+                  custom_nav- / nav-header- prefixed key that reaches here
+                  unnormalized - it already defaults its own internal sub-tab sensibly
+                  (see KitchenManagement.tsx's getInitialTab) rather than
+                  needing a second component to dispatch to first. */}
+              {!selectedRoomSlugOverride && activeTab === 'kitchen' && (
                 <ErrorBoundary section="Kitchen Management">
                   <KitchenManagement
                     guests={guests}

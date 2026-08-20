@@ -21,6 +21,10 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 // 2026: per-tenant CSS-variable branding was deliberately dropped in favor of
 // one consistent Flowbite look site-wide - see theme-overrides.css's removal
 // from index.css).
+// No box-shadow on any variant (design rule, 20 Aug 2026 - see DESIGN.md's
+// "Buttons" section): flat fill + border only, even on hover/active. This is
+// a deliberate departure from Flowbite's own theme.js defaults, which do put
+// shadow-sm/shadow-xs on solid buttons.
 const buttonTheme = createTheme({
   size: {
     xs: 'text-[11px] px-2.5 h-7',
@@ -30,17 +34,17 @@ const buttonTheme = createTheme({
   },
   color: {
     primary:
-      'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-800 shadow-sm hover:shadow',
+      'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-800 shadow-none',
     secondary:
-      'bg-white border border-gray-200 hover:bg-gray-50 active:bg-gray-100 text-gray-700 focus:ring-4 focus:ring-gray-100 shadow-xs hover:shadow-sm dark:bg-gray-800 dark:border-gray-600 dark:hover:bg-gray-700 dark:text-gray-300 dark:focus:ring-gray-700',
+      'bg-white border border-gray-200 hover:bg-gray-50 active:bg-gray-100 text-gray-700 focus:ring-4 focus:ring-gray-100 shadow-none dark:bg-gray-800 dark:border-gray-600 dark:hover:bg-gray-700 dark:text-gray-300 dark:focus:ring-gray-700',
     tertiary:
       'text-gray-900 bg-gray-100 hover:bg-gray-200 focus:ring-4 focus:ring-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white',
     success:
-      'text-white bg-green-600 hover:bg-green-700 active:bg-green-800 focus:ring-4 focus:ring-green-300 dark:focus:ring-green-800 shadow-sm',
+      'text-white bg-green-600 hover:bg-green-700 active:bg-green-800 focus:ring-4 focus:ring-green-300 dark:focus:ring-green-800 shadow-none',
     danger:
-      'bg-red-600 hover:bg-red-700 active:bg-red-800 text-white focus:ring-4 focus:ring-red-300 dark:focus:ring-red-800 shadow-sm',
+      'bg-red-600 hover:bg-red-700 active:bg-red-800 text-white focus:ring-4 focus:ring-red-300 dark:focus:ring-red-800 shadow-none',
     warning:
-      'text-white bg-yellow-400 hover:bg-yellow-500 active:bg-yellow-600 focus:ring-4 focus:ring-yellow-300 dark:focus:ring-yellow-900 shadow-sm',
+      'text-white bg-yellow-400 hover:bg-yellow-500 active:bg-yellow-600 focus:ring-4 focus:ring-yellow-300 dark:focus:ring-yellow-900 shadow-none',
     dark:
       'text-white bg-gray-800 hover:bg-gray-900 focus:ring-4 focus:ring-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 dark:focus:ring-gray-700',
     link:

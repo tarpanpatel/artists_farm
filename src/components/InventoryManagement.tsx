@@ -1173,7 +1173,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
         <Tabs
           aria-label="Kitchen Stock Tabs"
-          variant="underline"
+          variant="default"
           onActiveTabChange={(tabIndex: number) => {
             setCatalogView(tabIndex === 0 ? 'items' : 'categories');
           }}
@@ -1695,7 +1695,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     return (
       <Tabs
         aria-label="Stock Request Tabs"
-        variant="underline"
+        variant="default"
         onActiveTabChange={(tabIndex: number) => {
           const tabs: ('fulfill' | 'requisitions')[] = ['fulfill', 'requisitions'];
           if (tabs[tabIndex]) setActiveTab(tabs[tabIndex]);
