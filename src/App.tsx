@@ -124,11 +124,15 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // Restore room view on page refresh if hash is a room slug
   useEffect(() => {
     if (typeof window !== 'undefined' && multiKeyRoomsRef.current.length > 0) {
-      const hash = window.location.hash.replace('#', '').trim();
+      const rawHash = window.location.hash.replace('#', '').trim();
+      const [hash, tabPart] = rawHash.split('/');
       if (hash) {
         const isRoomSlug = multiKeyRoomsRef.current.some((r: any) => r.slug === hash);
         if (isRoomSlug && selectedRoomSlugOverride !== hash) {
-          setActiveTab((prev) => (['dashboard', 'guests', 'edit_property'].includes(prev) ? prev : 'dashboard'));
+          const targetTab: TabType = (tabPart && ['dashboard', 'guests', 'edit_property'].includes(tabPart) ? tabPart as TabType : null)
+            || (sessionStorage.getItem('artists_farm_active_tab') as TabType)
+            || 'dashboard';
+          setActiveTab(targetTab);
           setActiveMenuItemKey(hash);
           setSelectedRoomSlugOverride(hash);
         }
@@ -235,9 +239,14 @@ function AppBody({ preloadedData }: AppBodyProps) {
         }
       }
 
-      // If hash is not in routeMap but exists, assume it's a room slug
+      // If hash is not in routeMap but exists, assume it's a room slug (with optional /subtab)
       if (hash) {
-        return { tab: 'dashboard', key: hash };
+        const [roomPart, tabPart] = hash.split('/');
+        if (tabPart && routeMap[tabPart]) {
+          return { tab: routeMap[tabPart].tab, key: roomPart };
+        }
+        const savedTab = (sessionStorage.getItem('artists_farm_active_tab') as TabType) || 'dashboard';
+        return { tab: savedTab, key: roomPart || hash };
       }
 
       // sessionStorage, not localStorage - deliberately scoped to this one tab.
@@ -277,11 +286,13 @@ function AppBody({ preloadedData }: AppBodyProps) {
   };
 
   const handleNavigateToRoom = (roomSlug: string, initialTab: TabType = 'dashboard') => {
+    sessionStorage.setItem('artists_farm_active_tab', initialTab);
+    sessionStorage.setItem('artists_farm_active_menu_key', roomSlug);
     setActiveTab(initialTab);
     setActiveMenuItemKey(roomSlug);
     setSelectedRoomSlugOverride(roomSlug);
-    // Update URL to include room slug so it persists on refresh
-    window.location.hash = `#${roomSlug}`;
+    // Update URL to include room slug and target subtab so it persists on refresh
+    window.location.hash = initialTab && initialTab !== 'dashboard' ? `#${roomSlug}/${initialTab}` : `#${roomSlug}`;
   };
 
 

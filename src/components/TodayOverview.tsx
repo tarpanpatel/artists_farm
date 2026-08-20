@@ -303,14 +303,12 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           icon={Calendar}
           badge={{ text: 'Today', color: 'info' }}
           value={todaysArrivals}
-          subtext="checking in today"
         />
         <KpiCard
           label="Departures"
           icon={LogOut}
           badge={{ text: 'Today', color: 'warning' }}
           value={todaysDepartures}
-          subtext="checking out today"
         />
         {isMultiKeyProperty && (
           <KpiCard
@@ -318,7 +316,6 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             icon={User}
             badge={{ text: 'Active', color: 'success' }}
             value={inHouseCount}
-            subtext="active guests"
           />
         )}
         <KpiCard
@@ -326,7 +323,6 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           icon={Bell}
           badge={{ text: 'Active', color: 'failure' }}
           value={pendingRequests}
-          subtext="active requests"
         />
       </div>
 

@@ -623,7 +623,20 @@ export async function resizeImageFile(file: File, maxDim: number = 1600): Promis
   }
 }
 
-export async function uploadImageDB(image: File | string, folder: 'menu' | 'catalog' | 'misc' | 'id_documents' | 'qr_code' = 'misc'): Promise<string | null> {
+// Shared implementation behind uploadImageDB/uploadImageDBVerbose below -
+// returns the real failure reason (server message, HTTP status, or the
+// caught exception) instead of only console.error-ing it and discarding it.
+// uploadImageDB's plain string|null signature has 5 call sites across the
+// app and stays untouched; uploadImageDBVerbose exists so screens that
+// actually show the failure to an end user (not just a developer with
+// devtools open) can display *why* it failed instead of one generic
+// message no matter the cause (found 20 Aug 2026 - see CheckinVerificationModal.tsx,
+// where a real device's "Failed to upload the photo" gave no way to tell
+// an auth/session problem apart from a file-too-large or invalid-image one).
+async function uploadImageDBInternal(
+  image: File | string,
+  folder: 'menu' | 'catalog' | 'misc' | 'id_documents' | 'qr_code' = 'misc'
+): Promise<{ url: string | null; error?: string }> {
   try {
     const formData = new FormData();
     formData.append('image', image instanceof File ? image : dataUriToBlob(image));
@@ -632,7 +645,14 @@ export async function uploadImageDB(image: File | string, folder: 'menu' | 'cata
       method: 'POST',
       body: formData,
     });
-    const json = await res.json();
+    let json: any;
+    try {
+      json = await res.json();
+    } catch {
+      // Non-JSON response (raw PHP fatal/HTML error page, host-level 413,
+      // etc.) - res.status is the only signal left.
+      return { url: null, error: `Server error (HTTP ${res.status}). Please try again.` };
+    }
     if (json.status === 'success' && json.url) {
       // json.url is built server-side from the backend's own SCRIPT_NAME, which
       // on this dev setup is the sibling `-ai2` folder the Vite proxy rewrites
@@ -643,14 +663,23 @@ export async function uploadImageDB(image: File | string, folder: 'menu' | 'cata
       // in both dev (matches the /php proxy rule) and production (this site
       // has never actually been deployed under an /artists_farm/ subfolder).
       const uploadsPath = json.url.replace(/^.*(\/php\/uploads\/.*)$/, '$1');
-      return `${API_ROOT_BASE}${uploadsPath}`;
+      return { url: `${API_ROOT_BASE}${uploadsPath}` };
     }
     console.error('Image upload failed:', json.message);
-    return null;
-  } catch (err) {
+    return { url: null, error: json.message || `Upload failed (HTTP ${res.status}).` };
+  } catch (err: any) {
     console.error('Failed to upload image:', err);
-    return null;
+    return { url: null, error: err?.message || 'Network error while uploading. Please check your connection and try again.' };
   }
+}
+
+export async function uploadImageDB(image: File | string, folder: 'menu' | 'catalog' | 'misc' | 'id_documents' | 'qr_code' = 'misc'): Promise<string | null> {
+  const result = await uploadImageDBInternal(image, folder);
+  return result.url;
+}
+
+export async function uploadImageDBVerbose(image: File | string, folder: 'menu' | 'catalog' | 'misc' | 'id_documents' | 'qr_code' = 'misc'): Promise<{ url: string | null; error?: string }> {
+  return uploadImageDBInternal(image, folder);
 }
 
 // Unlike uploadImageDB above, accepts PDFs as well as images and stores the

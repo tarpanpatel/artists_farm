@@ -878,8 +878,10 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
             <button onClick={collapseAll} className="nav-menu-editor__toolbar-btn text-[11px] text-slate-500 hover:text-slate-700 cursor-pointer font-medium">{t('nav_collapse_all_button', 'Collapse All')}</button>
             <span className="text-slate-300">|</span>
             <label className="nav-menu-editor__select-all flex items-center gap-1.5 text-[11px] text-slate-500 cursor-pointer">
-              <input type="checkbox" checked={selectedIds.size === visibleItems.length && visibleItems.length > 0} onChange={() => { if (selectedIds.size === visibleItems.length) setSelectedIds(new Set()); else setSelectedIds(new Set(visibleItems.map(i => i.id))); }} className="w-3 h-3 form-field__checkbox" />
-              {t('nav_select_all_button', 'Select All')}
+              <Checkbox
+                checked={selectedIds.size === visibleItems.length && visibleItems.length > 0}
+                onChange={() => { if (selectedIds.size === visibleItems.length) { setSelectedIds(new Set()); } else { setSelectedIds(new Set(visibleItems.map(i => i.id))); } }}
+              />{t('nav_select_all_button', 'Select All')}
             </label>
           </>
         )}

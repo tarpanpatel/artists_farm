@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, ModalHeader, ModalBody, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, Checkbox } from 'flowbite-react';
+import { Modal, ModalHeader, ModalBody, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, Checkbox, Popover } from 'flowbite-react';
 import {
   AlertTriangle,
   User,
@@ -35,6 +35,7 @@ import { PageHeader, PageHeaderButton } from './PageHeader';
 import { KpiCard } from './KpiCard';
 import { Input } from './Input';
 import { t } from '../i18n/en';
+import { formatDateDDMMYYYY } from '../utils/dateUtils';
 
 interface OperationalDashboardProps {
   guests: Guest[];
@@ -127,6 +128,14 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   const [showAddGuestModal, setShowAddGuestModal] = useState(false);
   const [showCleared, setShowCleared] = useState(false);
   const [showAllAlertsModal, setShowAllAlertsModal] = useState(false);
+  // Which day cell's "+N more" popover is open, keyed by dateStr - Popover
+  // manages its own open state internally by default, but left uncontrolled
+  // it doesn't close itself when a row inside it opens BookingDetailsModal,
+  // so it's still "open" (just hidden behind the modal's backdrop) and pops
+  // back up the moment that modal is closed. One shared piece of state lets
+  // every row explicitly close its own popover in the same click that opens
+  // the modal.
+  const [openOverflowDateStr, setOpenOverflowDateStr] = useState<string | null>(null);
   const [blockedDates, setBlockedDates] = useState<Array<{
     event_start: string;
     event_end: string;
@@ -357,14 +366,12 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           icon={Calendar}
           badge={{ text: 'Today', color: 'info' }}
           value={todaysArrivalsCount}
-          subtext="checking in today"
         />
         <KpiCard
           label="Departures"
           icon={LogOut}
           badge={{ text: 'Today', color: 'warning' }}
           value={todaysDeparturesCount}
-          subtext="checking out today"
         />
         {isMultiKeyProperty && (
           <KpiCard
@@ -372,7 +379,6 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             icon={User}
             badge={{ text: 'Active', color: 'success' }}
             value={inHouseCount}
-            subtext="active guests"
           />
         )}
         <KpiCard
@@ -380,7 +386,6 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           icon={Bell}
           badge={{ text: 'Active', color: 'failure' }}
           value={pendingRequestsCount}
-          subtext="active requests"
         />
       </div>
       )}
@@ -755,9 +760,16 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
 
           {daysArray.map((d) => {
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-            const dayBooking = guests.find(
+            // .filter(), not .find() - a property-wide calendar (no roomName,
+            // see the heading above) can have several rooms occupied the same
+            // night. The cell still only shows one chip (below) to keep the
+            // existing single-booking layout untouched, but the rest are no
+            // longer silently dropped - see the "+N more" pill.
+            const dayBookingsForDate = guests.filter(
               (g) => dateStr >= g.checkinDate && dateStr < (g.checkoutDate || g.expectedCheckout)
             );
+            const dayBooking = dayBookingsForDate[0];
+            const dayBookingOverflowCount = dayBookingsForDate.length - 1;
             // OTA-synced block for this day, on this room's own feed (this
             // component already fetches get_blocked_dates scoped to whichever
             // room's page it's rendered on). Only relevant when there's no
@@ -830,6 +842,54 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                     </div>
                     {nightlyRate > 0 && <div className="text-[10px] font-semibold opacity-90">₹{nightlyRate}</div>}
                   </button>
+                )}
+                {dayBookingOverflowCount > 0 && (
+                  <Popover
+                    trigger="click"
+                    placement="auto"
+                    open={openOverflowDateStr === dateStr}
+                    onOpenChange={(isOpen) => setOpenOverflowDateStr(isOpen ? dateStr : null)}
+                    content={
+                      <div className="w-60 p-2">
+                        <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 px-1 pb-2">
+                          {formatDateDDMMYYYY(dateStr)} · {dayBookingsForDate.length} bookings
+                        </div>
+                        <div className="space-y-1 max-h-64 overflow-y-auto">
+                          {dayBookingsForDate.map((g) => {
+                            const amt = (g as any).totalCharge || (g as any).totalAmount || (g as any).total_charge || 0;
+                            return (
+                              <button
+                                key={g.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedBooking(g);
+                                  setOpenOverflowDateStr(null);
+                                }}
+                                className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 text-left transition-colors cursor-pointer"
+                              >
+                                <div className="min-w-0">
+                                  <div className="text-xs font-semibold text-slate-900 dark:text-white truncate">{g.guestName}</div>
+                                  <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                                    {g.roomNumber}{amt > 0 ? ` · ₹${Math.round(amt)}` : ''}
+                                  </div>
+                                </div>
+                                <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 shrink-0">
+                                  {t('view_booking_button', 'View')} →
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    }
+                  >
+                    <button
+                      type="button"
+                      className="rounded px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[9px] font-semibold hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors cursor-pointer w-full truncate"
+                    >
+                      +{dayBookingOverflowCount} more
+                    </button>
+                  </Popover>
                 )}
                 {otaBlock && (
                   // Native title, not Tooltip.tsx: this cell sits in a grid whose

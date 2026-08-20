@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Share2, Loader2, CheckCircle2 } from 'lucide-react';
-import { Modal, ModalHeader, ModalBody } from 'flowbite-react';
+import { Modal, ModalHeader, ModalBody, Checkbox } from 'flowbite-react';
 import * as htmlToImage from 'html-to-image';
 import { WalkInTab } from '../types';
 import { billWalkInTabDB } from '../services/api';
@@ -159,10 +159,11 @@ export const WalkInTabBillModal: React.FC<WalkInTabBillModalProps> = ({
                 />
               </div>
 
-              <label className="flex items-center justify-between gap-3 cursor-pointer">
+              <Checkbox
+                  checked={gstEnabled}
+                  onChange={(e) => setGstEnabled(e.target.checked)}
+                />{" "}
                 <span className="text-slate-600 dark:text-slate-400">{t('apply_gst_label', 'Apply GST')} ({gstRate}%)</span>
-                <input type="checkbox" checked={gstEnabled} onChange={(e) => setGstEnabled(e.target.checked)} className="w-4 h-4 cursor-pointer" />
-              </label>
               {gstEnabled && (
                 <div className="flex justify-between text-slate-500 dark:text-slate-500 text-xs pl-2">
                   <span>{t('cgst_sgst_label', 'CGST (50%) / SGST (50%):')}</span>

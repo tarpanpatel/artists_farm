@@ -1143,7 +1143,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 {/* LEFT COLUMN: Property Cash in Hand (₹) */}
                 <div>
                   <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('property_cash_in_hand_rupees_label', 'Property Cash in Hand (₹)')}</label>
-                  <div className="p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-950 dark:text-white font-bold text-sm font-mono shadow-md h-[38px] flex items-center px-3">
+                  <div className="p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-950 dark:text-white font-bold text-sm tabular-numbers shadow-md h-[38px] flex items-center px-3">
                     ₹{Number(formState.drawerAmount || 0).toFixed(2)}
                   </div>
                 </div>
@@ -1409,7 +1409,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               <div key={entry.id} className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-lg border border-slate-200/80 dark:border-slate-700/80 space-y-2 text-xs">
                 <div className="flex items-center justify-between gap-2">
                   <div className="font-bold text-slate-900 dark:text-white">{entry.description}</div>
-                  <span className="font-mono font-bold text-slate-900 dark:text-white text-sm">₹{entry.amount.toFixed(2)}</span>
+                  <span className="font-bold text-slate-900 dark:text-white text-sm tabular-numbers">₹{entry.amount.toFixed(2)}</span>
                 </div>
 
                 {payer && (
@@ -1547,7 +1547,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 return isEditingAmount ? (
                   <Input type="number" value={editValue} onChange={e => setEditValue(e.target.value)} onBlur={() => handleCellSave(entry.id)} onKeyDown={e => e.key === 'Enter' && handleCellSave(entry.id)} autoFocus className="w-24" />
                 ) : (
-                  <span onDoubleClick={() => handleCellDoubleClick(entry.id, 'amount', entry.amount, entry.source)} className="cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-950 px-1 py-0.5 rounded transition-all font-mono font-semibold text-slate-950 dark:text-white text-sm border-b border-dashed border-slate-400" title={t('double_click_to_edit_tooltip', 'Double click to edit')}>₹{entry.amount.toFixed(2)}</span>
+                  <span onDoubleClick={() => handleCellDoubleClick(entry.id, 'amount', entry.amount, entry.source)} className="cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-950 px-1 py-0.5 rounded transition-all font-semibold text-slate-950 dark:text-white text-sm border-b border-dashed border-slate-400 tabular-numbers" title={t('double_click_to_edit_tooltip', 'Double click to edit')}>₹{entry.amount.toFixed(2)}</span>
                 );
               },
             },

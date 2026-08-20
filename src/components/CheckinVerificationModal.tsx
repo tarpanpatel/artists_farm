@@ -8,7 +8,7 @@ import {
   saveIdDocumentToDB,
   deleteIdDocumentFromDB,
   completeCheckinVerificationDB,
-  uploadImageDB,
+  uploadImageDBVerbose,
   resizeImageFile,
 } from '../services/api';
 import { t } from '../i18n/en';
@@ -74,9 +74,14 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
     // resort's connection. No FileReader/base64 preview round-trip either,
     // this flow never previews the image, only uploads it.
     const resized = await resizeImageFile(file);
-    const uploadedUrl = await uploadImageDB(resized, 'id_documents');
+    const { url: uploadedUrl, error: uploadError } = await uploadImageDBVerbose(resized, 'id_documents');
     if (!uploadedUrl) {
-      setErrorMsg('Failed to upload the photo. Please try again.');
+      // Surface the real server-side reason (auth/session expired, file too
+      // large, an image format the server couldn't decode, etc.) instead of
+      // one generic message no matter the cause - the old version gave no
+      // way to tell those apart on a real device with no devtools open
+      // (found 20 Aug 2026).
+      setErrorMsg(uploadError || 'Failed to upload the photo. Please try again.');
       setUploadingIndex(null);
       return;
     }

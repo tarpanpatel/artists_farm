@@ -22,12 +22,16 @@ This file documents ALL project conventions and rules. Every AI agent must follo
 - Dark mode support: use `dark:` prefix for all colors
 - Always include dark theme variants
 
-### Component Library (Flowbite React - migration in progress, started 19 Aug 2026)
-- **Standing rule flipped 19 Aug 2026**: this project previously banned external UI component libraries ("build everything with Tailwind classes directly"). That's reversed - `flowbite-react` (+ the `flowbite` Tailwind plugin it depends on) are now the standard, and the app is in an active **full migration** off the hand-built components toward Flowbite equivalents.
-- For **new** components/screens, and anything getting rebuilt: use `flowbite-react` components (forms, modals, dropdowns, tooltips, etc.) instead of hand-rolling another custom one.
-- The **existing** hand-built shared components (`src/components/Input.tsx`, `StyledSelect.tsx`, `Button.tsx`, `Tooltip.tsx`, etc.) are still in active use across most of the app and are NOT dead code - don't delete or bypass them ad hoc. They get replaced screen-by-screen as part of the migration, not all at once. If you're unsure whether a given screen has been migrated yet, check whether it's already importing from `flowbite-react` before assuming either convention.
-- Still follow the color scheme, dark-mode (`dark:` prefix), and Lucide-icons-only rules below regardless of which component source a screen uses - those didn't change.
-- ### Category Filter Toggle Pattern
+### Component Library (Flowbite React & Core Flowbite Code - Standard across entire site)
+- **Core Flowbite Source Repository & Component Codes**:
+  - Reference: **https://github.com/themesberg/flowbite/tree/main/content/components**
+  - These are the standard, canonical Flowbite component codes and markup patterns to be used all over the site.
+- **Standing rule (Active Full Site Migration)**: `flowbite-react` (+ the `flowbite` Tailwind plugin and official Flowbite markup patterns from the repo above) are the standard across all pages, modals, forms, and tables.
+- For **new** components/screens, and anything getting rebuilt or updated: use official Flowbite components (forms, modals, inputs, checkboxes, dropdowns, tabs, buttons, badges, tables, tooltips, drawers, etc.) matching the core Flowbite implementation.
+- The **existing** hand-built shared components (`src/components/Input.tsx`, `StyledSelect.tsx`, `Button.tsx`, `Tooltip.tsx`, etc.) are still in active use across most of the app and are NOT dead code - don't delete or bypass them ad hoc. They get replaced screen-by-screen as part of the migration.
+- Always include dark theme variants (`dark:` prefix) and use Lucide icons (`lucide-react`).
+
+### Category Filter Toggle Pattern
 - On all screens with search and category filtering (e.g. `MenuManager.tsx`, `InventoryManagement.tsx`, `KitchenManagement.tsx`), category filter pills/bars **must not be open by default**.
 - Provide a `<Filter className="w-4 h-4" />` toggle button immediately next to the search input.
 - Reveal category pills only when the user clicks the filter toggle button.

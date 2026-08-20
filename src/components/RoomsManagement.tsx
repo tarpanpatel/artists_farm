@@ -270,97 +270,112 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
             return (
               <div
                 key={room.id}
-                className="rooms-management__room-item flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-50 dark:bg-slate-700/30 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors border border-slate-200 dark:border-slate-600"
+                className="rooms-management__room-item p-3.5 sm:p-4 bg-slate-50 dark:bg-slate-700/30 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors border border-slate-200 dark:border-slate-600 space-y-2.5"
               >
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-slate-900 dark:text-white text-sm mb-1 truncate">{room.name}</p>
-                  <span
-                    className={`inline-block px-2 py-1 text-xs font-semibold rounded ${
-                      status === 'booked'
-                        ? 'bg-orange-100 text-orange-800 dark:bg-orange-950/50 dark:text-orange-300'
-                        : 'bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-300'
-                    }`}
-                  >
-                    {status === 'booked' ? t('booked_badge', 'Booked') : t('available_badge', 'Available')}
-                  </span>
-                  {roomData && (
-                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                      Revenue: {property.currency} {roomData.total_revenue.toFixed(0)}
-                    </p>
-                  )}
-                  {editingTariffRoomId === room.id ? (
-                    <div className="flex items-center gap-1.5 mt-1.5">
-                      <Input
-                        type="number"
-                        value={tariffDraft}
-                        onChange={(e) => setTariffDraft(e.target.value)}
-                        placeholder={t('default_tariff_placeholder', 'e.g. 2000')}
-                        className="!h-8 !py-1 w-28 text-xs"
-                        autoFocus
-                      />
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        onClick={() => handleSaveTariff(room.id)}
-                        disabled={savingTariff}
-                        className="text-emerald-600 dark:text-emerald-400"
-                        title={t('save_tooltip', 'Save')}
-                      >
-                        {savingTariff ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        onClick={() => setEditingTariffRoomId(null)}
-                        disabled={savingTariff}
-                        className="text-slate-400"
-                        title={t('cancel_button', 'Cancel')}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => handleStartEditTariff(room)}
-                      className="flex items-center gap-1 mt-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
+                {/* Top Row: Room Name + Status Badge on Left, Action Buttons on Right */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <p className="font-semibold text-slate-900 dark:text-white text-sm truncate">{room.name}</p>
+                    <span
+                      className={`inline-block px-2 py-0.5 text-xs font-semibold rounded shrink-0 ${
+                        status === 'booked'
+                          ? 'bg-orange-100 text-orange-800 dark:bg-orange-950/50 dark:text-orange-300'
+                          : 'bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-300'
+                      }`}
                     >
-                      <Pencil className="w-3 h-3" />
-                      {room.default_tariff != null
-                        ? t('default_tariff_display', 'Default Tariff: {{currency}} {{amount}}/night')
-                            .replace('{{currency}}', property.currency || '₹')
-                            .replace('{{amount}}', room.default_tariff.toFixed(0))
-                        : t('set_default_tariff_label', 'Set Default Tariff')}
-                    </button>
-                  )}
+                      {status === 'booked' ? t('booked_badge', 'Booked') : t('available_badge', 'Available')}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Button
+                      variant="secondary"
+                      size="xs"
+                      onClick={() => {
+                        if (onNavigateToRoom) {
+                          onNavigateToRoom(room.slug, 'edit_property');
+                        } else {
+                          window.location.href = `#${room.slug}/edit_property`;
+                        }
+                      }}
+                    >
+                      {t('manage_button', 'Manage')}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      onClick={() => handleDeleteRoom(room.id)}
+                      disabled={deletingRoom === room.id}
+                      className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 p-1.5"
+                      title={t('delete_room_button', 'Delete Unit')}
+                    >
+                      {deletingRoom === room.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
 
-                <div className="flex gap-2 shrink-0">
-                  <Button
-                    variant="secondary"
-                    size="xs"
-                    onClick={() => {
-                      if (onNavigateToRoom) {
-                        onNavigateToRoom(room.slug, 'edit_property');
-                      } else {
-                        window.location.href = `#${room.slug}`;
-                      }
-                    }}
-                  >
-                    {t('manage_button', 'Manage')}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="xs"
-                    onClick={() => handleDeleteRoom(room.id)}
-                    disabled={deletingRoom === room.id}
-                    className="text-red-600 dark:text-red-400"
-                  >
-                    {deletingRoom === room.id ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                {/* Bottom Row: Revenue and Default Tariff side-by-side horizontally */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200/60 dark:border-slate-600/60 text-xs text-slate-600 dark:text-slate-400">
+                  <div>
+                    {roomData ? (
+                      <span>Revenue: <strong className="font-semibold text-slate-900 dark:text-slate-200">{property.currency || '₹'} {roomData.total_revenue.toFixed(0)}</strong></span>
                     ) : (
-                      <Trash2 className="w-4 h-4" />
+                      <span>Revenue: <strong className="font-semibold text-slate-900 dark:text-slate-200">{property.currency || '₹'} 0</strong></span>
                     )}
-                  </Button>
+                  </div>
+
+                  <div>
+                    {editingTariffRoomId === room.id ? (
+                      <div className="flex items-center gap-1.5">
+                        <Input
+                          type="number"
+                          value={tariffDraft}
+                          onChange={(e) => setTariffDraft(e.target.value)}
+                          placeholder={t('default_tariff_placeholder', 'e.g. 2000')}
+                          className="!h-7 !py-0.5 w-24 text-xs"
+                          autoFocus
+                        />
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          onClick={() => handleSaveTariff(room.id)}
+                          disabled={savingTariff}
+                          className="text-emerald-600 dark:text-emerald-400 p-1"
+                          title={t('save_tooltip', 'Save')}
+                        >
+                          {savingTariff ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          onClick={() => setEditingTariffRoomId(null)}
+                          disabled={savingTariff}
+                          className="text-slate-400 p-1"
+                          title={t('cancel_button', 'Cancel')}
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleStartEditTariff(room)}
+                        className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
+                      >
+                        <Pencil className="w-3 h-3 text-slate-400 hover:text-blue-600" />
+                        <span>
+                          {room.default_tariff != null
+                            ? t('default_tariff_display', 'Default Tariff: {{currency}} {{amount}}/night')
+                                .replace('{{currency}}', property.currency || '₹')
+                                .replace('{{amount}}', room.default_tariff.toFixed(0))
+                            : t('set_default_tariff_label', 'Set Default Tariff')}
+                        </span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             );

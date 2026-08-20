@@ -12,6 +12,9 @@ one - it gives every future change a plausible-looking but wrong thing to match 
 
 ## Where to look instead
 
+- **Core Flowbite Source Repository & Component Codes**:
+  https://github.com/themesberg/flowbite/tree/main/content/components
+  These are the core canonical Flowbite component codes and markup patterns to be used across all screens on this site.
 - **Component-level styling** (buttons, badges, modals, tabs, sidebars, cards, tables, inputs):
   `node_modules/flowbite-react/dist/components/<Component>/theme.js` in this repo is the ground
   truth for exactly what classes `flowbite-react` renders. Read the real file, don't guess.

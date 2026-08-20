@@ -555,56 +555,104 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               />
             </div>
 
-            {/* Row 1: Contact Phone + Assigned Room (2 columns on all screens) */}
-            <div className={`grid ${isMultiKeyProperty && rooms && rooms.length > 0 ? 'grid-cols-2' : 'grid-cols-1'} gap-3 sm:gap-4`}>
-              <div>
-                <Input
-                  label={t('contact_phone_label', 'Contact Phone Number *')}
-                  type="tel"
-                  value={phoneNumber}
-                  onChange={e => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                  placeholder="Enter 10-digit mobile number"
-                  maxLength={10}
-                  required
-                />
-              </div>
+            {/* Row 1 & 2: Symmetrical 2-Column Pairing across Multi-Key and Single-Key properties */}
+            {isMultiKeyProperty && rooms && rooms.length > 0 ? (
+              <>
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                  <div>
+                    <Input
+                      label={t('contact_phone_label', 'Contact Phone Number *')}
+                      type="tel"
+                      value={phoneNumber}
+                      onChange={e => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      placeholder="Enter 10-digit mobile number"
+                      maxLength={10}
+                      required
+                    />
+                  </div>
 
-              {/* Room Selector for MultiKey Properties */}
-              {isMultiKeyProperty && rooms && rooms.length > 0 && (
-                <div>
-                  <StyledSelect
-                    label={t('assigned_room_label', 'Assigned Room / Villa *')}
-                    value={roomNumber}
-                    onChange={handleRoomChange}
-                    options={rooms.map((room) => ({ value: room.name, label: room.name }))}
-                  />
+                  <div>
+                    <StyledSelect
+                      label={t('assigned_room_label', 'Assigned Room / Villa *')}
+                      value={roomNumber}
+                      onChange={handleRoomChange}
+                      options={rooms.map((room) => ({ value: room.name, label: room.name }))}
+                    />
+                  </div>
                 </div>
-              )}
-            </div>
 
-            {/* Row 2: Booking Source + No. of Guests (2 columns on all screens) */}
-            <div className="grid grid-cols-2 gap-3 sm:gap-4">
-              <div>
-                <StyledSelect
-                  label={t('booking_source_label', 'Booking Source')}
-                  value={bookingSourceLocal}
-                  onChange={setBookingSourceLocal}
-                  options={[
-                    { value: 'Offline', label: 'Offline' },
-                    { value: 'Online', label: 'Online' },
-                  ]}
-                />
-              </div>
-              <div>
-                <Input
-                  label={t('no_of_guests_label', 'No. of Guests')}
-                  type="number"
-                  min="1"
-                  value={noOfGuests}
-                  onChange={(e) => setNoOfGuests(Math.max(1, Number(e.target.value)))}
-                />
-              </div>
-            </div>
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                  <div>
+                    <StyledSelect
+                      label={t('booking_source_label', 'Booking Source')}
+                      value={bookingSourceLocal}
+                      onChange={setBookingSourceLocal}
+                      options={[
+                        { value: 'Offline', label: 'Offline' },
+                        { value: 'Online', label: 'Online' },
+                      ]}
+                    />
+                  </div>
+                  <div>
+                    <Input
+                      label={t('no_of_guests_label', 'No. of Guests')}
+                      type="number"
+                      min="1"
+                      value={noOfGuests}
+                      onChange={(e) => setNoOfGuests(Math.max(1, Number(e.target.value)))}
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                  <div>
+                    <Input
+                      label={t('contact_phone_label', 'Contact Phone Number *')}
+                      type="tel"
+                      value={phoneNumber}
+                      onChange={e => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      placeholder="Enter 10-digit mobile number"
+                      maxLength={10}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Input
+                      label={t('no_of_guests_label', 'No. of Guests')}
+                      type="number"
+                      min="1"
+                      value={noOfGuests}
+                      onChange={(e) => setNoOfGuests(Math.max(1, Number(e.target.value)))}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                  <div>
+                    <StyledSelect
+                      label={t('booking_source_label', 'Booking Source')}
+                      value={bookingSourceLocal}
+                      onChange={setBookingSourceLocal}
+                      options={[
+                        { value: 'Offline', label: 'Offline' },
+                        { value: 'Online', label: 'Online' },
+                      ]}
+                    />
+                  </div>
+                  <div>
+                    <Input
+                      label={t('room_rent', 'Room Rent / Price (₹)')}
+                      type="number"
+                      value={bookingRoomTariff || ''}
+                      onChange={e => handleTariffChange(Number(e.target.value))}
+                      placeholder="Enter room rent in ₹"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Row 3: Checkin & Checkout Date Range */}
             <div>
@@ -638,16 +686,18 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               </div>
             </div>
 
-            {/* Total Room Tariff */}
-            <div>
-              <Input
-                label={t('room_rent', 'Room Rent / Price (₹)')}
-                type="number"
-                value={bookingRoomTariff || ''}
-                onChange={e => handleTariffChange(Number(e.target.value))}
-                placeholder="Enter room rent in ₹"
-              />
-            </div>
+            {/* Total Room Tariff (Rendered separately on MultiKey where room selector is present) */}
+            {isMultiKeyProperty && rooms && rooms.length > 0 && (
+              <div>
+                <Input
+                  label={t('room_rent', 'Room Rent / Price (₹)')}
+                  type="number"
+                  value={bookingRoomTariff || ''}
+                  onChange={e => handleTariffChange(Number(e.target.value))}
+                  placeholder="Enter room rent in ₹"
+                />
+              </div>
+            )}
 
             {/* Checkboxes Row: Flowbite Standard Checkbox Elements */}
             <div className="flex flex-wrap items-center gap-4 sm:gap-6 py-2">

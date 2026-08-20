@@ -435,7 +435,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
            />
            <KpiCard
              label={t('monthly_revenue_label', 'Monthly Revenue')}
-             value={`â‚¹${overview.total_revenue.toLocaleString('en-IN')}`}
+             value={`₹${overview.total_revenue.toLocaleString('en-IN')}`}
              icon={DollarSign}
              badge={{ text: 'Revenue', color: 'success' }}
            />

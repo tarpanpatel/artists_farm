@@ -408,28 +408,24 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
               icon={Calendar}
               badge={{ text: 'Today', color: 'info' }}
               value={todaysArrivalsCount}
-              subtext="checking in today"
             />
             <KpiCard
               label="Departures"
               icon={LogOut}
               badge={{ text: 'Today', color: 'warning' }}
               value={todaysDeparturesCount}
-              subtext="checking out today"
             />
             <KpiCard
               label="Guests In-House"
               icon={User}
               badge={{ text: 'Active', color: 'success' }}
               value={inHouseCount}
-              subtext="active guests"
             />
             <KpiCard
               label="Service Requests"
               icon={Bell}
               badge={{ text: 'Active', color: 'failure' }}
               value={pendingRequestsCount}
-              subtext="active requests"
             />
           </div>
         </section>

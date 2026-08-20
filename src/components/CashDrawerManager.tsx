@@ -574,7 +574,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                       {entry.handed_to && <p className="text-[11px] text-slate-500">Handed To: {entry.handed_to}</p>}
                       {entry.notes && <p className="text-[10px] text-slate-400 italic mt-0.5">{entry.notes}</p>}
                     </div>
-                    <span className="font-mono font-bold text-slate-900 dark:text-white text-sm">₹{Number(entry.amount).toLocaleString('en-IN')}</span>
+                    <span className="font-bold text-slate-900 dark:text-white text-sm tabular-numbers">₹{Number(entry.amount).toLocaleString('en-IN')}</span>
                   </div>
                 </div>
               ))}
@@ -644,7 +644,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                     sortable: true,
                     width: '120px',
                     right: true,
-                    cell: (entry: CashDrawerEntry) => <span className="font-mono font-semibold text-sm">₹{Number(entry.amount).toLocaleString('en-IN')}</span>,
+                    cell: (entry: CashDrawerEntry) => <span className="font-semibold text-sm tabular-numbers">₹{Number(entry.amount).toLocaleString('en-IN')}</span>,
                   },
                   {
                     name: t('handed_to_column', 'Handed To'),

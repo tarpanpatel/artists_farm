@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Modal, ModalHeader, ModalBody, TextInput } from 'flowbite-react';
+import { Card, Modal, ModalHeader, ModalBody, TextInput, Checkbox } from 'flowbite-react';
 import { Button } from './Button';
 import DataTable from 'react-data-table-component';
 import { flowbiteTableCustomStyles } from '../utils/tableStyles';
@@ -684,15 +684,13 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
         const isFiled = !!row.cFormFiledAt;
         const isSaving = savingCFormId === row.id;
         return (
-          <label className="flex items-center gap-2 cursor-pointer py-1 text-xs select-none">
-            <input
-              type="checkbox"
-              checked={isFiled}
-              disabled={isSaving}
-              onChange={(e) => handleToggleCForm(row, e.target.checked)}
-              className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer disabled:opacity-50"
-            />
-            <span className={`font-semibold ${isFiled ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
+<label className="flex items-center gap-2 cursor-pointer py-1 text-xs select-none">
+                  <Checkbox
+                    checked={isFiled}
+                    disabled={isSaving}
+                    onChange={e => handleToggleCForm(row, e.target.checked)}
+                  />{" "}
+                  <span className={`font-semibold ${isFiled ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
               {isFiled ? (
                 <span className="flex items-center gap-1">
                   <span>{t('filed_badge', 'Filed')}</span>

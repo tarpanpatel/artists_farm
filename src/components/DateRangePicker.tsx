@@ -10,6 +10,7 @@ interface DateRangePickerProps {
   toPlaceholder?: string;
   className?: string;
   label?: string;
+  disabled?: boolean;
   // Optional legacy props for seamless compatibility
   isOpen?: boolean;
   onClose?: () => void;
@@ -28,7 +29,7 @@ const CalendarIcon: React.FC = () => (
 );
 
 const fieldClass =
-  'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-9 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500';
+  'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-9 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-700/50 disabled:opacity-80';
 
 function toIsoDate(date: number | Date | undefined): string {
   if (date === undefined) return '';
@@ -63,6 +64,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   toPlaceholder = 'Select date end',
   className = '',
   label,
+  disabled = false,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const startInputRef = useRef<HTMLInputElement>(null);
@@ -138,14 +140,14 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
             <CalendarIcon />
           </div>
-          <input ref={startInputRef} name="start" type="text" className={fieldClass} placeholder={fromPlaceholder} />
+          <input ref={startInputRef} name="start" type="text" disabled={disabled} className={fieldClass} placeholder={fromPlaceholder} />
         </div>
         <span className="shrink-0 text-xs font-medium text-gray-500 dark:text-gray-400">to</span>
         <div className="relative flex-1">
           <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
             <CalendarIcon />
           </div>
-          <input ref={endInputRef} name="end" type="text" className={fieldClass} placeholder={toPlaceholder} />
+          <input ref={endInputRef} name="end" type="text" disabled={disabled} className={fieldClass} placeholder={toPlaceholder} />
         </div>
       </div>
     </div>

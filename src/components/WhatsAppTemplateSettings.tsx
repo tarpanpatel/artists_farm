@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Alert } from 'flowbite-react';
+import { Card, Alert, Checkbox } from 'flowbite-react';
 import { Loader2, CheckCircle2, AlertCircle, MessageCircle } from 'lucide-react';
 import { t } from '../i18n/en';
 import { Button } from './Button';
@@ -142,17 +142,13 @@ We look forward to welcoming you!`;
         </Alert>
       )}
 
-      <label className="whatsapp-template-settings__telegram-toggle flex items-start gap-2.5 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={telegramCustomization}
-          onChange={(e) => setTelegramCustomization(e.target.checked)}
-          className="whatsapp-template-settings__telegram-checkbox w-4 h-4 mt-0.5 rounded accent-indigo-600 cursor-pointer"
-        />
-        <span className="whatsapp-template-settings__telegram-label block text-sm font-semibold text-slate-700 dark:text-slate-300">
-          {t('allow_telegram_template_customization_label', 'Enable Telegram Template Customization')}
-        </span>
-      </label>
+      <Checkbox
+                  checked={telegramCustomization}
+                  onChange={(e) => setTelegramCustomization(e.target.checked)}
+                />{" "}
+                <span className="whatsapp-template-settings__telegram-label block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  {t('allow_telegram_template_customization_label', 'Enable Telegram Template Customization')}
+                </span>
 
       <div className="whatsapp-template-settings__whatsapp-section pt-2 border-t border-slate-100 dark:border-slate-800 space-y-4">
         <div>

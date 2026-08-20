@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Tabs, TabItem, type TabsRef } from 'flowbite-react';
+import { Tabs, TabItem, type TabsRef, Checkbox } from 'flowbite-react';
 import { KpiCard } from './KpiCard';
 import {
   BarChart3,
@@ -1719,13 +1719,11 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                           : 'bg-slate-50/50 dark:bg-slate-900/20 border-slate-100 dark:border-slate-800'
                       } ${isDisabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
                     >
-                      <input
-                        type="checkbox"
-                        className="mt-0.5 shrink-0"
-                        checked={isChecked}
-                        disabled={isDisabled}
-                        onChange={() => toggleFluctuationItem(s.name)}
-                      />
+<Checkbox
+                      checked={isChecked}
+                      disabled={isDisabled}
+                      onChange={() => toggleFluctuationItem(s.name)}
+                    />{" "}
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
                           <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">{s.name}</span>

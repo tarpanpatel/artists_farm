@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2, Share2, LogOut, Upload, CreditCard, Globe, AlertTriangle, X } from 'lucide-react';
-import { Drawer as FlowbiteDrawer, DrawerItems } from 'flowbite-react';
+import { Drawer as FlowbiteDrawer, DrawerItems, Checkbox } from 'flowbite-react';
 import { Button } from './Button';
 import { Badge } from './Badge';
 import { Guest } from '../types';
@@ -15,7 +15,6 @@ import { DateRangePicker } from './DateRangePicker';
 import { CheckinVerificationModal } from './CheckinVerificationModal';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
 import { t } from '../i18n/en';
-import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import {
   GUEST_STATUS_BOOKED,
   GUEST_STATUS_CONFIRMED_LEGACY,
@@ -40,11 +39,7 @@ interface BookingDetailsModalProps {
   onOpenIdVerification?: () => void;
   onCheckedIn?: (guestId: string) => void;
   // Guest can be checked out and billed anytime during the stay, not just on
-  // the original expected checkout date - a premature settlement just means
-  // picking today's date in the checkout screen's own date picker instead of
-  // the original one, which already shortens the booking (and its calendar
-  // bar) correctly. Omit this prop to hide the button entirely (e.g. call
-  // sites that don't yet have a checkout screen wired up).
+  // the original expected checkout date.
   onCheckout?: () => void;
 }
 
@@ -58,12 +53,8 @@ const formatDate = (dateStr: string) => {
 
 /**
  * The one booking modal every calendar/list in the app should use - opens
- * read-only (Booking Details), an explicit Edit button switches it into the
- * same field set Add Booking collects. Previously TodayOverview (Multi-Key
- * top-level calendar) and OperationalDashboard (Single property + Multi-Key
- * per-room) each had their own separate modal - one Details-first with a
- * partial field set, one always-editable with an even smaller field set.
- * This replaces both.
+ * with full disabled booking form (Booking Details), an explicit Edit button
+ * switches all fields into editable mode.
  */
 export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   guest,
@@ -110,9 +101,6 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  // Set only when edit mode is entered via the "Settle / Assign Receiver"
-  // banner, so the empty received-by field(s) it's pointing at get a visual
-  // highlight - the generic Edit button shouldn't highlight anything.
   const [highlightReceiverFields, setHighlightReceiverFields] = useState(false);
   const [isIdModalOpen, setIsIdModalOpen] = useState(false);
 
@@ -146,6 +134,25 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   useEffect(() => {
     if (guest) {
       const g = guest as any;
+      const noGuests = g.no_of_guests ?? g.numberOfGuests ?? 1;
+      const rent = g.base_room_rent ?? g.roomRate ?? 0;
+      const adv = g.advance_paid ?? g.advanceAmount ?? 0;
+
+      setEditName(guest.guestName || '');
+      setEditPhone(guest.phoneNumber || '');
+      setEditRoomId(String(g.roomId ?? g.room_id ?? ''));
+      setEditGuests(String(noGuests));
+      setEditCheckin(guest.checkinDate?.split(' ')[0] || '');
+      setEditCheckout(guest.expectedCheckout?.split(' ')[0] || guest.checkoutDate?.split(' ')[0] || '');
+      setEditRoomRent(String(rent));
+      setEditAdvance(String(adv));
+      setEditAdvanceReceivedBy(g.advance_received_by || guest.advanceReceivedBy || '');
+      setEditPendingReceivedBy(g.pending_received_by || guest.pendingReceivedBy || '');
+      setEditBookingSource(guest.bookingSource || 'Offline');
+      setEditNotes(guest.notes || '');
+      setEditShowNotes(!!guest.notes);
+      setEditIsForeignGuest(!!guest.isForeignGuest);
+
       const isFiled = !!(guest.cFormFiledAt || g.c_form_filed_at || g.c_form_filed || g.cFormFiled);
       setCFormFiledState(isFiled);
       setCFormNumberState(g.c_form_number || g.cFormNumber || '');
@@ -159,17 +166,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const noOfGuests = g.no_of_guests ?? g.numberOfGuests ?? 1;
   const roomRent = g.base_room_rent ?? g.roomRate ?? 0;
   const advancePaid = g.advance_paid ?? g.advanceAmount ?? 0;
-  // The booking form folds itemized "Additional Charges" (Decoration Fees,
-  // Pet Stay Charges, etc.) straight into pendingAmount at creation time -
-  // this modal has no visibility into those individual lines (they live in
-  // guest_extra_charges, a table this component never reads; it's
-  // write-only-from-here, analytics-only-read). Without preserving that gap,
-  // recomputing pending as pure roomRent-advancePaid on every edit silently
-  // dropped any extra charges from the bill - the guest_name note text
-  // ("Extra Charges: ...") the create form also writes was the only
-  // surviving trace, which is why it looked like the charge "became" just a
-  // note (found 19 Aug 2026). storedPending - the bare rent/advance math is
-  // treated as that baked-in extra and carried forward through edits.
+  
   const storedPending = g.pending_amount ?? g.pendingAmount;
   const extrasBaked = typeof storedPending === 'number'
     ? Math.max(0, storedPending - Math.max(0, roomRent - advancePaid))
@@ -178,14 +175,6 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     ? Math.max(0, (parseFloat(editRoomRent) || 0) - (parseFloat(editAdvance) || 0) + extrasBaked)
     : Math.max(0, roomRent - advancePaid + extrasBaked);
 
-  // Naming someone in "Pending Received By" IS the payment event (confirmed
-  // with the user 19 Aug 2026), not mere attribution - it means this person
-  // just collected the outstanding balance right now (an early, mid-stay
-  // settlement). Fold it into Advance Paid so pendingDisplay reflects that
-  // immediately; the explicit Save button (not real-time here, unlike
-  // ReceiptEditModal's checkout screen) then commits it along with
-  // everything else. Clearing the dropdown back to blank does not reverse
-  // this - a mistaken selection must be fixed via Advance Paid directly.
   const handleEditPendingReceivedByChange = (val: string) => {
     setEditPendingReceivedBy(val);
     if (val) {
@@ -195,20 +184,6 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
 
   const startEditing = (highlightReceiver: boolean = false) => {
     setHighlightReceiverFields(highlightReceiver);
-    setEditName(guest.guestName || '');
-    setEditPhone(guest.phoneNumber || '');
-    setEditRoomId(String(g.roomId ?? g.room_id ?? ''));
-    setEditGuests(String(noOfGuests));
-    setEditCheckin(guest.checkinDate?.split(' ')[0] || '');
-    setEditCheckout(guest.expectedCheckout?.split(' ')[0] || guest.checkoutDate?.split(' ')[0] || '');
-    setEditRoomRent(String(roomRent));
-    setEditAdvance(String(advancePaid));
-    setEditAdvanceReceivedBy(g.advance_received_by || guest.advanceReceivedBy || '');
-    setEditPendingReceivedBy(g.pending_received_by || guest.pendingReceivedBy || '');
-    setEditBookingSource(guest.bookingSource || 'Offline');
-    setEditNotes(guest.notes || '');
-    setEditShowNotes(!!guest.notes);
-    setEditIsForeignGuest(!!guest.isForeignGuest);
     setIsEditing(true);
   };
 
@@ -304,12 +279,6 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     });
   };
 
-  // Generic OS-level share sheet (navigator.share) rather than a
-  // WhatsApp-only deep link, so the guest's actual phone share sheet opens -
-  // WhatsApp, SMS, Telegram, "Copy", whatever's installed - instead of this
-  // app assuming WhatsApp specifically (found 20 Aug 2026). Falls back to
-  // copying the message to the clipboard on browsers without Web Share
-  // support. Same pattern as StaffManagement.tsx's handleShareLogin.
   const handleShareBooking = async () => {
     const message = buildShareMessage();
     if (typeof navigator !== 'undefined' && navigator.share) {
@@ -334,14 +303,8 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const financialHandlers = staff.filter((s) => s.isFinancialHandler).map((s) => ({ value: s.name, label: s.name }));
   const availableHandlers = financialHandlers.length > 0 ? financialHandlers : staff.map((s) => ({ value: s.name, label: s.name }));
 
-  const fieldLabelClass = 'text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase';
-  const inputClass = 'mt-1 w-full h-10 px-3.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm outline-none transition-all focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100/30';
-
   return (
     <>
-      {/* z-60: opened from the calendar/bookings screen with an underlying
-          page modal sometimes already open (see the z-index scale note in
-          src/index.css). */}
       <FlowbiteDrawer
         open={Boolean(guest)}
         onClose={() => { onClose(); setIsEditing(false); }}
@@ -375,9 +338,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           </button>
         </div>
         <DrawerItems id="printableBookingDetailsContent" className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
-          {/* Action Banner 0: OTA cancellation drift - the source calendar no longer
-              has this reservation (guest likely cancelled upstream). Informational
-              only, staff decide what to do - never auto-cancels/checks out. */}
+          {/* Action Banner 0: OTA cancellation drift */}
           {guest.otaCancelledDetectedAt && !isEditing && (
             <div className="w-full mb-3 px-3.5 py-2.5 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 flex items-center gap-2 shadow-2xs">
               <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
@@ -442,13 +403,8 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             const pendingReceiver = g.pending_received_by || guest.pendingReceivedBy || '';
             const isCheckedOut = ((guest.status as string) === 'Checked Out' || (g.status as string) === 'Checked Out');
             
-            // Advance paid requires an assigned advanceReceiver
             const isAdvanceUnassigned = advancePaid > 0 && !advanceReceiver;
-            
-            // Pending receiver is only unassigned if guest checked out / settled pending balance without specifying who collected it
             const isPendingUnassigned = isCheckedOut && pendingDisplay === 0 && !pendingReceiver && (roomRent - advancePaid) > 0;
-            
-            // Checked out guest who still owes an unpaid balance
             const isCheckedOutUnsettled = isCheckedOut && pendingDisplay > 0;
             
             const showBanner = !isEditing && (isAdvanceUnassigned || isPendingUnassigned || isCheckedOutUnsettled);
@@ -477,335 +433,299 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             );
           })()}
 
-          <div className="booking-details-modal__body space-y-4">
-            {/* Row: Guest Name + Room */}
-            <div className={rooms.length > 0 ? 'grid grid-cols-2 gap-4' : ''}>
+          {/* Unified Booking Form: Clean, Form-Based Layout (Disabled by Default, Editable on Edit) */}
+          <div className="booking-details-modal__body space-y-3.5">
+            {/* Row 0: Guest Name */}
+            <div>
+              <Input
+                label={t('today_guest_name_label', 'Guest Name *')}
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                disabled={!isEditing}
+                placeholder="Enter guest's full name"
+                required
+              />
+            </div>
+
+            {/* Row 1: Contact Phone + Assigned Room (or 1-col if no rooms) */}
+            <div className={`grid ${rooms.length > 0 ? 'grid-cols-2' : 'grid-cols-1'} gap-3 sm:gap-4`}>
               <div>
-                <label className={fieldLabelClass}>{t('today_guest_name_label', 'Guest Name')}</label>
-                {isEditing ? (
-                  <Input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} />
-                ) : (
-                  <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
-                    {guest.guestName}
-                  </div>
-                )}
+                <Input
+                  label={t('contact_phone_label', 'Contact Phone Number *')}
+                  type="tel"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  maxLength={10}
+                  placeholder="10-digit mobile number"
+                  disabled={!isEditing}
+                  required
+                />
               </div>
               {rooms.length > 0 && (
                 <div>
-                  <label className={fieldLabelClass}>{t('room_column', 'Room')}</label>
-                  {isEditing ? (
-                    <div className="mt-1">
-                      <StyledSelect
-                        value={editRoomId}
-                        onChange={setEditRoomId}
-                        buttonClassName="w-full h-10 px-3.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm outline-none transition-all focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100/30"
-                        options={rooms.map((room) => {
-                          const newCheckin = new Date(editCheckin || guest.checkinDate);
-                          const newCheckout = new Date(editCheckout || guest.expectedCheckout);
-                          const occupiedByOther = checkedInGuests.some((other) => {
-                            if (other.id === guest.id) return false;
-                            const otherRoomId = (other as any).roomId ?? (other as any).room_id;
-                            if (Number(otherRoomId) !== Number(room.id)) return false;
-                            const otherCheckin = new Date(other.checkinDate);
-                            const otherCheckout = new Date(other.expectedCheckout || other.checkoutDate || other.checkinDate);
-                            return newCheckin < otherCheckout && otherCheckin < newCheckout;
-                          });
-                          return { value: String(room.id), label: `${room.name}${occupiedByOther ? ' (occupied these dates)' : ''}`, disabled: occupiedByOther };
-                        })}
-                      />
-                    </div>
-                  ) : (
-                    <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
-                      {guest.roomNumber}
-                    </div>
-                  )}
+                  <StyledSelect
+                    label={t('assigned_room_label', 'Assigned Room / Villa *')}
+                    value={editRoomId}
+                    onChange={setEditRoomId}
+                    disabled={!isEditing}
+                    options={rooms.map((room) => {
+                      const newCheckin = new Date(editCheckin || guest.checkinDate);
+                      const newCheckout = new Date(editCheckout || guest.expectedCheckout);
+                      const occupiedByOther = checkedInGuests.some((other) => {
+                        if (other.id === guest.id) return false;
+                        const otherRoomId = (other as any).roomId ?? (other as any).room_id;
+                        if (Number(otherRoomId) !== Number(room.id)) return false;
+                        const otherCheckin = new Date(other.checkinDate);
+                        const otherCheckout = new Date(other.expectedCheckout || other.checkoutDate || other.checkinDate);
+                        return newCheckin < otherCheckout && otherCheckin < newCheckout;
+                      });
+                      return { value: String(room.id), label: `${room.name}${occupiedByOther ? ' (occupied these dates)' : ''}`, disabled: occupiedByOther };
+                    })}
+                  />
                 </div>
               )}
             </div>
 
-            {/* Row: Phone + No. of Guests */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Row 2: Booking Source + No. of Guests */}
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <label className={fieldLabelClass}>{t('phone_label', 'Phone')}</label>
-                {isEditing ? (
-                  <Input
-                    type="tel"
-                    value={editPhone}
-                    onChange={(e) => setEditPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                    maxLength={10}
-                    placeholder="10-digit mobile number"
-                  />
-                ) : (
-                  <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
-                    {guest.phoneNumber || '—'}
-                  </div>
-                )}
+                <StyledSelect
+                  label={t('booking_source_label', 'Booking Source')}
+                  value={editBookingSource}
+                  onChange={setEditBookingSource}
+                  disabled={!isEditing}
+                  options={[
+                    { value: 'Offline', label: 'Offline' },
+                    { value: 'Online', label: 'Online' },
+                  ]}
+                />
               </div>
               <div>
-                <label className={fieldLabelClass}>{t('no_of_guests_label', 'No. of Guests')}</label>
-                {isEditing ? (
-                  <Input type="number" min={1} value={editGuests} onChange={(e) => setEditGuests(e.target.value)} />
-                ) : (
-                  <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
-                    {noOfGuests} guest{noOfGuests !== 1 ? 's' : ''}
-                  </div>
-                )}
+                <Input
+                  label={t('no_of_guests_label', 'No. of Guests')}
+                  type="number"
+                  min={1}
+                  value={editGuests}
+                  onChange={(e) => setEditGuests(e.target.value)}
+                  disabled={!isEditing}
+                />
               </div>
             </div>
 
-            {/* Row: Check-in + Check-out */}
-            {isEditing ? (
+            {/* Row 3: Booking Dates (DateRangePicker) */}
+            <div>
               <DateRangePicker
+                label="Booking Dates *"
                 checkinDate={editCheckin}
                 checkoutDate={editCheckout}
                 onCheckinChange={setEditCheckin}
                 onCheckoutChange={setEditCheckout}
+                disabled={!isEditing}
               />
-            ) : (
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className={fieldLabelClass}>{t('today_check_in_label', 'Check-in')}</label>
-                  <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
-                    {formatDate(guest.checkinDate?.split(' ')[0] || '')}
-                  </div>
-                </div>
-                <div>
-                  <label className={fieldLabelClass}>{t('today_check_out_label', 'Check-out')}</label>
-                  <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
-                    {formatDate(guest.expectedCheckout?.split(' ')[0] || '')}
-                  </div>
-                </div>
+            </div>
+
+            {/* Row 4: Room Rent + Status */}
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <div>
+                <Input
+                  label={t('room_rent', 'Room Rent / Price (₹)')}
+                  type="number"
+                  min={0}
+                  value={editRoomRent}
+                  onChange={(e) => setEditRoomRent(e.target.value)}
+                  disabled={!isEditing}
+                />
+              </div>
+              <div>
+                <Input
+                  label={t('today_status_label', 'Status')}
+                  type="text"
+                  value={guest.status}
+                  disabled={true}
+                />
+              </div>
+            </div>
+
+            {/* Row 5: Advance Paid + Advance Received By */}
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <div>
+                <Input
+                  label={t('today_advance_paid_label', 'Advance Paid (₹)')}
+                  type="number"
+                  min={0}
+                  value={editAdvance}
+                  onChange={(e) => setEditAdvance(e.target.value)}
+                  disabled={!isEditing}
+                />
+              </div>
+              <div>
+                <StyledSelect
+                  label={t('advance_received_by', 'Advance Received By')}
+                  value={editAdvanceReceivedBy}
+                  onChange={setEditAdvanceReceivedBy}
+                  placeholder="-- Select Staff/User --"
+                  disabled={!isEditing}
+                  options={availableHandlers}
+                  className={highlightReceiverFields && !editAdvanceReceivedBy ? 'ring-2 ring-red-400 rounded-lg' : ''}
+                />
+              </div>
+            </div>
+
+            {/* Row 6: Pending + Pending Received By */}
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <div>
+                <Input
+                  label={t('today_pending_label', 'Pending (₹)')}
+                  type="text"
+                  value={`₹${pendingDisplay.toLocaleString('en-IN')}`}
+                  disabled={true}
+                />
+              </div>
+              <div>
+                <StyledSelect
+                  label={t('pending_received_by_label', 'Pending Received By')}
+                  value={editPendingReceivedBy}
+                  onChange={handleEditPendingReceivedByChange}
+                  placeholder="-- Select Staff/User --"
+                  disabled={!isEditing}
+                  options={availableHandlers}
+                  className={highlightReceiverFields && !editPendingReceivedBy && ((guest.status as string) === 'Checked Out' || (g.status as string) === 'Checked Out') ? 'ring-2 ring-red-400 rounded-lg' : ''}
+                />
+              </div>
+            </div>
+
+            {/* Checkboxes Row (Flowbite Standard) */}
+            <div className="flex flex-wrap items-center gap-4 sm:gap-6 py-1">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="modal-guest-notes-cb"
+                  checked={editShowNotes}
+                  onChange={e => setEditShowNotes(e.target.checked)}
+                  disabled={!isEditing}
+                />
+                <label
+                  htmlFor="modal-guest-notes-cb"
+                  className={`text-xs font-medium text-gray-900 dark:text-gray-300 select-none ${isEditing ? 'cursor-pointer' : 'cursor-not-allowed opacity-80'}`}
+                >
+                  {t('guest_notes_checkbox_label', 'Guest Notes')}
+                </label>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="modal-foreign-guest-cb"
+                  checked={editIsForeignGuest}
+                  onChange={e => setEditIsForeignGuest(e.target.checked)}
+                  disabled={!isEditing}
+                />
+                <label
+                  htmlFor="modal-foreign-guest-cb"
+                  className={`text-xs font-medium text-gray-900 dark:text-gray-300 select-none ${isEditing ? 'cursor-pointer' : 'cursor-not-allowed opacity-80'}`}
+                >
+                  {t('foreign_national_guest_label', 'Foreign National Guest')}
+                </label>
+              </div>
+            </div>
+
+            {/* Guest Notes Textarea (if checked or existing notes present) */}
+            {(editShowNotes || guest.notes) && (
+              <div>
+                <Textarea
+                  label={t('guest_notes_checkbox_label', 'Guest Notes')}
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  disabled={!isEditing}
+                  rows={2}
+                  placeholder={t('guest_notes_placeholder', 'Any special requests or notes...')}
+                />
               </div>
             )}
 
-            {/* Room Rent */}
-            <div>
-              <label className={fieldLabelClass}>{t('room_rent', 'Room Rent / Price (₹)')}</label>
-              {isEditing ? (
-                <Input type="number" min={0} value={editRoomRent} onChange={(e) => setEditRoomRent(e.target.value)} />
-              ) : (
-                <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
-                  ₹{roomRent}
-                </div>
-              )}
-            </div>
-
-            {/* Row: Advance Paid + Advance Received By */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={fieldLabelClass}>{t('today_advance_paid_label', 'Advance Paid')}</label>
-                {isEditing ? (
-                  <Input type="number" min={0} value={editAdvance} onChange={(e) => setEditAdvance(e.target.value)} />
-                ) : (
-                  <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-emerald-600 dark:text-emerald-400 text-sm font-semibold">
-                    ₹{advancePaid}
-                  </div>
-                )}
-              </div>
-              <div>
-                <label className={highlightReceiverFields && !editAdvanceReceivedBy ? 'text-[11px] font-semibold text-red-500 dark:text-red-400 uppercase' : fieldLabelClass}>{t('advance_received_by', 'Advance Received By')}</label>
-                {isEditing ? (
-                  <div className="mt-1">
-                    <StyledSelect
-                      value={editAdvanceReceivedBy}
-                      onChange={setEditAdvanceReceivedBy}
-                      placeholder="-- Select Staff/User --"
-                      buttonClassName={`w-full h-10 px-3.5 border rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm outline-none transition-all focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100/30 ${
-                        highlightReceiverFields && !editAdvanceReceivedBy
-                          ? 'border-red-400 dark:border-red-500 ring-4 ring-red-100 dark:ring-red-900/30'
-                          : 'border-slate-300 dark:border-slate-600'
-                      }`}
-                      options={availableHandlers}
+            {/* Foreign Guest C-Form Box */}
+            {(editIsForeignGuest || guest.isForeignGuest) && (
+              <div
+                id="c-form-checkbox-container"
+                className={`p-3 rounded-lg border transition-all ${
+                  !isCFormFiled
+                    ? 'border-rose-400 dark:border-rose-700 bg-rose-50/70 dark:bg-rose-950/40'
+                    : 'border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-950/30'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-800 dark:text-slate-100 select-none">
+                    <Checkbox
+                      checked={cFormFiledState}
+                      onChange={async (e) => {
+                        const isChecked = e.target.checked;
+                        if (!isChecked) {
+                          const ok = await markCFormFiled(guest.id, false, '');
+                          if (ok) {
+                            setCFormFiledState(false);
+                            setCFormNumberState('');
+                            showToast('C-Form marked as pending', { type: 'success' });
+                            await onSave({ ...guest, cFormFiledAt: null, cFormFiled: false, c_form_filed: false, cFormNumber: '', c_form_number: '' } as any);
+                          } else {
+                            showToast('Failed to update C-Form status', { type: 'error' });
+                          }
+                        } else {
+                          setCFormFiledState(true);
+                        }
+                      }}
                     />
-                  </div>
-                ) : (
-                  <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
-                    {g.advance_received_by || guest.advanceReceivedBy || '—'}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Row: Pending + Pending Received By */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={fieldLabelClass}>{t('today_pending_label', 'Pending')}</label>
-                <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-amber-600 dark:text-amber-400 text-sm font-semibold">
-                  ₹{pendingDisplay}
+                    <span>Mark C-Form as filed</span>
+                  </label>
+                  <span className={`text-xs font-semibold ${isCFormFiled ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                    {isCFormFiled ? 'Filed' : 'Filing Pending'}
+                  </span>
                 </div>
-              </div>
-              <div>
-                <label className={highlightReceiverFields && !editPendingReceivedBy && ((guest.status as string) === 'Checked Out' || (g.status as string) === 'Checked Out') ? 'text-[11px] font-semibold text-red-500 dark:text-red-400 uppercase' : fieldLabelClass}>{t('pending_received_by_label', 'Pending Received By')}</label>
-                {isEditing ? (
-                  <div className="mt-1">
-                    <StyledSelect
-                      value={editPendingReceivedBy}
-                      onChange={handleEditPendingReceivedByChange}
-                      placeholder="-- Select Staff/User --"
-                      buttonClassName={`w-full h-10 px-3.5 border rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm outline-none transition-all focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100/30 ${
-                        highlightReceiverFields && !editPendingReceivedBy && ((guest.status as string) === 'Checked Out' || (g.status as string) === 'Checked Out')
-                          ? 'border-red-400 dark:border-red-500 ring-4 ring-red-100 dark:ring-red-900/30'
-                          : 'border-slate-300 dark:border-slate-600'
-                      }`}
-                      options={availableHandlers}
+
+                {cFormFiledState && (
+                  <div className="mt-2.5 flex items-center gap-2">
+                    <input
+                      id="c-form-number-input"
+                      type="text"
+                      value={cFormNumberState}
+                      onChange={(e) => setCFormNumberState(e.target.value)}
+                      placeholder="C-Form Confirmation No."
+                      className="flex-1 px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
                     />
-                  </div>
-                ) : (
-                  <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
-                    {g.pending_received_by || guest.pendingReceivedBy || t('pending_received_by_not_received', 'Not received')}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Row: Booking Source + Status */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={fieldLabelClass}>{t('booking_source_label', 'Booking Source')}</label>
-                {isEditing ? (
-                  <div className="mt-1">
-                    <StyledSelect value={editBookingSource} onChange={setEditBookingSource} buttonClassName="w-full h-10 px-3.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm outline-none transition-all focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100/30" options={[{ value: 'Offline', label: 'Offline' }, { value: 'Online', label: 'Online' }]} />
-                  </div>
-                ) : (
-                  <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
-                    {guest.bookingSource || '—'}
-                  </div>
-                )}
-              </div>
-              <div>
-                <label className={fieldLabelClass}>{t('today_status_label', 'Status')}</label>
-                <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-emerald-600 dark:text-emerald-400 text-sm font-semibold">
-                  {guest.status}
-                </div>
-              </div>
-            </div>
-
-            {/* Foreign Guest + Notes toggle (edit mode only - view mode shows notes text directly if present) */}
-            {isEditing ? (
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 pt-1">
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 dark:text-slate-300 select-none">
-                  <input type="checkbox" checked={editShowNotes} onChange={(e) => setEditShowNotes(e.target.checked)} className="form-field__checkbox shrink-0 w-4.5 h-4.5" />
-                  <span>{t('guest_notes_checkbox_label', 'Guest Notes')}</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 dark:text-slate-300 select-none">
-                  <input type="checkbox" checked={editIsForeignGuest} onChange={(e) => setEditIsForeignGuest(e.target.checked)} className="form-field__checkbox shrink-0 w-4.5 h-4.5" />
-                  <span>{t('foreign_national_guest_label', 'Foreign National Guest')}</span>
-                </label>
-              </div>
-            ) : (
-              (guest.notes || guest.isForeignGuest) && (
-                <div className="grid grid-cols-2 gap-4">
-                  {guest.notes && (
-                    <div>
-                      <label className={fieldLabelClass}>{t('guest_notes_checkbox_label', 'Guest Notes')}</label>
-                      <p className="text-slate-900 dark:text-white text-sm">{guest.notes}</p>
-                    </div>
-                  )}
-                  {guest.isForeignGuest && (
-                    <div
-                      id="c-form-checkbox-container"
-                      className={`p-3 rounded-lg border transition-all ${
-                        !isCFormFiled
-                          ? 'border-rose-400 dark:border-rose-700 bg-rose-50/70 dark:bg-rose-950/40 ring-2 ring-rose-300 dark:ring-rose-800 animate-pulse'
-                          : 'border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-950/30'
-                      }`}
+                    <button
+                      type="button"
+                      disabled={isSavingCForm}
+                      onClick={async () => {
+                        setIsSavingCForm(true);
+                        const ok = await markCFormFiled(guest.id, true, cFormNumberState);
+                        setIsSavingCForm(false);
+                        if (ok) {
+                          const filedAt = new Date().toISOString();
+                          setCFormFiledState(true);
+                          showToast('C-Form saved & Telegram notification sent', { type: 'success' });
+                          await onSave({ ...guest, cFormFiledAt: filedAt, cFormFiled: true, c_form_filed: true, cFormNumber: cFormNumberState, c_form_number: cFormNumberState } as any);
+                        } else {
+                          showToast('Failed to save C-Form details', { type: 'error' });
+                        }
+                      }}
+                      className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-400 text-white transition-all cursor-pointer shadow-2xs shrink-0 flex items-center gap-1"
                     >
-                      <label className={fieldLabelClass}>{t('foreign_national_guest_label', 'Foreign National Guest')}</label>
-                      <div className="flex items-center gap-2 mt-1.5">
-                        <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-800 dark:text-slate-100 select-none">
-                          <input
-                            type="checkbox"
-                            checked={cFormFiledState}
-                            onChange={async (e) => {
-                              const isChecked = e.target.checked;
-                              if (!isChecked) {
-                                const ok = await markCFormFiled(guest.id, false, '');
-                                if (ok) {
-                                  setCFormFiledState(false);
-                                  setCFormNumberState('');
-                                  showToast('C-Form marked as pending', { type: 'success' });
-                                  await onSave({ ...guest, cFormFiledAt: null, cFormFiled: false, c_form_filed: false, cFormNumber: '', c_form_number: '' } as any);
-                                } else {
-                                  showToast('Failed to update C-Form status', { type: 'error' });
-                                }
-                              } else {
-                                setCFormFiledState(true);
-                              }
-                            }}
-                            className="w-4.5 h-4.5 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
-                          />
-                          <span className={!isCFormFiled ? 'text-rose-700 dark:text-rose-300 font-extrabold' : 'text-emerald-800 dark:text-emerald-300 font-bold'}>
-                            {cFormFiledState ? 'C-Form Filed' : 'âš ï¸ C-Form Pending — Check to Mark Filed'}
-                          </span>
-                          {guest.cFormFiledAt && (
-                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-normal">
-                              ({formatDateDDMMYYYY(guest.cFormFiledAt)})
-                            </span>
-                          )}
-                        </label>
-                      </div>
-
-                      {cFormFiledState && (
-                        <div className="mt-2.5 flex items-center gap-2">
-                          <input
-                            id="c-form-number-input"
-                            type="text"
-                            value={cFormNumberState}
-                            onChange={(e) => setCFormNumberState(e.target.value)}
-                            placeholder="C-Form Confirmation No."
-                            className="flex-1 px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-                          />
-                          <button
-                            type="button"
-                            disabled={isSavingCForm}
-                            onClick={async () => {
-                              setIsSavingCForm(true);
-                              const ok = await markCFormFiled(guest.id, true, cFormNumberState);
-                              setIsSavingCForm(false);
-                              if (ok) {
-                                const filedAt = new Date().toISOString();
-                                setCFormFiledState(true);
-                                showToast('C-Form saved & Telegram notification sent', { type: 'success' });
-                                await onSave({ ...guest, cFormFiledAt: filedAt, cFormFiled: true, c_form_filed: true, cFormNumber: cFormNumberState, c_form_number: cFormNumberState } as any);
-                              } else {
-                                showToast('Failed to save C-Form details', { type: 'error' });
-                              }
-                            }}
-                            className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-400 text-white transition-all cursor-pointer shadow-2xs shrink-0 flex items-center gap-1"
-                          >
-                            {isSavingCForm ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                            <span>Save</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )
-            )}
-            {isEditing && editShowNotes && (
-              <Textarea
-                value={editNotes}
-                onChange={(e) => setEditNotes(e.target.value)}
-                rows={2}
-                placeholder={t('guest_notes_placeholder', 'Any special requests or notes...')}
-                className={inputClass}
-              />
+                      {isSavingCForm ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                      <span>Save C-Form</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
+          {/* Modal Actions Footer: Clean Layout with Checkout on Bottom Right */}
           <div id="printableBookingDetailsActionsBar" className="booking-details-modal__footer mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
             {!isEditing ? (
-              <div className="grid grid-cols-2 gap-2 w-full">
+              <div className="space-y-3 w-full">
+                {/* Mark Checked In (Full-width action if status is Booked) */}
                 {(guest.status === GUEST_STATUS_BOOKED || (guest.status as string) === GUEST_STATUS_CONFIRMED_LEGACY) && (
                   <button
                     type="button"
                     onClick={async () => {
-                      // update_guest (what onSave calls) never writes the status
-                      // column - it only touches booking details - so this used to
-                      // look like it worked (optimistic local state) and then
-                      // silently revert to Booked on the next reload. checkin_guest
-                      // is the actual endpoint that persists the status flip.
                       const ok = await checkinGuestInDB(guest.id);
                       if (ok) {
                         guest.status = GUEST_STATUS_CHECKED_IN as any;
@@ -815,38 +735,63 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                         showToast('Failed to check in guest', { type: 'error' });
                       }
                     }}
-                    className="w-full h-9 px-3.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 col-span-2"
+                    className="w-full h-10 px-4 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 active:scale-98"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     <span>{t('mark_checked_in_button', 'Mark Checked In')}</span>
                   </button>
                 )}
 
-                {onCheckout && (guest.status === GUEST_STATUS_CHECKED_IN || (guest.status as string) === GUEST_STATUS_ACTIVE_LEGACY) && (
-<Button variant="primary" size="lg" onClick={onCheckout} leftIcon={<LogOut className="w-4 h-4" />}>
-                  <span>{t('checkout_settle_bill_button', 'Checkout & Settle Bill')}</span>
-                </Button>
-                )}
+                {/* Bottom Buttons Bar */}
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  {/* Left Controls: Delete + Share with Guest */}
+                  <div className="flex items-center gap-2">
+                    {onDelete && (
+                      <button
+                        type="button"
+                        onClick={handleDelete}
+                        disabled={isDeleting}
+                        className="h-9 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 dark:text-rose-300 dark:border-rose-800 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                        title={t('today_delete_booking_button', 'Delete Booking')}
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+                        <span>{isDeleting ? t('deleting_button', 'Deleting...') : t('delete_button', 'Delete')}</span>
+                      </button>
+                    )}
 
-                <Button variant="secondary" size="lg" onClick={handleShareBooking} leftIcon={<Share2 className="w-4 h-4 text-emerald-600 shrink-0" />} className="col-span-1 min-w-0 w-full">
-                  <span className="truncate">{t('share_with_guest_button', 'Share with guest')}</span>
-                </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={handleShareBooking}
+                      leftIcon={<Share2 className="w-4 h-4 text-emerald-600 shrink-0" />}
+                    >
+                      <span>{t('share_with_guest_button', 'Share with guest')}</span>
+                    </Button>
+                  </div>
 
-                <Button variant="primary" size="lg" onClick={() => startEditing()} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />} className="col-span-1 min-w-0 w-full">
-                  <span className="truncate">{t('edit_button', 'Edit')}</span>
-                </Button>
+                  {/* Right Controls: Edit Button + Checkout & Settle Bill on bottom right */}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => startEditing()}
+                      leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
+                    >
+                      <span>{t('edit_button', 'Edit')}</span>
+                    </Button>
 
-                {onDelete && (
-                  <button
-                    type="button"
-                    onClick={handleDelete}
-                    disabled={isDeleting}
-                    className="w-full h-9 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 dark:text-rose-300 dark:border-rose-800 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 col-span-2"
-                  >
-                    <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
-                    <span>{isDeleting ? t('deleting_button', 'Deleting...') : t('today_delete_booking_button', 'Delete Booking')}</span>
-                  </button>
-                )}
+                    {onCheckout && (guest.status === GUEST_STATUS_CHECKED_IN || (guest.status as string) === GUEST_STATUS_ACTIVE_LEGACY) && (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={onCheckout}
+                        leftIcon={<LogOut className="w-4 h-4 shrink-0" />}
+                      >
+                        <span>{t('checkout_settle_bill_button', 'Checkout & Settle Bill')}</span>
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="flex items-center justify-end gap-2">
@@ -858,7 +803,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 >
                   {t('cancel_button', 'Cancel')}
                 </button>
-                <Button variant="primary" size="lg" onClick={handleSave} disabled={isSaving}>
+                <Button variant="primary" size="sm" onClick={handleSave} disabled={isSaving}>
                   {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                   <span>{t('save_button', 'Save')}</span>
                 </Button>
@@ -882,4 +827,3 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     </>
   );
 };
-

@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Loader2, CheckCircle2, AlertCircle, Upload, Trash2 } from 'lucide-react';
 import { t } from '../i18n/en';
 import { Button } from './Button';
 import { Input } from './Input';
 import { WhatsAppEditor } from './WhatsAppEditor';
-import { uploadImageDB } from '../services/api';
+import { uploadImageDBVerbose } from '../services/api';
 
 /**
  * Shared "Edit Property" form - property details only (name, contact,
@@ -51,6 +51,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
   submitLabel,
   isRoom = false,
 }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(property.name || '');
   const [email, setEmail] = useState(property.email || '');
   const [phone, setPhone] = useState(property.phone || '');
@@ -75,30 +76,37 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
 
   const handleQrCodeSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    e.target.value = ''; // allow re-selecting the same file later
     if (!file) return;
 
     const ALLOWED = ['image/jpeg', 'image/png', 'image/webp'];
     if (!ALLOWED.includes(file.type)) {
       setQrUploadError(t('qr_code_invalid_type_label', 'Please upload a JPG, PNG, or WEBP image.'));
+      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
       setQrUploadError(t('qr_code_too_large_label', 'File is too large (max 10MB).'));
+      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
     setQrUploadError(null);
     setIsUploadingQr(true);
-    // Uploaded as-is (server downscales-only, never crops - see
-    // upload_image.php's `qr_code` folder) so the corner finder patterns
-    // that make it scannable are never cut off.
-    const url = await uploadImageDB(file, 'qr_code');
-    setIsUploadingQr(false);
-    if (url) {
-      setUpiQrCodeUrl(url);
-    } else {
-      setQrUploadError(t('qr_code_upload_failed_label', 'Failed to upload QR code. Please try again.'));
+    try {
+      // Uploaded as-is (server downscales-only, never crops - see
+      // upload_image.php's `qr_code` folder) so the corner finder patterns
+      // that make it scannable are never cut off.
+      const { url, error: uploadErr } = await uploadImageDBVerbose(file, 'qr_code');
+      if (url) {
+        setUpiQrCodeUrl(url);
+      } else {
+        setQrUploadError(uploadErr || t('qr_code_upload_failed_label', 'Failed to upload QR code. Please try again.'));
+      }
+    } catch (err: any) {
+      setQrUploadError(err?.message || 'Failed to upload QR code. Please try again.');
+    } finally {
+      setIsUploadingQr(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -214,6 +222,15 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
               helperText={t('upi_id_help_text', 'A scannable UPI QR code and this ID are added to booking confirmation and bill messages shared over WhatsApp.')}
             />
             <div className="property-edit-form__qr-upload mt-2">
+              <input
+                ref={fileInputRef}
+                id="property-qr-file-input"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={handleQrCodeSelected}
+                disabled={isUploadingQr}
+              />
               {upiQrCodeUrl ? (
                 <div className="flex items-center gap-3">
                   <img
@@ -222,16 +239,20 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
                     className="w-16 h-16 object-contain rounded-md border border-slate-200 dark:border-slate-700 bg-white p-1 shrink-0"
                   />
                   <div className="flex flex-col gap-1">
-                    <label className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 cursor-pointer hover:underline w-fit">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploadingQr}
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 cursor-pointer hover:underline w-fit disabled:opacity-50"
+                    >
                       {isUploadingQr ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
                       {isUploadingQr ? t('uploading_label', 'Uploading...') : t('replace_qr_code_button', 'Replace QR Code')}
-                      <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleQrCodeSelected} disabled={isUploadingQr} />
-                    </label>
+                    </button>
                     <button
                       type="button"
                       onClick={() => setUpiQrCodeUrl('')}
                       disabled={isUploadingQr}
-                      className="inline-flex items-center gap-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:underline w-fit disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:underline w-fit disabled:opacity-50 cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       {t('remove_qr_code_button', 'Remove')}
@@ -239,17 +260,21 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
                   </div>
                 </div>
               ) : (
-                <label className="inline-flex items-center gap-2 text-xs font-medium text-blue-600 dark:text-blue-400 border border-dashed border-blue-300 dark:border-blue-800 rounded-lg px-3 py-2 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950/30 w-fit">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingQr}
+                  className="inline-flex items-center gap-2 text-xs font-medium text-blue-600 dark:text-blue-400 border border-dashed border-blue-300 dark:border-blue-800 rounded-lg px-3 py-2 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950/30 w-fit disabled:opacity-50"
+                >
                   {isUploadingQr ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
                   {isUploadingQr ? t('uploading_label', 'Uploading...') : t('upload_qr_code_button', 'Upload QR Code')}
-                  <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleQrCodeSelected} disabled={isUploadingQr} />
-                </label>
+                </button>
               )}
               <p className="property-edit-form__field-help text-xs text-slate-400 dark:text-slate-500 mt-1">
                 {t('upi_qr_code_help_text', "Optional - upload your bank/PhonePe/GPay QR code image to show it as-is at billing and checkout, instead of an auto-generated one.")}
               </p>
               {qrUploadError && (
-                <p className="text-xs text-red-600 dark:text-red-400 mt-1">{qrUploadError}</p>
+                <p className="text-xs text-red-600 dark:text-red-400 mt-1 font-medium">{qrUploadError}</p>
               )}
             </div>
           </div>
