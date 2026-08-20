@@ -1696,6 +1696,13 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       <Tabs
         aria-label="Stock Request Tabs"
         variant="default"
+        // flex-nowrap + overflow-x-auto: flowbite's default tablist is
+        // flex-wrap, which was dropping "Request Materials" onto its own
+        // second row on mobile once the first tab's title pushed past the
+        // available width - both tabs now stay on one row, scrolling
+        // horizontally instead of wrapping if a title is ever still too
+        // long for a very narrow screen (found 21 Aug 2026).
+        theme={{ tablist: { variant: { default: 'flex-nowrap overflow-x-auto' } } }}
         onActiveTabChange={(tabIndex: number) => {
           const tabs: ('fulfill' | 'requisitions')[] = ['fulfill', 'requisitions'];
           if (tabs[tabIndex]) setActiveTab(tabs[tabIndex]);
@@ -1703,7 +1710,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       >
         <TabItem
           active={activeTab === 'fulfill'}
-          title={`Fulfill & Pending Approvals${pendingSheetsCount > 0 ? ` (${pendingSheetsCount})` : ''}`}
+          title={`Pending Requests${pendingSheetsCount > 0 ? ` (${pendingSheetsCount})` : ''}`}
           icon={CheckCircle2}
         >
           {/* Chrome (bg/border/rounded/padding) is mobile-only - at md: and up

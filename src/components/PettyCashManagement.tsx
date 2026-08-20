@@ -1430,7 +1430,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
             <Button
               type="submit"
               variant="primary"
-              disabled={isSubmitting}
+              size="md"
               className="shadow-sm font-semibold px-6 w-full sm:w-auto"
             >
               {t('add_expense_button', 'ADD EXPENSE')}
@@ -1652,7 +1652,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                   const isOutofPocket = anyEntry.staffAmount && Number(anyEntry.staffAmount) > 0 && Number(anyEntry.staffAmount) === Number(anyEntry.amount);
                   const isSplit = anyEntry.staffAmount && Number(anyEntry.staffAmount) > 0 && anyEntry.drawerAmount && Number(anyEntry.drawerAmount) > 0;
                   return (
-                    <Badge variant={isSplit ? 'warning' : isOutofPocket ? 'default' : 'success'} size="sm">
+                    <Badge variant={isSplit ? 'warning' : isOutofPocket ? 'neutral' : 'success'} size="sm">
                       {isSplit ? 'Split (Till + Pocket)' : isOutofPocket ? 'Out of Pocket' : `Property (${entry.paymentMode || 'UPI'})`}
                     </Badge>
                   );
@@ -1729,7 +1729,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                             {payer && <span className="text-2xs text-slate-500 dark:text-slate-400 font-medium">Vendor/Payee: {payer}</span>}
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">
-                            <Badge variant={isSplit ? 'warning' : isOutofPocket ? 'default' : 'success'} size="sm">
+                            <Badge variant={isSplit ? 'warning' : isOutofPocket ? 'neutral' : 'success'} size="sm">
                               {isSplit ? 'Split' : isOutofPocket ? 'Out of Pocket' : `Property (${entry.paymentMode || 'UPI'})`}
                             </Badge>
                           </div>

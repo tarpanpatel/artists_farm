@@ -2208,8 +2208,14 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   ))}
                 </div>
 
-                {/* Action Footer */}
-                <div className="p-3 pb-3.5 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shrink-0">
+                {/* Action Footer - button is right-aligned rather than
+                    spanning edge-to-edge (20 Aug 2026): Button's root is
+                    `display: flex` (block-level, not inline-flex), which
+                    fills the width of whatever it's placed in by default -
+                    wrapping it in a flex/justify-end container is what
+                    actually constrains it to its own content width instead
+                    of needing a one-off width override on the button itself. */}
+                <div className="p-3 pb-3.5 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shrink-0 flex justify-end">
                   <Button variant="primary" size="lg" onClick={handleOrderSubmit} disabled={isOrderSubmitDisabled} title={orderSubmitTitle}>
                     <span>{isSubmittingOrder ? t('sending_order_button', 'Sending...') : t('send_order_to_kitchen_button')}</span>
                   </Button>
