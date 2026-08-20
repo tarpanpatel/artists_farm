@@ -1,9 +1,9 @@
 # Workspace Agent Rules & Recommended Personas
 
+- STRICT NO DEPLOYMENT RULE: Never execute any deployment scripts or server sync commands (e.g. deploy-staging.ps1, deploy-production.ps1). Work strictly on local environment only.
 - Do not open files in editor tabs when viewing or making code edits unless explicitly requested by the user.
-- Never deploy automatically unless explicitly requested by the user.
-- When explicitly asked to deploy, deploy ONLY to the Staging environment (`staging.artistic-sthan.com` via `.\deploy-staging.ps1`), never directly to Production unless Production deployment is explicitly requested by name.
 - Strictly adhere to visual design tokens, iconography, modal form grid rules, and responsive mobile layouts defined in [DESIGN.md](file:///c:/xampp/htdocs/artists_farm/DESIGN.md).
+- Category Filter Toggle Rule: On all screens with search & category filtering (e.g. food menu, inventory, POS), category filters must not be open by default; they must be toggled open/closed via a `<Filter className="w-4 h-4" />` button next to the search input.
 
 ---
 

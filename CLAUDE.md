@@ -4,7 +4,10 @@ This file documents ALL project conventions and rules. Every AI agent must follo
 
 ## 🎨 UI & Design Rules
 
-**See also `DESIGN.md`** (project root) - the detailed design system spec (theme tokens, responsive table/mobile-card-stack pattern, modal grid layout, KPI card layout, tooltip/badge rules). This CLAUDE.md section covers the load-bearing basics; DESIGN.md goes deeper on specific component patterns. Read it before building any new table, modal form, or summary-card UI.
+**`DESIGN.md` no longer maintains a separate hand-written design spec (removed 19 Aug 2026)** - the project now strictly follows Flowbite's own design system instead of a parallel rule set that had drifted out of sync with it (see `DESIGN.md` for what replaced it: pointers to `node_modules/flowbite-react/dist/components/*/theme.js` as the real ground truth, and to flowbite.com/application-ui/demo/ for whole-page patterns - **not** flowbite.com/docs/components/*, which is on an unreleased newer token system). Before building any new table, modal form, or summary-card UI, check what `flowbite-react` component already covers it rather than hand-rolling something.
+
+### Protected Components (do not touch without explicit permission)
+- **`MultiRoomCalendar.tsx`/`CalendarView.tsx`** (the multi-room booking calendar grid) - proprietary, custom-built PMS logic (booking grid rendering, date math). Never refactor, restyle, or otherwise modify these without the user explicitly asking - including as part of a broader Flowbite-migration sweep. `DateRangePicker.tsx` is NOT in this list - it's in scope for the Flowbite migration like any other shared component.
 
 ### Icon Library (CRITICAL)
 - **Use ONLY Lucide React icons** (`lucide-react` package)
@@ -19,10 +22,16 @@ This file documents ALL project conventions and rules. Every AI agent must follo
 - Dark mode support: use `dark:` prefix for all colors
 - Always include dark theme variants
 
-### Component Library (Tailwind only)
-- No external UI component library - build everything with Tailwind CSS classes directly
-- For hover tooltips, use the small `Tooltip.tsx` component (`src/components/Tooltip.tsx`): pure-Tailwind, CSS `group-hover`/`group-focus-within` reveal with a small arrow - e.g. `<Tooltip content="..."><span>Help?</span></Tooltip>`
-- Tooltips render above the trigger and don't auto-flip; place them where they won't clip at the edge of a modal
+### Component Library (Flowbite React - migration in progress, started 19 Aug 2026)
+- **Standing rule flipped 19 Aug 2026**: this project previously banned external UI component libraries ("build everything with Tailwind classes directly"). That's reversed - `flowbite-react` (+ the `flowbite` Tailwind plugin it depends on) are now the standard, and the app is in an active **full migration** off the hand-built components toward Flowbite equivalents.
+- For **new** components/screens, and anything getting rebuilt: use `flowbite-react` components (forms, modals, dropdowns, tooltips, etc.) instead of hand-rolling another custom one.
+- The **existing** hand-built shared components (`src/components/Input.tsx`, `StyledSelect.tsx`, `Button.tsx`, `Tooltip.tsx`, etc.) are still in active use across most of the app and are NOT dead code - don't delete or bypass them ad hoc. They get replaced screen-by-screen as part of the migration, not all at once. If you're unsure whether a given screen has been migrated yet, check whether it's already importing from `flowbite-react` before assuming either convention.
+- Still follow the color scheme, dark-mode (`dark:` prefix), and Lucide-icons-only rules below regardless of which component source a screen uses - those didn't change.
+- ### Category Filter Toggle Pattern
+- On all screens with search and category filtering (e.g. `MenuManager.tsx`, `InventoryManagement.tsx`, `KitchenManagement.tsx`), category filter pills/bars **must not be open by default**.
+- Provide a `<Filter className="w-4 h-4" />` toggle button immediately next to the search input.
+- Reveal category pills only when the user clicks the filter toggle button.
+- Show an active dot indicator on the filter button when a non-default category is filtered while the bar is collapsed.
 
 ### Date Format (CRITICAL)
 - **Display format: DD/MM/YYYY** (e.g., `02/08/2026`, `15/12/2025`)
@@ -95,6 +104,7 @@ Features whose UI/backend wiring isn't obvious from file names alone - check her
 - `src/utils/upiQrCode.tsx` - `buildUpiPaymentLink()` builds a standard `upi://pay?pa=...&pn=...&am=...&cu=INR&tn=...` deep link; `<UpiPaymentBlock>` renders it as a real QR (`qrcode.react`'s `QRCodeSVG`, plain black-on-white, no dark: classes - it needs to stay scannable, not theme-matched) plus the UPI ID text. Rendered directly into the DOM that `html-to-image` turns into the shared PNG (this is the only way a QR reaches WhatsApp at all, since the "Share via WhatsApp" buttons are plain `wa.me` text links with no attachment support).
 - `{upi_id}` token added to `DEFAULT_WHATSAPP_VOUCHER_TEMPLATE` and to `renderWhatsappVoucherTemplate()`'s optional-token list (drops the whole line if empty, doesn't leave a dangling label).
 - See "Props Threading" above for how `propertyUpiId` reaches every share-capable screen.
+- **Uploadable QR code image (added 20 Aug 2026)**: a property can also upload its own real bank/PhonePe/GPay-issued QR code image instead of relying only on the auto-generated deep-link QR above - some UPI handles (certain current accounts) don't resolve cleanly through a generated `upi://pay` link, so the property's own scanned QR is the more reliable option once uploaded. Property-level `upi_qr_code_url` column (`properties` table, self-heals via `schema_properties_table_v3` in `router.php`), set right below UPI ID in `PropertyEditForm.tsx` via a dedicated "Upload QR Code" control → `uploadImageDB(file, 'qr_code')`. `upload_image.php`'s `qr_code` folder behaves like `id_documents` (downscale-only, never crop - cropping would cut off the QR's corner finder patterns and break scannability) but keeps quality high (92) and preserves PNG uploads as PNG instead of forcing JPEG. `<UpiPaymentBlock>` takes an optional `qrCodeImageUrl` prop and renders that `<img>` instead of the generated `QRCodeSVG` when set; threaded as `propertyUpiQrCodeUrl` alongside `propertyUpiId` down to its only two real render sites, `ReceiptEditModal.tsx` (checkout bill) and `WalkInTabBillModal.tsx` (walk-in tab bill) - `BookingDetailsModal.tsx` also receives `propertyUpiId` but never renders `UpiPaymentBlock` (its WhatsApp share is text-only via the `{upi_id}` token), so it doesn't need this new prop.
 
 ## 🗄️ Database & API
 
@@ -120,7 +130,7 @@ Features whose UI/backend wiring isn't obvious from file names alone - check her
 ### Demo Data
 - Location: `php/api/demo_data.php`
 - Functions: `generateDemoData($pdo, $propertyId)`, `clearDemoData($pdo, $propertyId)`
-- Creates: 2 demo guests (1 per room for multi-key), 13 menu items, 6 inventory items, 4 staff
+- Creates: 2 demo guests (1 per room for multi-key), 13 menu items, 6 inventory items, 4 staff, 4 property licenses (homestay/FSSAI/fire safety/GST - one of each deliberately active/expiring-soon/expired/active so License Management's expiry-alert states all have something to show, added 20 Aug 2026)
 - Guest names: "John Smith" (Room 101), "Sarah Johnson" (Room 102)
 
 ## 🧪 Testing & Development
@@ -238,6 +248,6 @@ php/
 
 ---
 
-**Last Updated**: 2026-08-15
+**Last Updated**: 2026-08-19
 **Project**: Ground Code Resort Management System
-**Tech Stack**: React + TypeScript + Tailwind CSS + Lucide Icons + PHP + MySQL
+**Tech Stack**: React + TypeScript + Tailwind CSS + Flowbite React + Lucide Icons + PHP + MySQL
