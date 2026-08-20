@@ -1233,15 +1233,19 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 bg-amber-50/50 dark:bg-amber-950/20 p-3 rounded-lg border border-amber-200/60 dark:border-amber-900/40">
                 {/* LEFT COLUMN: Property Cash in Hand (₹) */}
                 <div>
-                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('property_cash_in_hand_rupees_label', 'Property Cash in Hand (₹)')}</label>
-                  <div className="p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-950 dark:text-white font-bold text-sm tabular-numbers shadow-md h-[38px] flex items-center px-3">
-                    ₹{Number(formState.drawerAmount || 0).toFixed(2)}
-                  </div>
+                  <Input
+                    label={t('property_cash_in_hand_rupees_label', 'Property Cash in Hand (₹)')}
+                    type="text"
+                    readOnly
+                    disabled
+                    value={`₹${Number(formState.drawerAmount || 0).toFixed(2)}`}
+                    className="font-semibold"
+                  />
                 </div>
 
                 {/* RIGHT COLUMN: Any payment out of your own pocket? */}
                 <div>
-                  <label className="flex items-center gap-2 cursor-pointer select-none text-slate-700 dark:text-slate-200 font-semibold text-xs mb-1.5 min-h-[18px]">
+                  <div className="flex items-center gap-2 select-none mb-2">
                     <Checkbox
                       id="out-of-pocket-split-cb"
                       checked={formState.isOutofPocketChecked || Number(formState.staffAmount || 0) > 0}
@@ -1253,10 +1257,10 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                         }
                       }}
                     />
-                    <Label htmlFor="out-of-pocket-split-cb" className="cursor-pointer font-semibold text-xs">
+                    <Label htmlFor="out-of-pocket-split-cb" className="cursor-pointer font-medium text-xs text-gray-700 dark:text-gray-300">
                       Any payment out of your own pocket?
                     </Label>
-                  </label>
+                  </div>
 
                   {(formState.isOutofPocketChecked || Number(formState.staffAmount || 0) > 0) ? (
                     <Input
@@ -1272,9 +1276,12 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                       autoFocus
                     />
                   ) : (
-                    <div className="text-2xs text-slate-400 dark:text-slate-500 italic p-2 rounded-lg bg-white dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800 h-[38px] flex items-center px-3">
-                      Check box to enter pocket portion
-                    </div>
+                    <Input
+                      type="text"
+                      disabled
+                      readOnly
+                      placeholder="Check box to enter pocket portion"
+                    />
                   )}
                 </div>
               </div>
@@ -1303,21 +1310,17 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                     onChange={e => {
                       const checked = e.target.checked;
                       dispatch({ type: 'SET_FIELD', field: 'payToRegisteredVendor', value: checked });
-                      // Unchecking means "no, I'm not paying a registered
-                      // vendor" - clear back to the self/logged-by-me default
-                      // rather than leaving a stale vendor selected behind a
-                      // now-disabled picker.
                       if (!checked) {
                         dispatch({ type: 'SET_FIELD', field: 'paidBy', value: currentUserName });
                       }
                     }}
                   />
                   <Label htmlFor="pay-to-registered-vendor-checkbox" className="text-xs font-semibold text-slate-700 dark:text-slate-200 cursor-pointer select-none">
-                    Pay to pre-registered vendor?
+                    {t('pay_to_registered_vendor_checkbox_label', 'Pay to pre-registered vendor?')}
                   </Label>
                 </label>
                 <StyledSelect
-                  label="Vendor / Payee Name (Optional)"
+                  label={t('vendor_payee_optional_label', 'Vendor / Payee Name (Optional)')}
                   searchable
                   disabled={!formState.payToRegisteredVendor}
                   value={formState.paidBy === currentUserName ? '' : formState.paidBy}
@@ -1389,7 +1392,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
             <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800/50 p-4 rounded-lg text-center space-y-2 transition-colors">
               <label className="app-label text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5 flex items-center justify-center gap-1.5"><Camera className="w-3.5 h-3.5" /> {t('upload_payment_screenshot_label_plain', 'Upload Payment Screenshot')}</label>
               <label htmlFor="screenshot-upload-input" className="block bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-2.5 rounded-lg text-slate-600 dark:text-slate-300 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer shadow-md hover:bg-slate-50">
-                <ImageIcon className="w-4 h-4 text-slate-400" />
+                <FileText className="w-4 h-4 text-slate-400" />
                 <span>{formState.paymentScreenshotUrls.length > 0 ? `+ Add Another (${formState.paymentScreenshotUrls.length} attached)` : t('select_screenshot_button', 'Select Screenshot')}</span>
               </label>
               <input
@@ -1427,7 +1430,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
             <Button
               type="submit"
               variant="primary"
-              size="md"
+              disabled={isSubmitting}
               className="shadow-sm font-semibold px-6 w-full sm:w-auto"
             >
               {t('add_expense_button', 'ADD EXPENSE')}
@@ -1574,10 +1577,10 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
           <DataTable
             columns={[
               {
-                name: 'Expense ID',
+                name: 'ID',
                 selector: (entry: any) => entry.id,
-                width: '120px',
-                minWidth: '110px',
+                width: '110px',
+                minWidth: '100px',
                 cell: (entry: any) => (
                   <div className="py-1">
                     <span className="font-semibold text-gray-900 dark:text-white text-xs block">
@@ -1684,6 +1687,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               }] : []),
             ]}
             data={filteredEntries}
+            persistTableHead
             pagination
             paginationPerPage={15}
             paginationRowsPerPageOptions={[15, 30, 50, 100]}

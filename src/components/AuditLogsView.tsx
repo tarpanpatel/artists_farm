@@ -16,7 +16,7 @@ import {
   IndianRupee,
   Filter,
 } from 'lucide-react';
-import { Modal, ModalHeader, ModalBody, Pagination, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, TextInput as FlowbiteTextInput, Dropdown, DropdownItem } from 'flowbite-react';
+import { Modal, ModalHeader, ModalBody, Pagination, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, Dropdown, DropdownItem } from 'flowbite-react';
 import { Button } from './Button';
 import { Badge } from './Badge';
 import { AuditLog, BillingReceipt } from '../types';
@@ -228,15 +228,17 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
       <div className="audit-logs__receipts bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
         {/* Flowbite Datatable Toolbar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-          <div className="flex flex-wrap items-center gap-3 flex-1">
-            <div className="w-full sm:w-80">
-              <FlowbiteTextInput
+          <div className="flex flex-wrap items-center gap-2.5 flex-1">
+            <div className="relative w-full sm:w-80">
+              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500 dark:text-gray-400">
+                <Search className="w-4 h-4" />
+              </div>
+              <input
                 type="text"
-                icon={Search}
                 value={receiptsSearch}
                 onChange={(e) => setReceiptsSearch(e.target.value)}
                 placeholder={t('search_receipts_placeholder', 'Search by guest, receipt #, room...')}
-                className="w-full"
+                className="h-10 bg-gray-50 border border-gray-300 text-gray-900 text-xs font-medium rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-9 pr-3 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
               />
             </div>
 
@@ -247,9 +249,9 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
               renderTrigger={() => (
                 <button
                   type="button"
-                  className="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700 cursor-pointer shadow-xs"
+                  className="h-10 inline-flex items-center justify-center gap-2 px-3 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-blue-700 focus:outline-none focus:ring-4 focus:ring-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:text-white dark:focus:ring-gray-700 cursor-pointer shadow-xs whitespace-nowrap"
                 >
-                  <Filter className="w-3.5 h-3.5" />
+                  <Filter className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
                   <span>
                     {paymentFilter === 'all'
                       ? t('all_payment_methods_label', 'All Payments')
@@ -268,7 +270,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
               <DropdownItem onClick={() => setPaymentFilter('split')}>Split Payment</DropdownItem>
             </Dropdown>
 
-            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-400 pl-1 whitespace-nowrap">
               {filteredReceipts.length} {filteredReceipts.length === 1 ? 'invoice' : 'invoices'}
             </span>
           </div>
@@ -280,15 +282,26 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
               {
                 name: t('receipt_id_column', 'Invoice ID'),
                 selector: (rec: BillingReceipt) => rec.id,
-                minWidth: '150px',
-                grow: 1,
+                width: '120px',
+                minWidth: '110px',
                 cell: (rec: BillingReceipt) => (
                   <div className="py-1">
-                    <span className="font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">
+                    <span className="font-semibold text-gray-900 dark:text-white text-xs block">
                       #{rec.id}
                     </span>
-                    <span className="block text-2xs text-gray-400 dark:text-gray-500 mt-0.5">
-                      {formatDateTimeDDMMYYYY(rec.checkoutDate || '')}
+                  </div>
+                ),
+              },
+              {
+                name: t('date_billed_column', 'Date Billed'),
+                selector: (rec: BillingReceipt) => rec.checkoutDate || rec.paidAt || '',
+                sortable: true,
+                width: '150px',
+                minWidth: '140px',
+                cell: (rec: BillingReceipt) => (
+                  <div className="py-1">
+                    <span className="text-xs text-gray-900 dark:text-white block font-medium">
+                      {formatDateTimeDDMMYYYY(rec.checkoutDate || rec.paidAt || '')}
                     </span>
                   </div>
                 ),
@@ -301,9 +314,9 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                 grow: 2,
                 cell: (rec: BillingReceipt) => (
                   <div className="py-1">
-                    <span className="font-semibold text-gray-900 dark:text-white block">{rec.guestName}</span>
+                    <span className="font-semibold text-gray-900 dark:text-white block text-xs">{rec.guestName}</span>
                     {rec.roomNumber && (
-                      <span className="inline-flex items-center px-2 py-0.5 mt-0.5 rounded-full text-2xs font-semibold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                      <span className="inline-flex items-center px-2.5 py-0.5 mt-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
                         {rec.roomNumber}
                       </span>
                     )}
@@ -314,31 +327,41 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                 name: t('total_stay_rent_column', 'Stay Tariff'),
                 selector: (rec: BillingReceipt) => rec.roomTotal || rec.roomRent || 0,
                 sortable: true,
-                minWidth: '130px',
+                width: '120px',
+                minWidth: '110px',
                 cell: (rec: BillingReceipt) => (
-                  <span className="font-semibold text-gray-700 dark:text-gray-300">₹{(rec.roomTotal || rec.roomRent || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  <span className="font-semibold text-gray-700 dark:text-gray-300 text-xs tabular-numbers">
+                    ₹{(rec.roomTotal || rec.roomRent || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </span>
                 ),
               },
               {
                 name: t('incidentals_food_column', 'Food & Extras'),
                 selector: (rec: BillingReceipt) => rec.foodTotal || rec.kitchenTotal || 0,
                 sortable: true,
-                minWidth: '130px',
+                width: '120px',
+                minWidth: '110px',
                 cell: (rec: BillingReceipt) => (
-                  <span className="font-semibold text-gray-700 dark:text-gray-300">₹{(rec.foodTotal || rec.kitchenTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  <span className="font-semibold text-gray-700 dark:text-gray-300 text-xs tabular-numbers">
+                    ₹{(rec.foodTotal || rec.kitchenTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </span>
                 ),
               },
               {
                 name: t('grand_total_column', 'Grand Total'),
                 selector: (rec: BillingReceipt) => rec.grandTotal,
                 sortable: true,
-                minWidth: '130px',
+                width: '130px',
+                minWidth: '120px',
                 cell: (rec: BillingReceipt) => (
-                  <span className="font-bold text-gray-900 dark:text-white">₹{rec.grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  <span className="font-bold text-gray-900 dark:text-white text-xs tabular-numbers">
+                    ₹{rec.grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </span>
                 ),
               },
               {
                 name: t('status_column', 'Status / Method'),
+                width: '150px',
                 minWidth: '140px',
                 cell: (rec: BillingReceipt) => {
                   const method = (rec.paymentMethod || 'Cash').toLowerCase();
@@ -353,6 +376,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
               },
               {
                 name: t('actions_column', 'Actions'),
+                width: '110px',
                 minWidth: '100px',
                 cell: (rec: BillingReceipt) => (
                   <Button variant="primary" size="sm" onClick={() => handleOpenEditModal(rec)} leftIcon={<Edit2 className="w-3.5 h-3.5 shrink-0" />}>
@@ -362,6 +386,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
               },
             ]}
             data={filteredReceipts}
+            persistTableHead
             pagination
             paginationPerPage={15}
             paginationRowsPerPageOptions={[15, 30, 50, 100]}

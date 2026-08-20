@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { IndianRupee, Home, AlertCircle, Plus, Trash2, CheckCircle2, Printer, QrCode, Loader2, CornerDownRight, Share2 } from 'lucide-react';
+import { IndianRupee, Home, AlertCircle, Plus, Trash2, CheckCircle2, Printer, QrCode, Loader2, CornerDownRight, Share2, X } from 'lucide-react';
 import { Guest, BillingReceipt, PayeeEntity } from '../types';
 import { StyledSelect } from './StyledSelect';
 import { DateRangePicker } from './DateRangePicker';
@@ -11,7 +11,7 @@ import { useStaff } from '../contexts/StaffContext';
 import { t } from '../i18n/en';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import { UpiPaymentBlock } from '../utils/upiQrCode';
-import { Modal as FlowbiteModal, ModalHeader, ModalBody, ModalFooter } from 'flowbite-react';
+import { Modal as FlowbiteModal, ModalHeader, ModalBody, ModalFooter, Drawer as FlowbiteDrawer, DrawerItems } from 'flowbite-react';
 
 interface ReceiptEditModalProps {
   isOpen: boolean;
@@ -1257,40 +1257,30 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
 
       {/* ========================================================================= */}
-      {/* POPUP MODAL: CLEAN PRINT-FRIENDLY RECEIPT                                 */}
+      {/* RIGHT-SIDE DRAWER: CLEAN PRINT-FRIENDLY RECEIPT (converted from a       */}
+      {/* centered Modal 20 Aug 2026 - mirrors the same Drawer shell already      */}
+      {/* established by BookingDetailsModal.tsx/WalkInTabBillModal.tsx, so a    */}
+      {/* receipt preview looks and behaves the same as every other "slide out   */}
+      {/* to review/share" surface in the app rather than popping up centered).  */}
       {/* ========================================================================= */}
-      <FlowbiteModal
-        show={isPrintModalOpen}
+      <FlowbiteDrawer
+        open={isPrintModalOpen}
         onClose={() => setIsPrintModalOpen(false)}
-        size="md"
-        dismissible
-        className="z-[58]"
+        position="right"
+        className="z-60 w-full sm:max-w-md h-full bg-white dark:bg-gray-800 p-0 flex flex-col shadow-2xl transition-transform border-l border-gray-200 dark:border-gray-700"
       >
-        <ModalHeader>Receipt preview</ModalHeader>
-        <ModalFooter className="order-3 flex items-center gap-2">
-          <div className="space-y-4 text-xs">
-            {/* Modal Actions Bar */}
-            <div
-              id="printableReceiptActionsBar"
-              className="flex items-center justify-between border-b border-slate-100 pb-3 gap-2"
-            >
-              {/* Was two separate buttons (PNG image share + WhatsApp text
-                  link), then briefly a single WhatsApp-only link - now the
-                  real OS-level share sheet (navigator.share), so it's
-                  actually generic instead of assuming WhatsApp (found 20 Aug
-                  2026). See handleShareReceipt. */}
-              <button
-                type="button"
-                onClick={handleShareReceipt}
-                className="w-full py-2 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 font-semibold rounded-lg flex items-center justify-center gap-1.5 cursor-pointer text-xs transition-colors"
-              >
-                <Share2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>{t('share_with_guest_button', 'Share with guest')}</span>
-              </button>
-            </div>
-          </div>
-        </ModalFooter>
-        <ModalBody className="order-2 max-h-[85vh] overflow-y-auto p-4 sm:p-6">
+        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 dark:border-gray-700 shrink-0 bg-white dark:bg-gray-800">
+          <h2 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">{t('receipt_preview_heading', 'Receipt preview')}</h2>
+          <button
+            type="button"
+            onClick={() => setIsPrintModalOpen(false)}
+            className="text-gray-400 bg-transparent hover:bg-gray-100 hover:text-gray-900 rounded-lg text-sm w-8 h-8 inline-flex items-center justify-center dark:hover:bg-gray-700 dark:hover:text-white cursor-pointer transition-colors shrink-0"
+            aria-label="Close drawer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <DrawerItems className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 text-xs">
           {/* Receipt Content */}
           <div id="printableReceiptModalContent" className="space-y-3 text-xs">
               <div className="text-center pb-2 border-b border-slate-200">
@@ -1311,6 +1301,20 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                 </span>
                 <span>
                   <b>{t('date_colon_label', 'Date:')}</b> {formatDateDDMMYYYY(new Date().toISOString())}
+                </span>
+              </div>
+
+              {/* Check-in/checkout stay dates - already part of the shared
+                  WhatsApp/native-share text (see buildReceiptShareMessage
+                  above) but missing from this visual preview until now
+                  (found 20 Aug 2026), so the two didn't actually show the
+                  same information. */}
+              <div className="flex justify-between text-[11px] border-b border-dashed border-slate-300 pb-2 text-black font-semibold">
+                <span>
+                  <b>{t('check_in_colon_label', 'Check-In:')}</b> {formatDateDDMMYYYY(checkinDate || guest.checkinDate)}
+                </span>
+                <span>
+                  <b>{t('check_out_colon_label', 'Check-Out:')}</b> {formatDateDDMMYYYY(checkoutDate || guest.expectedCheckout || guest.checkoutDate)}
                 </span>
               </div>
 
@@ -1426,8 +1430,24 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                 note={`Bill - ${guest.guestName}`}
               />
           </div>
-        </ModalBody>
-      </FlowbiteModal>
+
+          {/* Actions Bar - was two separate buttons (PNG image share + WhatsApp
+              text link), then briefly a single WhatsApp-only link - now the
+              real OS-level share sheet (navigator.share), so it's actually
+              generic instead of assuming WhatsApp (found 20 Aug 2026). See
+              handleShareReceipt. */}
+          <div id="printableReceiptActionsBar" className="pt-3 border-t border-slate-100 dark:border-slate-700">
+            <button
+              type="button"
+              onClick={handleShareReceipt}
+              className="w-full py-2 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 font-semibold rounded-lg flex items-center justify-center gap-1.5 cursor-pointer text-xs transition-colors"
+            >
+              <Share2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{t('share_with_guest_button', 'Share with guest')}</span>
+            </button>
+          </div>
+        </DrawerItems>
+      </FlowbiteDrawer>
     </>
   );
 };

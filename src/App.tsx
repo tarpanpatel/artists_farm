@@ -200,7 +200,14 @@ function AppBody({ preloadedData }: AppBodyProps) {
         past_receipts_log: { tab: 'audit_logs', key: 'past_receipts_log' },
         edit_main_menu: { tab: 'menu_manager', key: 'edit_main_menu' },
         admin_control_group: { tab: 'analytics', key: 'admin_control_overview' },
-        edit_items_group: { tab: 'menu_manager', key: 'edit_main_menu' },
+        // "Menu & Pricing" (AdminControlOverviewDashboard's edit_items_group
+        // card) was routing into MenuManager's 'edit_main_menu' sub-tab -
+        // the SIDEBAR STRUCTURE editor (NavMenuEditor) - instead of the food
+        // items/pricing editor the card's own title/description promise.
+        // 'edit_food_menu' is the key that actually selects MenuManager's
+        // food_menu sub-tab (see the correct 'menu_manager' entry below and
+        // MenuManager.tsx's activeSubTab effect) - found 20 Aug 2026.
+        edit_items_group: { tab: 'menu_manager', key: 'edit_food_menu' },
         telegram: { tab: 'telegram', key: 'telegram' },
         data_export_center: { tab: 'export', key: 'data_export_center' },
         beta_recipe_builder: { tab: 'kitchen', key: 'beta_recipe_builder' },
@@ -1076,7 +1083,10 @@ function AppBody({ preloadedData }: AppBodyProps) {
         edit_expense_items: { tab: 'petty_cash', key: 'edit_expense_items' },
         edit_main_menu: { tab: 'menu_manager', key: 'edit_main_menu' },
         admin_control_group: { tab: 'analytics', key: 'admin_control_overview' },
-        edit_items_group: { tab: 'menu_manager', key: 'edit_main_menu' },
+        // See the matching fix/comment on this same key in
+        // getInitialActiveState() above - "Menu & Pricing" must land on the
+        // food_menu sub-tab (edit_food_menu), not the nav-structure editor.
+        edit_items_group: { tab: 'menu_manager', key: 'edit_food_menu' },
         menu_manager: { tab: 'menu_manager', key: 'edit_food_menu' },
         misc_charges: { tab: 'petty_cash', key: 'misc_charges' },
         data_export_center: { tab: 'export', key: 'data_export_center' },
