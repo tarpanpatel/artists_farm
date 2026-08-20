@@ -1,8 +1,9 @@
 import React, { useMemo, useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Calendar, LogOut, Bell, User, ArrowRight, Globe } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Calendar, LogOut, Bell, User, Globe } from 'lucide-react';
 import { Guest } from '../types';
 import { BookingDetailsModal } from './BookingDetailsModal';
 import { ConvertOtaBookingModal } from './ConvertOtaBookingModal';
+import { KpiCard } from './KpiCard';
 import { getPropertySlug } from '../services/api';
 import { t } from '../i18n/en';
 
@@ -35,7 +36,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   isMultiKeyProperty = false,
   kitchenModuleEnabled: _kitchenModuleEnabled = true,
   onNavigateToRoom: _onNavigateToRoom,
-  onNavigate,
+  onNavigate: _onNavigate,
   onAddBooking,
   onAddGuest,
   onUpdateGuest,
@@ -287,7 +288,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
         {onAddBooking && (
           <button
             onClick={onAddBooking}
-            className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-semibold rounded-lg text-xs px-3.5 py-2 flex items-center gap-2 shadow-2xs transition-all cursor-pointer whitespace-nowrap shrink-0"
+            className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-semibold rounded-lg text-xs px-3.5 py-2 flex items-center gap-2 shadow-md transition-all cursor-pointer whitespace-nowrap shrink-0"
           >
             <Plus className="w-4 h-4" />
             <span>{t('add_booking_button', 'Add Booking')}</span>
@@ -297,111 +298,39 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
 
       {/* Metric Blocks Grid - Sleek 1-Row Horizontal Cards */}
       <div className={`today-overview__metrics grid grid-cols-1 ${isMultiKeyProperty ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'} gap-2.5 md:gap-4`}>
-        {/* Arrivals Block */}
-        <div className="bg-white dark:bg-slate-800 rounded-lg md:rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            <div className="p-2.5 rounded-lg bg-blue-50 dark:bg-blue-900/35 text-blue-600 dark:text-blue-400 shrink-0">
-              <Calendar className="w-5 h-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Arrivals:</span>
-                <span className="text-sm font-semibold text-slate-900 dark:text-white">{todaysArrivals}</span>
-                <span className="text-xs text-slate-500 dark:text-slate-400 truncate">checking in today</span>
-              </div>
-            </div>
-          </div>
-          {onNavigate && (
-            <button
-              onClick={() => onNavigate('guests')}
-              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/60 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1 shadow-2xs"
-              title="View Bookings"
-            >
-              <span>Bookings</span>
-              <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
-            </button>
-          )}
-        </div>
-
-        <div className="bg-white dark:bg-slate-800 rounded-lg md:rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-900/35 text-amber-600 dark:text-amber-400 shrink-0">
-              <LogOut className="w-5 h-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Departures:</span>
-                <span className="text-sm font-semibold text-slate-900 dark:text-white">{todaysDepartures}</span>
-                <span className="text-xs text-slate-500 dark:text-slate-400 truncate">checking out today</span>
-              </div>
-            </div>
-          </div>
-          {onNavigate && (
-            <button
-              onClick={() => onNavigate('guests')}
-              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/60 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1 shadow-2xs"
-              title="View Bookings"
-            >
-              <span>Bookings</span>
-              <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
-            </button>
-          )}
-        </div>
-
+        <KpiCard
+          label="Arrivals"
+          icon={Calendar}
+          badge={{ text: 'Today', color: 'info' }}
+          value={todaysArrivals}
+          subtext="checking in today"
+        />
+        <KpiCard
+          label="Departures"
+          icon={LogOut}
+          badge={{ text: 'Today', color: 'warning' }}
+          value={todaysDepartures}
+          subtext="checking out today"
+        />
         {isMultiKeyProperty && (
-          <div className="bg-white dark:bg-slate-800 rounded-lg md:rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5 min-w-0 flex-1">
-              <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/35 text-emerald-600 dark:text-emerald-400 shrink-0">
-                <User className="w-5 h-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Guests In-House:</span>
-                  <span className="text-sm font-semibold text-slate-900 dark:text-white">{inHouseCount}</span>
-                  <span className="text-xs text-slate-500 dark:text-slate-400 truncate">active guests</span>
-                </div>
-              </div>
-            </div>
-            {onNavigate && (
-              <button
-                onClick={() => onNavigate('guests')}
-                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/60 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1 shadow-2xs"
-                title="View Bookings"
-              >
-                <span>Guests</span>
-                <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
-              </button>
-            )}
-          </div>
+          <KpiCard
+            label="Guests In-House"
+            icon={User}
+            badge={{ text: 'Active', color: 'success' }}
+            value={inHouseCount}
+            subtext="active guests"
+          />
         )}
-
-        <div className="bg-white dark:bg-slate-800 rounded-lg md:rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            <div className="p-2.5 rounded-lg bg-red-50 dark:bg-red-900/35 text-red-600 dark:text-red-400 shrink-0">
-              <Bell className="w-5 h-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Service Requests:</span>
-                <span className="text-sm font-semibold text-slate-900 dark:text-white">{pendingRequests}</span>
-                <span className="text-xs text-slate-500 dark:text-slate-400 truncate">active requests</span>
-              </div>
-            </div>
-          </div>
-          {onNavigate && (
-            <button
-              onClick={() => onNavigate('service_requests')}
-              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/60 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1 shadow-2xs"
-              title="View Service Requests"
-            >
-              <span>Requests</span>
-              <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
-            </button>
-          )}
-        </div>
+        <KpiCard
+          label="Service Requests"
+          icon={Bell}
+          badge={{ text: 'Active', color: 'failure' }}
+          value={pendingRequests}
+          subtext="active requests"
+        />
       </div>
 
-      <div className="today-overview__calendar bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
+      <div className="today-overview__calendar bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 space-y-4">
         <div className="flex justify-between items-center">
           <h2 className="today-overview__title text-base font-semibold text-slate-900 dark:text-white">{visibleMonthLabel}</h2>
           <div className="flex items-center gap-2">
@@ -656,7 +585,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                                 });
                               }}
                               title={otaItem.tooltip}
-                              className="px-2.5 rounded-md font-semibold cursor-pointer absolute bg-slate-700 dark:bg-slate-700 hover:bg-slate-600 text-white border border-slate-600 pointer-events-auto shadow-xs flex items-center z-20 overflow-hidden transition-colors"
+                              className="px-2.5 rounded-md font-semibold cursor-pointer absolute bg-slate-700 dark:bg-slate-700 hover:bg-slate-600 text-white border border-slate-600 pointer-events-auto shadow-md flex items-center z-20 overflow-hidden transition-colors"
                               style={commonStyle}
                             >
                               <span className="font-semibold truncate text-[11px] leading-none">{otaItem.label}</span>
@@ -680,16 +609,16 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                               isOtaBooking && !isCheckedOut
                                 ? 'bg-amber-600 dark:bg-amber-700 hover:bg-amber-700 text-white border border-amber-700/30'
                                 : getGuestColor(guest.id, guest.status)
-                            } pointer-events-auto shadow-xs flex items-center justify-between gap-1 z-20 overflow-hidden`}
+                            } pointer-events-auto shadow-md flex items-center justify-between gap-1 z-20 overflow-hidden`}
                             style={commonStyle}
                             onClick={() => setSelectedGuest(guest)}
-                            title={`${guest.guestName} (Ã¢â€šÂ¹${info.nightlyRate}/night)`}
+                            title={`${guest.guestName} (₹${info.nightlyRate}/night)`}
                           >
                             <span className="font-semibold truncate text-[11px] leading-none flex items-center gap-1">
                               {isOtaBooking && <Globe className="w-2.5 h-2.5 shrink-0" />}
                               <span className="truncate">{guest.guestName}</span>
                             </span>
-                            <span className="text-[10px] font-medium opacity-90 whitespace-nowrap leading-none shrink-0">Ã¢â€šÂ¹{info.nightlyRate}</span>
+                            <span className="text-[10px] font-medium opacity-90 whitespace-nowrap leading-none shrink-0">₹{info.nightlyRate}</span>
                           </div>
                         );
                       })}
@@ -713,21 +642,21 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
         </div>
         <div className="flex flex-wrap items-center gap-4 sm:gap-6">
           <div className="flex items-center gap-2">
-            <span className="w-5 h-3.5 rounded-xs bg-blue-600 inline-block shadow-2xs" />
+            <span className="w-5 h-3.5 rounded-xs bg-blue-600 inline-block shadow-md" />
             <span>{t('legend_direct_booking', 'Direct Booking')}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-5 h-3.5 rounded-xs bg-amber-600 inline-flex items-center justify-center text-white text-[9px] shadow-2xs">
+            <span className="w-5 h-3.5 rounded-xs bg-amber-600 inline-flex items-center justify-center text-white text-[9px] shadow-md">
               <Globe className="w-2.5 h-2.5" />
             </span>
             <span>{t('legend_ota_converted', 'OTA Booking (Airbnb / Booking.com)')}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-5 h-3.5 rounded-xs bg-slate-800 dark:bg-slate-900 border border-slate-600 inline-block shadow-2xs" />
+            <span className="w-5 h-3.5 rounded-xs bg-slate-800 dark:bg-slate-900 border border-slate-600 inline-block shadow-md" />
             <span>{t('legend_ota_blocked', 'OTA Blocked Date')}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-5 h-3.5 rounded-xs bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 inline-block shadow-2xs" />
+            <span className="w-5 h-3.5 rounded-xs bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 inline-block shadow-md" />
             <span>{t('legend_checked_out', 'Checked Out Stay')}</span>
           </div>
         </div>

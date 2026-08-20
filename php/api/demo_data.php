@@ -437,6 +437,23 @@ function generateDemoData($pdo, $propertyId) {
         // Insert all bookings
         $roomNameById = array_column($rooms, 'name', 'id');
         foreach ($allBookings as $guest) {
+            // Defense-in-depth DB-level guard on top of the in-memory $stayDates
+            // overlap check above (which already prevents this generator from
+            // ever building an overlapping $allBookings in the first place) -
+            // mirrors the hard block added to add_guest in guests.php (20 Aug
+            // 2026, "1 room = 1 active booking" was reported broken on the
+            // demo site's multi-room calendar). Belt-and-suspenders: if the
+            // in-memory logic above ever regresses, this still can't seed a
+            // double-booking into the room - it just silently skips that one
+            // synthetic stay instead.
+            if ($guest['room_id'] !== null) {
+                $seedConflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id = ? AND property_id = ? AND status IN (?, ?, ?) AND checkin_date < ? AND expected_checkout > ? LIMIT 1");
+                $seedConflictStmt->execute([$guest['room_id'], $propertyId, GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_IN, GUEST_STATUS_BOOKED, $guest['checkout'], $guest['checkin']]);
+                if ($seedConflictStmt->fetch()) {
+                    continue;
+                }
+            }
+
             $receivedBy = $financialHandlerNames[array_rand($financialHandlerNames)];
             $stmt = $pdo->prepare("
                 INSERT IGNORE INTO guests (property_id, guest_name, phone_number, checkin_date, expected_checkout, status, no_of_guests, room_id, per_night_charges, total_charge, advance_paid, advance_received_by, booking_source, ota_source, ota_source_label, is_demo)

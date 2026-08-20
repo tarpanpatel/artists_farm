@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { Phone, MessageSquare, CreditCard, LogIn, LogOut, Users, Building, Search, IndianRupee, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Phone, MessageSquare, Pencil, LogIn, LogOut, Users, Building, Search, IndianRupee, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Guest } from '../types';
+import { Badge } from './Badge';
+import { Button } from './Button';
 
 interface MobileBookingCardStackProps {
   guests: Guest[];
@@ -74,25 +76,22 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
     const s = (status || '').toLowerCase();
     if (s === 'checked in' || s === 'active') {
       return (
-        <span className="inline-flex items-center gap-1 font-semibold px-2.5 py-0.5 rounded-full text-xs bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+        <Badge variant="success" dot size="sm">
           Checked In
-        </span>
+        </Badge>
       );
     }
     if (s === 'booked' || s === 'upcoming' || s === 'reserved') {
       return (
-        <span className="inline-flex items-center gap-1 font-semibold px-2.5 py-0.5 rounded-full text-xs bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-300 dark:border-blue-800">
-          <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+        <Badge variant="info" dot size="sm">
           Upcoming
-        </span>
+        </Badge>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1 font-semibold px-2.5 py-0.5 rounded-full text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
-        <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+      <Badge variant="neutral" dot size="sm">
         {status}
-      </span>
+      </Badge>
     );
   };
 
@@ -100,7 +99,7 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
     <div className="mobile-booking-card-stack md:hidden space-y-4">
       {/* Search & Filter Header Bar */}
       {!hideSearchAndFilter && (
-        <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs space-y-3">
+        <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md space-y-3">
           {/* Search Input with Native Keyboard Keypad */}
           <div className="relative flex items-center">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
@@ -121,7 +120,7 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
               onClick={() => setFilterStatus('all')}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
                 filterStatus === 'all'
-                  ? 'bg-blue-600 text-white shadow-xs'
+                  ? 'bg-blue-600 text-white shadow-md'
                   : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
               }`}
             >
@@ -132,7 +131,7 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
               onClick={() => setFilterStatus('checked_in')}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
                 filterStatus === 'checked_in'
-                  ? 'bg-emerald-600 text-white shadow-xs'
+                  ? 'bg-emerald-600 text-white shadow-md'
                   : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
               }`}
             >
@@ -143,7 +142,7 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
               onClick={() => setFilterStatus('upcoming')}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
                 filterStatus === 'upcoming'
-                  ? 'bg-blue-600 text-white shadow-xs'
+                  ? 'bg-blue-600 text-white shadow-md'
                   : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
               }`}
             >
@@ -154,7 +153,7 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
               onClick={() => setFilterStatus('checked_out')}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
                 filterStatus === 'checked_out'
-                  ? 'bg-slate-700 text-white shadow-xs'
+                  ? 'bg-slate-700 text-white shadow-md'
                   : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
               }`}
             >
@@ -170,13 +169,9 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
           <Building className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto" />
           <p className="text-sm font-semibold text-gray-600 dark:text-gray-300">No bookings match filter</p>
           {onAddBooking && (
-            <button
-              type="button"
-              onClick={onAddBooking}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm"
-            >
+            <Button variant="primary" size="sm" onClick={onAddBooking}>
               + Create New Booking
-            </button>
+            </Button>
           )}
         </div>
       ) : (
@@ -331,7 +326,7 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                     }}
                     className="min-h-[44px] flex-1 px-3 py-2 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
                   >
-                    <CreditCard className="w-4 h-4 text-blue-600 shrink-0" />
+                    <Pencil className="w-4 h-4 text-blue-600 shrink-0" />
                     <span>Edit Booking</span>
                   </button>
 

@@ -131,7 +131,7 @@ export const StaffPropertyPicker: React.FC<StaffPropertyPickerProps> = ({
                 <button
                   key={property.id}
                   onClick={() => handleSelectProperty(property)}
-                  className="staff-property-picker__card text-left bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-5 shadow-xs hover:shadow-md transition-all group cursor-pointer"
+                  className="staff-property-picker__card text-left bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 sm:p-6 shadow-md hover:shadow-md transition-all group cursor-pointer"
                 >
                   <div className={`staff-property-picker__card-icon w-11 h-11 rounded-lg flex items-center justify-center shadow-sm mb-4 ${isMultiKey ? 'bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/40 dark:to-purple-900/40' : 'bg-gradient-to-br from-teal-100 to-emerald-100 dark:from-teal-900/40 dark:to-emerald-900/40'}`}>
                     {isMultiKey ? (

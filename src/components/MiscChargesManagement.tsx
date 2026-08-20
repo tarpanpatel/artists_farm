@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
 import DataTable from 'react-data-table-component';
+import { flowbiteTableCustomStyles } from '../utils/tableStyles';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from 'flowbite-react';
 import { getPropertySlug } from '../services/api';
 import { useConfigurationData } from '../contexts/ConfigurationDataContext';
@@ -9,6 +10,7 @@ import { useConfirm } from './ConfirmDialogContext';
 import { PageHeader, PageHeaderButton } from './PageHeader';
 import { Input } from './Input';
 import { Button } from './Button';
+import { Badge } from './Badge';
 import { t } from '../i18n/en';
 
 interface MiscChargeTemplate {
@@ -26,34 +28,6 @@ interface MiscChargesManagementProps {
 const _base = window.location.pathname.replace(/#.*$/, '').replace(/\/[^/]*$/, '');
 const API_BASE = `${_base}/php/api/router.php`;
 
-const customStyles = {
-  headCells: {
-    style: {
-      fontSize: '11px',
-      fontWeight: 600,
-      color: '#64748b',
-      paddingLeft: '12px',
-      paddingRight: '12px',
-    },
-  },
-  cells: {
-    style: {
-      fontSize: '13px',
-      color: '#334155',
-      padding: '12px',
-    },
-  },
-  headRow: {
-    style: {
-      backgroundColor: '#f8fafc',
-    },
-  },
-  subHeader: {
-    style: {
-      padding: '0 0 12px 0',
-    },
-  },
-};
 
 export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ onLogAudit }) => {
   const { showToast } = useToast();
@@ -116,7 +90,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
       if (res) {
         if (onLogAudit) {
           const currentUserName = getLoggedInUserName();
-          onLogAudit(`${currentUserName} added new miscellaneous charge template: '${newForm.label}' (Category: ${newForm.category}, Amount: â‚¹${newForm.default_amount})`);
+          onLogAudit(`${currentUserName} added new miscellaneous charge template: '${newForm.label}' (Category: ${newForm.category}, Amount: ₹${newForm.default_amount})`);
         }
         setIsAddModalOpen(false);
         setNewForm({ label: '', default_amount: '' as unknown as number, category: 'Service' });
@@ -145,7 +119,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
       changes.push(`category from '${updatedCharge.category}' to '${editForm.category}'`);
     }
     if (editForm.default_amount !== undefined && editForm.default_amount !== updatedCharge.default_amount) {
-      changes.push(`amount from â‚¹${updatedCharge.default_amount} to â‚¹${editForm.default_amount}`);
+      changes.push(`amount from ₹${updatedCharge.default_amount} to ₹${editForm.default_amount}`);
     }
 
     saveToDB('add_misc_charge_template', finalData).then((res) => {
@@ -219,9 +193,9 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
           <div className="flex items-center gap-2">
             <span className="font-semibold text-slate-900 dark:text-white">{row.label}</span>
             {row.is_system_default && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600">
+              <Badge variant="neutral" size="sm">
                 {t('system_default_badge', 'Default')}
-              </span>
+              </Badge>
             )}
           </div>
         );
@@ -239,14 +213,14 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
             onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
           />
         ) : (
-          <span className="bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300 text-[10px] font-semibold px-2.5 py-1 rounded-full">
+          <Badge variant="info" size="sm">
             {row.category}
-          </span>
+          </Badge>
         );
       },
     },
     {
-      name: t('default_price_column', 'Default Price (â‚¹)'),
+      name: t('default_price_column', 'Default Price (₹)'),
       selector: (row: MiscChargeTemplate) => row.default_amount,
       cell: (row: MiscChargeTemplate) => {
         const editing = isEditing === row.id;
@@ -257,7 +231,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
             onChange={(e) => setEditForm({ ...editForm, default_amount: Number(e.target.value) })}
           />
         ) : (
-          <span className="font-semibold text-emerald-600 dark:text-emerald-400">â‚¹{row.default_amount?.toLocaleString('en-IN') || 0}</span>
+          <span className="font-semibold text-emerald-600 dark:text-emerald-400">₹{row.default_amount?.toLocaleString('en-IN') || 0}</span>
         );
       },
     },
@@ -287,7 +261,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
                   : 'text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer'
               }`}
             >
-              <Edit2 className="w-4 h-4" />
+              <Pencil className="w-4 h-4" />
             </button>
             <button
               onClick={() => handleDelete(row.id)}
@@ -318,12 +292,29 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
         </PageHeaderButton>
       </PageHeader>
 
-      <div className="misc-charges-management__table-card bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-4 sm:p-6">
+      <div className="misc-charges-management__table-card bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md overflow-hidden">
+        {/* Flowbite Datatable Toolbar */}
+        <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-800">
+          <div className="w-full sm:w-80">
+            <Input
+              type="text"
+              placeholder={t('search_misc_charges_placeholder', 'Search by service name or category...')}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              className="w-full"
+            />
+          </div>
+          <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
+            {filteredCharges.length} {filteredCharges.length === 1 ? 'item' : 'items'}
+          </span>
+        </div>
+
         <div className="hidden md:block">
           <DataTable
             columns={columns}
             data={filteredCharges}
-            customStyles={customStyles}
+            customStyles={flowbiteTableCustomStyles}
+            highlightOnHover
             pagination
             paginationPerPage={15}
             paginationRowsPerPageOptions={[5, 10, 15, 20, 25, 50]}
@@ -334,27 +325,17 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
               </div>
             }
             noDataComponent={
-              <div className="text-center py-6 text-slate-500 font-medium">
+              <div className="text-center py-8 text-slate-500 font-medium">
                 {t('no_misc_charges_found_label', 'No miscellaneous charges found.')}
               </div>
             }
-            subHeader={
-              <Input
-                type="text"
-                placeholder={t('search_misc_charges_placeholder', 'Search by service name or category...')}
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                className="w-full max-w-xs"
-              />
-            }
-            highlightOnHover
             responsive
           />
         </div>
 
         {/* Touch-First Mobile Cards View with 10-Item Pagination */}
-        <div className="md:hidden space-y-3">
-          <div className="mb-3">
+        <div className="md:hidden p-4 space-y-3">
+          <div>
             <Input
               type="text"
               placeholder={t('search_misc_charges_placeholder', 'Search by service name or category...')}
@@ -370,7 +351,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
               <>
                 <div className="space-y-2.5">
                   {paginatedCharges.map((row) => (
-                    <div key={row.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3.5 space-y-2 shadow-2xs">
+                    <div key={row.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3.5 space-y-2 shadow-md">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <h4 className="font-bold text-slate-900 dark:text-white text-sm truncate">{row.label}</h4>
@@ -379,7 +360,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
                               {row.category || 'Service'}
                             </span>
                             <span className="font-mono font-extrabold text-blue-600 dark:text-blue-400 text-xs">
-                              â‚¹{Number(row.default_amount).toFixed(2)}
+                              ₹{Number(row.default_amount).toFixed(2)}
                             </span>
                           </div>
                         </div>
@@ -394,7 +375,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
                             disabled={row.is_system_default}
                             className="px-2.5 py-1 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-semibold text-xs rounded-lg transition cursor-pointer flex items-center gap-1 disabled:opacity-40 shrink-0"
                           >
-                            <Edit2 className="w-3 h-3" />
+                            <Pencil className="w-3 h-3" />
                             <span>{t('edit_button', 'Edit')}</span>
                           </button>
                           {!row.is_system_default && (
@@ -480,7 +461,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
               />
             </div>
             <div>
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('default_price_label', 'Default Price (â‚¹)')}</label>
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('default_price_label', 'Default Price (₹)')}</label>
               <Input
                 type="number"
                 required

@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Alert } from 'flowbite-react';
-import { Save, RotateCcw, Loader2 } from 'lucide-react';
-import { fetchThemeSettings, saveThemeSettings, applyThemeSettings, ThemeSettings } from '../services/themeService';
+import { Alert, Card } from 'flowbite-react';
 import { Button } from './Button';
-import { Input } from './Input';
+import { Save, RotateCcw, Loader2, Palette, Moon, Type, Box, Sparkles } from 'lucide-react';
+import { fetchThemeSettings, saveThemeSettings, applyThemeSettings, getDefaultTheme, ThemeSettings } from '../services/themeService';
 import { useConfirm } from './ConfirmDialogContext';
 import { t } from '../i18n/en';
 
@@ -23,7 +22,7 @@ export const ThemeManagement: React.FC = () => {
       setIsLoading(true);
       const themeSettings = await fetchThemeSettings();
       setSettings(themeSettings);
-    } catch (error) {
+    } catch {
       setMessage({ type: 'error', text: 'Failed to load theme settings' });
     } finally {
       setIsLoading(false);
@@ -73,7 +72,7 @@ export const ThemeManagement: React.FC = () => {
       } else {
         setMessage({ type: 'error', text: 'Failed to save theme settings' });
       }
-    } catch (error) {
+    } catch {
       setMessage({ type: 'error', text: 'Error saving theme settings' });
     } finally {
       setIsSaving(false);
@@ -88,41 +87,15 @@ export const ThemeManagement: React.FC = () => {
       variant: 'warning',
     });
     if (confirmed) {
-      const defaultTheme: ThemeSettings = {
-        colors: {
-          primary: '#3b82f6',
-          secondary: '#1e293b',
-          accent: '#06b6d4',
-          success: '#10b981',
-          warning: '#f59e0b',
-          error: '#ef4444',
-          info: '#0284c7',
-        },
-        darkMode: {
-          background: '#0f172a',
-          surface: '#1e293b',
-          text: '#f8fafc',
-          textMuted: '#94a3b8',
-        },
-        typography: {
-          fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto',
-          baseFontSize: '16px',
-          headingScale: 1.2,
-        },
-        spacing: {
-          baseUnit: '4px',
-        },
-        borderRadius: {
-          small: '0.375rem',
-          medium: '0.5rem',
-          large: '1rem',
-        },
-        shadows: {
-          small: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
-          medium: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-          large: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
-        },
-      };
+      // Was a hand-duplicated copy of getDefaultTheme() that had drifted
+      // out of sync (found 19 Aug 2026) - its borderRadius values
+      // (0.375rem/0.5rem/1rem) were the same wrong ones that used to live
+      // in getDefaultTheme() before that got fixed, meaning clicking
+      // "Reset to Default" here would have silently re-saved the bug even
+      // after the shared default was corrected. Calling the shared
+      // function instead of hand-typing a second copy means the two can't
+      // drift apart again.
+      const defaultTheme: ThemeSettings = getDefaultTheme();
 
       try {
         setIsSaving(true);
@@ -132,7 +105,7 @@ export const ThemeManagement: React.FC = () => {
           applyThemeSettings(defaultTheme);
           setMessage({ type: 'success', text: 'Theme reset to defaults!' });
         }
-      } catch (error) {
+      } catch {
         setMessage({ type: 'error', text: 'Failed to reset theme' });
       } finally {
         setIsSaving(false);
@@ -142,195 +115,229 @@ export const ThemeManagement: React.FC = () => {
 
   if (isLoading || !settings) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 theme-management">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="theme-management__header">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white theme-management__title">{t('theme_settings_heading', 'Theme Settings')}</h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 theme-management__description">
+      <div>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+          {t('theme_settings_heading', 'Theme Settings')}
+        </h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
           {t('theme_settings_description', 'Customize the platform appearance for all users')}
         </p>
       </div>
 
-      {/* Message */}
+      {/* Alert Message */}
       {message && (
-        <Alert color={message.type === 'success' ? 'success' : 'failure'}>
+        <Alert color={message.type === 'success' ? 'success' : 'failure'} onDismiss={() => setMessage(null)}>
           <span>{message.text}</span>
         </Alert>
       )}
 
-      {/* Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 theme-management__grid">
-        {/* Colors */}
-        <div className="space-y-4 theme-management__section">
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white theme-management__section-title">{t('colors_section_label', 'Colors')}</h3>
-          <div className="space-y-3 theme-management__color-grid">
+      {/* Grid: Colors & Dark Mode */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Brand Colors */}
+        <Card className="border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-2 pb-3 border-b border-gray-200 dark:border-gray-700">
+            <Palette className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+              {t('colors_section_label', 'Brand & Palette Colors')}
+            </h3>
+          </div>
+          <div className="divide-y divide-gray-100 dark:divide-gray-700">
             {Object.entries(settings.colors).map(([key, value]) => (
-              <div key={key} className="flex items-center gap-3 theme-management__color-row">
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 w-24 capitalize theme-management__color-label">
-                  {key}
-                </label>
-                <div className="flex items-center gap-2 flex-1">
-                  <Input
+              <div key={key} className="flex items-center justify-between py-3 gap-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <input
                     type="color"
                     value={value}
                     onChange={(e) => handleColorChange(`colors.${key}`, e.target.value)}
-                    className="w-12 h-10 rounded cursor-pointer theme-management__color-picker"
+                    className="w-9 h-9 p-0.5 rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer bg-white dark:bg-gray-700 shrink-0 shadow-2xs"
                   />
-                  <Input
-                    type="text"
-                    value={value}
-                    onChange={(e) => handleColorChange(`colors.${key}`, e.target.value)}
-                    className="flex-1 theme-management__color-input"
-                    fullWidth={false}
-                    placeholder={t('hex_color_placeholder', '#000000')}
-                  />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white capitalize">
+                      {key}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                      {value}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Dark Mode Colors */}
-        <div className="space-y-4 theme-management__section">
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white theme-management__section-title">{t('dark_mode_section_label', 'Dark Mode')}</h3>
-          <div className="space-y-3 theme-management__color-grid">
-            {Object.entries(settings.darkMode).map(([key, value]) => (
-              <div key={key} className="flex items-center gap-3 theme-management__color-row">
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 w-32 capitalize theme-management__color-label">
-                  {key.replace(/([A-Z])/g, ' $1')}
-                </label>
-                <div className="flex items-center gap-2 flex-1">
-                  <Input
-                    type="color"
-                    value={value}
-                    onChange={(e) => handleColorChange(`darkMode.${key}`, e.target.value)}
-                    className="w-12 h-10 rounded cursor-pointer theme-management__color-picker"
-                  />
-                  <Input
-                    type="text"
-                    value={value}
-                    onChange={(e) => handleColorChange(`darkMode.${key}`, e.target.value)}
-                    className="flex-1 theme-management__color-input"
-                    fullWidth={false}
-                    placeholder={t('hex_color_placeholder', '#000000')}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Typography */}
-        <div className="space-y-4 theme-management__section">
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white theme-management__section-title">{t('typography_section_label', 'Typography')}</h3>
-          <div className="space-y-3 theme-management__typography-fields">
-            <div className="theme-management__typography-field">
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 theme-management__label">
-                {t('font_family_label', 'Font Family')}
-              </label>
-              <Input
-                type="text"
-                value={settings.typography.fontFamily}
-                onChange={(e) => handleTextChange('typography.fontFamily', e.target.value)}
-                className="theme-management__input"
-              />
-            </div>
-            <div className="theme-management__typography-field">
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 theme-management__label">
-                {t('base_font_size_label', 'Base Font Size')}
-              </label>
-              <Input
-                type="text"
-                value={settings.typography.baseFontSize}
-                onChange={(e) => handleTextChange('typography.baseFontSize', e.target.value)}
-                className="theme-management__input"
-              />
-            </div>
-            <div className="theme-management__typography-field">
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 theme-management__label">
-                {t('heading_scale_label', 'Heading Scale')}
-              </label>
-              <Input
-                type="number"
-                step="0.1"
-                value={settings.typography.headingScale}
-                onChange={(e) => handleTextChange('typography.headingScale', e.target.value)}
-                className="theme-management__input"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Border Radius */}
-        <div className="space-y-4 theme-management__section">
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white theme-management__section-title">{t('border_radius_section_label', 'Border Radius')}</h3>
-          <div className="space-y-3 theme-management__border-radius-fields">
-            {Object.entries(settings.borderRadius).map(([key, value]) => (
-              <div key={key} className="theme-management__form-row">
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 capitalize theme-management__label">
-                  {key}
-                </label>
-                <Input
+                <input
                   type="text"
                   value={value}
-                  onChange={(e) => handleTextChange(`borderRadius.${key}`, e.target.value)}
-                  className="theme-management__input"
+                  onChange={(e) => handleColorChange(`colors.${key}`, e.target.value)}
+                  className="bg-gray-50 border border-gray-300 text-gray-900 text-xs font-mono rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-28 p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white uppercase"
+                  placeholder="#000000"
                 />
               </div>
             ))}
           </div>
-        </div>
+        </Card>
+
+        {/* Dark Mode Colors */}
+        <Card className="border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-2 pb-3 border-b border-gray-200 dark:border-gray-700">
+            <Moon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+              {t('dark_mode_section_label', 'Dark Mode Colors')}
+            </h3>
+          </div>
+          <div className="divide-y divide-gray-100 dark:divide-gray-700">
+            {Object.entries(settings.darkMode).map(([key, value]) => (
+              <div key={key} className="flex items-center justify-between py-3 gap-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <input
+                    type="color"
+                    value={value}
+                    onChange={(e) => handleColorChange(`darkMode.${key}`, e.target.value)}
+                    className="w-9 h-9 p-0.5 rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer bg-white dark:bg-gray-700 shrink-0 shadow-2xs"
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white capitalize">
+                      {key.replace(/([A-Z])/g, ' $1')}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                      {value}
+                    </p>
+                  </div>
+                </div>
+                <input
+                  type="text"
+                  value={value}
+                  onChange={(e) => handleColorChange(`darkMode.${key}`, e.target.value)}
+                  className="bg-gray-50 border border-gray-300 text-gray-900 text-xs font-mono rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-28 p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white uppercase"
+                  placeholder="#000000"
+                />
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      {/* Grid: Typography & Border Radius */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Typography */}
+        <Card className="border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-2 pb-3 border-b border-gray-200 dark:border-gray-700">
+            <Type className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+              {t('typography_section_label', 'Typography')}
+            </h3>
+          </div>
+          <div className="space-y-4 pt-1">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                {t('font_family_label', 'Font Family')}
+              </label>
+              <input
+                type="text"
+                value={settings.typography.fontFamily}
+                onChange={(e) => handleTextChange('typography.fontFamily', e.target.value)}
+                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  {t('base_font_size_label', 'Base Font Size')}
+                </label>
+                <input
+                  type="text"
+                  value={settings.typography.baseFontSize}
+                  onChange={(e) => handleTextChange('typography.baseFontSize', e.target.value)}
+                  className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  {t('heading_scale_label', 'Heading Scale')}
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={settings.typography.headingScale}
+                  onChange={(e) => handleTextChange('typography.headingScale', e.target.value)}
+                  className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                />
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Border Radius */}
+        <Card className="border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-2 pb-3 border-b border-gray-200 dark:border-gray-700">
+            <Box className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+              {t('border_radius_section_label', 'Border Radius')}
+            </h3>
+          </div>
+          <div className="space-y-4 pt-1">
+            {Object.entries(settings.borderRadius).map(([key, value]) => (
+              <div key={key}>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 capitalize">
+                  {key}
+                </label>
+                <input
+                  type="text"
+                  value={value}
+                  onChange={(e) => handleTextChange(`borderRadius.${key}`, e.target.value)}
+                  className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                />
+              </div>
+            ))}
+          </div>
+        </Card>
       </div>
 
       {/* Shadows */}
-      <div className="space-y-4 theme-management__section">
-        <h3 className="text-lg font-semibold text-slate-900 dark:text-white theme-management__section-title">{t('shadows_section_label', 'Shadows')}</h3>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 theme-management__shadows-grid">
+      <Card className="border-gray-200 dark:border-gray-700">
+        <div className="flex items-center gap-2 pb-3 border-b border-gray-200 dark:border-gray-700">
+          <Sparkles className="w-5 h-5 text-amber-500" />
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+            {t('shadows_section_label', 'Shadows')}
+          </h3>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 pt-1">
           {Object.entries(settings.shadows).map(([key, value]) => (
-            <div key={key} className="theme-management__form-row">
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 capitalize theme-management__label">
+            <div key={key}>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 capitalize">
                 {key}
               </label>
-              <Input
+              <input
                 type="text"
                 value={value}
                 onChange={(e) => handleTextChange(`shadows.${key}`, e.target.value)}
-                className="theme-management__input"
+                className="bg-gray-50 border border-gray-300 text-gray-900 text-xs font-mono rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
               />
             </div>
           ))}
         </div>
-      </div>
+      </Card>
 
       {/* Action Buttons */}
-      <div className="flex gap-3 pt-6 border-t border-slate-200 dark:border-slate-700 theme-management__actions">
-        <Button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="flex items-center gap-2 theme-management__save-btn"
-          variant="primary"
-          size="md"
-        >
-          {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          {isSaving ? t('saving_ellipsis_button', 'Saving...') : t('save_settings_button', 'Save Settings')}
-        </Button>
-        <Button
+      <div className="flex items-center gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+<Button variant="primary" size="md" onClick={handleSave} disabled={isSaving}>
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                <span>{isSaving ? t('saving_ellipsis_button', 'Saving...') : t('save_settings_button', 'Save Settings')}</span>
+              </Button>
+
+        <button
+          type="button"
           onClick={handleReset}
           disabled={isSaving}
-          className="flex items-center gap-2 theme-management__reset-btn"
-          variant="tertiary"
-          size="md"
+          className="inline-flex items-center gap-2 text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-100 font-medium rounded-lg text-sm px-5 py-2.5 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 dark:focus:ring-gray-700 disabled:opacity-50 cursor-pointer shadow-xs"
         >
-          <RotateCcw className="w-4 h-4" />
-          {t('reset_button', 'Reset')}
-        </Button>
+          <RotateCcw className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+          <span>{t('reset_button', 'Reset')}</span>
+        </button>
       </div>
     </div>
   );

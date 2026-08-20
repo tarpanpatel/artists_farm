@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Plus, Loader2, AlertCircle, AlertTriangle, BarChart3, ChevronDown, ChevronRight, Edit2, Eye, CheckCircle2, Share2, Copy, XCircle, ExternalLink, KeyRound, X, DoorOpen, RotateCcw, Mail, MessageCircle } from 'lucide-react';
+import { Building2, Plus, Loader2, AlertCircle, AlertTriangle, BarChart3, ChevronDown, ChevronRight, Pencil, Eye, CheckCircle2, Share2, Copy, XCircle, ExternalLink, KeyRound, X, DoorOpen, RotateCcw, Mail, MessageCircle } from 'lucide-react';
 import { Modal, ModalHeader, ModalBody, ModalFooter, Alert } from 'flowbite-react';
 import { ToggleSwitch } from './ToggleSwitch';
 import { StyledSelect } from './StyledSelect';
@@ -855,7 +855,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                           variant="ghost"
                           size="xs"
                         >
-                          <Edit2 className="w-4 h-4" />
+                          <Pencil className="w-4 h-4" />
                         </Button>
                         <Button
                           onClick={(e) => {
@@ -1153,7 +1153,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                                         variant="ghost"
                                         size="xs"
                                       >
-                                        <Edit2 className="w-4 h-4" />
+                                        <Pencil className="w-4 h-4" />
                                       </Button>
                                       <Button
                                         onClick={() => setShowDeletePropertyModal(prop.id)}
@@ -1216,7 +1216,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                                               variant="ghost"
                                               size="xs"
                                             >
-                                              <Edit2 className="w-3 h-3" />
+                                              <Pencil className="w-3 h-3" />
                                             </Button>
                                             <Button
                                               onClick={() => setShowDeletePropertyModal(room.id)}

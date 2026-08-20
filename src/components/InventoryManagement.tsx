@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Modal, ModalHeader, ModalBody, ModalFooter } from 'flowbite-react';
+import { Modal, ModalHeader, ModalBody, ModalFooter, Drawer as FlowbiteDrawer, DrawerItems, TextInput as FlowbiteTextInput, Tabs, TabItem } from 'flowbite-react';
 import { Button } from './Button';
+import { Badge } from './Badge';
 import DataTable from 'react-data-table-component';
-import { Boxes, PackagePlus, AlertTriangle, Plus, CheckCircle2, X, Upload, Search, ShoppingCart, Settings, Package, Check, ClipboardEdit, Pencil, ChevronDown, ChevronUp, ArrowRight, Loader2, FlaskConical, Coffee, Milk, Apple, Banana, Cake, Carrot, Wheat, SprayCan, Drumstick, UtensilsCrossed, Croissant, Soup, Droplet, Snowflake, Fish, Wrench, Balloon, Refrigerator, Microwave, Fan, Blend, Bean, HandPlatter, GlassWater, LeafyGreen, Trash2, Candy, Flame, Cherry, Grape, Citrus, Egg, CupSoda, Utensils, Sandwich, Cookie, Nut, Filter, Calendar, Eye, type LucideIcon } from 'lucide-react';
+import { flowbiteTableCustomStyles } from '../utils/tableStyles';
+import { Boxes, PackagePlus, AlertTriangle, Plus, CheckCircle2, X, Upload, Search, ShoppingCart, Settings, Package, Check, ClipboardEdit, Pencil, ChevronDown, ChevronUp, Loader2, FlaskConical, Coffee, Milk, Apple, Banana, Cake, Carrot, Wheat, SprayCan, Drumstick, UtensilsCrossed, Croissant, Soup, Droplet, Snowflake, Fish, Wrench, Balloon, Refrigerator, Microwave, Fan, Blend, Bean, HandPlatter, GlassWater, LeafyGreen, Trash2, Candy, Flame, Cherry, Grape, Citrus, Egg, CupSoda, Utensils, Sandwich, Cookie, Nut, Filter, Eye, type LucideIcon } from 'lucide-react';
 import { InventoryItem, CatalogItem } from '../types';
 import { t } from '../i18n/en';
-import { PageHeader } from './PageHeader';
+import { PageHeader, PageHeaderButton } from './PageHeader';
 import { Input } from './Input';
 import { Textarea } from './Textarea';
 import { StyledSelect } from './StyledSelect';
@@ -156,7 +158,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   onLogAudit,
 }) => {
   const { staff } = useStaff();
-  const { currentUser } = useAuth();
+  const { currentUser, activeRole } = useAuth();
+  const normalizedRole = (currentUser?.role || activeRole || '').toLowerCase().replace(/_/g, ' ').trim();
+  const canDeleteCatalogItem = normalizedRole.includes('admin');
   const { inventory, inventoryLoading } = useInventoryContext();
   // Shared spinner for every DataTable's progressComponent in this file
   // (14 Aug 2026 loading-state pass) - kept as one constant so all of this
@@ -393,7 +397,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       const changes: string[] = [];
       if (catItemName !== oldItem.name) changes.push(`name from '${oldItem.name}' to '${catItemName}'`);
       if (catCategory !== oldItem.category) changes.push(`category from '${oldItem.category}' to '${catCategory}'`);
-      if (catPrice !== oldItem.price) changes.push(`price from Ã¢â€šÂ¹${oldItem.price} to Ã¢â€šÂ¹${catPrice}`);
+      if (catPrice !== oldItem.price) changes.push(`price from ₹${oldItem.price} to ₹${catPrice}`);
       if (catPackSize !== oldItem.packSize) changes.push(`pack size from ${oldItem.packSize} to ${catPackSize}`);
       if (catUnit !== oldItem.packUnit) changes.push(`unit from '${oldItem.packUnit}' to '${catUnit}'`);
 
@@ -444,7 +448,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       await addCatalogItemDB({ name: catItemName, category: catCategory, price: catPrice, packSize: catPackSize, unit: catUnit, imagePath: savedImagePath });
       if (onLogAudit) {
         const currentUserName = currentUser?.name || 'Admin';
-        onLogAudit(`${currentUserName} created catalog item ${catItemName} (Category: ${catCategory}, Price: Ã¢â€šÂ¹${catPrice}, Pack Size: ${catPackSize} ${catUnit})`);
+        onLogAudit(`${currentUserName} created catalog item ${catItemName} (Category: ${catCategory}, Price: ₹${catPrice}, Pack Size: ${catPackSize} ${catUnit})`);
       }
     }
     setIsCatalogModalOpen(false);
@@ -571,9 +575,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       }
 
       if (data.qty === 0) {
-        manifestStr += `\nÃ¢ÂÅ’ <b>${namePart}</b>\n   Ã¢â€â€ Ordered: ${orderTag} | Recd: 0 (NOT DELIVERED)`;
+        manifestStr += `\n❌ <b>${namePart}</b>\n   â"" Ordered: ${orderTag} | Recd: 0 (NOT DELIVERED)`;
       } else {
-        manifestStr += `\nÃ¢Å“â€¦ <b>${namePart}</b>\n   Ã¢â€â€ Ordered: ${orderTag} | Recd: ${data.qty} ${data.unit} @ Ã¢â€šÂ¹${data.cost}`;
+        manifestStr += `\n✅ <b>${namePart}</b>\n   â"" Ordered: ${orderTag} | Recd: ${data.qty} ${data.unit} @ ₹${data.cost}`;
       }
     });
 
@@ -586,7 +590,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       calculatedStatus = 'Partially Fulfilled';
     }
 
-    const headerTitle = calculatedStatus === 'Fulfilled' ? 'Ã°Å¸â€œÂ¦ STOCK PROCURED & ARCHIVED' : 'Ã°Å¸â€œÂ¦ STOCK REQUISITION UPDATE';
+    const headerTitle = calculatedStatus === 'Fulfilled' ? '📦 STOCK PROCURED & ARCHIVED' : '📦 STOCK REQUISITION UPDATE';
     
     const now = new Date();
     const formattedTime = `${now.getDate()} ${now.toLocaleString('en-US', {month: 'short'})} ${now.getFullYear()} - ${now.toLocaleTimeString('en-US', {hour12: false})}`;
@@ -606,7 +610,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
     if (onDispatchTelegram) {
       const resolved = await resolveTelegramTemplate('requisition_stock_fulfilled', templateVars);
-      const tgMessage = resolved || `${headerTitle}\nÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€Â\nÃ°Å¸â€ â€ Sheet ID: #${selectedFulfillSheet.id}\nÃ°Å¸â€˜Â¤ Processed By: ${staffName}\nÃ°Å¸â€œâ€¦ Fulfillment Time: ${formattedTime}\nÃ°Å¸Å¸Â¢ Global Status: ${calculatedStatus}\nÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€Â\nÃ°Å¸â€œÂ Items Variance Manifest:\n${manifestStr}`;
+      const tgMessage = resolved || `${headerTitle}\n━━━━━━━━━━━━━━━━━━\n🆔 Sheet ID: #${selectedFulfillSheet.id}\n👤 Processed By: ${staffName}\n📅 Fulfillment Time: ${formattedTime}\n🟢 Global Status: ${calculatedStatus}\n━━━━━━━━━━━━━━━━━━\n📝 Items Variance Manifest:\n${manifestStr}`;
       onDispatchTelegram('Stock Fulfillment', tgMessage, 'kitchen', undefined, 'requisition_stock_fulfilled');
     }
     
@@ -669,8 +673,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   // resolved. Defaults true.
   const [stockRequestsLoading, setStockRequestsLoading] = useState(true);
   const [fulfillSearch, setFulfillSearch] = useState('');
-
-  const [fulfillRangeOpen, setFulfillRangeOpen] = useState(false);
 
   const todayDate = new Date();
   const padDate = (n: number) => String(n).padStart(2, '0');
@@ -791,9 +793,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     }
 
     // Format & Dispatch Telegram Alert
-    const itemsList = reqBasket.map((b) => `Ã¢â‚¬Â¢ ${b.name} (x${b.qty} ${b.unit})`);
+    const itemsList = reqBasket.map((b) => `• ${b.name} (x${b.qty} ${b.unit})`);
     if (specialRequestText.trim()) {
-      itemsList.push(`Ã¢â‚¬Â¢ Special Notes: ${specialRequestText.trim()}`);
+      itemsList.push(`• Special Notes: ${specialRequestText.trim()}`);
     }
     const itemsListStr = itemsList.join('\n');
     
@@ -805,7 +807,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         custom_notes: specialRequestText.trim() || 'None',
       };
       const resolved = await resolveTelegramTemplate('requisition_material_request', reqVars);
-      const tgMessage = resolved || `Ã°Å¸â€œâ€¹ <b>NEW STOCK REQUISITION SHEET #${newSheetId}</b>\nÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€Â\nÃ°Å¸â€˜Â¤ Requested By: <b>${currentUser?.name || 'Staff'}</b>\nÃ°Å¸â€œâ€¦ Date: ${newSheet.date}\nÃ°Å¸Å¸Â¢ Status: <b>PENDING</b>\nÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€Â\nÃ°Å¸â€œÂ Items Requested:\n${itemsListStr}`;
+      const tgMessage = resolved || `📋 <b>NEW STOCK REQUISITION SHEET #${newSheetId}</b>\n━━━━━━━━━━━━━━━━━━\n👤 Requested By: <b>${currentUser?.name || 'Staff'}</b>\n📅 Date: ${newSheet.date}\n🟢 Status: <b>PENDING</b>\n━━━━━━━━━━━━━━━━━━\n📝 Items Requested:\n${itemsListStr}`;
       onDispatchTelegram('Requisition', tgMessage, 'kitchen', undefined, 'requisition_material_request');
     }
 
@@ -940,7 +942,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
           {/* Form Column (Left Side on Desktop) */}
-          <div className="xl:col-span-5 record-wastage-card bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
+          <div className="xl:col-span-5 record-wastage-card bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 space-y-4">
             <h3 className="inventory-management__subtitle font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-1.5 border-b border-slate-100 dark:border-slate-700 pb-3">
               <ClipboardEdit className="w-4 h-4 text-amber-500" /> RECORD WASTAGE / SPILLAGE INCIDENT
             </h3>
@@ -1025,7 +1027,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="btn-log-wastage w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs py-3 rounded-lg shadow-xs cursor-pointer transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+                  className="btn-log-wastage w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs py-3 rounded-lg shadow-md cursor-pointer transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
                 >
                   <ClipboardEdit className="w-4 h-4" />
                   <span>LOG WASTAGE INCIDENT</span>
@@ -1035,10 +1037,10 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           </div>
 
           {/* Audit History Column (Right Side on Desktop) */}
-          <div className="xl:col-span-7 wastage-logs-card bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
+          <div className="xl:col-span-7 wastage-logs-card bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
             <h3 className="inventory-management__subtitle font-semibold text-slate-800 dark:text-white text-sm">Wastage & Spillage Audit History</h3>
-            <span className="text-slate-400 font-semibold text-xs">{wastageLoading ? 'Ã¢â‚¬Â¦' : wastageLogs.length} incidents</span>
+            <span className="text-slate-400 font-semibold text-xs">{wastageLoading ? '…' : wastageLogs.length} incidents</span>
           </div>
 
           {/* Mobile Card Stack View (md:hidden) */}
@@ -1120,7 +1122,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   sortable: true,
                   width: '140px',
                   cell: (log: any) => (
-                    <span className="bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 font-semibold text-[10px] px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">{log.reason}</span>
+                    <Badge variant="warning" size="sm">
+                                  {log.reason}
+                                </Badge>
                   ),
                 },
                 {
@@ -1135,6 +1139,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               pagination
               paginationPerPage={10}
               highlightOnHover
+              customStyles={flowbiteTableCustomStyles}
               noDataComponent={<div className="p-8 text-center text-slate-400 text-xs font-semibold">No wastage incidents logged.</div>}
             />
           </div>
@@ -1145,66 +1150,395 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 }
 
   if (activeTab === 'catalog') {
+    const filteredCatalogItems = catalogItems.filter(item => {
+      const matchesSearch = !catalogSearch.trim() || item.name.toLowerCase().includes(catalogSearch.toLowerCase()) || item.category.toLowerCase().includes(catalogSearch.toLowerCase());
+      const matchesCategory = selectedCategory === 'All' || selectedCategory === 'All Items' || !selectedCategory || item.category === selectedCategory;
+      return matchesSearch && matchesCategory;
+    });
+
     return (
       <div className="stock-inventory-container">
         <div className="mb-4">
           <PageHeader
             title="Edit Kitchen Stock"
             subtitle="Manage the master list of raw materials - pricing, pack sizes, units, and categories."
-          />
+          >
+            {catalogView === 'items' && (
+              <PageHeaderButton onClick={handleCreateNewCatalogItem} icon={Plus}>
+                {t('register_new_item_button')}
+              </PageHeaderButton>
+            )}
+          </PageHeader>
         </div>
 
-        {/* Unified Sub-Tab Navigation Bar - same "merged panel" folder-tab
-            style as Kitchen and Stock Requests (18 Aug 2026): active tab
-            shares one solid background with the panel directly beneath it
-            (no seam), centered, no track background behind the row,
-            inactive tabs get only a faint ghost border. items-end (not
-            items-center) is required so the active tab's bottom edge -
-            shorter than inactive tabs since it has no bottom border - still
-            lands flush with the panel below instead of floating above it. */}
-        <ul className="flex flex-wrap text-xs font-semibold text-center text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 mb-4 overflow-x-auto no-scrollbar">
-          <li className="me-2">
-            <button
-              type="button"
-              onClick={() => setCatalogView('items')}
-              className={`inline-flex items-center gap-2 px-4 py-3 rounded-t-lg transition-colors cursor-pointer whitespace-nowrap ${
-                catalogView === 'items'
-                  ? 'text-blue-600 bg-slate-100 dark:bg-slate-800 dark:text-blue-400 font-bold border-b-2 border-blue-600 dark:border-blue-400'
-                  : 'hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60'
-              }`}
-            >
-              <Package className="w-4 h-4 shrink-0" />
-              <span>{t('master_materials_catalog_header')}</span>
-            </button>
-          </li>
-          <li className="me-2">
-            <button
-              type="button"
-              onClick={() => setCatalogView('categories')}
-              className={`inline-flex items-center gap-2 px-4 py-3 rounded-t-lg transition-colors cursor-pointer whitespace-nowrap ${
-                catalogView === 'categories'
-                  ? 'text-blue-600 bg-slate-100 dark:bg-slate-800 dark:text-blue-400 font-bold border-b-2 border-blue-600 dark:border-blue-400'
-                  : 'hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60'
-              }`}
-            >
-              <Settings className="w-4 h-4 shrink-0" />
-              <span>{t('manage_categories_button')}</span>
-            </button>
-          </li>
-        </ul>
+        <Tabs
+          aria-label="Kitchen Stock Tabs"
+          variant="default"
+          // Plain stock flowbite-react "default" theme, no override - kept
+          // identical to the Take Food Order tabs (Kitchen Management Tabs
+          // in KitchenManagement.tsx) so every Tabs instance in the app
+          // renders the same way (20 Aug 2026, replacing a real-v4-token
+          // override that made this one look different from the rest).
+          onActiveTabChange={(tabIndex: number) => {
+            setCatalogView(tabIndex === 0 ? 'items' : 'categories');
+          }}
+        >
+          <TabItem active={catalogView === 'items'} title={t('master_materials_catalog_header')} icon={Package}>
+            {/* No chrome here - the desktop DataTable card and mobile card
+                below (hidden md:block / md:hidden) each already have their
+                own full bg/border/rounded/shadow, matching how KitchenManagement's
+                Take Food Order tabs put exactly one chromed card directly in
+                each TabItem ("block inside a block", found + fixed 20 Aug 2026). */}
+            <div className="space-y-4">
+              {selectedCatalogItemIds.length > 0 && (
+                <div className="bulk-category-action-bar bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md animate-in fade-in slide-in-from-top-2 duration-250">
+                  <div className="flex items-center gap-2">
+                    <span className="bg-blue-600 text-white font-semibold text-xs px-2.5 py-1 rounded-full shadow-3xs">
+                      {selectedCatalogItemIds.length} Selected
+                    </span>
+                    <span className="text-xs text-blue-700 dark:text-blue-300 font-semibold">
+                      {t('items_to_assign_category_bulk')}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <StyledSelect
+                      className="flex-1 sm:flex-none"
+                      value={bulkTargetCategory}
+                      onChange={setBulkTargetCategory}
+                      placeholder={t('select_target_category_placeholder')}
+                      options={catalogCategories.map(cat => ({ value: cat, label: cat }))}
+                    />
+                    <button
+                      onClick={() => handleBulkAssignCategory(bulkTargetCategory)}
+                      disabled={!bulkTargetCategory}
+                      className="btn-bulk-assign-category bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-semibold text-xs px-4 py-2 rounded-lg cursor-pointer transition-colors shadow-md shrink-0"
+                    >
+                      {t('assign_category_button')}
+                    </button>
+                    <button
+                      onClick={() => setSelectedCatalogItemIds([])}
+                      className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 text-xs font-semibold px-2 py-2 cursor-pointer transition-colors"
+                    >
+                      {t('clear_button')}
+                    </button>
+                  </div>
+                </div>
+              )}
 
-        {/* Categories Tab */}
-        {catalogView === 'categories' && (
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-b-2xl p-4 sm:p-5 shadow-2xs space-y-3">
-            <div className="flex items-center gap-2">
-              <Input
-                type="text"
-                value={newCategoryName}
-                onChange={e => setNewCategoryName(e.target.value)}
-                placeholder={t('new_category_name_placeholder')}
-                className="flex-1"
-                onKeyDown={async (e) => {
-                  if (e.key === 'Enter' && newCategoryName.trim()) {
+              <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md overflow-hidden">
+                <DataTable
+                  key={catalogTableKey}
+                  columns={[
+                    {
+                      name: t('image_column_header'),
+                      width: '80px',
+                      cell: (row: CatalogItem) => {
+                        const ItemIcon = getStockItemIcon(row.name, row.category);
+                        return (
+                          <div className="w-11 h-11 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg flex items-center justify-center">
+                            <ItemIcon className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
+                          </div>
+                        );
+                      },
+                      sortable: false,
+                    },
+                    {
+                      name: t('item_name_label'),
+                      selector: (row: CatalogItem) => row.name,
+                      sortable: true,
+                      grow: 2,
+                      cell: (row: CatalogItem) => <span className="font-semibold text-slate-800 dark:text-white">{row.name}</span>,
+                    },
+                    {
+                      name: t('category_label'),
+                      selector: (row: CatalogItem) => row.category,
+                      sortable: true,
+                      width: '170px',
+                      cell: (row: CatalogItem) => (
+                        <span className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-2 py-0.5 rounded text-2xs font-semibold">{row.category}</span>
+                      ),
+                    },
+                    {
+                      name: t('pack_column_header'),
+                      selector: (row: CatalogItem) => `${row.packSize} ${row.packUnit}`,
+                      sortable: true,
+                      width: '160px',
+                      cell: (row: CatalogItem) => <span className="text-slate-600 dark:text-slate-300">{row.packSize} {row.packUnit}</span>,
+                    },
+                    {
+                      name: t('cost_column_header'),
+                      selector: (row: CatalogItem) => row.price,
+                      sortable: true,
+                      width: '130px',
+                      right: true,
+                      cell: (row: CatalogItem) => <span className="text-slate-600 dark:text-slate-300">₹{row.price.toFixed(2)}</span>,
+                    },
+                    {
+                      name: t('status_column_header'),
+                      selector: (row: CatalogItem) => row.is_verified ? 1 : 0,
+                      sortable: true,
+                      width: '170px',
+                      cell: (row: CatalogItem) => (
+                        row.is_verified ? (
+                          <Badge variant="success" size="sm">{t('active_status_badge')}</Badge>
+                        ) : (
+                          <Badge variant="warning" size="sm">{t('review_status_badge')}</Badge>
+                        )
+                      ),
+                    },
+                    {
+                      name: 'Actions',
+                      width: '180px',
+                      cell: (row: CatalogItem) => (
+                        <div className="flex items-center gap-2 inventory-management__actions">
+                          {!row.is_verified && (
+                            <button onClick={() => handleApproveItem(row.id)} className="button button--approve text-emerald-600 hover:text-emerald-700 font-medium text-xs cursor-pointer">
+                              {t('approve_button')}
+                            </button>
+                          )}
+                          <button onClick={() => handleEditCatalogItem(row)} className="button button--edit inline-flex items-center gap-1.5 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-700 dark:text-blue-300 font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
+                            <Pencil className="w-3.5 h-3.5" />
+                            {t('edit_button')}
+                          </button>
+                          {canDeleteCatalogItem && (
+                            <button onClick={() => handleDeleteCatalogItem(row.id, row.name)} className="button button--delete text-red-600 hover:text-red-700 font-medium text-xs cursor-pointer">
+                              {t('delete_button')}
+                            </button>
+                          )}
+                        </div>
+                      ),
+                      ignoreRowClick: true,
+                      allowOverflow: true,
+                    },
+                  ]}
+                  data={filteredCatalogItems}
+                  subHeader={
+                    <div className="w-full flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 p-4 border-b border-slate-100 dark:border-slate-700/80">
+                      <div className="relative max-w-sm w-full">
+                        <FlowbiteTextInput
+                          type="text"
+                          placeholder={t('search_by_name_category_placeholder')}
+                          value={catalogSearch}
+                          onChange={(e) => setCatalogSearch(e.target.value)}
+                          icon={Search}
+                          className="w-full"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1">
+                        {catalogCategories.map(cat => {
+                          const count = cat === 'All' || cat === 'All Items' ? catalogItems.length : catalogItems.filter(i => i.category === cat).length;
+                          const isActive = selectedCategory === cat;
+                          return (
+                            <button
+                              key={cat}
+                              type="button"
+                              onClick={() => setSelectedCategory(cat)}
+                              className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border ${
+                                isActive
+                                  ? 'border-blue-600 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold shadow-md'
+                                  : 'bg-transparent text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 font-semibold'
+                              }`}
+                            >
+                              {cat === 'All Items' || cat === 'All' ? 'All' : cat} ({count})
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  }
+                  pagination
+                  paginationPerPage={25}
+                  paginationRowsPerPageOptions={[10, 25, 50, 100]}
+                  highlightOnHover
+                  pointerOnHover
+                  selectableRows
+                  selectableRowsHighlight
+                  onSelectedRowsChange={({ selectedRows }) => {
+                    setSelectedCatalogItemIds(selectedRows.map((r: CatalogItem) => r.id));
+                  }}
+                  progressPending={inventoryLoading}
+                  progressComponent={tableLoadingIndicator('Loading catalog...')}
+                  noDataComponent={
+                    <div className="p-8 text-center text-slate-400 text-sm">{t('no_catalog_items_search_message')}</div>
+                  }
+                  defaultSortFieldId={3}
+                  defaultSortAsc={true}
+                  customStyles={flowbiteTableCustomStyles}
+                />
+              </div>
+
+              <div className="md:hidden bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md overflow-hidden p-3 space-y-3">
+                <div className="space-y-2.5 pb-2 border-b border-slate-100 dark:border-slate-700">
+                  <div className="relative">
+                    <Input
+                      type="text"
+                      placeholder={t('search_by_name_category_placeholder')}
+                      value={catalogSearch}
+                      onChange={(e) => setCatalogSearch(e.target.value)}
+                      leftIcon={<Search className="w-4 h-4 text-slate-400" />}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1">
+                    {catalogCategories.map(cat => {
+                      const count = cat === 'All' || cat === 'All Items' ? catalogItems.length : catalogItems.filter(i => i.category === cat).length;
+                      const isActive = selectedCategory === cat;
+                      return (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => setSelectedCategory(cat)}
+                          className={`shrink-0 px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border ${
+                            isActive
+                              ? 'border-blue-600 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold'
+                              : 'bg-transparent text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                          }`}
+                        >
+                          {cat === 'All Items' || cat === 'All' ? 'All' : cat} ({count})
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {(() => {
+                  const filtered = filteredCatalogItems;
+                  const pageItems = filtered.slice((catalogPage - 1) * 10, catalogPage * 10);
+
+                  return (
+                    <>
+                      <div className="space-y-2.5">
+                        {pageItems.map((item) => {
+                          const ItemIcon = getStockItemIcon(item.name, item.category);
+
+                          return (
+                            <div
+                              key={item.id}
+                              className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-lg border border-slate-200/80 dark:border-slate-700/80 space-y-2 text-xs"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0">
+                                  <ItemIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-semibold text-slate-800 dark:text-slate-100 text-sm truncate">{item.name}</span>
+                                    {item.is_verified && (
+                                      <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0" title="Verified master item">
+                                        ✓
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    <span className="bg-slate-200/70 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px] font-semibold px-2 py-0.5 rounded-md">
+                                      {item.category}
+                                    </span>
+                                    <span className="text-slate-400 text-[11px]">
+                                      {item.packSize} {item.packUnit}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <div className="font-bold text-slate-900 dark:text-white text-sm">
+                                    ₹{Number(item.price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-end gap-2 pt-1.5 border-t border-slate-200/60 dark:border-slate-700/60">
+                                {!item.is_verified && (
+                                  <button
+                                    onClick={() => handleApproveItem(item.id)}
+                                    className="px-2.5 py-1 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 border border-emerald-300 dark:border-emerald-700 font-semibold text-xs rounded-lg transition cursor-pointer"
+                                  >
+                                    {t('approve_button')}
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleEditCatalogItem(item)}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-semibold text-xs rounded-lg transition cursor-pointer"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                  {t('edit_button')}
+                                </button>
+                                {canDeleteCatalogItem && (
+                                  <button
+                                    onClick={() => handleDeleteCatalogItem(item.id, item.name)}
+                                    className="px-2.5 py-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 border border-slate-200 dark:border-slate-700 font-semibold text-xs rounded-lg transition cursor-pointer"
+                                  >
+                                    {t('delete_button')}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                        {filtered.length === 0 && (
+                          <div className="p-8 text-center text-slate-400 text-sm">{t('no_catalog_items_search_message')}</div>
+                        )}
+                      </div>
+
+                      {filtered.length > 10 && (
+                        <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-700">
+                          <button
+                            type="button"
+                            disabled={catalogPage === 1}
+                            onClick={() => setCatalogPage((p) => Math.max(1, p - 1))}
+                            className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+                          >
+                            Previous
+                          </button>
+                          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                            Page {catalogPage} of {Math.ceil(filtered.length / 10)}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={catalogPage >= Math.ceil(filtered.length / 10)}
+                            onClick={() => setCatalogPage((p) => Math.min(Math.ceil(filtered.length / 10), p + 1))}
+                            className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+                          >
+                            Next
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          </TabItem>
+
+          <TabItem active={catalogView === 'categories'} title={t('manage_categories_button')} icon={Settings}>
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-b-2xl p-4 sm:p-5 shadow-md space-y-3">
+              <div className="flex items-center gap-2">
+                <Input
+                  type="text"
+                  value={newCategoryName}
+                  onChange={e => setNewCategoryName(e.target.value)}
+                  placeholder={t('new_category_name_placeholder')}
+                  className="flex-1"
+                  onKeyDown={async (e) => {
+                    if (e.key === 'Enter' && newCategoryName.trim()) {
+                      const catName = newCategoryName.trim();
+                      const ok = await addMaterialCategoryToDB(catName);
+                      if (ok) {
+                        const cats = await fetchMaterialCategoriesFromDB();
+                        setDbCategories(cats);
+                        if (onLogAudit) {
+                          const currentUserName = currentUser?.name || 'Admin';
+                          onLogAudit(`${currentUserName} created material category '${catName}'`);
+                        }
+                        setNewCategoryName('');
+                      }
+                    }
+                  }}
+                />
+                <button
+                  onClick={async () => {
+                    if (!newCategoryName.trim()) return;
                     const catName = newCategoryName.trim();
                     const ok = await addMaterialCategoryToDB(catName);
                     if (ok) {
@@ -1216,500 +1550,77 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                       }
                       setNewCategoryName('');
                     }
-                  }
-                }}
-              />
-              <button
-                onClick={async () => {
-                  if (!newCategoryName.trim()) return;
-                  const catName = newCategoryName.trim();
-                  const ok = await addMaterialCategoryToDB(catName);
-                  if (ok) {
-                    const cats = await fetchMaterialCategoriesFromDB();
-                    setDbCategories(cats);
-                    if (onLogAudit) {
-                      const currentUserName = currentUser?.name || 'Admin';
-                      onLogAudit(`${currentUserName} created material category '${catName}'`);
-                    }
-                    setNewCategoryName('');
-                  }
-                }}
-                className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer"
-              >
-                {t('add_category_button')}
-              </button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
-              {catalogCategories.filter(c => c !== 'All').map(cat => {
-                  const dbCat = dbCategories.find(c => c.name === cat);
-                  return (
-                    <div key={cat} className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg p-2">
-                      {editingCategoryId === dbCat?.id ? (
-                    <>
-                      <Input
-                        type="text"
-                        value={editingCategoryName}
-                        onChange={e => setEditingCategoryName(e.target.value)}
-                        onBlur={() => handleRenameCategory(dbCat!.id)}
-                        onKeyDown={e => e.key === 'Enter' && handleRenameCategory(dbCat!.id)}
-                        autoFocus
-                        className="flex-1"
-                      />
-                      <button onClick={() => handleRenameCategory(dbCat!.id)} className="text-green-600 hover:text-green-700 cursor-pointer p-1">
-                        <Check className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => setEditingCategoryId(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer p-1">
-                        <X className="w-4 h-4" />
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <span className="flex-1 text-xs font-semibold text-slate-700 truncate">{cat}</span>
-                      <button
-                        onClick={async () => {
-                          if (!dbCat) return;
-                          const newVal = !dbCat.is_ingredient;
-                          const ok = await toggleIngredientCategoryInDB(dbCat.id, newVal);
-                          if (ok) {
-                            setDbCategories((prev: any[]) => prev.map(c => c.id === dbCat.id ? { ...c, is_ingredient: newVal ? 1 : 0 } : c));
-                          }
-                        }}
-                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full cursor-pointer transition-colors ${dbCat?.is_ingredient ? 'bg-emerald-100 text-emerald-700 border border-emerald-300' : 'bg-slate-100 text-slate-400 border border-slate-200'}`}
-                        title={dbCat?.is_ingredient ? 'Used in recipes' : 'Not used in recipes'}
-                      >
-                        {dbCat?.is_ingredient ? t('ingredient_badge') : t('not_food_badge')}
-                      </button>
-                      <button
-                        onClick={() => { setEditingCategoryId(dbCat?.id || 0); setEditingCategoryName(cat); }}
-                        className="text-slate-400 hover:text-blue-600 text-xs cursor-pointer"
-                        title={t('rename_tooltip')}
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteCategory(dbCat?.id || 0, cat)}
-                        className="text-slate-400 hover:text-red-600 text-xs cursor-pointer"
-                        title={t('delete_button')}
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </>
-                  )}
-                </div>
-               );
-            })}
-            </div>
-          </div>
-        )}
-
-        {catalogView === 'items' && (
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-b-2xl p-4 sm:p-5 shadow-2xs space-y-4">
-        {/* Panel header - "Register New Item" moved here from the tab row
-            (18 Aug 2026) now that the tabs are centered pure navigation. */}
-        <div className="flex items-center justify-end">
-          <button
-            onClick={handleCreateNewCatalogItem}
-            className="btn-add-stock-item bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow-2xs flex items-center gap-1.5 cursor-pointer transition-colors shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{t('register_new_item_button')}</span>
-          </button>
-        </div>
-
-        {/* Bulk Action Bar */}
-        {selectedCatalogItemIds.length > 0 && (
-          <div className="bulk-category-action-bar bg-blue-50 border border-blue-200 rounded-lg p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs animate-in fade-in slide-in-from-top-2 duration-250">
-            <div className="flex items-center gap-2">
-              <span className="bg-blue-600 text-white font-semibold text-xs px-2.5 py-1 rounded-full shadow-3xs">
-                {selectedCatalogItemIds.length} Selected
-              </span>
-              <span className="text-xs text-blue-700 font-semibold">
-                {t('items_to_assign_category_bulk')}
-              </span>
-            </div>
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <StyledSelect
-                className="flex-1 sm:flex-none"
-                value={bulkTargetCategory}
-                onChange={setBulkTargetCategory}
-                placeholder={t('select_target_category_placeholder')}
-                options={catalogCategories.map(cat => ({ value: cat, label: cat }))}
-              />
-              <button
-                onClick={() => handleBulkAssignCategory(bulkTargetCategory)}
-                disabled={!bulkTargetCategory}
-                className="btn-bulk-assign-category bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-semibold text-xs px-4 py-2 rounded-lg cursor-pointer transition-colors shadow-2xs shrink-0"
-              >
-                {t('assign_category_button')}
-              </button>
-              <button
-                onClick={() => setSelectedCatalogItemIds([])}
-                className="text-slate-500 hover:text-slate-700 text-xs font-semibold px-2 py-2 cursor-pointer transition-colors"
-              >
-                {t('clear_button')}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Catalog DataTable */}
-        {/* Catalog Items Container: Desktop Table vs Touch-First Mobile Cards */}
-        <div className="hidden md:block rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
-          <DataTable
-            key={catalogTableKey}
-            columns={[
-              {
-                name: t('image_column_header'),
-                width: '80px',
-                cell: (row: CatalogItem) => {
-                  const ItemIcon = getStockItemIcon(row.name, row.category);
-                  return (
-                    <div className="w-11 h-11 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg flex items-center justify-center">
-                      <ItemIcon className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
-                    </div>
-                  );
-                },
-                sortable: false,
-              },
-              {
-                name: t('item_name_label'),
-                selector: (row: CatalogItem) => row.name,
-                sortable: true,
-                grow: 2,
-                cell: (row: CatalogItem) => <span className="font-semibold text-slate-800 dark:text-white">{row.name}</span>,
-              },
-              {
-                name: t('category_label'),
-                selector: (row: CatalogItem) => row.category,
-                sortable: true,
-                width: '140px',
-                cell: (row: CatalogItem) => (
-                  <span className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-2 py-0.5 rounded text-[10px] font-semibold">{row.category}</span>
-                ),
-              },
-              {
-                name: t('pack_column_header'),
-                selector: (row: CatalogItem) => `${row.packSize} ${row.packUnit}`,
-                sortable: true,
-                width: '120px',
-                cell: (row: CatalogItem) => <span className="text-slate-600 dark:text-slate-300">{row.packSize} {row.packUnit}</span>,
-              },
-              {
-                name: t('cost_column_header'),
-                selector: (row: CatalogItem) => row.price,
-                sortable: true,
-                width: '90px',
-                right: true,
-                cell: (row: CatalogItem) => <span className="text-slate-600 dark:text-slate-300">Ã¢â€šÂ¹{row.price.toFixed(2)}</span>,
-              },
-              {
-                name: t('status_column_header'),
-                selector: (row: CatalogItem) => row.is_verified ? 1 : 0,
-                sortable: true,
-                width: '100px',
-                cell: (row: CatalogItem) => (
-                  row.is_verified ? (
-                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 badge badge--success">{t('active_status_badge')}</span>
-                  ) : (
-                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 badge badge--warning">{t('review_status_badge')}</span>
-                  )
-                ),
-              },
-              {
-                name: 'Actions',
-                width: '180px',
-                cell: (row: CatalogItem) => (
-                  <div className="flex items-center gap-2 inventory-management__actions">
-                    {!row.is_verified && (
-                      <button onClick={() => handleApproveItem(row.id)} className="button button--approve text-emerald-600 hover:text-emerald-700 font-medium text-xs cursor-pointer">
-                        {t('approve_button')}
-                      </button>
-                    )}
-                    <button onClick={() => handleEditCatalogItem(row)} className="button button--edit inline-flex items-center gap-1.5 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-700 dark:text-blue-300 font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
-                      <Pencil className="w-3.5 h-3.5" />
-                      {t('edit_button')}
-                    </button>
-                    {(currentUser?.role === 'Super Admin' || currentUser?.role === 'Admin') && (
-                      <button onClick={() => handleDeleteCatalogItem(row.id, row.name)} className="button button--delete text-red-600 hover:text-red-700 font-medium text-xs cursor-pointer">
-                        {t('delete_button')}
-                      </button>
+                  }}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer"
+                >
+                  {t('add_category_button')}
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                {catalogCategories.filter(c => c !== 'All').map(cat => {
+                    const dbCat = dbCategories.find(c => c.name === cat);
+                    return (
+                      <div key={cat} className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-lg p-2">
+                        {editingCategoryId === dbCat?.id ? (
+                      <>
+                        <Input
+                          type="text"
+                          value={editingCategoryName}
+                          onChange={e => setEditingCategoryName(e.target.value)}
+                          onBlur={() => handleRenameCategory(dbCat!.id)}
+                          onKeyDown={e => e.key === 'Enter' && handleRenameCategory(dbCat!.id)}
+                          autoFocus
+                          className="flex-1"
+                        />
+                        <button onClick={() => handleRenameCategory(dbCat!.id)} className="text-emerald-600 hover:text-emerald-700 cursor-pointer p-1">
+                          <Check className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => setEditingCategoryId(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer p-1">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <span className="flex-1 text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">{cat}</span>
+                        <Badge
+                          variant={dbCat?.is_ingredient ? 'success' : 'neutral'}
+                          size="sm"
+                          onClick={async () => {
+                            if (!dbCat) return;
+                            const newVal = !dbCat.is_ingredient;
+                            const ok = await toggleIngredientCategoryInDB(dbCat.id, newVal);
+                            if (ok) {
+                              setDbCategories((prev: any[]) => prev.map(c => c.id === dbCat.id ? { ...c, is_ingredient: newVal ? 1 : 0 } : c));
+                            }
+                          }}
+                          className="cursor-pointer"
+                          title={dbCat?.is_ingredient ? 'Used in recipes' : 'Not used in recipes'}
+                        >
+                          {dbCat?.is_ingredient ? t('ingredient_badge') : t('not_food_badge')}
+                        </Badge>
+                        <button
+                          onClick={() => { setEditingCategoryId(dbCat?.id || 0); setEditingCategoryName(cat); }}
+                          className="text-slate-400 hover:text-blue-600 text-xs cursor-pointer"
+                          title={t('rename_tooltip')}
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteCategory(dbCat?.id || 0, cat)}
+                          className="text-slate-400 hover:text-red-600 text-xs cursor-pointer"
+                          title={t('delete_button')}
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </>
                     )}
                   </div>
-                ),
-                ignoreRowClick: true,
-                allowOverflow: true,
-              },
-            ]}
-            data={catalogItems.filter(item => {
-              const matchesSearch = !catalogSearch.trim() || item.name.toLowerCase().includes(catalogSearch.toLowerCase()) || item.category.toLowerCase().includes(catalogSearch.toLowerCase());
-              const matchesCategory = selectedCategory === 'All' || selectedCategory === 'All Items' || !selectedCategory || item.category === selectedCategory;
-              return matchesSearch && matchesCategory;
-            })}
-            subHeader={
-              <div className="w-full flex flex-col gap-3 px-4 py-3 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-sm">
-                <div className="relative max-w-sm w-full">
-                  <Input
-                    type="text"
-                    placeholder={t('search_by_name_category_placeholder')}
-                    value={catalogSearch}
-                    onChange={(e) => setCatalogSearch(e.target.value)}
-                    leftIcon={<Search className="w-4 h-4 text-slate-400" />}
-                    className="w-full"
-                  />
-                </div>
-
-                <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1">
-                  {catalogCategories.map(cat => {
-                    const count = cat === 'All' || cat === 'All Items' ? catalogItems.length : catalogItems.filter(i => i.category === cat).length;
-                    const isActive = selectedCategory === cat;
-                    return (
-                      <button
-                        key={cat}
-                        type="button"
-                        onClick={() => setSelectedCategory(cat)}
-                        className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border ${
-                          isActive
-                            ? 'border-blue-600 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold shadow-2xs'
-                            : 'bg-transparent text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 font-semibold'
-                        }`}
-                      >
-                        {cat === 'All Items' || cat === 'All' ? 'All Menu' : cat} ({count})
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            }
-            pagination
-            paginationPerPage={25}
-            paginationRowsPerPageOptions={[10, 25, 50, 100]}
-            highlightOnHover
-            pointerOnHover
-            selectableRows
-            selectableRowsHighlight
-            onSelectedRowsChange={({ selectedRows }) => {
-              setSelectedCatalogItemIds(selectedRows.map((r: CatalogItem) => r.id));
-            }}
-            progressPending={inventoryLoading}
-            progressComponent={tableLoadingIndicator('Loading catalog...')}
-            noDataComponent={
-              <div className="p-8 text-center text-slate-400 text-sm">{t('no_catalog_items_search_message')}</div>
-            }
-            defaultSortFieldId={3}
-            defaultSortAsc={true}
-            customStyles={{
-              subHeader: {
-                style: {
-                  padding: 0,
-                  minHeight: 0,
-                  backgroundColor: 'transparent',
-                },
-              },
-              headCells: {
-                style: {
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  color: '#64748b',
-                  backgroundColor: '#f8fafc',
-                  borderBottom: '1px solid #e2e8f0',
-                  paddingLeft: '16px',
-                  paddingRight: '16px',
-                },
-              },
-              cells: {
-                style: {
-                  fontSize: '13px',
-                  color: '#334155',
-                  paddingTop: '12px',
-                  paddingBottom: '12px',
-                  paddingLeft: '16px',
-                  paddingRight: '16px',
-                },
-              },
-              rows: {
-                style: {
-                  minHeight: '56px',
-                  borderBottom: '1px solid #f1f5f9',
-                },
-                highlightOnHoverStyle: {
-                  backgroundColor: '#f8fafc',
-                  borderBottom: '1px solid #f1f5f9',
-                  cursor: 'pointer',
-                },
-              },
-              headRow: {
-                style: {
-                  backgroundColor: '#f8fafc',
-                  borderBottom: '1px solid #e2e8f0',
-                },
-              },
-              pagination: {
-                style: {
-                  borderTop: '1px solid #e2e8f0',
-                  fontSize: '12px',
-                },
-              },
-            }}
-          />
-        </div>
-
-        {/* Touch-First Mobile Cards View with 10-Item Pagination */}
-        <div className="md:hidden bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden p-3 space-y-3">
-          {/* Mobile Search & Category Filter Carousel */}
-          <div className="space-y-2.5 pb-2 border-b border-slate-100 dark:border-slate-700">
-            <div className="relative">
-              <Input
-                type="text"
-                placeholder={t('search_by_name_category_placeholder')}
-                value={catalogSearch}
-                onChange={(e) => setCatalogSearch(e.target.value)}
-                leftIcon={<Search className="w-4 h-4 text-slate-400" />}
-                className="w-full"
-              />
-            </div>
-
-            <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1">
-              {catalogCategories.map((cat) => {
-                const count = cat === 'All' || cat === 'All Items' ? catalogItems.length : catalogItems.filter((i) => i.category === cat).length;
-                const isActive = selectedCategory === cat;
-                return (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setSelectedCategory(cat)}
-                    className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border ${
-                      isActive
-                        ? 'border-blue-600 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold shadow-2xs'
-                        : 'bg-transparent text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 font-semibold'
-                    }`}
-                  >
-                    {cat === 'All Items' || cat === 'All' ? 'All Menu' : cat} ({count})
-                  </button>
                 );
               })}
+              </div>
             </div>
-          </div>
-
-          {/* Cards List */}
-          {(() => {
-            const filtered = catalogItems.filter((item) => {
-              const matchesSearch = !catalogSearch.trim() || item.name.toLowerCase().includes(catalogSearch.toLowerCase()) || item.category.toLowerCase().includes(catalogSearch.toLowerCase());
-              const matchesCategory = selectedCategory === 'All' || selectedCategory === 'All Items' || !selectedCategory || item.category === selectedCategory;
-              return matchesSearch && matchesCategory;
-            });
-            const paginated = filtered.slice((catalogPage - 1) * 10, catalogPage * 10);
-
-            return (
-              <>
-                <div className="divide-y divide-slate-100 dark:divide-slate-700 space-y-3">
-                  {paginated.map((item) => {
-                    const ItemIcon = getStockItemIcon(item.name, item.category);
-
-                    return (
-                      <div key={item.id} className="pt-3 first:pt-0 space-y-2.5">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-10 h-10 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg flex items-center justify-center shrink-0">
-                              <ItemIcon className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
-                            </div>
-                            <div className="min-w-0">
-                              <h4 className="font-bold text-slate-900 dark:text-white text-sm truncate">{item.name}</h4>
-                              <span className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-2 py-0.5 rounded text-[10px] font-semibold inline-block mt-0.5">
-                                {item.category}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {item.is_verified ? (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                                {t('active_status_badge')}
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                                {t('review_status_badge')}
-                              </span>
-                            )}
-                            <button
-                              onClick={() => handleEditCatalogItem(item)}
-                              className="inline-flex items-center gap-1 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-semibold text-xs px-2.5 py-1 rounded-lg transition cursor-pointer shrink-0"
-                            >
-                              <Pencil className="w-3 h-3" />
-                              <span>{t('edit_button')}</span>
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between text-xs bg-slate-50 dark:bg-slate-900/60 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700">
-                          <div>
-                            <span className="text-[10px] text-slate-400 uppercase font-semibold block">{t('pack_column_header')}</span>
-                            <span className="font-semibold text-slate-800 dark:text-slate-200">{item.packSize} {item.packUnit}</span>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-[10px] text-slate-400 uppercase font-semibold block">{t('cost_column_header')}</span>
-                            <span className="font-semibold text-slate-800 dark:text-slate-200">Ã¢â€šÂ¹{item.price.toFixed(2)}</span>
-                          </div>
-                        </div>
-
-                        {(!item.is_verified || currentUser?.role === 'Super Admin' || currentUser?.role === 'Admin') && (
-                          <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100 dark:border-slate-700/60">
-                            {!item.is_verified && (
-                              <button
-                                onClick={() => handleApproveItem(item.id)}
-                                className="px-3 py-1 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-semibold text-xs rounded-lg transition cursor-pointer"
-                              >
-                                {t('approve_button')}
-                              </button>
-                            )}
-                            {(currentUser?.role === 'Super Admin' || currentUser?.role === 'Admin') && (
-                              <button
-                                onClick={() => handleDeleteCatalogItem(item.id, item.name)}
-                                className="px-2.5 py-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 border border-slate-200 dark:border-slate-700 font-semibold text-xs rounded-lg transition cursor-pointer"
-                              >
-                                {t('delete_button')}
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-
-                  {filtered.length === 0 && (
-                    <div className="p-8 text-center text-slate-400 text-sm">{t('no_catalog_items_search_message')}</div>
-                  )}
-                </div>
-
-                {/* Mobile 10-Item Pagination Controls */}
-                {filtered.length > 10 && (
-                  <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-700">
-                    <button
-                      type="button"
-                      disabled={catalogPage === 1}
-                      onClick={() => setCatalogPage((p) => Math.max(1, p - 1))}
-                      className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
-                    >
-                      Previous
-                    </button>
-                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                      Page {catalogPage} of {Math.ceil(filtered.length / 10)}
-                    </span>
-                    <button
-                      type="button"
-                      disabled={catalogPage >= Math.ceil(filtered.length / 10)}
-                      onClick={() => setCatalogPage((p) => Math.min(Math.ceil(filtered.length / 10), p + 1))}
-                      className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
-                    >
-                      Next
-                    </button>
-                  </div>
-                )}
-              </>
-            );
-          })()}
-        </div>
-        </div>
-        )}
+          </TabItem>
+        </Tabs>
 
         {/* Add/Edit Modal */}
         <Modal show={isCatalogModalOpen} onClose={() => setIsCatalogModalOpen(false)} className="z-58" size="md" dismissible>
@@ -1758,7 +1669,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 {catImagePath && (
                   <div className="mt-2">
                     <p className="text-[10px] text-slate-500 dark:text-slate-400 mb-1">{t('preview_label')}</p>
-                    <img src={catImagePath} alt="Preview" className="w-[150px] h-[50px] object-cover border border-slate-200 dark:border-slate-700 rounded shadow-xs" />
+                    <img src={catImagePath} alt="Preview" className="w-[150px] h-[50px] object-cover border border-slate-200 dark:border-slate-700 rounded shadow-md" />
                   </div>
                 )}
               </div>
@@ -1792,96 +1703,32 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     const pendingSheetsCount = recentSheets.filter(s => s.status === 'PENDING').length;
 
     return (
-      <div className="stock-requisitions-container min-h-[calc(100vh-120px)] flex flex-col lg:pb-0">
-        {/* Unified Sub-Tab Navigation Bar - same "merged panel" folder-tab
-            style as the Kitchen page (18 Aug 2026): active tab shares one
-            solid background with the panel directly beneath it (no seam),
-            centered, no track background behind the row, inactive tabs get
-            only a faint ghost border. items-end (not items-center) is
-            required so the active tab's bottom edge - shorter than inactive
-            tabs since it has no bottom border - still lands flush with the
-            panel below instead of floating above it. */}
-        <div className="flex items-center justify-center gap-2 mb-4">
-          <div className="inline-flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs">
-            <button
-              type="button"
-              onClick={() => setActiveTab('requisitions')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'requisitions'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-transparent hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
-              }`}
-            >
-              <PackagePlus className="w-4 h-4 shrink-0" />
-              <span>Request Materials</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('fulfill')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'fulfill'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-transparent hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
-              }`}
-            >
-              <CheckCircle2 className="w-4 h-4 shrink-0" />
-              <span>Fulfill & Pending Approvals</span>
-              {pendingSheetsCount > 0 && (
-                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold ${
-                  activeTab === 'fulfill'
-                    ? 'bg-white/20 text-white'
-                    : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
-                }`}>
-                  {pendingSheetsCount}
-                </span>
-              )}
-            </button>
-          </div>
-        </div>
-
-        {activeTab === 'fulfill' ? (
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-b-2xl p-4 sm:p-5 shadow-2xs space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3 pb-1 border-b border-slate-100 dark:border-slate-700/80">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setFulfillRangeOpen(true)}
-                  className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs px-3.5 py-2 rounded-lg transition-all shadow-2xs flex items-center gap-2 cursor-pointer active:scale-95"
-                >
-                  <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                  <span className="inline-flex items-center gap-1.5">
-                    {formatDateDDMMYYYY(fulfillFromDraft)}
-                    <ArrowRight className="w-3 h-3 text-slate-400" />
-                    {formatDateDDMMYYYY(fulfillToDraft)}
-                  </span>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 ml-1" />
-                </button>
-              </div>
-            </div>
-
-            {fulfillRangeOpen && (
-              <DateRangePicker
-                isOpen={fulfillRangeOpen}
-                onClose={() => setFulfillRangeOpen(false)}
-                checkinDate={fulfillFromDraft}
-                checkoutDate={fulfillToDraft}
-                onCheckinChange={setFulfillFromDraft}
-                onCheckoutChange={setFulfillToDraft}
-                heading={t('stock_request_log_header', 'Stock Requisition Log')}
-                description={t('fulfill_stock_range_description', 'Pick a from/to range to filter requisitions below')}
-                fromLabel={t('from_label', 'From')}
-                toLabel={t('to_label', 'To')}
-              />
-            )}
-
-            <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs overflow-hidden">
+      <Tabs
+        aria-label="Stock Request Tabs"
+        variant="default"
+        onActiveTabChange={(tabIndex: number) => {
+          const tabs: ('fulfill' | 'requisitions')[] = ['fulfill', 'requisitions'];
+          if (tabs[tabIndex]) setActiveTab(tabs[tabIndex]);
+        }}
+      >
+        <TabItem
+          active={activeTab === 'fulfill'}
+          title={`Fulfill & Pending Approvals${pendingSheetsCount > 0 ? ` (${pendingSheetsCount})` : ''}`}
+          icon={CheckCircle2}
+        >
+          {/* Chrome (bg/border/rounded/padding) is mobile-only - at md: and up
+              the DataTable's own card below already provides it, so keeping
+              this unconditional just doubled the border/shadow around a
+              single piece of content ("block inside a block", 20 Aug 2026). */}
+          <div className="space-y-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3.5 sm:p-4 md:bg-transparent md:dark:bg-transparent md:border-0 md:rounded-none md:p-0">
+            <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md overflow-hidden">
               <DataTable
                 columns={[
                   {
                     name: 'Request ID',
                     selector: (row: any) => row.id,
                     sortable: true,
-                    width: '100px',
+                    width: '190px',
                     cell: (row: any) => (
                       <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">
                         #{row.id}
@@ -1892,7 +1739,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     name: 'Date',
                     selector: (row: any) => row.date,
                     sortable: true,
-                    width: '120px',
+                    width: '160px',
                   },
                   {
                     name: 'Requested Items',
@@ -1915,17 +1762,14 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     selector: (row: any) => row.status,
                     sortable: true,
                     center: true,
-                    width: '120px',
+                    width: '170px',
                     cell: (row: any) => (
-                      <span className={`font-semibold text-[10px] px-2.5 py-1 rounded-lg ${
-                        row.status === 'PENDING'
-                          ? 'bg-amber-100 text-amber-700 border border-amber-200'
-                          : row.status === 'FULFILLED'
-                            ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
-                            : 'bg-slate-100 text-slate-700 border border-slate-200'
-                      }`}>
+                      <Badge
+                        variant={row.status === 'PENDING' ? 'warning' : row.status === 'FULFILLED' ? 'success' : 'neutral'}
+                        size="sm"
+                      >
                         {row.status}
-                      </span>
+                      </Badge>
                     ),
                   },
                   {
@@ -1936,15 +1780,15 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                       <div className="flex items-center justify-center gap-2">
                         {row.status === 'PENDING' ? (
                           <>
-                            <button onClick={() => handleEditFulfill(row)} className="whitespace-nowrap inline-flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-[11px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-blue-200 shadow-2xs active:scale-95">
+                            <button onClick={() => handleEditFulfill(row)} className="whitespace-nowrap inline-flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-[11px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-blue-200 shadow-md active:scale-95">
                               <Pencil className="w-3.5 h-3.5" /> Edit & Deliver
                             </button>
-                            <button onClick={() => handleQuickComplete(row)} className="whitespace-nowrap inline-flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold text-[11px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-emerald-200 shadow-2xs active:scale-95">
+                            <button onClick={() => handleQuickComplete(row)} className="whitespace-nowrap inline-flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold text-[11px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-emerald-200 shadow-md active:scale-95">
                               <CheckCircle2 className="w-3.5 h-3.5" /> Complete
                             </button>
                           </>
                         ) : (
-                          <button onClick={() => handleEditFulfill(row)} className="whitespace-nowrap inline-flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold text-[11px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-slate-200 dark:border-slate-600 shadow-2xs active:scale-95">
+                          <button onClick={() => handleEditFulfill(row)} className="whitespace-nowrap inline-flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold text-[11px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-slate-200 dark:border-slate-600 shadow-md active:scale-95">
                             <Eye className="w-3.5 h-3.5" /> View Request
                           </button>
                         )}
@@ -1959,22 +1803,32 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   return row.date.toLowerCase().includes(term) || row.status.toLowerCase().includes(term) || itemsStr.includes(term);
                 })}
                 subHeader={
-                  <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-4 px-2">
-                    <Input
+                  <div className="w-full flex flex-col sm:flex-row sm:items-center gap-3 py-3">
+                    <FlowbiteTextInput
                       type="text"
+                      icon={Search}
                       placeholder="Search requests by item name, status..."
                       value={fulfillSearch}
                       onChange={(e) => setFulfillSearch(e.target.value)}
-                      className="w-full sm:max-w-md shadow-2xs"
-                      leftIcon={<Search className="w-4 h-4 text-slate-400" />}
+                      className="w-full sm:max-w-md"
                     />
+                    <div className="w-full sm:w-72 sm:shrink-0">
+                      <DateRangePicker
+                        checkinDate={fulfillFromDraft}
+                        checkoutDate={fulfillToDraft}
+                        onCheckinChange={setFulfillFromDraft}
+                        onCheckoutChange={setFulfillToDraft}
+                        fromPlaceholder={t('from_label', 'From')}
+                        toPlaceholder={t('to_label', 'To')}
+                      />
+                    </div>
                   </div>
                 }
                 pagination
                 paginationPerPage={10}
                 paginationRowsPerPageOptions={[10, 15, 25, 50]}
                 highlightOnHover
-                dense
+                customStyles={flowbiteTableCustomStyles}
                 progressPending={stockRequestsLoading}
                 progressComponent={tableLoadingIndicator('Loading stock requests...')}
                 noDataComponent={
@@ -1985,16 +1839,14 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
             {/* Mobile Card Stack View with 10-Item Pagination */}
             <div className="md:hidden space-y-3">
-              <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-3 space-y-3 shadow-xs">
-                <Input
-                  type="text"
-                  placeholder="Search requests by item name, status..."
-                  value={fulfillSearch}
-                  onChange={(e) => setFulfillSearch(e.target.value)}
-                  className="w-full"
-                  leftIcon={<Search className="w-4 h-4 text-slate-400" />}
-                />
-              </div>
+              <FlowbiteTextInput
+                type="text"
+                icon={Search}
+                placeholder="Search requests by item name, status..."
+                value={fulfillSearch}
+                onChange={(e) => setFulfillSearch(e.target.value)}
+                className="w-full"
+              />
 
               {(() => {
                 const filtered = filteredFulfillSheets.filter((row) => {
@@ -2019,7 +1871,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     {paginated.map((row) => (
                       <div
                         key={row.id}
-                        className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-3.5 space-y-3 shadow-xs"
+                        className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-3.5 space-y-3 shadow-md"
                       >
                         <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-700/60 pb-2">
                           <div className="flex items-center gap-2">
@@ -2027,18 +1879,15 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                               Request #{row.id}
                             </span>
                             <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                              Ã‚Â· {row.date}
+                              · {row.date}
                             </span>
                           </div>
-                          <span className={`font-semibold text-[10px] px-2.5 py-1 rounded-lg ${
-                            row.status === 'PENDING'
-                              ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
-                              : row.status === 'FULFILLED'
-                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-                                : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600'
-                          }`}>
+                          <Badge
+                            variant={row.status === 'PENDING' ? 'warning' : row.status === 'FULFILLED' ? 'success' : 'neutral'}
+                            size="sm"
+                          >
                             {row.status}
-                          </span>
+                          </Badge>
                         </div>
 
                         <div className="space-y-1.5">
@@ -2060,14 +1909,14 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                               <button
                                 type="button"
                                 onClick={() => handleEditFulfill(row)}
-                                className="inline-flex items-center gap-1.5 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-700 dark:text-blue-300 font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-blue-200 dark:border-blue-800 shadow-2xs active:scale-95"
+                                className="inline-flex items-center gap-1.5 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-700 dark:text-blue-300 font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-blue-200 dark:border-blue-800 shadow-md active:scale-95"
                               >
                                 <Pencil className="w-3.5 h-3.5" /> Edit & Deliver
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleQuickComplete(row)}
-                                className="inline-flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-emerald-200 dark:border-emerald-800 shadow-2xs active:scale-95"
+                                className="inline-flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-emerald-200 dark:border-emerald-800 shadow-md active:scale-95"
                               >
                                 <CheckCircle2 className="w-3.5 h-3.5" /> Complete
                               </button>
@@ -2076,7 +1925,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                             <button
                               type="button"
                               onClick={() => handleEditFulfill(row)}
-                              className="inline-flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-slate-200 dark:border-slate-600 shadow-2xs active:scale-95"
+                              className="inline-flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-slate-200 dark:border-slate-600 shadow-md active:scale-95"
                             >
                               <Eye className="w-3.5 h-3.5" /> View Request
                             </button>
@@ -2087,7 +1936,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
                     {/* 10-Item Mobile Pagination Bar */}
                     {totalPages > 1 && (
-                      <div className="flex items-center justify-between bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-2.5 shadow-2xs text-xs">
+                      <div className="flex items-center justify-between bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-2.5 shadow-md text-xs">
                         <button
                           type="button"
                           disabled={fulfillPage <= 1}
@@ -2115,15 +1964,32 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             </div>
 
             {/* Fulfill Edit Modal */}
-            <Modal show={Boolean(selectedFulfillSheet)} onClose={() => setSelectedFulfillSheet(null)} className="z-58" size="2xl" dismissible>
+            {/* Fulfill Edit Drawer (Flowbite Right Slide-Out Drawer) */}
+            <FlowbiteDrawer
+              open={Boolean(selectedFulfillSheet)}
+              onClose={() => setSelectedFulfillSheet(null)}
+              position="right"
+              className="z-58 w-full sm:max-w-md md:max-w-lg h-full bg-white dark:bg-gray-800 p-0 flex flex-col shadow-2xl transition-transform border-l border-gray-200 dark:border-gray-700"
+            >
               {selectedFulfillSheet && (
                 <>
-                  <ModalHeader as="div">
-                    <span className="uppercase">{t('modify_stock_request_header', `Modify Requisition #${selectedFulfillSheet.id}`)}</span>
-                  </ModalHeader>
-                  <ModalBody className="space-y-6">
-                    <div className="pt-2">
-                      <h4 className="inventory-management__caption text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-4">{t('costing_delivery_manifest_header', 'Costing & Delivery Manifest')}</h4>
+                  <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 dark:border-gray-700 shrink-0 bg-white dark:bg-gray-800">
+                    <h3 className="font-bold text-gray-900 dark:text-white text-base">
+                      {t('modify_stock_request_header', `Modify Requisition #${selectedFulfillSheet.id}`)}
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedFulfillSheet(null)}
+                      className="text-gray-400 bg-transparent hover:bg-gray-100 hover:text-gray-900 rounded-lg text-sm w-8 h-8 inline-flex items-center justify-center dark:hover:bg-gray-700 dark:hover:text-white cursor-pointer transition-colors"
+                      aria-label="Close drawer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <DrawerItems className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-6">
+                    <div>
+                      <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4">{t('costing_delivery_manifest_header', 'Costing & Delivery Manifest')}</h4>
 
                       <div className="space-y-5">
                         {selectedFulfillSheet.items.map((itemStr: string, idx: number) => {
@@ -2131,11 +1997,11 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                           const data = fulfillData[namePart] || { qty: 0, cost: 0, size: 1, unit: 'Kg' };
 
                           return (
-                            <div key={idx} className="space-y-2">
-                              <h5 className="inventory-management__label font-semibold text-slate-800 dark:text-slate-100 text-sm">{namePart}</h5>
-                              <div className="grid grid-cols-4 gap-3">
+                            <div key={idx} className="space-y-2 bg-gray-50 dark:bg-gray-900/60 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                              <h5 className="font-semibold text-gray-900 dark:text-white text-sm">{namePart}</h5>
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                                 <div>
-                                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('delivered_qty_label', 'Delivered Qty')}</label>
+                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{t('delivered_qty_label', 'Delivered Qty')}</label>
                                   <Input
                                     type="number"
                                     step={isDecimalFriendlyUnit(data.unit) ? '0.01' : '1'}
@@ -2149,7 +2015,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                                   />
                                 </div>
                                 <div>
-                                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('cost_price_label', 'Cost Price')}</label>
+                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{t('cost_price_label', 'Cost Price (₹)')}</label>
                                   <Input
                                     type="number"
                                     value={data.cost}
@@ -2158,7 +2024,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                                   />
                                 </div>
                                 <div>
-                                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('size_label', 'Size')}</label>
+                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{t('size_label', 'Size')}</label>
                                   <Input
                                     type="number"
                                     value={data.size}
@@ -2167,7 +2033,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                                   />
                                 </div>
                                 <div>
-                                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('unit_format_label', 'Unit')}</label>
+                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{t('unit_format_label', 'Unit')}</label>
                                   <StyledSelect
                                     value={data.unit}
                                     onChange={(val) => updateFulfillData(namePart, 'unit', val)}
@@ -2180,49 +2046,67 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                         })}
                       </div>
                     </div>
-                  </ModalBody>
-                  <ModalFooter className="flex justify-end gap-3">
+                  </DrawerItems>
+
+                  <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/90 shrink-0 flex items-center justify-end gap-2">
                     <Button onClick={() => setSelectedFulfillSheet(null)} variant="secondary">
                       {t('cancel_button', 'Cancel')}
                     </Button>
                     <Button onClick={handleSaveFulfillQuantities} variant="primary">
                       {t('save_commit_updates_button', 'Save & Commit Updates')}
                     </Button>
-                  </ModalFooter>
+                  </div>
                 </>
               )}
-            </Modal>
+            </FlowbiteDrawer>
           </div>
-        ) : (
-          <>
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-b-2xl p-4 sm:p-5 shadow-2xs space-y-4">
+        </TabItem>
+
+        <TabItem
+          active={activeTab === 'requisitions'}
+          title="Request Materials"
+          icon={PackagePlus}
+        >
+          {/* Chrome (bg/border/rounded/padding) is mobile-only - at lg: and up
+              the catalog + basket cards below already provide it, so keeping
+              this unconditional just doubled the border around them ("block
+              inside a block", 20 Aug 2026 - this wrapper used to also house
+              the tab switcher itself before it became a real Tabs component
+              above, which is why it still carries card chrome at all). */}
+          <div className="take-food-order-container space-y-4 pb-48 lg:pb-0 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3.5 sm:p-4 lg:bg-transparent lg:dark:bg-transparent lg:border-0 lg:rounded-none lg:p-0">
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
           {/* Left Side (Desktop: 3 columns, Mobile: 1 column full width). Card
               chrome (bg/border/rounded/shadow/padding) is lg:-only - the
-              outer panel above already provides it, and on mobile the
-              Right Side column (hidden lg:flex, see below) doesn't exist to
-              separate this from, so applying the same card look here
-              unconditionally just doubled the border/padding on mobile
-              (found 19 Aug 2026). At lg: it's back, since there it really is
-              a distinct sibling panel next to Right Side. */}
-          <div className="lg:col-span-3 space-y-3.5 lg:bg-white lg:rounded-lg lg:border lg:border-slate-200 lg:shadow-2xs lg:p-4">
+              take-food-order-container panel (top of this tab) already
+              provides it on mobile, where the Right Side column (hidden
+              lg:flex, see below) doesn't exist to separate this from, so
+              applying the same card look here unconditionally just doubled
+              the border/padding on mobile (found 19 Aug 2026). At lg: it's
+              back, since there it really is a distinct sibling panel next to
+              Right Side - a redundant middle wrapper that duplicated this
+              same chrome around both panels together was removed 20 Aug 2026
+              (that's what was causing the "block inside a block" nesting). */}
+          <div className="lg:col-span-3 space-y-3.5 lg:bg-white lg:rounded-lg lg:border lg:border-slate-200 lg:shadow-md lg:p-4">
             {/* Sticky Search & Category Pills Bar */}
-            <div className="bg-white pt-2 pb-3 space-y-3 -mx-1 px-1 sm:-mx-4 sm:px-4 border-b border-slate-100 shadow-2xs rounded-t-xl">
+            <div className="bg-white pt-2 pb-3 space-y-3 -mx-1 px-1 sm:-mx-4 sm:px-4 border-b border-slate-100 shadow-md rounded-t-xl">
               {/* Quick Search Bar + Category Filter Toggle */}
               <div className="flex items-center gap-2">
                 <div className="relative flex-1">
-                  <Input
+                  <FlowbiteTextInput
+                    id="req-catalog-search"
                     type="text"
+                    icon={Search}
                     value={reqSearch}
                     onChange={(e) => setReqSearch(e.target.value)}
                     placeholder={t('quick_search_catalog_placeholder')}
-                    leftIcon={<Search className="w-4 h-4 text-slate-400" />}
-                    className="pr-9"
+                    className="w-full"
                   />
                   {reqSearch && (
                     <button
+                      type="button"
                       onClick={() => setReqSearch('')}
-                      className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer z-10"
+                      aria-label="Clear search"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -2233,7 +2117,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   onClick={() => setShowReqCategoryFilters((v) => !v)}
                   className={`relative h-10 w-10 shrink-0 rounded-lg border flex items-center justify-center transition-all cursor-pointer ${
                     showReqCategoryFilters
-                      ? 'bg-blue-600 border-blue-600 text-white shadow-2xs'
+                      ? 'bg-blue-600 border-blue-600 text-white shadow-md'
                       : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600'
                   }`}
                   title={t('toggle_category_filters_tooltip', 'Filter by category')}
@@ -2258,7 +2142,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                         onClick={() => setReqCategory(cat)}
                         className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border ${
                           isSelected
-                            ? 'border-blue-600 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold shadow-2xs'
+                            ? 'border-blue-600 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold shadow-md'
                             : 'bg-transparent text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 font-semibold'
                         }`}
                       >
@@ -2293,8 +2177,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                       key={item.id}
                       className={`bg-white rounded-lg border p-2 flex items-center justify-between gap-2.5 transition-all ${
                         isRecentlyAdded
-                          ? 'border-emerald-500 bg-emerald-50/50 shadow-xs'
-                          : 'border-slate-200/90 hover:border-cyan-400 hover:shadow-2xs'
+                          ? 'border-emerald-500 bg-emerald-50/50 shadow-md'
+                          : 'border-slate-200/90 hover:border-cyan-400 hover:shadow-md'
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -2308,7 +2192,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                             {item.name}
                           </h4>
                           <p className="text-slate-500 font-semibold text-[11px] mt-0.5">
-                            Per {item.unit} Ã¢â‚¬Â¢ Ã¢â€šÂ¹{item.rate.toFixed(2)}
+                            Per {item.unit} • ₹{item.rate.toFixed(2)}
                           </p>
                         </div>
                       </div>
@@ -2318,7 +2202,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                         className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 flex items-center gap-1 cursor-pointer min-h-[36px] ${
                           isRecentlyAdded
                             ? 'bg-emerald-600 text-white border border-emerald-600 scale-95 animate-pulse shadow-md'
-                            : 'bg-slate-50 hover:bg-cyan-50 text-slate-800 hover:text-cyan-700 border border-slate-300 hover:border-cyan-400 active:scale-90 shadow-2xs'
+                            : 'bg-slate-50 hover:bg-cyan-50 text-slate-800 hover:text-cyan-700 border border-slate-300 hover:border-cyan-400 active:scale-90 shadow-md'
                         }`}
                       >
                         {isRecentlyAdded ? (
@@ -2337,7 +2221,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           {/* Right Side: DESKTOP ONLY Sticky Floating SUPPLY ORDER BASKET & RECENT LOG SHEETS (lg:col-span-1 hidden lg:flex) */}
           <div className="hidden lg:flex lg:col-span-1 flex-col space-y-4">
             {/* Panel 1: SUPPLY ORDER BASKET */}
-            <div className="bg-white rounded-lg border border-slate-200/90 shadow-2xs p-4 flex-col justify-between space-y-3.5">
+            <div className="bg-white rounded-lg border border-slate-200/90 shadow-md p-4 flex-col justify-between space-y-3.5">
               <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
                 <h3 className="inventory-management__subtitle font-semibold text-slate-900 text-xs tracking-wider uppercase flex items-center gap-1.5">
                   <ShoppingCart className="w-4 h-4 text-slate-700" />
@@ -2422,7 +2306,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
           </div>
         </div>
-            </div>
 
         {/* MOBILE ONLY Light-Theme Bottom Cart Drawer (lg:hidden, Collapsible & 50vh Expandable) */}
         {(reqBasket.length > 0 || specialRequestText.trim()) && (
@@ -2434,19 +2317,19 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             {/* Header Bar */}
             <div className="p-3 bg-slate-50 rounded-t-2xl border-b border-slate-200 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="bg-cyan-100 text-cyan-800 border border-cyan-200 font-semibold text-xs px-2.5 py-1 rounded-lg shadow-2xs flex items-center gap-1">
+                <div className="bg-cyan-100 text-cyan-800 border border-cyan-200 font-semibold text-xs px-2.5 py-1 rounded-lg shadow-md flex items-center gap-1">
                   <ShoppingCart className="w-3.5 h-3.5 text-cyan-700" />
                   <span>{totalReqCount} Items</span>
                 </div>
                 <div>
                   <span className="text-slate-500 text-[10px] font-semibold uppercase tracking-wider">TOTAL: </span>
-                  <span className="text-emerald-600 font-semibold text-sm">Ã¢â€šÂ¹{totalReqSum.toFixed(2)}</span>
+                  <span className="text-emerald-600 font-semibold text-sm">₹{totalReqSum.toFixed(2)}</span>
                 </div>
               </div>
 
               <button
                 onClick={() => setIsReqCartDrawerExpanded(!isReqCartDrawerExpanded)}
-                className="bg-white hover:bg-slate-100 text-cyan-700 font-semibold text-xs px-3 py-1.5 rounded-lg border border-cyan-300 shadow-2xs flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+                className="bg-white hover:bg-slate-100 text-cyan-700 font-semibold text-xs px-3 py-1.5 rounded-lg border border-cyan-300 shadow-md flex items-center gap-1 cursor-pointer transition-all active:scale-95"
               >
                 {isReqCartDrawerExpanded ? (
                   <ChevronDown className="w-3.5 h-3.5" />
@@ -2524,9 +2407,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             </div>
           </div>
         )}
-      </>
-    )}
-  </div>
+      </div>
+    </TabItem>
+  </Tabs>
 );
 }
 
@@ -2630,7 +2513,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       </div>
       <button
         onClick={() => setIsAddModalOpen(true)}
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-xs cursor-pointer transition-colors"
+        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-md cursor-pointer transition-colors"
       >
         <Plus className="w-3.5 h-3.5" /> {t('add_new_item_button')}
       </button>
@@ -2650,13 +2533,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           paginationPerPage={15}
           paginationRowsPerPageOptions={[15, 30, 50, 100]}
           subHeader={stockLogSubHeader}
-          customStyles={{
-            subHeader: { style: { padding: 0, minHeight: 0, backgroundColor: 'transparent' } },
-            headRow: { style: { backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' } },
-            headCells: { style: { fontSize: '11px', fontWeight: 600, color: '#64748b', paddingLeft: '12px' } },
-            cells: { style: { fontSize: '13px', color: '#334155', padding: '12px' } },
-            rows: { style: { minHeight: '52px' } },
-          }}
+          highlightOnHover
+          customStyles={flowbiteTableCustomStyles}
           progressPending={inventoryLoading}
           progressComponent={tableLoadingIndicator('Loading inventory...')}
           noDataComponent={
@@ -2668,7 +2546,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       </div>
 
       {/* Mobile Cards with Search, Category Filter Carousel & 10-Item Pagination */}
-      <div className="md:hidden bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden p-3 space-y-3">
+      <div className="md:hidden bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md overflow-hidden p-3 space-y-3">
         {/* Search Bar & Category Pills Carousel */}
         <div className="space-y-2.5 pb-2 border-b border-slate-100 dark:border-slate-700">
           <div className="relative">
@@ -2693,7 +2571,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   onClick={() => setSelectedCategory(cat)}
                   className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border ${
                     isActive
-                      ? 'border-blue-600 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold shadow-2xs'
+                      ? 'border-blue-600 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold shadow-md'
                       : 'bg-transparent text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 font-semibold'
                   }`}
                 >
@@ -2846,7 +2724,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('item_image_upload_label')}</label>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <label className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-2 rounded-lg cursor-pointer flex items-center gap-1.5 shadow-2xs text-xs shrink-0 transition-all">
+                  <label className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-2 rounded-lg cursor-pointer flex items-center gap-1.5 shadow-md text-xs shrink-0 transition-all">
                     <Upload className="w-4 h-4" />
                     <span>{t('upload_image_button')}</span>
                     <Input

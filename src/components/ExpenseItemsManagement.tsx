@@ -201,7 +201,7 @@ export const ExpenseItemsManagement: React.FC = () => {
                 </div>
                 <div>
                   <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-                    {t('default_amount_label', 'Default Amount (â‚¹)')}
+                    {t('default_amount_label', 'Default Amount (₹)')}
                   </label>
                   <Input
                     type="number"

@@ -22,7 +22,7 @@ interface NavMenuEditorProps {
   // True for properties with the kitchen module off: kitchen-related items
   // (Take Food Order, Stock Requests, Edit Food Menu, etc.) are hidden from
   // this list so they can't be confused for something manageable here, but
-  // they're never removed from `items` â€” every save still round-trips them
+  // they're never removed from `items` — every save still round-trips them
   // untouched (see extractFromDOM and handleSave), since nav_menu_items is one
   // shared config across every property, not a per-property one.
   hideKitchenItems?: boolean;
@@ -48,19 +48,19 @@ function getDefaultPageOptions(): PageOption[] {
     { label: 'Kitchen Stock & Adjustments Log', tabKey: 'inventory', uniqueKey: 'edit_kitchen_stock' },
     { label: 'Expenses', tabKey: 'petty_cash', uniqueKey: 'expenses' },
     { label: 'Finances', tabKey: 'petty_cash', uniqueKey: 'finances' },
-    { label: 'Misc Charges', tabKey: 'petty_cash', uniqueKey: 'misc_charges' },
+    { label: 'Extra Charges & Fees', tabKey: 'petty_cash', uniqueKey: 'misc_charges' },
     { label: 'Staff & Permissions', tabKey: 'staff', uniqueKey: 'staff_permissions' },
     { label: 'Attendance Calendar', tabKey: 'staff', uniqueKey: 'attendance_calendar' },
     { label: 'Staff Directory', tabKey: 'staff', uniqueKey: 'staff_directory_salaries' },
-    { label: 'Analytics', tabKey: 'analytics', uniqueKey: 'dashboard_analytics' },
-    { label: 'Past Receipts', tabKey: 'audit_logs', uniqueKey: 'past_receipts_log' },
-    { label: 'Telegram Bot', tabKey: 'telegram', uniqueKey: 'telegram' },
+    { label: 'Reports & Earnings', tabKey: 'analytics', uniqueKey: 'dashboard_analytics' },
+    { label: 'Past Bills & Receipts', tabKey: 'audit_logs', uniqueKey: 'past_receipts_log' },
+    { label: 'Telegram Alerts', tabKey: 'telegram', uniqueKey: 'telegram' },
     { label: 'Edit Food Menu', tabKey: 'menu_manager', uniqueKey: 'edit_food_menu' },
     { label: 'Edit Kitchen Stock', tabKey: 'inventory', uniqueKey: 'edit_kitchen_stock' },
     { label: 'Edit Expense Items', tabKey: 'petty_cash', uniqueKey: 'edit_expense_items' },
-    { label: 'Data Export', tabKey: 'export', uniqueKey: 'data_export_center' },
-    { label: 'Recipe Builder', tabKey: 'kitchen', uniqueKey: 'beta_recipe_builder' },
-    { label: 'License Management', tabKey: 'licenses', uniqueKey: 'license_management' },
+    { label: 'Download Data & Excel', tabKey: 'export', uniqueKey: 'data_export_center' },
+    { label: 'Dish Recipes (Auto-Stock)', tabKey: 'kitchen', uniqueKey: 'beta_recipe_builder' },
+    { label: 'Property Licenses', tabKey: 'licenses', uniqueKey: 'license_management' },
     { label: 'Custom URL', tabKey: 'custom', uniqueKey: '' },
   ];
 }
@@ -192,7 +192,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
     return roots;
   }, []);
 
-  // Kitchen items stay in `items` (and get saved) untouched â€” only what's
+  // Kitchen items stay in `items` (and get saved) untouched — only what's
   // rendered/selectable in the tree is restricted. See extractFromDOM below
   // for how drag-and-drop reorders avoid dropping the hidden ones.
   const hiddenItems = hideKitchenItems ? items.filter(isKitchenModuleNavItem) : [];
@@ -239,7 +239,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
     };
     const rootUl = sortableContainerRef.current?.querySelector(':scope > ul') as HTMLUListElement | null;
     if (rootUl) processList(rootUl, null);
-    // The DOM only contains rendered (visible) items â€” reappend anything hidden
+    // The DOM only contains rendered (visible) items — reappend anything hidden
     // by hideKitchenItems unchanged so a drag-reorder never drops it from state.
     return [...result, ...hiddenItems];
   }, [items, hiddenItems]);
@@ -633,7 +633,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
               })}
             </div>
             {filteredIcons.length > 120 && (
-              <div className="nav-menu-editor__picker-hint text-[9px] text-slate-400 text-center mt-1">Showing 120 of {filteredIcons.length} â€” type to narrow search</div>
+              <div className="nav-menu-editor__picker-hint text-[9px] text-slate-400 text-center mt-1">Showing 120 of {filteredIcons.length} — type to narrow search</div>
             )}
             <button onClick={() => { setShowIconPickerFor(null); setIconSearch(''); }} className="nav-menu-editor__picker-close mt-2 text-[10px] text-slate-400 hover:text-slate-600 cursor-pointer">{t('close_button', 'Close')}</button>
           </div>
@@ -744,7 +744,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
             <h3 className="nav-menu-editor__heading font-semibold text-slate-900 text-sm">{t('nav_menu_structure_title', 'Menu Structure')}</h3>
             <span className="nav-menu-editor__count-badge text-[10px] font-semibold bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full">{visibleItems.length} items</span>
             {hiddenItems.length > 0 && (
-              <span className="nav-menu-editor__hidden-hint text-[10px] font-medium text-slate-400" title={t('nav_kitchen_hidden_tooltip', "Kitchen items are hidden here because this property's kitchen module is off â€” they're untouched and will still be saved as-is.")}>
+              <span className="nav-menu-editor__hidden-hint text-[10px] font-medium text-slate-400" title={t('nav_kitchen_hidden_tooltip', "Kitchen items are hidden here because this property's kitchen module is off — they're untouched and will still be saved as-is.")}>
                 ({hiddenItems.length} kitchen item{hiddenItems.length === 1 ? '' : 's'} hidden)
               </span>
             )}

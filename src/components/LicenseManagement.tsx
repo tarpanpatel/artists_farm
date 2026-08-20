@@ -25,9 +25,11 @@ import { useConfirm } from './ConfirmDialogContext';
 import { useAuth } from '../contexts/AuthContext';
 import { PageHeader, PageHeaderButton } from './PageHeader';
 import { Input } from './Input';
+import { DateRangePicker } from './DateRangePicker';
 import { Button } from './Button';
+import { Badge } from './Badge';
 import { StyledSelect } from './StyledSelect';
-import { formatDateDDMMYY } from '../utils/dateUtils';
+import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import { t } from '../i18n/en';
 
 interface PropertyLicense {
@@ -89,7 +91,7 @@ const EMPTY_FORM: LicenseFormState = {
 interface StatusMeta {
   label: string;
   icon: React.ElementType;
-  badgeClass: string;
+  variant: 'danger' | 'warning' | 'success';
   cardRingClass: string;
 }
 
@@ -98,7 +100,7 @@ const getStatusMeta = (status: PropertyLicense['status']): StatusMeta => {
     return {
       label: t('expired_badge', 'Expired'),
       icon: XCircle,
-      badgeClass: 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-700',
+      variant: 'danger',
       cardRingClass: 'border-red-200 dark:border-red-800/60',
     };
   }
@@ -106,14 +108,14 @@ const getStatusMeta = (status: PropertyLicense['status']): StatusMeta => {
     return {
       label: t('expiring_soon_badge', 'Expiring Soon'),
       icon: AlertTriangle,
-      badgeClass: 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-700',
+      variant: 'warning',
       cardRingClass: 'border-amber-200 dark:border-amber-800/60',
     };
   }
   return {
     label: t('active_badge', 'ACTIVE'),
     icon: ShieldCheck,
-    badgeClass: 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-700',
+    variant: 'success',
     cardRingClass: 'border-slate-200 dark:border-slate-700',
   };
 };
@@ -370,7 +372,7 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
             return (
               <div
                 key={license.id}
-                className={`license-management__card bg-white dark:bg-slate-800 rounded-lg border ${meta.cardRingClass} shadow-sm p-5 flex flex-col gap-3`}
+                className={`license-management__card bg-white dark:bg-slate-800 rounded-lg border ${meta.cardRingClass} shadow-sm p-4 sm:p-6 flex flex-col gap-3`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -381,10 +383,10 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
                       {license.license_name?.trim() || licenseTypeLabel(license.license_type)}
                     </h3>
                   </div>
-                  <span className={`shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold border ${meta.badgeClass}`}>
+                  <Badge variant={meta.variant} size="sm" className="shrink-0">
                     <StatusIcon className="w-3 h-3" />
                     {meta.label}
-                  </span>
+                  </Badge>
                 </div>
 
                 <div className="license-management__card-fields text-xs space-y-1.5 text-slate-600 dark:text-slate-300">
@@ -403,11 +405,11 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
                   <div className="flex items-center justify-between pt-1 text-[11px]">
                     <span>
                       <span className="text-slate-400 dark:text-slate-500">{t('valid_from_field', 'Valid From:')}</span>{' '}
-                      <span className="font-medium">{formatDateDDMMYY(license.start_date)}</span>
+                      <span className="font-medium">{formatDateDDMMYYYY(license.start_date)}</span>
                     </span>
                     <span>
                       <span className="text-slate-400 dark:text-slate-500">{t('expires_field', 'Expires:')}</span>{' '}
-                      <span className="font-medium">{formatDateDDMMYY(license.end_date)}</span>
+                      <span className="font-medium">{formatDateDDMMYYYY(license.end_date)}</span>
                     </span>
                   </div>
                   {subLabel && (
@@ -513,20 +515,15 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
                 placeholder={t('issuing_authority_placeholder', 'e.g., Department of Tourism, Rajasthan')}
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label={t('license_start_date_label', 'Start Date *')}
-                type="date"
-                required
-                value={form.start_date}
-                onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-              />
-              <Input
-                label={t('license_expiry_date_label', 'Expiry Date *')}
-                type="date"
-                required
-                value={form.end_date}
-                onChange={(e) => setForm({ ...form, end_date: e.target.value })}
+            <div>
+              <DateRangePicker
+                label={t('license_validity_period_label', 'Validity Period *')}
+                checkinDate={form.start_date}
+                checkoutDate={form.end_date}
+                onCheckinChange={(date) => setForm({ ...form, start_date: date })}
+                onCheckoutChange={(date) => setForm({ ...form, end_date: date })}
+                fromPlaceholder={t('license_start_date_label', 'Start Date *')}
+                toPlaceholder={t('license_expiry_date_label', 'Expiry Date *')}
               />
             </div>
             <div>

@@ -49,7 +49,7 @@ export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({ isOpen, onClos
               Scroll the share sheet down and tap <strong>"Add to Home Screen"</strong>
             </p>
             {/* Mockup: share sheet with Add to Home Screen highlighted */}
-            <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden shadow-xs">
+            <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden shadow-md">
               <div className="flex justify-center pt-2 pb-1">
                 <div className="w-8 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
               </div>
@@ -84,7 +84,7 @@ export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({ isOpen, onClos
               Tap <strong>"Add"</strong> in the top-right corner
             </p>
             {/* Mockup: confirmation dialog with Add highlighted */}
-            <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-xs overflow-hidden">
+            <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-md overflow-hidden">
               <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100 dark:border-slate-700">
                 <span className="text-[11px] text-slate-400 dark:text-slate-500">Cancel</span>
                 <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">New Home Screen Icon</span>

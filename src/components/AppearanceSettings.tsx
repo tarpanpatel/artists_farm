@@ -1,45 +1,29 @@
-import React, { useState } from 'react';
-import { Card } from 'flowbite-react';
+import React from 'react';
+import { Tabs, TabItem } from 'flowbite-react';
+import { Palette, Code } from 'lucide-react';
 import { ThemeManagement } from './ThemeManagement';
 import { CustomCSSOverride } from './CustomCSSOverride';
 import { t } from '../i18n/en';
-import { Button } from './Button';
 
 interface AppearanceSettingsProps {
   activeRole?: string;
 }
 
 export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({ activeRole = '' }) => {
-  const [activeTab, setActiveTab] = useState<'theme' | 'css'>('css');
-
   return (
     <div className="space-y-6 appearance-settings">
-      {/* Tabs */}
-      <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700 pb-2 appearance-settings__tabs">
-        <Button
-          variant={activeTab === 'theme' ? 'primary' : 'ghost'}
-          size="md"
-          onClick={() => setActiveTab('theme')}
-        >
-          {t('appearance_settings_theme_tab')}
-        </Button>
-        <Button
-          variant={activeTab === 'css' ? 'primary' : 'ghost'}
-          size="md"
-          onClick={() => setActiveTab('css')}
-        >
-          {t('appearance_settings_css_tab')}
-        </Button>
-      </div>
-
-      {/* Tab Content */}
-      <Card className="border-gray-200 dark:border-gray-700 appearance-settings__content">
-        {activeTab === 'theme' ? (
-          <ThemeManagement />
-        ) : (
-          <CustomCSSOverride activeRole={activeRole} />
-        )}
-      </Card>
+      <Tabs variant="default">
+        <TabItem active title={t('appearance_settings_theme_tab', 'Theme Colors')} icon={Palette}>
+          <div className="pt-4">
+            <ThemeManagement />
+          </div>
+        </TabItem>
+        <TabItem title={t('appearance_settings_css_tab', 'Custom CSS')} icon={Code}>
+          <div className="pt-4">
+            <CustomCSSOverride activeRole={activeRole} />
+          </div>
+        </TabItem>
+      </Tabs>
     </div>
   );
 };

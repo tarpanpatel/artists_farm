@@ -44,7 +44,7 @@ export const EditPropertyPage: React.FC<EditPropertyPageProps> = ({ property, on
       <div className="edit-property-page__header mb-4">
         <PageHeader
           title={isRoom ? t('edit_room_page_heading', 'Edit Room') : t('edit_property_page_heading', 'Edit Property')}
-          subtitle={`${property.name || t('property_details_subtitle', 'Property details & contact information')}${property.slug ? ` Â· ${property.slug}` : ''}`}
+          subtitle={`${property.name || t('property_details_subtitle', 'Property details & contact information')}${property.slug ? ` · ${property.slug}` : ''}`}
         />
       </div>
 
@@ -81,7 +81,7 @@ export const EditPropertyPage: React.FC<EditPropertyPageProps> = ({ property, on
           SINGLE in php/config/database.php, not a type this should branch
           on. */}
       {property.property_type === 'SINGLE' && (
-        <div className="edit-property-page__ical-card bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-5 sm:p-6">
+        <div className="edit-property-page__ical-card bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 sm:p-6">
           <ICalSyncManager propertyId={property.id} propertySlug={property.slug} embedded />
         </div>
       )}

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send, Mail, Bell, UserCog, Pencil, DatabaseBackup, Loader2, RefreshCw, AlertTriangle, UserRound, Receipt, Package } from 'lucide-react';
 import { Card } from 'flowbite-react';
 import { KpiCard } from './KpiCard';
+import { Button } from './Button';
 import { t } from '../i18n/en';
 import { AppearanceSettings } from './AppearanceSettings';
 import { PlatformPropertyManagement } from './PlatformPropertyManagement';
@@ -307,19 +308,19 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
 
       {/* Sidebar */}
       <aside
-        className={`root-admin-dashboard__sidebar fixed top-0 left-0 z-[55] h-screen w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col transition-all duration-200 ${
+        className={`root-admin-dashboard__sidebar fixed top-0 left-0 z-[55] h-screen w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col transition-all duration-200 ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
-        <div className="h-full px-3 py-4 overflow-y-auto bg-white dark:bg-slate-800 flex flex-col justify-between">
+        <div className="h-full px-3 py-4 overflow-y-auto bg-white dark:bg-gray-800 flex flex-col justify-between">
           <div className="space-y-1">
             {/* Branding */}
-            <div className="px-3 pb-3 mb-2 border-b border-slate-100 dark:border-slate-700/80">
-              <h1 className="root-admin-dashboard__page-title text-sm font-semibold text-slate-900 dark:text-white">{t('root_admin_branding', 'Root Admin')}</h1>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{t('system_management_label', 'System Management')}</p>
+            <div className="px-3 pb-3 mb-2 border-b border-gray-200 dark:border-gray-700">
+              <h1 className="root-admin-dashboard__page-title text-sm font-semibold text-gray-900 dark:text-white">{t('root_admin_branding', 'Root Admin')}</h1>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t('system_management_label', 'System Management')}</p>
             </div>
 
-            <div className="px-3 pb-2 mb-2 border-b border-slate-100 dark:border-slate-700/80 text-xs font-semibold text-slate-500 dark:text-slate-400">
+            <div className="px-3 pb-2 mb-2 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-500 dark:text-gray-400">
               Hello, {displayUsername}
             </div>
 
@@ -331,14 +332,14 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                   key={item.id}
                   type="button"
                   onClick={() => goToSection(item.section)}
-                  className={`w-full flex items-center gap-2.5 p-2.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                  className={`w-full flex items-center p-2 text-sm font-medium rounded-lg group transition duration-75 cursor-pointer ${
                     isActive
-                      ? 'bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white font-semibold'
-                      : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-gray-100 text-blue-600 dark:bg-gray-700 dark:text-blue-400 font-semibold'
+                      : 'text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-400'}`} />
-                  <span className="truncate">{item.label}</span>
+                  <Icon className={`w-5 h-5 transition duration-75 shrink-0 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white'}`} />
+                  <span className="ms-3 flex-1 text-left truncate">{item.label}</span>
                 </button>
               );
             })}
@@ -347,21 +348,21 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
             <button
               type="button"
               onClick={handleTelescopeOpen}
-              className="w-full flex items-center gap-2.5 p-2.5 text-xs font-semibold rounded-lg transition-all cursor-pointer text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-900 dark:hover:text-purple-100"
+              className="w-full flex items-center p-2 text-sm font-medium rounded-lg transition duration-75 cursor-pointer text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-900 dark:hover:text-purple-100"
               title={t('telescope_error_center_tooltip', 'Open Telescope Error Center - View user problems and system errors')}
             >
-              <Eye className="w-4 h-4 shrink-0 text-purple-500 dark:text-purple-400" />
-              <span className="truncate">{t('telescope_monitor_label', 'Telescope Monitor')}</span>
+              <Eye className="w-5 h-5 shrink-0 text-purple-500 dark:text-purple-400" />
+              <span className="ms-3 flex-1 text-left truncate">{t('telescope_monitor_label', 'Telescope Monitor')}</span>
             </button>
           </div>
 
-          <div className="pt-3 mt-auto border-t border-slate-200 dark:border-slate-700 space-y-2">
-            <div className="navigation__user-profile flex items-center gap-2.5 px-1 py-1">
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 ring-2 ring-blue-500/30 shrink-0">
-                <UserRound className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+          <div className="pt-3 mt-auto border-t border-gray-200 dark:border-gray-700 space-y-2">
+            <div className="navigation__user-profile flex items-center gap-2.5 px-2 py-1.5 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 ring-2 ring-blue-500/30 shrink-0">
+                <UserRound className="w-4 h-4 text-gray-600 dark:text-gray-300" />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
+                <div className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate">
                   {(() => {
                     if (typeof window !== 'undefined') {
                       try {
@@ -390,20 +391,20 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
       </aside>
 
       {/* Main Content */}
-      <main ref={mainScrollRef} className="root-admin-dashboard__main flex-1 md:pl-64 overflow-auto">
+      <main ref={mainScrollRef} className="root-admin-dashboard__main flex-1 md:pl-64 min-h-screen bg-gray-50 dark:bg-gray-900">
         {/* Top Bar */}
-        <header className="root-admin-dashboard__topbar bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-20">
-          <div className="max-w-7xl mx-auto px-3 py-2.5 lg:px-8 lg:py-4 flex items-center gap-2">
+        <header className="root-admin-dashboard__topbar bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-20 h-16 flex items-center">
+          <div className="max-w-7xl w-full mx-auto px-4 lg:px-8 flex items-center gap-3">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               title={t('toggle_sidebar_tooltip', 'Toggle Sidebar Menu')}
               aria-label={t('toggle_sidebar_aria', 'Toggle Sidebar Navigation')}
-              className="md:hidden p-2 -ml-1 text-slate-600 dark:text-slate-300 rounded-lg hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer shrink-0"
+              className="md:hidden p-2 -ml-1 text-gray-500 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600 transition-colors cursor-pointer shrink-0"
             >
-              <Menu className="w-5 h-5" />
+              <Menu className="w-6 h-6" />
             </button>
             <div className="min-w-0">
-              <h2 className="root-admin-dashboard__title text-lg lg:text-2xl font-semibold text-slate-900 dark:text-white truncate">
+              <h2 className="root-admin-dashboard__title text-lg lg:text-xl font-semibold text-gray-900 dark:text-white truncate">
                 {activeSection === 'dashboard' && t('root_dashboard_label', 'Dashboard')}
                 {activeSection === 'tenants_properties' && t('root_tenants_properties_label', 'Tenants & Properties')}
                 {activeSection === 'edit_main_menu' && t('root_edit_main_menu_label', 'Edit Main Menu')}
@@ -431,17 +432,17 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <KpiCard
                   label={t('root_total_properties_label', 'Total Properties')}
-                  value="â€”"
+                  value="—"
                   icon={Building2}
                 />
                 <KpiCard
                   label={t('root_active_tenants_label', 'Active Tenants')}
-                  value="â€”"
+                  value="—"
                   icon={UserRound}
                 />
                 <KpiCard
                   label={t('root_appearance_menu_label', 'Appearance')}
-                  value="â€”"
+                  value="—"
                   icon={Paintbrush}
                 />
               </div>
@@ -547,15 +548,10 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={handleDownloadLiveDb}
-                disabled={isExportingDb}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg transition-all cursor-pointer shadow-xs"
-              >
+              <Button variant="primary" size="lg" onClick={handleDownloadLiveDb} disabled={isExportingDb}>
                 {isExportingDb ? <Loader2 className="w-4 h-4 animate-spin" /> : <DatabaseBackup className="w-4 h-4" />}
                 {isExportingDb ? t('root_db_sync_exporting', 'Exporting...') : t('root_db_sync_download_button', 'Download .sql File')}
-              </button>
+              </Button>
               <p className="text-[11px] text-slate-400 dark:text-slate-500">
                 {t('root_db_sync_import_hint', 'After downloading, import it into your local MySQL (e.g. via phpMyAdmin\'s Import tab, or `mysql -u root artists_farm_resort < file.sql`).')}
               </p>

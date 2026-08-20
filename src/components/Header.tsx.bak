@@ -345,7 +345,6 @@ export const Header: React.FC<HeaderProps> = ({
                     Mobile Push Alerts
                   </span>
                   <button
-                    type="button"
                     onClick={async () => {
                       const granted = await requestPushNotificationPermission();
                       if (granted) {

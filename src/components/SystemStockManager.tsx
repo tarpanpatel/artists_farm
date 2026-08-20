@@ -225,7 +225,7 @@ export const SystemStockManager: React.FC = () => {
   return (
     <div className="default-stocks-manager space-y-4 p-3 sm:p-6">
       {/* Header */}
-      <div className="default-stocks-manager__header bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-5">
+      <div className="default-stocks-manager__header bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="min-w-0">
             <h2 className="default-stocks-manager__title text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
@@ -281,7 +281,7 @@ export const SystemStockManager: React.FC = () => {
 
       {/* Add New Item Form */}
       {isAddingNew && (
-        <div className="max-w-[550px] w-full bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-5 space-y-3">
+        <div className="max-w-[550px] w-full bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 sm:p-6 space-y-3">
           <h3 className="default-stocks-manager__subtitle font-semibold text-slate-900 dark:text-white text-sm">{t('add_new_stock_item_title', 'Add New Stock Item')}</h3>
           <form onSubmit={handleAddItem} className="app-form app-form--add-stock-item space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

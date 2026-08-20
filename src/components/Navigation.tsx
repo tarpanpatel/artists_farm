@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { Sidebar as FlowbiteSidebar, SidebarItem, SidebarCollapse, SidebarItems, SidebarItemGroup, Badge as FlowbiteBadge } from 'flowbite-react';
 import { getIconComponent } from '../utils/iconResolver';
-import { ChevronRight, LogOut, Link as LinkIcon, UserRound } from 'lucide-react';
+import { ChevronRight, ChevronDown, LogOut, Link as LinkIcon, UserRound } from 'lucide-react';
 import { NavMenuItem } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
@@ -65,15 +64,6 @@ interface FlatNavItem {
   customUrl?: string;
   openInNewTab?: boolean;
 }
-
-const customSidebarTheme = {
-  root: {
-    base: 'h-full',
-    // Keep the same surface, spacing, and scroll treatment as Flowbite's
-    // application-ui sidebar; the app only supplies its fixed positioning.
-    inner: 'h-full overflow-y-auto overflow-x-hidden bg-white px-3 py-4 dark:bg-gray-800',
-  },
-};
 
 export const Navigation: React.FC<NavigationProps> = ({
   activeTab: _activeTab,
@@ -344,7 +334,7 @@ export const Navigation: React.FC<NavigationProps> = ({
 
   const allFlatItems = useMemo(() => flattenAllItems(tree), [flattenAllItems, tree, filteredNavItems]);
 
-  const renderNode = (node: TreeNode, depth: number = 0): React.ReactNode => {
+  const renderNode = (node: TreeNode, _depth: number = 0): React.ReactNode => {
     const hasChildren = node.children.length > 0;
     const isExpanded = expandedParents.has(node.id);
     const isActive = activeMenuItemKey === (node.uniqueKey || node.tabKey);
@@ -373,44 +363,110 @@ export const Navigation: React.FC<NavigationProps> = ({
       };
 
       return (
-        <SidebarCollapse
-          key={node.id}
-          icon={ItemIcon as any}
-          label={node.title}
-          open={isExpanded}
-          onClick={handleHeaderClick}
-          className="navigation__node-btn cursor-pointer"
-        >
-          <div className="navigation__subnav">
-            {node.children.map(child => renderNode(child, depth + 1))}
-          </div>
-        </SidebarCollapse>
+        <li key={node.id}>
+          <button
+            type="button"
+            onClick={handleHeaderClick}
+            aria-controls={`dropdown-${node.id}`}
+            className={`flex items-center w-full p-2 text-sm font-medium transition duration-75 rounded-lg group hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${
+              isExpanded
+                ? 'text-blue-600 bg-gray-50 dark:bg-gray-700/60 dark:text-blue-400 font-semibold'
+                : 'text-gray-900 dark:text-white'
+            }`}
+          >
+            <ItemIcon
+              className={`w-5 h-5 transition duration-75 shrink-0 ${
+                isExpanded
+                  ? 'text-blue-600 dark:text-blue-400'
+                  : 'text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white'
+              }`}
+            />
+            <span className="flex-1 ms-3 text-left rtl:text-right whitespace-nowrap truncate">{node.title}</span>
+            <ChevronDown
+              className={`w-4 h-4 transition-transform duration-200 shrink-0 ${
+                isExpanded ? 'rotate-180 text-blue-600 dark:text-blue-400' : 'text-gray-400'
+              }`}
+            />
+          </button>
+          {isExpanded && (
+            <ul id={`dropdown-${node.id}`} className="py-2 space-y-1">
+              {node.children.map(child => {
+                const childActive = activeMenuItemKey === (child.uniqueKey || child.tabKey);
+                const childBadge = getBadge(child.uniqueKey || '');
+                const childKey = child.uniqueKey || child.tabKey;
+                const childHref = child.customUrl || `#${child.urlSlug || childKey}`;
+
+                return (
+                  <li key={child.id}>
+                    <a
+                      data-uniquekey={childKey}
+                      href={childHref}
+                      target={child.openInNewTab ? '_blank' : undefined}
+                      rel={child.openInNewTab ? 'noopener noreferrer' : undefined}
+                      onClick={(e: React.MouseEvent) => {
+                        e.preventDefault();
+                        handleTabClick({ tabKey: child.tabKey, uniqueKey: childKey, customUrl: child.customUrl, openInNewTab: child.openInNewTab });
+                      }}
+                      className={`flex items-center w-full p-2 text-sm transition duration-75 rounded-lg pl-11 group hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${
+                        childActive
+                          ? 'bg-gray-100 text-blue-600 dark:bg-gray-700 dark:text-blue-400 font-semibold'
+                          : 'text-gray-900 dark:text-white'
+                      }`}
+                    >
+                      <span className="flex-1 truncate">{child.title}</span>
+                      {childBadge && (
+                        <span className="inline-flex items-center justify-center px-2 py-0.5 ms-3 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200">
+                          {childBadge.text}
+                        </span>
+                      )}
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </li>
       );
     }
 
     return (
-      <SidebarItem
-        key={node.id}
-        data-uniquekey={itemKey}
-        href={linkHref}
-        {...(node.openInNewTab ? ({ target: '_blank', rel: 'noopener noreferrer' } as any) : {})}
-        onClick={(e: React.MouseEvent) => {
-          e.preventDefault();
-          handleTabClick({ tabKey: node.tabKey, uniqueKey: itemKey, customUrl: node.customUrl, openInNewTab: node.openInNewTab });
-        }}
-        icon={depth > 0 ? undefined : ItemIcon as any}
-        active={isActive}
-        className="navigation__leaf-btn cursor-pointer"
-      >
-        <div className="flex items-center justify-between w-full">
-          <span className="truncate">{node.title}</span>
+      <li key={node.id}>
+        <a
+          data-uniquekey={itemKey}
+          href={linkHref}
+          target={node.openInNewTab ? '_blank' : undefined}
+          rel={node.openInNewTab ? 'noopener noreferrer' : undefined}
+          onClick={(e: React.MouseEvent) => {
+            e.preventDefault();
+            handleTabClick({ tabKey: node.tabKey, uniqueKey: itemKey, customUrl: node.customUrl, openInNewTab: node.openInNewTab });
+          }}
+          className={`flex items-center p-2 text-sm font-medium rounded-lg group transition duration-75 cursor-pointer ${
+            isActive
+              ? 'bg-gray-100 text-blue-600 dark:bg-gray-700 dark:text-blue-400 font-semibold'
+              : 'text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700'
+          }`}
+        >
+          <ItemIcon
+            className={`w-5 h-5 transition duration-75 shrink-0 ${
+              isActive
+                ? 'text-blue-600 dark:text-blue-400'
+                : 'text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white'
+            }`}
+          />
+          <span className="ms-3 flex-1 whitespace-nowrap truncate">{node.title}</span>
           {badge && (
-            <FlowbiteBadge color={isActive ? 'info' : 'gray'} size="xs" className="shrink-0 ml-1.5">
+            <span
+              className={`inline-flex items-center justify-center px-2 py-0.5 ms-3 text-xs font-semibold rounded-full ${
+                isActive
+                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200'
+                  : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+              }`}
+            >
               {badge.text}
-            </FlowbiteBadge>
+            </span>
           )}
-        </div>
-      </SidebarItem>
+        </a>
+      </li>
     );
   };
 
@@ -432,15 +488,15 @@ export const Navigation: React.FC<NavigationProps> = ({
         aria-label={item.label}
         className={`relative w-10 h-10 my-0.5 flex items-center justify-center rounded-lg transition-all cursor-pointer group no-underline ${
           isActive
-            ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 font-semibold shadow-xs [&>svg]:text-blue-600 dark:[&>svg]:text-blue-400'
-            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white'
-        } navigation__icon-btn`}
+            ? 'bg-gray-100 text-blue-600 dark:bg-gray-700 dark:text-blue-400 font-semibold shadow-xs [&>svg]:text-blue-600 dark:[&>svg]:text-blue-400'
+            : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
+        }`}
       >
-        <ItemIcon className="w-4 h-4 navigation__icon-svg" />
+        <ItemIcon className="w-5 h-5" />
         {item.badge && (
-          <span className="absolute top-1 right-1 w-2 h-2 bg-amber-500 rounded-full ring-2 ring-white dark:ring-slate-800 navigation__icon-badge" />
+          <span className="absolute top-1 right-1 w-2 h-2 bg-amber-500 rounded-full ring-2 ring-white dark:ring-gray-800" />
         )}
-        <span className="absolute left-14 px-2.5 py-1 text-xs font-semibold text-white bg-slate-900 dark:bg-slate-900 rounded-md shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap navigation__icon-tooltip">
+        <span className="absolute left-14 px-2.5 py-1 text-xs font-semibold text-white bg-gray-900 dark:bg-gray-900 rounded-md shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap">
           {item.label}
         </span>
       </a>
@@ -452,112 +508,120 @@ export const Navigation: React.FC<NavigationProps> = ({
       {isSidebarOpen && !isDesktopViewport && (
         <div
           onClick={onCloseSidebar}
-          className="navigation__overlay fixed inset-0 z-[55] bg-slate-900/50 backdrop-blur-xs transition-opacity"
+          className="navigation__overlay fixed inset-0 z-[55] bg-gray-900/50 dark:bg-gray-900/80 backdrop-blur-xs transition-opacity"
         />
       )}
 
-      {/* z-[56]: part of the app-wide z-index scale documented in
-          src/index.css above the .fixed.inset-0.z-50 rule - read that
-          comment in full before changing this value. Sits above ordinary
-          z-50 popovers (StyledSelect's dropdown, etc. - so a freshly-opened
-          sidebar always covers one left open behind it) and below real
-          page modals (bumped to z-[58] by that same CSS rule) and toasts/
-          confirm dialog (z-[9999]/[99999]). */}
-      <FlowbiteSidebar
+      {/* Flowbite Sidebar Component */}
+      <aside
         id="mainSidebarNavigationContainer"
-        theme={customSidebarTheme}
-        className={`navigation fixed top-0 left-0 h-screen pt-16 z-[56] border-r border-slate-200 transition-all duration-200 bg-white dark:border-slate-700 dark:bg-gray-800 ${
+        aria-label="Sidebar Navigation"
+        className={`fixed top-0 left-0 h-screen pt-16 z-[56] border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 transition-all duration-200 ${
           isIconOnly
             ? 'w-16 translate-x-0'
             : isSidebarOpen
             ? 'w-64 translate-x-0'
             : 'w-64 -translate-x-full md:translate-x-0'
         }`}
-        aria-label="Sidebar Navigation"
       >
         {isIconOnly ? (
-          <div className="navigation__icon-list min-h-full py-3 px-2 flex flex-col justify-between items-center">
-            <div className="navigation__icon-items flex flex-col items-center w-full gap-1">
+          <div className="h-full py-3 px-2 overflow-y-auto bg-white dark:bg-gray-800 flex flex-col justify-between items-center">
+            <ul className="space-y-1 flex flex-col items-center w-full">
               {allFlatItems
                 .filter(item => isVisible(item.roles))
-                .map((item, i) => renderIconItem(item, i))}
-            </div>
+                .map((item, i) => (
+                  <li key={`${item.uniqueKey}-${i}`} className="w-full flex justify-center">
+                    {renderIconItem(item, i)}
+                  </li>
+                ))}
+            </ul>
 
-            <div className="navigation__icon-actions flex flex-col items-center gap-2 w-full pb-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex flex-col items-center gap-2 w-full pb-3 pt-3 border-t border-gray-200 dark:border-gray-700">
               <button
+                type="button"
                 onClick={handleLogoutClick}
                 title="Sign Out Terminal"
-                className="navigation__logout-btn w-10 h-10 flex items-center justify-center rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
+                className="w-10 h-10 flex items-center justify-center rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
               >
                 <LogOut className="w-5 h-5" />
               </button>
               <button
+                type="button"
                 onClick={onToggleIconOnly}
                 title="Expand Navigation Menu"
-                className="navigation__toggle-btn w-10 h-10 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                className="w-10 h-10 flex items-center justify-center rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
             </div>
           </div>
         ) : (
-          <div className="navigation__expanded min-h-full flex flex-col justify-between">
-            <div className="navigation__expanded-top space-y-1">
-              <SidebarItems>
-                <SidebarItemGroup>
-                  {tree.map(node => renderNode(node, 0))}
-                </SidebarItemGroup>
-              </SidebarItems>
+          <div className="h-full px-3 py-4 overflow-y-auto bg-white dark:bg-gray-800 flex flex-col justify-between">
+            <div className="space-y-2">
+              <ul className="space-y-1 font-medium">
+                {tree.map(node => renderNode(node, 0))}
+              </ul>
 
               {customUrlRootItems.length > 0 && (
-                <div className="navigation__custom-links pt-2 mt-2 border-t border-slate-100 dark:border-slate-700">
-                  <div className="navigation__custom-links-header px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Custom Links</div>
-                  {customUrlRootItems.map(item => {
-                    const ItemIcon = getIconComponent(item.iconName);
-                    return (
-                      <a
-                        key={item.uniqueKey}
-                        href={item.customUrl}
-                        target={item.openInNewTab ? '_blank' : undefined}
-                        rel={item.openInNewTab ? 'noopener noreferrer' : undefined}
-                        onClick={() => { if (window.innerWidth < 768) onCloseSidebar(); }}
-                        className="navigation__custom-link w-full flex items-center gap-2.5 px-3 py-2.5 text-sm font-semibold rounded-lg transition-all cursor-pointer text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-900 dark:hover:text-purple-100"
-                      >
-                        <ItemIcon className="w-4.5 h-4.5 shrink-0 text-purple-500 dark:text-purple-400" />
-                        <span className="truncate">{item.title}</span>
-                        {item.openInNewTab && (
-                          <LinkIcon className="w-3.5 h-3.5 shrink-0 ml-auto text-purple-400 dark:text-purple-500" />
-                        )}
-                      </a>
-                    );
-                  })}
+                <div className="pt-3 mt-3 border-t border-gray-200 dark:border-gray-700 space-y-1">
+                  <div className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                    Custom Links
+                  </div>
+                  <ul className="space-y-1">
+                    {customUrlRootItems.map(item => {
+                      const ItemIcon = getIconComponent(item.iconName);
+                      return (
+                        <li key={item.uniqueKey}>
+                          <a
+                            href={item.customUrl}
+                            target={item.openInNewTab ? '_blank' : undefined}
+                            rel={item.openInNewTab ? 'noopener noreferrer' : undefined}
+                            onClick={() => { if (window.innerWidth < 768) onCloseSidebar(); }}
+                            className="flex items-center p-2 text-sm font-medium rounded-lg transition duration-75 cursor-pointer text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-900 dark:hover:text-purple-100"
+                          >
+                            <ItemIcon className="w-5 h-5 shrink-0 text-purple-500 dark:text-purple-400" />
+                            <span className="ms-3 flex-1 truncate">{item.title}</span>
+                            {item.openInNewTab && (
+                              <LinkIcon className="w-4 h-4 shrink-0 ml-auto text-purple-400 dark:text-purple-500" />
+                            )}
+                          </a>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </div>
               )}
             </div>
 
-            <div className="navigation__logout-section pt-3 mt-auto border-t border-slate-200 dark:border-slate-700 space-y-2.5">
-              <div className="navigation__user-profile flex items-center gap-2.5 px-1 py-1">
-                <div className="flex items-center justify-center w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-700 ring-2 ring-blue-500/30 shrink-0">
-                  <UserRound className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+            {/* Bottom User Profile & Sign Out */}
+            <div className="pt-3 mt-auto border-t border-gray-200 dark:border-gray-700 space-y-2">
+              <div className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 ring-2 ring-blue-500/30 shrink-0">
+                  <UserRound className="w-4 h-4 text-gray-600 dark:text-gray-300" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
+                  <div className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">
                     {currentUser?.name || 'User'}
+                  </div>
+                  <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate capitalize">
+                    {activeRole}
                   </div>
                 </div>
               </div>
+
               <button
+                type="button"
                 onClick={handleLogoutClick}
-                className="navigation__logout-btn w-full flex items-center gap-3 px-3 py-2.5 text-sm font-semibold rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/50 transition-all cursor-pointer shadow-2xs"
+                className="flex items-center w-full p-2 text-sm font-semibold rounded-lg text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/50 transition-all cursor-pointer shadow-2xs"
                 style={{ color: '#ff5252' }}
               >
-                <LogOut className="w-4.5 h-4.5 text-red-500" />
-                <span>Sign Out Terminal</span>
+                <LogOut className="w-4 h-4 text-red-500" />
+                <span className="ms-3">Sign Out Terminal</span>
               </button>
             </div>
           </div>
         )}
-      </FlowbiteSidebar>
+      </aside>
     </>
   );
 };

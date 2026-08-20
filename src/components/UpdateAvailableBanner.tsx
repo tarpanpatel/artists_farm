@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { RefreshCw, X } from 'lucide-react';
+import { Button } from './Button';
 
 // Listens for the 'sw-update-available' event dispatched by main.tsx when a
 // new service worker has taken control of an already-running session (see
@@ -24,12 +25,9 @@ export const UpdateAvailableBanner: React.FC = () => {
       <div className="pointer-events-auto flex items-center gap-3 bg-slate-900 dark:bg-slate-800 text-white px-4 py-3 rounded-lg shadow-lg border border-slate-700 animate-toast-in">
         <RefreshCw className="w-4 h-4 text-blue-400 shrink-0" />
         <span className="flex-1 text-xs font-semibold">A new version of the app is available.</span>
-        <button
-          onClick={() => window.location.reload()}
-          className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg cursor-pointer transition-colors"
-        >
-          Reload
-        </button>
+        <Button variant="primary" size="sm" onClick={() => window.location.reload()}>
+                Reload
+              </Button>
         <button
           onClick={() => setDismissed(true)}
           className="shrink-0 p-1 rounded hover:bg-white/10 transition-colors cursor-pointer"

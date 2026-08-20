@@ -392,7 +392,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
                   type="password"
                   value={newPasscode}
                   onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢"
+                  placeholder="••••••"
                   maxLength={6}
                   inputMode="numeric"
                   autoFocus
@@ -415,7 +415,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
                   type="password"
                   value={confirmPasscode}
                   onChange={(e) => setConfirmPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢"
+                  placeholder="••••••"
                   maxLength={6}
                   inputMode="numeric"
                   className="w-full h-11 pl-[72px] pr-4 bg-slate-50/80 dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-amber-500 dark:focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15 rounded-lg text-left text-sm tracking-[0.25em] font-mono text-slate-900 dark:text-white placeholder:text-slate-400 transition-all outline-none"
@@ -535,7 +535,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
                 type="password"
                 value={passcode}
                 onChange={handlePasscodeChange}
-                placeholder="Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢"
+                placeholder="••••••"
                 maxLength={6}
                 inputMode="numeric"
                 className="w-full h-11 pl-[72px] pr-4 bg-slate-50/80 dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 rounded-lg text-left text-sm tracking-[0.25em] font-mono text-slate-900 dark:text-white placeholder:text-slate-400 placeholder:tracking-normal transition-all outline-none"
@@ -609,7 +609,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
         {!isTerminal && (
           <div className="mt-7 pt-5 border-t border-slate-100 dark:border-slate-800/80 text-center space-y-2.5">
             <p className="text-[11px] text-slate-400 dark:text-slate-500">
-              {t('login_footer_copyright', 'Ã‚Â© 2026 Ground Code. All rights reserved.')}
+              {t('login_footer_copyright', '© 2026 Ground Code. All rights reserved.')}
             </p>
             <div>
               <a

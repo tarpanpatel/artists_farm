@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Modal, ModalHeader, ModalBody, ModalFooter } from 'flowbite-react';
+import { Modal, ModalHeader, ModalBody, ModalFooter, Tabs, TabItem } from 'flowbite-react';
 import {
   UtensilsCrossed,
   Plus,
@@ -40,6 +40,7 @@ import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { WalkInTabBillModal } from './WalkInTabBillModal';
 import DataTable from 'react-data-table-component';
+import { flowbiteTableCustomStyles } from '../utils/tableStyles';
 
 import { useKitchenContext } from '../contexts/KitchenContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
@@ -311,11 +312,11 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       
       const inlineKeyboard = {
         inline_keyboard: [
-          [{ text: 'Ã°Å¸ÂÂ½Ã¯Â¸Â Tap when Served', callback_data: `serve_item_${cleanTicketId}_${itemIndex}` }]
+          [{ text: '🍽️ Tap when Served', callback_data: `serve_item_${cleanTicketId}_${itemIndex}` }]
         ]
       };
 
-      const fallbackMsg = `Ã°Å¸ÂÂ½Ã¯Â¸Â <b>DISH READY TO SERVE</b>\nÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€Â\nÃ°Å¸ÂÂ·Ã¯Â¸Â <b>Order Ticket:</b> #${cleanTicketId}\nÃ¢â‚¬Â¢ <b>${item.quantity}x</b> ${item.name}\nÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€Â\nÃ°Å¸ÂÆ’Ã¢â‚¬ÂÃ¢â„¢â€šÃ¯Â¸Â <i>Staff, please collect and tap below when served.</i>`;
+      const fallbackMsg = `🍽️ <b>DISH READY TO SERVE</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #${cleanTicketId}\n• <b>${item.quantity}x</b> ${item.name}\n━━━━━━━━━━━━━━━━━━\n🏃‍♂️ <i>Staff, please collect and tap below when served.</i>`;
       onDispatchTelegram('Single Dish Ready', resolved || fallbackMsg, 'kitchen', inlineKeyboard, 'kitchen_single_dish_ready');
     }
 
@@ -508,7 +509,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         remaining_items: '0',
       };
       const resolved = await resolveTelegramTemplate('item_served', servedVars);
-      const singleItemServedMsg = resolved || `Ã¢Å“â€¦ <b>DISH SERVED TO RESIDENT</b>\nÃ¢â‚¬Â¢ Ticket: <b>#${cleanTicketId}</b> (${ord.guestName} - ${ord.roomNumber})\nÃ¢â‚¬Â¢ Served Dish: <b>${item.quantity}x ${item.name}</b>\nÃ¢â‚¬Â¢ Delivered By: <b>${servedByUser}</b>\nÃ¢â‚¬Â¢ Served At: <b>${nowTime}</b>\nÃ¢â‚¬Â¢ Status: <b>Delivered & Served Ã°Å¸ÂÂ½Ã¯Â¸Â</b>`;
+      const singleItemServedMsg = resolved || `✅ <b>DISH SERVED TO RESIDENT</b>\n• Ticket: <b>#${cleanTicketId}</b> (${ord.guestName} - ${ord.roomNumber})\n• Served Dish: <b>${item.quantity}x ${item.name}</b>\n• Delivered By: <b>${servedByUser}</b>\n• Served At: <b>${nowTime}</b>\n• Status: <b>Delivered & Served 🍽️</b>`;
       onDispatchTelegram('Dish Served', singleItemServedMsg, 'kitchen', undefined, 'item_served');
     }
 
@@ -546,8 +547,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       };
       const resolved = await resolveTelegramTemplate('kitchen_order_reminder', reminderVars);
       const appUrl = `${window.location.origin}${window.location.pathname}#kitchen`;
-      const fallbackMsg = `Ã¢ÂÂ° <b>KITCHEN REMINDER</b>\nÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€Â\nÃ°Å¸ÂÂ·Ã¯Â¸Â <b>Order Ticket:</b> #${cleanTicketId}\nÃ¢â‚¬Â¢ <b>${item.quantity}x</b> ${item.name} (${ord.roomNumber})\nÃ¢ÂÂ±Ã¯Â¸Â <b>Pending for:</b> ${elapsedMin} min\nÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€Â\nÃ°Å¸â€˜Â¨Ã¢â‚¬ÂÃ°Å¸ÂÂ³ <i>Please check on this order.</i>\n\nÃ°Å¸â€â€” <b>Open Kitchen Board:</b> <a href="${appUrl}">${appUrl}</a>`;
-      const finalMsg = resolved ? `${resolved}\n\nÃ°Å¸â€â€” <b>Open Kitchen Board:</b> <a href="${appUrl}">${appUrl}</a>` : fallbackMsg;
+      const fallbackMsg = `⏰ <b>KITCHEN REMINDER</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #${cleanTicketId}\n• <b>${item.quantity}x</b> ${item.name} (${ord.roomNumber})\n⏱️ <b>Pending for:</b> ${elapsedMin} min\n━━━━━━━━━━━━━━━━━━\n👨‍🍳 <i>Please check on this order.</i>\n\n🔗 <b>Open Kitchen Board:</b> <a href="${appUrl}">${appUrl}</a>`;
+      const finalMsg = resolved ? `${resolved}\n\n🔗 <b>Open Kitchen Board:</b> <a href="${appUrl}">${appUrl}</a>` : fallbackMsg;
       onDispatchTelegram('Kitchen Order Reminder', finalMsg, 'kitchen', undefined, 'kitchen_order_reminder');
     }
 
@@ -587,11 +588,11 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       const appUrl = `${window.location.origin}${window.location.pathname}#kitchen`;
       const inlineKeyboard = {
         inline_keyboard: [
-          [{ text: 'Ã°Å¸ÂÂ½Ã¯Â¸Â Tap when Served', callback_data: `serve_item_${cleanTicketId}_${itemIndex}` }]
+          [{ text: '🍽️ Tap when Served', callback_data: `serve_item_${cleanTicketId}_${itemIndex}` }]
         ]
       };
-      const fallbackMsg = `Ã¢ÂÂ° <b>STILL WAITING FOR PICKUP</b>\nÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€Â\nÃ°Å¸ÂÂ·Ã¯Â¸Â <b>Order Ticket:</b> #${cleanTicketId}\nÃ¢â‚¬Â¢ <b>${item.quantity}x</b> ${item.name} (${ord.roomNumber})\nÃ¢ÂÂ±Ã¯Â¸Â <b>Ready since:</b> ${readySince || 'a while ago'}\nÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€Â\nÃ°Å¸ÂÆ’ <i>Please collect and tap below when served.</i>\n\nÃ°Å¸â€â€” <b>Open Kitchen Board:</b> <a href="${appUrl}">${appUrl}</a>`;
-      const finalMsg = resolved ? `${resolved}\n\nÃ°Å¸â€â€” <b>Open Kitchen Board:</b> <a href="${appUrl}">${appUrl}</a>` : fallbackMsg;
+      const fallbackMsg = `⏰ <b>STILL WAITING FOR PICKUP</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #${cleanTicketId}\n• <b>${item.quantity}x</b> ${item.name} (${ord.roomNumber})\n⏱️ <b>Ready since:</b> ${readySince || 'a while ago'}\n━━━━━━━━━━━━━━━━━━\n🏃 <i>Please collect and tap below when served.</i>\n\n🔗 <b>Open Kitchen Board:</b> <a href="${appUrl}">${appUrl}</a>`;
+      const finalMsg = resolved ? `${resolved}\n\n🔗 <b>Open Kitchen Board:</b> <a href="${appUrl}">${appUrl}</a>` : fallbackMsg;
       onDispatchTelegram('Pickup Reminder', finalMsg, 'admin', inlineKeyboard, 'kitchen_pickup_reminder');
     }
 
@@ -635,8 +636,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     };
     const resolved = await resolveTelegramTemplate('kitchen_order_reminder', reminderVars);
     const appUrl = `${window.location.origin}${window.location.pathname}#kitchen`;
-    const fallbackMsg = `Ã¢ÂÂ° <b>KITCHEN REMINDER</b>\nÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€Â\nÃ°Å¸ÂÂ·Ã¯Â¸Â <b>Order Ticket:</b> #${stale.order_id}\nÃ¢â‚¬Â¢ <b>${stale.quantity}x</b> ${stale.dish_name} (${stale.room_no})\nÃ¢ÂÂ±Ã¯Â¸Â <b>Pending for:</b> ${stale.elapsed_minutes} min\nÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€Â\nÃ°Å¸â€˜Â¨Ã¢â‚¬ÂÃ°Å¸ÂÂ³ <i>Auto-reminder Ã¢â‚¬â€ please check on this order.</i>\n\nÃ°Å¸â€â€” <b>Open Kitchen Board:</b> <a href="${appUrl}">${appUrl}</a>`;
-    const finalMsg = resolved ? `${resolved}\n\nÃ°Å¸â€â€” <b>Open Kitchen Board:</b> <a href="${appUrl}">${appUrl}</a>` : fallbackMsg;
+    const fallbackMsg = `⏰ <b>KITCHEN REMINDER</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #${stale.order_id}\n• <b>${stale.quantity}x</b> ${stale.dish_name} (${stale.room_no})\n⏱️ <b>Pending for:</b> ${stale.elapsed_minutes} min\n━━━━━━━━━━━━━━━━━━\n👨‍🍳 <i>Auto-reminder — please check on this order.</i>\n\n🔗 <b>Open Kitchen Board:</b> <a href="${appUrl}">${appUrl}</a>`;
+    const finalMsg = resolved ? `${resolved}\n\n🔗 <b>Open Kitchen Board:</b> <a href="${appUrl}">${appUrl}</a>` : fallbackMsg;
     onDispatchTelegram?.('Kitchen Order Reminder (Auto)', finalMsg, 'kitchen', undefined, 'kitchen_order_reminder');
     updateItemReminderTimestamp(stale.item_id);
   };
@@ -653,11 +654,11 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     const appUrl = `${window.location.origin}${window.location.pathname}#kitchen`;
     const inlineKeyboard = {
       inline_keyboard: [
-        [{ text: 'Ã°Å¸ÂÂ½Ã¯Â¸Â Tap when Served', callback_data: `serve_item_${stale.order_id}_${stale.item_index ?? 0}` }]
+        [{ text: '🍽️ Tap when Served', callback_data: `serve_item_${stale.order_id}_${stale.item_index ?? 0}` }]
       ]
     };
-    const fallbackMsg = `Ã¢ÂÂ° <b>STILL WAITING FOR PICKUP</b>\nÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€Â\nÃ°Å¸ÂÂ·Ã¯Â¸Â <b>Order Ticket:</b> #${stale.order_id}\nÃ¢â‚¬Â¢ <b>${stale.quantity}x</b> ${stale.dish_name} (${stale.room_no})\nÃ¢ÂÂ±Ã¯Â¸Â <b>Ready since:</b> ${stale.elapsed_minutes} min ago\nÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€Â\nÃ°Å¸ÂÆ’ <i>Auto-reminder Ã¢â‚¬â€ please collect and tap below when served.</i>\n\nÃ°Å¸â€â€” <b>Open Kitchen Board:</b> <a href="${appUrl}">${appUrl}</a>`;
-    const finalMsg = resolved ? `${resolved}\n\nÃ°Å¸â€â€” <b>Open Kitchen Board:</b> <a href="${appUrl}">${appUrl}</a>` : fallbackMsg;
+    const fallbackMsg = `⏰ <b>STILL WAITING FOR PICKUP</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #${stale.order_id}\n• <b>${stale.quantity}x</b> ${stale.dish_name} (${stale.room_no})\n⏱️ <b>Ready since:</b> ${stale.elapsed_minutes} min ago\n━━━━━━━━━━━━━━━━━━\n🏃 <i>Auto-reminder — please collect and tap below when served.</i>\n\n🔗 <b>Open Kitchen Board:</b> <a href="${appUrl}">${appUrl}</a>`;
+    const finalMsg = resolved ? `${resolved}\n\n🔗 <b>Open Kitchen Board:</b> <a href="${appUrl}">${appUrl}</a>` : fallbackMsg;
     onDispatchTelegram?.('Pickup Reminder (Auto)', finalMsg, 'admin', inlineKeyboard, 'kitchen_pickup_reminder');
     updateItemReminderTimestamp(stale.item_id);
   };
@@ -686,11 +687,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   }, [activeMenuItemKey]);
 
   // Staff Meals State
-  const [smDateRecord, setSmDateRecord] = useState<string>(() => {
-    const now = new Date();
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
-  });
+  const [smDateRecord, setSmDateRecord] = useState<string>(() => formatDateTimeDDMMYYYY(new Date().toISOString()));
   const [smSelectedStaff, setSmSelectedStaff] = useState<string[]>([]);
   const [smConsumptionType, setSmConsumptionType] = useState('Freshly Prepared (New Stock)');
   const [smCustomMeal, setSmCustomMeal] = useState('');
@@ -750,7 +747,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     
     const isLeftover = smConsumptionType === 'Leftover Buffer items';
     const newLog = {
-      date: formattedDate,
+      date: formatDateTimeDDMMYYYY(formattedDate),
       staff: smSelectedStaff.join(', '),
       food: foodStr,
       hasTag: isLeftover
@@ -772,7 +769,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     );
   };
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Beta Recipe Builder State (DB-backed) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // â"ۉ"ۉ"€ Beta Recipe Builder State (DB-backed) â"ۉ"ۉ"€
 
   interface RecipeIngredient {
     id: string;
@@ -1140,85 +1137,31 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   return (
     <div>
       {/* Unified Sub-Tab Navigation Bar - uniform enclosed pill per DESIGN.md
-          Ã‚Â§8/Ã‚Â§10/Ã‚Â§20 (19 Aug 2026 rewrite, replacing the earlier "merged
+          §8/§10/§20 (19 Aug 2026 rewrite, replacing the earlier "merged
           panel" folder-tab style): every tab, active or inactive, is the
           exact same fully-rounded box - same padding, same border on all 4
           sides, same rounded-lg on all 4 corners, same position. Only fill/
           text/shadow color changes on selection, so nothing shifts size or
-          shape when a tab is clicked (Ã‚Â§20's no-jitter rule generalized
-          beyond just font-weight - see Ã‚Â§21). Centered, not left-anchored. */}
+          shape when a tab is clicked (§20's no-jitter rule generalized
+          beyond just font-weight - see §21). Centered, not left-anchored. */}
       {(activeTab === 'new_order' || activeTab === 'kds' || activeTab === 'walk_in_bills') && (
-        <ul className="flex flex-wrap text-xs font-semibold text-center text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 mb-4 overflow-x-auto no-scrollbar">
-          <li className="me-2">
-            <button
-              type="button"
-              onClick={() => setActiveTab('new_order')}
-              className={`inline-flex items-center gap-2 px-4 py-3 rounded-t-lg transition-colors cursor-pointer whitespace-nowrap ${
-                activeTab === 'new_order'
-                  ? 'text-blue-600 bg-slate-100 dark:bg-slate-800 dark:text-blue-400 font-bold border-b-2 border-blue-600 dark:border-blue-400'
-                  : 'hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60'
-              }`}
-            >
-              <UtensilsCrossed className="w-4 h-4 shrink-0" />
-              <span>{t('create_resident_order_button', 'Take Order')}</span>
-            </button>
-          </li>
+        <Tabs
+          aria-label="Kitchen Management Tabs"
+          variant="default"
+          onActiveTabChange={(tabIndex: number) => {
+            const tabs: ('kds' | 'new_order' | 'walk_in_bills')[] = ['kds', 'new_order', 'walk_in_bills'];
+            if (tabs[tabIndex]) setActiveTab(tabs[tabIndex]);
+          }}
+        >
+          <TabItem
+            active={activeTab === 'kds'}
+            title={`${t('live_active_orders_label', 'Live Tickets')}${pendingOrdersCount > 0 ? ` (${pendingOrdersCount})` : ''}`}
+            icon={Clock}
+          >
+            {(() => {
+              const activeOrders = orders.filter((o) => o.status === 'Pending' || o.status === 'Preparing');
 
-          <li className="me-2">
-            <button
-              type="button"
-              onClick={() => setActiveTab('kds')}
-              className={`inline-flex items-center gap-2 px-4 py-3 rounded-t-lg transition-colors cursor-pointer whitespace-nowrap ${
-                activeTab === 'kds'
-                  ? 'text-blue-600 bg-slate-100 dark:bg-slate-800 dark:text-blue-400 font-bold border-b-2 border-blue-600 dark:border-blue-400'
-                  : 'hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60'
-              }`}
-            >
-              <Clock className="w-4 h-4 shrink-0" />
-              <span>{t('live_active_orders_label', 'Live Tickets')}</span>
-              {pendingOrdersCount > 0 && (
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                  activeTab === 'kds'
-                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200'
-                    : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
-                }`}>
-                  {pendingOrdersCount}
-                </span>
-              )}
-            </button>
-          </li>
-
-          <li className="me-2">
-            <button
-              type="button"
-              onClick={() => setActiveTab('walk_in_bills')}
-              className={`inline-flex items-center gap-2 px-4 py-3 rounded-t-lg transition-colors cursor-pointer whitespace-nowrap ${
-                activeTab === 'walk_in_bills'
-                  ? 'text-blue-600 bg-slate-100 dark:bg-slate-800 dark:text-blue-400 font-bold border-b-2 border-blue-600 dark:border-blue-400'
-                  : 'hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60'
-              }`}
-            >
-              <Receipt className="w-4 h-4 shrink-0" />
-              <span>{t('walk_in_bills_button', 'Walk-ins')}</span>
-              {walkInTabs.filter((tab) => tab.status === 'open').length > 0 && (
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                  activeTab === 'walk_in_bills'
-                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200'
-                    : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
-                }`}>
-                  {walkInTabs.filter((tab) => tab.status === 'open').length}
-                </span>
-              )}
-            </button>
-          </li>
-        </ul>
-      )}
-
-      {/* TAB 1: KDS TICKET QUEUE */}
-      {activeTab === 'kds' && (() => {
-        const activeOrders = orders.filter((o) => o.status === 'Pending' || o.status === 'Preparing');
-
-        return (
+              return (
         <div className="kds-orders-container space-y-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-3.5 sm:p-4">
           <div className="kds-status-filter-bar flex flex-col sm:flex-row items-start sm:items-center justify-end text-xs gap-3">
             {/* Smart Polling / Live Sync Bar */}
@@ -1240,7 +1183,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 <button
                   onClick={triggerManualSync}
                   disabled={isSyncing}
-                  className="px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 active:scale-98 text-xs font-semibold rounded-lg shadow-2xs transition-colors cursor-pointer flex items-center justify-center gap-1.5 shrink-0 disabled:opacity-50"
+                  className="px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 active:scale-98 text-xs font-semibold rounded-lg shadow-md transition-colors cursor-pointer flex items-center justify-center gap-1.5 shrink-0 disabled:opacity-50"
                   title={t('check_for_updates_tooltip')}
                 >
                   <RefreshCw className={`w-3.5 h-3.5 shrink-0 ${isSyncing ? 'animate-spin text-blue-600' : ''}`} />
@@ -1251,7 +1194,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           </div>
 
           {activeOrders.length === 0 ? (
-            <div className="text-center py-12 px-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs">
+            <div className="text-center py-12 px-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md">
               <div className="w-14 h-14 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-3 border border-emerald-200 dark:border-emerald-800/60">
                 <UtensilsCrossed className="w-7 h-7" />
               </div>
@@ -1266,7 +1209,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             <div className="kds-tickets-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {activeOrders.map((ord) => {
               const completionPhase = completingOrderIds[ord.id];
-              // Elapsed time since the order was placed Ã¢â‚¬â€ drives both the
+              // Elapsed time since the order was placed — drives both the
               // live timer display and the traffic-light border color.
               // 'Just now' is the transient string set optimistically right
               // after placing an order; treat it as 0 min (same isNaN guard
@@ -1278,7 +1221,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               const elapsedLabel = elapsedMin > 0
                 ? `${elapsedMin}m ${String(elapsedSec).padStart(2, '0')}s`
                 : `${elapsedSec}s`;
-              // Toast KDS "traffic light" border: neutral Ã¢â€ â€™ amber Ã¢â€ â€™ red as time ages
+              // Toast KDS "traffic light" border: neutral → amber → red as time ages
               const urgencyBorder = elapsedMin >= 10
                 ? 'border-l-4 border-l-red-500 dark:border-l-red-500'
                 : elapsedMin >= 5
@@ -1287,7 +1230,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               return (
               <div
                 key={ord.id}
-                className={`kds-ticket-card bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs p-3.5 flex flex-col justify-between transition-all duration-500 ${urgencyBorder} ${
+                className={`kds-ticket-card bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-3.5 flex flex-col justify-between transition-all duration-500 ${urgencyBorder} ${
                   completionPhase === 'processing' ? 'opacity-40 scale-[0.97]' : ''
                 }`}
               >
@@ -1298,7 +1241,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       <h3 className="kitchen-management__subtitle font-semibold text-slate-900 dark:text-white text-sm">
                         Order #{ord.id.replace('#', '')}
                       </h3>
-                      {/* Live elapsed timer Ã¢â‚¬â€ the #1 piece of info kitchen staff
+                      {/* Live elapsed timer — the #1 piece of info kitchen staff
                           need at a glance (Toast/Square KDS standard). Updates
                           every second via tickNow state. */}
                       <p className={`text-[11px] font-mono font-semibold flex items-center gap-1 mt-0.5 ${
@@ -1358,7 +1301,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                           slate blended in and was visually identical to the
                           room-service blue pill on dark mode). */}
                       <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                        {t('walk_in_badge', 'Walk-in')}{ord.guestName && ord.guestName !== 'Walk-in' ? ` Ã‚Â· ${ord.guestName}` : ''}
+                        {t('walk_in_badge', 'Walk-in')}{ord.guestName && ord.guestName !== 'Walk-in' ? ` · ${ord.guestName}` : ''}
                       </span>
                     </div>
                   ) : (
@@ -1369,7 +1312,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     // until after it was already served).
                     <div className="mb-2.5 -mt-1">
                       <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                        {ord.roomNumber || t('room_service_badge', 'Room Service')}{ord.guestName ? ` Ã‚Â· ${ord.guestName}` : ''}
+                        {ord.roomNumber || t('room_service_badge', 'Room Service')}{ord.guestName ? ` · ${ord.guestName}` : ''}
                       </span>
                     </div>
                   )}
@@ -1431,7 +1374,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => handleSendPickupReminder(ord, idx, item)}
-                                  className="px-2.5 py-2 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-700 active:scale-98 text-xs font-semibold rounded-lg transition-all shadow-2xs flex items-center justify-center gap-1 cursor-pointer shrink-0"
+                                  className="px-2.5 py-2 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-700 active:scale-98 text-xs font-semibold rounded-lg transition-all shadow-md flex items-center justify-center gap-1 cursor-pointer shrink-0"
                                   title={t('send_pickup_reminder_tooltip')}
                                 >
                                   <Bell className="w-3.5 h-3.5 shrink-0" />
@@ -1439,7 +1382,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => handleMarkDishServed(ord, idx, item)}
-                                  className="px-3.5 py-2 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 active:scale-98 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 text-xs font-semibold rounded-lg transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                                  className="px-3.5 py-2 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 active:scale-98 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 text-xs font-semibold rounded-lg transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
                                   title={t('click_when_served_tooltip', 'Confirm dish has been delivered to guest')}
                                 >
                                   <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
@@ -1460,7 +1403,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => handleSendKitchenReminder(ord, idx, item)}
-                                  className="px-2.5 py-2 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-700 active:scale-98 text-xs font-semibold rounded-lg transition-all shadow-2xs flex items-center justify-center gap-1 cursor-pointer shrink-0"
+                                  className="px-2.5 py-2 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-700 active:scale-98 text-xs font-semibold rounded-lg transition-all shadow-md flex items-center justify-center gap-1 cursor-pointer shrink-0"
                                   title={t('send_reminder_tooltip')}
                                 >
                                   <Bell className="w-3.5 h-3.5 shrink-0" />
@@ -1468,7 +1411,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => handleMarkDishReady(ord, idx, item)}
-                                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white text-xs font-semibold rounded-lg transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white text-xs font-semibold rounded-lg transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
                                 >
                                   <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                                   <span>{t('ready_button', 'Mark Ready')}</span>
@@ -1510,9 +1453,14 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         </div>
         );
       })()}
+          </TabItem>
 
-      {/* TAB 2: CREATE ORDER POS */}
-      {activeTab === 'new_order' && (() => {
+          <TabItem
+            active={activeTab === 'new_order'}
+            title={t('create_resident_order_button', 'Take Order')}
+            icon={UtensilsCrossed}
+          >
+            {(() => {
         const checkedInGuest = checkedInGuests[0];
         const selectedGuest = checkedInGuest || checkedInGuests.find((g) => g.id === selectedGuestId);
         const filteredPosMenuItems = menu.filter((item) => {
@@ -1547,7 +1495,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           return (
             <div
               key={item.id}
-              className="pos-food-card bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-400 hover:shadow-xs p-2.5 flex flex-col justify-between gap-2 transition-all"
+              className="pos-food-card bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-400 hover:shadow-md p-2.5 flex flex-col justify-between gap-2 transition-all"
             >
               <div className="space-y-1.5">
                 <div className="relative w-full h-20 sm:h-16 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 overflow-hidden flex items-center justify-center text-gray-400 dark:text-gray-500">
@@ -1568,7 +1516,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     {item.name}
                   </h4>
                   <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs sm:text-[11px] shrink-0">
-                    Ã¢â€šÂ¹{item.price}
+                    ₹{item.price}
                   </span>
                 </div>
               </div>
@@ -1588,7 +1536,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     className={`aspect-square w-7 h-7 rounded-md shrink-0 font-bold text-xs flex items-center justify-center transition-all ${
                       inCartQty === 0
                         ? 'bg-transparent text-gray-300 dark:text-gray-600 cursor-not-allowed opacity-40'
-                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 active:scale-90 cursor-pointer shadow-2xs'
+                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 active:scale-90 cursor-pointer shadow-md'
                     }`}
                     title="Decrease quantity"
                   >
@@ -1607,7 +1555,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       e.stopPropagation();
                       handleAddToCartWithFeedback(item);
                     }}
-                    className={`aspect-square w-7 h-7 rounded-md shrink-0 font-bold text-xs flex items-center justify-center active:scale-90 transition-all cursor-pointer shadow-2xs ${
+                    className={`aspect-square w-7 h-7 rounded-md shrink-0 font-bold text-xs flex items-center justify-center active:scale-90 transition-all cursor-pointer shadow-md ${
                       isRecentlyAdded
                         ? 'bg-blue-600 text-white scale-95 animate-pulse'
                         : 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600'
@@ -1650,7 +1598,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     onClick={() => setOrderMode('guest')}
                     className={`px-3 py-1.5 rounded-md text-xs transition-all cursor-pointer ${
                       orderMode === 'guest'
-                        ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 font-bold shadow-xs'
+                        ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 font-bold shadow-md'
                         : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white font-medium'
                     }`}
                   >
@@ -1661,7 +1609,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     onClick={() => setOrderMode('walkin')}
                     className={`px-3 py-1.5 rounded-md text-xs transition-all cursor-pointer ${
                       orderMode === 'walkin'
-                        ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 font-bold shadow-xs'
+                        ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 font-bold shadow-md'
                         : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white font-medium'
                     }`}
                   >
@@ -1695,7 +1643,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     onClick={() => setSelectedWalkInTabId(null)}
                     className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
                       selectedWalkInTabId === null
-                        ? 'bg-blue-600 border-blue-600 text-white shadow-xs'
+                        ? 'bg-blue-600 border-blue-600 text-white shadow-md'
                         : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-blue-400'
                     }`}
                   >
@@ -1719,11 +1667,11 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       onClick={() => setSelectedWalkInTabId(tab.id)}
                       className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
                         selectedWalkInTabId === tab.id
-                          ? 'bg-blue-600 border-blue-600 text-white shadow-xs'
+                          ? 'bg-blue-600 border-blue-600 text-white shadow-md'
                           : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-blue-400'
                       }`}
                     >
-                      {tab.label || t('walk_in_badge', 'Walk-in')} Ã‚Â· Ã¢â€šÂ¹{tab.subtotal.toLocaleString('en-IN')}
+                      {tab.label || t('walk_in_badge', 'Walk-in')} · ₹{tab.subtotal.toLocaleString('en-IN')}
                     </button>
                   ))}
                 </div>
@@ -1738,18 +1686,21 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   {/* Quick Search Bar + Category Filter Toggle */}
                   <div className="flex items-center gap-2">
                     <div className="relative flex-1">
-                      <Search className="w-4 h-4 text-gray-400 dark:text-gray-500 absolute left-3.5 top-3 z-10" />
-                      <Input
+                      <FlowbiteTextInput
+                        id="pos-menu-quick-search"
                         type="text"
+                        icon={Search}
                         value={posSearch}
                         onChange={(e) => setPosSearch(e.target.value)}
                         placeholder={t('quick_search_menu_placeholder')}
-                        className="pl-9"
+                        className="w-full"
                       />
                       {posSearch && (
                         <button
+                          type="button"
                           onClick={() => setPosSearch('')}
-                          className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 cursor-pointer z-10"
+                          className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer z-10"
+                          aria-label="Clear search"
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -1760,7 +1711,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       onClick={() => setShowCategoryFilters((v) => !v)}
                       className={`relative h-10 w-10 shrink-0 rounded-lg border flex items-center justify-center transition-all cursor-pointer ${
                         showCategoryFilters
-                          ? 'bg-blue-600 border-blue-600 text-white shadow-2xs'
+                          ? 'bg-blue-600 border-blue-600 text-white shadow-md'
                           : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
                       }`}
                       title={t('toggle_category_filters_tooltip', 'Filter by category')}
@@ -1785,7 +1736,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                             onClick={() => setSelectedPosCategory(cat.id)}
                             className={`px-3 py-1.5 rounded-lg text-xs whitespace-nowrap transition-all cursor-pointer ${
                               isSelected
-                                ? 'border border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 font-bold shadow-xs'
+                                ? 'border border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 font-bold shadow-md'
                                 : 'bg-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 font-medium'
                             }`}
                           >
@@ -1859,7 +1810,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                         >
                           <div className="flex-1 pr-1 truncate min-w-0">
                             <h4 className="kitchen-management__caption font-semibold text-gray-900 dark:text-white text-xs truncate m-0 p-0 leading-tight">
-                              {ci.menuItem.name} <span className="text-gray-400 dark:text-gray-500 font-normal">({`Ã¢â€šÂ¹${ci.menuItem.price}`})</span>
+                              {ci.menuItem.name} <span className="text-gray-400 dark:text-gray-500 font-normal">({`₹${ci.menuItem.price}`})</span>
                             </h4>
                           </div>
 
@@ -1873,12 +1824,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                             <span className="w-5 text-center font-bold text-gray-900 dark:text-white text-xs">
                               {ci.quantity}
                             </span>
-                            <button
-                              onClick={() => handleUpdateCartQuantity(ci.menuItem.id, 1)}
-                              className="btn-cart-qty-plus aspect-square w-6 h-6 rounded-md shrink-0 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 font-bold text-white flex items-center justify-center transition-colors cursor-pointer active:scale-90"
-                            >
-                              <Plus className="w-3 h-3" />
-                            </button>
+                            <Button variant="primary" size="xs" onClick={() => handleUpdateCartQuantity(ci.menuItem.id, 1)} leftIcon={<Plus className="w-3 h-3" />}>
+                              </Button>
                           </div>
                         </div>
                       ))
@@ -1897,18 +1844,13 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide text-2xs">{t('total_label')}</span>
                     <span className="font-bold text-gray-900 dark:text-white text-base">
-                      Ã¢â€šÂ¹{totalCartSum.toFixed(2)}
+                      ₹{totalCartSum.toFixed(2)}
                     </span>
                   </div>
 
-                  <button
-                    onClick={handleOrderSubmit}
-                    disabled={isOrderSubmitDisabled}
-                    title={orderSubmitTitle}
-                    className="btn-send-order-kitchen w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:bg-gray-200 dark:disabled:bg-gray-700 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:cursor-not-allowed text-white font-medium text-xs py-3 rounded-lg shadow-sm transition-all cursor-pointer flex items-center justify-center gap-2 uppercase tracking-wider active:scale-[0.98] min-h-[42px]"
-                  >
-                    <span>{isSubmittingOrder ? t('sending_order_button', 'Sending...') : t('send_order_to_kitchen_button')}</span>
-                  </button>
+                <Button variant="primary" size="lg" onClick={handleOrderSubmit} disabled={isOrderSubmitDisabled} title={orderSubmitTitle}>
+                  <span>{isSubmittingOrder ? t('sending_order_button', 'Sending...') : t('send_order_to_kitchen_button')}</span>
+                </Button>
                 </div>
               </div>
             </div>
@@ -1947,7 +1889,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     >
                       <div className="flex-1 pr-1 truncate min-w-0">
                         <h4 className="kitchen-management__caption font-semibold text-gray-900 dark:text-white text-xs truncate m-0 p-0 leading-tight">
-                          {ci.menuItem.name} <span className="text-gray-400 dark:text-gray-500 font-normal">({`Ã¢â€šÂ¹${ci.menuItem.price}`})</span>
+                          {ci.menuItem.name} <span className="text-gray-400 dark:text-gray-500 font-normal">({`₹${ci.menuItem.price}`})</span>
                         </h4>
                       </div>
 
@@ -1961,12 +1903,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                         <span className="w-5 text-center font-bold text-gray-900 dark:text-white text-xs">
                           {ci.quantity}
                         </span>
-                        <button
-                          onClick={() => handleUpdateCartQuantity(ci.menuItem.id, 1)}
-                          className="btn-cart-qty-plus btn-compact-stepper w-8 h-6 rounded-md shrink-0 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 font-bold text-white flex items-center justify-center transition-colors cursor-pointer active:scale-90"
-                        >
-                          <Plus className="w-3 h-3" />
-                        </button>
+                        <Button variant="primary" size="xs" onClick={() => handleUpdateCartQuantity(ci.menuItem.id, 1)} leftIcon={<Plus className="w-3 h-3" />}>
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -1974,14 +1912,9 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
                 {/* Action Footer */}
                 <div className="p-3 pb-3.5 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shrink-0">
-                  <button
-                    onClick={handleOrderSubmit}
-                    disabled={isOrderSubmitDisabled}
-                    title={orderSubmitTitle}
-                    className="btn-send-order-kitchen w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:bg-gray-200 dark:disabled:bg-gray-700 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:cursor-not-allowed text-white font-medium text-xs py-3 rounded-lg shadow-sm transition-all cursor-pointer flex items-center justify-center gap-2 uppercase tracking-wider active:scale-[0.98] min-h-[42px]"
-                  >
-                    <span>{isSubmittingOrder ? t('sending_order_button', 'Sending...') : t('send_order_to_kitchen_button')}</span>
-                  </button>
+                  <Button variant="primary" size="lg" onClick={handleOrderSubmit} disabled={isOrderSubmitDisabled} title={orderSubmitTitle}>
+                  <span>{isSubmittingOrder ? t('sending_order_button', 'Sending...') : t('send_order_to_kitchen_button')}</span>
+                </Button>
                 </div>
               </div>
             )}
@@ -2007,16 +1940,17 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               </button>
             )}
           </div>
-        );
-      })()}
+          );
+        })()}
+          </TabItem>
 
-      {/* TAB: WALK-IN BILLS - open tabs (running total across every order
-          placed against them) plus recently billed history. Billing a tab
-          opens WalkInTabBillModal, the same itemized/GST/WhatsApp-share
-          pattern a guest's checkout receipt already gets. */}
-      {activeTab === 'walk_in_bills' && (
+          <TabItem
+            active={activeTab === 'walk_in_bills'}
+            title={`${t('walk_in_bills_button', 'Walk-ins')}${walkInTabs.filter((tab) => tab.status === 'open').length > 0 ? ` (${walkInTabs.filter((tab) => tab.status === 'open').length})` : ''}`}
+            icon={Receipt}
+          >
         <div className="space-y-6 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-3.5 sm:p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
+          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <Receipt className="w-4 h-4 text-emerald-600" /> {t('open_walk_in_tabs_heading', 'Open Tabs')}
@@ -2047,13 +1981,13 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                         {tab.items.map((it, idx) => (
                           <div key={idx} className="flex justify-between">
                             <span>{it.quantity}x {it.name}</span>
-                            <span>Ã¢â€šÂ¹{it.lineTotal.toFixed(2)}</span>
+                            <span>₹{it.lineTotal.toFixed(2)}</span>
                           </div>
                         ))}
                       </div>
                     </div>
                     <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700">
-                      <span className="font-bold text-slate-900 dark:text-white text-sm">Ã¢â€šÂ¹{tab.subtotal.toLocaleString('en-IN')}</span>
+                      <span className="font-bold text-slate-900 dark:text-white text-sm">₹{tab.subtotal.toLocaleString('en-IN')}</span>
                       <button
                         type="button"
                         onClick={() => setBillingTab(tab)}
@@ -2069,7 +2003,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           </div>
 
           {walkInTabHistory.length > 0 && (
-            <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200/80 dark:border-slate-700 shadow-xs overflow-hidden">
+            <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200/80 dark:border-slate-700 shadow-md overflow-hidden">
               <div className="p-4 border-b border-slate-100 dark:border-slate-700">
                 <h3 className="font-semibold text-slate-800 dark:text-slate-200 text-sm">{t('recently_billed_heading', 'Recently Billed')}</h3>
               </div>
@@ -2078,23 +2012,21 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   { name: t('walk_in_badge', 'Walk-in'), selector: (row: WalkInTab) => row.label || '', sortable: true, cell: (row: WalkInTab) => <span className="font-semibold text-slate-800 dark:text-slate-200">{row.label || t('walk_in_badge', 'Walk-in')}</span> },
                   { name: t('served_time_column', 'Served At'), selector: (row: WalkInTab) => row.billedAt || '', sortable: true, cell: (row: WalkInTab) => <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400">{row.billedAt ? formatDateTimeDDMMYYYY(row.billedAt) : '-'}</span> },
                   { name: t('payment_method_label', 'Payment Method'), selector: (row: WalkInTab) => row.paymentMethod || '', sortable: true },
-                  { name: t('grand_total_label', 'Grand Total'), selector: (row: WalkInTab) => row.grandTotal || 0, sortable: true, cell: (row: WalkInTab) => <span className="font-semibold text-emerald-700 dark:text-emerald-400">Ã¢â€šÂ¹{(row.grandTotal ?? 0).toLocaleString('en-IN')}</span> },
+                  { name: t('grand_total_label', 'Grand Total'), selector: (row: WalkInTab) => row.grandTotal || 0, sortable: true, cell: (row: WalkInTab) => <span className="font-semibold text-emerald-700 dark:text-emerald-400">₹{(row.grandTotal ?? 0).toLocaleString('en-IN')}</span> },
                 ]}
                 data={walkInTabHistory}
                 pagination
                 paginationPerPage={5}
                 paginationRowsPerPageOptions={[5, 10, 20]}
                 highlightOnHover
-                customStyles={{
-                  headCells: { style: { fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em', color: '#94a3b8', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', paddingLeft: '12px' } },
-                  cells: { style: { paddingLeft: '12px', fontSize: '12px' } },
-                  rows: { style: { minHeight: '48px' } },
-                }}
+                customStyles={flowbiteTableCustomStyles}
               />
             </div>
           )}
         </div>
-      )}
+      </TabItem>
+    </Tabs>
+  )}
 
       {billingTab && (
         <WalkInTabBillModal
@@ -2113,7 +2045,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
       {/* TAB 3: MENU CATALOG */}
       {activeTab === 'menu_catalog' && (
-        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="kitchen-management__subtitle font-semibold text-slate-800 dark:text-slate-200 text-sm">{t('resort_food_beverage_catalog_header')}</h3>
             <button
@@ -2131,7 +2063,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   {item.category}
                 </span>
                 <h4 className="kitchen-management__caption font-semibold text-slate-900 dark:text-white text-sm mt-1">{item.name}</h4>
-                <p className="font-semibold text-emerald-700 dark:text-emerald-400 text-sm mt-0.5">Ã¢â€šÂ¹{item.price}</p>
+                <p className="font-semibold text-emerald-700 dark:text-emerald-400 text-sm mt-0.5">₹{item.price}</p>
               </div>
             ))}
           </div>
@@ -2140,7 +2072,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
       {/* TAB 4: RAW MATERIAL REQUISITIONS */}
       {activeTab === 'requisitions' && (
-        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="kitchen-management__subtitle font-semibold text-slate-800 dark:text-slate-200 text-sm">{t('kitchen_requisitions_header')}</h3>
             <button
@@ -2222,7 +2154,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                               requested_by: req.requestedBy,
                             };
                             const resolved = await resolveTelegramTemplate('kitchen_requisition_approved', reqApprVars);
-                            const reqMsg = resolved || `Ã¢Å“â€¦ <b>MATERIAL REQUISITION APPROVED #${req.id}</b>\nÃ¢â‚¬Â¢ Material: <b>${req.itemName}</b> (${req.requestedQty} ${req.unit})\nÃ¢â‚¬Â¢ Requested By: <b>${req.requestedBy}</b>\nÃ¢â‚¬Â¢ Status: Released & Fulfilled from Store Ã¢Å“â€œ`;
+                            const reqMsg = resolved || `✅ <b>MATERIAL REQUISITION APPROVED #${req.id}</b>\n• Material: <b>${req.itemName}</b> (${req.requestedQty} ${req.unit})\n• Requested By: <b>${req.requestedBy}</b>\n• Status: Released & Fulfilled from Store ✓`;
                             onDispatchTelegram('Requisition Approved', reqMsg, 'kitchen', undefined, 'kitchen_requisition_approved');
                           })();
                         }
@@ -2259,36 +2191,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 className="w-full max-w-xs"
               />
             }
-            customStyles={{
-              subHeader: {
-                style: {
-                  padding: '0 0 12px 0',
-                  minHeight: 0,
-                  backgroundColor: 'transparent',
-                },
-              },
-              headCells: {
-                style: {
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  color: '#64748b',
-                  padding: '12px',
-                  paddingLeft: '12px',
-                },
-              },
-              cells: {
-                style: {
-                  fontSize: '13px',
-                  color: '#334155',
-                  padding: '12px',
-                },
-              },
-              headRow: {
-                style: {
-                  backgroundColor: '#f8fafc',
-                },
-              },
-            }}
+            customStyles={flowbiteTableCustomStyles}
             noDataComponent={
               <div className="py-10 text-center text-slate-400 font-semibold text-xs">
                 {t('no_requisitions_found_text')}
@@ -2302,38 +2205,41 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       {activeTab === 'staff_meals' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           {/* Left Panel: Record Consumption */}
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs space-y-6">
-<h3 className="kitchen-management__subtitle font-semibold text-slate-800 dark:text-slate-200 text-[10px] uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 dark:border-slate-700 pb-3">
-                <Plus className="w-4 h-4" /> {t('record_consumption_heading')}
-              </h3>
+          <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg border border-gray-200 dark:border-gray-700 shadow-md space-y-5">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2 border-b border-gray-200 dark:border-gray-700 pb-3">
+              <Plus className="w-4 h-4 text-blue-600" /> {t('record_consumption_heading')}
+            </h3>
 
             <div className="space-y-4">
-              <Input 
-                label={t('date_time_of_record_label')}
-                type="datetime-local" 
-                value={smDateRecord}
-                onChange={(e) => setSmDateRecord(e.target.value)}
-              />
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">{t('date_time_of_record_label')}</label>
+                <Input 
+                  type="datetime-local" 
+                  value={smDateRecord}
+                  onChange={(e) => setSmDateRecord(e.target.value)}
+                  className="w-full"
+                />
+              </div>
 
               <div>
-                <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 mb-1.5 uppercase">{t('consuming_staff_label')}</label>
-                <div className="grid grid-cols-2 gap-3 p-4 border border-slate-200 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-900/50">
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">{t('consuming_staff_label')}</label>
+                <div className="grid grid-cols-2 gap-2.5 p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900/50">
                   {smStaffList.map(staff => (
-                    <label key={staff} className="flex items-center gap-2 cursor-pointer">
+                    <label key={staff} className="flex items-center gap-2 cursor-pointer text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
                       <input 
                         type="checkbox"
                         checked={smSelectedStaff.includes(staff)}
                         onChange={() => handleSmToggleStaff(staff)}
-                        className="w-4 h-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer"
+                        className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
                       />
-                      <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">{staff}</span>
+                      <span className="truncate">{staff}</span>
                     </label>
                   ))}
                 </div>
               </div>
 
               <div>
-                <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 mb-1.5 uppercase">{t('consumption_type_label')}</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">{t('consumption_type_label')}</label>
                 <StyledSelect
                   value={smConsumptionType}
                   onChange={setSmConsumptionType}
@@ -2347,7 +2253,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 mb-1.5 uppercase">{t('custom_meal_combination_label')}</label>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">{t('custom_meal_combination_label')}</label>
                   <div className="flex gap-2">
                     <StyledSelect
                       className="flex-1"
@@ -2362,7 +2268,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     />
                     <button 
                       onClick={() => setIsCustomMealModalOpen(true)}
-                      className="bg-slate-700 hover:bg-slate-800 text-white px-3 rounded-lg shadow-2xs font-semibold text-xs flex items-center justify-center cursor-pointer transition-all"
+                      className="bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 px-3 rounded-lg border border-gray-300 dark:border-gray-600 font-semibold text-xs flex items-center justify-center cursor-pointer transition-colors"
                     >
                       <span>{t('new_button')}</span>
                     </button>
@@ -2370,8 +2276,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 </div>
 
                 <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">{t('est_cost_value_label')}</label>
                   <Input 
-                    label={t('est_cost_value_label')}
                     type="number" 
                     value={smEstCost}
                     onChange={(e) => setSmEstCost(e.target.value)}
@@ -2381,57 +2287,70 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               </div>
 
               <div>
-                <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 mb-1.5 uppercase">{t('quantity_label')}</label>
-                <div className="flex items-center gap-1 w-32">
-                  <button onClick={() => setSmQuantity(Math.max(1, smQuantity - 1))} type="button" className="w-10 h-10 flex items-center justify-center bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500 text-slate-700 dark:text-white rounded-l-xl font-semibold transition-colors cursor-pointer shadow-2xs">-</button>
-                  <div className="h-10 flex-1 flex items-center justify-center bg-white dark:bg-slate-900 border-y border-slate-300 dark:border-slate-600 text-sm font-semibold text-slate-700 dark:text-slate-200 shadow-2xs">{smQuantity}</div>
-                  <button onClick={() => setSmQuantity(smQuantity + 1)} type="button" className="w-10 h-10 flex items-center justify-center bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500 text-slate-700 dark:text-white rounded-r-xl font-semibold transition-colors cursor-pointer shadow-2xs">+</button>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">{t('quantity_label')}</label>
+                <div className="flex items-center w-32 border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden bg-white dark:bg-gray-700">
+                  <button 
+                    onClick={() => setSmQuantity(Math.max(1, smQuantity - 1))} 
+                    type="button" 
+                    className="w-10 h-9 flex items-center justify-center bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-white font-bold transition-colors cursor-pointer border-r border-gray-200 dark:border-gray-600"
+                  >
+                    -
+                  </button>
+                  <div className="h-9 flex-1 flex items-center justify-center text-xs font-bold text-gray-900 dark:text-white">{smQuantity}</div>
+                  <button 
+                    onClick={() => setSmQuantity(smQuantity + 1)} 
+                    type="button" 
+                    className="w-10 h-9 flex items-center justify-center bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-white font-bold transition-colors cursor-pointer border-l border-gray-200 dark:border-gray-600"
+                  >
+                    +
+                  </button>
                 </div>
               </div>
 
-              <div className="pt-4">
+              <div className="pt-2">
                 {smError && (
-                  <p className="text-red-500 text-[10px] font-semibold mb-2 text-center animate-pulse">{smError}</p>
+                  <p className="text-red-500 text-xs font-medium mb-2 text-center">{smError}</p>
                 )}
-                <button type="button" onClick={handleLogStaffMeal} className="w-full mx-auto block py-3 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-lg shadow-2xs transition-all cursor-pointer text-xs">
-                  {t('log_staff_meal_button')}
-                </button>
+<Button variant="primary" size="sm" onClick={handleLogStaffMeal} leftIcon={<Plus className="w-4 h-4" />}>
+                  <span>{t('log_staff_meal_button')}</span>
+                </Button>
               </div>
             </div>
           </div>
 
           {/* Right Panel: Monthly Tracking Log */}
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs flex flex-col h-full">
-            <h3 className="kitchen-management__subtitle font-semibold text-slate-800 dark:text-slate-200 text-[10px] uppercase tracking-wider flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3 mb-4">
+          <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg border border-gray-200 dark:border-gray-700 shadow-md flex flex-col h-full">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-3 mb-4">
               <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-cyan-500" /> {t('monthly_tracking_log_heading')}
+                <Clock className="w-4 h-4 text-blue-600" /> 
+                <span>{t('monthly_tracking_log_heading')}</span>
               </div>
-              <span className="text-slate-400 font-semibold text-[10px]">{smLogsLoading ? 'Ã¢â‚¬Â¦' : smLogs.length} {t('entries_suffix')}</span>
+              <span className="text-gray-500 dark:text-gray-400 font-medium text-xs">{smLogsLoading ? '…' : smLogs.length} {t('entries_suffix')}</span>
             </h3>
             
-            <div className="flex-1 overflow-auto pr-2 custom-scrollbar space-y-4">
+            <div className="flex-1 overflow-auto custom-scrollbar space-y-4">
               {/* Mobile Card Stack View (md:hidden) */}
               <div className="md:hidden space-y-2.5">
                 {smLogs.slice((smPage - 1) * 10, smPage * 10).map((row: any, idx: number) => (
-                  <div key={row.id || idx} className="p-3.5 bg-slate-50 dark:bg-slate-900/60 rounded-lg border border-slate-200/80 dark:border-slate-700/80 space-y-2 text-xs">
-                    <div className="flex items-center justify-between gap-2 border-b border-slate-200/60 dark:border-slate-800 pb-2">
-                      <span className="font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                  <div key={row.id || idx} className="p-3 bg-gray-50 dark:bg-gray-900/60 rounded-lg border border-gray-200 dark:border-gray-700 space-y-2 text-xs">
+                    <div className="flex items-center justify-between gap-2 border-b border-gray-200 dark:border-gray-700/60 pb-2">
+                      <span className="font-mono text-2xs font-medium text-gray-500 dark:text-gray-400">
                         {row.date}
                       </span>
-                      <span className="font-semibold text-slate-800 dark:text-slate-200 bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 px-2 py-0.5 rounded-md border border-cyan-200 dark:border-cyan-800 text-[10px]">
+                      <span className="font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800 text-2xs">
                         {row.type || 'Staff Meal'}
                       </span>
                     </div>
                     <div>
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400">Staff Members:</div>
-                      <div className="font-semibold text-slate-800 dark:text-slate-200">{row.staff}</div>
+                      <div className="text-2xs text-gray-500 dark:text-gray-400">Staff Members:</div>
+                      <div className="font-semibold text-gray-900 dark:text-white">{row.staff}</div>
                     </div>
                     <div>
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400">Food Consumed:</div>
-                      <div className="font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+                      <div className="text-2xs text-gray-500 dark:text-gray-400">Food Consumed:</div>
+                      <div className="font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
                         {row.food}
                         {row.hasTag && (
-                          <span className="w-3.5 h-3.5 inline-flex items-center justify-center bg-amber-200 rounded-sm text-[8px] text-amber-700 font-semibold border border-amber-300">G</span>
+                          <span className="w-3.5 h-3.5 inline-flex items-center justify-center bg-amber-100 rounded text-3xs text-amber-700 font-bold border border-amber-300">G</span>
                         )}
                       </div>
                     </div>
@@ -2445,18 +2364,18 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       type="button"
                       disabled={smPage === 1}
                       onClick={() => setSmPage((p) => Math.max(1, p - 1))}
-                      className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+                      className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-semibold text-gray-700 dark:text-gray-300 disabled:opacity-40 cursor-pointer"
                     >
                       Previous
                     </button>
-                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
                       Page {smPage} of {Math.ceil(smLogs.length / 10)}
                     </span>
                     <button
                       type="button"
                       disabled={smPage >= Math.ceil(smLogs.length / 10)}
                       onClick={() => setSmPage((p) => Math.min(Math.ceil(smLogs.length / 10), p + 1))}
-                      className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+                      className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-semibold text-gray-700 dark:text-gray-300 disabled:opacity-40 cursor-pointer"
                     >
                       Next
                     </button>
@@ -2469,34 +2388,34 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 <DataTable
                   columns={[
                     {
-                      name: t('date_time_column'),
+                      name: 'DATE & TIME',
                       selector: (row: any) => row.date,
                       sortable: true,
                       grow: 1,
                       cell: (row: any) => (
-                        <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
                           {row.date.split('\n').map((l: string, idx: number) => <div key={idx}>{l}</div>)}
                         </span>
                       ),
                     },
                     {
-                      name: t('staff_members_column'),
+                      name: 'STAFF MEMBERS',
                       selector: (row: any) => row.staff,
                       sortable: true,
                       grow: 2,
                       cell: (row: any) => (
-                        <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300 leading-relaxed">{row.staff}</span>
+                        <span className="text-xs font-semibold text-gray-900 dark:text-white leading-relaxed">{row.staff}</span>
                       ),
                     },
                     {
-                      name: t('total_food_consumed_column'),
+                      name: 'TOTAL FOOD CONSUMED',
                       selector: (row: any) => row.food,
                       grow: 2,
                       cell: (row: any) => (
-                        <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 relative">
+                        <span className="text-xs font-medium text-gray-700 dark:text-gray-300 relative inline-flex items-center gap-1.5">
                           {row.food}
                           {row.hasTag && (
-                            <span className="ml-1.5 w-3 h-3 inline-flex items-center justify-center bg-amber-200 rounded-sm text-[7px] text-amber-700 font-semibold border border-amber-300">G</span>
+                            <span className="w-3.5 h-3.5 inline-flex items-center justify-center bg-amber-100 rounded text-3xs text-amber-700 font-bold border border-amber-300">G</span>
                           )}
                         </span>
                       ),
@@ -2514,13 +2433,9 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   paginationRowsPerPageOptions={[10, 25, 50]}
                   highlightOnHover
                   noHeader
-                  customStyles={{
-                    headCells: { style: { fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' as const, color: '#94a3b8', backgroundColor: '#f8fafc', paddingLeft: '12px' } },
-                    cells: { style: { fontSize: '10px', paddingLeft: '12px' } },
-                    rows: { style: { minHeight: '44px' } },
-                  }}
+                  customStyles={flowbiteTableCustomStyles}
                   noDataComponent={
-                    <div className="py-8 text-center text-slate-400 font-semibold text-xs">{t('no_meal_logs_text')}</div>
+                    <div className="py-8 text-center text-gray-400 font-medium text-xs">{t('no_meal_logs_text')}</div>
                   }
                 />
               </div>
@@ -2587,7 +2502,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           </Modal>
 
           {/* Header */}
-          <div className="bg-white dark:bg-slate-800 p-5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs">
+          <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md">
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
                 <h3 className="kitchen-management__subtitle text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
@@ -2607,7 +2522,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   placeholder={t('search_dishes_placeholder')}
                   options={menu.map(m => ({
                     value: String(m.id),
-                    label: `${m.name} Ã¢â‚¬â€ Ã¢â€šÂ¹${m.price}`,
+                    label: `${m.name} — ₹${m.price}`,
                   }))}
                 />
               </div>
@@ -2615,7 +2530,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           </div>
 
           {/* Recipe Name + Yield + Servings Row */}
-          <div className="bg-white dark:bg-slate-800 p-5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs">
+          <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Recipe Name */}
               <div>
@@ -2695,34 +2610,34 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
           {/* Metrics Cards */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
-            <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs">
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md">
               <p className="text-slate-500 dark:text-slate-400 font-semibold uppercase text-[10px]">{t('cost_per_portion_label')}</p>
-              <p className="text-lg font-semibold text-slate-900 dark:text-white mt-1">Ã¢â€šÂ¹{costPerPortion.toFixed(2)}</p>
+              <p className="text-lg font-semibold text-slate-900 dark:text-white mt-1">₹{costPerPortion.toFixed(2)}</p>
               <span className="text-[10px] text-slate-400">{t('single_serving_cost_text')}</span>
             </div>
-            <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs">
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md">
               <p className="text-slate-500 dark:text-slate-400 font-semibold uppercase text-[10px]">{t('batch_cost_label')} ({servings}x)</p>
-              <p className="text-lg font-semibold text-amber-700 dark:text-amber-400 mt-1">Ã¢â€šÂ¹{totalBatchCost.toFixed(2)}</p>
+              <p className="text-lg font-semibold text-amber-700 dark:text-amber-400 mt-1">₹{totalBatchCost.toFixed(2)}</p>
               <span className="text-[10px] text-slate-400">{servings} {t('portions_total_text')}</span>
             </div>
-            <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs">
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md">
               <p className="text-slate-500 dark:text-slate-400 font-semibold uppercase text-[10px]">{t('selling_price_label')}</p>
-              <p className="text-lg font-semibold text-slate-900 dark:text-white mt-1">Ã¢â€šÂ¹{dishSellingPrice}</p>
-              <span className="text-[10px] text-slate-400">{t('batch_total_text')} Ã¢â€šÂ¹{scaledSellingPrice.toLocaleString()}</span>
+              <p className="text-lg font-semibold text-slate-900 dark:text-white mt-1">₹{dishSellingPrice}</p>
+              <span className="text-[10px] text-slate-400">{t('batch_total_text')} ₹{scaledSellingPrice.toLocaleString()}</span>
             </div>
-            <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs">
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md">
               <p className="text-slate-500 dark:text-slate-400 font-semibold uppercase text-[10px]">{t('food_cost_percent_label')}</p>
               <p className={`text-lg font-semibold mt-1 ${foodCostPercentage > 30 ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>{foodCostPercentage.toFixed(1)}%</p>
               <span className={`text-[10px] ${foodCostPercentage > 30 ? 'text-red-500' : 'text-blue-500'}`}>{foodCostPercentage > 30 ? t('above_30_target_text') : t('within_target_text')}</span>
             </div>
-            <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs">
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md">
               <p className="text-slate-500 dark:text-slate-400 font-semibold uppercase text-[10px]">{t('profit_per_portion_label')}</p>
-              <p className={`text-lg font-semibold mt-1 ${profitPerPortion >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>Ã¢â€šÂ¹{profitPerPortion.toFixed(2)}</p>
+              <p className={`text-lg font-semibold mt-1 ${profitPerPortion >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>₹{profitPerPortion.toFixed(2)}</p>
               <span className="text-[10px] text-slate-400">{t('margin_text')} {grossProfitMargin.toFixed(1)}%</span>
             </div>
-            <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs">
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md">
               <p className="text-slate-500 dark:text-slate-400 font-semibold uppercase text-[10px]">{t('total_profit_label')} ({servings}x)</p>
-              <p className={`text-lg font-semibold mt-1 ${totalProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>Ã¢â€šÂ¹{totalProfit.toFixed(2)}</p>
+              <p className={`text-lg font-semibold mt-1 ${totalProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>₹{totalProfit.toFixed(2)}</p>
               <span className="text-[10px] text-slate-400">{t('yield_text')} {yieldFactor} portion{yieldFactor !== 1 ? 's' : ''}</span>
             </div>
           </div>
@@ -2773,7 +2688,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-xs">
             {/* Ingredients Table */}
             <div className="lg:col-span-2">
-              <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
+              <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md overflow-hidden">
                 <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 flex items-center justify-between">
                   <h4 className="kitchen-management__caption font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                     <Boxes className="w-4 h-4 text-indigo-500" /> {t('ingredients_heading')}
@@ -2822,7 +2737,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       sortable: true,
                       width: '100px',
                       right: true,
-                      cell: (row: RecipeIngredient) => <span className="font-mono text-slate-600">Ã¢â€šÂ¹{row.costPerUnit}</span>,
+                      cell: (row: RecipeIngredient) => <span className="font-mono text-slate-600">₹{row.costPerUnit}</span>,
                     },
                     {
                       name: t('total_column'),
@@ -2830,7 +2745,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       sortable: true,
                       width: '100px',
                       right: true,
-                      cell: (row: RecipeIngredient) => <span className="font-semibold text-emerald-700 dark:text-emerald-400">Ã¢â€šÂ¹{(row.quantity * servings * row.costPerUnit).toFixed(2)}</span>,
+                      cell: (row: RecipeIngredient) => <span className="font-semibold text-emerald-700 dark:text-emerald-400">₹{(row.quantity * servings * row.costPerUnit).toFixed(2)}</span>,
                     },
                     {
                       name: '',
@@ -2854,11 +2769,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   noHeader
                   highlightOnHover
                   responsive
-                  customStyles={{
-                    headCells: { style: { fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', backgroundColor: '#f8fafc', padding: '10px 12px', paddingLeft: '12px' } },
-                    cells: { style: { fontSize: '12px', color: '#334155', padding: '10px 12px' } },
-                    rows: { style: { minHeight: '42px' } },
-                  }}
+                  customStyles={flowbiteTableCustomStyles}
                   noDataComponent={
                     <div className="py-12 text-center">
                       <Boxes className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
@@ -2871,7 +2782,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             </div>
 
             {/* Add Ingredient Form */}
-            <div className="bg-white dark:bg-slate-800 p-5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs space-y-3 h-fit">
+            <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md space-y-3 h-fit">
               <h4 className="kitchen-management__caption font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2"><Plus className="w-4 h-4 text-indigo-500" /> Add Ingredient</h4>
               <form onSubmit={handleAddIngredient} className="app-form app-form--add-ingredient space-y-3">
                 <div>
@@ -2886,7 +2797,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                         .filter((item) => !ingredientCategoryNames.length || ingredientCategoryNames.includes(item.category))
                         .map(item => ({
                           value: item.id,
-                          label: `${item.name} (${item.category}) Ã¢â‚¬â€ ${item.currentStock} ${item.unit}`,
+                          label: `${item.name} (${item.category}) — ${item.currentStock} ${item.unit}`,
                         }))}
                     />
                   ) : (
@@ -2925,7 +2836,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
                 <div>
                   <Input
-                    label="Cost per Unit (Ã¢â€šÂ¹)"
+                    label="Cost per Unit (₹)"
                     type="number"
                     required
                     value={newIngCost}
@@ -2933,12 +2844,9 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   />
                 </div>
 
-                <button
-                  type="submit"
-                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-xs transition-all cursor-pointer text-xs flex items-center justify-center gap-1.5"
-                >
-                  <Plus className="w-3.5 h-3.5" /> {t('add_to_recipe_button')}
-                </button>
+                <Button type="submit" variant="primary" size="sm" leftIcon={<Plus className="w-3.5 h-3.5" />}>
+                  {t('add_to_recipe_button')}
+                </Button>
               </form>
             </div>
           </div>
@@ -2990,10 +2898,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('item_image_upload_label')}</label>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <label className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-2 rounded-lg cursor-pointer flex items-center gap-1.5 shadow-2xs text-xs shrink-0 transition-all">
+                    <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition-colors border border-slate-300 dark:border-slate-600">
                       <Upload className="w-4 h-4" />
                       <span>{t('upload_image_button')}</span>
-                      <Input
+                      <input
                         type="file"
                         accept="image/*"
                         className="hidden"
@@ -3160,13 +3068,13 @@ const parseFlexibleTimestamp = (s: string): Date | null => {
 const parseAndDiffMinutes = (readyAt: string, servedAt: string): string => {
   const readyDate = parseFlexibleTimestamp(readyAt);
   const servedDate = parseFlexibleTimestamp(servedAt);
-  if (!readyDate || !servedDate) return 'Ã¢â‚¬â€';
+  if (!readyDate || !servedDate) return '—';
   const diffMin = Math.round((servedDate.getTime() - readyDate.getTime()) / 60000);
-  return diffMin >= 0 ? `${diffMin} min` : 'Ã¢â‚¬â€';
+  return diffMin >= 0 ? `${diffMin} min` : '—';
 };
 
 const CurrentGuestServedDishes: React.FC<{ servedLogs: ServedLogEntry[] }> = ({ servedLogs }) => {
-  // Search filter state Ã¢â‚¬â€ must live inside the component so the Input
+  // Search filter state — must live inside the component so the Input
   // is controlled and actually narrows the table rows.
   const [filterText, setFilterText] = React.useState('');
 
@@ -3216,7 +3124,7 @@ const CurrentGuestServedDishes: React.FC<{ servedLogs: ServedLogEntry[] }> = ({ 
 
   return (
     <div className="mt-8">
-      <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200/80 dark:border-slate-700 shadow-xs p-4 space-y-3.5">
+      <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200/80 dark:border-slate-700 shadow-md p-4 space-y-3.5">
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/60 pb-3">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-500 shrink-0" />
@@ -3342,10 +3250,7 @@ const CurrentGuestServedDishes: React.FC<{ servedLogs: ServedLogEntry[] }> = ({ 
             paginationPerPage={10}
             paginationRowsPerPageOptions={[10, 15, 25, 50, 100]}
             highlightOnHover
-            customStyles={{
-              headCells: { style: { fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em', color: '#94a3b8', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', paddingLeft: '12px' } },
-              cells: { style: { paddingTop: '10px', paddingBottom: '10px', paddingLeft: '12px' } },
-            }}
+            customStyles={flowbiteTableCustomStyles}
           />
         </div>
       </div>

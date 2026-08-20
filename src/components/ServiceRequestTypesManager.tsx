@@ -99,7 +99,7 @@ export const ServiceRequestTypesManager: React.FC = () => {
     const ok = await saveSystemServiceRequestTypeInDB({ category, label });
     setSavingType(false);
     if (ok) {
-      flash('success', 'Request type added â€” changes cascade to all properties immediately');
+      flash('success', 'Request type added — changes cascade to all properties immediately');
       setNewTypeLabel('');
       setNewTypeCategory(STANDARD_CATEGORIES[0]);
       loadItems();

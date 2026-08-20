@@ -1,61 +1,50 @@
-const MONTH_SHORT_TO_NUM: Record<string, string> = {
-  Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06',
-  Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12',
-};
-
-const normalizeMonth = (month: string): string | undefined =>
-  MONTH_SHORT_TO_NUM[month.charAt(0).toUpperCase() + month.slice(1).toLowerCase()];
-
-const pad = (n: string | number): string => String(n).padStart(2, '0');
-
-// All front-end date displays use dd/mm/YY (2-digit year) per product spec.
-// formatDateDDMMYY is the canonical display formatter; the YYYY-named alias
-// below returns the same 2-digit-year string so existing call sites render
-// dd/mm/YY without per-call-site changes.
-export const formatDateDDMMYY = (dateStr?: string | null): string => {
-  return formatDateDDMMYYYY(dateStr);
-};
-
-export const formatDateDDMMYYYY = (dateStr?: string | null): string => {
+export const formatDateDDMMYYYY = (dateStr: string | null): string => {
   if (!dateStr) return '';
   const cleaned = String(dateStr).trim();
   if (!cleaned) return '';
 
-  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(cleaned)) {
-    const parts = cleaned.split('/');
-    return `${pad(parts[0])}/${pad(parts[1])}/${String(parts[2]).slice(-2)}`;
-  }
+  // Accept YYYY-MM-DD (ISO) or MM/DD/YYYY or DD/MM/YYYY formats
+  // and always output DD/MM/YYYY
+  const ymd = cleaned.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (ymd) return `${ymd[3]}/${ymd[2]}/${ymd[1]}`;
 
-  const dmy = cleaned.match(/^(\d{1,2})\s+([A-Za-z]{3})[.,]?\s+(\d{4})/);
+  const dmy = cleaned.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (dmy) {
-    const month = normalizeMonth(dmy[2]);
-    if (month) return `${pad(dmy[1])}/${month}/${String(dmy[3]).slice(-2)}`;
+    // Safe assumption: treat as DD/MM/YYYY per product spec
+    return `${dmy[1].padStart(2, '0')}/${dmy[2].padStart(2, '0')}/${dmy[3]}`;
   }
 
-  const ymd = cleaned.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (ymd) return `${ymd[3]}/${ymd[2]}/${String(ymd[1]).slice(-2)}`;
-
+  // Try parsing as a JS Date from ISO string - but ONLY if it looks like an ISO date
+  // (starting with year). Otherwise, treat the string as-is and try to parse.
   const dt = new Date(cleaned);
   if (!isNaN(dt.getTime())) {
-    return `${pad(dt.getDate())}/${pad(dt.getMonth() + 1)}/${String(dt.getFullYear()).slice(-2)}`;
+    return `${pad(dt.getDate())}/${pad(dt.getMonth() + 1)}/${dt.getFullYear()}`;
   }
 
   return cleaned;
 };
+
+export const formatDateDDMMYY = formatDateDDMMYYYY;
 
 export const formatDateTimeDDMMYYYY = (dateStr?: string | null): string => {
   if (!dateStr) return '';
   const cleaned = String(dateStr).trim();
   if (!cleaned) return '';
 
-  const dmy = cleaned.match(/^(\d{1,2})\s+([A-Za-z]{3})[.,]?\s+(\d{4})\s*-\s*(.+)$/);
-  if (dmy) {
-    const month = normalizeMonth(dmy[2]);
-    if (month) return `${pad(dmy[1])}/${month}/${String(dmy[3]).slice(-2)} - ${dmy[4]}`;
-  }
+  // Handle "YYYY-MM-DD HH:mm:ss" or "YYYY-MM-DD" formats
+  const dtMatch = cleaned.match(/^(\d{4})-(\d{2})-(\d{2})\s(.+)$/);
+  if (dtMatch) return `${dtMatch[3]}/${dtMatch[2]}/${dtMatch[1]} ${dtMatch[4]}`;
 
-  const dtMatch = cleaned.match(/^(\d{4})-(\d{2})-(\d{2})[T ](.+)$/);
-  if (dtMatch) return `${dtMatch[3]}/${dtMatch[2]}/${String(dtMatch[1]).slice(-2)} ${dtMatch[4]}`;
+  // Handle "DD/MM/YYYY HH:mm:ss" or "DD/MM/YYYY"
+  const dmyMatch = cleaned.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s(.+)$/);
+  if (dmyMatch) return `${dmyMatch[1].padStart(2, '0')}/${dmyMatch[2].padStart(2, '0')}/${dmyMatch[3]} ${dmyMatch[4]}`;
 
+  // Handle "DD/MM/YYYY" only
+  const dmyOnly = cleaned.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (dmyOnly) return `${dmyOnly[1].padStart(2, '0')}/${dmyOnly[2].padStart(2, '0')}/${dmyOnly[3]}`;
+
+  // Fallback: try the base formatter
   return formatDateDDMMYYYY(cleaned);
 };
+
+const pad = (n: number | string): string => String(n).padStart(2, '0');

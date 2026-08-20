@@ -14,8 +14,8 @@ const FORMAT_BUTTONS = [
   { label: 'B', icon: Bold, wrap: ['*', '*'], title: 'Bold' },
   { label: 'I', icon: Italic, wrap: ['_', '_'], title: 'Italic' },
   { label: 'S', icon: Strikethrough, wrap: ['~', '~'], title: 'Strikethrough' },
-  { label: 'â€¢', icon: List, wrap: ['\nâ€¢ ', ''], title: 'Bullet list' },
-  { label: 'â€œ', icon: Quote, wrap: ['\n> ', ''], title: 'Quote' },
+  { label: '•', icon: List, wrap: ['\n• ', ''], title: 'Bullet list' },
+  { label: '“', icon: Quote, wrap: ['\n> ', ''], title: 'Quote' },
   { label: '</>', icon: Code, wrap: ['```', '```'], title: 'Code block' },
 ];
 

@@ -299,7 +299,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
         subtitle={t('service_requests_description', 'Housekeeping, maintenance, and other ad-hoc requests — logged by any staff member, nudged to Admin on Telegram.')}
       >
         <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="secondary" size="sm" onClick={() => setIsManageModalOpen(true)} className="flex items-center gap-1.5 shadow-xs text-xs">
+          <Button variant="secondary" size="sm" onClick={() => setIsManageModalOpen(true)} className="flex items-center gap-1.5 shadow-md text-xs">
             <Settings className="w-4 h-4 text-slate-500 dark:text-slate-400" />
             Manage Custom Types
           </Button>
@@ -325,7 +325,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                 </div>
                 <div className="space-y-2.5 service-requests-management__request-list">
                   {pending.map((r) => (
-                    <div key={r.id} className="flex items-center justify-between gap-3 p-4 bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg service-requests-management__request-item service-requests-management__request-item--pending shadow-2xs">
+                    <div key={r.id} className="flex items-center justify-between gap-3 p-4 bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg service-requests-management__request-item service-requests-management__request-item--pending shadow-md">
                       <div className="flex-1 min-w-0 service-requests-management__request-details">
                         <div className="flex items-center gap-2 flex-wrap service-requests-management__request-header">
                           <span className="font-bold text-slate-900 dark:text-white text-sm service-requests-management__request-type">{getRequestTypeLabel(r.requestType)}</span>
@@ -366,7 +366,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                 </div>
                 <div className="space-y-2.5 service-requests-management__request-list">
                   {paginatedFulfilled.map((r) => (
-                    <div key={r.id} className="flex items-center justify-between gap-3 p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-lg opacity-85 service-requests-management__request-item service-requests-management__request-item--fulfilled shadow-2xs">
+                    <div key={r.id} className="flex items-center justify-between gap-3 p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-lg opacity-85 service-requests-management__request-item service-requests-management__request-item--fulfilled shadow-md">
                       <div className="flex-1 min-w-0 service-requests-management__request-details">
                         <div className="flex items-center gap-2 flex-wrap service-requests-management__request-header">
                           <span className="font-semibold text-slate-900 dark:text-white text-sm service-requests-management__request-type">{getRequestTypeLabel(r.requestType)}</span>

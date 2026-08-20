@@ -38,6 +38,14 @@
    checking against flowbite/src/themes/default.css, which does. */
 @import "flowbite/src/themes/default";
 
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+body {
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
 /* Root font-size deliberately left at the browser default (16px, so
    1rem = 16px) - this used to be forced to 14px, which shrank every
    rem-based Tailwind/Flowbite utility (padding, gaps, border-radius, text)
@@ -996,6 +1004,113 @@ html.dark .rdt_responsiveWrapper::-webkit-scrollbar-track {
   scrollbar-color: rgba(99, 102, 241, 0.4) rgba(0, 0, 0, 0.05);
 }
 
+/* ==========================================================================
+   React Data Table - Unified Flowbite Table Theme
+   ========================================================================== */
+:root {
+  --table-head-bg: #f9fafb; /* bg-gray-50 */
+  --table-head-color: #374151; /* text-gray-700 */
+  --table-body-color: #6b7280; /* text-gray-500 */
+  --table-border-color: #e5e7eb; /* border-gray-200 */
+  --table-row-bg: #ffffff;
+  --table-row-hover: #f9fafb; /* hover:bg-gray-50 */
+}
+
+html.dark, .dark {
+  --table-head-bg: #374151; /* dark:bg-gray-700 */
+  --table-head-color: #9ca3af; /* dark:text-gray-400 */
+  --table-body-color: #9ca3af; /* dark:text-gray-400 */
+  --table-border-color: #4b5563; /* dark:border-gray-600 */
+  --table-row-bg: #1f2937; /* dark:bg-gray-800 */
+  --table-row-hover: #374151; /* dark:hover:bg-gray-700 */
+}
+
+.rdt_Table {
+  background-color: transparent !important;
+}
+
+.rdt_TableHead {
+  background-color: var(--table-head-bg) !important;
+}
+
+.rdt_TableHeadRow {
+  background-color: var(--table-head-bg) !important;
+  border-bottom: 1px solid var(--table-border-color) !important;
+  min-height: 44px !important;
+}
+
+.rdt_TableCol, .rdt_TableCol_Sortable {
+  background-color: var(--table-head-bg) !important;
+  font-size: 0.75rem !important; /* text-xs (12px) */
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  color: var(--table-head-color) !important;
+  padding-left: 16px !important;
+  padding-right: 16px !important;
+  padding-top: 12px !important; /* py-3 (12px) */
+  padding-bottom: 12px !important;
+}
+
+.rdt_TableCol:first-child, .rdt_TableCell:first-child {
+  padding-left: 20px !important;
+}
+
+.rdt_TableCol:last-child, .rdt_TableCell:last-child {
+  padding-right: 20px !important;
+}
+
+.rdt_TableRow {
+  background-color: var(--table-row-bg) !important;
+  color: var(--table-body-color) !important;
+  min-height: 52px !important;
+  border-bottom: 1px solid var(--table-border-color) !important;
+}
+
+.rdt_TableRow:hover {
+  background-color: var(--table-row-hover) !important;
+}
+
+.rdt_TableCell {
+  font-size: 0.875rem !important; /* text-sm (14px) */
+  color: var(--table-body-color) !important;
+  padding-left: 16px !important;
+  padding-right: 16px !important;
+  padding-top: 14px !important;
+  padding-bottom: 14px !important;
+}
+
+/* The select-all header checkbox (.rdt_columnCheckbox) and each row's
+   checkbox cell (.rdt_cellCheckbox) are library-fixed 48px, centered flex
+   boxes rendered with an internal $noPadding flag specifically so the two
+   line up - the generic padding-left/right rules above (and the :first-child
+   rule below) fight that and can shift the header checkbox out of line with
+   the row checkboxes beneath it. Zero the padding back out on both so they
+   stay centered in the same 48px column regardless of the row/first-child
+   padding tuning above. */
+.rdt_TableCol.rdt_columnCheckbox,
+.rdt_TableCell.rdt_cellCheckbox {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.rdt_Pagination {
+  background-color: var(--table-row-bg) !important;
+  color: var(--table-body-color) !important;
+  border-top: 1px solid var(--table-border-color) !important;
+}
+
+.rdt_Pagination select {
+  background-color: transparent !important;
+  color: inherit !important;
+}
+
+.rdt_Pagination button {
+  fill: var(--table-head-color) !important;
+}
+
+
+
 /* Hide scrollbars cleanly on tab navigation bars while preserving touch/trackpad swipe */
 .no-scrollbar::-webkit-scrollbar {
   display: none !important;
@@ -1006,6 +1121,38 @@ html.dark .rdt_responsiveWrapper::-webkit-scrollbar-track {
   -ms-overflow-style: none !important;
   scrollbar-width: none !important;
 }
+
+/* ==========================================================================
+   Flowbite Tabs - Flush & Connected to Content Block
+   ========================================================================== */
+div:has(> [role="tablist"]) {
+  gap: 0 !important;
+}
+
+[role="tablist"] {
+  margin-bottom: 0 !important;
+}
+
+[role="tabpanel"] {
+  padding-top: 0 !important;
+}
+
+/* Active tab reads as "lifted"/connected to the content panel below it, so
+   it should match that panel's own background - which across the app is
+   overwhelmingly bg-white dark:bg-slate-800 - instead of flowbite-react's
+   stock default-variant active fill (bg-gray-100 dark:bg-gray-800). This is
+   a single universal rule targeting the real ARIA contract every Tabs
+   instance renders (role="tab" + aria-selected="true" from Tabs.js), not a
+   per-page theme override, so it applies to every Tabs usage app-wide
+   without editing each one individually (20 Aug 2026). */
+[role="tab"][aria-selected="true"] {
+  background-color: white !important;
+}
+
+.dark [role="tab"][aria-selected="true"] {
+  background-color: #1e293b !important; /* slate-800, matching the card background beneath */
+}
+
 
 /* ==========================================================================
    App-wide z-index scale (17 Aug 2026) - READ THIS before adding or

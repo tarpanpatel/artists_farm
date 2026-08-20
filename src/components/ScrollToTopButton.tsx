@@ -61,9 +61,9 @@ export const ScrollToTopButton: React.FC<ScrollToTopButtonProps> = ({ threshold 
       onClick={handleClick}
       aria-label="Scroll to top"
       title="Scroll to top"
-      className="md:hidden fixed bottom-24 right-4 z-40 w-12 h-12 aspect-square shrink-0 rounded-full bg-blue-600 hover:bg-blue-700 active:scale-95 text-white shadow-lg transition-all flex items-center justify-center cursor-pointer scroll-to-top-button"
+      className="fixed bottom-24 right-4 z-40 w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-700 active:scale-95 text-white shadow-lg flex items-center justify-center cursor-pointer transition-transform"
     >
-      <ArrowUp className="w-5 h-5 shrink-0 scroll-to-top-button__icon" />
+      <ArrowUp className="w-5 h-5 shrink-0" />
     </button>
   );
 };

@@ -19,7 +19,7 @@ import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
 import { useAuth } from '../contexts/AuthContext';
 import { StyledSelect } from './StyledSelect';
-import { Input } from './Input';
+import { DateRangePicker } from './DateRangePicker';
 import { PageHeader } from './PageHeader';
 import { t } from '../i18n/en';
 
@@ -422,27 +422,17 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
           )}
 
           {exportRangeType === 'custom' && (
-            <>
-              <div>
-                  <Input
-                    label={t('start_date_label', 'Start Date')}
-                    leftIcon={<Calendar className="w-4 h-4 text-slate-500" />}
-                    type="date"
-                    value={customStartDate}
-                    onChange={(e) => setCustomStartDate(e.target.value)}
-                  />
-              </div>
-
-              <div>
-                  <Input
-                    label={t('end_date_label', 'End Date')}
-                    leftIcon={<Calendar className="w-4 h-4 text-slate-500" />}
-                    type="date"
-                    value={customEndDate}
-                    onChange={(e) => setCustomEndDate(e.target.value)}
-                  />
-              </div>
-            </>
+            <div className="md:col-span-2">
+              <DateRangePicker
+                label={t('custom_date_range_label', 'Custom Date Range')}
+                checkinDate={customStartDate}
+                checkoutDate={customEndDate}
+                onCheckinChange={setCustomStartDate}
+                onCheckoutChange={setCustomEndDate}
+                fromPlaceholder={t('start_date_label', 'Start Date')}
+                toPlaceholder={t('end_date_label', 'End Date')}
+              />
+            </div>
           )}
         </div>
 
@@ -565,7 +555,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
                   <span>{t('snapshot_backup_export_title', 'Full System Snapshot Backup (Root Admin)')}</span>
                 </h3>
                 <p className="text-xs text-rose-700">
-                  {t('snapshot_backup_export_description', 'Generates an instant raw SQL dump of the entire database â€” every tenant and property, not just this one.')}
+                  {t('snapshot_backup_export_description', 'Generates an instant raw SQL dump of the entire database — every tenant and property, not just this one.')}
                 </p>
               </div>
               <button

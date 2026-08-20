@@ -46,7 +46,7 @@ export const WhatsAppTemplateSettings: React.FC<WhatsAppTemplateSettingsProps> =
     checkout_date: '11 Aug 2026',
     checkin_time: '14:00',
     checkout_time: '11:00',
-    total_amount: 'â‚¹4,500',
+    total_amount: '₹4,500',
     booking_id: 'BK-7892',
   };
 
@@ -55,11 +55,11 @@ export const WhatsAppTemplateSettings: React.FC<WhatsAppTemplateSettingsProps> =
 Thank you for booking with *{property_name}*! Your reservation is confirmed.
 
 ðŸ“‹ *Booking Details:*
-â€¢ Booking ID: {booking_id}
-â€¢ Room: {room_number}
-â€¢ Check-in: {checkin_date} from {checkin_time}
-â€¢ Check-out: {checkout_date} until {checkout_time}
-â€¢ Total Amount: {total_amount}
+• Booking ID: {booking_id}
+• Room: {room_number}
+• Check-in: {checkin_date} from {checkin_time}
+• Check-out: {checkout_date} until {checkout_time}
+• Total Amount: {total_amount}
 
 ðŸ“ *Address:* {property_address}
 ðŸ“ž *Contact:* {property_phone}
@@ -176,7 +176,7 @@ We look forward to welcoming you!`;
           <Textarea
             value={whatsappTemplate}
             onChange={(e) => setWhatsappTemplate(e.target.value)}
-            placeholder={t('whatsapp_voucher_template_placeholder', 'e.g. Welcome to {property_name}! Your booking is confirmedâ€¦')}
+            placeholder={t('whatsapp_voucher_template_placeholder', 'e.g. Welcome to {property_name}! Your booking is confirmed…')}
             rows={4}
             className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y"
           />
@@ -198,7 +198,7 @@ We look forward to welcoming you!`;
                 type="button"
                 onClick={() => setPreviewTab('whatsapp')}
                 className={`px-2.5 py-1 rounded-md transition font-medium ${
-                  previewTab === 'whatsapp' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+                  previewTab === 'whatsapp' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-md' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
                 }`}
               >
                 WhatsApp
@@ -207,7 +207,7 @@ We look forward to welcoming you!`;
                 type="button"
                 onClick={() => setPreviewTab('email')}
                 className={`px-2.5 py-1 rounded-md transition font-medium ${
-                  previewTab === 'email' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+                  previewTab === 'email' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-md' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
                 }`}
               >
                 Email
@@ -217,16 +217,16 @@ We look forward to welcoming you!`;
 
           {previewTab === 'whatsapp' ? (
             <div className="bg-[#e5ddd5] dark:bg-[#111b21] p-3 rounded-lg max-w-md mx-auto shadow-inner border border-slate-300/40 dark:border-slate-800">
-              <div className="bg-white dark:bg-[#202c33] p-3 rounded-lg shadow-xs text-xs text-slate-800 dark:text-slate-100 whitespace-pre-wrap leading-relaxed border-l-4 border-emerald-500">
+              <div className="bg-white dark:bg-[#202c33] p-3 rounded-lg shadow-md text-xs text-slate-800 dark:text-slate-100 whitespace-pre-wrap leading-relaxed border-l-4 border-emerald-500">
                 {getInterpolatedText()}
               </div>
             </div>
           ) : (
-            <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden shadow-xs">
+            <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden shadow-md">
               <div className="bg-indigo-600 p-3 text-white">
                 <p className="text-[10px] uppercase tracking-wider text-indigo-200">Guest Booking Confirmation</p>
                 <h3 className="whatsapp-template-settings__subtitle text-sm font-semibold mt-0.5">{property.name?.trim() || 'Property Name'}</h3>
-                <p className="text-xs text-indigo-100 mt-1">{property.email?.trim() || 'contact@property.com'} Â· {property.phone?.trim() || '+91 99999 99999'}</p>
+                <p className="text-xs text-indigo-100 mt-1">{property.email?.trim() || 'contact@property.com'} · {property.phone?.trim() || '+91 99999 99999'}</p>
               </div>
               <div className="p-4 text-xs text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-wrap font-sans">
                 {getInterpolatedText()}

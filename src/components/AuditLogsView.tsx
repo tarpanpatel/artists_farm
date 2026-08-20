@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import DataTable from 'react-data-table-component';
+import { flowbiteTableCustomStyles } from '../utils/tableStyles';
 import {
-  Receipt,
   Edit2,
   Save,
   Home,
@@ -11,7 +11,8 @@ import {
   Search,
   AlertTriangle
 } from 'lucide-react';
-import { Modal, ModalHeader, ModalBody, Pagination, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell } from 'flowbite-react';
+import { Modal, ModalHeader, ModalBody, Pagination, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, TextInput as FlowbiteTextInput } from 'flowbite-react';
+import { Badge } from './Badge';
 import { AuditLog, BillingReceipt } from '../types';
 import { useToast } from './ToastContext';
 import { StyledSelect } from './StyledSelect';
@@ -132,7 +133,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
       amount: amt
     };
     setAdjustmentsList(prev => [...prev, newAdj]);
-    setAuditTrailList(prev => [...prev, `Applied adjustment ${adjType}: ${adjLabel || 'Adjustment'} (â‚¹${amt})`]);
+    setAuditTrailList(prev => [...prev, `Applied adjustment ${adjType}: ${adjLabel || 'Adjustment'} (₹${amt})`]);
     setAdjLabel('');
     setAdjAmount('');
   };
@@ -174,22 +175,23 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
       />
 
       {/* PAST RECEIPTS LOG */}
-      <div className="audit-logs__receipts bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden shadow-xs">
-          {/* Full-Width Table Header Toolbar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700">
-            <div className="flex items-center gap-2">
-              <Receipt className="w-5 h-5 text-blue-600 shrink-0" />
-              <span className="font-extrabold text-slate-900 dark:text-white text-base">{t('past_billing_receipts_heading', 'Past Billing Receipts & Settlement Log')}</span>
-              <span className="text-xs bg-slate-200 dark:bg-slate-700 px-2.5 py-0.5 rounded-full font-semibold text-slate-600 dark:text-slate-300">{receipts.length} receipts</span>
-            </div>
-            <div className="w-full sm:w-64">
-              <Input
-                type="text"
-                value={receiptsSearch}
-                onChange={(e) => setReceiptsSearch(e.target.value)}
-                placeholder={t('search_receipts_placeholder', 'Search receipts...')}
-                leftIcon={<Search className="w-4 h-4 text-slate-400" />}
-              />
+      <div className="audit-logs__receipts bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden shadow-md">
+          {/* Flowbite Datatable Toolbar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+            <div className="flex items-center gap-3 flex-1">
+              <div className="w-full sm:w-80">
+                <FlowbiteTextInput
+                  type="text"
+                  icon={Search}
+                  value={receiptsSearch}
+                  onChange={(e) => setReceiptsSearch(e.target.value)}
+                  placeholder={t('search_receipts_placeholder', 'Search by guest, receipt #, room...')}
+                  className="w-full"
+                />
+              </div>
+              <Badge variant="neutral" size="sm">
+                {filteredReceipts.length} {filteredReceipts.length === 1 ? 'receipt' : 'receipts'}
+              </Badge>
             </div>
           </div>
 
@@ -199,7 +201,8 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                 {
                   name: t('receipt_id_column', 'Receipt ID'),
                   selector: (rec: BillingReceipt) => rec.id,
-                  width: '100px',
+                  minWidth: '130px',
+                  grow: 1,
                   cell: (rec: BillingReceipt) => (
                     <span className="font-mono font-semibold text-slate-900 dark:text-white">{rec.id}</span>
                   ),
@@ -208,16 +211,20 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                   name: t('resident_group_column', 'Resident / Group'),
                   selector: (rec: BillingReceipt) => rec.guestName,
                   sortable: true,
-                  grow: 1,
+                  minWidth: '180px',
+                  grow: 2,
                   cell: (rec: BillingReceipt) => (
-                    <span className="font-semibold">{rec.guestName}</span>
+                    <div>
+                      <span className="font-semibold text-slate-900 dark:text-white block">{rec.guestName}</span>
+                      {rec.roomNumber && <span className="text-xs text-slate-400 font-normal">{rec.roomNumber}</span>}
+                    </div>
                   ),
                 },
                 {
                   name: t('checkout_date_column', 'Checkout Date'),
                   selector: (rec: BillingReceipt) => rec.checkoutDate || '',
                   sortable: true,
-                  width: '130px',
+                  minWidth: '140px',
                   cell: (rec: BillingReceipt) => (
                     <span className="font-mono text-xs">{formatDateTimeDDMMYYYY(rec.checkoutDate || '')}</span>
                   ),
@@ -226,36 +233,36 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                   name: t('total_stay_rent_column', 'Total Stay Rent'),
                   selector: (rec: BillingReceipt) => rec.roomTotal || rec.roomRent || 0,
                   sortable: true,
-                  width: '130px',
+                  minWidth: '140px',
                   cell: (rec: BillingReceipt) => (
-                    <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">â‚¹{(rec.roomTotal || rec.roomRent || 0).toFixed(2)}</span>
+                    <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">₹{(rec.roomTotal || rec.roomRent || 0).toFixed(2)}</span>
                   ),
                 },
                 {
                   name: t('incidentals_food_column', 'Incidentals & Food'),
                   selector: (rec: BillingReceipt) => rec.foodTotal || rec.kitchenTotal || 0,
                   sortable: true,
-                  width: '140px',
+                  minWidth: '150px',
                   cell: (rec: BillingReceipt) => (
-                    <span className="font-mono text-cyan-700 dark:text-cyan-400 font-semibold">â‚¹{(rec.foodTotal || rec.kitchenTotal || 0).toFixed(2)}</span>
+                    <span className="font-mono text-cyan-700 dark:text-cyan-400 font-semibold">₹{(rec.foodTotal || rec.kitchenTotal || 0).toFixed(2)}</span>
                   ),
                 },
                 {
                   name: t('grand_total_column', 'Grand Total'),
                   selector: (rec: BillingReceipt) => rec.grandTotal,
                   sortable: true,
-                  width: '130px',
+                  minWidth: '130px',
                   cell: (rec: BillingReceipt) => (
-                    <span className="font-mono font-extrabold text-emerald-600 dark:text-emerald-400">â‚¹{rec.grandTotal.toFixed(2)}</span>
+                    <span className="font-mono font-extrabold text-emerald-600 dark:text-emerald-400">₹{rec.grandTotal.toFixed(2)}</span>
                   ),
                 },
                 {
                   name: t('actions_column', 'Actions'),
-                  width: '120px',
+                  minWidth: '110px',
                   cell: (rec: BillingReceipt) => (
                     <button
                       onClick={() => handleOpenEditModal(rec)}
-                      className="bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700 px-3 py-1 rounded-lg font-semibold hover:bg-blue-100 cursor-pointer transition-colors flex items-center gap-1 text-[11px]"
+                      className="bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700 px-3 py-1 rounded-lg font-semibold hover:bg-blue-100 dark:hover:bg-blue-900 cursor-pointer transition-colors flex items-center gap-1 text-[11px]"
                     >
                       <Edit2 className="w-3 h-3" />
                       {t('edit_button', 'Edit')}
@@ -267,6 +274,8 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
               pagination
               paginationPerPage={15}
               paginationRowsPerPageOptions={[15, 30, 50, 100]}
+              highlightOnHover
+              customStyles={flowbiteTableCustomStyles}
               noDataComponent={
                 <div className="text-center p-8 text-slate-400 font-semibold text-xs">
                   {t('no_billing_receipts_message', 'No billing receipts found in database.')}
@@ -294,7 +303,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                 <>
                   <div className="space-y-3">
                     {paginatedReceipts.map((rec) => (
-                      <div key={rec.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3.5 space-y-2.5 shadow-2xs">
+                      <div key={rec.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3.5 space-y-2.5 shadow-md">
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">
                             <span className="font-mono font-bold text-xs text-slate-400 block">{rec.id}</span>
@@ -302,9 +311,9 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                             <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">{rec.roomNumber}</span>
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">
-                            <span className="bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800 font-semibold px-2.5 py-0.5 rounded-full text-[10px]">
+                            <Badge variant="success" size="sm">
                               {rec.paymentMethod || 'Cash'}
-                            </span>
+                            </Badge>
                             <button
                               type="button"
                               onClick={() => handleOpenEditModal(rec)}
@@ -319,19 +328,19 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                         <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 dark:bg-slate-900/60 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700">
                           <div>
                             <span className="text-[10px] text-slate-400 uppercase font-semibold block">{t('checkout_date_column', 'Checkout Date')}</span>
-                            <span className="font-medium text-slate-700 dark:text-slate-300">{formatDateDDMMYYYY(rec.checkoutDate) || 'â€”'}</span>
+                            <span className="font-medium text-slate-700 dark:text-slate-300">{formatDateDDMMYYYY(rec.checkoutDate) || '—'}</span>
                           </div>
                           <div>
                             <span className="text-[10px] text-slate-400 uppercase font-semibold block">{t('room_rent_column', 'Room Rent')}</span>
-                            <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">â‚¹{rec.roomRent || rec.roomTotal || 0}</span>
+                            <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">₹{rec.roomRent || rec.roomTotal || 0}</span>
                           </div>
                           <div>
                             <span className="text-[10px] text-slate-400 uppercase font-semibold block">{t('food_bill_column', 'Food Bill')}</span>
-                            <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">â‚¹{rec.foodTotal || rec.kitchenTotal || 0}</span>
+                            <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">₹{rec.foodTotal || rec.kitchenTotal || 0}</span>
                           </div>
                           <div>
                             <span className="text-[10px] text-slate-400 uppercase font-semibold block">{t('grand_total_column', 'Grand Total')}</span>
-                            <span className="font-mono font-extrabold text-emerald-600 dark:text-emerald-400">â‚¹{rec.grandTotal}</span>
+                            <span className="font-mono font-extrabold text-emerald-600 dark:text-emerald-400">₹{rec.grandTotal}</span>
                           </div>
                         </div>
                       </div>
@@ -405,7 +414,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
 
                       <div>
                         <Input
-                          label={t('advance_deposit_paid_label', 'ADVANCE DEPOSIT PAID (â‚¹)')}
+                          label={t('advance_deposit_paid_label', 'ADVANCE DEPOSIT PAID (₹)')}
                           type="number"
                           value={editingReceipt.advancePaid ?? 0}
                           onChange={(e) => {
@@ -481,7 +490,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                         placeholder={t('audit_choose_menu_dish_placeholder', '-- Choose Menu Dish --')}
                         options={defaultMenuCatalog.map((item) => ({
                           value: item.name,
-                          label: `${item.name} (â‚¹${item.price})`,
+                          label: `${item.name} (₹${item.price})`,
                         }))}
                       />
 
@@ -497,7 +506,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                       <button
                         type="button"
                         onClick={handleAddFoodItem}
-                        className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-lg text-xs flex items-center gap-1 cursor-pointer shadow-xs transition-colors"
+                        className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-lg text-xs flex items-center gap-1 cursor-pointer shadow-md transition-colors"
                       >
                         + {t('audit_insert_button', 'Insert')}
                       </button>
@@ -538,7 +547,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                                   </div>
                                 </TableCell>
                                 <TableCell className="audit-logs-view__cell p-2.5 text-right font-extrabold text-slate-900 dark:text-white">
-                                  â‚¹{(item.total || item.quantity * item.unitPrice).toFixed(2)}
+                                  ₹{(item.total || item.quantity * item.unitPrice).toFixed(2)}
                                 </TableCell>
                               </TableRow>
                             ))
@@ -554,7 +563,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                     </div>
 
                     <div className="text-right text-xs font-semibold text-slate-600 dark:text-slate-300">
-                      {t('incidentals_bill_subtotal_label', 'Incidentals Bill Subtotal:')} <span className="summary-line summary-line--food-subtotal text-cyan-600 dark:text-cyan-400 font-extrabold text-sm">â‚¹{calculatedIncidentalsTotal.toFixed(2)}</span>
+                      {t('incidentals_bill_subtotal_label', 'Incidentals Bill Subtotal:')} <span className="summary-line summary-line--food-subtotal text-cyan-600 dark:text-cyan-400 font-extrabold text-sm">₹{calculatedIncidentalsTotal.toFixed(2)}</span>
                     </div>
                   </div>
 
@@ -596,7 +605,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
 
                     <div>
                       <Input
-                        label={t('amount_rupees_label', 'AMOUNT (â‚¹)')}
+                        label={t('amount_rupees_label', 'AMOUNT (₹)')}
                         type="number"
                         placeholder="0.00"
                         value={adjAmount}
@@ -608,7 +617,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                     <button
                       type="button"
                       onClick={handleApplyAdjustment}
-                      className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-lg text-xs cursor-pointer shadow-xs transition-colors"
+                      className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-lg text-xs cursor-pointer shadow-md transition-colors"
                     >
                       {t('apply_active_adjustment_button', 'Apply Active Adjustment')}
                     </button>
@@ -643,17 +652,17 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                     <div className="space-y-2 text-xs font-semibold border-b border-slate-200 dark:border-slate-700 pb-3">
                       <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
                         <span>{t('stay_rent_outstanding_balance_label', 'Stay Rent Outstanding Balance:')}</span>
-                        <span className="summary-line summary-line--room-rate font-extrabold text-slate-900 dark:text-white">â‚¹{calculatedStayRent.toFixed(2)}</span>
+                        <span className="summary-line summary-line--room-rate font-extrabold text-slate-900 dark:text-white">₹{calculatedStayRent.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
                         <span>{t('food_extras_subtotal_label', 'Food & Extras Subtotal:')}</span>
-                        <span className="summary-line summary-line--food-subtotal font-extrabold text-cyan-600">â‚¹{calculatedIncidentalsTotal.toFixed(2)}</span>
+                        <span className="summary-line summary-line--food-subtotal font-extrabold text-cyan-600">₹{calculatedIncidentalsTotal.toFixed(2)}</span>
                       </div>
                     </div>
 
                     <div className="flex justify-between items-center text-sm font-extrabold">
                       <span className="text-slate-900 dark:text-white">{t('total_outstanding_target_label', 'Total Outstanding Target:')}</span>
-                      <span className="summary-line summary-line--grand-target-due text-emerald-600 text-base font-black">â‚¹{calculatedGrandTotal.toFixed(2)}</span>
+                      <span className="summary-line summary-line--grand-target-due text-emerald-600 text-base font-black">₹{calculatedGrandTotal.toFixed(2)}</span>
                     </div>
 
                     <div className="pt-2 border-t border-slate-200 dark:border-slate-700 text-[10px] text-slate-500">

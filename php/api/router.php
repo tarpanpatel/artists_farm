@@ -165,6 +165,23 @@ if (!isSchemaVerified('schema_properties_table_v2')) {
     markSchemaVerified('schema_properties_table_v2');
 }
 
+// Self-healing column check for `properties.upi_qr_code_url` - a property can
+// now upload a real bank/PhonePe/GPay-issued QR code image (instead of only
+// relying on the auto-generated upi://pay deep-link QR built from upi_id) to
+// display at billing/checkout. New key (not reusing schema_properties_table_v2
+// above, which is already marked verified on every environment that ran this
+// file before this column existed - a stale flag would skip the ALTER TABLE
+// forever) so this self-heals on next request the same way upi_id did.
+if (!isSchemaVerified('schema_properties_table_v3')) {
+    try {
+        $propertiesColsV3 = $pdo->query("SHOW COLUMNS FROM properties")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('upi_qr_code_url', $propertiesColsV3)) {
+            $pdo->exec("ALTER TABLE properties ADD COLUMN `upi_qr_code_url` VARCHAR(500) DEFAULT NULL AFTER `upi_id`");
+        }
+    } catch (Exception $e) {}
+    markSchemaVerified('schema_properties_table_v3');
+}
+
 /**
  * A property's "Super Admin" staff row is not an independent staff account -
  * it IS the tenant, and there is exactly one of them, always. This keeps
@@ -2219,6 +2236,10 @@ switch ($action) {
             if (array_key_exists('upi_id', $input)) {
                 $sets[] = 'upi_id = ?';
                 $params[] = trim($input['upi_id']) ?: null;
+            }
+            if (array_key_exists('upi_qr_code_url', $input)) {
+                $sets[] = 'upi_qr_code_url = ?';
+                $params[] = trim($input['upi_qr_code_url']) ?: null;
             }
             if (array_key_exists('telegram_template_customization_enabled', $input)) {
                 $sets[] = 'telegram_template_customization_enabled = ?';

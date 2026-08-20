@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import { CheckCircle2, XCircle, AlertTriangle, Info, X } from 'lucide-react';
-import { Toast as FlowbiteToast } from 'flowbite-react';
+import { Toast as FlowbiteToast, ToastToggle } from 'flowbite-react';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -85,28 +85,35 @@ const ICONS: Record<ToastType, React.ReactNode> = {
   ),
 };
 
-const BG_CLASSES: Record<ToastType, string> = {
-  success: 'bg-emerald-600',
-  error: 'bg-red-600',
-  warning: 'bg-amber-600',
-  info: 'bg-blue-600',
+// Flowbite's own toast docs (flowbite.com/docs/components/toast) style every
+// variant the same way: a neutral card (bg-neutral-primary-soft) with a
+// small colored icon "chip" - never a solid-colored toast body. Only the
+// chip's soft/fg token pair changes per situation.
+const BADGE_CLASSES: Record<ToastType, string> = {
+  success: 'text-fg-success bg-success-soft',
+  error: 'text-fg-danger bg-danger-soft',
+  warning: 'text-fg-warning bg-warning-soft',
+  info: 'text-fg-brand bg-brand-soft',
+};
+
+const toastTheme = {
+  root: {
+    base: 'flex w-full max-w-sm items-center rounded-base border border-default bg-neutral-primary-soft p-4 text-body shadow-xs animate-toast-in',
+  },
+  toggle: {
+    base: 'ms-auto flex h-8 w-8 shrink-0 items-center justify-center rounded text-body hover:bg-neutral-secondary-medium hover:text-heading focus:outline-none focus:ring-4 focus:ring-neutral-tertiary',
+    icon: 'h-4 w-4',
+  },
 };
 
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string) => void }) {
-  // Removal is driven by ToastProvider's own `toasts` state/timer (see
-  // removeToast above), not Flowbite's internal isClosed/isRemoved toggle -
-  // so the dismiss button calls onDismiss directly rather than using
-  // <ToastToggle>, keeping one source of truth for "is this toast gone".
   return (
-    <FlowbiteToast className={`pointer-events-auto items-start gap-2.5 ${BG_CLASSES[toast.type]} text-white px-4 py-3 rounded-lg shadow-lg text-sm font-semibold animate-toast-in max-w-sm w-auto`}>
-      {ICONS[toast.type]}
-      <span className="flex-1 break-words">{toast.message}</span>
-      <button
-        onClick={() => onDismiss(toast.id)}
-        className="shrink-0 p-0.5 rounded hover:bg-white/20 transition-colors cursor-pointer"
-      >
-        <X className="w-3.5 h-3.5" />
-      </button>
+    <FlowbiteToast theme={toastTheme} className="pointer-events-auto">
+      <div className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded ${BADGE_CLASSES[toast.type]}`}>
+        {ICONS[toast.type]}
+      </div>
+      <div className="ms-3 text-sm font-medium break-words">{toast.message}</div>
+      <ToastToggle xIcon={X} onDismiss={() => onDismiss(toast.id)} />
     </FlowbiteToast>
   );
 }

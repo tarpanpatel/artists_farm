@@ -285,7 +285,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
     unsettledBills,
     'Unsettled Bill',
     'amber',
-    (g) => `Owes â‚¹${((g.totalAmount || 0) - (g.advanceAmount || 0)).toLocaleString('en-IN')}`
+    (g) => `Owes ₹${((g.totalAmount || 0) - (g.advanceAmount || 0)).toLocaleString('en-IN')}`
   );
   const combinedAlerts = Array.from(guestAlertMap.values()).sort((a, b) =>
     a.severity === b.severity ? 0 : a.severity === 'red' ? -1 : 1
@@ -385,7 +385,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
 
       {/* Room Info / Property Location Bar */}
       {!minimalMode && roomName ? (
-        <div className="operational-dashboard__room-info flex items-center justify-between gap-4 bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs">
+        <div className="operational-dashboard__room-info flex items-center justify-between gap-4 bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md">
           <div className="operational-dashboard__room-info-content flex-1">
             {isEditingRoomName ? (
               <Input
@@ -445,7 +445,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
 
       {/* C-Form (FRRO) Filing Tracker for foreign guests */}
       {!minimalMode && cFormPending.length > 0 && (
-        <div className="operational-dashboard__cform-tracker bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs p-5">
+        <div className="operational-dashboard__cform-tracker bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6">
           <h3 className="operational-dashboard__cform-title font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2 mb-3 pb-2 border-b border-slate-100 dark:border-slate-700">
             <AlertTriangle className="w-4 h-4 text-red-600" />
             {t('cform_filing_due_heading', 'C-Form Filing Due')}
@@ -494,7 +494,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       {!minimalMode && (
       <div className="operational-dashboard__columns grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Column 1: System Alerts Box (replaces Guest Currently Staying for single property) */}
-        <div className="operational-dashboard__col-alerts bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs p-5 flex flex-col justify-between">
+        <div className="operational-dashboard__col-alerts bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
               <h3 className="font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2">
@@ -527,7 +527,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center flex-wrap gap-1.5 font-bold text-xs text-slate-900 dark:text-slate-100">
                         <span>{g.guestName}</span>
-                        <span className="text-2xs font-normal text-slate-400 shrink-0">â€¢ {g.roomNumber}</span>
+                        <span className="text-2xs font-normal text-slate-400 shrink-0">• {g.roomNumber}</span>
                       </div>
                       <div className="flex flex-wrap items-center gap-x-2 text-[11px] mt-0.5">
                         {reasons.map((r, i) => (
@@ -544,7 +544,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                     </div>
                     <button
                       onClick={() => setSelectedBooking(g)}
-                      className={`text-[10px] font-bold px-2.5 py-1 rounded-md text-white transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-2xs ${
+                      className={`text-[10px] font-bold px-2.5 py-1 rounded-md text-white transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-md ${
                         severity === 'red'
                           ? 'bg-red-600 hover:bg-red-700 active:bg-red-800'
                           : 'bg-amber-600 hover:bg-amber-700 active:bg-amber-800'
@@ -588,7 +588,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                           className="w-full flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-2.5 text-left cursor-pointer hover:opacity-80 transition-opacity"
                         >
                           <span className="text-xs font-semibold text-emerald-900">
-                            {g.guestName} <span className="font-normal opacity-75">Â· {g.roomNumber}</span>
+                            {g.guestName} <span className="font-normal opacity-75">· {g.roomNumber}</span>
                           </span>
                           <span className="text-[10px] font-medium text-emerald-700 whitespace-nowrap inline-flex items-center gap-1">
                             {formatAlertDate(g.checkinDate)} <ArrowRight className="w-3 h-3" /> {formatAlertDate(g.checkoutDate || g.expectedCheckout)}
@@ -613,7 +613,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
 
         {/* Column 2: Kitchen KDS Card */}
         {kitchenModuleEnabled ? (
-          <div className="operational-dashboard__col-kitchen bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs p-5 flex flex-col justify-between">
+          <div className="operational-dashboard__col-kitchen bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 flex flex-col justify-between">
             <div className="operational-dashboard__col-kitchen-inner">
               <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
                 <h3 className="operational-dashboard__subtitle font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2">
@@ -669,14 +669,14 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             </button>
           </div>
         ) : (
-          <div className="operational-dashboard__col-kitchen-disabled bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs p-5 flex flex-col justify-center items-center text-center text-slate-400 text-xs">
+          <div className="operational-dashboard__col-kitchen-disabled bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 flex flex-col justify-center items-center text-center text-slate-400 text-xs">
             <Utensils className="w-8 h-8 text-slate-300 dark:text-slate-600 mb-2" />
             <p>{t('kitchen_module_disabled', 'Kitchen Module Disabled')}</p>
           </div>
         )}
 
         {/* Column 3: Requisitions Card */}
-        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs p-5 flex flex-col justify-between">
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
               <h3 className="operational-dashboard__subtitle font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2">
@@ -721,7 +721,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       )}
 
       {/* Booking Calendar Row - Full Width Spread Out at Bottom */}
-      <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
+      <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
           <h3 className="operational-dashboard__subtitle font-semibold text-slate-900 dark:text-white text-base flex items-center gap-2">
@@ -825,13 +825,13 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 {dayBooking && (
                   <button
                     onClick={() => setSelectedBooking(dayBooking)}
-                    className={`rounded-md px-2 py-1.5 ${isDayBookingCheckedOut ? checkedOutColor : isOtaBooking ? `text-white ${otaBookingColor}` : `text-white ${colors[guestColorIndex]}`} text-xs font-semibold flex flex-col justify-center shadow-xs hover:shadow-md transition-all cursor-pointer truncate w-full`}
+                    className={`rounded-md px-2 py-1.5 ${isDayBookingCheckedOut ? checkedOutColor : isOtaBooking ? `text-white ${otaBookingColor}` : `text-white ${colors[guestColorIndex]}`} text-xs font-semibold flex flex-col justify-center shadow-md hover:shadow-md transition-all cursor-pointer truncate w-full`}
                   >
                     <div className="truncate font-semibold flex items-center gap-1">
                       {isOtaBooking && <Globe className="w-2.5 h-2.5 shrink-0" />}
                       <span className="truncate">{dayBooking.guestName.split(' ')[0]}</span>
                     </div>
-                    {nightlyRate > 0 && <div className="text-[10px] font-semibold opacity-90">â‚¹{nightlyRate}</div>}
+                    {nightlyRate > 0 && <div className="text-[10px] font-semibold opacity-90">₹{nightlyRate}</div>}
                   </button>
                 )}
                 {otaBlock && (
@@ -852,7 +852,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                       });
                     }}
                     title={t('ota_blocked_tooltip_convertible', '{{source}} - not yet a booking. Click to convert.').replace('{{source}}', otaBlock.source_label || otaBlock.source || 'external calendar')}
-                    className="rounded-md px-2 py-1.5 bg-slate-500 dark:bg-slate-600 hover:bg-slate-600 dark:hover:bg-slate-500 text-white text-xs font-semibold flex flex-col justify-center shadow-xs truncate w-full cursor-pointer transition-colors"
+                    className="rounded-md px-2 py-1.5 bg-slate-500 dark:bg-slate-600 hover:bg-slate-600 dark:hover:bg-slate-500 text-white text-xs font-semibold flex flex-col justify-center shadow-md truncate w-full cursor-pointer transition-colors"
                   >
                     <div className="truncate font-semibold">{otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}</div>
                   </button>

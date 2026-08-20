@@ -21,11 +21,11 @@ interface PageHeaderProps {
 export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, children }) => (
   <div className="gen_page_head flex flex-row items-center justify-between gap-4 pb-4 mb-4 border-b border-gray-200 dark:border-gray-700 page-header">
     <div className="min-w-0 flex-1 page-header__left">
-       <h1 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight truncate page-header__title flex items-center gap-2 sm:text-2xl">
-         {title}
-       </h1>
+      <h1 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight sm:text-2xl page-header__title">
+        {title}
+      </h1>
       {subtitle && (
-        <p className="text-sm text-gray-500 dark:text-gray-400 font-normal mt-1 line-clamp-1 sm:line-clamp-none page-header__subtitle">
+        <p className="text-sm text-gray-500 dark:text-gray-400 font-normal mt-1 page-header__subtitle">
           {subtitle}
         </p>
       )}

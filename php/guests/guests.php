@@ -410,6 +410,30 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     $otaSource = trim($input['ota_source'] ?? '') ?: null;
                     $otaSourceLabel = trim($input['ota_source_label'] ?? '') ?: null;
 
+                    // Hard block: "1 room = 1 active booking" (CLAUDE.md) was never
+                    // actually enforced here - update_guest has a 409 conflict check
+                    // for this, but add_guest (the ONLY path that creates a brand new
+                    // booking) had nothing at all, so two overlapping bookings could
+                    // land in the same room with zero warning (found 20 Aug 2026,
+                    // reported as double-bookings on the multi-room calendar). Checked
+                    // against BOOKED too, not just Active/CheckedIn - a future
+                    // reservation is exactly the kind of thing a second booking must
+                    // not silently double up on.
+                    if ($roomId !== null) {
+                        $newCheckin = $input['checkin_date'] ?? date('Y-m-d');
+                        $newCheckout = $input['expected_checkout'] ?? date('Y-m-d H:i:s', strtotime('+1 day'));
+                        $roomConflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id = ? AND property_id = ? AND status IN (?, ?, ?) AND checkin_date < ? AND expected_checkout > ? LIMIT 1");
+                        $roomConflictStmt->execute([$roomId, $propertyId, GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_IN, GUEST_STATUS_BOOKED, $newCheckout, $newCheckin]);
+                        if ($roomConflictStmt->fetch()) {
+                            if ($pdo->inTransaction()) {
+                                $pdo->rollBack();
+                            }
+                            http_response_code(409);
+                            echo json_encode(['status' => 'error', 'message' => 'Selected room already has an active booking for these dates']);
+                            break;
+                        }
+                    }
+
                     // Advisory only, not a hard block - staff may already know an OTA
                     // block is stale (guest cancelled by phone, feed hasn't resynced
                     // yet). Only checked for genuine new offline bookings, never when
@@ -601,8 +625,13 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     $previousNoOfGuests = intval($previousGuest['no_of_guests'] ?? 0);
 
                     if ($roomId !== null) {
-                        $conflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id = ? AND status IN (?, ?) AND id != ? AND property_id = ? AND checkin_date < ? AND expected_checkout > ? LIMIT 1");
-                        $conflictStmt->execute([$roomId, GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_IN, $guestId, $propertyId, $newCheckout, $newCheckin]);
+                        // Was missing GUEST_STATUS_BOOKED - a future reservation is the
+                        // most common thing this check needs to catch (moving a stay
+                        // into a room that's already reserved later on), and it was
+                        // silently excluded (found + fixed alongside add_guest's
+                        // missing check, 20 Aug 2026).
+                        $conflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id = ? AND status IN (?, ?, ?) AND id != ? AND property_id = ? AND checkin_date < ? AND expected_checkout > ? LIMIT 1");
+                        $conflictStmt->execute([$roomId, GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_IN, GUEST_STATUS_BOOKED, $guestId, $propertyId, $newCheckout, $newCheckin]);
                         if ($conflictStmt->fetch()) {
                             http_response_code(409);
                             echo json_encode(['status' => 'error', 'message' => 'Selected room already has an active booking for these dates']);

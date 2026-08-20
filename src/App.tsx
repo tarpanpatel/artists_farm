@@ -144,6 +144,14 @@ function AppBody({ preloadedData }: AppBodyProps) {
         guest_registration: { tab: 'guests', key: 'all_bookings' },
         // "Billing & Checkout" and "Add Booking" were merged into "Bookings" (all_bookings)
         all_bookings: { tab: 'guests', key: 'all_bookings' },
+        // The nav item's uniqueKey is 'all_bookings', not 'bookings' - but the
+        // page itself is titled "Bookings" (BillingCheckout.tsx's PageHeader),
+        // so '#bookings' is what anyone typing/bookmarking from the visible
+        // title would expect. Without this alias it fell through to the
+        // unmatched-route fallback, which defaults to dashboard (found 20 Aug
+        // 2026 - must stay in sync with the identical alias in the
+        // handleUrlChange routeMap below).
+        bookings: { tab: 'guests', key: 'all_bookings' },
         billing_checkout: { tab: 'guests', key: 'all_bookings' },
         guests: { tab: 'guests', key: 'all_bookings' },
         take_food_order: { tab: 'kitchen', key: 'take_food_order' },
@@ -951,7 +959,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
       const reserved = new Set([
         'dashboard', 'guests', 'kitchen', 'inventory', 'petty_cash', 'staff',
         'analytics', 'audit_logs', 'export', 'menu_manager', 'telegram',
-        'guest_registration', 'all_bookings', 'billing_checkout', 'take_food_order', 'kitchen_orders', 'staff_meals',
+        'guest_registration', 'all_bookings', 'bookings', 'billing_checkout', 'take_food_order', 'kitchen_orders', 'staff_meals',
         'stock_requests', 'deficit_shortfalls_log', 'stock_log',
         'kitchen_purchases', 'edit_kitchen_stock', 'cash_drawer', 'finances', 'staff_payees_control',
         'attendance_salaries', 'attendance_calendar', 'staff_directory_salaries', 'staff_permissions',
@@ -986,6 +994,8 @@ function AppBody({ preloadedData }: AppBodyProps) {
         dashboard: { tab: 'dashboard', key: 'dashboard' },
         guest_registration: { tab: 'guests', key: 'all_bookings' },
         all_bookings: { tab: 'guests', key: 'all_bookings' },
+        // Must match getInitialActiveState()'s routeMap - see its comment.
+        bookings: { tab: 'guests', key: 'all_bookings' },
         billing_checkout: { tab: 'guests', key: 'all_bookings' },
         guests: { tab: 'guests', key: 'all_bookings' },
         take_food_order: { tab: 'kitchen', key: 'take_food_order' },

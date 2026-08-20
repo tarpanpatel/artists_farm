@@ -140,10 +140,23 @@ export function getDefaultTheme(): ThemeSettings {
     spacing: {
       baseUnit: '4px',
     },
+    // Matches Tailwind v4's own --radius-sm/md/lg defaults (node_modules/
+    // tailwindcss/theme.css) exactly - these three CSS custom properties
+    // are the same ones Tailwind's rounded-sm/md/lg utilities read from, so
+    // getting the DEFAULT theme wrong here silently doubles every
+    // rounded-lg in the WHOLE APP - EVERY property, every tenant - not
+    // just looking "a bit different" (was rendering at 16px instead of
+    // 8px, confirmed via live computed-style audit 19 Aug 2026). Note this
+    // theme is platform-wide, not per-property (see php/theme/
+    // theme_settings.php - single `platform_theme_settings WHERE id = 1`
+    // row, no property scoping at all) - there is no such thing as a
+    // property having its own exclusive theme, so the single saved DB row
+    // also needed correcting directly, this default fix alone wasn't
+    // sufficient for the live site.
     borderRadius: {
-      small: '0.375rem',
-      medium: '0.5rem',
-      large: '1rem',
+      small: '0.25rem',
+      medium: '0.375rem',
+      large: '0.5rem',
     },
     shadows: {
       small: '0 1px 2px 0 rgb(0 0 0 / 0.05)',

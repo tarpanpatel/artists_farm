@@ -147,7 +147,7 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
               {t('complete_checkin_heading_prefix')} {guest.guestName}
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              {guest.roomNumber} Â· {requiredCount} {t('id_documents_required_text')}{requiredCount > 1 ? 's' : ''} required
+              {guest.roomNumber} · {requiredCount} {t('id_documents_required_text')}{requiredCount > 1 ? 's' : ''} required
             </p>
           </div>
         </div>

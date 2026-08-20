@@ -47,7 +47,7 @@ const STEPS: WizardStep[] = [
 const ROLE_GUIDANCE = {
   kitchen: 'Add cooks, kitchen helpers, the kitchen manager who takes orders, whoever handles requisitions/purchases, and servers.',
   admin: 'Add the property manager, housekeeping, inventory manager, and reception staff.',
-  finance: 'Add only staff who handle money coming in or going out â€” keep this group tight.',
+  finance: 'Add only staff who handle money coming in or going out — keep this group tight.',
 };
 
 type StepStatus = 'idle' | 'generating' | 'waiting' | 'confirming' | 'connected' | 'expired' | 'error';
@@ -239,7 +239,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
     try {
       const ok = await saveTelegramConfigDB({ ...wizardConfig, botToken: trimmed });
       if (!ok) {
-        setSaveError('Could not save the token â€” please try again.');
+        setSaveError('Could not save the token — please try again.');
         return;
       }
       const identity = await fetchTelegramBotIdentity();
@@ -249,10 +249,10 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
         setWizardConfig({ ...wizardConfig, botToken: trimmed });
         setTimeout(() => setSaveSuccess(false), 3000);
       } else {
-        setSaveError("Saved, but Telegram didn't recognize that token â€” double-check you copied the whole thing from BotFather.");
+        setSaveError("Saved, but Telegram didn't recognize that token — double-check you copied the whole thing from BotFather.");
       }
     } catch {
-      setSaveError('Could not save the token â€” please try again.');
+      setSaveError('Could not save the token — please try again.');
     } finally {
       setSavingToken(false);
     }
@@ -338,7 +338,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                       done
                         ? 'bg-emerald-500 border-emerald-500 text-white'
                         : active
-                        ? 'bg-sky-600 border-sky-600 text-white shadow-md'
+                        ? 'bg-blue-600 border-blue-600 text-white shadow-md'
                         : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-400'
                     }`}
                   >
@@ -346,7 +346,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                   </div>
                   <span
                     className={`text-[10px] font-semibold ${
-                      active ? 'text-sky-700 dark:text-sky-400' : 'text-slate-400 dark:text-slate-500'
+                      active ? 'text-blue-700 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'
                     }`}
                   >
                     {step.label}
@@ -523,7 +523,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                       {currentState.testSending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                       {currentState.testSent ? t('test_message_sent_again_button', 'Test Message Sent (send again)') : t('send_test_message_button', 'Send Test Message')}
                     </button>
-                    
+
                     <button
                       type="button"
                       onClick={handleReSetup}
@@ -534,7 +534,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
 
                     {currentState.testSent && (
                       <div className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                        Check your Telegram group â€” the test message should be there.
+                        Check your Telegram group — the test message should be there.
                       </div>
                     )}
                     {!currentState.testSending && !currentState.testSent && currentState.errorMessage && (
@@ -590,13 +590,13 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                     {currentState.status === 'waiting' && (
                       <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        {t('waiting_for_code_label', 'Waiting for the code to arriveâ€¦')}
+                        {t('waiting_for_code_label', 'Waiting for the code to arrive…')}
                       </div>
                     )}
                     {currentState.status === 'confirming' && (
                       <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        {t('code_received_connecting_label', 'Code received â€” connectingâ€¦')}
+                        {t('code_received_connecting_label', 'Code received — connecting…')}
                       </div>
                     )}
                     {currentState.status === 'expired' && (

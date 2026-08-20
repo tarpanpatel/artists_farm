@@ -2,7 +2,7 @@
 /**
  * Image Upload Endpoint
  * Receives a multipart/form-data image upload, resizes/crops it, saves to disk, returns URL.
- * POST fields: image=<file>, folder=menu|catalog|misc|id_documents
+ * POST fields: image=<file>, folder=menu|catalog|misc|id_documents|qr_code
  * Response: { "status": "success", "url": "/artist_farm/uploads/images/{tenant}/{property}/{category}/abc123.jpg" }
  *
  * Storage layout (11 Aug 2026 - was previously one flat shared folder per
@@ -63,14 +63,19 @@ if (empty($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
     exit;
 }
 
-$folder = in_array($_POST['folder'] ?? '', ['menu', 'catalog', 'misc', 'id_documents']) ? $_POST['folder'] : 'misc';
+$folder = in_array($_POST['folder'] ?? '', ['menu', 'catalog', 'misc', 'id_documents', 'qr_code']) ? $_POST['folder'] : 'misc';
 $isIdDocument = $folder === 'id_documents';
+// A UPI QR code (bank/PhonePe/GPay-issued screenshot or photo) must never be
+// center-cropped like the menu/catalog thumbnails below - cropping a QR code
+// destroys its corner finder patterns and makes it unscannable. Shares the
+// same "downscale only, never crop" branch as ID documents.
+$isQrCode = $folder === 'qr_code';
 $targetWidth = ($folder === 'catalog') ? 300 : 400;
 $targetHeight = ($folder === 'catalog') ? 100 : 300;
 
 // Category subfolder name - distinct from the internal $folder param so the on-disk layout can
 // use clearer names than the API's existing menu/catalog vocabulary without a breaking API change.
-$categoryFolderNames = ['menu' => 'food_menu', 'catalog' => 'kitchen_stock', 'id_documents' => 'id_documents', 'misc' => 'misc'];
+$categoryFolderNames = ['menu' => 'food_menu', 'catalog' => 'kitchen_stock', 'id_documents' => 'id_documents', 'misc' => 'misc', 'qr_code' => 'payment_qr'];
 $categoryFolder = $categoryFolderNames[$folder];
 
 // Resolve tenant/property slugs for the folder path. Sanitized (alphanumeric/hyphen/underscore
@@ -118,10 +123,12 @@ if (!$imageSource) {
 $origWidth = imagesx($imageSource);
 $origHeight = imagesy($imageSource);
 
-if ($isIdDocument) {
+if ($isIdDocument || $isQrCode) {
     // ID photos must stay legible (text/photo on a card) - downscale only if
-    // oversized, never crop, unlike the menu/catalog thumbnails below.
-    $maxDim = 1600;
+    // oversized, never crop, unlike the menu/catalog thumbnails below. QR
+    // codes need the same treatment for scannability, just a smaller cap
+    // since these are already small square images.
+    $maxDim = $isQrCode ? 1000 : 1600;
     if ($origWidth > $maxDim || $origHeight > $maxDim) {
         if ($origWidth >= $origHeight) {
             $canvasWidth = $maxDim;
@@ -150,7 +157,7 @@ if ($canvas === false) {
 imagealphablending($canvas, false);
 imagesavealpha($canvas, true);
 
-if ($isIdDocument) {
+if ($isIdDocument || $isQrCode) {
     imagecopyresampled($canvas, $imageSource, 0, 0, 0, 0, $canvasWidth, $canvasHeight, $origWidth, $origHeight);
 } else {
     // Calculate crop region (center crop to match target aspect ratio)
@@ -174,8 +181,9 @@ if ($isIdDocument) {
     imagecopyresampled($canvas, $imageSource, 0, 0, $cropX, $cropY, $targetWidth, $targetHeight, $cropWidth, $cropHeight);
 }
 
-// Save as JPEG (best compatibility). ID photos use higher quality since legibility matters.
-$jpegQuality = $isIdDocument ? 92 : 85;
+// Save as JPEG (best compatibility). ID photos and QR codes use higher quality
+// since legibility/scannability matters more than filesize for these.
+$jpegQuality = ($isIdDocument || $isQrCode) ? 92 : 85;
 $saved = false;
 if ($ext === 'png' && !$isIdDocument) {
     $saved = imagepng($canvas, $filepath, 6); // compression level 6

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, Modal, ModalBody, TextInput } from 'flowbite-react';
 import DataTable from 'react-data-table-component';
+import { flowbiteTableCustomStyles } from '../utils/tableStyles';
 import {
   Calendar,
   CheckCircle2,
@@ -16,6 +17,7 @@ import {
   Globe,
   CreditCard,
   ReceiptText,
+  Pencil,
 } from 'lucide-react';
 import { Guest, BillingReceipt } from '../types';
 import { t } from '../i18n/en';
@@ -27,7 +29,7 @@ import { MobileBookingCardStack } from './MobileBookingCardStack';
 import { ReceiptEditModal } from './ReceiptEditModal';
 import { BookingDetailsModal } from './BookingDetailsModal';
 import { PageHeader, PageHeaderButton } from './PageHeader';
-import { formatDateDDMMYYYY, formatDateDDMMYY } from '../utils/dateUtils';
+import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import { markCFormFiled } from '../services/api';
 
 interface BillingCheckoutProps {
@@ -95,8 +97,8 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
 
   // Format date for display
   const formatDate = (dateStr: string): string => {
-    if (!dateStr) return 'â€”';
-    return formatDateDDMMYYYY(dateStr) || 'â€”';
+    if (!dateStr) return '—';
+    return formatDateDDMMYYYY(dateStr) || '—';
   };
 
   // Fine-grained status (used for per-guest badges, and to derive the
@@ -159,13 +161,13 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   const getGuestStayStatus = (guest: Guest) => {
     const cat = getGuestDetailedStatus(guest);
     if (cat === 'checkin_today') {
-      return { key: 'staying', label: t('checked_in_today_badge', 'Checked In Today'), color: 'bg-emerald-600 text-white dark:bg-emerald-600' };
+      return { key: 'staying', label: t('checked_in_today_badge', 'Checked In Today'), variant: 'success' as const };
     } else if (cat === 'checkout_today') {
-      return { key: 'checkout', label: t('checkout_today_badge', 'Checkout Today'), color: 'bg-amber-600 text-white dark:bg-amber-600' };
+      return { key: 'checkout', label: t('checkout_today_badge', 'Checkout Today'), variant: 'warning' as const };
     } else if (cat === 'upcoming') {
-      return { key: 'upcoming', label: t('upcoming_booking_badge', 'Upcoming Booking'), color: 'bg-blue-600 text-white dark:bg-blue-600' };
+      return { key: 'upcoming', label: t('upcoming_booking_badge', 'Upcoming Booking'), variant: 'info' as const };
     } else {
-      return { key: 'past', label: t('past_booking_badge', 'Past Booking'), color: 'bg-purple-600 text-white dark:bg-purple-600' };
+      return { key: 'past', label: t('past_booking_badge', 'Past Booking'), variant: 'neutral' as const };
     }
   };
 
@@ -361,6 +363,16 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
         return (
           <Card
             key={`${group.roomId}-${group.roomSlug}`}
+            // flowbite-react's Card always wraps children in its own inner
+            // div (theme's root.children: gap-4 + p-6) - className above
+            // only reaches the outer bordered div, not that inner wrapper,
+            // so the !p-0 below never actually removed the real 24px
+            // padding/16px gap around the header. That stray padding+gap is
+            // what made the header read as a disconnected, borderless card
+            // floating inside this one (found 20 Aug 2026). Overriding
+            // root.children directly (the documented way to reach it) is
+            // what actually removes it.
+            theme={{ root: { children: 'flex h-full flex-col gap-0 p-0' } }}
             className="billing-checkout__room-card shadow-md overflow-hidden flex flex-col justify-between !p-0"
           >
             {/* Room Header */}
@@ -383,7 +395,17 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                 return (
                   <div
                     key={guest.id}
-                    className="billing-checkout__guest-card bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 shadow-xs hover:border-gray-300 dark:hover:border-gray-600 transition-all flex flex-col justify-between space-y-3"
+                    // No bg/border/shadow/rounded/padding here - the parent
+                    // Card (billing-checkout__room-card) already provides
+                    // that frame; giving each guest its own box on top of it
+                    // read as a nested "card inside a card" with doubled
+                    // padding, since room-card-body already applies its own
+                    // p-4 (found 19 Aug 2026). A room can only ever have one
+                    // active booking (see CLAUDE.md's "1 room = 1 active
+                    // booking maximum"), so this is virtually always a single
+                    // item - space-y-4 on the parent is enough separation
+                    // for the rare case of more than one.
+                    className="billing-checkout__guest-card flex flex-col justify-between space-y-3"
                   >
                     {/* Top Header: Guest Name & Status Badge */}
                     <div>
@@ -412,20 +434,22 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                               </span>
                             )}
                             {guest.otaSource && (
-                              <span
-                                className="billing-checkout__ota-badge inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 text-[9px] font-semibold shrink-0"
+                              <Badge
+                                variant="warning"
+                                size="sm"
+                                className="billing-checkout__ota-badge shrink-0"
                                 title={t('ota_converted_badge_tooltip', 'Converted from an OTA calendar sync - editing this only changes this app, not the original platform')}
                               >
                                 <Globe className="w-2.5 h-2.5" />
                                 {guest.otaSourceLabel || guest.otaSource}
                                 {guest.roomNumber && <span className="opacity-70">&middot; {guest.roomNumber}</span>}
-                              </span>
+                              </Badge>
                             )}
                           </div>
                         </div>
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 shadow-2xs ${stayStatus.color}`}>
+                        <Badge variant={stayStatus.variant} size="sm">
                           {stayStatus.label}
-                        </span>
+                        </Badge>
                       </div>
 
                       {/* C-Form Filing Status - foreign guests only (regulatory: Foreigner
@@ -479,19 +503,19 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                       {(guest.totalAmount || guest.roomRate) ? (
                         <div className="flex justify-between text-slate-600 dark:text-slate-400 text-[11px]">
                           <span>{t('room_charges_label', 'Room Charges:')}</span>
-                          <span className="summary-line summary-line--room-rate font-semibold tabular-nums text-slate-800 dark:text-slate-200">â‚¹{(guest.totalAmount ?? guest.roomRate ?? 0).toFixed(2)}</span>
+                          <span className="summary-line summary-line--room-rate font-semibold tabular-nums text-slate-800 dark:text-slate-200">₹{(guest.totalAmount ?? guest.roomRate ?? 0).toFixed(2)}</span>
                         </div>
                       ) : null}
                       {guest.foodBill > 0 && (
                         <div className="flex justify-between text-slate-600 dark:text-slate-400 text-[11px]">
                           <span>{t('food_incidentals_label', 'Food & Incidentals:')}</span>
-                          <span className="summary-line summary-line--food-bill font-semibold tabular-nums text-slate-800 dark:text-slate-200">â‚¹{guest.foodBill.toFixed(2)}</span>
+                          <span className="summary-line summary-line--food-bill font-semibold tabular-nums text-slate-800 dark:text-slate-200">₹{guest.foodBill.toFixed(2)}</span>
                         </div>
                       )}
                       {guest.advanceAmount > 0 && (
                         <div className="flex justify-between text-slate-600 dark:text-slate-400 text-[11px]">
                           <span>{t('less_advance_paid_label', 'Less: Advance Paid')}</span>
-                          <span className="summary-line summary-line--advance-paid font-semibold tabular-nums text-slate-700 dark:text-slate-300">-â‚¹{guest.advanceAmount.toFixed(2)}</span>
+                          <span className="summary-line summary-line--advance-paid font-semibold tabular-nums text-slate-700 dark:text-slate-300">-₹{guest.advanceAmount.toFixed(2)}</span>
                         </div>
                       )}
                       <div className="flex justify-between items-center text-xs font-semibold pt-1 border-t border-dashed border-slate-200 dark:border-slate-700">
@@ -499,7 +523,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                           {amountDue < 0 ? t('refund_due_to_guest_label', 'Refund Due to Guest:') : t('amount_due_label', 'Amount Due:')}
                         </span>
                         <span className="summary-line summary-line--amount-due font-bold text-slate-900 dark:text-white text-sm tabular-nums">
-                          â‚¹{Math.abs(amountDue).toFixed(2)}
+                          ₹{Math.abs(amountDue).toFixed(2)}
                         </span>
                       </div>
                     </div>
@@ -510,15 +534,15 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                         <button
                           onClick={() => handleEditGuest(guest)}
                           disabled={isProcessing}
-                          className="bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-semibold py-1.5 px-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5 text-xs shadow-2xs cursor-pointer"
+                          className="bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-semibold py-1.5 px-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5 text-xs shadow-md cursor-pointer"
                         >
-                          <CheckCircle2 className="w-3.5 h-3.5 text-slate-500" />
+                          <Pencil className="w-3.5 h-3.5 text-slate-500" />
                           {t('edit_button', 'Edit')}
                         </button>
                         <button
                           onClick={() => handleEditAndCheckoutGuest(guest)}
                           disabled={isProcessing}
-                          className="bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-semibold py-1.5 px-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5 text-xs shadow-2xs cursor-pointer"
+                          className="bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-semibold py-1.5 px-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5 text-xs shadow-md cursor-pointer"
                         >
                           <LogOut className="w-3.5 h-3.5" />
                           {t('checkout_button', 'Checkout')}
@@ -529,9 +553,9 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                         <button
                           onClick={() => handleEditGuest(guest)}
                           disabled={isProcessing}
-                          className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-600 font-semibold py-1.5 px-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5 text-xs shadow-2xs cursor-pointer"
+                          className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-600 font-semibold py-1.5 px-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5 text-xs shadow-md cursor-pointer"
                         >
-                          <CheckCircle2 className="w-3.5 h-3.5 text-slate-500" />
+                          <Pencil className="w-3.5 h-3.5 text-slate-500" />
                           {t('edit_booking_button', 'Edit Booking')}
                         </button>
                       </div>
@@ -556,13 +580,6 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     </div>
   );
 
-  const pastBookingsTableStyles = {
-    subHeader: { style: { padding: 0, minHeight: 0, backgroundColor: 'transparent' } },
-    headRow: { style: { backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb' } },
-    headCells: { style: { fontSize: '12px', fontWeight: 600, color: '#374151', textTransform: 'uppercase', paddingLeft: '16px', paddingRight: '16px' } },
-    cells: { style: { fontSize: '14px', color: '#4b5563', padding: '16px' } },
-    rows: { style: { minHeight: '56px' } },
-  };
 
   const pastBookingsColumns = [
     {
@@ -601,11 +618,11 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
         <div className="flex flex-col py-1 text-xs">
           <div className="font-medium text-gray-900 dark:text-white flex items-center gap-1.5">
             <span className="text-2xs font-semibold uppercase text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">{t('checkin_badge', 'IN')}</span>
-            <span>{formatDateDDMMYY(row.checkinDate)}</span>
+            <span>{formatDateDDMMYYYY(row.checkinDate)}</span>
           </div>
           <div className="text-gray-500 dark:text-gray-400 flex items-center gap-1.5 mt-1">
             <span className="text-2xs font-semibold uppercase text-rose-700 bg-rose-50 dark:bg-rose-950/40 px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-800">{t('checkout_badge', 'OUT')}</span>
-            <span>{formatDateDDMMYY(row.checkoutDate || row.expectedCheckout) || 'â€”'}</span>
+            <span>{formatDateDDMMYYYY(row.checkoutDate || row.expectedCheckout) || '—'}</span>
           </div>
         </div>
       ),
@@ -630,9 +647,9 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       cell: (row: Guest) => {
         const status = getGuestStayStatus(row);
         return (
-          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${status.color}`}>
+          <Badge variant={status.variant} size="sm">
             {status.label}
-          </span>
+          </Badge>
         );
       },
     },
@@ -645,11 +662,11 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
         <div className="flex flex-col py-1 text-xs">
           <div className="flex items-center gap-1 font-semibold text-gray-900 dark:text-white">
             <span>{t('bill_field', 'Bill:')}</span>
-            <span className="text-blue-600 dark:text-blue-400">â‚¹{(row.totalAmount ?? row.roomRate ?? 0).toFixed(2)}</span>
+            <span className="text-blue-600 dark:text-blue-400">₹{(row.totalAmount ?? row.roomRate ?? 0).toFixed(2)}</span>
           </div>
           <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex flex-wrap gap-x-2">
-            <span>{t('adv_short_label', 'Adv:')} â‚¹{(row.advanceAmount ?? 0).toFixed(2)}</span>
-            <span>â€¢</span>
+            <span>{t('adv_short_label', 'Adv:')} ₹{(row.advanceAmount ?? 0).toFixed(2)}</span>
+            <span>•</span>
             <span className={calculateGuestTotal(row) <= 0 ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-amber-600 dark:text-amber-400 font-semibold'}>
               {calculateGuestTotal(row) <= 0 ? t('paid_label', 'Paid') : t('due_label', 'Due')}
             </span>
@@ -698,9 +715,9 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       cell: (row: Guest) => (
         <button
           onClick={() => handleEditGuest(row)}
-          className="bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 font-semibold py-1.5 px-3 rounded-lg transition-colors flex items-center justify-center gap-1.5 text-xs shadow-xs cursor-pointer"
+          className="bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 font-semibold py-1.5 px-3 rounded-lg transition-colors flex items-center justify-center gap-1.5 text-xs shadow-md cursor-pointer"
         >
-          <CheckCircle2 className="w-3.5 h-3.5 text-gray-500" />
+          <Pencil className="w-3.5 h-3.5 text-gray-500" />
           {t('edit_booking_button', 'Edit Booking')}
         </button>
       ),
@@ -746,7 +763,16 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
         </div>
 
         {/* Navigation Tabs */}
-        <div className="billing-checkout__tab-list no-scrollbar flex items-center gap-2 overflow-x-auto border-b border-gray-200 pb-3 dark:border-gray-700">
+        {/* overflow-x-auto with no overflow-y specified makes the browser
+            compute overflow-y as auto too (CSS spec: 'visible' on one axis
+            is forced to 'auto' whenever the other axis isn't 'visible' -
+            overflow-y-visible can't override this, the two truly can't
+            coexist), which clips the active tab's own shadow/focus-ring
+            flush against this row's top edge since there's no pt-* to give
+            it headroom (only pb-3, for spacing below) - reading as a
+            "cropped" button (found 20 Aug 2026). pt-1 gives the shadow
+            enough room to render before it reaches the clip boundary. */}
+        <div className="billing-checkout__tab-list no-scrollbar flex items-center gap-2 overflow-x-auto pt-1 border-b border-gray-200 pb-3 dark:border-gray-700">
           <Button
             variant={activeTab === 'today' ? 'primary' : 'ghost'}
             size="sm"
@@ -816,7 +842,8 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
             <DataTable
               columns={pastBookingsColumns}
               data={searchedGuests}
-              customStyles={pastBookingsTableStyles}
+              customStyles={flowbiteTableCustomStyles}
+              highlightOnHover
               pagination
               paginationPerPage={15}
               paginationRowsPerPageOptions={[10, 15, 20, 30, 50]}

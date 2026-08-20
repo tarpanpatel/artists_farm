@@ -563,7 +563,7 @@ function getMultiKeyProperty($pdo, $propertyId = 0, $currentProperty = []) {
         // Get parent MultiKey property
         $stmt = $pdo->prepare("
             SELECT id, tenant_id, name, slug, property_type, address, currency, timezone, is_active, created_at,
-                   email, phone, google_maps_link, whatsapp_voucher_template, gstin, upi_id, instructions,
+                   email, phone, google_maps_link, whatsapp_voucher_template, gstin, upi_id, upi_qr_code_url, instructions,
                    telegram_template_customization_enabled
             FROM properties
             WHERE id = ? AND property_type = 'MULTI_KEY'
@@ -624,6 +624,7 @@ function getMultiKeyProperty($pdo, $propertyId = 0, $currentProperty = []) {
                 'phone' => $property['phone'] ?? null,
                 'gstin' => $property['gstin'] ?? null,
                 'upi_id' => $property['upi_id'] ?? null,
+                'upi_qr_code_url' => $property['upi_qr_code_url'] ?? null,
                 'whatsapp_voucher_template' => $property['whatsapp_voucher_template'] ?? null,
                 'telegram_template_customization_enabled' => (bool)($property['telegram_template_customization_enabled'] ?? false),
                 'address' => $property['address'],

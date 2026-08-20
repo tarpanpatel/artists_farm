@@ -698,16 +698,11 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
             {/* Multi-Line Additional Charges Block (if checked) */}
             {showBookingExtraCharges && (
-              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3 shadow-xs">
+              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3 shadow-md">
                 <div className="flex items-center justify-between">
-                  <button
-                    type="button"
-                    onClick={handleAddBookingExtraChargeLine}
-                    className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1 cursor-pointer transition-colors"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    Add Charges
-                  </button>
+<Button color="blue" size="sm" onClick={handleAddBookingExtraChargeLine}>
+                    <Plus className="w-3.5 h-3.5 mr-1.5" /> Add Charges
+                  </Button>
                   <span className="text-2xs text-gray-500 dark:text-gray-400">e.g. Pet Stay, Decoration, Misc</span>
                 </div>
 

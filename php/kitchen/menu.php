@@ -241,7 +241,14 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                     // edit_property, so the standalone entry was always redundant, never wired
                     // to its own page.
                     $pdo->exec("DELETE FROM nav_menu_items WHERE unique_key = 'ical_sync_manager'");
-                    $pdo->exec("UPDATE nav_menu_items SET title = 'Analytics' WHERE unique_key = 'dashboard_analytics'");
+                    $pdo->exec("UPDATE nav_menu_items SET title = 'Reports & Earnings' WHERE unique_key = 'dashboard_analytics'");
+                    $pdo->exec("UPDATE nav_menu_items SET title = 'Past Bills & Receipts' WHERE unique_key = 'past_receipts_log'");
+                    $pdo->exec("UPDATE nav_menu_items SET title = 'Menu & Pricing' WHERE unique_key = 'edit_items_group'");
+                    $pdo->exec("UPDATE nav_menu_items SET title = 'Extra Charges & Fees' WHERE unique_key = 'misc_charges'");
+                    $pdo->exec("UPDATE nav_menu_items SET title = 'Telegram Alerts' WHERE unique_key = 'telegram'");
+                    $pdo->exec("UPDATE nav_menu_items SET title = 'Download Data & Excel' WHERE unique_key = 'data_export_center'");
+                    $pdo->exec("UPDATE nav_menu_items SET title = 'Dish Recipes (Auto-Stock)' WHERE unique_key = 'beta_recipe_builder'");
+                    $pdo->exec("UPDATE nav_menu_items SET title = 'Property Licenses' WHERE unique_key = 'license_management'");
                     $pdo->exec("UPDATE nav_menu_items SET parent_id = 'nav-kitchen-overview' WHERE unique_key IN ('take_food_order', 'kitchen_orders', 'staff_meals', 'stock_requests', 'deficit_shortfalls_log', 'stock_log', 'kitchen_purchases', 'edit_food_menu', 'edit_kitchen_stock') AND (parent_id IS NULL OR parent_id = '')");
                     $pdo->exec("UPDATE nav_menu_items SET custom_url = NULL, open_in_new_tab = 0 WHERE custom_url IS NOT NULL AND (LOWER(title) = 'team' OR unique_key IN ('team', 'team_overview'))");
                     $pdo->exec("DELETE FROM nav_menu_items WHERE custom_url IS NOT NULL AND custom_url != '' AND LOWER(title) = 'team'");

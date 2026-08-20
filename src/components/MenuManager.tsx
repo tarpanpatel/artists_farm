@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, ModalHeader, ModalBody, ModalFooter } from 'flowbite-react';
+import { Modal, ModalHeader, ModalBody, ModalFooter, TextInput as FlowbiteTextInput } from 'flowbite-react';
 import { Button } from './Button';
 import { Input } from './Input';
 import {
   Utensils,
   Navigation as NavIcon,
   Plus,
-  Edit2,
+  Pencil,
   Trash2,
   X,
   Search,
@@ -35,6 +35,7 @@ import {
   TrendingDown,
   Package,
   ShoppingBag,
+  Filter,
 } from 'lucide-react';
 import { MenuItem, NavMenuItem } from '../types';
 import { uploadImageDB } from '../services/api';
@@ -107,6 +108,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
   // Food Menu state
   const [foodSearch, setFoodSearch] = useState('');
   const [selectedFoodCategory, setSelectedFoodCategory] = useState<string>('All');
+  const [showCategoryFilters, setShowCategoryFilters] = useState(false);
   const [isAddFoodModalOpen, setIsAddFoodModalOpen] = useState(false);
   const [editingFoodItem, setEditingFoodItem] = useState<MenuItem | null>(null);
 
@@ -388,49 +390,77 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
       {activeSubTab === 'food_menu' && (
         <div className="menu-manager__food-menu space-y-4">
           {/* Top Search Bar & Controls */}
-          <div className="bg-white dark:bg-slate-800 p-3.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs space-y-3">
+          <div className="bg-white dark:bg-slate-800 p-3.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md space-y-3">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 z-10" />
-                <Input
-                  autoComplete="off"
-                  value={foodSearch}
-                  onChange={(e) => setFoodSearch(e.target.value)}
-                  placeholder={t('search_food_items_placeholder', 'Quick search catalog metrics...')}
-                  className="pl-9 w-full"
-                />
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <div className="relative flex-1">
+                  <FlowbiteTextInput
+                    id="menu-catalog-search"
+                    autoComplete="off"
+                    icon={Search}
+                    value={foodSearch}
+                    onChange={(e) => setFoodSearch(e.target.value)}
+                    placeholder={t('search_food_items_placeholder', 'Quick search catalog metrics...')}
+                    className="w-full"
+                  />
+                  {foodSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setFoodSearch('')}
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer z-10"
+                      aria-label="Clear search"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowCategoryFilters((v) => !v)}
+                  className={`relative h-10 w-10 shrink-0 rounded-lg border flex items-center justify-center transition-all cursor-pointer ${
+                    showCategoryFilters
+                      ? 'bg-blue-600 border-blue-600 text-white shadow-md'
+                      : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
+                  }`}
+                  title={t('toggle_category_filters_tooltip', 'Filter by category')}
+                  aria-label="Toggle category filters"
+                  aria-expanded={showCategoryFilters}
+                >
+                  <Filter className="w-4 h-4" />
+                  {selectedFoodCategory !== 'All' && !showCategoryFilters && (
+                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-blue-500 border-2 border-white dark:border-gray-800" />
+                  )}
+                </button>
               </div>
 
-              <button
-                type="button"
-                onClick={handleOpenAddFood}
-                className="menu-manager__add-food-btn text-white bg-blue-600 hover:bg-blue-700 active:scale-98 font-semibold text-xs px-3.5 py-2 rounded-lg flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer shrink-0"
-              >
-                <Plus className="w-4 h-4" />
+              <Button variant="primary" size="sm" onClick={handleOpenAddFood} leftIcon={<Plus className="w-4 h-4" />}>
                 <span>{t('add_food_menu_item_button', 'Add Food Menu Item')}</span>
-              </button>
+              </Button>
             </div>
 
-            {/* Category Filter Carousel (Identical to #take_food_order) */}
-            <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1">
-              {foodCategories.map((cat) => {
-                const isSelected = selectedFoodCategory === cat;
-                return (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setSelectedFoodCategory(cat)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 ${
-                      isSelected
-                        ? 'bg-cyan-500 text-white shadow-2xs'
-                        : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600'
-                    }`}
-                  >
-                    {cat === 'All' ? 'All Menu' : cat}
-                  </button>
-                );
-              })}
-            </div>
+            {/* Category Filter Carousel (shown only when clicked on button next to search box) */}
+            {showCategoryFilters && (
+              <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1">
+                {foodCategories.map((cat) => {
+                  const isSelected = selectedFoodCategory === cat;
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setSelectedFoodCategory(cat)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 ${
+                        isSelected
+                          ? 'bg-blue-600 text-white shadow-md'
+                          : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600'
+                      }`}
+                    >
+                      {cat === 'All' ? 'All Menu' : cat}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Food Grid (Matching #take_food_order POS 6-column grid) */}
@@ -442,7 +472,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                 onDragStart={(e) => handleFoodDragStart(e, index)}
                 onDragOver={(e) => handleFoodDragOver(e, index)}
                 onDrop={(e) => handleFoodDrop(e, index)}
-                className={`menu-manager__food-card bg-white dark:bg-slate-800 rounded-lg border border-slate-200/90 dark:border-slate-700 p-2.5 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between cursor-grab active:cursor-grabbing ${
+                className={`menu-manager__food-card bg-white dark:bg-slate-800 rounded-lg border border-slate-200/90 dark:border-slate-700 p-2.5 shadow-md hover:shadow-md transition-all flex flex-col justify-between cursor-grab active:cursor-grabbing ${
                   draggedFoodIndex === index ? 'opacity-40 border-blue-400' : ''
                 } ${item.available ? '' : 'bg-red-50/20 dark:bg-red-950/20'}`}
               >
@@ -517,7 +547,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                       {item.name}
                     </h4>
                     <p className="text-emerald-700 dark:text-emerald-400 font-extrabold text-xs sm:text-[11px] mt-0.5">
-                      â‚¹{item.price}
+                      ₹{item.price}
                     </p>
                   </div>
                 </div>
@@ -532,7 +562,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                       className="p-1 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
                       title={t('edit_item_tooltip', 'Edit Item')}
                     >
-                      <Edit2 className="w-3.5 h-3.5" />
+                      <Pencil className="w-3.5 h-3.5" />
                     </button>
                     <button
                       type="button"
@@ -563,7 +593,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                 <button
                   key={item.name}
                   onClick={() => handleSelectIcon(iconPickerTargetId!, item.name)}
-                  className="menu-manager__icon-option p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-emerald-500 hover:text-emerald-600 rounded-lg flex flex-col items-center gap-1 transition-all cursor-pointer active:scale-95 shadow-2xs"
+                  className="menu-manager__icon-option p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-emerald-500 hover:text-emerald-600 rounded-lg flex flex-col items-center gap-1 transition-all cursor-pointer active:scale-95 shadow-md"
                 >
                   <IconComp className="w-6 h-6" />
                   <span className="text-[9px] font-semibold text-slate-500 dark:text-slate-400 truncate w-full text-center">
@@ -654,7 +684,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                       onClick={() => setNavForm({ ...navForm, iconName: item.name })}
                       className={`p-2 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
                         isSelected
-                          ? 'bg-emerald-600 text-white shadow-2xs'
+                          ? 'bg-emerald-600 text-white shadow-md'
                           : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
                       }`}
                     >
@@ -778,7 +808,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               </div>
 
               <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('price_rupees_label', 'Price (â‚¹)')}</label>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('price_rupees_label', 'Price (₹)')}</label>
                 <Input
                   type="number"
                   min="0"
@@ -794,10 +824,10 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('item_image_upload_url_label', 'Item Image Upload / URL')}</label>
               <div className="menu-manager__field space-y-2">
                 <div className="menu-manager__upload-row flex items-center gap-2">
-                  <label className="menu-manager__upload-btn bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-2 rounded-lg cursor-pointer flex items-center gap-1.5 shadow-2xs text-xs shrink-0 transition-all">
+                  <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition-colors border border-slate-300 dark:border-slate-600">
                     <Upload className="w-4 h-4" />
                     <span>{t('upload_image_button', 'Upload Image')}</span>
-                    <Input
+                    <input
                       type="file"
                       accept="image/*"
                       className="hidden"

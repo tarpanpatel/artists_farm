@@ -166,7 +166,7 @@ export const ConvertOtaBookingModal: React.FC<ConvertOtaBookingModalProps> = ({
             </div>
           </div>
           <div>
-            <label className={fieldLabelClass}>{t('room_rent', 'Room Rent / Price (â‚¹)')}</label>
+            <label className={fieldLabelClass}>{t('room_rent', 'Room Rent / Price (₹)')}</label>
             <div className="mt-1">
               <Input type="number" min={0} value={roomRate} onChange={(e) => setRoomRate(e.target.value)} />
             </div>

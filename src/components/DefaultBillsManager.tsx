@@ -161,7 +161,7 @@ export const DefaultBillsManager: React.FC = () => {
   return (
     <div className="default-bills-manager space-y-4 p-3 sm:p-6">
       {/* Header */}
-      <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-5">
+      <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
@@ -172,13 +172,9 @@ export const DefaultBillsManager: React.FC = () => {
               Manage the default bill types. These appear as autocomplete suggestions on the Expenses form when <strong>Bills</strong> is selected as the category.
             </p>
           </div>
-          <button
-            onClick={() => setIsAddingNew(!isAddingNew)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Add New Bill
-          </button>
+          <Button variant="primary" size="sm" onClick={() => setIsAddingNew(!isAddingNew)} leftIcon={<Plus className="w-3.5 h-3.5" />}>
+              Add New Bill
+            </Button>
         </div>
         <div className="relative mt-3">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -206,7 +202,7 @@ export const DefaultBillsManager: React.FC = () => {
 
       {/* Add New Form */}
       {isAddingNew && (
-        <div className="bg-white dark:bg-slate-800 rounded-lg border border-blue-200 dark:border-blue-800 p-5 space-y-3 max-w-lg">
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-blue-200 dark:border-blue-800 p-4 sm:p-6 space-y-3 max-w-lg">
           <h3 className="font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2">
             <Plus className="w-4 h-4 text-blue-600" />
             Add New Bill Type

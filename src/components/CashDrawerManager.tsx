@@ -1,19 +1,21 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Modal, ModalHeader, ModalBody, ModalFooter } from 'flowbite-react';
+import { Modal, ModalHeader, ModalBody, ModalFooter, TextInput as FlowbiteTextInput } from 'flowbite-react';
 import { ArrowRightLeft, Loader2, Search, AlertTriangle, CheckCircle2, IndianRupee, Handshake, Sliders, ChevronUp, ChevronDown, Plus, Trash2, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { CashDrawerEntry, CashDrawerSummary, StaffAdvance, StaffMember } from '../types';
 import { PageHeader } from './PageHeader';
+import { Badge } from './Badge';
 import { KpiCard } from './KpiCard';
 import { t } from '../i18n/en';
 import { fetchCashDrawerSummaryFromDB, addDrawerEntryToDB, fetchDrawerEntriesFromDB, resolveTelegramTemplate, fetchStaffAdvancesFromDB, addStaffAdvanceToDB, deleteStaffAdvanceFromDB, saveAttendanceToDB, generateSalaryEntry } from '../services/api';
 import DataTable from 'react-data-table-component';
+import { flowbiteTableCustomStyles } from '../utils/tableStyles';
 import { useStaff } from '../contexts/StaffContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { useToast } from './ToastContext';
 import { StyledSelect } from './StyledSelect';
 import { Input } from './Input';
 import { Button } from './Button';
-import { formatDateTimeDDMMYYYY } from '../utils/dateUtils';
+import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../utils/dateUtils';
 
 interface CashDrawerManagerProps {
   onLogAudit?: (action: string, extra?: any) => void;
@@ -158,10 +160,10 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
     const ok = onAddDrawerEntry ? await onAddDrawerEntry(drawerEntry) : await addDrawerEntryToDB(drawerEntry);
     if (ok) loadAll();
 
-    onLogAudit?.(`Admin gave advance of Ã¢â€šÂ¹${advanceAmount} to ${advanceStaff.name} (${newAdvance.reason})`);
+    onLogAudit?.(`Admin gave advance of ₹${advanceAmount} to ${advanceStaff.name} (${newAdvance.reason})`);
 
     if (onDispatchTelegram) {
-      const msg = `<b>Ã°Å¸â€™Âµ ADVANCE GIVEN</b>\nÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€Â\nÃ°Å¸â€˜Â¤ <b>Staff:</b> ${advanceStaff.name}\nÃ°Å¸â€™Â° <b>Amount:</b> Ã¢â€šÂ¹${advanceAmount.toLocaleString('en-IN')}\nÃ°Å¸â€œÂ <b>Reason:</b> ${newAdvance.reason}\nÃ°Å¸â€œâ€¦ <b>Month:</b> ${monthKey}\nÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€Â`;
+      const msg = `<b>💵 ADVANCE GIVEN</b>\n━━━━━━━━━━━━━━━━\n👤 <b>Staff:</b> ${advanceStaff.name}\n💰 <b>Amount:</b> ₹${advanceAmount.toLocaleString('en-IN')}\n📝 <b>Reason:</b> ${newAdvance.reason}\n📅 <b>Month:</b> ${monthKey}\n━━━━━━━━━━━━━━━━`;
       onDispatchTelegram('Staff Advance', msg, 'finance');
     }
 
@@ -185,7 +187,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
     if (ok) {
       setPaidStaff(prev => new Set(prev).add(row.staff.id));
       if (onDispatchTelegram) {
-        const msg = `<b>Ã°Å¸â€™Â° SALARY PAYMENT</b>\nÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€Â\nÃ°Å¸â€˜Â¤ <b>Staff:</b> ${row.staff.name}\nÃ°Å¸â€œâ€¦ <b>Month:</b> ${monthKey}\nÃ°Å¸â€™Âµ <b>Amount:</b> Ã¢â€šÂ¹${row.pendingPayout.toLocaleString('en-IN')}\nÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€Â`;
+        const msg = `<b>💰 SALARY PAYMENT</b>\n━━━━━━━━━━━━━━━━\n👤 <b>Staff:</b> ${row.staff.name}\n📅 <b>Month:</b> ${monthKey}\n💵 <b>Amount:</b> ₹${row.pendingPayout.toLocaleString('en-IN')}\n━━━━━━━━━━━━━━━━`;
         onDispatchTelegram('Salary Payment', msg, 'finance');
       }
     }
@@ -201,7 +203,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
     if (Number(handoverAmount) > staffMember.netBalance) {
       const confirmed = await confirm({
         title: t('exceeds_net_balance_title', 'Exceeds Net Balance'),
-        message: `Warning: Handover amount (Ã¢â€šÂ¹${handoverAmount}) exceeds current net balance (Ã¢â€šÂ¹${staffMember.netBalance}). This will create a negative balance. Proceed?`,
+        message: `Warning: Handover amount (₹${handoverAmount}) exceeds current net balance (₹${staffMember.netBalance}). This will create a negative balance. Proceed?`,
         confirmText: t('proceed_handover_button', 'Proceed Handover'),
         variant: 'warning',
       });
@@ -221,11 +223,11 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
 
     const ok = onAddDrawerEntry ? await onAddDrawerEntry(entry) : await addDrawerEntryToDB(entry);
     if (ok) {
-      onLogAudit?.(`Recorded Cash Handover: Ã¢â€šÂ¹${handoverAmount} for ${staffMember.staffName} (handed to ${handedTo})`);
+      onLogAudit?.(`Recorded Cash Handover: ₹${handoverAmount} for ${staffMember.staffName} (handed to ${handedTo})`);
 
       if (onDispatchTelegram) {
         const netAfter = staffMember.netBalance - Number(handoverAmount);
-        const fallbackMsg = `Ã°Å¸Â¤Â <b>CASH DRAWER CASH HANDOVER</b>\nÃ¢â‚¬Â¢ Staff: <b>${staffMember.staffName}</b>\nÃ¢â‚¬Â¢ Amount: <b>Ã¢â€šÂ¹${Number(handoverAmount).toLocaleString('en-IN')}</b>\nÃ¢â‚¬Â¢ Handed To: <b>${handedTo}</b>${handoverNotes ? `\nÃ¢â‚¬Â¢ Notes: ${handoverNotes}` : ''}\nÃ¢â‚¬Â¢ Net Balance After: <b>Ã¢â€šÂ¹${netAfter.toLocaleString('en-IN')}</b>`;
+        const fallbackMsg = `🤝 <b>CASH DRAWER CASH HANDOVER</b>\n• Staff: <b>${staffMember.staffName}</b>\n• Amount: <b>₹${Number(handoverAmount).toLocaleString('en-IN')}</b>\n• Handed To: <b>${handedTo}</b>${handoverNotes ? `\n• Notes: ${handoverNotes}` : ''}\n• Net Balance After: <b>₹${netAfter.toLocaleString('en-IN')}</b>`;
         const templateVars: Record<string, string> = {
           staff_name: staffMember.staffName,
           action_type: 'Cash Handover',
@@ -262,11 +264,11 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
 
     const ok = onAddDrawerEntry ? await onAddDrawerEntry(entry) : await addDrawerEntryToDB(entry);
     if (ok) {
-      onLogAudit?.(`Recorded Manual Adjustment: Ã¢â€šÂ¹${adjustmentAmount} for ${staffMember.staffName}`);
+      onLogAudit?.(`Recorded Manual Adjustment: ₹${adjustmentAmount} for ${staffMember.staffName}`);
 
       if (onDispatchTelegram) {
         const netAfter = staffMember.netBalance + Number(adjustmentAmount);
-        const fallbackMsg = `Ã¢Å¡â„¢Ã¯Â¸Â <b>CASH DRAWER MANUAL ADJUSTMENT</b>\nÃ¢â‚¬Â¢ Staff: <b>${staffMember.staffName}</b>\nÃ¢â‚¬Â¢ Amount: <b>Ã¢â€šÂ¹${Number(adjustmentAmount).toLocaleString('en-IN')}</b>${adjustmentNotes ? `\nÃ¢â‚¬Â¢ Notes: ${adjustmentNotes}` : ''}\nÃ¢â‚¬Â¢ Net Balance After: <b>Ã¢â€šÂ¹${netAfter.toLocaleString('en-IN')}</b>`;
+        const fallbackMsg = `⚙️ <b>CASH DRAWER MANUAL ADJUSTMENT</b>\n• Staff: <b>${staffMember.staffName}</b>\n• Amount: <b>₹${Number(adjustmentAmount).toLocaleString('en-IN')}</b>${adjustmentNotes ? `\n• Notes: ${adjustmentNotes}` : ''}\n• Net Balance After: <b>₹${netAfter.toLocaleString('en-IN')}</b>`;
         const templateVars: Record<string, string> = {
           staff_name: staffMember.staffName,
           action_type: 'Manual Adjustment',
@@ -334,7 +336,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
       {/* Side-by-Side Forms Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         {/* Form A: Record Cash Handover */}
-        <div className="cash-drawer__form-card bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs p-5 w-full">
+        <div className="cash-drawer__form-card bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 w-full">
           <h3 className="cash-drawer-manager__subtitle font-bold text-slate-900 dark:text-white text-sm tracking-wider uppercase mb-4 flex items-center gap-1.5 border-b border-slate-100 dark:border-slate-700/50 pb-2">
             <Handshake className="w-4 h-4 text-emerald-600 dark:text-emerald-500" />
             <span>{t('record_cash_handover_heading', 'RECORD CASH HANDOVER')}</span>
@@ -350,14 +352,14 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                   placeholder={t('choose_staff_placeholder', '-- Choose Staff --')}
                   options={summaries.map(s => ({
                     value: s.staffId,
-                    label: `${s.staffName} (Balance: Ã¢â€šÂ¹${s.netBalance.toLocaleString('en-IN')})`,
+                    label: `${s.staffName} (Balance: ₹${s.netBalance.toLocaleString('en-IN')})`,
                   }))}
                 />
               </div>
 
               <div>
                 <Input
-                  label={t('cash_amount_label', 'Amount (Ã¢â€šÂ¹) *')}
+                  label={t('cash_amount_label', 'Amount (₹) *')}
                   type="number"
                   required
                   min="1"
@@ -368,7 +370,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                 />
                 {selectedHandoverStaff && handoverAmount && Number(handoverAmount) > selectedHandoverStaff.netBalance && (
                   <p className="text-[10px] text-red-500 font-semibold mt-1 flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" /> Exceeds current balance of Ã¢â€šÂ¹{selectedHandoverStaff.netBalance.toLocaleString('en-IN')}
+                    <AlertTriangle className="w-3 h-3" /> Exceeds current balance of ₹{selectedHandoverStaff.netBalance.toLocaleString('en-IN')}
                   </p>
                 )}
               </div>
@@ -407,13 +409,13 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
               <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
                 <div className="flex items-center justify-between text-[10px] font-semibold text-slate-500">
                   <span>{t('current_net_balance_label', 'Current Net Balance')}</span>
-                  <span className="text-slate-900 dark:text-white text-sm">Ã¢â€šÂ¹{selectedHandoverStaff.netBalance.toLocaleString('en-IN')}</span>
+                  <span className="text-slate-900 dark:text-white text-sm">₹{selectedHandoverStaff.netBalance.toLocaleString('en-IN')}</span>
                 </div>
                 {handoverAmount && Number(handoverAmount) > 0 && (
                   <div className="flex items-center justify-between text-[10px] font-semibold text-emerald-600 mt-1.5 pt-1.5 border-t border-slate-200 dark:border-slate-700">
                     <span>After This Handover</span>
                     <span className="text-sm">
-                      Ã¢â€šÂ¹{(selectedHandoverStaff.netBalance - Number(handoverAmount)).toLocaleString('en-IN')}
+                      ₹{(selectedHandoverStaff.netBalance - Number(handoverAmount)).toLocaleString('en-IN')}
                     </span>
                   </div>
                 )}
@@ -423,7 +425,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
             <div className="pt-2">
               <button
                 type="submit"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-8 py-3 rounded-lg shadow-2xs flex items-center gap-2 cursor-pointer transition-colors w-full justify-center"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-8 py-3 rounded-lg shadow-md flex items-center gap-2 cursor-pointer transition-colors w-full justify-center"
               >
                 <CheckCircle2 className="w-4 h-4" />
                 <span>{t('cash_record_handover_button', 'RECORD HANDOVER')}</span>
@@ -433,7 +435,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
         </div>
 
         {/* Form B: Manual Balance Adjustment */}
-        <div className="cash-drawer__form-card bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs p-5 w-full">
+        <div className="cash-drawer__form-card bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 w-full">
           <h3 className="cash-drawer-manager__subtitle font-semibold text-slate-900 dark:text-white text-sm mb-3 flex items-center gap-1.5 border-b border-slate-100 dark:border-slate-700/50 pb-2">
             <Sliders className="w-4 h-4 text-emerald-600 dark:text-emerald-500" />
             <span>{t('manual_balance_adjustment_heading', 'MANUAL BALANCE ADJUSTMENT')}</span>
@@ -441,8 +443,8 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
 
           <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-4 leading-relaxed bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800 space-y-1">
             <p><strong>What this does:</strong> Manual adjustments are used to directly <strong>add cash</strong> to a staff member's pocket/drawer balance (e.g. seeding initial cash or correcting entry errors).</p>
-            <p>Ã¢â‚¬Â¢ <span className="font-semibold text-emerald-600 dark:text-emerald-400">Example (Add Cash):</span> If Vikram starts his shift with Ã¢â€šÂ¹2,000 opening cash, apply a <strong>Ã¢â€šÂ¹2,000</strong> adjustment to seed the drawer.</p>
-            <p>Ã¢â‚¬Â¢ <span className="font-semibold text-amber-600 dark:text-amber-500">To Deduct Cash instead:</span> If Vikram hands over cash, use the <strong>Record Cash Handover</strong> form on the left to record the transfer.</p>
+            <p>• <span className="font-semibold text-emerald-600 dark:text-emerald-400">Example (Add Cash):</span> If Vikram starts his shift with ₹2,000 opening cash, apply a <strong>₹2,000</strong> adjustment to seed the drawer.</p>
+            <p>• <span className="font-semibold text-amber-600 dark:text-amber-500">To Deduct Cash instead:</span> If Vikram hands over cash, use the <strong>Record Cash Handover</strong> form on the left to record the transfer.</p>
           </div>
 
           <form onSubmit={handleAdjustmentSubmit} className="app-form app-form--cash-drawer space-y-4">
@@ -455,14 +457,14 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                   placeholder={t('choose_staff_placeholder', '-- Choose Staff --')}
                   options={summaries.map(s => ({
                     value: s.staffId,
-                    label: `${s.staffName} (Balance: Ã¢â€šÂ¹${s.netBalance.toLocaleString('en-IN')})`,
+                    label: `${s.staffName} (Balance: ₹${s.netBalance.toLocaleString('en-IN')})`,
                   }))}
                 />
               </div>
 
               <div>
                 <Input
-                  label={t('cash_amount_label', 'Amount (Ã¢â€šÂ¹) *')}
+                  label={t('cash_amount_label', 'Amount (₹) *')}
                   type="number"
                   required
                   min="1"
@@ -489,13 +491,13 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
               <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
                 <div className="flex items-center justify-between text-[10px] font-semibold text-slate-500">
                   <span>{t('current_net_balance_label', 'Current Net Balance')}</span>
-                  <span className="text-slate-900 dark:text-white text-sm">Ã¢â€šÂ¹{selectedAdjustmentStaff.netBalance.toLocaleString('en-IN')}</span>
+                  <span className="text-slate-900 dark:text-white text-sm">₹{selectedAdjustmentStaff.netBalance.toLocaleString('en-IN')}</span>
                 </div>
                 {adjustmentAmount && Number(adjustmentAmount) > 0 && (
                   <div className="flex items-center justify-between text-[10px] font-semibold text-emerald-600 mt-1.5 pt-1.5 border-t border-slate-200 dark:border-slate-700">
                     <span>After This Adjustment</span>
                     <span className="text-sm">
-                      Ã¢â€šÂ¹{(selectedAdjustmentStaff.netBalance + Number(adjustmentAmount)).toLocaleString('en-IN')}
+                      ₹{(selectedAdjustmentStaff.netBalance + Number(adjustmentAmount)).toLocaleString('en-IN')}
                     </span>
                   </div>
                 )}
@@ -505,7 +507,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
             <div className="pt-2">
               <button
                 type="submit"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-8 py-3 rounded-lg shadow-2xs flex items-center gap-2 cursor-pointer transition-colors w-full justify-center"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-8 py-3 rounded-lg shadow-md flex items-center gap-2 cursor-pointer transition-colors w-full justify-center"
               >
                 <CheckCircle2 className="w-4 h-4" />
                 <span>{t('cash_apply_adjustment_button', 'APPLY ADJUSTMENT')}</span>
@@ -518,7 +520,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
 
 
       {/* Drawer Entry History */}
-      <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md overflow-hidden">
         <button
           onClick={() => setShowHistory(!showHistory)}
           className="w-full p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer"
@@ -536,14 +538,15 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
         {showHistory && (
           <div className="border-t border-slate-100 dark:border-slate-700 p-4 space-y-4">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-2 border-b border-slate-100 dark:border-slate-700">
-              <span className="text-slate-400 font-semibold text-xs">{isLoading ? 'Ã¢â‚¬Â¦' : drawerEntries.length} entries</span>
+              <span className="text-slate-400 font-semibold text-xs">{isLoading ? '…' : drawerEntries.length} entries</span>
               <div className="w-full sm:w-auto">
-                <Input
+                <FlowbiteTextInput
                   type="text"
+                  icon={Search}
                   value={searchHistory}
                   onChange={e => setSearchHistory(e.target.value)}
                   placeholder={t('search_staff_type_notes_placeholder', 'Search staff, type, notes...')}
-                  leftIcon={<Search className="w-4 h-4 text-slate-400" />}
+                  className="w-full sm:w-64"
                 />
               </div>
             </div>
@@ -556,13 +559,14 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                     <span className="font-mono text-[10px] font-semibold text-slate-500">
                       {formatDateTimeDDMMYYYY(entry.created_at)}
                     </span>
-                    <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                      entry.type === 'handover' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
-                      'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'
-                    }`}>
-                      {entry.type === 'handover' ? <Handshake className="w-3 h-3" /> : <Sliders className="w-3 h-3" />}
-                      <span>{entry.type === 'handover' ? 'Handover' : 'Adjustment'}</span>
-                    </span>
+                    <Badge variant="info" size="sm">
+                      {entry.type === 'handover' ? (
+                        <Handshake className="w-3 h-3" />
+                      ) : (
+                        <Sliders className="w-3 h-3" />
+                      )}
+                      {entry.type === 'handover' ? 'Handover' : 'Adjustment'}
+                    </Badge>
                   </div>
                   <div className="flex justify-between items-start">
                     <div>
@@ -570,7 +574,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                       {entry.handed_to && <p className="text-[11px] text-slate-500">Handed To: {entry.handed_to}</p>}
                       {entry.notes && <p className="text-[10px] text-slate-400 italic mt-0.5">{entry.notes}</p>}
                     </div>
-                    <span className="font-mono font-bold text-slate-900 dark:text-white text-sm">Ã¢â€šÂ¹{Number(entry.amount).toLocaleString('en-IN')}</span>
+                    <span className="font-mono font-bold text-slate-900 dark:text-white text-sm">₹{Number(entry.amount).toLocaleString('en-IN')}</span>
                   </div>
                 </div>
               ))}
@@ -624,13 +628,14 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                     sortable: true,
                     width: '120px',
                     cell: (entry: CashDrawerEntry) => (
-                      <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                        entry.type === 'handover' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
-                        'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'
-                      }`}>
-                        {entry.type === 'handover' ? <Handshake className="w-3 h-3" /> : <Sliders className="w-3 h-3" />}
-                        <span>{entry.type === 'handover' ? 'Handover' : 'Adjustment'}</span>
-                      </span>
+                      <Badge variant="info" size="sm">
+                        {entry.type === 'handover' ? (
+                          <Handshake className="w-3 h-3" />
+                        ) : (
+                          <Sliders className="w-3 h-3" />
+                        )}
+                        {entry.type === 'handover' ? 'Handover' : 'Adjustment'}
+                      </Badge>
                     ),
                   },
                   {
@@ -639,7 +644,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                     sortable: true,
                     width: '120px',
                     right: true,
-                    cell: (entry: CashDrawerEntry) => <span className="font-mono font-semibold text-sm">Ã¢â€šÂ¹{Number(entry.amount).toLocaleString('en-IN')}</span>,
+                    cell: (entry: CashDrawerEntry) => <span className="font-mono font-semibold text-sm">₹{Number(entry.amount).toLocaleString('en-IN')}</span>,
                   },
                   {
                     name: t('handed_to_column', 'Handed To'),
@@ -666,6 +671,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                 pagination
                 paginationPerPage={10}
                 highlightOnHover
+                customStyles={flowbiteTableCustomStyles}
               />
             </div>
           </div>
@@ -685,19 +691,19 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                 if (selectedMonth === 0) { setSelectedMonth(11); setSelectedYear(y => y - 1); }
                 else { setSelectedMonth(m => m - 1); }
               }}
-              className="bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-semibold text-xs p-1.5 rounded-lg cursor-pointer transition-colors shadow-2xs"
+              className="bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-semibold text-xs p-1.5 rounded-lg cursor-pointer transition-colors shadow-md"
             >
               <ChevronLeft className="w-3.5 h-3.5" />
             </button>
-            <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 border border-blue-200/80 dark:border-blue-800/80 px-3 py-1 rounded-full min-w-30 text-center shadow-2xs">
-              {new Date(selectedYear, selectedMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-            </span>
+<Badge variant="info" size="md">
+                              {formatDateDDMMYYYY(`${selectedYear}-01-01`)}
+                            </Badge>
             <button
               onClick={() => {
                 if (selectedMonth === 11) { setSelectedMonth(0); setSelectedYear(y => y + 1); }
                 else { setSelectedMonth(m => m + 1); }
               }}
-              className="bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-semibold text-xs p-1.5 rounded-lg cursor-pointer transition-colors shadow-2xs"
+              className="bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-semibold text-xs p-1.5 rounded-lg cursor-pointer transition-colors shadow-md"
             >
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
@@ -719,31 +725,31 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                 <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-800 pb-2">
                   <div>
                     <h4 className="font-semibold text-slate-900 dark:text-white text-xs">{row.staff.name}</h4>
-                    <span className="text-[11px] text-slate-500">Ã¢â€šÂ¹{row.dailyWage.toFixed(2)} / day ({row.presentDays} days)</span>
+                    <span className="text-[11px] text-slate-500">₹{row.dailyWage.toFixed(2)} / day ({row.presentDays} days)</span>
                   </div>
                   <div className="text-right">
                     <span className="text-[10px] text-slate-400 uppercase font-semibold block">Pending Payout</span>
-                    <span className="font-bold text-blue-700 dark:text-blue-400 text-sm">Ã¢â€šÂ¹{row.pendingPayout.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    <span className="font-bold text-blue-700 dark:text-blue-400 text-sm">₹{row.pendingPayout.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-[11px] bg-white dark:bg-slate-800/80 p-2.5 rounded-lg border border-slate-200/60 dark:border-slate-700">
                   <div>
                     <span className="text-slate-400 block text-[10px]">Total Earned:</span>
-                    <span className="font-semibold text-emerald-700 dark:text-emerald-400">Ã¢â€šÂ¹{row.totalEarned.toLocaleString('en-IN')}</span>
+                    <span className="font-semibold text-emerald-700 dark:text-emerald-400">₹{row.totalEarned.toLocaleString('en-IN')}</span>
                   </div>
                   <div>
                     <span className="text-slate-400 block text-[10px]">Collected:</span>
-                    <span className="font-semibold text-amber-700 dark:text-amber-400">Ã¢â€šÂ¹{row.cashCollected.toLocaleString('en-IN')}</span>
+                    <span className="font-semibold text-amber-700 dark:text-amber-400">₹{row.cashCollected.toLocaleString('en-IN')}</span>
                   </div>
                   <div>
                     <span className="text-slate-400 block text-[10px]">Handovers:</span>
-                    <span className="font-semibold text-indigo-600 dark:text-indigo-400">Ã¢â€šÂ¹{row.handovers.toLocaleString('en-IN')}</span>
+                    <span className="font-semibold text-indigo-600 dark:text-indigo-400">₹{row.handovers.toLocaleString('en-IN')}</span>
                   </div>
                   <div>
                     <span className="text-slate-400 block text-[10px]">Advances/Credits:</span>
                     <span className={`font-semibold ${isCredit ? 'text-emerald-600' : 'text-red-600'}`}>
-                      {isCredit ? '+' : '-'} Ã¢â€šÂ¹{Math.abs(row.advances).toLocaleString('en-IN')}
+                      {isCredit ? '+' : '-'} ₹{Math.abs(row.advances).toLocaleString('en-IN')}
                     </span>
                   </div>
                 </div>
@@ -813,12 +819,12 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                 cell: (row: any) => <span className="font-semibold text-slate-900 dark:text-white text-sm">{row.staff.name}</span>,
               },
               {
-                name: 'Daily Wage (Ã¢â€šÂ¹)',
+                name: 'Daily Wage (₹)',
                 selector: (row: any) => row.dailyWage,
                 sortable: true,
                 right: true,
                 width: '120px',
-                cell: (row: any) => <span className="font-mono text-slate-600 dark:text-slate-300">Ã¢â€šÂ¹{row.dailyWage.toFixed(2)}</span>,
+                cell: (row: any) => <span className="font-mono text-slate-600 dark:text-slate-300">₹{row.dailyWage.toFixed(2)}</span>,
               },
               {
                 name: 'Present Days',
@@ -829,39 +835,39 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                 cell: (row: any) => <><span className="font-semibold text-slate-800 dark:text-slate-200">{row.presentDays}</span><span className="text-slate-400 dark:text-slate-500"> days</span></>,
               },
               {
-                name: 'Total Earned (Ã¢â€šÂ¹)',
+                name: 'Total Earned (₹)',
                 selector: (row: any) => row.totalEarned,
                 sortable: true,
                 right: true,
                 width: '130px',
-                cell: (row: any) => <span className="font-semibold text-emerald-700 dark:text-emerald-400">Ã¢â€šÂ¹{row.totalEarned.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
+                cell: (row: any) => <span className="font-semibold text-emerald-700 dark:text-emerald-400">₹{row.totalEarned.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
               },
               {
-                name: 'Collected (Ã¢â€šÂ¹)',
+                name: 'Collected (₹)',
                 selector: (row: any) => row.cashCollected,
                 sortable: true,
                 right: true,
                 width: '110px',
-                cell: (row: any) => <span className="font-semibold text-amber-700 dark:text-amber-400">Ã¢â€šÂ¹{row.cashCollected.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
+                cell: (row: any) => <span className="font-semibold text-amber-700 dark:text-amber-400">₹{row.cashCollected.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
               },
               {
-                name: 'Out of Pocket (Ã¢â€šÂ¹)',
+                name: 'Out of Pocket (₹)',
                 selector: (row: any) => row.outOfPocket,
                 sortable: true,
                 right: true,
                 width: '120px',
-                cell: (row: any) => <span className="font-semibold text-purple-600 dark:text-purple-400">Ã¢â€šÂ¹{row.outOfPocket.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
+                cell: (row: any) => <span className="font-semibold text-purple-600 dark:text-purple-400">₹{row.outOfPocket.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
               },
               {
-                name: 'Handovers (Ã¢â€šÂ¹)',
+                name: 'Handovers (₹)',
                 selector: (row: any) => row.handovers,
                 sortable: true,
                 right: true,
                 width: '110px',
-                cell: (row: any) => <span className="font-semibold text-indigo-600 dark:text-indigo-400">Ã¢â€šÂ¹{row.handovers.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
+                cell: (row: any) => <span className="font-semibold text-indigo-600 dark:text-indigo-400">₹{row.handovers.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
               },
               {
-                name: 'Advances (Ã¢â€šÂ¹)',
+                name: 'Advances (₹)',
                 selector: (row: any) => row.advances,
                 sortable: true,
                 right: true,
@@ -870,18 +876,18 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                   const isCredit = row.advances < 0;
                   return (
                     <span className={`font-semibold ${isCredit ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                      {isCredit ? '+' : '-'} Ã¢â€šÂ¹{Math.abs(row.advances).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      {isCredit ? '+' : '-'} ₹{Math.abs(row.advances).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </span>
                   );
                 },
               },
               {
-                name: 'Pending Payout (Ã¢â€šÂ¹)',
+                name: 'Pending Payout (₹)',
                 selector: (row: any) => row.pendingPayout,
                 sortable: true,
                 right: true,
                 width: '140px',
-                cell: (row: any) => <span className="font-semibold text-blue-700 dark:text-blue-400">Ã¢â€šÂ¹{row.pendingPayout.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
+                cell: (row: any) => <span className="font-semibold text-blue-700 dark:text-blue-400">₹{row.pendingPayout.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
               },
               {
                 name: 'Actions',
@@ -935,13 +941,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                 <Input type="text" value={searchPayout} onChange={e => setSearchPayout(e.target.value)} placeholder="Search by staff name..." className="w-full max-w-xs" />
               </div>
             }
-            customStyles={{
-              subHeader: { style: { padding: 0, minHeight: 0, backgroundColor: 'transparent', borderBottom: '1px solid #fde68a' } },
-              headCells: { style: { fontSize: '11px', fontWeight: 600, color: '#b45309', backgroundColor: '#fffbeb', borderBottom: '1px solid #fde68a', paddingLeft: '12px' } },
-              cells: { style: { fontSize: '13px', color: '#334155', padding: '12px' } },
-              headRow: { style: { backgroundColor: '#fffbeb' } },
-              rows: { style: { minHeight: '52px' } },
-            }}
+            customStyles={flowbiteTableCustomStyles}
             noDataComponent={
               <div className="p-8 text-center text-slate-400 font-semibold text-xs">No active staff members found</div>
             }
@@ -956,7 +956,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
               {monthAdvances.map((adv) => (
                 <div key={adv.id} className="flex items-center justify-between text-[11px] bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-1.5 border border-red-100 dark:border-red-900/30">
                   <span className="font-semibold text-red-800 dark:text-red-300">{adv.staffName}</span>
-                  <span className="text-red-600 dark:text-red-400">- Ã¢â€šÂ¹{adv.amount.toLocaleString('en-IN')}</span>
+                  <span className="text-red-600 dark:text-red-400">- ₹{adv.amount.toLocaleString('en-IN')}</span>
                   <span className="text-slate-400 dark:text-slate-500">{adv.reason}</span>
                   <button
                     onClick={async () => {
@@ -983,12 +983,12 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
         {advanceStaff && (
           <>
             <ModalHeader as="div">
-              <span>{t('give_advance_heading', 'Give Advance Ã¢â‚¬â€')} {advanceStaff.name}</span>
+              <span>{t('give_advance_heading', 'Give Advance —')} {advanceStaff.name}</span>
             </ModalHeader>
             <ModalBody className="space-y-4">
               <div>
                 <Input
-                  label="Amount (Ã¢â€šÂ¹) *"
+                  label="Amount (₹) *"
                   type="number"
                   min={0}
                   value={advanceAmount || ''}

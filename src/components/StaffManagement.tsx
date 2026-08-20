@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, ModalHeader, ModalBody, ModalFooter } from 'flowbite-react';
+import { Modal, ModalHeader, ModalBody, ModalFooter, Drawer as FlowbiteDrawer, DrawerItems, TextInput as FlowbiteTextInput } from 'flowbite-react';
 import { Button } from './Button';
 import { Input } from './Input';
 import { Tooltip } from './Tooltip';
 import DataTable from 'react-data-table-component';
+import { flowbiteTableCustomStyles } from '../utils/tableStyles';
 import {
   Plus,
   X,
@@ -16,12 +17,14 @@ import {
   ChevronRight,
   Loader2,
   HelpCircle,
-  Edit2,
+  Pencil,
   Share2,
   TrendingUp,
   QrCode,
   CreditCard,
-  Phone
+  Phone,
+  Trash2,
+  Search
 } from 'lucide-react';
 import { StaffMember, AttendanceRecord, UserAccount } from '../types';
 import { useToast } from './ToastContext';
@@ -31,6 +34,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { StyledSelect } from './StyledSelect';
 import { addStaffUserDB, deleteStaffUserDB, updateStaffUserDB, updateTenantSuperAdminDB } from '../services/api';
 import { PageHeader } from './PageHeader';
+import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import { t } from '../i18n/en';
 
 interface StaffManagementProps {
@@ -196,12 +200,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const monthDays = Array.from({ length: daysInMonth }, (_, i) => {
     const dayNum = i + 1;
     const dateObj = new Date(selectedYear, selectedMonth, dayNum);
-    const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
-    const monthStr = String(selectedMonth + 1).padStart(2, '0');
-    const dayStr = String(dayNum).padStart(2, '0');
-    const dateStr = `${selectedYear}-${monthStr}-${dayStr}`;
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const dayName = dayNames[dateObj.getDay()];
+    const formatted = formatDateDDMMYYYY(`${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`);
     const isToday = selectedYear === now.getFullYear() && selectedMonth === now.getMonth() && dayNum === now.getDate();
-    return { dayNum, dayName, dateStr, isToday };
+    return { dayNum, dayName, dateStr: formatted, isToday };
   });
 
   // Map attendance records
@@ -571,7 +574,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               variant="primary"
               size="md"
               leftIcon={<Plus className="w-4 h-4" />}
-              className="font-semibold shadow-2xs cursor-pointer"
+              className="font-semibold shadow-md cursor-pointer"
             >
               Create Team Member
             </Button>
@@ -587,7 +590,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 }}
                 variant="ghost"
                 size="md"
-                className={`font-semibold transition-all cursor-pointer shadow-2xs ${
+                className={`font-semibold transition-all cursor-pointer shadow-md ${
                   isBulkSelectEnabled
                     ? 'bg-blue-600 text-white ring-2 ring-blue-300 dark:ring-blue-800'
                     : 'bg-blue-600 hover:bg-blue-700 text-white'
@@ -631,103 +634,147 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
         </div>
       </PageHeader>
 
-      {/* SUB-TAB 1: PROPERTY PAYROLL & PAYEE CONTROL CENTER (HTML SNIPPET MATCH) */}
+      {/* SUB-TAB 1: PROPERTY PAYROLL & PAYEE CONTROL CENTER */}
       {activeSubTab === 'control_center' && (
-    <div className="space-y-6 staff-management">
-          {/* ROW 1: FULL WIDTH Active System Users & Staff */}
-          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
+        <div className="space-y-6 staff-management">
+          {/* Active System Users & Staff */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+            {/* Top Toolbar: Flowbite Search and Actions */}
+            <div className="p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <div className="flex-1 max-w-md">
+                <FlowbiteTextInput
+                  type="text"
+                  icon={Search}
+                  value={searchUsers}
+                  onChange={(e) => setSearchUsers(e.target.value)}
+                  placeholder="Search for users..."
+                  className="w-full"
+                />
+              </div>
+            </div>
+
             {/* Desktop View: Full DataTable */}
             <div className="hidden md:block">
               <DataTable
                 columns={[
                   {
-                    name: t('staff_name_label', 'Staff Name'),
+                    name: 'NAME',
                     selector: (row: any) => row.fullName,
                     sortable: true,
-                    width: '200px',
-                    cell: (row: any) => <span className="font-semibold text-slate-900 dark:text-white">{row.fullName}</span>,
-                  },
-                  {
-                    name: t('username_column', 'Username'),
-                    selector: (row: any) => row.username,
-                    sortable: true,
-                    width: '150px',
+                    width: '260px',
                     cell: (row: any) => {
+                      const initials = (row.fullName || row.username || 'U')
+                        .split(' ')
+                        .map((n: string) => n[0])
+                        .join('')
+                        .slice(0, 2)
+                        .toUpperCase();
                       const phoneVal = (row.username || '').replace(/\D/g, '');
-                      return phoneVal ? (
-                        <a
-                          href={`tel:${phoneVal}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center gap-1 font-mono text-xs text-blue-600 dark:text-blue-400 hover:underline font-semibold"
-                          title={`Call ${phoneVal}`}
-                        >
-                          <Phone className="w-3 h-3 text-blue-500" />
-                          <span>{phoneVal}</span>
-                        </a>
-                      ) : (
-                        <span className="font-mono text-slate-500 dark:text-slate-400">{row.username}</span>
+                      return (
+                        <div className="flex items-center gap-3 py-3">
+                          <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-300 font-bold text-xs flex items-center justify-center shrink-0">
+                            {initials}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                              {row.fullName}
+                            </div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                              {phoneVal ? (
+                                <a
+                                  href={`tel:${phoneVal}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="hover:underline hover:text-blue-600 dark:hover:text-blue-400 font-mono"
+                                >
+                                  {row.username}
+                                </a>
+                              ) : (
+                                row.username
+                              )}
+                            </div>
+                          </div>
+                        </div>
                       );
                     },
                   },
                   {
-                    name: t('role_group_column', 'Role Group'),
+                    name: 'POSITION / ROLE',
                     selector: (row: any) => row.role,
                     sortable: true,
-                    width: '160px',
-                    cell: (row: any) => <span className="font-semibold text-slate-700 dark:text-slate-300 text-xs">{row.role}</span>,
-                  },
-                  {
-                    name: t('cash_handling_column', 'Cash Handling'),
-                    selector: (row: any) => row.isFinancialHandler ? 'Cash Handler' : 'No Finances',
-                    sortable: true,
-                    center: true,
-                    width: '160px',
-                    cell: (row: any) => row.isFinancialHandler ? (
-                      <span className="text-emerald-700 dark:text-emerald-400 font-semibold text-xs inline-flex items-center gap-1">
-                        <CreditCard className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>{t('cash_handler_text', 'Cash Handler')}</span>
+                    width: '220px',
+                    cell: (row: any) => (
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">
+                        {row.role}
                       </span>
-                    ) : (
-                      <span className="text-slate-400 dark:text-slate-500 font-medium text-xs">{t('no_finances_badge', 'No Finances')}</span>
                     ),
                   },
                   {
-                    name: t('upi_qr_code_column', 'UPI QR Code'),
+                    name: 'STATUS',
+                    selector: (row: any) => row.isFinancialHandler ? 'Cash Handler' : 'Active',
+                    sortable: true,
+                    width: '200px',
+                    cell: (row: any) => (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-1.5">
+                          <div className="h-2.5 w-2.5 rounded-full bg-green-500 shrink-0" />
+                          <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Active</span>
+                        </div>
+                        {row.isFinancialHandler && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800">
+                            <CreditCard className="w-3 h-3" /> Cash Handler
+                          </span>
+                        )}
+                      </div>
+                    ),
+                  },
+                  {
+                    name: 'UPI QR CODE',
                     center: true,
-                    width: '140px',
+                    width: '200px',
                     cell: (row: any) => row.qrCodeUrl ? (
-                      <Button onClick={() => setLightboxUrl(row.qrCodeUrl!)} variant="link" size="sm" leftIcon={<QrCode className="w-3.5 h-3.5" />} className="text-emerald-600 hover:text-emerald-700 font-semibold text-[11px] gap-1 mx-auto">{t('view_qr_button', 'View QR')}</Button>
+                      <Button onClick={() => setLightboxUrl(row.qrCodeUrl!)} variant="link" size="sm" leftIcon={<QrCode className="w-3.5 h-3.5" />} className="text-emerald-600 hover:text-emerald-700 font-semibold text-xs gap-1 mx-auto">{t('view_qr_button', 'View QR')}</Button>
                     ) : (
-                      <span className="text-slate-400 italic text-[11px]">{t('none_label', 'None')}</span>
+                      <span className="text-gray-400 italic text-xs">{t('none_label', 'None')}</span>
                     ),
                   },
                   {
-                    name: t('actions_column', 'Actions'),
+                    name: 'ACTIONS',
                     right: true,
-                    width: '210px',
+                    width: '260px',
                     cell: (row: any) => {
                       const isCurrentUser = currentUser?.id === row.id;
                       const canEdit = !isCurrentUser && canEditUser(currentUser?.role || 'Staff', row.role);
                       const canDelete = !isCurrentUser && canEdit;
                       return (
-                        <div className="flex items-center gap-1.5 justify-end">
+                        <div className="flex items-center gap-2 justify-end">
                           {canShareLogins && !!row.username && (
-                            <Button onClick={() => handleShareLogin(row)} variant="secondary" size="xs" className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 cursor-pointer px-2" title={t('share_login_tooltip', 'Share login details')}>
-                              <Share2 className="w-3.5 h-3.5" />
-                            </Button>
+                            <button
+                              type="button"
+                              onClick={() => handleShareLogin(row)}
+                              className="p-1.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 rounded-lg transition-colors cursor-pointer"
+                              title={t('share_login_tooltip', 'Share login details')}
+                            >
+                              <Share2 className="w-4 h-4" />
+                            </button>
                           )}
                           {isCurrentUser ? (
-                            <span className="text-slate-400 italic text-[11px]">{t('active_session_badge', 'Active Session')}</span>
+                            <span className="text-gray-400 italic text-xs">Active Session</span>
                           ) : (
                             <>
                               {canEdit && (
-                                <Button onClick={() => handleEditUser(row)} variant="secondary" size="xs" leftIcon={<Edit2 className="w-3 h-3" />} className="font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 cursor-pointer">{t('edit_button', 'Edit')}</Button>
+                                <Button variant="primary" size="xs" onClick={() => handleEditUser(row)} leftIcon={<Pencil className="w-3.5 h-3.5" />}>
+                                  <span className="whitespace-nowrap">Edit</span>
+                                </Button>
                               )}
                               {canDelete && (
-                                <Button onClick={() => handleDeleteUser(row.id)} variant="danger" size="xs" className="font-semibold cursor-pointer">{t('delete_button', 'Delete')}</Button>
-                              )}
-                              {!canEdit && !canDelete && (
-                                <span className="text-slate-400 italic text-[11px]">-</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteUser(row.id)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-md transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <span>Delete</span>
+                                </button>
                               )}
                             </>
                           )}
@@ -744,21 +791,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   </div>
                 }
                 pagination
-                paginationPerPage={15}
-                paginationRowsPerPageOptions={[10, 15, 25, 50]}
+                paginationPerPage={10}
+                paginationRowsPerPageOptions={[10, 20, 50]}
                 highlightOnHover
-                subHeader={
-                  <div className="w-full flex items-center py-2">
-                    <Input type="text" value={searchUsers} onChange={e => setSearchUsers(e.target.value)} placeholder="Search by name, username, or role..." className="w-full max-w-xs" />
-                  </div>
-                }
-                customStyles={{
-                  subHeader: { style: { padding: 0, minHeight: 0, backgroundColor: 'transparent', borderBottom: '1px solid #e2e8f0' } },
-                  headCells: { style: { fontSize: '11px', fontWeight: 600, color: '#64748b', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', paddingLeft: '12px' } },
-                  cells: { style: { fontSize: '13px', color: '#334155', padding: '12px' } },
-                  headRow: { style: { backgroundColor: '#f8fafc' } },
-                  rows: { style: { minHeight: '52px' } },
-                }}
+                customStyles={flowbiteTableCustomStyles}
                 noDataComponent={
                   <div className="p-8 text-center text-slate-400 font-semibold text-xs">{t('no_system_users_message', 'No system users registered.')}</div>
                 }
@@ -767,15 +803,14 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
             {/* Mobile View: Touch-First Mobile Cards with 10-Item Pagination */}
             <div className="md:hidden p-3 space-y-3">
-              <div className="relative">
-                <Input
-                  type="text"
-                  value={searchUsers}
-                  onChange={e => setSearchUsers(e.target.value)}
-                  placeholder="Search staff by name or role..."
-                  className="w-full"
-                />
-              </div>
+              <FlowbiteTextInput
+                type="text"
+                icon={Search}
+                value={searchUsers}
+                onChange={e => setSearchUsers(e.target.value)}
+                placeholder="Search for users..."
+                className="w-full"
+              />
 
               <div className="space-y-3">
                 {visibleUsers.slice((staffPermissionsPage - 1) * 10, staffPermissionsPage * 10).map((row: any) => {
@@ -785,7 +820,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   const phoneVal = (row.username || '').replace(/\D/g, '');
 
                   return (
-                    <div key={row.id} className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs p-3 space-y-2.5">
+                    <div key={row.id} className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-3 space-y-2.5">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1 flex items-center flex-wrap gap-2">
                           <h4 className="font-bold text-slate-900 dark:text-white text-sm m-0">{row.fullName}</h4>
@@ -814,7 +849,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                           {!isCurrentUser && (
                             <>
                               {canEdit && (
-                                <Button onClick={() => handleEditUser(row)} variant="secondary" size="xs" leftIcon={<Edit2 className="w-3 h-3" />} className="font-semibold text-blue-600 cursor-pointer px-2 shrink-0">{t('edit_button', 'Edit')}</Button>
+                                <Button onClick={() => handleEditUser(row)} variant="secondary" size="xs" leftIcon={<Pencil className="w-3 h-3" />} className="font-semibold text-blue-600 cursor-pointer px-2 shrink-0">{t('edit_button', 'Edit')}</Button>
                               )}
                               {canDelete && (
                                 <Button onClick={() => handleDeleteUser(row.id)} variant="danger" size="xs" className="font-semibold cursor-pointer px-2 shrink-0">{t('delete_button', 'Delete')}</Button>
@@ -888,7 +923,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
         <div className="space-y-4">
           {/* Bulk Marking Action Buttons */}
           {(isBulkSelectEnabled || selectedCells.size > 0) && (
-            <div className="bg-white dark:bg-slate-800 p-5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs space-y-3">
+            <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-slate-100 dark:border-slate-700">
                 <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                   <Zap className="w-3.5 h-3.5" /> Bulk Selection Actions
@@ -912,7 +947,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 <button
                   disabled={selectedCells.size === 0}
                   onClick={() => applyBulkStatus('Present')}
-                  className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-xs px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                  className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-xs px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
                 >
                   <span className="w-4 h-4 rounded bg-emerald-700 flex items-center justify-center text-[10px]">P</span>
                   <span>{t('mark_present_label', 'Mark Present (P)')}</span>
@@ -921,7 +956,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 <button
                   disabled={selectedCells.size === 0}
                   onClick={() => applyBulkStatus('Absent')}
-                  className="bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-xs px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                  className="bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-xs px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
                 >
                   <span className="w-4 h-4 rounded bg-red-700 flex items-center justify-center text-[10px]">A</span>
                   <span>{t('mark_absent_label', 'Mark Absent (A)')}</span>
@@ -930,7 +965,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 <button
                   disabled={selectedCells.size === 0}
                   onClick={() => applyBulkStatus('Half Day')}
-                  className="bg-amber-600 hover:bg-amber-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-xs px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                  className="bg-amber-600 hover:bg-amber-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-xs px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
                 >
                   <span className="w-4 h-4 rounded bg-amber-700 flex items-center justify-center text-[10px]">H</span>
                   <span>{t('mark_halfday_label', 'Mark Half Day (H)')}</span>
@@ -939,7 +974,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 <button
                   disabled={selectedCells.size === 0}
                   onClick={() => applyBulkStatus('Paid Leave')}
-                  className="bg-purple-600 hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-xs px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                  className="bg-purple-600 hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-xs px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
                 >
                   <span className="w-4 h-4 rounded bg-purple-700 flex items-center justify-center text-[10px]">L</span>
                   <span>{t('mark_leave_label', 'Mark Paid Leave (L)')}</span>
@@ -948,7 +983,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 <button
                   disabled={selectedCells.size === 0}
                   onClick={() => applyBulkStatus('Clear')}
-                  className="bg-slate-600 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-xs px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                  className="bg-slate-600 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-xs px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
                 >
                   <span>{t('clear_status_label', 'Clear Status (-)')}</span>
                 </button>
@@ -965,7 +1000,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 onClick={() => setMobileAttMode('daily')}
                 className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   mobileAttMode === 'daily'
-                    ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
+                    ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-md'
                     : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                 }`}
               >
@@ -976,7 +1011,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 onClick={() => setMobileAttMode('summary')}
                 className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   mobileAttMode === 'summary'
-                    ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
+                    ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-md'
                     : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                 }`}
               >
@@ -988,7 +1023,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             {mobileAttMode === 'daily' && (
               <div className="space-y-3">
                 {/* Date Navigator Header & Quick Mark Button */}
-                <div className="bg-white dark:bg-slate-800 p-3.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs space-y-3">
+                <div className="bg-white dark:bg-slate-800 p-3.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md space-y-3">
                   <div className="flex items-center justify-between">
                     <button
                       type="button"
@@ -999,9 +1034,9 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                       <ChevronLeft className="w-4 h-4 text-slate-600 dark:text-slate-300" />
                     </button>
                     <div className="text-center">
-                      <span className="font-mono font-bold text-slate-900 dark:text-white text-xs block">
-                        {new Date(selectedYear, selectedMonth, mobileDayNum).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
-                      </span>
+<span className="font-mono font-bold text-slate-900 dark:text-white text-xs block">
+                          {formatDateDDMMYYYY(`${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(mobileDayNum).padStart(2, '0')}`)}
+                        </span>
                       {mobileDayNum === now.getDate() && selectedMonth === now.getMonth() && selectedYear === now.getFullYear() && (
                         <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider block">Today</span>
                       )}
@@ -1046,11 +1081,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     const dailyRate = daysInMonth > 0 ? (member.monthlySalary / daysInMonth).toFixed(0) : '0';
 
                     return (
-                      <div key={member.id} className="p-3.5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs space-y-3">
+                      <div key={member.id} className="p-3.5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md space-y-3">
                         <div className="flex items-center justify-between">
                           <div>
                             <h4 className="font-semibold text-slate-900 dark:text-white text-xs">{member.name}</h4>
-                            <p className="text-[11px] text-slate-500">{member.role} Ã¢â‚¬Â¢ Ã¢â€šÂ¹{dailyRate}/day</p>
+                            <p className="text-[11px] text-slate-500">{member.role} • ₹{dailyRate}/day</p>
                           </div>
                           <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
                             {member.status}
@@ -1123,15 +1158,15 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   const earnedSalary = (effectiveDays * dailyRate).toFixed(0);
 
                   return (
-                    <div key={member.id} className="p-3.5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs space-y-3">
+                    <div key={member.id} className="p-3.5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md space-y-3">
                       <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/60 pb-2.5">
                         <div>
                           <h4 className="font-semibold text-slate-900 dark:text-white text-xs">{member.name}</h4>
-                          <p className="text-[11px] text-slate-500">{member.role} Ã¢â‚¬Â¢ Base Ã¢â€šÂ¹{member.monthlySalary.toLocaleString('en-IN')}/mo</p>
+                          <p className="text-[11px] text-slate-500">{member.role} • Base ₹{member.monthlySalary.toLocaleString('en-IN')}/mo</p>
                         </div>
                         <div className="text-right">
                           <span className="text-[10px] text-slate-400 uppercase font-semibold block">Earned So Far</span>
-                          <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-sm">Ã¢â€šÂ¹{Number(earnedSalary).toLocaleString('en-IN')}</span>
+                          <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-sm">₹{Number(earnedSalary).toLocaleString('en-IN')}</span>
                         </div>
                       </div>
 
@@ -1187,7 +1222,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
           {/* DESKTOP ATTENDANCE MATRIX TABLE (hidden md:block) */}
           <div className="hidden md:block space-y-4">
-            <div className="bg-white dark:bg-slate-800 p-5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+            <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md flex items-center justify-between">
               <button
                 onClick={() => {
                   if (selectedMonth === 0) { setSelectedMonth(11); setSelectedYear(y => y - 1); }
@@ -1197,9 +1232,9 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               >
                 <ChevronLeft className="w-3.5 h-3.5" /> Prev
               </button>
-              <div className="font-semibold text-sm text-slate-800 dark:text-white">
-                {new Date(selectedYear, selectedMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-              </div>
+<div className="font-semibold text-sm text-slate-800 dark:text-white">
+                              {selectedYear}
+                            </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => { setSelectedYear(now.getFullYear()); setSelectedMonth(now.getMonth()); }}
@@ -1279,25 +1314,25 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                               }`}
                             >
                               {status === 'Present' && (
-                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-semibold text-xs shadow-2xs">
+                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-semibold text-xs shadow-md">
                                   P
                                 </span>
                               )}
 
                               {status === 'Absent' && (
-                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 font-semibold text-xs shadow-2xs">
+                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 font-semibold text-xs shadow-md">
                                   A
                                 </span>
                               )}
 
                               {status === 'Half Day' && (
-                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 font-semibold text-xs shadow-2xs">
+                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 font-semibold text-xs shadow-md">
                                   H
                                 </span>
                               )}
 
                               {status === 'Paid Leave' && (
-                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 font-semibold text-xs shadow-2xs">
+                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 font-semibold text-xs shadow-md">
                                   L
                                 </span>
                               )}
@@ -1349,13 +1384,13 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
       {/* SUB-TAB 3: ROSTER LIST VIEW */}
       {activeSubTab === 'roster' && (
-        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs p-5 transition-colors space-y-4">
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 transition-colors space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
             <h3 className="staff-management__subtitle font-semibold text-slate-900 dark:text-white text-sm">
               {t('staff_directory_payroll_heading', 'Staff Member Directory & Payroll Breakdown')}
             </h3>
             <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
-              {t('total_payroll_label', 'Total Payroll:')} Ã¢â€šÂ¹{totalPayroll.toLocaleString('en-IN')} / mo
+              {t('total_payroll_label', 'Total Payroll:')} ₹{totalPayroll.toLocaleString('en-IN')} / mo
             </span>
           </div>
 
@@ -1383,7 +1418,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                       <Phone className="w-3 h-3 text-slate-400 shrink-0" />
                       <span>{s.phone || 'No phone'}</span>
                     </span>
-                    <span className="font-bold text-emerald-600 dark:text-emerald-400">Ã¢â€šÂ¹{s.monthlySalary.toLocaleString('en-IN')} / mo</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">₹{s.monthlySalary.toLocaleString('en-IN')} / mo</span>
                   </div>
 
                   {updateStaff && (
@@ -1392,7 +1427,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         onClick={() => { setEditingStaffId(s.id); setEditStaffRole(s.role); setEditStaffPhone(s.phone); setEditStaffSalary(s.monthlySalary); setEditStaffStatus(s.status); }}
                         className="min-h-[38px] px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
                       >
-                        <Edit2 className="w-3.5 h-3.5 text-slate-500" />
+                        <Pencil className="w-3.5 h-3.5 text-slate-500" />
                         <span>Edit Details</span>
                       </button>
                     </div>
@@ -1465,7 +1500,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         fullWidth={false}
                       />
                     ) : (
-                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">Ã¢â€šÂ¹{row.monthlySalary.toLocaleString('en-IN')}</span>
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">₹{row.monthlySalary.toLocaleString('en-IN')}</span>
                     ),
                   },
                   {
@@ -1493,11 +1528,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     width: '130px',
                     cell: (row: any) => editingStaffId === row.id ? (
                       <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => { updateStaff!(row.id, { role: editStaffRole, phone: editStaffPhone, monthlySalary: editStaffSalary, status: editStaffStatus }); setEditingStaffId(null); if (onLogAudit) onLogAudit(`Updated staff ${row.name}: role=${editStaffRole}, phone=${editStaffPhone}, salary=Ã¢â€šÂ¹${editStaffSalary}, status=${editStaffStatus}`); }} className="bg-emerald-500 hover:bg-emerald-600 text-white px-2.5 py-1 rounded-lg text-[10px] font-semibold cursor-pointer">{t('save_button', 'Save')}</button>
+                        <button onClick={() => { updateStaff!(row.id, { role: editStaffRole, phone: editStaffPhone, monthlySalary: editStaffSalary, status: editStaffStatus }); setEditingStaffId(null); if (onLogAudit) onLogAudit(`Updated staff ${row.name}: role=${editStaffRole}, phone=${editStaffPhone}, salary=₹${editStaffSalary}, status=${editStaffStatus}`); }} className="bg-emerald-500 hover:bg-emerald-600 text-white px-2.5 py-1 rounded-lg text-[10px] font-semibold cursor-pointer">{t('save_button', 'Save')}</button>
                         <button onClick={() => setEditingStaffId(null)} className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-2.5 py-1 rounded-lg text-[10px] font-semibold cursor-pointer">{t('cancel_button', 'Cancel')}</button>
                       </div>
                     ) : (
-                      <button onClick={() => { setEditingStaffId(row.id); setEditStaffRole(row.role); setEditStaffPhone(row.phone); setEditStaffSalary(row.monthlySalary); setEditStaffStatus(row.status); }} className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-2.5 py-1 rounded-lg text-[10px] font-semibold cursor-pointer flex items-center gap-1"><Edit2 className="w-3 h-3 text-slate-500" /> {t('edit_button', 'Edit')}</button>
+                      <button onClick={() => { setEditingStaffId(row.id); setEditStaffRole(row.role); setEditStaffPhone(row.phone); setEditStaffSalary(row.monthlySalary); setEditStaffStatus(row.status); }} className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-2.5 py-1 rounded-lg text-[10px] font-semibold cursor-pointer flex items-center gap-1"><Pencil className="w-3 h-3 text-slate-500" /> {t('edit_button', 'Edit')}</button>
                     ),
                   }] : []),
                 ]}
@@ -1512,12 +1547,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 paginationPerPage={15}
                 paginationRowsPerPageOptions={[10, 15, 25, 50]}
                 highlightOnHover
-                customStyles={{
-                  headCells: { style: { fontSize: '11px', fontWeight: 600, color: '#64748b', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', paddingLeft: '12px' } },
-                  cells: { style: { fontSize: '13px', color: '#334155', padding: '12px' } },
-                  headRow: { style: { backgroundColor: '#f8fafc' } },
-                  rows: { style: { minHeight: '52px' } },
-                }}
+                customStyles={flowbiteTableCustomStyles}
                 noDataComponent={
                   <div className="p-8 text-center text-slate-400 font-semibold text-xs">No staff members found.</div>
                 }
@@ -1535,7 +1565,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-lg max-w-xs w-full p-5 text-center space-y-3 border border-slate-200 shadow-2xl relative"
+            className="bg-white rounded-lg max-w-xs w-full p-6 text-center space-y-3 border border-slate-200 shadow-2xl relative"
           >
             <button
               onClick={() => setLightboxUrl(null)}
@@ -1599,7 +1629,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 maxLength={6}
                 value={rosterPasscode}
                 onChange={(e) => setRosterPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢"
+                placeholder="••••••"
                 inputMode="numeric"
                 className="text-center font-mono font-semibold tracking-widest"
               />
@@ -1607,7 +1637,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
             <div>
               <Input
-                label="Monthly Salary (Ã¢â€šÂ¹)"
+                label="Monthly Salary (₹)"
                 type="number"
                 value={monthlySalary}
                 onChange={(e) => setMonthlySalary(Number(e.target.value))}
@@ -1630,24 +1660,37 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
         </form>
       </Modal>
 
-      {/* TEAM MEMBER MODAL (CREATE / UPDATE) */}
-      <Modal show={isTeamMemberModalOpen} onClose={() => setIsTeamMemberModalOpen(false)} className="z-58" size="lg" dismissible>
-        <ModalHeader as="div">
-          <div className="flex items-center gap-2">
-            <div className={`p-2 rounded-lg ${userFormTab === 'create' ? 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400' : 'bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400'}`}>
+      {/* TEAM MEMBER DRAWER (CREATE / UPDATE) - Flowbite Right Slide-Out Drawer */}
+      <FlowbiteDrawer
+        open={isTeamMemberModalOpen}
+        onClose={() => setIsTeamMemberModalOpen(false)}
+        position="right"
+        className="z-58 w-full sm:max-w-md md:max-w-lg h-full bg-white dark:bg-gray-800 p-0 flex flex-col shadow-2xl transition-transform border-l border-gray-200 dark:border-gray-700"
+      >
+        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 dark:border-gray-700 shrink-0 bg-white dark:bg-gray-800">
+          <div className="flex items-center gap-2.5">
+            <div className={`p-2 rounded-lg ${userFormTab === 'create' ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400' : 'bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400'}`}>
               {userFormTab === 'create' ? <Plus className="w-5 h-5" /> : <Settings className="w-5 h-5" />}
             </div>
             <div>
-              <h3 className="staff-management__subtitle font-extrabold text-slate-900 dark:text-white text-base">
-                {userFormTab === 'create' ? 'Create Team Member' : 'Modify Team Member'}
+              <h3 className="staff-management__subtitle font-bold text-gray-900 dark:text-white text-base">
+                {userFormTab === 'create' ? 'Add user' : 'Edit user'}
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">
-                {userFormTab === 'create' ? 'Add a new staff login account & system role' : 'Update login credentials, roles, and financial privileges'}
+              <p className="text-xs text-gray-500 dark:text-gray-400 font-normal">
+                {userFormTab === 'create' ? 'Add a new user to the system' : 'Update credentials and role permissions'}
               </p>
             </div>
           </div>
-        </ModalHeader>
-        <ModalBody className="scrollbar-thin">
+          <button
+            type="button"
+            onClick={() => setIsTeamMemberModalOpen(false)}
+            className="text-gray-400 bg-transparent hover:bg-gray-100 hover:text-gray-900 rounded-lg text-sm w-8 h-8 inline-flex items-center justify-center dark:hover:bg-gray-700 dark:hover:text-white cursor-pointer transition-colors"
+            aria-label="Close drawer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <DrawerItems className="flex-1 overflow-y-auto p-4 sm:p-5">
           {userFormTab === 'create' ? (
             <form onSubmit={handleCreateUser} className="app-form app-form--create-user space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -1685,7 +1728,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   maxLength={6}
                   value={newPasscode}
                   onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢"
+                  placeholder="••••••"
                   inputMode="numeric"
                   className="text-center text-slate-900 dark:text-white font-mono font-semibold tracking-widest text-xs"
                 />
@@ -1716,7 +1759,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('daily_wage_label', 'Daily Wage (Ã¢â€šÂ¹)')}</label>
+                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('daily_wage_label', 'Daily Wage (₹)')}</label>
                   <Input
                     type="number"
                     min="0"
@@ -1857,7 +1900,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('daily_wage_label', 'Daily Wage (Ã¢â€šÂ¹)')}</label>
+                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('daily_wage_label', 'Daily Wage (₹)')}</label>
                   <Input
                     type="number"
                     min="0"
@@ -1972,8 +2015,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               </div>
             </form>
           )}
-        </ModalBody>
-      </Modal>
+        </DrawerItems>
+      </FlowbiteDrawer>
 
 
     </div>

@@ -20,6 +20,7 @@ import { PageHeader, PageHeaderButton } from './PageHeader';
 import { t } from '../i18n/en';
 import { Input } from './Input';
 import { Button } from './Button';
+import { Badge } from './Badge';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
 
 interface Calendar {
@@ -191,7 +192,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
       if (data.status === 'success') {
         let msg = `iCal feed "${finalServiceName}" connected successfully`;
         if (data.sync_status === 'success') {
-          msg += ` â€” ${data.sync_message || 'Initial sync complete'}`;
+          msg += ` — ${data.sync_message || 'Initial sync complete'}`;
         }
         showToast(msg, { type: 'success', duration: 5000 });
         setNewImportUrl('');
@@ -222,7 +223,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
       });
       const data = await response.json();
       if (data.status === 'success') {
-        showToast(`Synced "${calName}" â€” ${data.message || 'Events updated'}`, { type: 'success' });
+        showToast(`Synced "${calName}" — ${data.message || 'Events updated'}`, { type: 'success' });
         loadCalendars();
       } else {
         showToast(`Sync failed for "${calName}": ${data.message || 'Unknown error'}`, { type: 'error' });
@@ -311,35 +312,30 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
     const lower = serviceName.toLowerCase();
     if (lower.includes('airbnb')) {
       return {
-        bg: 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300',
-        dot: 'bg-rose-500',
+        variant: 'danger' as const,
         name: t('platform_airbnb_label', 'Airbnb')
       };
     }
     if (lower.includes('booking')) {
       return {
-        bg: 'bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300',
-        dot: 'bg-blue-600',
+        variant: 'info' as const,
         name: t('platform_booking_label', 'Booking.com')
       };
     }
     if (lower.includes('vrbo') || lower.includes('homeaway')) {
       return {
-        bg: 'bg-sky-50 dark:bg-sky-950/40 border-sky-200 dark:border-sky-800 text-sky-700 dark:text-sky-300',
-        dot: 'bg-sky-500',
+        variant: 'info' as const,
         name: t('platform_vrbo_label', 'VRBO')
       };
     }
     if (lower.includes('google')) {
       return {
-        bg: 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300',
-        dot: 'bg-emerald-500',
+        variant: 'success' as const,
         name: t('platform_google_calendar_label', 'Google Calendar')
       };
     }
     return {
-      bg: 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300',
-      dot: 'bg-slate-400',
+      variant: 'neutral' as const,
       name: t('platform_custom_ical_label', 'Custom iCal')
     };
   };
@@ -375,7 +371,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
   return (
     <div className="space-y-6 text-slate-800 dark:text-slate-200 ical-sync-manager__root">
       {/* Header Banner */}
-      <div className="bg-white dark:bg-slate-800 p-6 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs space-y-4 ical-sync-manager__header-banner">
+      <div className="bg-white dark:bg-slate-800 p-6 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md space-y-4 ical-sync-manager__header-banner">
         {/* Breadcrumb Navigation */}
         {!embedded && (
           <nav className="flex text-slate-400 text-[11px] font-semibold gap-1.5 items-center ical-sync-manager__breadcrumb">
@@ -409,7 +405,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
       {/* Top 3 Metric KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 ical-sync-manager__kpi-grid">
          {/* Card 1: Active Connected Channels */}
-         <div className="bg-white dark:bg-slate-800 p-5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs space-y-2 ical-sync-manager__kpi-item">
+         <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md space-y-2 ical-sync-manager__kpi-item">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{t('connected_ical_feeds_label', 'Connected iCal Feeds')}</span>
             <div className="p-2 bg-blue-50 dark:bg-blue-950/40 rounded-lg">
@@ -425,7 +421,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
         </div>
 
          {/* Card 2: Auto-Sync Worker Interval */}
-         <div className="bg-white dark:bg-slate-800 p-5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs space-y-2 ical-sync-manager__kpi-item">
+         <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md space-y-2 ical-sync-manager__kpi-item">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{t('background_worker_label', 'Background Worker')}</span>
             <div className="p-2 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg">
@@ -441,7 +437,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
         </div>
 
         {/* Card 3: Channel Health */}
-        <div className="bg-white dark:bg-slate-800 p-5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs space-y-2">
+        <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{t('integration_health_label', 'Integration Health')}</span>
             <div className="p-2 bg-indigo-50 dark:bg-indigo-950/40 rounded-lg">
@@ -456,7 +452,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
       </div>
 
       {/* Main Content Area: API Data Table */}
-      <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md overflow-hidden">
         {/* Table Filter Toolbar */}
         <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-900/50">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 ical-sync-manager__filter-toolbar flex-1">
@@ -518,10 +514,9 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
                     {/* Platform & Name */}
                     <td className="ical-sync-manager__cell p-4">
                       <div className="flex items-center gap-2.5">
-                        <span className={`px-2.5 py-1 rounded-full border text-[10px] font-semibold flex items-center gap-1.5 shrink-0 ${badge.bg}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
+                        <Badge variant={badge.variant} dot size="sm">
                           {badge.name}
-                        </span>
+                        </Badge>
                         <span className="font-semibold text-slate-900 dark:text-white text-xs truncate max-w-[200px]">
                           {cal.service_name}
                         </span>
@@ -571,10 +566,9 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
 
                     {/* Status */}
                     <td className="ical-sync-manager__cell p-4 text-center">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <Badge variant="success" dot size="sm">
                         {t('connected_badge', 'Connected')}
-                      </span>
+                      </Badge>
                     </td>
 
                     {/* Actions */}
@@ -612,15 +606,9 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
                   <td colSpan={6} className="ical-sync-manager__cell text-center p-12 text-slate-400 space-y-3">
                     <Globe className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600 stroke-[1.5]" />
                     <p className="font-semibold text-xs">{t('no_ical_feeds_match_filter_message', 'No iCal integration feeds match your current filter.')}</p>
-                      <button
-                        onClick={() => setIsAddModalOpen(true)}
-                        className="button button--connect px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition text-xs inline-flex items-center gap-2 cursor-pointer shadow-xs"
-                      >
-                        <span className="button__icon flex items-center">
-                          <Plus className="w-4 h-4" />
-                        </span>
-                        <span>{t('connect_first_ical_feed_button', 'Connect First iCal Feed')}</span>
-                      </button>
+<Button variant="primary" size="sm" onClick={() => setIsAddModalOpen(true)} leftIcon={<Plus className="w-4 h-4" />}>
+                      <span>{t('connect_first_ical_feed_button', 'Connect First iCal Feed')}</span>
+                    </Button>
                   </td>
                 </tr>
               )}
@@ -641,14 +629,12 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <span className={`px-2.5 py-0.5 rounded-full border text-[10px] font-semibold flex items-center gap-1.5 shrink-0 ${badge.bg}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
+                        <Badge variant={badge.variant} dot size="sm">
                           {badge.name}
-                        </span>
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        </Badge>
+                        <Badge variant="success" dot size="sm">
                           {t('connected_badge', 'Connected')}
-                        </span>
+                        </Badge>
                       </div>
                       <h4 className="font-bold text-slate-900 dark:text-white text-sm">{cal.service_name}</h4>
                     </div>
@@ -713,7 +699,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
                 <p className="font-semibold text-xs">{t('no_ical_feeds_match_filter_message', 'No iCal integration feeds match your current filter.')}</p>
                 <button
                   onClick={() => setIsAddModalOpen(true)}
-                  className="button button--connect px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition text-xs inline-flex items-center gap-2 cursor-pointer shadow-xs"
+                  className="button button--connect px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition text-xs inline-flex items-center gap-2 cursor-pointer shadow-md"
                 >
                   <Plus className="w-4 h-4" />
                   <span>{t('connect_first_ical_feed_button', 'Connect First iCal Feed')}</span>
@@ -808,16 +794,16 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
               return (
                 <div
                   key={room.id}
-                  className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-5 shadow-2xs space-y-4"
+                  className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 sm:p-6 shadow-md space-y-4"
                 >
                   <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
                     <div>
                       <h4 className="ical-sync-manager__caption font-semibold text-base text-slate-900 dark:text-white">{room.name}</h4>
                       <p className="text-[10px] text-slate-400 font-mono">{t('room_slug_label', 'Room Slug:')} {room.slug}</p>
                     </div>
-                    <span className="px-2.5 py-1 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-semibold text-[10px] rounded-full border border-blue-200 dark:border-blue-800">
+                    <Badge variant="info" size="sm">
                       {roomCalendars.length} {t('feeds_label', 'Feeds')}
-                    </span>
+                    </Badge>
                   </div>
 
                   {/* Connected Feeds for this Room */}
@@ -831,10 +817,9 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
                           const isCopiedUrl = copiedUrls.has(cal.id);
                           return (
                             <div key={cal.id} className="flex items-center gap-2 p-2.5 bg-slate-50 dark:bg-slate-900/60 rounded-lg border border-slate-200 dark:border-slate-700">
-                              <span className={`px-2 py-0.5 rounded-full border text-[10px] font-semibold flex items-center gap-1 shrink-0 ${badge.bg}`}>
-                                <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
+                              <Badge variant={badge.variant} dot size="sm">
                                 {badge.name}
-                              </span>
+                              </Badge>
                               <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400 truncate flex-1">
                                 {cal.service_name}
                               </span>
@@ -908,7 +893,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
                           setRoomCustomNames((prev) => ({ ...prev, [room.id]: '' }));
                         }}
                         disabled={!url.trim()}
-                        className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold text-xs rounded-lg transition whitespace-nowrap cursor-pointer shadow-xs"
+                        className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold text-xs rounded-lg transition whitespace-nowrap cursor-pointer shadow-md"
                       >
                         {t('add_feed_button', 'Add Feed')}
                       </button>

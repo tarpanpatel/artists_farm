@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2, MessageCircle, LogOut, Upload, CreditCard, Globe, AlertTriangle } from 'lucide-react';
-import { Modal, ModalHeader, ModalBody } from 'flowbite-react';
+import { Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2, LogOut, Upload, CreditCard, Globe, AlertTriangle, X } from 'lucide-react';
+import { Drawer as FlowbiteDrawer, DrawerItems } from 'flowbite-react';
+import { Button } from './Button';
+import { Badge } from './Badge';
 import { Guest } from '../types';
 import { markCFormFiled, checkinGuestInDB } from '../services/api';
 import { useStaff } from '../contexts/StaffContext';
@@ -317,29 +319,39 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
       {/* z-60: opened from the calendar/bookings screen with an underlying
           page modal sometimes already open (see the z-index scale note in
           src/index.css). */}
-      <Modal
-        show
+      <FlowbiteDrawer
+        open={Boolean(guest)}
         onClose={() => { onClose(); setIsEditing(false); }}
-        dismissible={!isSaving}
-        size="md"
-        className="z-60 booking-details-modal__overlay"
+        position="right"
+        className="z-60 w-full sm:max-w-lg md:max-w-xl h-full bg-white dark:bg-gray-800 p-0 flex flex-col shadow-2xl transition-transform border-l border-gray-200 dark:border-gray-700"
       >
-        <ModalHeader as="div">
-          <h2 className="booking-details-modal__title text-base font-semibold text-slate-900 dark:text-white flex flex-wrap items-center gap-2 pr-2">
+        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 dark:border-gray-700 shrink-0 bg-white dark:bg-gray-800">
+          <h2 className="booking-details-modal__title text-base sm:text-lg font-semibold text-slate-900 dark:text-white flex flex-wrap items-center gap-2 pr-2">
             <span>{isEditing ? t('edit_booking_header', 'Edit Booking') : t('today_booking_details_heading', 'Booking Details')}</span>
             {guest.otaSource && (
-              <span
-                className="booking-details-modal__ota-badge inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 text-[10px] font-semibold"
+              <Badge
+                variant="warning"
+                size="sm"
+                className="booking-details-modal__ota-badge"
                 title={t('ota_converted_badge_tooltip', 'Converted from an OTA calendar sync - editing this only changes this app, not the original platform')}
               >
                 <Globe className="w-3 h-3 shrink-0" />
                 {guest.otaSourceLabel || guest.otaSource}
                 {guest.roomNumber && <span className="opacity-70">&middot; {guest.roomNumber}</span>}
-              </span>
+              </Badge>
             )}
           </h2>
-        </ModalHeader>
-        <ModalBody id="printableBookingDetailsContent">
+          <button
+            type="button"
+            onClick={() => { onClose(); setIsEditing(false); }}
+            disabled={isSaving}
+            className="text-gray-400 bg-transparent hover:bg-gray-100 hover:text-gray-900 rounded-lg text-sm w-8 h-8 inline-flex items-center justify-center dark:hover:bg-gray-700 dark:hover:text-white cursor-pointer transition-colors shrink-0"
+            aria-label="Close drawer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <DrawerItems id="printableBookingDetailsContent" className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
           {/* Action Banner 0: OTA cancellation drift - the source calendar no longer
               has this reservation (guest likely cancelled upstream). Informational
               only, staff decide what to do - never auto-cancels/checks out. */}
@@ -426,7 +438,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   <CreditCard className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />
                   <span>
                     {isCheckedOutUnsettled
-                      ? `Unsettled Bill: Owes â‚¹${pendingDisplay.toLocaleString('en-IN')}`
+                      ? `Unsettled Bill: Owes ₹${pendingDisplay.toLocaleString('en-IN')}`
                       : `Payment Receiver Unassigned (${isAdvanceUnassigned ? 'Advance' : ''}${isAdvanceUnassigned && isPendingUnassigned ? ' & ' : ''}${isPendingUnassigned ? 'Pending' : ''})`}
                   </span>
                 </div>
@@ -502,7 +514,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   />
                 ) : (
                   <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
-                    {guest.phoneNumber || 'â€”'}
+                    {guest.phoneNumber || '—'}
                   </div>
                 )}
               </div>
@@ -545,12 +557,12 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
 
             {/* Room Rent */}
             <div>
-              <label className={fieldLabelClass}>{t('room_rent', 'Room Rent / Price (â‚¹)')}</label>
+              <label className={fieldLabelClass}>{t('room_rent', 'Room Rent / Price (₹)')}</label>
               {isEditing ? (
                 <Input type="number" min={0} value={editRoomRent} onChange={(e) => setEditRoomRent(e.target.value)} />
               ) : (
                 <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
-                  â‚¹{roomRent}
+                  ₹{roomRent}
                 </div>
               )}
             </div>
@@ -563,7 +575,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   <Input type="number" min={0} value={editAdvance} onChange={(e) => setEditAdvance(e.target.value)} />
                 ) : (
                   <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-emerald-600 dark:text-emerald-400 text-sm font-semibold">
-                    â‚¹{advancePaid}
+                    ₹{advancePaid}
                   </div>
                 )}
               </div>
@@ -585,7 +597,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   </div>
                 ) : (
                   <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
-                    {g.advance_received_by || guest.advanceReceivedBy || 'â€”'}
+                    {g.advance_received_by || guest.advanceReceivedBy || '—'}
                   </div>
                 )}
               </div>
@@ -596,7 +608,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               <div>
                 <label className={fieldLabelClass}>{t('today_pending_label', 'Pending')}</label>
                 <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-amber-600 dark:text-amber-400 text-sm font-semibold">
-                  â‚¹{pendingDisplay}
+                  ₹{pendingDisplay}
                 </div>
               </div>
               <div>
@@ -633,7 +645,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   </div>
                 ) : (
                   <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
-                    {guest.bookingSource || 'â€”'}
+                    {guest.bookingSource || '—'}
                   </div>
                 )}
               </div>
@@ -700,7 +712,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                             className="w-4.5 h-4.5 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
                           />
                           <span className={!isCFormFiled ? 'text-rose-700 dark:text-rose-300 font-extrabold' : 'text-emerald-800 dark:text-emerald-300 font-bold'}>
-                            {cFormFiledState ? 'C-Form Filed' : 'âš ï¸ C-Form Pending â€” Check to Mark Filed'}
+                            {cFormFiledState ? 'C-Form Filed' : 'âš ï¸ C-Form Pending — Check to Mark Filed'}
                           </span>
                           {guest.cFormFiledAt && (
                             <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-normal">
@@ -788,34 +800,20 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 )}
 
                 {onCheckout && (guest.status === GUEST_STATUS_CHECKED_IN || (guest.status as string) === GUEST_STATUS_ACTIVE_LEGACY) && (
-                  <button
-                    type="button"
-                    onClick={onCheckout}
-                    className="w-full h-9 px-3.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 col-span-2"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    <span>{t('checkout_settle_bill_button', 'Checkout & Settle Bill')}</span>
-                  </button>
+<Button variant="primary" size="lg" onClick={onCheckout} leftIcon={<LogOut className="w-4 h-4" />}>
+                  <span>{t('checkout_settle_bill_button', 'Checkout & Settle Bill')}</span>
+                </Button>
                 )}
 
                 <a href={buildWhatsAppShareUrl()} target="_blank" rel="noopener noreferrer" className="col-span-1 min-w-0 block">
-                  <button
-                    type="button"
-                    className="w-full h-9 px-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <MessageCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span className="truncate">Share with guest</span>
-                  </button>
+<Button variant="primary" size="lg" onClick={handleDelete} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                  <span className="truncate">{t('edit_button', 'Edit')}</span>
+                </Button>
                 </a>
 
-                <button
-                  type="button"
-                  onClick={() => startEditing()}
-                  className="col-span-1 min-w-0 w-full h-9 px-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-                >
-                  <Pencil className="w-3.5 h-3.5 shrink-0" />
+                <Button variant="primary" size="lg" onClick={() => startEditing()} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
                   <span className="truncate">{t('edit_button', 'Edit')}</span>
-                </button>
+                </Button>
 
                 {onDelete && (
                   <button
@@ -839,20 +837,15 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 >
                   {t('cancel_button', 'Cancel')}
                 </button>
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className="h-9 px-5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-                >
+                <Button variant="primary" size="lg" onClick={handleSave} disabled={isSaving}>
                   {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                   <span>{t('save_button', 'Save')}</span>
-                </button>
+                </Button>
               </div>
             )}
           </div>
-        </ModalBody>
-      </Modal>
+        </DrawerItems>
+      </FlowbiteDrawer>
 
       {isIdModalOpen && (
         <CheckinVerificationModal

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, Users, UtensilsCrossed, Wallet, Menu, Plus, UserPlus, Handshake, Receipt, PackagePlus } from 'lucide-react';
-import { Drawer as FlowbiteDrawer, DrawerHeader, DrawerItems } from 'flowbite-react';
+import { LayoutDashboard, Users, UtensilsCrossed, Wallet, Menu, Plus, UserPlus, Handshake, Receipt, PackagePlus, X, Sparkles } from 'lucide-react';
+import { Drawer as FlowbiteDrawer, DrawerItems } from 'flowbite-react';
 import { TabType } from './Navigation';
 
 interface MobileBottomNavProps {
@@ -25,41 +25,6 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
     setIsQuickActionOpen(false);
   };
 
-  const navItems = [
-    {
-      id: 'dashboard',
-      label: 'Home',
-      icon: LayoutDashboard,
-      tab: 'dashboard' as TabType,
-      itemKey: 'dashboard',
-    },
-    {
-      id: 'guests',
-      label: 'Guests',
-      icon: Users,
-      tab: 'guests' as TabType,
-      itemKey: 'guests',
-    },
-    {
-      id: 'finances',
-      label: 'Finances',
-      icon: Wallet,
-      tab: 'petty_cash' as TabType,
-      itemKey: 'petty_cash',
-    },
-    ...(kitchenModuleEnabled
-      ? [
-          {
-            id: 'kitchen',
-            label: 'Kitchen',
-            icon: UtensilsCrossed,
-            tab: 'kitchen' as TabType,
-            itemKey: 'take_food_order',
-          },
-        ]
-      : []),
-  ];
-
   return (
     <>
       {/* Flowbite Quick Action Bottom Sheet Drawer */}
@@ -67,127 +32,175 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         open={isQuickActionOpen}
         onClose={() => setIsQuickActionOpen(false)}
         position="bottom"
-        className="z-[9999] rounded-t-3xl border-t border-slate-200 dark:border-slate-800 p-4 sm:p-5"
+        className="z-[9999] rounded-t-2xl border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 sm:p-5"
       >
-        <DrawerHeader title="Quick Actions" />
+        <div className="flex items-center justify-between pb-3 mb-2 border-b border-gray-100 dark:border-gray-700">
+          <h5 className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
+            <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            Quick Actions
+          </h5>
+          <button
+            type="button"
+            onClick={() => setIsQuickActionOpen(false)}
+            className="text-gray-400 bg-transparent hover:bg-gray-100 hover:text-gray-900 rounded-lg text-sm w-8 h-8 inline-flex items-center justify-center dark:hover:bg-gray-700 dark:hover:text-white cursor-pointer transition-colors"
+            aria-label="Close quick actions drawer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
         <DrawerItems>
           <div className="grid grid-cols-2 gap-3 pt-2">
             <button
               type="button"
               onClick={() => handleNavClick('guests', 'guests')}
-              className="flex items-center gap-3 p-3.5 rounded-lg bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 font-semibold text-xs text-left transition-all active:scale-95 cursor-pointer"
+              className="flex items-center gap-3 p-3.5 rounded-lg bg-blue-50 hover:bg-blue-100/80 dark:bg-blue-950/50 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 font-semibold text-xs text-left transition-all active:scale-95 cursor-pointer"
             >
               <div className="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
                 <UserPlus className="w-5 h-5" />
               </div>
-              <span>New Guest Check-In</span>
+              <div>
+                <span className="block font-semibold">New Guest Check-In</span>
+                <span className="block text-[10px] text-blue-600/75 dark:text-blue-400/75 font-normal">Add reservation</span>
+              </div>
             </button>
 
             <button
               type="button"
               onClick={() => handleNavClick('petty_cash', 'petty_cash')}
-              className="flex items-center gap-3 p-3.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-semibold text-xs text-left transition-all active:scale-95 cursor-pointer"
+              className="flex items-center gap-3 p-3.5 rounded-lg bg-emerald-50 hover:bg-emerald-100/80 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-semibold text-xs text-left transition-all active:scale-95 cursor-pointer"
             >
               <div className="w-9 h-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
                 <Handshake className="w-5 h-5" />
               </div>
-              <span>Record Handover</span>
+              <div>
+                <span className="block font-semibold">Record Handover</span>
+                <span className="block text-[10px] text-emerald-600/75 dark:text-emerald-400/75 font-normal">Petty cash flow</span>
+              </div>
             </button>
 
             {kitchenModuleEnabled && (
               <button
                 type="button"
-                onClick={() => handleNavClick('kitchen', 'kitchen')}
-                className="flex items-center gap-3 p-3.5 rounded-lg bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 font-semibold text-xs text-left transition-all active:scale-95 cursor-pointer"
+                onClick={() => handleNavClick('kitchen', 'take_food_order')}
+                className="flex items-center gap-3 p-3.5 rounded-lg bg-amber-50 hover:bg-amber-100/80 dark:bg-amber-950/50 dark:hover:bg-amber-900/50 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 font-semibold text-xs text-left transition-all active:scale-95 cursor-pointer"
               >
                 <div className="w-9 h-9 rounded-lg bg-amber-600 text-white flex items-center justify-center shrink-0 shadow-xs">
                   <Receipt className="w-5 h-5" />
                 </div>
-                <span>Kitchen Order</span>
+                <div>
+                  <span className="block font-semibold">Kitchen Order</span>
+                  <span className="block text-[10px] text-amber-600/75 dark:text-amber-400/75 font-normal">POS food ticket</span>
+                </div>
               </button>
             )}
 
             <button
               type="button"
               onClick={() => handleNavClick('inventory', 'inventory')}
-              className="flex items-center gap-3 p-3.5 rounded-lg bg-purple-50 dark:bg-purple-950/50 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 font-semibold text-xs text-left transition-all active:scale-95 cursor-pointer"
+              className="flex items-center gap-3 p-3.5 rounded-lg bg-purple-50 hover:bg-purple-100/80 dark:bg-purple-950/50 dark:hover:bg-purple-900/50 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 font-semibold text-xs text-left transition-all active:scale-95 cursor-pointer"
             >
               <div className="w-9 h-9 rounded-lg bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-xs">
                 <PackagePlus className="w-5 h-5" />
               </div>
-              <span>Inventory & Stock</span>
+              <div>
+                <span className="block font-semibold">Inventory & Stock</span>
+                <span className="block text-[10px] text-purple-600/75 dark:text-purple-400/75 font-normal">Stock requisition</span>
+              </div>
             </button>
           </div>
         </DrawerItems>
       </FlowbiteDrawer>
 
-      {/* Docked Mobile Bottom Navigation Bar - adapted from Flowbite's
-          documented "Bottom Navigation" application-bar pattern
-          (flowbite.com/docs/components/bottom-navigation - icon-button grid
-          + a raised circular center action button). flowbite-react ships no
-          React component for this (checked its full component list, 19 Aug
-          2026 - nothing between Navbar and Sidebar covers a bottom bar), so
-          this is Flowbite's own HTML/Tailwind structure hand-ported to JSX,
-          same as their docs recommend for any pattern without a React
-          wrapper. Colors use Flowbite's real semantic tokens (bg-brand,
-          text-fg-brand, border-default, etc.) - these come from
-          flowbite/src/themes/default.css (imported in index.css), NOT from
-          flowbite/plugin.js itself (that file only *references*
-          var(--color-brand) in its base styles, it never defines the
-          variable - confirmed by reading both files directly). No dark:
-          variants needed here: each token's dark-mode value is already
-          baked into the same class via a .dark { --color-brand: ... }
-          override in that theme file, so bg-neutral-primary-soft alone
-          adapts automatically once dark mode is wired up (it's currently
-          inert app-wide - nothing sets class="dark" - so this renders
-          identically to the light values today either way). */}
+      {/* Docked Mobile Bottom Navigation Bar - Flowbite Bottom Navigation pattern */}
       <nav
         aria-label="Mobile Bottom Navigation"
-        className="mobile-bottom-nav fixed bottom-0 left-0 right-0 z-[54] md:hidden h-16 bg-neutral-primary-soft border-t border-default pb-[env(safe-area-inset-bottom)] transition-transform duration-200"
+        className="mobile-bottom-nav fixed bottom-0 left-0 right-0 z-[54] md:hidden h-16 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 pb-[env(safe-area-inset-bottom)] transition-transform duration-200 shadow-lg"
       >
-        <div className={`grid h-full max-w-md mx-auto ${navItems.length + 2 === 6 ? 'grid-cols-6' : 'grid-cols-5'}`}>
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.tab;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => handleNavClick(item.tab, item.itemKey)}
-                className={`inline-flex flex-col items-center justify-center gap-1 px-1 cursor-pointer group ${
-                  isActive ? 'text-fg-brand' : 'text-body hover:text-fg-brand'
-                }`}
-              >
-                <Icon className="w-5 h-5" />
-                <span className={`text-[11px] leading-tight ${isActive ? 'font-semibold' : 'font-medium'}`}>{item.label}</span>
-              </button>
-            );
-          })}
+        <div className="grid h-full max-w-lg grid-cols-5 mx-auto font-medium">
+          {/* 1. Home */}
+          <button
+            type="button"
+            onClick={() => handleNavClick('dashboard', 'dashboard')}
+            className={`inline-flex flex-col items-center justify-center gap-1 px-2 cursor-pointer transition-colors ${
+              activeTab === 'dashboard'
+                ? 'text-blue-600 dark:text-blue-400'
+                : 'text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400'
+            }`}
+          >
+            <LayoutDashboard className="w-5 h-5" />
+            <span className={`text-[10px] leading-tight ${activeTab === 'dashboard' ? 'font-semibold' : 'font-medium'}`}>Home</span>
+          </button>
 
-          {/* Center Quick Action - Flowbite's raised circular button, sitting
-              in its own grid cell rather than absolutely overlapping the bar. */}
+          {/* 2. Guests / Bookings */}
+          <button
+            type="button"
+            onClick={() => handleNavClick('guests', 'guests')}
+            className={`inline-flex flex-col items-center justify-center gap-1 px-2 cursor-pointer transition-colors ${
+              activeTab === 'guests'
+                ? 'text-blue-600 dark:text-blue-400'
+                : 'text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400'
+            }`}
+          >
+            <Users className="w-5 h-5" />
+            <span className={`text-[10px] leading-tight ${activeTab === 'guests' ? 'font-semibold' : 'font-medium'}`}>Guests</span>
+          </button>
+
+          {/* 3. CENTER: Quick Action Raised Button */}
           <div className="flex items-center justify-center">
             <button
               type="button"
               onClick={() => setIsQuickActionOpen(!isQuickActionOpen)}
               aria-label="Open Quick Actions"
-              className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-brand hover:bg-brand-strong text-white shadow-md focus:outline-none focus:ring-4 focus:ring-brand-medium active:scale-95 transition-transform cursor-pointer"
+              className={`inline-flex items-center justify-center w-11 h-11 rounded-full bg-blue-600 hover:bg-blue-700 active:scale-95 text-white shadow-lg focus:outline-none focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-800 transition-all cursor-pointer ${
+                isQuickActionOpen ? 'bg-blue-700 ring-4 ring-blue-300 dark:ring-blue-800' : ''
+              }`}
             >
-              <Plus className={`w-5 h-5 transition-transform ${isQuickActionOpen ? 'rotate-45' : ''}`} />
+              <Plus className={`w-6 h-6 transition-transform duration-200 ${isQuickActionOpen ? 'rotate-45' : ''}`} />
             </button>
           </div>
 
-          {/* More / Menu Drawer Toggle */}
+          {/* 4. Kitchen / Finances */}
+          {kitchenModuleEnabled ? (
+            <button
+              type="button"
+              onClick={() => handleNavClick('kitchen', 'take_food_order')}
+              className={`inline-flex flex-col items-center justify-center gap-1 px-2 cursor-pointer transition-colors ${
+                activeTab === 'kitchen'
+                  ? 'text-blue-600 dark:text-blue-400'
+                  : 'text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400'
+              }`}
+            >
+              <UtensilsCrossed className="w-5 h-5" />
+              <span className={`text-[10px] leading-tight ${activeTab === 'kitchen' ? 'font-semibold' : 'font-medium'}`}>Kitchen</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => handleNavClick('petty_cash', 'petty_cash')}
+              className={`inline-flex flex-col items-center justify-center gap-1 px-2 cursor-pointer transition-colors ${
+                activeTab === 'petty_cash'
+                  ? 'text-blue-600 dark:text-blue-400'
+                  : 'text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400'
+              }`}
+            >
+              <Wallet className="w-5 h-5" />
+              <span className={`text-[10px] leading-tight ${activeTab === 'petty_cash' ? 'font-semibold' : 'font-medium'}`}>Finances</span>
+            </button>
+          )}
+
+          {/* 5. More (Sidebar Toggle) */}
           <button
             type="button"
             onClick={onToggleSidebar}
             aria-label="Toggle Full Menu"
-            className={`inline-flex flex-col items-center justify-center gap-1 px-1 cursor-pointer group ${
-              isSidebarOpen ? 'text-fg-brand' : 'text-body hover:text-fg-brand'
+            className={`inline-flex flex-col items-center justify-center gap-1 px-2 cursor-pointer transition-colors ${
+              isSidebarOpen
+                ? 'text-blue-600 dark:text-blue-400'
+                : 'text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400'
             }`}
           >
             <Menu className="w-5 h-5" />
-            <span className={`text-[11px] leading-tight ${isSidebarOpen ? 'font-semibold' : 'font-medium'}`}>More</span>
+            <span className={`text-[10px] leading-tight ${isSidebarOpen ? 'font-semibold' : 'font-medium'}`}>More</span>
           </button>
         </div>
       </nav>

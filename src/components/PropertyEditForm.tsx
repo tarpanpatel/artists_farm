@@ -158,40 +158,50 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
       )}
 
       {!isRoom && (
-        <div className="property-edit-form__field">
-          <Input
-            type="text"
-            label={t('gstin_optional_label', 'GSTIN (optional)')}
-            value={gstin}
-            onChange={(e) => setGstin(e.target.value.toUpperCase())}
-            placeholder="27ABCDE1234F1Z5"
-            helperText={t('gstin_help_text', 'Printed on GST tax invoices at checkout.')}
-          />
+        <div className="property-edit-form__row grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="property-edit-form__field">
+            <Input
+              type="text"
+              label={t('gstin_optional_label', 'GSTIN (optional)')}
+              value={gstin}
+              onChange={(e) => setGstin(e.target.value.toUpperCase())}
+              placeholder="27ABCDE1234F1Z5"
+              helperText={t('gstin_help_text', 'Printed on GST tax invoices at checkout.')}
+            />
+          </div>
+          <div className="property-edit-form__field">
+            <Input
+              type="text"
+              label={t('upi_id_optional_label', 'UPI ID (optional)')}
+              value={upiId}
+              onChange={(e) => setUpiId(e.target.value)}
+              placeholder="yourproperty@okicici"
+              helperText={t('upi_id_help_text', 'A scannable UPI QR code and this ID are added to booking confirmation and bill messages shared over WhatsApp.')}
+            />
+          </div>
         </div>
       )}
 
       {!isRoom && (
-        <div className="property-edit-form__field">
-          <Input
-            type="text"
-            label={t('upi_id_optional_label', 'UPI ID (optional)')}
-            value={upiId}
-            onChange={(e) => setUpiId(e.target.value)}
-            placeholder="yourproperty@okicici"
-            helperText={t('upi_id_help_text', 'A scannable UPI QR code and this ID are added to booking confirmation and bill messages shared over WhatsApp.')}
-          />
-        </div>
-      )}
-
-      {!isRoom && (
-        <div className="property-edit-form__field">
-          <Input
-            type="text"
-            label={t('address_label', 'Address')}
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            placeholder={t('full_property_address_placeholder', 'Full property address')}
-          />
+        <div className="property-edit-form__row grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="property-edit-form__field">
+            <Input
+              type="text"
+              label={t('address_label', 'Address')}
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder={t('full_property_address_placeholder', 'Full property address')}
+            />
+          </div>
+          <div className="property-edit-form__field">
+            <Input
+              type="text"
+              label={t('google_maps_link_label', 'Google Maps Link')}
+              value={mapsLink}
+              onChange={(e) => setMapsLink(e.target.value)}
+              placeholder={t('google_maps_link_placeholder', 'https://maps.app.goo.gl/...')}
+            />
+          </div>
         </div>
       )}
 
@@ -222,23 +232,11 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
         <div className="property-edit-form__field">
           <Input
             type="number"
-            label={t('default_tariff_label', 'Default Tariff / Night (â‚¹, optional)')}
+            label={t('default_tariff_label', 'Default Tariff / Night (₹, optional)')}
             value={defaultTariff}
             onChange={(e) => setDefaultTariff(e.target.value)}
             placeholder={t('default_tariff_placeholder', 'e.g. 2000')}
             helperText={t('default_tariff_help', 'Pre-fills the rate when creating a new booking - still editable per booking.')}
-          />
-        </div>
-      )}
-
-      {!isRoom && (
-        <div className="property-edit-form__field">
-          <Input
-            type="text"
-            label={t('google_maps_link_label', 'Google Maps Link')}
-            value={mapsLink}
-            onChange={(e) => setMapsLink(e.target.value)}
-            placeholder={t('google_maps_link_placeholder', 'https://maps.app.goo.gl/...')}
           />
         </div>
       )}
@@ -249,7 +247,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
         <WhatsAppEditor
           value={instructions}
           onChange={setInstructions}
-          placeholder={t('other_notes_placeholder', 'e.g. How to reach, check-in instructions, parking notesâ€¦')}
+          placeholder={t('other_notes_placeholder', 'e.g. How to reach, check-in instructions, parking notes…')}
           rows={4}
         />
         <p className="property-edit-form__field-help text-xs text-slate-400 dark:text-slate-500 mt-1">{t('other_notes_help', 'Supports WhatsApp formatting: *bold*, _italic_, ~strikethrough~, bullet lists, quotes, code.')}</p>
