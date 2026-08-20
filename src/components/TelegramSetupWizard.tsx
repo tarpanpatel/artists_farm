@@ -14,7 +14,7 @@ import {
   RefreshCw,
   Bot,
   Save,
-  Lightbulb,
+  HelpCircle,
 } from 'lucide-react';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from 'flowbite-react';
 import { Input } from './Input';
@@ -380,20 +380,22 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
               {/* Bot API Token */}
               <div className="space-y-2">
                 <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('bot_api_token_label', 'Bot API Token')}</label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="text"
-                    value={tokenInput}
-                    onChange={(e) => setTokenInput(e.target.value)}
-                    placeholder={t('bot_token_placeholder', 'Enter Bot Token (Leave empty to use platform default)')}
-                    className="flex-1 font-mono"
-                    fullWidth={false}
-                  />
+                <div className="flex items-center gap-2 w-full">
+                  <div className="flex-1 min-w-0">
+                    <Input
+                      type="text"
+                      value={tokenInput}
+                      onChange={(e) => setTokenInput(e.target.value)}
+                      placeholder={t('bot_token_placeholder', 'Enter Bot Token (Leave empty to use platform default)')}
+                      className="w-full font-mono text-xs"
+                      fullWidth
+                    />
+                  </div>
                   <button
                     type="button"
                     onClick={handleSaveToken}
                     disabled={savingToken}
-                    className="shrink-0 bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white font-semibold text-xs px-3.5 py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    className="shrink-0 bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white font-semibold text-xs px-4 py-2.5 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs"
                   >
                     {savingToken ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                     {t('save_button', 'Save')}
@@ -448,25 +450,26 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowBotFatherGuide(true)}
-                    className="text-xs font-semibold text-sky-600 hover:underline cursor-pointer block mt-1"
+                    className="text-[11px] text-sky-600 dark:text-sky-400 hover:underline inline-flex items-center gap-1 font-medium cursor-pointer"
                   >
-                    <Lightbulb className="w-3.5 h-3.5 inline-block mr-1" /> {t('show_botfather_guide_button', 'Show BotFather setup guide')}
+                    <HelpCircle className="w-3.5 h-3.5" />
+                    {t('how_to_create_bot_link', 'How to create a new Telegram bot with BotFather')}
                   </button>
                 )}
               </div>
 
-              {/* Auto-Reminder Interval */}
-              <div className="space-y-1 pt-2 border-t border-slate-200 dark:border-slate-800">
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
+              {/* Auto reminder interval */}
+              <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-1.5">
+                <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-300">
                   {t('auto_reminder_interval_label', 'Auto-Reminder Interval (Minutes)')}
                 </label>
                 <Input
                   type="number"
                   min={1}
+                  max={60}
                   value={wizardConfig?.reminderThresholdMinutes ?? 5}
                   onChange={(e) => handleUpdateConfigField('reminderThresholdMinutes', Math.max(1, Number(e.target.value) || 5))}
-                  className="w-24"
-                  fullWidth={false}
+                  className="w-32"
                 />
                 <p className="text-[10px] text-slate-400">
                   {t('auto_reminder_interval_description', 'Minutes to wait before an unaddressed order/dish gets nudged again.')}
@@ -486,12 +489,14 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
               </div>
 
               {!botUsername && (
-                <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-lg p-4 text-center space-y-2 text-xs text-amber-800 dark:text-amber-300">
-                  <span>Please configure your Bot API Token in the <b>Bot & Settings</b> step first before pairing groups.</span>
+                <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/80 rounded-xl p-5 text-center text-xs text-amber-900 dark:text-amber-200 shadow-xs">
+                  <p className="leading-relaxed text-slate-700 dark:text-slate-300">
+                    Please configure your Bot API Token in the <strong className="text-amber-800 dark:text-amber-300">Bot & Settings</strong> step first before pairing groups.
+                  </p>
                   <button
                     type="button"
                     onClick={() => setCurrentIndex(0)}
-                    className="bg-amber-600 text-white font-semibold px-3 py-1.5 rounded-lg block mx-auto cursor-pointer"
+                    className="mt-4 inline-flex items-center justify-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs px-4 py-2 rounded-lg shadow-sm transition-all cursor-pointer"
                   >
                     {t('go_to_settings_button', 'Go to Settings')}
                   </button>

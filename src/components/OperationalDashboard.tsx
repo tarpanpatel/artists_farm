@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, ModalHeader, ModalBody, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell } from 'flowbite-react';
+import { Modal, ModalHeader, ModalBody, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, Checkbox } from 'flowbite-react';
 import {
   AlertTriangle,
   User,
@@ -62,6 +62,7 @@ interface OperationalDashboardProps {
   propertyPhone?: string;
   propertyWhatsappTemplate?: string;
   propertyUpiId?: string;
+  propertyUpiQrCodeUrl?: string;
   propertyAddress?: string;
   propertyGoogleMapsLink?: string;
   propertyInstructions?: string;
@@ -104,6 +105,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   propertyPhone = '',
   propertyWhatsappTemplate = '',
   propertyUpiId = '',
+  propertyUpiQrCodeUrl = '',
   propertyAddress: _propertyAddress = '',
   propertyGoogleMapsLink: _propertyGoogleMapsLink = '',
   propertyInstructions: _propertyInstructions = '',
@@ -474,15 +476,10 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                       {due.label}
                     </p>
                   </button>
-                  <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer whitespace-nowrap shrink-0">
-                    <input
-                      type="checkbox"
+                  <Checkbox
                       disabled={cFormSavingId === g.id}
                       onChange={() => handleMarkCFormFiled(g.id)}
-                      className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 cursor-pointer"
-                    />
-                    {t('mark_filed_label', 'Mark filed')}
-                  </label>
+                    />{t('mark_filed_label', 'Mark filed')}
                 </li>
               );
             })}
@@ -972,6 +969,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             propertyPhone={propertyPhone}
             propertyWhatsappTemplate={propertyWhatsappTemplate}
             propertyUpiId={propertyUpiId}
+            propertyUpiQrCodeUrl={propertyUpiQrCodeUrl}
           />
         </ModalBody>
       </Modal>

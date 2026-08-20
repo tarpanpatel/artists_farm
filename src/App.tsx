@@ -156,6 +156,9 @@ function AppBody({ preloadedData }: AppBodyProps) {
         guests: { tab: 'guests', key: 'all_bookings' },
         take_food_order: { tab: 'kitchen', key: 'take_food_order' },
         kitchen_orders: { tab: 'kitchen', key: 'kitchen_orders' },
+        live_orders: { tab: 'kitchen', key: 'kitchen_orders' },
+        live_kitchen_orders: { tab: 'kitchen', key: 'kitchen_orders' },
+        live_tickets: { tab: 'kitchen', key: 'kitchen_orders' },
         staff_meals: { tab: 'kitchen', key: 'staff_meals' },
         edit_food_menu: { tab: 'menu_manager', key: 'edit_food_menu' },
         menu_manager: { tab: 'menu_manager', key: 'edit_food_menu' },
@@ -587,6 +590,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isIconOnly, setIsIconOnly] = useState(false);
   const [isAddBookingModalOpen, setIsAddBookingModalOpen] = useState(false);
+  const [isAddExpenseModalOpen, setIsAddExpenseModalOpen] = useState(false);
 
   const [guests, setGuests] = useState<Guest[]>(() => preloadedData.initialGuests || []);
   const [receipts, setReceipts] = useState<BillingReceipt[]>(() => preloadedData.initialReceipts || []);
@@ -910,7 +914,28 @@ function AppBody({ preloadedData }: AppBodyProps) {
     // into this visibleNavItems array yet (React state timing) - so an
     // items.find() lookup here is unreliable and the bypass is required,
     // same as kitchen_overview already gets via its synthetic nav item.
-    if (key === 'admin_control_group' || key === 'edit_items_group' || key === 'team_overview' || key === 'admin_control_overview' || key === 'kitchen_overview') return true;
+    // 'edit_main_menu' is a synthetic key too: it's an internal MenuManager
+    // sub-tab (see MenuManager.tsx's isStandalonePage/tab handling), not a
+    // separately-registered nav item - only 'edit_food_menu' is in
+    // NavMenuEditor's default list. The "Edit Menu & Items" admin-control
+    // card navigates via hash 'edit_items_group', which Guard Effect 2's
+    // routeMap below remaps to key 'edit_main_menu' - without this bypass
+    // that remapped key fails the items.find() lookup below and this guard
+    // effect immediately bounces the user back to Dashboard on every click
+    // (found 20 Aug 2026).
+    // 'kitchen_orders' is a legacy synthetic key too: the standalone Kitchen
+    // Orders page was folded into the unified take_food_order screen's "Live
+    // Tickets" tab (see KitchenManagement.tsx's activeMenuItemKey handling,
+    // which still maps 'kitchen_orders' to that tab) - so it's deliberately
+    // marked isVisible:false in NavMenuEditor as a superseded route, not
+    // access-restricted. The mobile "Quick Actions" drawer's "View Live
+    // Kitchen Order" button still navigates via this exact key though (see
+    // MobileBottomNav.tsx), and the items.find() lookup below fails on a
+    // hidden item regardless of role - even Root Admin - since the
+    // isVisible check runs before the root-admin bypass further down. That
+    // silently bounced the button straight back to Dashboard on every click
+    // (found 20 Aug 2026).
+    if (key === 'admin_control_group' || key === 'edit_items_group' || key === 'edit_main_menu' || key === 'team_overview' || key === 'admin_control_overview' || key === 'kitchen_overview' || key === 'kitchen_orders') return true;
     // Preserve old bookmarked Attendance & Salaries links while the navigation uses
     // the canonical attendance calendar route.
     const routeKey = key === 'attendance_salaries' ? 'attendance_calendar' : key;
@@ -1000,6 +1025,9 @@ function AppBody({ preloadedData }: AppBodyProps) {
         guests: { tab: 'guests', key: 'all_bookings' },
         take_food_order: { tab: 'kitchen', key: 'take_food_order' },
         kitchen_orders: { tab: 'kitchen', key: 'kitchen_orders' },
+        live_orders: { tab: 'kitchen', key: 'kitchen_orders' },
+        live_kitchen_orders: { tab: 'kitchen', key: 'kitchen_orders' },
+        live_tickets: { tab: 'kitchen', key: 'kitchen_orders' },
         staff_meals: { tab: 'kitchen', key: 'staff_meals' },
         // Must match getInitialActiveState()'s routeMap ('kitchen_overview',
         // not 'kitchen_orders') - kitchen_overview is the synthetic launchpad
@@ -1704,6 +1732,8 @@ ${itemsStr}
             onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
             isSidebarOpen={isSidebarOpen}
             kitchenModuleEnabled={kitchenEnabled}
+            onOpenAddBooking={() => setIsAddBookingModalOpen(true)}
+            onOpenAddExpense={() => setIsAddExpenseModalOpen(true)}
           />
         )}
 
@@ -1870,6 +1900,7 @@ ${itemsStr}
                         propertyPhone={preloadedData.currentProperty?.phone || ''}
                         propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template || ''}
                         propertyUpiId={preloadedData.currentProperty?.upi_id || ''}
+                        propertyUpiQrCodeUrl={preloadedData.currentProperty?.upi_qr_code_url || ''}
                         propertyAddress={preloadedData.currentProperty?.address || ''}
                         propertyGoogleMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
                         propertyInstructions={preloadedData.currentProperty?.instructions || ''}
@@ -1911,6 +1942,7 @@ ${itemsStr}
                     propertyPhone={preloadedData.currentProperty?.phone || ''}
                     propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template || ''}
                     propertyUpiId={preloadedData.currentProperty?.upi_id || ''}
+                    propertyUpiQrCodeUrl={preloadedData.currentProperty?.upi_qr_code_url || ''}
                     onNavigateToBilling={(_guestId) => {
                       // Navigate to billing view for guest
                     }}
@@ -1939,6 +1971,7 @@ ${itemsStr}
                     propertyName={preloadedData.currentProperty?.name || ''}
                     propertyGstin={preloadedData.currentProperty?.gstin || ''}
                     propertyUpiId={preloadedData.currentProperty?.upi_id || ''}
+                    propertyUpiQrCodeUrl={preloadedData.currentProperty?.upi_qr_code_url || ''}
                   />
                 </ErrorBoundary>
               )}
@@ -2158,7 +2191,31 @@ ${itemsStr}
               propertyPhone={preloadedData.currentProperty?.phone || ''}
               propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template || ''}
               propertyUpiId={preloadedData.currentProperty?.upi_id || ''}
+              propertyUpiQrCodeUrl={preloadedData.currentProperty?.upi_qr_code_url || ''}
             />
+          </ModalBody>
+        </Modal>
+
+        {/* Global Add Expense Modal Overlay */}
+        <Modal
+          show={isAddExpenseModalOpen}
+          onClose={() => setIsAddExpenseModalOpen(false)}
+          size="lg"
+          dismissible
+          className="z-58"
+        >
+          <ModalHeader className="border-b border-gray-200 dark:border-gray-700 p-4">
+            Add Expense
+          </ModalHeader>
+          <ModalBody className="p-4 sm:p-6 max-h-[85vh] overflow-y-auto">
+            <Suspense fallback={<TabContentFallback />}>
+              <PettyCashManagement
+                activeRole={activeRole}
+                onDispatchTelegram={dispatchTelegramAlert}
+                onlyForm={true}
+                onClose={() => setIsAddExpenseModalOpen(false)}
+              />
+            </Suspense>
           </ModalBody>
         </Modal>
 

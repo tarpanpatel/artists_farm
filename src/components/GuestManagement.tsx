@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Checkbox, Label, Badge } from 'flowbite-react';
+import { Button, Badge, Checkbox } from 'flowbite-react';
 import {
   Trash2,
   Plus,
@@ -67,6 +67,7 @@ interface GuestManagementProps {
   propertyPhone?: string;
   propertyWhatsappTemplate?: string;
   propertyUpiId?: string;
+  propertyUpiQrCodeUrl?: string;
 }
 
 
@@ -124,6 +125,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   propertyPhone: _propertyPhone = '',
   propertyWhatsappTemplate: _propertyWhatsappTemplate = '',
   propertyUpiId = '',
+  propertyUpiQrCodeUrl = '',
 }) => {
   const { showToast } = useToast();
   const { staff } = useStaff();
@@ -553,8 +555,8 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               />
             </div>
 
-            {/* Row 1: Contact Phone + Assigned Room (2 columns) */}
-            <div className={`grid ${isMultiKeyProperty && rooms && rooms.length > 0 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'} gap-4`}>
+            {/* Row 1: Contact Phone + Assigned Room (2 columns on all screens) */}
+            <div className={`grid ${isMultiKeyProperty && rooms && rooms.length > 0 ? 'grid-cols-2' : 'grid-cols-1'} gap-3 sm:gap-4`}>
               <div>
                 <Input
                   label={t('contact_phone_label', 'Contact Phone Number *')}
@@ -580,8 +582,8 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               )}
             </div>
 
-            {/* Row 2: Booking Source + No. of Guests (2 columns) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Row 2: Booking Source + No. of Guests (2 columns on all screens) */}
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <StyledSelect
                   label={t('booking_source_label', 'Booking Source')}
@@ -616,8 +618,8 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               />
             </div>
 
-            {/* Row 4: Check-In & Check-Out Time (2 columns) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Row 4: Check-In & Check-Out Time (2 columns on all screens) */}
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <Input
                   label={t('checkin_time_label', 'Check-In Time')}
@@ -647,39 +649,48 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               />
             </div>
 
-            {/* Checkboxes Row: Guest Notes, Foreign Guest, Additional Charges */}
-            <div className="flex flex-wrap items-center gap-6 py-1">
+            {/* Checkboxes Row: Flowbite Standard Checkbox Elements */}
+            <div className="flex flex-wrap items-center gap-4 sm:gap-6 py-2">
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="booking-guest-notes-cb"
                   checked={showGuestNotes}
-                  onChange={(e) => setShowGuestNotes(e.target.checked)}
+                  onChange={e => setShowGuestNotes(e.target.checked)}
                 />
-                <Label htmlFor="booking-guest-notes-cb" className="cursor-pointer text-xs font-semibold text-slate-700 dark:text-slate-200">
+                <label
+                  htmlFor="booking-guest-notes-cb"
+                  className="text-xs font-medium text-gray-900 dark:text-gray-300 cursor-pointer select-none"
+                >
                   Guest Notes
-                </Label>
+                </label>
               </div>
 
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="booking-foreign-guest-cb"
                   checked={isForeignGuest}
-                  onChange={(e) => setIsForeignGuest(e.target.checked)}
+                  onChange={e => setIsForeignGuest(e.target.checked)}
                 />
-                <Label htmlFor="booking-foreign-guest-cb" className="cursor-pointer text-xs font-semibold text-slate-700 dark:text-slate-200">
+                <label
+                  htmlFor="booking-foreign-guest-cb"
+                  className="text-xs font-medium text-gray-900 dark:text-gray-300 cursor-pointer select-none"
+                >
                   Foreign National Guest
-                </Label>
+                </label>
               </div>
 
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="booking-additional-charges-cb"
                   checked={showBookingExtraCharges}
-                  onChange={(e) => handleToggleExtraChargesCheckbox(e.target.checked)}
+                  onChange={e => handleToggleExtraChargesCheckbox(e.target.checked)}
                 />
-                <Label htmlFor="booking-additional-charges-cb" className="cursor-pointer text-xs font-semibold text-slate-700 dark:text-slate-200">
+                <label
+                  htmlFor="booking-additional-charges-cb"
+                  className="text-xs font-medium text-gray-900 dark:text-gray-300 cursor-pointer select-none"
+                >
                   {t('additional_charges_label', 'Additional Charges')}
-                </Label>
+                </label>
               </div>
             </div>
 
@@ -770,9 +781,9 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               </div>
             )}
 
-            {/* Advance Paid + Advance Received By */}
+            {/* Advance Paid + Advance Received By (2 columns on all screens) */}
             {bookingRoomTariff > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <Input
                     label={t('advance_paid', 'Advance Paid (₹)')}
@@ -783,7 +794,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   />
                 </div>
 
-                {bookingAdvance > 0 && (
+                {bookingAdvance > 0 ? (
                   <div>
                     <StyledSelect
                       label={t('advance_received_by', 'Advance Received By *')}
@@ -793,13 +804,13 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                       options={staff.filter(s => s.isFinancialHandler).map(s => ({ value: s.name, label: s.name }))}
                     />
                   </div>
-                )}
+                ) : <div />}
               </div>
             )}
 
-            {/* Pending Balance + Pending Received By */}
+            {/* Pending Balance + Pending Received By (2 columns on all screens) */}
             {bookingAdvance > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <Input
                     label={t('pending_balance_label', 'Pending Balance (₹)')}
@@ -810,7 +821,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   />
                 </div>
 
-                {bookingPending > 0 && (
+                {bookingPending > 0 ? (
                   <div>
                     <StyledSelect
                       label={t('pending_received_by_label', 'Pending Received By')}
@@ -820,7 +831,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                       options={staff.filter(s => s.isFinancialHandler).map(s => ({ value: s.name, label: s.name }))}
                     />
                   </div>
-                )}
+                ) : <div />}
               </div>
             )}
 
@@ -847,6 +858,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       focusGuestId={focusGuestId}
       propertyName={propertyName}
       propertyUpiId={propertyUpiId}
+      propertyUpiQrCodeUrl={propertyUpiQrCodeUrl}
     />
   );
 };

@@ -1,6 +1,16 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, Users, UtensilsCrossed, Wallet, Menu, Plus, UserPlus, Handshake, Receipt, PackagePlus, X, Sparkles } from 'lucide-react';
-import { Drawer as FlowbiteDrawer, DrawerItems } from 'flowbite-react';
+import {
+  LayoutDashboard,
+  Users,
+  UtensilsCrossed,
+  Wallet,
+  Menu,
+  Plus,
+  CalendarPlus,
+  ChefHat,
+  Receipt,
+  X
+} from 'lucide-react';
 import { TabType } from './Navigation';
 
 interface MobileBottomNavProps {
@@ -9,6 +19,8 @@ interface MobileBottomNavProps {
   onToggleSidebar: () => void;
   isSidebarOpen: boolean;
   kitchenModuleEnabled?: boolean;
+  onOpenAddBooking?: () => void;
+  onOpenAddExpense?: () => void;
 }
 
 export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
@@ -17,6 +29,8 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   onToggleSidebar,
   isSidebarOpen,
   kitchenModuleEnabled = true,
+  onOpenAddBooking,
+  onOpenAddExpense,
 }) => {
   const [isQuickActionOpen, setIsQuickActionOpen] = useState(false);
 
@@ -27,89 +41,111 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 
   return (
     <>
-      {/* Flowbite Quick Action Bottom Sheet Drawer */}
-      <FlowbiteDrawer
-        open={isQuickActionOpen}
-        onClose={() => setIsQuickActionOpen(false)}
-        position="bottom"
-        className="z-[9999] rounded-t-2xl border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 sm:p-5"
+      {/* Backdrop */}
+      {isQuickActionOpen && (
+        <div
+          onClick={() => setIsQuickActionOpen(false)}
+          className="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-xs transition-opacity animate-in fade-in"
+        />
+      )}
+
+      {/* Quick Action Drawer */}
+      <div
+        className={`fixed left-0 right-0 z-50 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 rounded-t-2xl shadow-2xl transition-all duration-300 ease-out transform ${
+          isQuickActionOpen
+            ? 'bottom-16 translate-y-0 opacity-100'
+            : 'bottom-0 translate-y-full opacity-0 pointer-events-none'
+        } p-4 max-h-[80vh] overflow-y-auto`}
       >
-        <div className="flex items-center justify-between pb-3 mb-2 border-b border-gray-100 dark:border-gray-700">
-          <h5 className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
-            <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-            Quick Actions
-          </h5>
+        {/* Handle bar with Close Button */}
+        <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="w-12 h-1 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto" />
           <button
             type="button"
             onClick={() => setIsQuickActionOpen(false)}
-            className="text-gray-400 bg-transparent hover:bg-gray-100 hover:text-gray-900 rounded-lg text-sm w-8 h-8 inline-flex items-center justify-center dark:hover:bg-gray-700 dark:hover:text-white cursor-pointer transition-colors"
-            aria-label="Close quick actions drawer"
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg transition-colors cursor-pointer"
+            aria-label="Close"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
-        <DrawerItems>
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() => handleNavClick('guests', 'guests')}
-              className="flex items-center gap-3 p-3.5 rounded-lg bg-blue-50 hover:bg-blue-100/80 dark:bg-blue-950/50 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 font-semibold text-xs text-left transition-all active:scale-95 cursor-pointer"
-            >
-              <div className="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                <UserPlus className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="block font-semibold">New Guest Check-In</span>
-                <span className="block text-[10px] text-blue-600/75 dark:text-blue-400/75 font-normal">Add reservation</span>
-              </div>
-            </button>
 
-            <button
-              type="button"
-              onClick={() => handleNavClick('petty_cash', 'petty_cash')}
-              className="flex items-center gap-3 p-3.5 rounded-lg bg-emerald-50 hover:bg-emerald-100/80 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-semibold text-xs text-left transition-all active:scale-95 cursor-pointer"
-            >
-              <div className="w-9 h-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                <Handshake className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="block font-semibold">Record Handover</span>
-                <span className="block text-[10px] text-emerald-600/75 dark:text-emerald-400/75 font-normal">Petty cash flow</span>
-              </div>
-            </button>
+        <div className="grid grid-cols-2 gap-3">
+          {/* 1. Add Expense */}
+          <button
+            type="button"
+            onClick={() => {
+              setIsQuickActionOpen(false);
+              if (onOpenAddExpense) {
+                onOpenAddExpense();
+              } else {
+                handleNavClick('petty_cash', 'expenses');
+              }
+            }}
+            className="flex items-center gap-3 p-3.5 rounded-xl bg-emerald-50 hover:bg-emerald-100/80 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 font-semibold text-xs text-left transition-all active:scale-95 cursor-pointer shadow-xs"
+          >
+            <div className="w-10 h-10 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <Receipt className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <span className="block font-bold text-slate-900 dark:text-white truncate">Add Expense</span>
+              <span className="block text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">Petty cash entry</span>
+            </div>
+          </button>
 
-            {kitchenModuleEnabled && (
-              <button
-                type="button"
-                onClick={() => handleNavClick('kitchen', 'take_food_order')}
-                className="flex items-center gap-3 p-3.5 rounded-lg bg-amber-50 hover:bg-amber-100/80 dark:bg-amber-950/50 dark:hover:bg-amber-900/50 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 font-semibold text-xs text-left transition-all active:scale-95 cursor-pointer"
-              >
-                <div className="w-9 h-9 rounded-lg bg-amber-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                  <Receipt className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="block font-semibold">Kitchen Order</span>
-                  <span className="block text-[10px] text-amber-600/75 dark:text-amber-400/75 font-normal">POS food ticket</span>
-                </div>
-              </button>
-            )}
+          {/* 2. Add Booking */}
+          <button
+            type="button"
+            onClick={() => {
+              setIsQuickActionOpen(false);
+              if (onOpenAddBooking) {
+                onOpenAddBooking();
+              } else {
+                handleNavClick('guests', 'guest_registration');
+              }
+            }}
+            className="flex items-center gap-3 p-3.5 rounded-xl bg-blue-50 hover:bg-blue-100/80 dark:bg-blue-950/40 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300 font-semibold text-xs text-left transition-all active:scale-95 cursor-pointer shadow-xs"
+          >
+            <div className="w-10 h-10 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <CalendarPlus className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <span className="block font-bold text-slate-900 dark:text-white truncate">Add Booking</span>
+              <span className="block text-[11px] text-blue-700 dark:text-blue-400 font-medium">New reservation</span>
+            </div>
+          </button>
 
-            <button
-              type="button"
-              onClick={() => handleNavClick('inventory', 'inventory')}
-              className="flex items-center gap-3 p-3.5 rounded-lg bg-purple-50 hover:bg-purple-100/80 dark:bg-purple-950/50 dark:hover:bg-purple-900/50 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 font-semibold text-xs text-left transition-all active:scale-95 cursor-pointer"
-            >
-              <div className="w-9 h-9 rounded-lg bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                <PackagePlus className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="block font-semibold">Inventory & Stock</span>
-                <span className="block text-[10px] text-purple-600/75 dark:text-purple-400/75 font-normal">Stock requisition</span>
-              </div>
-            </button>
-          </div>
-        </DrawerItems>
-      </FlowbiteDrawer>
+          {/* 3. Add Food Order */}
+          <button
+            type="button"
+            onClick={() => handleNavClick('kitchen', 'take_food_order')}
+            className="flex items-center gap-3 p-3.5 rounded-xl bg-amber-50 hover:bg-amber-100/80 dark:bg-amber-950/40 dark:hover:bg-amber-900/50 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 font-semibold text-xs text-left transition-all active:scale-95 cursor-pointer shadow-xs"
+          >
+            <div className="w-10 h-10 rounded-lg bg-amber-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <UtensilsCrossed className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <span className="block font-bold text-slate-900 dark:text-white truncate">Add Food Order</span>
+              <span className="block text-[11px] text-amber-700 dark:text-amber-400 font-medium">POS menu ticket</span>
+            </div>
+          </button>
+
+          {/* 4. View Live Kitchen Order */}
+          <button
+            type="button"
+            onClick={() => handleNavClick('kitchen', 'kitchen_orders')}
+            className="flex items-center gap-3 p-3.5 rounded-xl bg-purple-50 hover:bg-purple-100/80 dark:bg-purple-950/40 dark:hover:bg-purple-900/50 border border-purple-200 dark:border-purple-800 text-purple-800 dark:text-purple-300 font-semibold text-xs text-left transition-all active:scale-95 cursor-pointer shadow-xs"
+          >
+            <div className="w-10 h-10 rounded-lg bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <ChefHat className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <span className="block font-bold text-slate-900 dark:text-white truncate">View Live Kitchen Order</span>
+              <span className="block text-[11px] text-purple-700 dark:text-purple-400 font-medium">KDS live tickets</span>
+            </div>
+          </button>
+        </div>
+      </div>
 
       {/* Docked Mobile Bottom Navigation Bar - Flowbite Bottom Navigation pattern */}
       <nav

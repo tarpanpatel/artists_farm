@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Modal, ModalBody, TextInput } from 'flowbite-react';
+import { Card, Modal, ModalHeader, ModalBody, TextInput } from 'flowbite-react';
+import { Button } from './Button';
 import DataTable from 'react-data-table-component';
 import { flowbiteTableCustomStyles } from '../utils/tableStyles';
 import {
@@ -17,12 +18,12 @@ import {
   Globe,
   CreditCard,
   ReceiptText,
+  Edit2,
   Pencil,
 } from 'lucide-react';
 import { Guest, BillingReceipt } from '../types';
 import { t } from '../i18n/en';
 import { GUEST_STATUS_CHECKEDOUT_LEGACY, GUEST_STATUS_CHECKED_OUT } from '../constants/guestStatus';
-import { Button } from './Button';
 import { Badge } from './Badge';
 import { useToast } from './ToastContext';
 import { MobileBookingCardStack } from './MobileBookingCardStack';
@@ -46,6 +47,7 @@ interface BillingCheckoutProps {
   propertyGstin?: string;
   propertyName?: string;
   propertyUpiId?: string;
+  propertyUpiQrCodeUrl?: string;
   focusGuestId?: string | null;
 }
 
@@ -74,6 +76,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   propertyGstin = '',
   propertyName = '',
   propertyUpiId = '',
+  propertyUpiQrCodeUrl = '',
   focusGuestId = null,
 }) => {
   const { showToast } = useToast();
@@ -531,14 +534,9 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                     {/* Action Buttons */}
                     {canCheckout ? (
                       <div className="billing-checkout__guest-card-actions grid grid-cols-2 gap-2 pt-0.5">
-                        <button
-                          onClick={() => handleEditGuest(guest)}
-                          disabled={isProcessing}
-                          className="bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-semibold py-1.5 px-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5 text-xs shadow-md cursor-pointer"
-                        >
-                          <Pencil className="w-3.5 h-3.5 text-slate-500" />
+                        <Button variant="primary" size="sm" onClick={() => handleEditGuest(guest)} leftIcon={<Edit2 className="w-3.5 h-3.5 shrink-0" />}>
                           {t('edit_button', 'Edit')}
-                        </button>
+                        </Button>
                         <button
                           onClick={() => handleEditAndCheckoutGuest(guest)}
                           disabled={isProcessing}
@@ -773,32 +771,68 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
             "cropped" button (found 20 Aug 2026). pt-1 gives the shadow
             enough room to render before it reaches the clip boundary. */}
         <div className="billing-checkout__tab-list no-scrollbar flex items-center gap-2 overflow-x-auto pt-1 border-b border-gray-200 pb-3 dark:border-gray-700">
-          <Button
-            variant={activeTab === 'today' ? 'primary' : 'ghost'}
-            size="sm"
+          <button
+            type="button"
             onClick={() => setActiveTab('today')}
-            rightIcon={<Badge variant="neutral">{tabCounts.today}</Badge>}
+            className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${
+              activeTab === 'today'
+                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+            }`}
           >
-            {t('today_tab', 'Today')}
-          </Button>
+            <span>{t('today_tab', 'Today')}</span>
+            <span
+              className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                activeTab === 'today'
+                  ? 'bg-blue-700 text-white'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+              }`}
+            >
+              {tabCounts.today}
+            </span>
+          </button>
 
-          <Button
-            variant={activeTab === 'upcoming' ? 'primary' : 'ghost'}
-            size="sm"
+          <button
+            type="button"
             onClick={() => setActiveTab('upcoming')}
-            rightIcon={<Badge variant="neutral">{tabCounts.upcoming}</Badge>}
+            className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${
+              activeTab === 'upcoming'
+                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+            }`}
           >
-            {t('upcoming_tab', 'Upcoming')}
-          </Button>
+            <span>{t('upcoming_tab', 'Upcoming')}</span>
+            <span
+              className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                activeTab === 'upcoming'
+                  ? 'bg-blue-700 text-white'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+              }`}
+            >
+              {tabCounts.upcoming}
+            </span>
+          </button>
 
-          <Button
-            variant={activeTab === 'past_bookings' ? 'primary' : 'ghost'}
-            size="sm"
+          <button
+            type="button"
             onClick={() => setActiveTab('past_bookings')}
-            rightIcon={<Badge variant="neutral">{tabCounts.past_bookings}</Badge>}
+            className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${
+              activeTab === 'past_bookings'
+                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+            }`}
           >
-            {t('past_bookings_tab', 'Past Bookings')}
-          </Button>
+            <span>{t('past_bookings_tab', 'Past Bookings')}</span>
+            <span
+              className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                activeTab === 'past_bookings'
+                  ? 'bg-blue-700 text-white'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+              }`}
+            >
+              {tabCounts.past_bookings}
+            </span>
+          </button>
         </div>
 
         {/* Search Bar - covers room too (guest name, phone, OR room number) */}
@@ -904,6 +938,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
         propertyGstin={propertyGstin}
         propertyName={propertyName}
         propertyUpiId={propertyUpiId}
+        propertyUpiQrCodeUrl={propertyUpiQrCodeUrl}
       />
 
       {/* Standard Booking Details & Editing Modal */}
@@ -931,7 +966,10 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       {/* Add Booking Modal */}
       <React.Suspense fallback={null}>
         <Modal show={showAddBookingModal} onClose={() => setShowAddBookingModal(false)} dismissible size="lg" className="z-58">
-          <ModalBody className="p-0 max-h-[90vh] overflow-y-auto rounded-lg">
+          <ModalHeader className="border-b border-gray-200 dark:border-gray-700 p-4">
+            Add Guest Booking
+          </ModalHeader>
+          <ModalBody className="p-4 sm:p-6 max-h-[85vh] overflow-y-auto">
             <LazyGuestManagement
               guests={guests}
               receipts={receipts}
@@ -947,6 +985,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
               onClose={() => setShowAddBookingModal(false)}
               propertyName={propertyName}
               propertyUpiId={propertyUpiId}
+              propertyUpiQrCodeUrl={propertyUpiQrCodeUrl}
             />
           </ModalBody>
         </Modal>

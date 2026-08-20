@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Modal, ModalHeader, ModalBody, ModalFooter, Tabs, TabItem } from 'flowbite-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Modal, ModalHeader, ModalBody, ModalFooter, Tabs, TabItem, type TabsRef } from 'flowbite-react';
 import {
   UtensilsCrossed,
   Plus,
@@ -29,7 +29,9 @@ import {
   Loader2,
   Receipt,
   User,
-  Filter
+  Filter,
+  LayoutGrid,
+  List
 } from 'lucide-react';
 import { Guest, Order, OrderItem, MenuItem, Requisition, InventoryItem, WalkInTab } from '../types';
 import { GUEST_STATUS_CHECKED_IN, GUEST_STATUS_ACTIVE_LEGACY } from '../constants/guestStatus';
@@ -85,6 +87,7 @@ interface KitchenManagementProps {
   propertyName?: string;
   propertyGstin?: string;
   propertyUpiId?: string;
+  propertyUpiQrCodeUrl?: string;
 }
 
 export const KitchenManagement: React.FC<KitchenManagementProps> = ({
@@ -97,22 +100,56 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   propertyName = '',
   propertyGstin = '',
   propertyUpiId = '',
+  propertyUpiQrCodeUrl = '',
 }) => {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const { orders, addOrder, refreshOrders, updateOrderStatus, pendingOrdersCount } = useKitchenContext();
   const { inventory, requisitions } = useInventoryContext();
   const { currentUser, isAuthenticated } = useAuth();
-  const [activeTab, setActiveTab] = useState<'kds' | 'new_order' | 'walk_in_bills' | 'menu_catalog' | 'requisitions' | 'staff_meals' | 'beta_recipe_builder'>('kds');
+  const getInitialTab = (): 'kds' | 'new_order' | 'walk_in_bills' | 'menu_catalog' | 'requisitions' | 'staff_meals' | 'beta_recipe_builder' => {
+    const key = activeMenuItemKey || (typeof window !== 'undefined' ? window.location.hash.replace('#', '').trim() : '');
+    if (key === 'take_food_order') return 'new_order';
+    if (key === 'staff_meals') return 'staff_meals';
+    if (key === 'edit_food_menu') return 'menu_catalog';
+    if (key === 'beta_recipe_builder') return 'beta_recipe_builder';
+    if (key === 'kitchen_orders' || key === 'live_orders' || key === 'live_kitchen_orders' || key === 'live_tickets') return 'kds';
+    return 'kds';
+  };
+
+  const [activeTab, setActiveTab] = useState<'kds' | 'new_order' | 'walk_in_bills' | 'menu_catalog' | 'requisitions' | 'staff_meals' | 'beta_recipe_builder'>(getInitialTab);
+  const tabsRef = useRef<TabsRef>(null);
 
   useEffect(() => {
     if (!activeMenuItemKey) return;
     if (activeMenuItemKey === 'take_food_order') setActiveTab('new_order');
-    else if (activeMenuItemKey === 'kitchen_orders') setActiveTab('kds');
+    else if (activeMenuItemKey === 'kitchen_orders' || activeMenuItemKey === 'live_orders' || activeMenuItemKey === 'live_kitchen_orders' || activeMenuItemKey === 'live_tickets') setActiveTab('kds');
     else if (activeMenuItemKey === 'staff_meals') setActiveTab('staff_meals');
     else if (activeMenuItemKey === 'edit_food_menu') setActiveTab('menu_catalog');
     else if (activeMenuItemKey === 'beta_recipe_builder') setActiveTab('beta_recipe_builder');
   }, [activeMenuItemKey]);
+
+  useEffect(() => {
+    const handleHash = () => {
+      const hash = window.location.hash.replace('#', '').trim();
+      if (hash === 'take_food_order') setActiveTab('new_order');
+      else if (hash === 'kitchen_orders' || hash === 'live_orders' || hash === 'live_kitchen_orders' || hash === 'live_tickets') setActiveTab('kds');
+      else if (hash === 'staff_meals') setActiveTab('staff_meals');
+      else if (hash === 'edit_food_menu') setActiveTab('menu_catalog');
+      else if (hash === 'beta_recipe_builder') setActiveTab('beta_recipe_builder');
+    };
+
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
+
+  useEffect(() => {
+    const tabOrder: ('kds' | 'new_order' | 'walk_in_bills')[] = ['kds', 'new_order', 'walk_in_bills'];
+    const index = tabOrder.indexOf(activeTab as any);
+    if (index >= 0) {
+      tabsRef.current?.setActiveTab(index);
+    }
+  }, [activeTab]);
 
   const getCurrentUserName = () => {
     if (currentUser?.name) return currentUser.name;
@@ -674,18 +711,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reminderThresholdMinutes]);
 
-  React.useEffect(() => {
-    if (activeMenuItemKey === 'take_food_order') {
-      setActiveTab('new_order');
-    } else if (activeMenuItemKey === 'kitchen_orders') {
-      setActiveTab('kds');
-    } else if (activeMenuItemKey === 'staff_meals') {
-      setActiveTab('staff_meals');
-    } else if (activeMenuItemKey === 'beta_recipe_builder') {
-      setActiveTab('beta_recipe_builder');
-    }
-  }, [activeMenuItemKey]);
-
   // Staff Meals State
   const [smDateRecord, setSmDateRecord] = useState<string>(() => formatDateTimeDDMMYYYY(new Date().toISOString()));
   const [smSelectedStaff, setSmSelectedStaff] = useState<string[]>([]);
@@ -947,27 +972,64 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
   // New Order Form State
   const checkedInGuests = guests.filter((g) => g.status === GUEST_STATUS_CHECKED_IN || (g.status as string) === GUEST_STATUS_ACTIVE_LEGACY);
-  // Derived live, not useState - there's no UI to manually pick a different
-  // guest, so this must always track the current first checked-in guest.
-  // A useState<string> initializer only runs once at mount, so if the
-  // guest list changed later (new arrival, this guest checked out), order
-  // submission below would silently keep targeting a stale/gone guest.
-  const selectedGuestId = checkedInGuests[0]?.id || '';
-  const [cartItems, setCartItems] = useState<{ menuItem: MenuItem; quantity: number }[]>(() => {
-    try { return JSON.parse(localStorage.getItem('kitchen_cart_items') || '[]'); } catch { return []; }
-  });
-  const [posSearch, setPosSearch] = useState('');
-  const [selectedPosCategory, setSelectedPosCategory] = useState<string>('all');
-  const [showCategoryFilters, setShowCategoryFilters] = useState(false);
-  const [recentlyAddedId, setRecentlyAddedId] = useState<number | null>(null);
-  const [isCartDrawerExpanded, setIsCartDrawerExpanded] = useState<boolean>(false);
-  const [showScrollTop, setShowScrollTop] = useState<boolean>(false);
+  // Which in-house guest "Take Order" targets - picked via the guest badge
+  // dropdown further down (see the StyledSelect in the Target Guest Info
+  // Badge block). Resolved rather than stored directly so a guest who
+  // checks out mid-session (or a fresh mount with nothing picked yet)
+  // automatically falls back to the first still-checked-in guest instead
+  // of silently targeting a stale/gone one - manuallyPickedGuestId only
+  // wins while it's still actually valid (found 20 Aug 2026: previously
+  // there was no picker at all, this always targeted checkedInGuests[0]
+  // with no way to order for any other room).
+  const [manuallyPickedGuestId, setManuallyPickedGuestId] = useState<string>('');
+  const selectedGuestId = checkedInGuests.some((g) => g.id === manuallyPickedGuestId)
+    ? manuallyPickedGuestId
+    : (checkedInGuests[0]?.id || '');
   // Walk-in mode - food prepared for someone not staying in a room (a diner at
   // the restaurant, a local walk-in). No guest/room to attach the order to;
   // instead it joins a running tab (null = start a new one) that bills as one
   // consolidated bill once, from the Walk-in Bills tab, however many orders
   // it accumulates in the meantime.
   const [orderMode, setOrderMode] = useState<'guest' | 'walkin'>('guest');
+  // Each in-house guest keeps their own in-progress cart (keyed by guest id,
+  // walk-in orders share one cart under a fixed key) so staff can start
+  // building Room 101's order, switch to Room 103 for a second order, and
+  // come back to Room 101 later without losing what was already added
+  // (found 20 Aug 2026, alongside the guest picker above - a single shared
+  // cart made that impossible once there was a way to target more than one
+  // guest at all).
+  const cartKey = orderMode === 'guest' ? `guest_${selectedGuestId || 'none'}` : 'walkin';
+  const [cartsByKey, setCartsByKey] = useState<Record<string, { menuItem: MenuItem; quantity: number }[]>>(() => {
+    try {
+      const stored = localStorage.getItem('kitchen_carts_by_key');
+      if (stored) return JSON.parse(stored);
+      // One-time migration from the old single-cart shape so an
+      // in-progress order isn't lost when this ships.
+      const legacy = localStorage.getItem('kitchen_cart_items');
+      if (legacy) {
+        const legacyItems = JSON.parse(legacy);
+        if (Array.isArray(legacyItems) && legacyItems.length > 0) return { walkin: legacyItems };
+      }
+      return {};
+    } catch { return {}; }
+  });
+  const cartItems = cartsByKey[cartKey] || [];
+  const setCartItems = (
+    updater: { menuItem: MenuItem; quantity: number }[] | ((prev: { menuItem: MenuItem; quantity: number }[]) => { menuItem: MenuItem; quantity: number }[])
+  ) => {
+    setCartsByKey((prev) => {
+      const prevCart = prev[cartKey] || [];
+      const nextCart = typeof updater === 'function' ? (updater as (p: typeof prevCart) => typeof prevCart)(prevCart) : updater;
+      return { ...prev, [cartKey]: nextCart };
+    });
+  };
+  const [posSearch, setPosSearch] = useState('');
+  const [selectedPosCategory, setSelectedPosCategory] = useState<string>('all');
+  const [showCategoryFilters, setShowCategoryFilters] = useState(false);
+  const [posLayoutMode, setPosLayoutMode] = useState<'thumbnail' | 'list'>('thumbnail');
+  const [recentlyAddedId, setRecentlyAddedId] = useState<number | null>(null);
+  const [isCartDrawerExpanded, setIsCartDrawerExpanded] = useState<boolean>(false);
+  const [showScrollTop, setShowScrollTop] = useState<boolean>(false);
   const [selectedWalkInTabId, setSelectedWalkInTabId] = useState<number | null>(null);
   const [newTabLabel, setNewTabLabel] = useState('');
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
@@ -980,7 +1042,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     return () => container.removeEventListener('scroll', onScroll);
   }, [activeTab]);
 
-  useEffect(() => { localStorage.setItem('kitchen_cart_items', JSON.stringify(cartItems)); }, [cartItems]);
+  useEffect(() => { localStorage.setItem('kitchen_carts_by_key', JSON.stringify(cartsByKey)); }, [cartsByKey]);
 
   // Menu Modal State
   const [isNewMenuModalOpen, setIsNewMenuModalOpen] = useState(false);
@@ -1146,11 +1208,18 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           beyond just font-weight - see §21). Centered, not left-anchored. */}
       {(activeTab === 'new_order' || activeTab === 'kds' || activeTab === 'walk_in_bills') && (
         <Tabs
+          ref={tabsRef}
           aria-label="Kitchen Management Tabs"
-          variant="default"
+          variant="underline"
           onActiveTabChange={(tabIndex: number) => {
             const tabs: ('kds' | 'new_order' | 'walk_in_bills')[] = ['kds', 'new_order', 'walk_in_bills'];
-            if (tabs[tabIndex]) setActiveTab(tabs[tabIndex]);
+            if (tabs[tabIndex]) {
+              setActiveTab(tabs[tabIndex]);
+              if (typeof window !== 'undefined') {
+                if (tabs[tabIndex] === 'new_order') window.location.hash = '#take_food_order';
+                else if (tabs[tabIndex] === 'kds') window.location.hash = '#kitchen_orders';
+              }
+            }
           }}
         >
           <TabItem
@@ -1461,8 +1530,11 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             icon={UtensilsCrossed}
           >
             {(() => {
-        const checkedInGuest = checkedInGuests[0];
-        const selectedGuest = checkedInGuest || checkedInGuests.find((g) => g.id === selectedGuestId);
+        // Was `checkedInGuests[0] || checkedInGuests.find(...)` - the OR
+        // meant selectedGuestId was never actually consulted (checkedInGuests[0]
+        // is truthy whenever any guest is checked in), always resolving to
+        // the first guest regardless of what was picked (found 20 Aug 2026).
+        const selectedGuest = checkedInGuests.find((g) => g.id === selectedGuestId);
         const filteredPosMenuItems = menu.filter((item) => {
           const matchesSearch = item.name.toLowerCase().includes(posSearch.toLowerCase().trim());
           const categoryKey = String(item.categoryId ?? `name:${item.category}`);
@@ -1521,7 +1593,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 </div>
               </div>
 
-              {/* Flowbite Touch Stepper */}
+              {/* Flowbite Touch Stepper - Symmetrical Buttons */}
               <div className="pt-1 border-t border-gray-100 dark:border-gray-700/60">
                 <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-700/60 rounded-lg p-0.5 w-full border border-gray-200 dark:border-gray-600">
                   <button
@@ -1533,14 +1605,14 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       }
                     }}
                     disabled={inCartQty === 0}
-                    className={`aspect-square w-7 h-7 rounded-md shrink-0 font-bold text-xs flex items-center justify-center transition-all ${
+                    className={`w-7 h-7 rounded-md shrink-0 flex items-center justify-center transition-all ${
                       inCartQty === 0
                         ? 'bg-transparent text-gray-300 dark:text-gray-600 cursor-not-allowed opacity-40'
-                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 active:scale-90 cursor-pointer shadow-md'
+                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 active:scale-90 cursor-pointer shadow-xs'
                     }`}
                     title="Decrease quantity"
                   >
-                    <Minus className="w-3 h-3" />
+                    <Minus className="w-3.5 h-3.5" />
                   </button>
                   <span className={`font-bold text-xs px-1 ${
                     inCartQty > 0
@@ -1555,14 +1627,96 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       e.stopPropagation();
                       handleAddToCartWithFeedback(item);
                     }}
-                    className={`aspect-square w-7 h-7 rounded-md shrink-0 font-bold text-xs flex items-center justify-center active:scale-90 transition-all cursor-pointer shadow-md ${
+                    className={`w-7 h-7 rounded-md shrink-0 flex items-center justify-center active:scale-90 transition-all cursor-pointer shadow-xs ${
                       isRecentlyAdded
                         ? 'bg-blue-600 text-white scale-95 animate-pulse'
                         : 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600'
                     }`}
                     title="Increase quantity"
                   >
-                    <Plus className="w-3 h-3" />
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        const renderFoodRow = (item: MenuItem) => {
+          const isRecentlyAdded = recentlyAddedId === item.id;
+          const existingCartItem = cartItems.find((i) => i.menuItem.id === item.id);
+          const inCartQty = existingCartItem ? existingCartItem.quantity : 0;
+
+          return (
+            <div
+              key={item.id}
+              className="pos-food-row bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-2.5 flex items-center justify-between gap-3 hover:border-blue-500 transition-all shadow-xs"
+            >
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 overflow-hidden flex items-center justify-center shrink-0">
+                  {item.imagePath ? (
+                    <img
+                      src={item.imagePath}
+                      alt={item.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                    />
+                  ) : (
+                    <UtensilsCrossed className="w-4 h-4 text-gray-400" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h4 className="font-semibold text-gray-900 dark:text-white text-xs truncate m-0">
+                    {item.name}
+                  </h4>
+                  <span className="text-2xs text-gray-400 dark:text-gray-500 block truncate">
+                    {item.category || 'General'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 shrink-0">
+                <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs">
+                  ₹{item.price}
+                </span>
+
+                {/* Symmetrical Flowbite Stepper */}
+                <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-700/60 rounded-lg p-0.5 border border-gray-200 dark:border-gray-600">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (inCartQty > 0) handleUpdateCartQuantity(item.id, -1);
+                    }}
+                    disabled={inCartQty === 0}
+                    className={`w-7 h-7 rounded-md shrink-0 flex items-center justify-center transition-all ${
+                      inCartQty === 0
+                        ? 'bg-transparent text-gray-300 dark:text-gray-600 cursor-not-allowed opacity-40'
+                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 active:scale-90 cursor-pointer shadow-xs'
+                    }`}
+                    title="Decrease quantity"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                  <span className={`font-bold text-xs w-6 text-center ${
+                    inCartQty > 0 ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'
+                  }`}>
+                    {inCartQty}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAddToCartWithFeedback(item);
+                    }}
+                    className={`w-7 h-7 rounded-md shrink-0 text-white flex items-center justify-center active:scale-90 transition-all cursor-pointer shadow-xs ${
+                      isRecentlyAdded
+                        ? 'bg-blue-600 scale-95 animate-pulse'
+                        : 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600'
+                    }`}
+                    title="Increase quantity"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
@@ -1618,15 +1772,27 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 </div>
               </div>
 
-              {/* Target Guest Info Badge */}
+              {/* Target Guest Picker - tap to pick which checked-in guest's
+                  room this order bills to, instead of always targeting
+                  whichever guest happened to be first (found 20 Aug 2026).
+                  Each guest keeps its own in-progress cart (see cartKey
+                  above), so switching here mid-order doesn't lose what was
+                  already added for the previous guest. */}
               {orderMode === 'guest' && (
                 <div className="flex items-center gap-2 text-xs">
-                  {selectedGuest ? (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold border border-blue-200 dark:border-blue-800">
-                      <User className="w-3.5 h-3.5" />
-                      {selectedGuest.guestName}
-                      {selectedGuest.roomNumber ? ` (${selectedGuest.roomNumber})` : ''}
-                    </span>
+                  {checkedInGuests.length > 0 ? (
+                    <StyledSelect
+                      value={selectedGuestId}
+                      onChange={(val) => setManuallyPickedGuestId(val)}
+                      searchable
+                      options={checkedInGuests.map((g) => ({
+                        value: g.id,
+                        label: `${g.guestName}${g.roomNumber ? ` (${g.roomNumber})` : ''}`,
+                        searchText: `${g.guestName} ${g.roomNumber || ''}`,
+                      }))}
+                      buttonClassName="!h-8 !px-3 !py-1.5 !rounded-lg !bg-blue-50 dark:!bg-blue-900/30 !text-blue-700 dark:!text-blue-300 !font-semibold !border-blue-200 dark:!border-blue-800 !text-xs"
+                      className="min-w-[190px]"
+                    />
                   ) : (
                     <span className="text-gray-500 dark:text-gray-400 text-xs">
                       {t('no_active_resident_tooltip', 'No active resident selected')}
@@ -1635,45 +1801,53 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 </div>
               )}
 
-              {/* Walk-in Tab Controls */}
+              {/* Walk-in Tab Controls - Table/Customer field and New Customer button in the SAME row */}
               {orderMode === 'walkin' && (
-                <div className="w-full pt-2.5 mt-0.5 border-t border-gray-100 dark:border-gray-700/80 flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedWalkInTabId(null)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
-                      selectedWalkInTabId === null
-                        ? 'bg-blue-600 border-blue-600 text-white shadow-md'
-                        : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-blue-400'
-                    }`}
-                  >
-                    + {t('new_tab_button', 'New Tab')}
-                  </button>
-                  {selectedWalkInTabId === null && (
-                    <div className="w-full sm:w-auto sm:flex-1 sm:max-w-xs mt-1 sm:mt-0">
-                      <FlowbiteTextInput
-                        type="text"
-                        value={newTabLabel}
-                        onChange={(e) => setNewTabLabel(e.target.value)}
-                        placeholder={t('walk_in_name_placeholder', 'Table / customer name')}
-                        sizing="sm"
-                      />
-                    </div>
-                  )}
-                  {openTabs.map((tab) => (
+                <div className="w-full pt-2.5 mt-0.5 border-t border-gray-100 dark:border-gray-700/80 space-y-2">
+                  <div className="flex items-center gap-2 w-full">
+                    {selectedWalkInTabId === null && (
+                      <div className="flex-1 min-w-0">
+                        <FlowbiteTextInput
+                          type="text"
+                          value={newTabLabel}
+                          onChange={(e) => setNewTabLabel(e.target.value)}
+                          placeholder={t('walk_in_name_placeholder', 'Table / customer name')}
+                          sizing="sm"
+                          className="w-full"
+                        />
+                      </div>
+                    )}
                     <button
-                      key={tab.id}
                       type="button"
-                      onClick={() => setSelectedWalkInTabId(tab.id)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
-                        selectedWalkInTabId === tab.id
+                      onClick={() => setSelectedWalkInTabId(null)}
+                      className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer shrink-0 whitespace-nowrap ${
+                        selectedWalkInTabId === null
                           ? 'bg-blue-600 border-blue-600 text-white shadow-md'
                           : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-blue-400'
                       }`}
                     >
-                      {tab.label || t('walk_in_badge', 'Walk-in')} · ₹{tab.subtotal.toLocaleString('en-IN')}
+                      + {t('new_customer_button', 'New Customer')}
                     </button>
-                  ))}
+                  </div>
+
+                  {openTabs.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                      {openTabs.map((tab) => (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setSelectedWalkInTabId(tab.id)}
+                          className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                            selectedWalkInTabId === tab.id
+                              ? 'bg-blue-600 border-blue-600 text-white shadow-md'
+                              : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-blue-400'
+                          }`}
+                        >
+                          {tab.label || t('walk_in_badge', 'Walk-in')} · ₹{tab.subtotal.toLocaleString('en-IN')}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1683,7 +1857,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               <div className="lg:col-span-3 space-y-3.5">
                 {/* Sticky Search & Category Pills Bar */}
                 <div className="pos-category-filter-bar bg-white dark:bg-gray-800 pb-3 space-y-3 border-b border-gray-100 dark:border-gray-700">
-                  {/* Quick Search Bar + Category Filter Toggle */}
+                  {/* Quick Search Bar + Category Filter Toggle + Layout Toggle */}
                   <div className="flex items-center gap-2">
                     <div className="relative flex-1">
                       <FlowbiteTextInput
@@ -1706,6 +1880,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                         </button>
                       )}
                     </div>
+
                     <button
                       type="button"
                       onClick={() => setShowCategoryFilters((v) => !v)}
@@ -1723,6 +1898,36 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                         <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-blue-500 border-2 border-white dark:border-gray-800" />
                       )}
                     </button>
+
+                    {/* Thumbnail / List Layout Toggle */}
+                    <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 p-0.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setPosLayoutMode('thumbnail')}
+                        className={`p-2 rounded-md transition-all cursor-pointer ${
+                          posLayoutMode === 'thumbnail'
+                            ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-xs'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                        }`}
+                        title="Thumbnail View"
+                        aria-label="Thumbnail View"
+                      >
+                        <LayoutGrid className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPosLayoutMode('list')}
+                        className={`p-2 rounded-md transition-all cursor-pointer ${
+                          posLayoutMode === 'list'
+                            ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-xs'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                        }`}
+                        title="List View"
+                        aria-label="List View"
+                      >
+                        <List className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Category Pills Bar */}
@@ -1748,7 +1953,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   )}
                 </div>
 
-                {/* Menu Items Grid with Dish Thumbnails (Compact POS Layout) */}
+                {/* Menu Items: Thumbnail Grid vs List Stack */}
                 {filteredPosMenuItems.length === 0 ? (
                   <div className="text-center py-10 border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-lg">
                     <UtensilsCrossed className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
@@ -1770,17 +1975,29 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                           {category}
                           <span className="text-gray-400 dark:text-gray-500 font-semibold normal-case tracking-normal">({items.length})</span>
                         </h4>
-                        <div className="pos-menu-grid grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
-                          {items.map((item) => renderFoodCard(item))}
-                        </div>
+                        {posLayoutMode === 'thumbnail' ? (
+                          <div className="pos-menu-grid grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+                            {items.map((item) => renderFoodCard(item))}
+                          </div>
+                        ) : (
+                          <div className="pos-menu-list space-y-1.5">
+                            {items.map((item) => renderFoodRow(item))}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
                 ) : (
-                  /* Flat grid when a specific category is selected */
-                  <div className="pos-menu-grid grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
-                    {filteredPosMenuItems.map((item) => renderFoodCard(item))}
-                  </div>
+                  /* Flat layout when a specific category is selected */
+                  posLayoutMode === 'thumbnail' ? (
+                    <div className="pos-menu-grid grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+                      {filteredPosMenuItems.map((item) => renderFoodCard(item))}
+                    </div>
+                  ) : (
+                    <div className="pos-menu-list space-y-1.5">
+                      {filteredPosMenuItems.map((item) => renderFoodRow(item))}
+                    </div>
+                  )
                 )}
               </div>
 
@@ -1816,16 +2033,24 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
                           <div className="flex items-center gap-1 rounded-md bg-gray-50 dark:bg-gray-700/60 p-0.5 border border-gray-200 dark:border-gray-600 shrink-0">
                             <button
+                              type="button"
                               onClick={() => handleUpdateCartQuantity(ci.menuItem.id, -1)}
-                              className="btn-cart-qty-minus aspect-square w-6 h-6 rounded-md shrink-0 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 font-bold text-gray-700 dark:text-gray-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90 border border-gray-200 dark:border-gray-600"
+                              className="w-7 h-7 rounded-md shrink-0 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90 border border-gray-200 dark:border-gray-600 shadow-xs"
+                              title="Decrease quantity"
                             >
-                              <Minus className="w-3 h-3" />
+                              <Minus className="w-3.5 h-3.5" />
                             </button>
-                            <span className="w-5 text-center font-bold text-gray-900 dark:text-white text-xs">
+                            <span className="w-6 text-center font-bold text-gray-900 dark:text-white text-xs">
                               {ci.quantity}
                             </span>
-                            <Button variant="primary" size="xs" onClick={() => handleUpdateCartQuantity(ci.menuItem.id, 1)} leftIcon={<Plus className="w-3 h-3" />}>
-                              </Button>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateCartQuantity(ci.menuItem.id, 1)}
+                              className="w-7 h-7 rounded-md shrink-0 bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center transition-colors cursor-pointer active:scale-90 shadow-xs"
+                              title="Increase quantity"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </div>
                       ))
@@ -1848,9 +2073,9 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     </span>
                   </div>
 
-                <Button variant="primary" size="lg" onClick={handleOrderSubmit} disabled={isOrderSubmitDisabled} title={orderSubmitTitle}>
-                  <span>{isSubmittingOrder ? t('sending_order_button', 'Sending...') : t('send_order_to_kitchen_button')}</span>
-                </Button>
+                  <Button variant="primary" size="lg" onClick={handleOrderSubmit} disabled={isOrderSubmitDisabled} title={orderSubmitTitle}>
+                    <span>{isSubmittingOrder ? t('sending_order_button', 'Sending...') : t('send_order_to_kitchen_button')}</span>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -1895,16 +2120,24 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
                       <div className="flex items-center gap-1 rounded-md bg-white dark:bg-gray-800 p-0.5 border border-gray-200 dark:border-gray-600 shrink-0">
                         <button
+                          type="button"
                           onClick={() => handleUpdateCartQuantity(ci.menuItem.id, -1)}
-                          className="btn-cart-qty-minus btn-compact-stepper w-8 h-6 rounded-md shrink-0 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 font-bold text-gray-700 dark:text-gray-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90 border border-gray-200 dark:border-gray-600"
+                          className="w-7 h-7 rounded-md shrink-0 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90 border border-gray-200 dark:border-gray-600 shadow-xs"
+                          title="Decrease quantity"
                         >
-                          <Minus className="w-3 h-3" />
+                          <Minus className="w-3.5 h-3.5" />
                         </button>
-                        <span className="w-5 text-center font-bold text-gray-900 dark:text-white text-xs">
+                        <span className="w-6 text-center font-bold text-gray-900 dark:text-white text-xs">
                           {ci.quantity}
                         </span>
-                        <Button variant="primary" size="xs" onClick={() => handleUpdateCartQuantity(ci.menuItem.id, 1)} leftIcon={<Plus className="w-3 h-3" />}>
-                        </Button>
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateCartQuantity(ci.menuItem.id, 1)}
+                          className="w-7 h-7 rounded-md shrink-0 bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center transition-colors cursor-pointer active:scale-90 shadow-xs"
+                          title="Increase quantity"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -1913,8 +2146,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 {/* Action Footer */}
                 <div className="p-3 pb-3.5 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shrink-0">
                   <Button variant="primary" size="lg" onClick={handleOrderSubmit} disabled={isOrderSubmitDisabled} title={orderSubmitTitle}>
-                  <span>{isSubmittingOrder ? t('sending_order_button', 'Sending...') : t('send_order_to_kitchen_button')}</span>
-                </Button>
+                    <span>{isSubmittingOrder ? t('sending_order_button', 'Sending...') : t('send_order_to_kitchen_button')}</span>
+                  </Button>
                 </div>
               </div>
             )}
@@ -2040,6 +2273,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           propertyName={propertyName}
           propertyGstin={propertyGstin}
           propertyUpiId={propertyUpiId}
+          propertyUpiQrCodeUrl={propertyUpiQrCodeUrl}
         />
       )}
 

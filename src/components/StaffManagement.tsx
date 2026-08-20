@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, ModalHeader, ModalBody, ModalFooter, Drawer as FlowbiteDrawer, DrawerItems, TextInput as FlowbiteTextInput } from 'flowbite-react';
+import { Modal, ModalHeader, ModalBody, ModalFooter, Drawer as FlowbiteDrawer, DrawerItems, TextInput as FlowbiteTextInput, Checkbox } from 'flowbite-react';
 import { Button } from './Button';
 import { Input } from './Input';
 import { Tooltip } from './Tooltip';
@@ -1772,13 +1772,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
-                <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-900/60 p-3 rounded-lg border border-slate-200 dark:border-slate-700 min-h-[44px]">
-                  <input
-                    type="checkbox"
+                <div className="flex items-center gap-2">
+                  <Checkbox
                     id="isFinancialHandlerCheck"
                     checked={newIsFinancialHandler}
-                    onChange={(e) => setNewIsFinancialHandler(e.target.checked)}
-                    className="w-4 h-4 text-cyan-600 rounded cursor-pointer shrink-0"
+                    onChange={e => setNewIsFinancialHandler(e.target.checked)}
                   />
                   <label htmlFor="isFinancialHandlerCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1.5 min-w-0">
                     <span className="truncate">{t('cash_handling_user_label', 'Cash Handling User')}</span>
@@ -1790,13 +1788,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   </label>
                 </div>
 
-                <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-900/60 p-3 rounded-lg border border-slate-200 dark:border-slate-700 min-h-[44px]">
-                  <input
-                    type="checkbox"
+                <div className="flex items-center gap-2">
+                  <Checkbox
                     id="newAccessAllPropertiesCheck"
                     checked={newAccessAllProperties}
-                    onChange={(e) => setNewAccessAllProperties(e.target.checked)}
-                    className="w-4 h-4 text-cyan-600 rounded cursor-pointer shrink-0"
+                    onChange={e => setNewAccessAllProperties(e.target.checked)}
                   />
                   <label htmlFor="newAccessAllPropertiesCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1.5 min-w-0">
                     <span className="truncate">{t('access_all_properties_label', 'Access All Properties')}</span>
@@ -1930,14 +1926,12 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               )}
 
               {!isEditingSuperAdmin && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
-                  <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-900/60 p-3 rounded-lg border border-slate-200 dark:border-slate-700 min-h-[44px]">
-                    <input
-                      type="checkbox"
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
                       id="updateIsFinancialHandlerCheck"
                       checked={updateIsFinancialHandler}
-                      onChange={(e) => setUpdateIsFinancialHandler(e.target.checked)}
-                      className="w-4 h-4 text-cyan-600 rounded cursor-pointer shrink-0"
+                      onChange={e => setUpdateIsFinancialHandler(e.target.checked)}
                     />
                     <label htmlFor="updateIsFinancialHandlerCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1.5 min-w-0">
                       <span className="truncate">{t('cash_handling_user_label', 'Cash Handling User')}</span>
@@ -1949,13 +1943,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     </label>
                   </div>
 
-                  <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-900/60 p-3 rounded-lg border border-slate-200 dark:border-slate-700 min-h-[44px]">
-                    <input
-                      type="checkbox"
+                  <div className="flex items-center gap-2">
+                    <Checkbox
                       id="updateAccessAllPropertiesCheck"
                       checked={updateAccessAllProperties}
-                      onChange={(e) => setUpdateAccessAllProperties(e.target.checked)}
-                      className="w-4 h-4 text-cyan-600 rounded cursor-pointer shrink-0"
+                      onChange={e => setUpdateAccessAllProperties(e.target.checked)}
                     />
                     <label htmlFor="updateAccessAllPropertiesCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1.5 min-w-0">
                       <span className="truncate">{t('access_all_properties_label', 'Access All Properties')}</span>

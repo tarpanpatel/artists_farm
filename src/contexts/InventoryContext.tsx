@@ -3,6 +3,8 @@ import { InventoryItem, Requisition } from '../types';
 import {
   fetchInventoryFromDB,
   updateInventoryStockInDB,
+  fetchStockRequestsFromDB,
+  StockRequestSheet,
 } from '../services/api';
 import { useAuth } from './AuthContext';
 import { useModules } from './ModulesContext';
@@ -10,9 +12,12 @@ import { useModules } from './ModulesContext';
 interface InventoryContextValue {
   inventory: InventoryItem[];
   requisitions: Requisition[];
+  stockRequests: StockRequestSheet[];
+  pendingStockRequestsCount: number;
   lowStockCount: number;
   inventoryLoading: boolean;
   refreshInventory: () => Promise<void>;
+  refreshStockRequests: () => Promise<void>;
   updateStock: (itemId: string, newStock: number) => void;
   addInventoryItem: (item: InventoryItem) => void;
   updateInventoryItemImage: (itemId: string, imagePath: string) => void;
@@ -42,16 +47,12 @@ export const InventoryProvider: React.FC<InventoryProviderProps> = ({
   const { isEnabled } = useModules();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [requisitions, setRequisitions] = useState<Requisition[]>([]);
-  // Every "No catalog items found" / "No inventory items found" empty state
-  // downstream (InventoryManagement.tsx, KitchenManagement.tsx) used to
-  // render straight off `inventory.length === 0`, which is also true for
-  // the split second before this context's very first fetch resolves -
-  // found 14 Aug 2026, same class of bug as StaffManagement's staff/payees
-  // tables. Defaults true so consumers can gate their empty state on it.
+  const [stockRequests, setStockRequests] = useState<StockRequestSheet[]>([]);
   const [inventoryLoading, setInventoryLoading] = useState(true);
   const currentUserName = currentUser?.name || 'Admin';
 
   const lowStockCount = inventory.filter((i) => i.currentStock <= i.minThreshold).length;
+  const pendingStockRequestsCount = stockRequests.filter((r) => (r.status || '').toUpperCase() === 'PENDING').length;
 
   const refreshInventory = useCallback(async () => {
     const data = await fetchInventoryFromDB();
@@ -59,15 +60,19 @@ export const InventoryProvider: React.FC<InventoryProviderProps> = ({
     setInventoryLoading(false);
   }, []);
 
+  const refreshStockRequests = useCallback(async () => {
+    const data = await fetchStockRequestsFromDB();
+    if (data && data.length > 0) setStockRequests(data); else setStockRequests([]);
+  }, []);
+
   useEffect(() => {
     if (isAuthenticated && isEnabled('kitchen')) {
       refreshInventory();
+      refreshStockRequests();
     } else {
-      // Not going to fetch (unauthenticated, or kitchen module off) - don't
-      // leave consumers stuck showing a spinner forever.
       setInventoryLoading(false);
     }
-  }, [refreshInventory, isAuthenticated, isEnabled]);
+  }, [refreshInventory, refreshStockRequests, isAuthenticated, isEnabled]);
 
   const updateStock = (itemId: string, newStock: number) => {
     const item = inventory.find((i) => i.id === itemId);
@@ -102,9 +107,12 @@ export const InventoryProvider: React.FC<InventoryProviderProps> = ({
       value={{
         inventory,
         requisitions,
+        stockRequests,
+        pendingStockRequestsCount,
         lowStockCount,
         inventoryLoading,
         refreshInventory,
+        refreshStockRequests,
         updateStock,
         addInventoryItem,
         updateInventoryItemImage,

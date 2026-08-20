@@ -38,6 +38,7 @@ interface MultiKeyProperty {
   whatsapp_voucher_template?: string;
   gstin?: string;
   upi_id?: string;
+  upi_qr_code_url?: string;
   shared_data: {
     staff?: any[];
     kitchen?: any;
@@ -253,6 +254,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                   propertyPhone={property.phone || ''}
                   propertyWhatsappTemplate={property.whatsapp_voucher_template || ''}
                   propertyUpiId={property.upi_id || ''}
+                  propertyUpiQrCodeUrl={property.upi_qr_code_url || ''}
                   onUpdateRoomName={async (newName) => {
                     try {
                       const response = await fetch('/php/api/router.php?action=update_room_name', {
@@ -357,6 +359,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                       propertyPhone={property.phone || ''}
                       propertyWhatsappTemplate={property.whatsapp_voucher_template || ''}
                       propertyUpiId={property.upi_id || ''}
+                  propertyUpiQrCodeUrl={property.upi_qr_code_url || ''}
                       kitchenModuleEnabled={kitchenModuleEnabled}
                       serviceRequests={serviceRequests}
                       minimalMode

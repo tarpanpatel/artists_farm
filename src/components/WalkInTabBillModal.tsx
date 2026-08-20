@@ -18,6 +18,7 @@ interface WalkInTabBillModalProps {
   propertyName?: string;
   propertyGstin?: string;
   propertyUpiId?: string;
+  propertyUpiQrCodeUrl?: string;
 }
 
 // Same shape as ReceiptEditModal's bill, minus everything that's actually
@@ -31,6 +32,7 @@ export const WalkInTabBillModal: React.FC<WalkInTabBillModalProps> = ({
   propertyName,
   propertyGstin,
   propertyUpiId,
+  propertyUpiQrCodeUrl,
 }) => {
   const { showToast } = useToast();
   const [gstEnabled, setGstEnabled] = useState(false);
@@ -270,7 +272,7 @@ export const WalkInTabBillModal: React.FC<WalkInTabBillModalProps> = ({
               </div>
 
               {propertyUpiId && (
-                <UpiPaymentBlock upiId={propertyUpiId} payeeName={propertyName || 'Ground Code Resort'} amount={bill.grandTotal} />
+                <UpiPaymentBlock upiId={propertyUpiId} qrCodeImageUrl={propertyUpiQrCodeUrl} payeeName={propertyName || 'Ground Code Resort'} amount={bill.grandTotal} />
               )}
             </div>
 

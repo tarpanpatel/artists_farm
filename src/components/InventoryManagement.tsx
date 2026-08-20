@@ -4,7 +4,7 @@ import { Button } from './Button';
 import { Badge } from './Badge';
 import DataTable from 'react-data-table-component';
 import { flowbiteTableCustomStyles } from '../utils/tableStyles';
-import { Boxes, PackagePlus, AlertTriangle, Plus, CheckCircle2, X, Upload, Search, ShoppingCart, Settings, Package, Check, ClipboardEdit, Pencil, ChevronDown, ChevronUp, Loader2, FlaskConical, Coffee, Milk, Apple, Banana, Cake, Carrot, Wheat, SprayCan, Drumstick, UtensilsCrossed, Croissant, Soup, Droplet, Snowflake, Fish, Wrench, Balloon, Refrigerator, Microwave, Fan, Blend, Bean, HandPlatter, GlassWater, LeafyGreen, Trash2, Candy, Flame, Cherry, Grape, Citrus, Egg, CupSoda, Utensils, Sandwich, Cookie, Nut, Filter, Eye, type LucideIcon } from 'lucide-react';
+import { Boxes, PackagePlus, AlertTriangle, Plus, CheckCircle2, X, Upload, Search, ShoppingCart, Settings, Package, Check, ClipboardEdit, Edit2, Pencil, ChevronDown, ChevronUp, Loader2, FlaskConical, Coffee, Milk, Apple, Banana, Cake, Carrot, Wheat, SprayCan, Drumstick, UtensilsCrossed, Croissant, Soup, Droplet, Snowflake, Fish, Wrench, Balloon, Refrigerator, Microwave, Fan, Blend, Bean, HandPlatter, GlassWater, LeafyGreen, Trash2, Candy, Flame, Cherry, Grape, Citrus, Egg, CupSoda, Utensils, Sandwich, Cookie, Nut, Filter, Eye, type LucideIcon } from 'lucide-react';
 import { InventoryItem, CatalogItem } from '../types';
 import { t } from '../i18n/en';
 import { PageHeader, PageHeaderButton } from './PageHeader';
@@ -1173,12 +1173,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
         <Tabs
           aria-label="Kitchen Stock Tabs"
-          variant="default"
-          // Plain stock flowbite-react "default" theme, no override - kept
-          // identical to the Take Food Order tabs (Kitchen Management Tabs
-          // in KitchenManagement.tsx) so every Tabs instance in the app
-          // renders the same way (20 Aug 2026, replacing a real-v4-token
-          // override that made this one look different from the rest).
+          variant="underline"
           onActiveTabChange={(tabIndex: number) => {
             setCatalogView(tabIndex === 0 ? 'items' : 'categories');
           }}
@@ -1296,10 +1291,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                               {t('approve_button')}
                             </button>
                           )}
-                          <button onClick={() => handleEditCatalogItem(row)} className="button button--edit inline-flex items-center gap-1.5 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-700 dark:text-blue-300 font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
-                            <Pencil className="w-3.5 h-3.5" />
+                          <Button variant="primary" size="sm" onClick={() => handleEditCatalogItem(row)} leftIcon={<Edit2 className="w-3.5 h-3.5 shrink-0" />}>
                             {t('edit_button')}
-                          </button>
+                          </Button>
                           {canDeleteCatalogItem && (
                             <button onClick={() => handleDeleteCatalogItem(row.id, row.name)} className="button button--delete text-red-600 hover:text-red-700 font-medium text-xs cursor-pointer">
                               {t('delete_button')}
@@ -1456,13 +1450,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                                     {t('approve_button')}
                                   </button>
                                 )}
-                                <button
-                                  onClick={() => handleEditCatalogItem(item)}
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-semibold text-xs rounded-lg transition cursor-pointer"
-                                >
-                                  <Pencil className="w-3.5 h-3.5" />
+                                <Button variant="primary" size="sm" onClick={() => handleEditCatalogItem(item)} leftIcon={<Edit2 className="w-3.5 h-3.5 shrink-0" />}>
                                   {t('edit_button')}
-                                </button>
+                                </Button>
                                 {canDeleteCatalogItem && (
                                   <button
                                     onClick={() => handleDeleteCatalogItem(item.id, item.name)}
@@ -1705,7 +1695,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     return (
       <Tabs
         aria-label="Stock Request Tabs"
-        variant="default"
+        variant="underline"
         onActiveTabChange={(tabIndex: number) => {
           const tabs: ('fulfill' | 'requisitions')[] = ['fulfill', 'requisitions'];
           if (tabs[tabIndex]) setActiveTab(tabs[tabIndex]);
@@ -1905,22 +1895,11 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
                         <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100 dark:border-slate-700/60">
                           {row.status === 'PENDING' ? (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => handleEditFulfill(row)}
-                                className="inline-flex items-center gap-1.5 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-700 dark:text-blue-300 font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-blue-200 dark:border-blue-800 shadow-md active:scale-95"
-                              >
-                                <Pencil className="w-3.5 h-3.5" /> Edit & Deliver
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleQuickComplete(row)}
-                                className="inline-flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-emerald-200 dark:border-emerald-800 shadow-md active:scale-95"
-                              >
-                                <CheckCircle2 className="w-3.5 h-3.5" /> Complete
-                              </button>
-                            </>
+<>
+                            <Button variant="primary" size="sm" onClick={() => handleEditFulfill(row)} leftIcon={<Edit2 className="w-3.5 h-3.5 shrink-0" />}>
+                              Edit & Deliver
+                            </Button>
+                          </>
                           ) : (
                             <button
                               type="button"

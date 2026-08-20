@@ -75,6 +75,31 @@ function ensureDemoSchema($pdo) {
         // coerced 0. Widened to match staff_users.id's actual type - fixes
         // this for real (non-demo) attendance too, not just seeded data.
         "ALTER TABLE `staff_attendance` MODIFY COLUMN `user_id` VARCHAR(50) NULL",
+        // property_licenses is normally created lazily by licenses.php's own
+        // schema block, which this file doesn't require - duplicated here
+        // (same reasoning as guest_extra_charges above) so demo data can seed
+        // the License Management page even on a property that's never opened
+        // it for real yet. is_demo included from creation; the separate ALTER
+        // below covers a table that already existed (created by licenses.php)
+        // before this column existed.
+        "CREATE TABLE IF NOT EXISTS `property_licenses` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `property_id` INT NOT NULL,
+            `license_type` VARCHAR(100) NOT NULL,
+            `license_name` VARCHAR(255),
+            `license_number` VARCHAR(100) NOT NULL UNIQUE,
+            `issuing_authority` VARCHAR(255),
+            `start_date` DATE NOT NULL,
+            `end_date` DATE NOT NULL,
+            `document_url` TEXT,
+            `status` ENUM('active', 'expired', 'expiring_soon', 'renewal_pending') DEFAULT 'active',
+            `notes` TEXT,
+            `is_demo` TINYINT(1) NOT NULL DEFAULT 0,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX `idx_property_expiry` (`property_id`, `end_date`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+        "ALTER TABLE `property_licenses` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
     ];
     foreach ($alterCols as $sql) {
         try { $pdo->exec($sql); } catch (PDOException $e) {}
@@ -568,6 +593,16 @@ function generateDemoData($pdo, $propertyId) {
         // fixed offset - still tries the original 12/20-day placement first
         // since that's what reads as realistic, only falling back to a
         // search once that specific offset is actually taken.
+        // Tracks every OTA-block date range placed below, keyed by room id, so
+        // section 6g further down (which seeds its own OTA blocks per room)
+        // can avoid landing on top of these too - not just on top of real
+        // guest bookings. Without this, both sections independently checked
+        // only against $allBookings and stayed blind to each other's inserts,
+        // so a room could end up with an Airbnb/Booking.com block from this
+        // section directly overlapping another synced block from 6g (found 20
+        // Aug 2026 - Room 101 showed two OTA bars stacked on the same dates).
+        $otaBlockedRangesByRoom = [];
+
         if (count($rooms) >= 2) {
             $otaDemoBlocks = [
                 [
@@ -619,6 +654,8 @@ function generateDemoData($pdo, $propertyId) {
                     $candidateOffset = rand(7, 80);
                 }
                 if ($placedStart === null) continue;
+
+                $otaBlockedRangesByRoom[(int)$blockRoomId][] = ['start' => $placedStart, 'end' => $placedEnd];
 
                 $configStmt = $pdo->prepare("
                     INSERT INTO ical_sync_configs (property_id, service_type, service_name, ical_url, sync_enabled, sync_direction, is_demo, last_sync)
@@ -1342,6 +1379,19 @@ function generateDemoData($pdo, $propertyId) {
                 return (int)$b['room_id'] === (int)$otaRoomId;
             }));
 
+            // Seeded from real bookings AND section 3b's already-placed OTA
+            // block for this room (see $otaBlockedRangesByRoom above), then
+            // built up as this room's own feeds place blocks below - kept
+            // OUTSIDE the per-feed loop so Airbnb's blocks are visible when
+            // placing Booking.com's for the same room, and vice versa,
+            // instead of each feed only ever checking against bookings.
+            $placedRanges = array_map(function ($b) {
+                return ['start' => new DateTime($b['checkin']), 'end' => new DateTime($b['checkout'])];
+            }, $roomOwnBookings);
+            foreach (($otaBlockedRangesByRoom[(int)$otaRoomId] ?? []) as $range) {
+                $placedRanges[] = $range;
+            }
+
             $feeds = [
                 [
                     'service_type' => 'airbnb',
@@ -1379,11 +1429,11 @@ function generateDemoData($pdo, $propertyId) {
 
                 // 2-3 blocked ranges, each checked against every existing
                 // direct booking AND every OTA block already placed on this
-                // same room/feed before it, so nothing ever overlaps.
-                $placedRanges = array_map(function ($b) {
-                    return ['start' => new DateTime($b['checkin']), 'end' => new DateTime($b['checkout'])];
-                }, $roomOwnBookings);
-
+                // same room - by this feed, an earlier feed on the same room,
+                // or section 3b above - so nothing ever overlaps. $placedRanges
+                // is intentionally the same array across every feed/room-level
+                // block placed so far (built above, appended to below), not
+                // reset per feed.
                 $blockCount = rand(2, 3);
                 $attempts = 0;
                 $placed = 0;
@@ -1419,6 +1469,7 @@ function generateDemoData($pdo, $propertyId) {
                         $blockStart->format('Y-m-d 00:00:00'), $blockEnd->format('Y-m-d 00:00:00'),
                         $eventData,
                     ]);
+                    $placedRanges[] = ['start' => $blockStart, 'end' => $blockEnd];
                     $placed++;
                 }
             }
@@ -1680,6 +1731,61 @@ function generateDemoData($pdo, $propertyId) {
             $stmt->execute([$propertyId, $log['ts'], $log['action'], $log['module']]);
         }
 
+        // 10. Demo Property Licenses - a realistic mix of statuses so the
+        // License Management page (empty by default, no seed data before this)
+        // actually demonstrates its expiry-alert UI: one comfortably active,
+        // one about to trigger the "expiring soon" state, and one already
+        // expired needing renewal. license_number carries a UNIQUE constraint
+        // across the whole table (not scoped per property), so $propertyId is
+        // baked into each number to avoid colliding with another property's
+        // demo (or real) licenses.
+        $demoLicenses = [
+            [
+                'type' => 'homestay',
+                'name' => 'Homestay Registration Certificate',
+                'number' => "HS-{$propertyId}-2026",
+                'authority' => 'Department of Tourism',
+                'start' => (clone $today)->modify('-300 days')->format('Y-m-d'),
+                'end' => (clone $today)->modify('+240 days')->format('Y-m-d'),
+                'notes' => 'Annual homestay registration - renew via the tourism department portal.',
+            ],
+            [
+                'type' => 'fssai',
+                'name' => 'FSSAI License (Food Safety)',
+                'number' => "FSSAI-{$propertyId}-2026",
+                'authority' => 'Food Safety and Standards Authority of India',
+                'start' => (clone $today)->modify('-355 days')->format('Y-m-d'),
+                'end' => (clone $today)->modify('+5 days')->format('Y-m-d'),
+                'notes' => 'Covers the in-house kitchen - renewal application already submitted, awaiting approval.',
+            ],
+            [
+                'type' => 'fire_safety',
+                'name' => 'Fire Safety Certificate',
+                'number' => "FIRE-{$propertyId}-2025",
+                'authority' => 'State Fire & Emergency Services',
+                'start' => (clone $today)->modify('-380 days')->format('Y-m-d'),
+                'end' => (clone $today)->modify('-15 days')->format('Y-m-d'),
+                'notes' => 'Expired - inspection needs to be re-scheduled before renewal.',
+            ],
+            [
+                'type' => 'gst',
+                'name' => 'GST Registration Certificate',
+                'number' => "GST-{$propertyId}-2026",
+                'authority' => 'GST Department',
+                'start' => (clone $today)->modify('-500 days')->format('Y-m-d'),
+                'end' => (clone $today)->modify('+400 days')->format('Y-m-d'),
+                'notes' => 'Standard GST registration, printed on tax invoices at checkout.',
+            ],
+        ];
+        foreach ($demoLicenses as $lic) {
+            $stmt = $pdo->prepare("
+                INSERT INTO property_licenses
+                (property_id, license_type, license_name, license_number, issuing_authority, start_date, end_date, notes, is_demo)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+            ");
+            $stmt->execute([$propertyId, $lic['type'], $lic['name'], $lic['number'], $lic['authority'], $lic['start'], $lic['end'], $lic['notes']]);
+        }
+
         $pdo->commit();
         return ['status' => 'success', 'message' => 'Demo data generated successfully'];
 
@@ -1780,6 +1886,11 @@ function clearDemoData($pdo, $propertyId) {
 
         // Delete demo audit logs
         $stmt = $pdo->prepare("DELETE FROM audit_logs WHERE property_id = ? AND is_demo = 1");
+        $stmt->execute([$propertyId]);
+        $deletedRows += $stmt->rowCount();
+
+        // Delete demo property licenses
+        $stmt = $pdo->prepare("DELETE FROM property_licenses WHERE property_id = ? AND is_demo = 1");
         $stmt->execute([$propertyId]);
         $deletedRows += $stmt->rowCount();
 

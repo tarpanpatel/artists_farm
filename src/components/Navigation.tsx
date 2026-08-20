@@ -88,8 +88,6 @@ export const Navigation: React.FC<NavigationProps> = ({
   kitchenModuleEnabled = true,
 }) => {
   const { activeRole, logout, currentUser } = useAuth();
-  const { lowStockCount, requisitions } = useInventoryContext();
-  const pendingReqCount = requisitions.filter((r) => r.status === 'Pending').length;
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
 
   // The dimming overlay below used to be gated only by `isSidebarOpen &&`
@@ -142,17 +140,38 @@ export const Navigation: React.FC<NavigationProps> = ({
     return allowedRoles.some(role => role.toLowerCase().trim() === normalizedActiveRole);
   }, [activeRole, kitchenModuleEnabled]);
 
+  const { pendingStockRequestsCount } = useInventoryContext();
   const { pendingOrdersCount } = useKitchenContext();
 
-  const getBadge = useCallback((uniqueKey: string): { text: string; className: string } | null => {
-    if (uniqueKey === 'kitchen_orders' && pendingOrdersCount > 0)
-      return { text: `${pendingOrdersCount}`, className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300' };
-    if (uniqueKey === 'stock_requests' && pendingReqCount > 0)
-      return { text: `${pendingReqCount}`, className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300' };
-    if (uniqueKey === 'deficit_shortfalls_log' && lowStockCount > 0)
-      return { text: `${lowStockCount} low`, className: 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300' };
+  const getBadge = useCallback((uniqueKey?: string, title?: string): { text: string; className: string } | null => {
+    const normKey = (uniqueKey || '').toLowerCase();
+    const normTitle = (title || '').toLowerCase();
+
+    // Food Orders pending badge
+    if (
+      (normKey === 'kitchen_orders' || normKey === 'take_food_order' || normKey === 'food_orders' || normTitle === 'food orders' || normTitle === 'kitchen orders') &&
+      pendingOrdersCount > 0
+    ) {
+      return {
+        text: `${pendingOrdersCount}`,
+        className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300',
+      };
+    }
+
+    // Stock Requests pending badge
+    if (
+      (normKey === 'stock_requests' || normTitle.includes('stock request') || normTitle.includes('stock requisition')) &&
+      pendingStockRequestsCount > 0
+    ) {
+      return {
+        text: `${pendingStockRequestsCount}`,
+        className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300',
+      };
+    }
+
+    // REMOVED BADGE FROM KITCHEN WASTAGE (deficit_shortfalls_log)
     return null;
-  }, [pendingOrdersCount, pendingReqCount, lowStockCount]);
+  }, [pendingOrdersCount, pendingStockRequestsCount]);
 
   const buildTree = useCallback((flat: NavMenuItem[]): TreeNode[] => {
     const map = new Map<string, TreeNode>();
@@ -311,7 +330,7 @@ export const Navigation: React.FC<NavigationProps> = ({
     const result: FlatNavItem[] = [];
     const walk = (items: TreeNode[]) => {
       items.forEach(item => {
-        const badge = getBadge(item.uniqueKey || '');
+        const badge = getBadge(item.uniqueKey || '', item.title);
         result.push({
           id: item.tabKey,
           tabKey: item.tabKey,
@@ -339,7 +358,7 @@ export const Navigation: React.FC<NavigationProps> = ({
     const isExpanded = expandedParents.has(node.id);
     const isActive = activeMenuItemKey === (node.uniqueKey || node.tabKey);
     const ItemIcon = getIconComponent(node.iconName);
-    const badge = getBadge(node.uniqueKey || '');
+    const badge = getBadge(node.uniqueKey || '', node.title);
     const itemKey = node.uniqueKey || node.tabKey;
     const linkHref = node.customUrl || `#${node.urlSlug || itemKey}`;
 
@@ -392,7 +411,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             <ul id={`dropdown-${node.id}`} className="py-2 space-y-1">
               {node.children.map(child => {
                 const childActive = activeMenuItemKey === (child.uniqueKey || child.tabKey);
-                const childBadge = getBadge(child.uniqueKey || '');
+                const childBadge = getBadge(child.uniqueKey || '', child.title);
                 const childKey = child.uniqueKey || child.tabKey;
                 const childHref = child.customUrl || `#${child.urlSlug || childKey}`;
 
@@ -415,7 +434,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                     >
                       <span className="flex-1 truncate">{child.title}</span>
                       {childBadge && (
-                        <span className="inline-flex items-center justify-center px-2 py-0.5 ms-3 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200">
+                        <span className={`inline-flex items-center justify-center px-2 py-0.5 ms-3 text-xs font-semibold rounded-full ${childBadge.className}`}>
                           {childBadge.text}
                         </span>
                       )}
@@ -456,11 +475,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           <span className="ms-3 flex-1 whitespace-nowrap truncate">{node.title}</span>
           {badge && (
             <span
-              className={`inline-flex items-center justify-center px-2 py-0.5 ms-3 text-xs font-semibold rounded-full ${
-                isActive
-                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200'
-                  : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-              }`}
+              className={`inline-flex items-center justify-center px-2 py-0.5 ms-3 text-xs font-semibold rounded-full ${badge.className}`}
             >
               {badge.text}
             </span>

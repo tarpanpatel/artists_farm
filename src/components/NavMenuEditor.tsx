@@ -13,6 +13,7 @@ import { isKitchenModuleNavItem } from '../data/appConfig';
 import { StyledSelect } from './StyledSelect';
 import { Button } from './Button';
 import { Input } from './Input';
+import { Checkbox } from 'flowbite-react';
 import { t } from '../i18n/en';
 
 interface NavMenuEditorProps {
@@ -503,13 +504,10 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
             <GripVertical className="w-4 h-4" />
           </div>
 
-          {/* Checkbox */}
-          <input
-            type="checkbox"
-            checked={selectedIds.has(item.id)}
-            onChange={() => { setSelectedIds(prev => { const next = new Set(prev); if (next.has(item.id)) next.delete(item.id); else next.add(item.id); return next; }); }}
-            className="nav-menu-editor__select-checkbox w-3.5 h-3.5 rounded text-blue-600 shrink-0 cursor-pointer"
-          />
+          <Checkbox
+              checked={selectedIds.has(item.id)}
+              onChange={() => { setSelectedIds(prev => { const next = new Set(prev); if (next.has(item.id)) next.delete(item.id); else next.add(item.id); return next; }); }}
+            />
 
           {/* Expand/Collapse */}
           <Button

@@ -623,7 +623,7 @@ export async function resizeImageFile(file: File, maxDim: number = 1600): Promis
   }
 }
 
-export async function uploadImageDB(image: File | string, folder: 'menu' | 'catalog' | 'misc' | 'id_documents' = 'misc'): Promise<string | null> {
+export async function uploadImageDB(image: File | string, folder: 'menu' | 'catalog' | 'misc' | 'id_documents' | 'qr_code' = 'misc'): Promise<string | null> {
   try {
     const formData = new FormData();
     formData.append('image', image instanceof File ? image : dataUriToBlob(image));

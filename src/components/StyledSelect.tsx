@@ -52,6 +52,17 @@ const SelectSearchBox: React.FC<{ onSearch: (value: string) => void }> = ({ onSe
           setValue(e.target.value);
           onSearch(e.target.value);
         }}
+        // flowbite-react's Dropdown wires Floating UI's useListNavigation +
+        // useTypeahead onto the floating panel div that wraps this input
+        // (see Dropdown.js) - useTypeahead treats every printable keydown
+        // as "jump to the menu item starting with this letter" and calls
+        // preventDefault() on it, which silently blocks the browser's
+        // native text-insertion behavior here even though the input has
+        // real focus (found 20 Aug 2026 - reported as "can't type in the
+        // search box"). Stopping propagation at the input itself keeps the
+        // keydown from ever reaching that ancestor handler, since
+        // target-phase listeners run before bubble-phase ones.
+        onKeyDown={(e) => e.stopPropagation()}
         placeholder={t('searchable_select_placeholder')}
         className="w-full bg-transparent outline-none text-[var(--input-text-default)] placeholder:text-slate-400 styled-select__search-input"
       />

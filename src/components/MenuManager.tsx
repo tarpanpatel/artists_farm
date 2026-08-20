@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, ModalHeader, ModalBody, ModalFooter, TextInput as FlowbiteTextInput } from 'flowbite-react';
+import { Modal, ModalHeader, ModalBody, ModalFooter, TextInput as FlowbiteTextInput, Checkbox } from 'flowbite-react';
 import { Button } from './Button';
 import { Input } from './Input';
 import {
@@ -556,14 +556,9 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                 <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between mt-1 text-xs">
                   <span className="font-mono text-[9px] text-slate-400 dark:text-slate-500">#{item.id}</span>
                   <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => requirePasscode(() => handleOpenEditFood(item))}
-                      className="p-1 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
-                      title={t('edit_item_tooltip', 'Edit Item')}
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
+                    <Button variant="primary" size="sm" onClick={() => requirePasscode(() => handleOpenEditFood(item))} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                      {t('edit_item_tooltip', 'Edit Item')}
+                    </Button>
                     <button
                       type="button"
                       onClick={() => requirePasscode(() => onDeleteFoodItem(item.id))}
@@ -728,15 +723,12 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               </div>
             </div>
 
-            <label className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={navForm.isVisible}
-                onChange={(e) => setNavForm({ ...navForm, isVisible: e.target.checked })}
-                className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
-              />
-              <span className="font-semibold text-slate-800 dark:text-slate-200">{t('visible_in_system_navigation_label', 'Visible in System Navigation')}</span>
-            </label>
+<Checkbox
+                  id="nav-visibility-cb"
+                  checked={navForm.isVisible}
+                  onChange={e => setNavForm({ ...navForm, isVisible: e.target.checked })}
+                />
+                <span className="font-semibold text-slate-800 dark:text-slate-200">{t('visible_in_system_navigation_label', 'Visible in System Navigation')}</span>
 
             <div className="menu-manager__custom-link-box bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-3 space-y-3">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{t('custom_link_optional_heading', 'Custom Link (Optional)')}</p>
@@ -750,15 +742,12 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                 />
                 <p className="text-[10px] text-slate-400 mt-1">{t('custom_link_help', 'If set, clicking this menu item opens this link instead of an internal tab.')}</p>
               </div>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
+              <Checkbox
+                  id="nav-open-in-new-tab-cb"
                   checked={navForm.openInNewTab}
-                  onChange={(e) => setNavForm({ ...navForm, openInNewTab: e.target.checked })}
-                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                  onChange={e => setNavForm({ ...navForm, openInNewTab: e.target.checked })}
                 />
                 <span className="font-semibold text-slate-700 dark:text-slate-300 text-xs">{t('open_link_new_browser_tab_label', 'Open link in new browser tab')}</span>
-              </label>
             </div>
           </ModalBody>
           <ModalFooter className="flex justify-end gap-2">
@@ -874,15 +863,12 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               </div>
             </div>
 
-            <label className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={foodForm.available}
-                onChange={(e) => setFoodForm({ ...foodForm, available: e.target.checked })}
-                className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
-              />
-              <span className="font-semibold text-slate-800 dark:text-slate-200">{t('item_currently_available_label', 'Item Currently Available in Kitchen')}</span>
-            </label>
+<Checkbox
+                  id="food-available-cb"
+                  checked={foodForm.available}
+                  onChange={e => setFoodForm({ ...foodForm, available: e.target.checked })}
+                />
+                <span className="font-semibold text-slate-800 dark:text-slate-200">{t('item_currently_available_label', 'Item Currently Available in Kitchen')}</span>
           </ModalBody>
           <ModalFooter className="flex justify-end gap-2">
             <Button

@@ -439,14 +439,9 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
                     <span />
                   )}
                   <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => openEditModal(license)}
-                      title={t('edit_button', 'Edit')}
-                      className="p-1.5 rounded-full text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors cursor-pointer"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
+                    <Button variant="primary" size="sm" onClick={() => openEditModal(license)} leftIcon={<Edit2 className="w-3.5 h-3.5 shrink-0" />}>
+                      {t('edit_button', 'Edit')}
+                    </Button>
                     <button
                       type="button"
                       onClick={() => handleDelete(license)}

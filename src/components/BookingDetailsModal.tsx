@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2, LogOut, Upload, CreditCard, Globe, AlertTriangle, X } from 'lucide-react';
+import { Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2, Share2, LogOut, Upload, CreditCard, Globe, AlertTriangle, X } from 'lucide-react';
 import { Drawer as FlowbiteDrawer, DrawerItems } from 'flowbite-react';
 import { Button } from './Button';
 import { Badge } from './Badge';
@@ -277,10 +277,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     }
   };
 
-  const buildWhatsAppShareUrl = () => {
-    const digits = (guest.phoneNumber || '').replace(/\D/g, '');
-    const phone = digits.length === 10 ? '91' + digits : digits;
-
+  const buildShareMessage = () => {
     const matchedRoom = rooms.find((r) => String(r.id) === String(g.roomId ?? g.room_id));
     const unitName = guest.roomNumber || matchedRoom?.name || propDetails.name || 'N/A';
 
@@ -290,7 +287,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     const upiVal = propertyUpiId || propDetails.upi_id || g.upi_id || '';
     const notesVal = propertyInstructions || propDetails.instructions || g.instructions || g.notes || '';
 
-    const message = renderWhatsappVoucherTemplate(propertyWhatsappTemplate || DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, {
+    return renderWhatsappVoucherTemplate(propertyWhatsappTemplate || DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, {
       guest_name: guest.guestName,
       room_name: unitName,
       property_name: propertyName || propDetails.name || 'our property',
@@ -305,7 +302,33 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
       upi_id: upiVal,
       other_notes: notesVal,
     });
-    return `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
+  };
+
+  // Generic OS-level share sheet (navigator.share) rather than a
+  // WhatsApp-only deep link, so the guest's actual phone share sheet opens -
+  // WhatsApp, SMS, Telegram, "Copy", whatever's installed - instead of this
+  // app assuming WhatsApp specifically (found 20 Aug 2026). Falls back to
+  // copying the message to the clipboard on browsers without Web Share
+  // support. Same pattern as StaffManagement.tsx's handleShareLogin.
+  const handleShareBooking = async () => {
+    const message = buildShareMessage();
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({ title: 'Booking Details', text: message });
+      } catch (err: any) {
+        if (err?.name !== 'AbortError') {
+          console.error('Web Share failed:', err);
+        }
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(message);
+      showToast('Booking details copied - paste them wherever you\'d like to send them.', { type: 'success' });
+    } catch (err) {
+      console.error('Clipboard copy failed:', err);
+      showToast('Could not copy booking details.', { type: 'error' });
+    }
   };
 
   const financialHandlers = staff.filter((s) => s.isFinancialHandler).map((s) => ({ value: s.name, label: s.name }));
@@ -805,13 +828,11 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 </Button>
                 )}
 
-                <a href={buildWhatsAppShareUrl()} target="_blank" rel="noopener noreferrer" className="col-span-1 min-w-0 block">
-<Button variant="primary" size="lg" onClick={handleDelete} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
-                  <span className="truncate">{t('edit_button', 'Edit')}</span>
+                <Button variant="secondary" size="lg" onClick={handleShareBooking} leftIcon={<Share2 className="w-4 h-4 text-emerald-600 shrink-0" />} className="col-span-1 min-w-0 w-full">
+                  <span className="truncate">{t('share_with_guest_button', 'Share with guest')}</span>
                 </Button>
-                </a>
 
-                <Button variant="primary" size="lg" onClick={() => startEditing()} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                <Button variant="primary" size="lg" onClick={() => startEditing()} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />} className="col-span-1 min-w-0 w-full">
                   <span className="truncate">{t('edit_button', 'Edit')}</span>
                 </Button>
 

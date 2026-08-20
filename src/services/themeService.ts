@@ -133,7 +133,7 @@ export function getDefaultTheme(): ThemeSettings {
       textMuted: '#94a3b8',
     },
     typography: {
-      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto',
+      fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif',
       baseFontSize: '16px',
       headingScale: 1.2,
     },

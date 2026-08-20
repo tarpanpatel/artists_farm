@@ -1183,7 +1183,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
       <Tabs
         ref={tabsRef}
         aria-label="Analytics Report Tabs"
-        variant="default"
+        variant="underline"
         onActiveTabChange={(tabIndex: number) => {
           const tabs: ('overview' | 'bookings' | 'pace' | 'kitchen' | 'expenses' | 'profit_loss' | 'fluctuations')[] = kitchenModuleEnabled
             ? ['overview', 'bookings', 'pace', 'kitchen', 'expenses', 'profit_loss', 'fluctuations']

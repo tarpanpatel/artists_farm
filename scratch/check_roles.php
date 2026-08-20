@@ -1,15 +1,19 @@
 <?php
 require 'php/config/database.php';
-$pdo->exec("UPDATE nav_menu_items SET title = 'Reports & Earnings' WHERE unique_key = 'dashboard_analytics'");
-$pdo->exec("UPDATE nav_menu_items SET title = 'Past Bills & Receipts' WHERE unique_key = 'past_receipts_log'");
-$pdo->exec("UPDATE nav_menu_items SET title = 'Menu & Pricing' WHERE unique_key = 'edit_items_group'");
-$pdo->exec("UPDATE nav_menu_items SET title = 'Extra Charges & Fees' WHERE unique_key = 'misc_charges'");
-$pdo->exec("UPDATE nav_menu_items SET title = 'Telegram Alerts' WHERE unique_key = 'telegram'");
-$pdo->exec("UPDATE nav_menu_items SET title = 'Download Data & Excel' WHERE unique_key = 'data_export_center'");
-$pdo->exec("UPDATE nav_menu_items SET title = 'Dish Recipes (Auto-Stock)' WHERE unique_key = 'beta_recipe_builder'");
-$pdo->exec("UPDATE nav_menu_items SET title = 'Property Licenses' WHERE unique_key = 'license_management'");
+$stmt = $pdo->query('SELECT settings_json FROM platform_theme_settings WHERE id = 1');
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
+if ($row) {
+    $settings = json_decode($row['settings_json'], true);
+    $settings['typography']['fontFamily'] = 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif';
+    $settings['typography']['baseFontSize'] = '16px';
+    $newJson = json_encode($settings);
+    $upd = $pdo->prepare('UPDATE platform_theme_settings SET settings_json = ? WHERE id = 1');
+    $upd->execute([$newJson]);
+    echo "Updated successfully!\n";
+}
+$stmt = $pdo->query('SELECT settings_json FROM platform_theme_settings WHERE id = 1');
+print_r($stmt->fetch(PDO::FETCH_ASSOC));
 
-$stmt = $pdo->query('SELECT id, title, unique_key, parent_id FROM nav_menu_items WHERE parent_id = "nav-header-admin" OR unique_key = "admin_control_group" ORDER BY display_order ASC');
-print_r($stmt->fetchAll(PDO::FETCH_ASSOC));
+
 
 

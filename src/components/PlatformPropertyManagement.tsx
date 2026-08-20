@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Building2, Plus, Loader2, AlertCircle, AlertTriangle, BarChart3, ChevronDown, ChevronRight, Pencil, Eye, CheckCircle2, Share2, Copy, XCircle, ExternalLink, KeyRound, X, DoorOpen, RotateCcw, Mail, MessageCircle } from 'lucide-react';
-import { Modal, ModalHeader, ModalBody, ModalFooter, Alert } from 'flowbite-react';
+import { Modal, ModalHeader, ModalBody, ModalFooter, Alert, Checkbox } from 'flowbite-react';
 import { ToggleSwitch } from './ToggleSwitch';
 import { StyledSelect } from './StyledSelect';
 import { Button } from './Button';
@@ -1336,23 +1336,16 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                 />
               </div>
 
-              <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-900/60 p-3 rounded-lg border border-slate-200 dark:border-slate-700 min-h-[44px]">
-                <input
-                  type="checkbox"
+              <Checkbox
                   id="editTenantActiveCheck"
                   checked={!!editingTenant.is_active}
-                  onChange={(e) =>
+                  onChange={e =>
                     setEditingTenant({
                       ...editingTenant,
                       is_active: e.target.checked ? 1 : 0,
                     })
                   }
-                  className="w-4 h-4 rounded cursor-pointer shrink-0"
-                />
-                <label htmlFor="editTenantActiveCheck" className="text-sm font-medium text-slate-700 dark:text-slate-300 cursor-pointer">
-                  {t('active_status_badge', 'Active')}
-                </label>
-              </div>
+                />{t('active_status_badge', 'Active')}
             </div>
           </ModalBody>
         )}

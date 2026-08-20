@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { IndianRupee, Home, AlertCircle, Plus, Trash2, CheckCircle2, Share2, Printer, QrCode, Loader2, CornerDownRight, MessageSquare, CreditCard } from 'lucide-react';
+import { IndianRupee, Home, AlertCircle, Plus, Trash2, CheckCircle2, Printer, QrCode, Loader2, CornerDownRight, Share2 } from 'lucide-react';
 import { Guest, BillingReceipt, PayeeEntity } from '../types';
 import { StyledSelect } from './StyledSelect';
 import { DateRangePicker } from './DateRangePicker';
@@ -8,7 +8,6 @@ import { fetchMenuFromDB, fetchPayeesFromDB, fetchServiceRequestsFromDB } from '
 import { useToast } from './ToastContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useStaff } from '../contexts/StaffContext';
-import * as htmlToImage from 'html-to-image';
 import { t } from '../i18n/en';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import { UpiPaymentBlock } from '../utils/upiQrCode';
@@ -27,6 +26,7 @@ interface ReceiptEditModalProps {
   propertyGstin?: string;
   propertyName?: string;
   propertyUpiId?: string;
+  propertyUpiQrCodeUrl?: string;
 }
 
 interface GstRatesConfig {
@@ -87,6 +87,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   propertyGstin = '',
   propertyName = '',
   propertyUpiId = '',
+  propertyUpiQrCodeUrl = '',
 }) => {
   const { activeRole } = useAuth();
   const isRootAdmin = activeRole?.toLowerCase().trim() === 'root admin';
@@ -439,35 +440,6 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
     setSplitRows(prev => prev.filter(r => r.id !== id));
   };
 
-  // Share Receipt PNG Handler
-  const handleShareReceipt = async () => {
-    const receiptBox = document.getElementById('printableReceiptModalContent');
-    const actionsBar = document.getElementById('printableReceiptActionsBar');
-    if (!receiptBox) return;
-
-    if (actionsBar) actionsBar.style.display = 'none';
-
-    try {
-      const blob = await htmlToImage.toBlob(receiptBox, { pixelRatio: 2, backgroundColor: '#ffffff' });
-      if (!blob) return;
-      const file = new File([blob], `Bill_${Date.now()}.png`, { type: 'image/png' });
-
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: 'Final Bill Settlement' });
-      } else {
-        const link = document.createElement('a');
-        link.download = `Bill_${Date.now()}.png`;
-        link.href = URL.createObjectURL(blob);
-        link.click();
-      }
-    } catch (err) {
-      showToast('Failed to generate image print: ' + (err instanceof Error ? err.message : String(err)), { type: 'error' });
-      console.error(err);
-    } finally {
-      if (actionsBar) actionsBar.style.display = 'flex';
-    }
-  };
-
   // Shared by both "Save Booking Changes" and "Save and Proceed to Checkout" -
   // pushes the current edits back to the guest record. Returns whether there
   // was anything to save. Accepts overrides so a caller that just changed
@@ -527,6 +499,39 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   // save used by that button, just on blur of either field.
   const handleMoneyFieldBlur = () => {
     saveGuestEdits();
+  };
+
+  const buildReceiptShareMessage = () => {
+    return `📶 *GUEST CHECKOUT & BILL SETTLEMENT*\n━━━━━━━━━━━━━━━━\n👤 *Guest:* ${guest.guestName}\n🏠 *Room:* ${guest.roomNumber}\n📅 *Check-In:* ${formatDateDDMMYYYY(checkinDate)}\n📅 *Check-Out:* ${formatDateDDMMYYYY(checkoutDate)}\n🏨 *Accommodation:* ₹${roomCharges.toFixed(2)}\n🍽 *Food/Incidentals:* ₹${foodTotal.toFixed(2)}\n📋 *Adjustments:* ₹${(extraCharges - discounts).toFixed(2)}\n➕ *GST/Tax:* ₹${gstAmount.toFixed(2)}\n💰 *Grand Total Paid:* ₹${grandTargetDue.toFixed(2)}${propertyUpiId ? `\n💳 *Pay via UPI:* ${propertyUpiId}` : ''}\n━━━━━━━━━━━━━━━━\nThank you for choosing Ground Code Resort! We hope to see you again soon.`;
+  };
+
+  // Generic OS-level share sheet (navigator.share) rather than a
+  // WhatsApp-only deep link, so the user's actual phone share sheet opens -
+  // WhatsApp, SMS, Telegram, "Copy", whatever's installed - instead of this
+  // app assuming WhatsApp specifically (found 20 Aug 2026: a plain wa.me
+  // link isn't what "generic share button" means, it's one fixed channel).
+  // Falls back to copying the message to the clipboard on browsers without
+  // Web Share support (desktop Firefox, etc). Same pattern as
+  // StaffManagement.tsx's handleShareLogin.
+  const handleShareReceipt = async () => {
+    const message = buildReceiptShareMessage();
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({ title: 'Guest Checkout Bill', text: message });
+      } catch (err: any) {
+        if (err?.name !== 'AbortError') {
+          console.error('Web Share failed:', err);
+        }
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(message);
+      showToast('Bill details copied - paste them wherever you\'d like to send them.', { type: 'success' });
+    } catch (err) {
+      console.error('Clipboard copy failed:', err);
+      showToast('Could not copy bill details.', { type: 'error' });
+    }
   };
 
   const handleSaveOrCheckout = () => {
@@ -803,19 +808,6 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
             {/* RIGHT COLUMN: Strategy Adjustments + Final Split Settlement (LG: 5 cols) */}
             <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-0 self-start">
-
-              {internalMode === 'edit-and-checkout' && (
-                <div className="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs dark:border-blue-900 dark:bg-blue-950/30">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm">
-                    <CreditCard className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-slate-900 dark:text-white">Ready to settle this stay</p>
-                    <p className="mt-0.5 text-slate-600 dark:text-slate-300">Confirm the balance, choose a payment method, then close the booking.</p>
-                  </div>
-                </div>
-              )}
-
               {/* Strategy Type Custom Adjustments */}
               <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700 p-4 sm:p-6 space-y-3">
                 <span className="text-[10px] font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wide block border-b border-slate-200 dark:border-slate-700 pb-2">
@@ -1282,27 +1274,19 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
               id="printableReceiptActionsBar"
               className="flex items-center justify-between border-b border-slate-100 pb-3 gap-2"
             >
+              {/* Was two separate buttons (PNG image share + WhatsApp text
+                  link), then briefly a single WhatsApp-only link - now the
+                  real OS-level share sheet (navigator.share), so it's
+                  actually generic instead of assuming WhatsApp (found 20 Aug
+                  2026). See handleShareReceipt. */}
               <button
                 type="button"
                 onClick={handleShareReceipt}
-                className="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg flex items-center justify-center gap-1.5 cursor-pointer text-xs transition-colors shadow-2xs"
+                className="w-full py-2 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 font-semibold rounded-lg flex items-center justify-center gap-1.5 cursor-pointer text-xs transition-colors"
               >
-                <Share2 className="w-3.5 h-3.5 shrink-0" />
-                <span>{t('share_bill_png_button', 'Share Bill (PNG)')}</span>
+                <Share2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>{t('share_with_guest_button', 'Share with guest')}</span>
               </button>
-
-              <a
-                href={`https://api.whatsapp.com/send?phone=${guest.phoneNumber.replace(/\D/g, '').length === 10 ? '91' + guest.phoneNumber.replace(/\D/g, '') : guest.phoneNumber.replace(/\D/g, '')}&text=${encodeURIComponent(
-                  `📶 *GUEST CHECKOUT & BILL SETTLEMENT*\n━━━━━━━━━━━━━━━━\n👤 *Guest:* ${guest.guestName}\n🏠 *Room:* ${guest.roomNumber}\n📅 *Check-In:* ${formatDateDDMMYYYY(checkinDate)}\n📅 *Check-Out:* ${formatDateDDMMYYYY(checkoutDate)}\n🏨 *Accommodation:* ₹${roomCharges.toFixed(2)}\n🍽 *Food/Incidentals:* ₹${foodTotal.toFixed(2)}\n📋 *Adjustments:* ₹${(extraCharges - discounts).toFixed(2)}\nâž• *GST/Tax:* ₹${gstAmount.toFixed(2)}\n💰 *Grand Total Paid:* ₹${grandTargetDue.toFixed(2)}${propertyUpiId ? `\n💳 *Pay via UPI:* ${propertyUpiId}` : ''}\n━━━━━━━━━━━━━━━━\nThank you for choosing Ground Code Resort! We hope to see you again soon.`
-                )}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg flex items-center justify-center gap-1.5 cursor-pointer text-xs transition-colors shadow-2xs text-center"
-              >
-                <MessageSquare className="w-3.5 h-3.5 shrink-0" />
-                <span>Share via WhatsApp</span>
-              </a>
-
             </div>
           </div>
         </ModalFooter>
@@ -1435,6 +1419,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
               {/* UPI Payment (only when the property has a UPI ID configured) */}
               <UpiPaymentBlock
                 upiId={propertyUpiId}
+                qrCodeImageUrl={propertyUpiQrCodeUrl}
                 payeeName={propertyName || 'Bill Settlement'}
                 amount={grandTargetDue}
                 amountLabel="Grand Total"

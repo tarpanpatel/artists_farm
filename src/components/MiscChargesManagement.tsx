@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Edit2, Pencil, Trash2, Loader2 } from 'lucide-react';
 import DataTable from 'react-data-table-component';
 import { flowbiteTableCustomStyles } from '../utils/tableStyles';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from 'flowbite-react';
@@ -248,21 +248,9 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
           </div>
         ) : (
           <div className="flex justify-end gap-3">
-            <button
-              onClick={() => {
-                setIsEditing(row.id);
-                setEditForm(row);
-              }}
-              disabled={isSystemDefault}
-              title={isSystemDefault ? t('system_default_edit_disabled_tooltip', 'System default items cannot be edited') : t('edit_button', 'Edit')}
-              className={`p-1 rounded-full transition-colors ${
-                isSystemDefault
-                  ? 'text-slate-400 cursor-not-allowed'
-                  : 'text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer'
-              }`}
-            >
-              <Pencil className="w-4 h-4" />
-            </button>
+            <Button variant="primary" size="sm" onClick={() => { setIsEditing(row.id); setEditForm(row); }} leftIcon={<Edit2 className="w-3.5 h-3.5 shrink-0" />}>
+                      Edit
+                    </Button>
             <button
               onClick={() => handleDelete(row.id)}
               disabled={isSystemDefault}

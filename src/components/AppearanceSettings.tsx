@@ -12,7 +12,7 @@ interface AppearanceSettingsProps {
 export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({ activeRole = '' }) => {
   return (
     <div className="space-y-6 appearance-settings">
-      <Tabs variant="default">
+      <Tabs variant="underline">
         <TabItem active title={t('appearance_settings_theme_tab', 'Theme Colors')} icon={Palette}>
           <div className="pt-4">
             <ThemeManagement />

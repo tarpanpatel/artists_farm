@@ -18,12 +18,12 @@ import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
 import { t } from '../i18n/en';
-import { Button } from './Button';
 import { PageHeader, PageHeaderButton } from './PageHeader';
 import { formatDateTimeDDMMYYYY } from '../utils/dateUtils';
 
 import { useConfigurationData } from '../contexts/ConfigurationDataContext';
 import { Input } from './Input';
+import { Button } from './Button';
 import { Card, Badge, TextInput as FlowbiteTextInput, Textarea as FlowbiteTextarea, Checkbox as FlowbiteCheckbox, Label as FlowbiteLabel, Modal as FlowbiteModal, ModalHeader, ModalBody, ModalFooter } from 'flowbite-react';
 
 interface Room {
@@ -563,13 +563,9 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                         <span className="text-[10px] text-slate-400 block">{rt.category}</span>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          onClick={() => { setEditingTypeId(rt.id); setEditingTypeLabel(rt.label); }}
-                          className="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg hover:bg-slate-200/60 dark:hover:bg-slate-800 cursor-pointer"
-                          title="Edit"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
+                        <Button variant="primary" size="sm" onClick={() => { setEditingTypeId(rt.id); setEditingTypeLabel(rt.label); }} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                      Edit
+                    </Button>
                         <button
                           onClick={() => handleDeleteType(rt)}
                           className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-slate-200/60 dark:hover:bg-slate-800 cursor-pointer"

@@ -345,8 +345,8 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
           <form onSubmit={handleHandoverSubmit} className="app-form app-form--cash-drawer space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('select_staff_member_label', 'Select Staff Member *')}</label>
                 <StyledSelect
+                  label={t('select_staff_member_label', 'Select Staff Member *')}
                   value={handoverStaffId}
                   onChange={setHandoverStaffId}
                   placeholder={t('choose_staff_placeholder', '-- Choose Staff --')}
@@ -377,8 +377,8 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
             </div>
 
             <div>
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('handing_over_to_label', 'Handing Over To *')}</label>
               <StyledSelect
+                label={t('handing_over_to_label', 'Handing Over To *')}
                 value={handedTo}
                 onChange={setHandedTo}
                 placeholder={t('select_recipient_placeholder', '-- Select Recipient --')}
@@ -425,10 +425,10 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
             <div className="pt-2">
               <button
                 type="submit"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-8 py-3 rounded-lg shadow-md flex items-center gap-2 cursor-pointer transition-colors w-full justify-center"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm px-5 py-2.5 rounded-lg shadow-xs flex items-center gap-2 cursor-pointer transition-colors w-full justify-center"
               >
                 <CheckCircle2 className="w-4 h-4" />
-                <span>{t('cash_record_handover_button', 'RECORD HANDOVER')}</span>
+                <span>{t('cash_record_handover_button', 'Record Handover')}</span>
               </button>
             </div>
           </form>
@@ -437,8 +437,8 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
         {/* Form B: Manual Balance Adjustment */}
         <div className="cash-drawer__form-card bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 w-full">
           <h3 className="cash-drawer-manager__subtitle font-semibold text-slate-900 dark:text-white text-sm mb-3 flex items-center gap-1.5 border-b border-slate-100 dark:border-slate-700/50 pb-2">
-            <Sliders className="w-4 h-4 text-emerald-600 dark:text-emerald-500" />
-            <span>{t('manual_balance_adjustment_heading', 'MANUAL BALANCE ADJUSTMENT')}</span>
+            <Sliders className="w-4 h-4 text-blue-600 dark:text-blue-500" />
+            <span>{t('manual_balance_adjustment_heading', 'Manual Balance Adjustment')}</span>
           </h3>
 
           <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-4 leading-relaxed bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800 space-y-1">
@@ -450,8 +450,8 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
           <form onSubmit={handleAdjustmentSubmit} className="app-form app-form--cash-drawer space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('select_staff_member_label', 'Select Staff Member *')}</label>
                 <StyledSelect
+                  label={t('select_staff_member_label', 'Select Staff Member *')}
                   value={adjustmentStaffId}
                   onChange={setAdjustmentStaffId}
                   placeholder={t('choose_staff_placeholder', '-- Choose Staff --')}
@@ -477,8 +477,8 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
             </div>
 
             <div>
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('notes_optional_label', 'Notes (Optional)')}</label>
               <Input
+                label={t('notes_optional_label', 'Notes (Optional)')}
                 type="text"
                 value={adjustmentNotes}
                 onChange={e => setAdjustmentNotes(e.target.value)}
@@ -507,10 +507,10 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
             <div className="pt-2">
               <button
                 type="submit"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-8 py-3 rounded-lg shadow-md flex items-center gap-2 cursor-pointer transition-colors w-full justify-center"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm px-5 py-2.5 rounded-lg shadow-xs flex items-center gap-2 cursor-pointer transition-colors w-full justify-center"
               >
                 <CheckCircle2 className="w-4 h-4" />
-                <span>{t('cash_apply_adjustment_button', 'APPLY ADJUSTMENT')}</span>
+                <span>{t('cash_apply_adjustment_button', 'Apply Adjustment')}</span>
               </button>
             </div>
           </form>

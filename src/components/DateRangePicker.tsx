@@ -83,6 +83,15 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       todayBtn: true,
       clearBtn: true,
       todayHighlight: true,
+      // Explicit, not relying on the library's own 'en' default - the footer's
+      // "Today"/"Clear" button text only gets set when options.locale is
+      // present (see picker/Picker.js's processPickerOptions), and that was
+      // landing inconsistently for the Today button specifically (blank
+      // button rendered before a working "Clear" button, found 20 Aug 2026).
+      // Passing language here forces a full, deterministic locale object on
+      // every internal options merge instead of depending on it surviving
+      // untouched across the range-picker's own update()/render() calls.
+      language: 'en',
     });
     rangepickerRef.current = rangepicker;
 
