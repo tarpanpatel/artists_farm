@@ -249,6 +249,12 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                     $pdo->exec("UPDATE nav_menu_items SET title = 'Download Data & Excel' WHERE unique_key = 'data_export_center'");
                     $pdo->exec("UPDATE nav_menu_items SET title = 'Dish Recipes (Auto-Stock)' WHERE unique_key = 'beta_recipe_builder'");
                     $pdo->exec("UPDATE nav_menu_items SET title = 'Property Licenses' WHERE unique_key = 'license_management'");
+                    // Renamed 21 Aug 2026 (explicit request) - "Team" parent
+                    // click now goes straight here instead of a separate
+                    // overview launchpad (see App.tsx's routeMap), so this
+                    // is effectively the page the whole "Team" section opens
+                    // into now, not just one item under it.
+                    $pdo->exec("UPDATE nav_menu_items SET title = 'Team & Access' WHERE unique_key = 'staff_permissions'");
                     $pdo->exec("UPDATE nav_menu_items SET parent_id = 'nav-kitchen-overview' WHERE unique_key IN ('take_food_order', 'kitchen_orders', 'staff_meals', 'stock_requests', 'deficit_shortfalls_log', 'stock_log', 'kitchen_purchases', 'edit_food_menu', 'edit_kitchen_stock') AND (parent_id IS NULL OR parent_id = '')");
                     $pdo->exec("UPDATE nav_menu_items SET custom_url = NULL, open_in_new_tab = 0 WHERE custom_url IS NOT NULL AND (LOWER(title) = 'team' OR unique_key IN ('team', 'team_overview'))");
                     $pdo->exec("DELETE FROM nav_menu_items WHERE custom_url IS NOT NULL AND custom_url != '' AND LOWER(title) = 'team'");

@@ -1244,7 +1244,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   );
 
   return (
-    <div>
+    // pt-3: this screen has no PageHeader (goes straight to the tab strip),
+    // so without its own top spacing the tabs sat flush against the navbar
+    // below the header bar with zero gap (found 21 Aug 2026).
+    <div className="pt-3">
       {/* Attached Tabs (DESIGN.md's "Attached Tabs Specification", 20 Aug
           2026 - this file is one of that spec's own named examples): the
           tab strip sits directly on top of the content card below with zero

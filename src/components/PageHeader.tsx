@@ -8,28 +8,34 @@ interface PageHeaderProps {
   // action(s) can go here (e.g. multiple buttons, a status pill) and still
   // inherit the consistent title/subtitle/divider frame below.
   children?: React.ReactNode;
-  // Suppress the bottom-border divider (default: shown). Use this when the
-  // very next element already provides its own visual separation - e.g.
-  // BillingCheckout.tsx's attached tab strip immediately below, where this
-  // divider read as a stray extra line sandwiched between the page title
-  // and the tabs (20 Aug 2026).
+  // Deprecated, no longer has any effect (21 Aug 2026) - the bottom-border
+  // divider was removed from PageHeader app-wide (see below), so there's
+  // nothing left to suppress. Kept as an accepted-but-inert prop rather
+  // than a breaking removal, since every existing call site still passes
+  // it - safe to actually delete once nothing references it anymore.
   hideBorder?: boolean;
 }
 
 /**
  * Standard page-header frame: title + subtitle on the left, action(s) on the
- * right, bottom-border divider. This is the "Dashboard" header pattern
- * (OperationalDashboard.tsx) promoted to a shared component on 2026-08-10 so
- * every page's header stays in sync from one place instead of drifting the
- * way Dashboard vs Bookings did (card-wrapped, different button style, etc.)
- * before this existed.
+ * right. This is the "Dashboard" header pattern (OperationalDashboard.tsx)
+ * promoted to a shared component on 2026-08-10 so every page's header stays
+ * in sync from one place instead of drifting the way Dashboard vs Bookings
+ * did (card-wrapped, different button style, etc.) before this existed.
+ *
+ * Used to also render a bottom-border divider under the title/subtitle -
+ * removed app-wide (21 Aug 2026, explicit request) rather than toggled per
+ * page via `hideBorder`, since it read as a stray extra line on every page,
+ * not just the ones that had already opted out with that prop.
  */
-export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, children, hideBorder = false }) => (
-  <div
-    className={`gen_page_head flex flex-row items-center justify-between gap-4 pb-4 mb-4 page-header ${
-      hideBorder ? '' : 'border-b border-gray-200 dark:border-gray-700'
-    }`}
-  >
+export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, children }) => (
+  // flex-col on mobile, flex-row from sm: up (found 21 Aug 2026) - this was
+  // always flex-row, so on a narrow phone a page with 2+ action buttons
+  // (e.g. "Manage Custom Types" + "New Request") left the title/subtitle
+  // column almost no room: min-w-0 flex-1 let it shrink indefinitely while
+  // the shrink-0 buttons kept their full width, wrapping the title one or
+  // two words per line instead of the buttons dropping to their own row.
+  <div className="gen_page_head flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 mb-4 page-header">
     <div className="min-w-0 flex-1 page-header__left">
       <h1 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight sm:text-2xl page-header__title">
         {title}
@@ -40,7 +46,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, childre
         </p>
       )}
     </div>
-    {children && <div className="flex flex-wrap items-center gap-2.5 shrink-0 page-header__actions">{children}</div>}
+    {children && <div className="flex flex-wrap items-center gap-2.5 sm:shrink-0 page-header__actions">{children}</div>}
   </div>
 );
 

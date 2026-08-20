@@ -73,9 +73,19 @@ export const attachedTabsTheme = {
   base: 'flex flex-col gap-0',
   tabpanel: '',
   tablist: {
-    variant: {
-      default: 'border-b-0',
-    },
+    // Deliberately NOT overriding this to border-b-0 (tried first, found
+    // wrong 21 Aug 2026): with only 2-3 short tabs, the tablist is usually
+    // much wider than the tabs themselves, and without the tablist's own
+    // border-b there was nothing but bare background filling that leftover
+    // width - the border line visibly stopped dead right after the last
+    // tab instead of continuing under the empty space next to it. Flowbite's
+    // default tablist.variant.default already carries border-b border-
+    // gray-200, and it works fine even under the active tab: that tab's own
+    // bg-white + z-10 (see tabitem.active.on below) plus its -mb-px overlap
+    // sits exactly on top of the tablist's border line and visually erases
+    // that one segment of it, while every other segment (inactive tabs'
+    // own border-bottom, and the empty trailing space) shows the tablist's
+    // border normally.
     tabitem: {
       base: 'relative -mb-px -ml-px first:ml-0 border border-b-0 border-gray-200 dark:border-gray-700',
       variant: {

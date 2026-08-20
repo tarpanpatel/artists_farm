@@ -173,16 +173,25 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
         </div>
       )}
 
-      <div className="property-edit-form__field">
-        <Input
-          label={isRoom ? t('room_name_label', 'Room Name') : t('tenant_property_name_label', 'Property Name')}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-      </div>
-
-      {!isRoom && (
-        <div className="property-edit-form__row grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* Property Name/Email/Contact Phone/GSTIN in a 2x2 grid (20 Aug 2026,
+          explicit request) - was Property Name alone, then Email+Phone and
+          GSTIN+UPI as two separate sm:-gated pairs, all collapsing to one
+          column per row on mobile. Now always 2 columns regardless of
+          viewport, with GSTIN moved up to pair with Phone (was paired with
+          UPI ID) so these first 4 fields read as one 2x2 block; UPI ID +
+          its QR upload block become their own standalone section below
+          since nothing else in this range needs to pair with them. Room
+          mode keeps Property Name (as "Room Name") alone - none of
+          Email/Phone/GSTIN exist for a room. */}
+      <div className={`grid gap-4 ${isRoom ? 'grid-cols-1' : 'grid-cols-2'}`}>
+        <div className="property-edit-form__field">
+          <Input
+            label={isRoom ? t('room_name_label', 'Room Name') : t('tenant_property_name_label', 'Property Name')}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+        {!isRoom && (
           <div className="property-edit-form__field">
             <Input
               type="email"
@@ -192,6 +201,11 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
               placeholder={t('email_placeholder', 'info@example.com')}
             />
           </div>
+        )}
+      </div>
+
+      {!isRoom && (
+        <div className="property-edit-form__row grid grid-cols-2 gap-4">
           <div className="property-edit-form__field">
             <Input
               type="tel"
@@ -202,11 +216,6 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
               maxLength={10}
             />
           </div>
-        </div>
-      )}
-
-      {!isRoom && (
-        <div className="property-edit-form__row grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="property-edit-form__field">
             <Input
               type="text"
@@ -217,7 +226,12 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
               helperText={t('gstin_help_text', 'Printed on GST tax invoices at checkout.')}
             />
           </div>
-          <div className="property-edit-form__field">
+        </div>
+      )}
+
+      {!isRoom && (
+        <div className="property-edit-form__field">
+          <div>
             <Input
               type="text"
               label={t('upi_id_optional_label', 'UPI ID (optional)')}
@@ -302,7 +316,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
       )}
 
       {!isRoom && (
-        <div className="property-edit-form__row grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="property-edit-form__row grid grid-cols-2 gap-4">
           <div className="property-edit-form__field">
             <Input
               type="text"
@@ -324,7 +338,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
         </div>
       )}
 
-      <div className="property-edit-form__row grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="property-edit-form__row grid grid-cols-2 gap-4">
         <div className="property-edit-form__field">
           <Input
             type="time"
@@ -348,15 +362,17 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
       {/* Multi-key parent properties aren't themselves bookable - each room has
           its own tariff, set here (in room mode) instead. */}
       {property.property_type !== 'MULTI_KEY' && (
-        <div className="property-edit-form__field">
-          <Input
-            type="number"
-            label={t('default_tariff_label', 'Default Tariff / Night (₹, optional)')}
-            value={defaultTariff}
-            onChange={(e) => setDefaultTariff(e.target.value)}
-            placeholder={t('default_tariff_placeholder', 'e.g. 2000')}
-            helperText={t('default_tariff_help', 'Pre-fills the rate when creating a new booking - still editable per booking.')}
-          />
+        <div className="property-edit-form__row grid grid-cols-2 gap-4">
+          <div className="property-edit-form__field">
+            <Input
+              type="number"
+              label={t('default_tariff_label', 'Default Tariff / Night (₹, optional)')}
+              value={defaultTariff}
+              onChange={(e) => setDefaultTariff(e.target.value)}
+              placeholder={t('default_tariff_placeholder', 'e.g. 2000')}
+              helperText={t('default_tariff_help', 'Pre-fills the rate when creating a new booking - still editable per booking.')}
+            />
+          </div>
         </div>
       )}
 

@@ -195,9 +195,16 @@ function AppBody({ preloadedData }: AppBodyProps) {
         attendance_calendar: { tab: 'staff', key: 'attendance_calendar' },
         staff_directory_salaries: { tab: 'staff', key: 'staff_directory_salaries' },
         staff_permissions: { tab: 'staff', key: 'staff_permissions' },
-        team_overview: { tab: 'staff', key: 'team_overview' },
-        team: { tab: 'staff', key: 'team_overview' },
-        staff: { tab: 'staff', key: 'team_overview' },
+        // "Team" parent click now goes straight to Staff & Permissions
+        // (Team & Access) instead of TeamOverviewDashboard's own landing
+        // page - same pattern as Kitchen -> Take Food Order (21 Aug 2026).
+        // TeamOverviewDashboard itself is left in place, just no longer
+        // reachable through this specific click (not deleted - only asked
+        // to reroute this one, unlike Kitchen's explicit "delete
+        // permanently").
+        team_overview: { tab: 'staff', key: 'staff_permissions' },
+        team: { tab: 'staff', key: 'staff_permissions' },
+        staff: { tab: 'staff', key: 'staff_permissions' },
         admin_control_overview: { tab: 'analytics', key: 'admin_control_overview' },
         dashboard_analytics: { tab: 'analytics', key: 'dashboard_analytics' },
         analytics: { tab: 'analytics', key: 'admin_control_overview' },
@@ -242,7 +249,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
 
           // Section header items (e.g. custom_nav-719248 or nav-header-*) map to section launchpads
           if (matched.itemType === 'header' || key.startsWith('custom_nav-') || key.startsWith('nav-header-')) {
-            if (tab === 'staff') key = 'team_overview';
+            if (tab === 'staff') key = 'staff_permissions';
             else if (tab === 'analytics') key = 'admin_control_overview';
             else if (tab === 'kitchen') key = 'take_food_order';
           }
@@ -1083,9 +1090,16 @@ function AppBody({ preloadedData }: AppBodyProps) {
         attendance_calendar: { tab: 'staff', key: 'attendance_calendar' },
         staff_directory_salaries: { tab: 'staff', key: 'staff_directory_salaries' },
         staff_permissions: { tab: 'staff', key: 'staff_permissions' },
-        team_overview: { tab: 'staff', key: 'team_overview' },
-        team: { tab: 'staff', key: 'team_overview' },
-        staff: { tab: 'staff', key: 'team_overview' },
+        // "Team" parent click now goes straight to Staff & Permissions
+        // (Team & Access) instead of TeamOverviewDashboard's own landing
+        // page - same pattern as Kitchen -> Take Food Order (21 Aug 2026).
+        // TeamOverviewDashboard itself is left in place, just no longer
+        // reachable through this specific click (not deleted - only asked
+        // to reroute this one, unlike Kitchen's explicit "delete
+        // permanently").
+        team_overview: { tab: 'staff', key: 'staff_permissions' },
+        team: { tab: 'staff', key: 'staff_permissions' },
+        staff: { tab: 'staff', key: 'staff_permissions' },
         admin_control_overview: { tab: 'analytics', key: 'admin_control_overview' },
         dashboard_analytics: { tab: 'analytics', key: 'dashboard_analytics' },
         analytics: { tab: 'analytics', key: 'admin_control_overview' },

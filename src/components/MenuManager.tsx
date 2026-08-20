@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, ModalHeader, ModalBody, ModalFooter, TextInput as FlowbiteTextInput, Checkbox } from 'flowbite-react';
 import { Button } from './Button';
+import { Badge } from './Badge';
 import { Input } from './Input';
 import {
   Utensils,
@@ -25,7 +26,6 @@ import {
   ScrollText,
   Settings,
   Bot,
-  GripVertical,
   CreditCard,
   ShoppingCart,
   ClipboardList,
@@ -159,10 +159,6 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
 
   // Drag and Drop state for Navigation items
 
-  // Drag and Drop state for Food items
-  const [draggedFoodIndex, setDraggedFoodIndex] = useState<number | null>(null);
-  const [dragOverFoodIndex, setDragOverFoodIndex] = useState<number | null>(null);
-
   // Passcode verification modal
   const [passcodeModalOpen, setPasscodeModalOpen] = useState(false);
   const [passcodeInput, setPasscodeInput] = useState('');
@@ -259,38 +255,6 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
       });
     }
     setIsAddFoodModalOpen(false);
-  };
-
-  // Drag and drop handler for Food menu
-  const handleFoodDragStart = (e: React.DragEvent, index: number) => {
-    setDraggedFoodIndex(index);
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', index.toString());
-  };
-
-  const handleFoodDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (dragOverFoodIndex !== index) {
-      setDragOverFoodIndex(index);
-    }
-  };
-
-  const handleFoodDrop = (e: React.DragEvent, targetIndex: number) => {
-    e.preventDefault();
-    if (draggedFoodIndex === null || draggedFoodIndex === targetIndex) {
-      setDraggedFoodIndex(null);
-      setDragOverFoodIndex(null);
-      return;
-    }
-
-    const reordered = [...filteredFoodItems];
-    const [movedItem] = reordered.splice(draggedFoodIndex, 1);
-    reordered.splice(targetIndex, 0, movedItem);
-
-    // Update food menu order state
-    setDraggedFoodIndex(null);
-    setDragOverFoodIndex(null);
   };
 
   const handleSelectIcon = (navId: string, iconName: string) => {
@@ -465,38 +429,30 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
 
           {/* Food Grid (Matching #take_food_order POS 6-column grid) */}
           <div className="menu-manager__food-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-            {filteredFoodItems.map((item, index) => (
+            {filteredFoodItems.map((item) => (
               <div
                 key={item.id}
-                draggable
-                onDragStart={(e) => handleFoodDragStart(e, index)}
-                onDragOver={(e) => handleFoodDragOver(e, index)}
-                onDrop={(e) => handleFoodDrop(e, index)}
-                className={`menu-manager__food-card bg-white dark:bg-slate-800 rounded-lg border border-slate-200/90 dark:border-slate-700 p-2.5 shadow-md hover:shadow-md transition-all flex flex-col justify-between cursor-grab active:cursor-grabbing ${
-                  draggedFoodIndex === index ? 'opacity-40 border-blue-400' : ''
-                } ${item.available ? '' : 'bg-red-50/20 dark:bg-red-950/20'}`}
+                className={`menu-manager__food-card bg-white dark:bg-slate-800 rounded-lg border border-slate-200/90 dark:border-slate-700 p-2.5 shadow-md hover:shadow-md transition-all flex flex-col justify-between ${
+                  item.available ? '' : 'bg-red-50/20 dark:bg-red-950/20'
+                }`}
               >
                 <div className="space-y-1.5">
                   {/* Category Tag & Availability Badge */}
                   <div className="flex items-center justify-between gap-1">
                     <div className="flex items-center gap-1 overflow-hidden">
-                      <GripVertical className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 shrink-0" />
                       <span className="text-[9px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
                         {item.category}
                       </span>
                     </div>
 
-                    <button
-                      type="button"
+                    <Badge
+                      variant={item.available ? 'success' : 'danger'}
+                      size="sm"
                       onClick={() => onUpdateFoodItem(item.id, { available: !item.available })}
-                      className={`text-[9px] font-semibold px-2 py-0.5 rounded-full border transition-all cursor-pointer shrink-0 ${
-                        item.available
-                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
-                          : 'bg-red-100 text-red-800 border-red-300 dark:bg-red-950/60 dark:text-red-300 dark:border-red-800'
-                      }`}
+                      className="shrink-0 cursor-pointer"
                     >
                       {item.available ? t('available_badge', 'Available') : t('out_of_stock_badge', 'Out of Stock')}
-                    </button>
+                    </Badge>
                   </div>
 
                   {/* Image Preview & Quick Upload */}

@@ -43,7 +43,7 @@ export const TeamOverviewDashboard: React.FC<TeamOverviewDashboardProps> = ({
     {
       uniqueKey: 'staff_permissions',
       tabKey: 'staff',
-      title: t('staff_permissions_heading', 'Staff & Permissions'),
+      title: t('staff_permissions_heading', 'Team & Access'),
       description: t('staff_permissions_desc', 'Register team members, update login passcodes, and manage role-based system access.'),
       icon: ShieldCheck,
       color: 'bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 border-violet-200 dark:border-violet-800/60',

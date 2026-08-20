@@ -285,6 +285,11 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
   // Category filter for catalog
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  // Collapsed by default, matching the Category Filter Toggle Pattern
+  // already used elsewhere (Stock Requests' own showReqCategoryFilters) -
+  // this screen's category pills were always open, the one place in the
+  // app that hadn't been brought in line with that rule yet (21 Aug 2026).
+  const [showCatalogCategoryFilters, setShowCatalogCategoryFilters] = useState(false);
   const [fulfillPage, setFulfillPage] = useState<number>(1);
 
   // Category management state
@@ -1307,38 +1312,59 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   ]}
                   data={filteredCatalogItems}
                   subHeader={
-                    <div className="w-full flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 p-4 border-b border-slate-100 dark:border-slate-700/80">
-                      <div className="relative max-w-sm w-full">
-                        <FlowbiteTextInput
-                          type="text"
-                          placeholder={t('search_by_name_category_placeholder')}
-                          value={catalogSearch}
-                          onChange={(e) => setCatalogSearch(e.target.value)}
-                          icon={Search}
-                          className="w-full"
-                        />
+                    <div className="w-full flex flex-col gap-3 p-4 border-b border-slate-100 dark:border-slate-700/80">
+                      <div className="flex items-center gap-2">
+                        <div className="relative max-w-sm w-full">
+                          <FlowbiteTextInput
+                            type="text"
+                            placeholder={t('search_by_name_category_placeholder')}
+                            value={catalogSearch}
+                            onChange={(e) => setCatalogSearch(e.target.value)}
+                            icon={Search}
+                            className="w-full"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowCatalogCategoryFilters((v) => !v)}
+                          className={`relative h-10 w-10 shrink-0 rounded-lg border flex items-center justify-center transition-all cursor-pointer ${
+                            showCatalogCategoryFilters
+                              ? 'bg-blue-600 border-blue-600 text-white shadow-md'
+                              : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600'
+                          }`}
+                          title={t('toggle_category_filters_tooltip', 'Filter by category')}
+                          aria-label="Toggle category filters"
+                          aria-expanded={showCatalogCategoryFilters}
+                        >
+                          <Filter className="w-4 h-4" />
+                          {selectedCategory !== 'All' && selectedCategory !== 'All Items' && !showCatalogCategoryFilters && (
+                            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-cyan-500 border-2 border-white dark:border-slate-800" />
+                          )}
+                        </button>
                       </div>
 
-                      <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1">
-                        {catalogCategories.map(cat => {
-                          const count = cat === 'All' || cat === 'All Items' ? catalogItems.length : catalogItems.filter(i => i.category === cat).length;
-                          const isActive = selectedCategory === cat;
-                          return (
-                            <button
-                              key={cat}
-                              type="button"
-                              onClick={() => setSelectedCategory(cat)}
-                              className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border ${
-                                isActive
-                                  ? 'border-blue-600 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold shadow-md'
-                                  : 'bg-transparent text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 font-semibold'
-                              }`}
-                            >
-                              {cat === 'All Items' || cat === 'All' ? 'All' : cat} ({count})
-                            </button>
-                          );
-                        })}
-                      </div>
+                      {showCatalogCategoryFilters && (
+                        <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1">
+                          {catalogCategories.map(cat => {
+                            const count = cat === 'All' || cat === 'All Items' ? catalogItems.length : catalogItems.filter(i => i.category === cat).length;
+                            const isActive = selectedCategory === cat;
+                            return (
+                              <button
+                                key={cat}
+                                type="button"
+                                onClick={() => setSelectedCategory(cat)}
+                                className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border ${
+                                  isActive
+                                    ? 'border-blue-600 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold shadow-md'
+                                    : 'bg-transparent text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 font-semibold'
+                                }`}
+                              >
+                                {cat === 'All Items' || cat === 'All' ? 'All' : cat} ({count})
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   }
                   pagination
@@ -1364,37 +1390,58 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
               <div className="md:hidden bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md overflow-hidden p-3 space-y-3">
                 <div className="space-y-2.5 pb-2 border-b border-slate-100 dark:border-slate-700">
-                  <div className="relative">
-                    <Input
-                      type="text"
-                      placeholder={t('search_by_name_category_placeholder')}
-                      value={catalogSearch}
-                      onChange={(e) => setCatalogSearch(e.target.value)}
-                      leftIcon={<Search className="w-4 h-4 text-slate-400" />}
-                      className="w-full"
-                    />
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        type="text"
+                        placeholder={t('search_by_name_category_placeholder')}
+                        value={catalogSearch}
+                        onChange={(e) => setCatalogSearch(e.target.value)}
+                        leftIcon={<Search className="w-4 h-4 text-slate-400" />}
+                        className="w-full"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowCatalogCategoryFilters((v) => !v)}
+                      className={`relative h-10 w-10 shrink-0 rounded-lg border flex items-center justify-center transition-all cursor-pointer ${
+                        showCatalogCategoryFilters
+                          ? 'bg-blue-600 border-blue-600 text-white shadow-md'
+                          : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600'
+                      }`}
+                      title={t('toggle_category_filters_tooltip', 'Filter by category')}
+                      aria-label="Toggle category filters"
+                      aria-expanded={showCatalogCategoryFilters}
+                    >
+                      <Filter className="w-4 h-4" />
+                      {selectedCategory !== 'All' && selectedCategory !== 'All Items' && !showCatalogCategoryFilters && (
+                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-cyan-500 border-2 border-white dark:border-slate-800" />
+                      )}
+                    </button>
                   </div>
 
-                  <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1">
-                    {catalogCategories.map(cat => {
-                      const count = cat === 'All' || cat === 'All Items' ? catalogItems.length : catalogItems.filter(i => i.category === cat).length;
-                      const isActive = selectedCategory === cat;
-                      return (
-                        <button
-                          key={cat}
-                          type="button"
-                          onClick={() => setSelectedCategory(cat)}
-                          className={`shrink-0 px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border ${
-                            isActive
-                              ? 'border-blue-600 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold'
-                              : 'bg-transparent text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
-                          }`}
-                        >
-                          {cat === 'All Items' || cat === 'All' ? 'All' : cat} ({count})
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {showCatalogCategoryFilters && (
+                    <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1">
+                      {catalogCategories.map(cat => {
+                        const count = cat === 'All' || cat === 'All Items' ? catalogItems.length : catalogItems.filter(i => i.category === cat).length;
+                        const isActive = selectedCategory === cat;
+                        return (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => setSelectedCategory(cat)}
+                            className={`shrink-0 px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border ${
+                              isActive
+                                ? 'border-blue-600 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold'
+                                : 'bg-transparent text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                            }`}
+                          >
+                            {cat === 'All Items' || cat === 'All' ? 'All' : cat} ({count})
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {(() => {
