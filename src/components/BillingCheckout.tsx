@@ -3,7 +3,7 @@ import { Card, Modal, ModalHeader, ModalBody, TextInput, Checkbox, Tabs, TabItem
 import { Button } from './Button';
 import DataTable from 'react-data-table-component';
 import { flowbiteTableCustomStyles } from '../utils/tableStyles';
-import { attachedTabsTheme } from '../utils/tabsTheme';
+import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
 import {
   Calendar,
   CheckCircle2,
@@ -740,6 +740,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       <PageHeader
         title={t('bookings_page_title', 'Bookings')}
         subtitle="Manage all guest stays, reservations, and billing checkouts."
+        hideBorder
       >
         <PageHeaderButton
           onClick={() => {
@@ -773,6 +774,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
           aria-label="Booking Status Tabs"
           variant="default"
           theme={attachedTabsTheme}
+          clearTheme={attachedTabsClearTheme}
           onActiveTabChange={(tabIndex: number) => {
             const tabs: ('today' | 'upcoming' | 'past_bookings')[] = ['today', 'upcoming', 'past_bookings'];
             if (tabs[tabIndex]) setActiveTab(tabs[tabIndex]);
@@ -796,13 +798,25 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
             of the whole unit (attachedTabsTheme's rounded-t-lg tab shapes),
             so the card itself only needs rounding at the bottom - keeping
             rounded-lg on all 4 corners here would fight the flat seam where
-            the tabs sit on top of it. "Booking desk" icon/title/subtitle
-            header removed (20 Aug 2026) - the tabs above and the page's own
-            "Bookings" PageHeader already identify this section, so the
-            intro row was redundant. The "today" attention-count badge it
-            was paired with still applies regardless of tab, so it stays as
-            the lead-in row rather than being removed with it. */}
-        <Card className="billing-checkout__desk-body shadow-md space-y-4 rounded-t-none">
+            the tabs sit on top of it. -mt-px pulls the card itself up to
+            overlap the tab row by 1px - a more robust guarantee of "no
+            visible gap" than relying only on each tab's own -mb-px, which
+            on a high-DPI mobile screen can round to sub-pixel amounts and
+            leave a hairline gap visible (found 20 Aug 2026, real device).
+            border-t-0: Card's own default theme draws a full 4-sided
+            border, so without this its top edge doubles up as a second
+            dividing line right under the tabs, contradicting the spec's
+            "opens into the card with no dividing line" (found 21 Aug 2026 -
+            same fix needed everywhere this pattern is used, see the
+            [role="tabpanel"]:empty rule in index.css for the matching gap
+            fix, since neither is specific to this one page).
+            "Booking desk" icon/title/subtitle header removed (20 Aug 2026)
+            - the tabs above and the page's own "Bookings" PageHeader
+            already identify this section, so the intro row was redundant.
+            The "today" attention-count badge it was paired with still
+            applies regardless of tab, so it stays as the lead-in row
+            rather than being removed with it. */}
+        <Card className="billing-checkout__desk-body shadow-md space-y-4 rounded-t-none border-t-0 -mt-px">
           <div className="flex justify-end border-b border-slate-200 pb-4 dark:border-slate-700">
             <div className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">
               <CreditCard className="h-4 w-4" />

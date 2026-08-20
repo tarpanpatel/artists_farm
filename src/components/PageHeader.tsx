@@ -8,6 +8,12 @@ interface PageHeaderProps {
   // action(s) can go here (e.g. multiple buttons, a status pill) and still
   // inherit the consistent title/subtitle/divider frame below.
   children?: React.ReactNode;
+  // Suppress the bottom-border divider (default: shown). Use this when the
+  // very next element already provides its own visual separation - e.g.
+  // BillingCheckout.tsx's attached tab strip immediately below, where this
+  // divider read as a stray extra line sandwiched between the page title
+  // and the tabs (20 Aug 2026).
+  hideBorder?: boolean;
 }
 
 /**
@@ -18,8 +24,12 @@ interface PageHeaderProps {
  * way Dashboard vs Bookings did (card-wrapped, different button style, etc.)
  * before this existed.
  */
-export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, children }) => (
-  <div className="gen_page_head flex flex-row items-center justify-between gap-4 pb-4 mb-4 border-b border-gray-200 dark:border-gray-700 page-header">
+export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, children, hideBorder = false }) => (
+  <div
+    className={`gen_page_head flex flex-row items-center justify-between gap-4 pb-4 mb-4 page-header ${
+      hideBorder ? '' : 'border-b border-gray-200 dark:border-gray-700'
+    }`}
+  >
     <div className="min-w-0 flex-1 page-header__left">
       <h1 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight sm:text-2xl page-header__title">
         {title}

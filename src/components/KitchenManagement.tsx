@@ -42,6 +42,7 @@ import { useConfirm } from './ConfirmDialogContext';
 import { WalkInTabBillModal } from './WalkInTabBillModal';
 import DataTable from 'react-data-table-component';
 import { flowbiteTableCustomStyles } from '../utils/tableStyles';
+import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
 
 import { useKitchenContext } from '../contexts/KitchenContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
@@ -1244,19 +1245,24 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
   return (
     <div>
-      {/* Unified Sub-Tab Navigation Bar - uniform enclosed pill per DESIGN.md
-          §8/§10/§20 (19 Aug 2026 rewrite, replacing the earlier "merged
-          panel" folder-tab style): every tab, active or inactive, is the
-          exact same fully-rounded box - same padding, same border on all 4
-          sides, same rounded-lg on all 4 corners, same position. Only fill/
-          text/shadow color changes on selection, so nothing shifts size or
-          shape when a tab is clicked (§20's no-jitter rule generalized
-          beyond just font-weight - see §21). Centered, not left-anchored. */}
+      {/* Attached Tabs (DESIGN.md's "Attached Tabs Specification", 20 Aug
+          2026 - this file is one of that spec's own named examples): the
+          tab strip sits directly on top of the content card below with zero
+          gap, rather than each TabItem carrying its content as a flowbite
+          tabpanel (whose default py-3 gap and all-4-corners rounded-lg
+          would show a visible seam under the tab row instead of a flush
+          "opens into" edge). Both TabItems are deliberately childless - the
+          real content renders as a sibling below, switched on the same
+          activeTab state - see utils/tabsTheme.ts's attachedTabsTheme for
+          the active/inactive border+fill mechanism itself. */}
       {(activeTab === 'new_order' || activeTab === 'kds') && (
+        <div className="kitchen-management__desk">
         <Tabs
           ref={tabsRef}
           aria-label="Kitchen Management Tabs"
           variant="default"
+          theme={attachedTabsTheme}
+          clearTheme={attachedTabsClearTheme}
           onActiveTabChange={(tabIndex: number) => {
             const tabs: ('kds' | 'new_order')[] = ['kds', 'new_order'];
             if (tabs[tabIndex]) {
@@ -1271,12 +1277,18 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           <TabItem
             active={activeTab === 'kds'}
             title={`${t('live_active_orders_label', 'Live Tickets')}${pendingOrdersCount > 0 ? ` (${pendingOrdersCount})` : ''}`}
-          >
-            {(() => {
+          />
+          <TabItem
+            active={activeTab === 'new_order'}
+            title={t('create_resident_order_button', 'Take Order')}
+          />
+        </Tabs>
+
+        {activeTab === 'kds' && (() => {
               const activeOrders = orders.filter((o) => o.status === 'Pending' || o.status === 'Preparing');
 
               return (
-        <div className="kds-orders-container space-y-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-3.5 sm:p-4">
+        <div className="kds-orders-container space-y-4 bg-white dark:bg-slate-800 rounded-lg rounded-t-none -mt-px border border-t-0 border-slate-200 dark:border-slate-700 p-3.5 sm:p-4">
           <div className="kds-status-filter-bar flex flex-col sm:flex-row items-start sm:items-center justify-end text-xs gap-3">
             {/* Smart Polling / Live Sync Bar */}
             <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg w-full sm:w-auto justify-between sm:justify-start">
@@ -1567,13 +1579,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         </div>
         );
       })()}
-          </TabItem>
 
-          <TabItem
-            active={activeTab === 'new_order'}
-            title={t('create_resident_order_button', 'Take Order')}
-          >
-            {(() => {
+        {activeTab === 'new_order' && (() => {
         // Was `checkedInGuests[0] || checkedInGuests.find(...)` - the OR
         // meant selectedGuestId was never actually consulted (checkedInGuests[0]
         // is truthy whenever any guest is checked in), always resolving to
@@ -1785,7 +1792,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         const openTabs = walkInTabs.filter((tab) => tab.status === 'open');
 
         return (
-          <div className="take-food-order-container space-y-4 pb-48 lg:pb-0 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3.5 sm:p-4">
+          <div className="take-food-order-container space-y-4 pb-48 lg:pb-0 bg-white dark:bg-gray-800 rounded-lg rounded-t-none -mt-px border border-t-0 border-gray-200 dark:border-gray-700 p-3.5 sm:p-4">
 
             {/* Order Mode: Guest vs Walk-in Segmented Switcher */}
             <div className="flex flex-wrap items-center justify-between gap-2.5 px-0.5">
@@ -2233,9 +2240,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           </div>
           );
         })()}
-          </TabItem>
-    </Tabs>
-  )}
+        </div>
+      )}
 
       {billingTab && (
         <WalkInTabBillModal

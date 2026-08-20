@@ -1154,6 +1154,33 @@ div:has(> [role="tablist"]) {
   padding-top: 0.5rem !important;
 }
 
+/* Attached Tabs (DESIGN.md's "Attached Tabs Specification") deliberately
+   render childless TabItems - the real content lives in a sibling Card
+   below, not as flowbite's own tabpanel - so flowbite still renders a real,
+   completely empty `[role="tabpanel"]` div for the active tab. The rule
+   above's `padding-top: 0.5rem !important` doesn't know that, and applies
+   the same 8px regardless - an empty div with only padding-top still
+   occupies that height, which was rendering as a visible gap between the
+   tab row and the attached card below it on every page using the pattern
+   (BillingCheckout.tsx, KitchenManagement.tsx) even though the component
+   code itself already zeroes every other gap (found 21 Aug 2026). `:empty`
+   is a precise, semantic way to target only this case - a tabpanel with
+   real content (the normal, non-attached case elsewhere in the app) never
+   matches it. Zeroes all four sides, not just padding-top - the real bug
+   turned out to be flowbite's default 'py-3' (top AND bottom padding),
+   and attachedTabsTheme's own `tabpanel: ''` override didn't remove it
+   either (an empty string added during a theme merge doesn't cancel a
+   class the base theme already contributed - it's a no-op), so
+   padding-bottom alone was still rendering a real ~12px gap even after
+   this rule originally only patched padding-top (found 21 Aug 2026,
+   confirmed live via computed styles - fixed at the source too, see
+   attachedTabsClearTheme in utils/tabsTheme.ts). This CSS rule stays as a
+   defensive backstop for any future use of the pattern that forgets to
+   pass that clearTheme prop. */
+[role="tabpanel"]:empty {
+  padding: 0 !important;
+}
+
 
 /* ==========================================================================
    App-wide z-index scale (17 Aug 2026) - READ THIS before adding or

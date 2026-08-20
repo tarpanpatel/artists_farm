@@ -23,13 +23,52 @@
  *    tabs meet the card below, into a single 1px line instead of doubling
  *    up border thickness.
  *
- * Usage: place `<Tabs variant="default" theme={attachedTabsTheme} .../>`
- * directly above the card/table it drives, with zero margin/gap between
+ * Usage: place `<Tabs variant="default" theme={attachedTabsTheme}
+ * clearTheme={attachedTabsClearTheme} .../>` directly above the card/table
+ * it drives, with zero margin/gap between
  * them (they must NOT share one outer bordered wrapper - that reads as
  * "tabs stuck inside a box" rather than "tabs attached to the box"), and
- * give that card `rounded-t-none` since the tabs already own the rounded
- * top edge of the whole unit.
+ * give that card `rounded-t-none border-t-0 -mt-px`: `rounded-t-none`
+ * because the tabs already own the rounded top edge of the whole unit,
+ * `border-t-0` because the card's own default top border would otherwise
+ * double up as a second dividing line right under the tabs (found 21 Aug
+ * 2026), and `-mt-px` to guarantee zero visible gap even on high-DPI
+ * screens where sub-pixel rounding can leave a hairline gap.
+ *
+ * Also requires each TabItem to be childless (content lives in the card,
+ * not as this component's own tabpanel) - see index.css's
+ * `[role="tabpanel"]:empty` rule, which exists specifically to stop the
+ * app-wide tabpanel padding-top rule from adding an invisible-but-real gap
+ * under these intentionally-empty tabpanels (found 21 Aug 2026).
+ *
+ * `attachedTabsClearTheme` (pass as the `clearTheme` prop alongside
+ * `theme`) wipes Flowbite's own active/inactive tab-fill classes
+ * (`bg-gray-100`/`text-primary-600`/etc.) before this theme merges on top,
+ * instead of relying on `twMerge` to notice `bg-gray-100` and `bg-white`
+ * are the same conflict group and correctly drop the former. Without it,
+ * the active tab's background/border rendered so faintly against a
+ * near-white page that it read as missing entirely (found 21 Aug 2026) -
+ * clearing removes any dependency on merge-order behavior for exactly
+ * this one property, guaranteeing the tab reads as a real white,
+ * three-bordered chip rather than a merge outcome that's merely supposed
+ * to look that way.
  */
+export const attachedTabsClearTheme = {
+  tablist: { tabitem: { variant: { default: { active: true } } } },
+  // Flowbite's default tabpanel is 'py-3' (12px top AND bottom padding).
+  // attachedTabsTheme's `tabpanel: ''` looked like it should cancel that,
+  // but an empty string added during a twMerge-based merge doesn't remove
+  // a class the base theme already contributed - it's simply a no-op, so
+  // 'py-3' silently survived untouched. Every attached-tabs page still had
+  // a real ~12-24px gap under the tab row from this (found 21 Aug 2026,
+  // confirmed live: an "empty" tabpanel div was still rendering at 12px
+  // tall) even after the [role="tabpanel"]:empty CSS fix, which only ever
+  // addressed padding-top - padding-bottom was never touched by that fix
+  // at all. Clearing here removes 'py-3' at the source instead of chasing
+  // each half of it individually.
+  tabpanel: true,
+};
+
 export const attachedTabsTheme = {
   base: 'flex flex-col gap-0',
   tabpanel: '',

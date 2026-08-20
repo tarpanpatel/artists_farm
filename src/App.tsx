@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, Suspense, lazy } from 'react';
-import { Modal, ModalHeader, ModalBody } from 'flowbite-react';
+import { Modal, ModalHeader, ModalBody, Drawer as FlowbiteDrawer, DrawerItems } from 'flowbite-react';
 import { Header } from './components/Header';
 import { Navigation, TabType } from './components/Navigation';
 import { MobileBottomNav } from './components/MobileBottomNav';
@@ -2194,18 +2194,31 @@ ${itemsStr}
           </div>
         )}
 
-        {/* Global Add Booking Modal Overlay */}
-        <Modal
-          show={isAddBookingModalOpen}
+        {/* Global Add Booking Drawer (converted from a centered Modal 21 Aug
+            2026 per DESIGN.md's "Flowbite Modals & Drawers Specification" -
+            action/creation forms open as a right-side drawer site-wide,
+            mirroring the same shell BookingDetailsModal.tsx/
+            WalkInTabBillModal.tsx already use rather than a one-off). */}
+        <FlowbiteDrawer
+          open={isAddBookingModalOpen}
           onClose={() => setIsAddBookingModalOpen(false)}
-          size="lg"
-          dismissible
-          className="z-58"
+          position="right"
+          className="z-60 w-full sm:max-w-lg md:max-w-xl h-full bg-white dark:bg-gray-800 p-0 flex flex-col shadow-2xl transition-transform border-l border-gray-200 dark:border-gray-700"
         >
-          <ModalHeader className="border-b border-gray-200 dark:border-gray-700 p-4">
-            Add Guest Booking
-          </ModalHeader>
-          <ModalBody className="p-6 max-h-[85vh] overflow-y-auto">
+          <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 dark:border-gray-700 shrink-0 bg-white dark:bg-gray-800">
+            <h2 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">
+              Add Guest Booking
+            </h2>
+            <button
+              type="button"
+              onClick={() => setIsAddBookingModalOpen(false)}
+              className="text-gray-400 bg-transparent hover:bg-gray-100 hover:text-gray-900 rounded-lg text-sm w-8 h-8 inline-flex items-center justify-center dark:hover:bg-gray-700 dark:hover:text-white cursor-pointer transition-colors shrink-0"
+              aria-label="Close drawer"
+            >
+              <CloseIcon className="w-4 h-4" />
+            </button>
+          </div>
+          <DrawerItems className="flex-1 overflow-y-auto p-4 sm:p-5">
             <GuestManagement
               guests={guests}
               receipts={receipts}
@@ -2228,8 +2241,8 @@ ${itemsStr}
               propertyUpiId={preloadedData.currentProperty?.upi_id || ''}
               propertyUpiQrCodeUrl={preloadedData.currentProperty?.upi_qr_code_url || ''}
             />
-          </ModalBody>
-        </Modal>
+          </DrawerItems>
+        </FlowbiteDrawer>
 
         {/* Global Add Expense Modal Overlay */}
         <Modal
