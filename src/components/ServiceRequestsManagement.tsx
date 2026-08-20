@@ -19,6 +19,8 @@ import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
 import { t } from '../i18n/en';
 import { PageHeader, PageHeaderButton } from './PageHeader';
+import { Button } from './Button';
+import { Input } from './Input';
 import { formatDateTimeDDMMYYYY } from '../utils/dateUtils';
 
 import { useConfigurationData } from '../contexts/ConfigurationDataContext';
@@ -591,7 +593,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
             <Button variant="secondary" size="md" onClick={() => setIsAddModalOpen(false)}>
               {t('cancel_button', 'Cancel')}
             </Button>
-            <Button type="submit" variant="primary" size="md" disabled={saving} className="shadow-sm">
+            <Button type="submit" variant="primary" size="md" disabled={saving}>
               {saving ? t('logging_button', 'Logging...') : t('log_request_button', 'Log Request')}
             </Button>
           </div>
