@@ -45,13 +45,22 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       {isQuickActionOpen && (
         <div
           onClick={() => setIsQuickActionOpen(false)}
-          className="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-xs transition-opacity animate-in fade-in"
+          // z-59: was z-40 (the "ordinary popover" tier per the z-index
+          // scale note in src/index.css), which sat BELOW a mobile cart
+          // drawer left open elsewhere (e.g. KitchenManagement's Take Order
+          // cart at z-[55]) - tapping the FAB rotated into an "X" (state did
+          // toggle) but the sheet rendered invisibly behind the already-open
+          // cart. A deliberate tap on this global control should always
+          // surface it, so it now joins the z-60/70/100 "secondary modal
+          // meant to stack above already-open content" tier documented
+          // there (found 20 Aug 2026).
+          className="fixed inset-0 z-59 bg-slate-900/60 backdrop-blur-xs transition-opacity animate-in fade-in"
         />
       )}
 
       {/* Quick Action Drawer */}
       <div
-        className={`fixed left-0 right-0 z-50 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 rounded-t-2xl shadow-2xl transition-all duration-300 ease-out transform ${
+        className={`fixed left-0 right-0 z-60 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 rounded-t-2xl shadow-2xl transition-all duration-300 ease-out transform ${
           isQuickActionOpen
             ? 'bottom-16 translate-y-0 opacity-100'
             : 'bottom-0 translate-y-full opacity-0 pointer-events-none'
