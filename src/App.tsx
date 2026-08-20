@@ -27,7 +27,7 @@ import { fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fet
 import { ConfigurationDataProvider } from './contexts/ConfigurationDataContext';
 import { ModulesProvider, useModules } from './contexts/ModulesContext';
 import { DataLoader, PreloadedData } from './components/DataLoader';
-import { Smartphone, Download, X as CloseIcon, Share, PlusSquare, MoreVertical } from 'lucide-react';
+import { Smartphone, Download, X as CloseIcon, Share, PlusSquare, MoreVertical, Receipt } from 'lucide-react';
 import { LoadingScreen } from './components/LoadingScreen';
 import { LoginPage } from './components/LoginPage';
 import { MultiKeyPropertyOverview } from './components/MultiKeyPropertyOverview';
@@ -2215,8 +2215,11 @@ ${itemsStr}
           dismissible
           className="z-58"
         >
-          <ModalHeader className="border-b border-gray-200 dark:border-gray-700 p-4">
-            Add Expense
+          <ModalHeader as="div" className="border-b border-gray-200 dark:border-gray-700 p-4">
+            <span className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <Receipt className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              Add Expense
+            </span>
           </ModalHeader>
           <ModalBody className="p-4 sm:p-6 max-h-[85vh] overflow-y-auto">
             <Suspense fallback={<TabContentFallback />}>

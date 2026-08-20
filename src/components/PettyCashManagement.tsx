@@ -34,6 +34,13 @@ interface FormState {
   amount: number | '';
   paymentMode: string;
   paidBy: string;
+  // Gates the Vendor/Payee picker behind an explicit yes/no instead of it
+  // always being live - most expenses are logged by the staff member
+  // themselves (paidBy already defaults to currentUserName for that case),
+  // so the picker stays visually disabled until this is checked, matching
+  // "Vendor / Payee Name (Optional)" actually reading as optional rather
+  // than a select that's always interactive regardless (added 20 Aug 2026).
+  payToRegisteredVendor?: boolean;
   paymentSource: 'property' | 'pocket' | 'split';
   showDrawerSplit: boolean;
   drawerAmount: number | '';
@@ -90,6 +97,7 @@ function formReducer(state: FormState, action: FormAction): FormState {
         kitchenQuantity: '',
         kitchenUnit: '',
         isStaffAdvanceChecked: true,
+        payToRegisteredVendor: false,
       };
     default:
       return state;
@@ -129,6 +137,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     kitchenQuantity: '',
     kitchenUnit: '',
     isStaffAdvanceChecked: true,
+    payToRegisteredVendor: false,
   }));
   const [financialHandlers, setFinancialHandlers] = useState<any[]>(staff.filter(u => u.isFinancialHandler));
   const { inventory } = useInventoryContext();
@@ -1205,9 +1214,30 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               </div>
 
               <div>
+                <label className="flex items-center gap-2 cursor-pointer select-none mb-1.5">
+                  <Checkbox
+                    id="pay-to-registered-vendor-checkbox"
+                    checked={!!formState.payToRegisteredVendor}
+                    onChange={e => {
+                      const checked = e.target.checked;
+                      dispatch({ type: 'SET_FIELD', field: 'payToRegisteredVendor', value: checked });
+                      // Unchecking means "no, I'm not paying a registered
+                      // vendor" - clear back to the self/logged-by-me default
+                      // rather than leaving a stale vendor selected behind a
+                      // now-disabled picker.
+                      if (!checked) {
+                        dispatch({ type: 'SET_FIELD', field: 'paidBy', value: currentUserName });
+                      }
+                    }}
+                  />
+                  <Label htmlFor="pay-to-registered-vendor-checkbox" className="text-xs font-semibold text-slate-700 dark:text-slate-200 cursor-pointer select-none">
+                    Pay to pre-registered vendor?
+                  </Label>
+                </label>
                 <StyledSelect
                   label="Vendor / Payee Name (Optional)"
                   searchable
+                  disabled={!formState.payToRegisteredVendor}
                   value={formState.paidBy === currentUserName ? '' : formState.paidBy}
                   onChange={val => dispatch({ type: 'SET_FIELD', field: 'paidBy', value: val || currentUserName })}
                   placeholder="Select a registered payee..."
