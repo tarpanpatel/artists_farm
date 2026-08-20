@@ -9,6 +9,15 @@ export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextArea
   fullWidth?: boolean;
 }
 
+const textareaTheme = {
+  base: "block w-full rounded-lg border text-sm disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:text-gray-500 dark:disabled:text-gray-400 disabled:border-gray-300 dark:disabled:border-gray-600 disabled:opacity-100 transition-colors",
+  colors: {
+    gray: "bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500",
+    failure: "border-red-500 bg-red-50 text-red-900 placeholder-red-700 focus:border-red-500 focus:ring-red-500 dark:border-red-400 dark:bg-red-100 dark:focus:border-red-500 dark:focus:ring-red-500",
+    success: "border-green-500 bg-green-50 text-green-900 placeholder-green-700 focus:border-green-500 focus:ring-green-500 dark:border-green-400 dark:bg-green-100 dark:focus:border-green-500 dark:focus:ring-green-500",
+  },
+};
+
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   (
     {
@@ -44,10 +53,9 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           ref={ref}
           id={textareaId}
           disabled={disabled}
+          theme={textareaTheme as any}
           color={hasError ? 'failure' : (color as any)}
-          className={`
-            w-full ${className} textarea__field form-field__textarea
-          `}
+          className={`w-full ${className} textarea__field form-field__textarea`}
           {...(props as any)}
         />
         {errorMessage ? (

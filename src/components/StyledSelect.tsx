@@ -113,18 +113,18 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
           <button
             type="button"
             id={id}
-            className={`app-select-button peer group w-full flex items-center justify-between gap-2 px-3.5 border transition-all duration-200 outline-none h-10 rounded-lg font-normal text-sm ${
+            className={`app-select-button peer group w-full flex items-center justify-between gap-2 px-3.5 border transition-colors outline-none h-10 rounded-lg font-normal text-sm ${
               disabled
-                ? 'opacity-60 cursor-not-allowed border-[var(--select-border-default)] text-[var(--input-text-disabled)]'
+                ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600 cursor-not-allowed opacity-100'
                 : error
-                ? 'border-[var(--input-border-error)] focus:ring-4 focus:ring-[var(--input-ring-error)] cursor-pointer'
-                : 'border-[var(--select-border-default)] hover:border-[var(--select-border-hover)] focus:border-[var(--select-border-focus)] focus:ring-4 focus:ring-[var(--select-ring-focus)] cursor-pointer'
+                ? 'bg-gray-50 dark:bg-gray-700 border-red-500 focus:ring-4 focus:ring-red-200 dark:focus:ring-red-900 cursor-pointer text-gray-900 dark:text-white'
+                : 'bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:border-blue-500 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/30 cursor-pointer'
             } ${buttonClassName} styled-select__trigger form-field__select`}
           >
-            <span className={`truncate text-inherit ${selected ? 'text-[var(--input-text-default)]' : 'text-[var(--input-placeholder)]'} styled-select__value`}>
+            <span className={`truncate text-inherit ${disabled ? 'text-gray-500 dark:text-gray-400' : selected ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'} styled-select__value`}>
               {selected ? selected.label : placeholder}
             </span>
-            <ChevronDown className="w-4 h-4 text-[var(--input-placeholder)] shrink-0 transition-transform group-focus:rotate-180 styled-select__chevron" />
+            <ChevronDown className={`w-4 h-4 shrink-0 transition-transform group-focus:rotate-180 styled-select__chevron ${disabled ? 'text-gray-400 dark:text-gray-500' : 'text-gray-500 dark:text-gray-400'}`} />
           </button>
         )}
       >

@@ -1033,6 +1033,28 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const [selectedWalkInTabId, setSelectedWalkInTabId] = useState<number | null>(null);
   const [newTabLabel, setNewTabLabel] = useState('');
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  // "Start Order" (20 Aug 2026): opening the walk-in tab used to be deferred
+  // until the whole order was sent to the kitchen (see targetTabId in
+  // handleOrderSubmit below), so a named customer never showed up as a
+  // pill alongside the other open tabs until after their first order was
+  // fully placed. Now it opens the tab the moment the name is confirmed,
+  // so it appears immediately next to "Walk-in · ₹..." while the guest is
+  // still building their cart.
+  const [isStartingNewTab, setIsStartingNewTab] = useState(false);
+  const handleStartWalkInOrder = async () => {
+    const trimmedLabel = newTabLabel.trim();
+    if (!trimmedLabel || isStartingNewTab) return;
+    setIsStartingNewTab(true);
+    const newTabId = await openWalkInTabDB(trimmedLabel);
+    setIsStartingNewTab(false);
+    if (newTabId == null) {
+      showToast(t('tab_open_failed_toast', 'Could not start a new tab. Please try again.'), { type: 'error' });
+      return;
+    }
+    await refreshWalkInTabs();
+    setSelectedWalkInTabId(newTabId);
+    setNewTabLabel('');
+  };
 
   useEffect(() => {
     const container = document.querySelector('.take-food-order-container');
@@ -1225,7 +1247,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           <TabItem
             active={activeTab === 'kds'}
             title={`${t('live_active_orders_label', 'Live Tickets')}${pendingOrdersCount > 0 ? ` (${pendingOrdersCount})` : ''}`}
-            icon={Clock}
           >
             {(() => {
               const activeOrders = orders.filter((o) => o.status === 'Pending' || o.status === 'Preparing');
@@ -1527,7 +1548,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           <TabItem
             active={activeTab === 'new_order'}
             title={t('create_resident_order_button', 'Take Order')}
-            icon={UtensilsCrossed}
           >
             {(() => {
         // Was `checkedInGuests[0] || checkedInGuests.find(...)` - the OR
@@ -1767,7 +1787,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                         : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white font-medium'
                     }`}
                   >
-                    {t('order_mode_walkin_button', 'Walk-in / Counter')}
+                    {t('order_mode_walkin_button', 'Walk-in Guest')}
                   </button>
                 </div>
               </div>
@@ -1817,17 +1837,33 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                         />
                       </div>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => setSelectedWalkInTabId(null)}
-                      className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer shrink-0 whitespace-nowrap ${
-                        selectedWalkInTabId === null
-                          ? 'bg-blue-600 border-blue-600 text-white shadow-md'
-                          : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-blue-400'
-                      }`}
-                    >
-                      + {t('new_customer_button', 'New Customer')}
-                    </button>
+                    {selectedWalkInTabId === null ? (
+                      // "Start Order" (20 Aug 2026) - once a name is typed,
+                      // this button opens the tab right away (rather than
+                      // waiting for the first order to be sent) so it shows
+                      // up as its own pill below immediately, next to any
+                      // other open tab like "Walk-in".
+                      <button
+                        type="button"
+                        onClick={handleStartWalkInOrder}
+                        disabled={!newTabLabel.trim() || isStartingNewTab}
+                        className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-all shrink-0 whitespace-nowrap ${
+                          newTabLabel.trim() && !isStartingNewTab
+                            ? 'bg-blue-600 border-blue-600 text-white shadow-md hover:bg-blue-700 cursor-pointer'
+                            : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                        }`}
+                      >
+                        {isStartingNewTab ? t('starting_order_button', 'Starting…') : t('start_order_button', 'Start Order')}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedWalkInTabId(null)}
+                        className="px-3 py-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer shrink-0 whitespace-nowrap bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-blue-400"
+                      >
+                        + {t('new_customer_button', 'New Customer')}
+                      </button>
+                    )}
                   </div>
 
                   {openTabs.length > 0 && (
