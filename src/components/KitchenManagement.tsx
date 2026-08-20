@@ -2126,7 +2126,13 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 {/* Right-Aligned White Pull-Tab Attached to Top Edge of Cart */}
                 <button
                   onClick={() => setIsCartDrawerExpanded(!isCartDrawerExpanded)}
-                  className="absolute top-0 right-4 -translate-y-full bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-bold px-4 py-1.5 rounded-t-xl border-t border-x border-b-0 border-gray-200 dark:border-gray-700 shadow-sm flex items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 z-20"
+                  // No shadow and no bottom border - it's meant to read as
+                  // one continuous surface with the drawer below it, not a
+                  // separate floating chip (found 20 Aug 2026: shadow-sm
+                  // still cast a visible line along the bottom edge even
+                  // with border-b-0, since box-shadow isn't clipped by the
+                  // missing border).
+                  className="absolute top-0 right-4 -translate-y-full bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-bold px-4 py-1.5 rounded-t-xl border-t border-x border-b-0 border-gray-200 dark:border-gray-700 flex items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 z-20"
                   aria-label="Toggle Cart Drawer"
                 >
                   {isCartDrawerExpanded ? (
@@ -2216,7 +2222,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           <TabItem
             active={activeTab === 'walk_in_bills'}
             title={`${t('walk_in_bills_button', 'Walk-ins')}${walkInTabs.filter((tab) => tab.status === 'open').length > 0 ? ` (${walkInTabs.filter((tab) => tab.status === 'open').length})` : ''}`}
-            icon={Receipt}
           >
         <div className="space-y-6 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-3.5 sm:p-4">
           <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 space-y-4">
@@ -2235,7 +2240,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               <div className="text-center py-10 border-2 border-dashed border-slate-200 dark:border-slate-600 rounded-lg">
                 <Receipt className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
                 <p className="text-slate-500 dark:text-slate-400 font-semibold text-sm">{t('no_open_tabs_text', 'No open walk-in tabs')}</p>
-                <p className="text-slate-400 dark:text-slate-500 text-xs mt-1">{t('no_open_tabs_hint', 'Start one from Take Food Order in Walk-in / Counter mode.')}</p>
+                <p className="text-slate-400 dark:text-slate-500 text-xs mt-1">{t('no_open_tabs_hint', 'Start one from Take Food Order in Walk-in Guest mode.')}</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">

@@ -51,3 +51,22 @@ On screens with search and category filtering (e.g. `MenuManager.tsx`, `Inventor
 - The category filter pills bar/carousel is revealed **only when the user clicks the filter toggle button**.
 - Active filter indication: When a non-default category is selected and the filter bar is collapsed, display an active dot indicator on the filter toggle button.
 
+## Single Calendar Specification (Flowbite Application UI Demo Calendar)
+
+Canonical reference: https://flowbite.com/application-ui/demo/pages/calendar/
+
+All single monthly calendars across the platform (such as single-room booking calendars, operational overview calendars, and attendance views) must follow the Flowbite Application UI Calendar layout:
+- **Card Container**: `bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden`
+- **Toolbar / Header**:
+  - Month & year title (`text-base sm:text-lg font-bold text-gray-900 dark:text-white`) paired with navigation buttons (`<`, `>` chevron controls) and a quick `"Today"` jump button.
+  - Context badges or action buttons aligned cleanly on the right.
+- **Day-of-Week Columns**:
+  - 7-column header grid (`grid grid-cols-7 border-y border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 py-2.5`) with uppercase tracking (`text-xs font-semibold uppercase tracking-wider text-center text-gray-500 dark:text-gray-400`).
+- **Calendar Grid & Cells**:
+  - 7-column grid using standard Flowbite grid dividers (`grid grid-cols-7 divide-x divide-y divide-gray-200 dark:divide-gray-700 border-b border-gray-200 dark:border-gray-700`).
+  - Leading/trailing inactive cells: `min-h-[100px] p-2 bg-gray-50/50 dark:bg-gray-800/40`.
+  - Active cells: `min-h-[100px] p-2 bg-white dark:bg-gray-800 flex flex-col justify-between`.
+  - Today date badge: highlighted with a blue circular badge (`inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold shadow-xs`).
+  - Event / Booking pills: `rounded-md px-2 py-1 text-xs font-medium shadow-2xs` using Flowbite semantic color tokens (`blue`, `purple`, `emerald`, `amber`, `gray`).
+
+

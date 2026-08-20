@@ -722,40 +722,52 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       </div>
       )}
 
-      {/* Booking Calendar Row - Full Width Spread Out at Bottom */}
-      <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 space-y-4">
-        {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
-          <h3 className="operational-dashboard__subtitle font-semibold text-slate-900 dark:text-white text-base flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-blue-600" />
-            {roomName ? `${roomName} Calendar` : t('booking_calendar_heading', 'Booking Calendar')}
-          </h3>
-          <span className="text-xs font-semibold text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/40 px-3 py-1 rounded-lg border border-blue-200 dark:border-blue-800">
-            {monthName}
-          </span>
+      {/* Booking Calendar Row - Flowbite Application UI Calendar Standard */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden space-y-0">
+        {/* Header Toolbar */}
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-500" />
+              <h3 className="operational-dashboard__subtitle font-bold text-gray-900 dark:text-white text-base">
+                {roomName ? `${roomName} Calendar` : t('booking_calendar_heading', 'Booking Calendar')}
+              </h3>
+            </div>
+            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2.5 py-1 rounded-md border border-gray-200 dark:border-gray-600">
+              {monthName}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onNavigate('new_booking')}
+              className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-xs px-3 py-1.5 inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>{t('new_booking_btn', 'New Booking')}</span>
+            </button>
+          </div>
         </div>
 
         {/* Days Header */}
-        <div className="grid grid-cols-7 gap-2 text-center text-xs font-semibold text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wider">
-          <div>Sun</div>
-          <div>Mon</div>
-          <div>Tue</div>
-          <div>Wed</div>
-          <div>Thu</div>
-          <div>Fri</div>
-          <div>Sat</div>
+        <div className="grid grid-cols-7 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 py-2.5">
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
+            <div key={d} className="text-xs font-semibold uppercase tracking-wider text-center text-gray-500 dark:text-gray-400">
+              {d}
+            </div>
+          ))}
         </div>
 
-        {/* Calendar Grid - Full Width Spread Out */}
+        {/* Calendar Grid - Full Width Dividers */}
         {(() => {
           const allOccupiedDateStrings = [
             ...guests.flatMap((g) => expandRangeToDayStrings(g.checkinDate, g.expectedCheckout || (g as any).checkoutDate || g.checkinDate)),
             ...blockedDates.flatMap((bd) => expandRangeToDayStrings(bd.event_start, bd.event_end)),
           ];
           return (
-        <div className="grid grid-cols-7 gap-2 text-xs">
+        <div className="grid grid-cols-7 divide-x divide-y divide-gray-200 dark:divide-gray-700 text-xs">
           {Array.from({ length: firstDay }).map((_, idx) => (
-            <div key={`empty-${idx}`} className="h-24 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/40" />
+            <div key={`empty-${idx}`} className="min-h-[96px] sm:min-h-[110px] p-2 bg-gray-50/50 dark:bg-gray-800/40" />
           ))}
 
           {daysArray.map((d) => {
@@ -788,59 +800,47 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             const amount = (dayBooking as any)?.totalCharge || (dayBooking as any)?.totalAmount || (dayBooking as any)?.total_charge || 0;
             const nightlyRate = Math.round(amount / Math.max(1, 1));
 
-            const colors = [
-              'bg-teal-600 dark:bg-teal-600',
-              'bg-emerald-600 dark:bg-emerald-600',
-              'bg-blue-600 dark:bg-blue-600',
-              'bg-purple-600 dark:bg-purple-600',
-              'bg-pink-600 dark:bg-pink-600',
-              'bg-orange-600 dark:bg-orange-600',
-              'bg-red-600 dark:bg-red-600',
-              'bg-indigo-600 dark:bg-indigo-600',
-            ];
-            // Flat/muted, distinct from every active color above - this calendar
-            // never filtered out Checked Out bookings (unlike the multi-room one),
-            // but rendered them identically to active stays, which is exactly the
-            // "can't tell what's actually happening now" problem greying this out
-            // fixes.
-            const checkedOutColor = 'bg-slate-300 dark:bg-slate-600 text-slate-700 dark:text-slate-200';
+            // Flowbite semantic chip colors
+            const checkedOutColor = 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600';
             const isDayBookingCheckedOut = (() => {
               const s = String((dayBooking as any)?.status || '').trim().toLowerCase();
               return s === 'checkedout' || s === 'checked out';
             })();
 
-            let guestColorIndex = 0;
-            if (dayBooking) {
-              const guestIdNum = parseInt(String(dayBooking.id), 10) || 0;
-              guestColorIndex = guestIdNum % colors.length;
-            }
-            // Bookings converted from an OTA block get a dedicated amber tone
-            // instead of the per-guest hash color above (which stays reserved for
-            // telling simultaneous offline bookings apart) - plus a Globe icon,
-            // so the distinction survives color-blindness/grayscale printing too.
             const isOtaBooking = !!(dayBooking as any)?.otaSource;
-            const otaBookingColor = 'bg-amber-600 dark:bg-amber-700';
+            const otaBookingColor = 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800';
+            const directBookingColor = 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800';
 
             return (
               <div
                 key={`day-${d}`}
-                className={`h-24 rounded-lg border p-2 transition-all flex flex-col justify-between ${
+                className={`min-h-[96px] sm:min-h-[110px] p-1.5 sm:p-2 flex flex-col justify-between transition-colors ${
                   isToday
-                    ? 'bg-blue-50/70 dark:bg-blue-900/20 border-blue-400 dark:border-blue-500 ring-2 ring-blue-400/30'
-                    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+                    ? 'bg-blue-50/40 dark:bg-blue-900/10'
+                    : 'bg-white dark:bg-gray-800 hover:bg-gray-50/60 dark:hover:bg-gray-700/30'
                 }`}
               >
-                <span className={`text-xs font-semibold ${isToday ? 'text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300'}`}>{d}</span>
+                <div className="flex items-center justify-between">
+                  {isToday ? (
+                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold shadow-xs">
+                      {d}
+                    </span>
+                  ) : (
+                    <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 ml-0.5">
+                      {d}
+                    </span>
+                  )}
+                </div>
                 {dayBooking && (
                   <button
                     onClick={() => setSelectedBooking(dayBooking)}
-                    className={`rounded-md px-2 py-1.5 ${isDayBookingCheckedOut ? checkedOutColor : isOtaBooking ? `text-white ${otaBookingColor}` : `text-white ${colors[guestColorIndex]}`} text-xs font-semibold flex flex-col justify-center shadow-md hover:shadow-md transition-all cursor-pointer truncate w-full`}
+                    className={`rounded-md px-2 py-1 ${isDayBookingCheckedOut ? checkedOutColor : isOtaBooking ? otaBookingColor : directBookingColor} text-xs font-medium flex flex-col justify-center shadow-2xs hover:opacity-90 transition-opacity cursor-pointer truncate w-full text-left`}
                   >
                     <div className="truncate font-semibold flex items-center gap-1">
                       {isOtaBooking && <Globe className="w-2.5 h-2.5 shrink-0" />}
                       <span className="truncate">{dayBooking.guestName.split(' ')[0]}</span>
                     </div>
-                    {nightlyRate > 0 && <div className="text-[10px] font-semibold opacity-90">₹{nightlyRate}</div>}
+                    {nightlyRate > 0 && <div className="text-2xs font-normal opacity-85">₹{nightlyRate}</div>}
                   </button>
                 )}
                 {dayBookingOverflowCount > 0 && (
