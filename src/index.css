@@ -1044,15 +1044,86 @@ html.dark, .dark {
   background-color: var(--table-row-bg) !important;
   color: var(--table-body-color) !important;
   border-top: 1px solid var(--table-border-color) !important;
+  font-size: 0.75rem !important;
+  font-weight: 500 !important;
+  min-height: 48px !important;
+  padding: 0 12px !important;
 }
 
 .rdt_Pagination select {
-  background-color: transparent !important;
-  color: inherit !important;
+  background-color: #f9fafb !important;
+  color: #111827 !important;
+  border: 1px solid #d1d5db !important;
+  border-radius: 6px !important;
+  font-size: 0.75rem !important;
+  font-weight: 500 !important;
+  padding: 3px 22px 3px 8px !important;
+  margin: 0 6px !important;
+  cursor: pointer !important;
+  outline: none !important;
+  height: 28px !important;
+  line-height: 1 !important;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
+  background-position: right 4px center !important;
+  background-repeat: no-repeat !important;
+  background-size: 16px 16px !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}
+
+.rdt_Pagination select:hover {
+  background-color: #f3f4f6 !important;
+  border-color: #9ca3af !important;
+}
+
+.rdt_Pagination select:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+}
+
+.rdt_Pagination select option {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  font-size: 0.75rem !important;
+  padding: 6px 10px !important;
+}
+
+html.dark .rdt_Pagination select {
+  background-color: #374151 !important;
+  color: #f3f4f6 !important;
+  border-color: #4b5563 !important;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
+}
+
+html.dark .rdt_Pagination select:hover {
+  background-color: #4b5563 !important;
+}
+
+html.dark .rdt_Pagination select option {
+  background-color: #1f2937 !important;
+  color: #f3f4f6 !important;
 }
 
 .rdt_Pagination button {
   fill: var(--table-head-color) !important;
+  border-radius: 6px !important;
+  padding: 6px !important;
+  margin: 0 2px !important;
+  cursor: pointer !important;
+  transition: background-color 0.15s ease !important;
+}
+
+.rdt_Pagination button:hover:not(:disabled) {
+  background-color: #f3f4f6 !important;
+}
+
+html.dark .rdt_Pagination button:hover:not(:disabled) {
+  background-color: #374151 !important;
+}
+
+.rdt_Pagination button:disabled {
+  opacity: 0.4 !important;
+  cursor: not-allowed !important;
 }
 
 

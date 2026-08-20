@@ -1983,6 +1983,7 @@ ${itemsStr}
                     propertyGstin={preloadedData.currentProperty?.gstin || ''}
                     propertyUpiId={preloadedData.currentProperty?.upi_id || ''}
                     propertyUpiQrCodeUrl={preloadedData.currentProperty?.upi_qr_code_url || ''}
+                    propertyWalkInTableCount={preloadedData.currentProperty?.walk_in_table_count || 10}
                   />
                 </ErrorBoundary>
               )}

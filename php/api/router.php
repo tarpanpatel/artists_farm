@@ -182,6 +182,25 @@ if (!isSchemaVerified('schema_properties_table_v3')) {
     markSchemaVerified('schema_properties_table_v3');
 }
 
+// Self-healing column check for `properties.walk_in_table_count` - how many
+// numbered tables (Table 1..N) the walk-in tab picker in Kitchen's Take
+// Order screen offers. Was going to be a hardcoded 1-10 range, but that
+// breaks the moment any tenant actually has a different table count (found
+// while building the walk-in table picker, 20 Aug 2026) - per-property and
+// self-healing for the same reason upi_id/upi_qr_code_url are: no manual
+// migration step needed on prod. Defaults to 10 (a reasonable guess for an
+// existing property with nothing set) rather than 0, so the picker never
+// renders empty for a property that hasn't visited Edit Property yet.
+if (!isSchemaVerified('schema_properties_table_v4')) {
+    try {
+        $propertiesColsV4 = $pdo->query("SHOW COLUMNS FROM properties")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('walk_in_table_count', $propertiesColsV4)) {
+            $pdo->exec("ALTER TABLE properties ADD COLUMN `walk_in_table_count` INT DEFAULT 10 AFTER `upi_qr_code_url`");
+        }
+    } catch (Exception $e) {}
+    markSchemaVerified('schema_properties_table_v4');
+}
+
 /**
  * A property's "Super Admin" staff row is not an independent staff account -
  * it IS the tenant, and there is exactly one of them, always. This keeps
@@ -2240,6 +2259,14 @@ switch ($action) {
             if (array_key_exists('upi_qr_code_url', $input)) {
                 $sets[] = 'upi_qr_code_url = ?';
                 $params[] = trim($input['upi_qr_code_url']) ?: null;
+            }
+            if (array_key_exists('walk_in_table_count', $input)) {
+                // Clamp to a sane range rather than trusting the client outright -
+                // 0/negative would make the walk-in picker unusable, and there's
+                // no realistic property with hundreds of physical tables.
+                $rawCount = (int) $input['walk_in_table_count'];
+                $sets[] = 'walk_in_table_count = ?';
+                $params[] = max(1, min(200, $rawCount ?: 10));
             }
             if (array_key_exists('telegram_template_customization_enabled', $input)) {
                 $sets[] = 'telegram_template_customization_enabled = ?';

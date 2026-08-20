@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal, ModalHeader, ModalBody, ModalFooter, Drawer as FlowbiteDrawer, DrawerItems, TextInput as FlowbiteTextInput, Checkbox } from 'flowbite-react';
 import { Button } from './Button';
 import { Input } from './Input';
+import { ToggleSwitch } from './ToggleSwitch';
 import { Tooltip } from './Tooltip';
 import DataTable from 'react-data-table-component';
 import { flowbiteTableCustomStyles } from '../utils/tableStyles';
@@ -102,6 +103,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const [updateFullName, setUpdateFullName] = useState('');
   const [updateUsername, setUpdateUsername] = useState('');
   const [updateRole, setUpdateRole] = useState<UserAccount['role'] | ''>('');
+  const [updateStatus, setUpdateStatus] = useState<'Active' | 'Disabled'>('Active');
   const [updatePasscode, setUpdatePasscode] = useState('');
   const [updateConfirmPasscode, setUpdateConfirmPasscode] = useState('');
   const [updateIsFinancialHandler, setUpdateIsFinancialHandler] = useState(false);
@@ -312,11 +314,13 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
    const handleEditUser = (user: any) => {
      setSelectedUpdateUserId(user.id);
-     setUpdateFullName(user.fullName);
-     setUpdateUsername(user.username);
+     setUpdateFullName(user.fullName || user.name || '');
+     setUpdateUsername(user.username || user.phone || '');
      setUpdateRole(user.role);
+     setUpdateStatus(user.status === 'Disabled' || user.status === 'Inactive' ? 'Disabled' : 'Active');
      setUpdatePasscode('');
-     setUpdateIsFinancialHandler(user.isFinancialHandler);
+     setUpdateConfirmPasscode('');
+     setUpdateIsFinancialHandler(Boolean(user.isFinancialHandler));
      setUpdateAccessAllProperties(Boolean(user.accessAllProperties));
      setUpdateQrCodeUrl(user.qrCodeUrl || '');
      setUpdateDailyWage(user.dailyWage ? String(user.dailyWage) : '');
@@ -402,6 +406,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
           fullName: updateFullName.trim(),
           username: updateUsername || targetUser.username,
           role: updateRole || targetUser.role,
+          status: updateStatus,
           passcode: updatePasscode || targetUser.passcodePin,
           isFinancialHandler: updateIsFinancialHandler,
           accessAllProperties: updateAccessAllProperties,
@@ -416,6 +421,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     setSelectedUpdateUserId('');
     setUpdateFullName('');
     setUpdateUsername('');
+    setUpdateStatus('Active');
     setUpdatePasscode('');
     setUpdateConfirmPasscode('');
     setUpdateRole('');
@@ -710,22 +716,27 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   },
                   {
                     name: 'STATUS',
-                    selector: (row: any) => row.isFinancialHandler ? 'Cash Handler' : 'Active',
+                    selector: (row: any) => row.status || 'Active',
                     sortable: true,
                     width: '200px',
-                    cell: (row: any) => (
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <div className="flex items-center gap-1.5">
-                          <div className="h-2.5 w-2.5 rounded-full bg-green-500 shrink-0" />
-                          <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Active</span>
+                    cell: (row: any) => {
+                      const isUserDisabled = row.status === 'Disabled' || row.status === 'Inactive';
+                      return (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <div className="flex items-center gap-1.5">
+                            <div className={`h-2.5 w-2.5 rounded-full ${isUserDisabled ? 'bg-red-500' : 'bg-green-500'} shrink-0`} />
+                            <span className={`text-xs font-medium ${isUserDisabled ? 'text-red-700 dark:text-red-400 font-semibold' : 'text-gray-700 dark:text-gray-300'}`}>
+                              {isUserDisabled ? 'Disabled' : 'Active'}
+                            </span>
+                          </div>
+                          {row.isFinancialHandler && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800">
+                              <CreditCard className="w-3 h-3" /> Cash Handler
+                            </span>
+                          )}
                         </div>
-                        {row.isFinancialHandler && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800">
-                            <CreditCard className="w-3 h-3" /> Cash Handler
-                          </span>
-                        )}
-                      </div>
-                    ),
+                      );
+                    },
                   },
                   {
                     name: 'UPI QR CODE',
@@ -1631,7 +1642,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 onChange={(e) => setRosterPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 placeholder="••••••"
                 inputMode="numeric"
-                className="text-center font-mono font-semibold tracking-widest"
+                className="text-slate-900 dark:text-white"
               />
             </div>
 
@@ -1730,7 +1741,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   placeholder="••••••"
                   inputMode="numeric"
-                  className="text-center text-slate-900 dark:text-white font-mono font-semibold tracking-widest text-xs"
+                  className="text-slate-900 dark:text-white"
                 />
               </div>
 
@@ -1745,7 +1756,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   onChange={(e) => setNewConfirmPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   placeholder="Re-enter new passcode"
                   inputMode="numeric"
-                  className="text-center text-slate-900 dark:text-white font-mono font-semibold tracking-widest text-xs"
+                  className="text-slate-900 dark:text-white"
                 />
               </div>
 
@@ -1876,7 +1887,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   onChange={(e) => setUpdatePasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   placeholder="Leave blank to keep current"
                   inputMode="numeric"
-                  className="text-center text-slate-900 dark:text-white font-mono font-semibold tracking-widest text-xs"
+                  className="text-slate-900 dark:text-white"
                 />
               </div>
 
@@ -1890,7 +1901,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   onChange={(e) => setUpdateConfirmPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   placeholder="Re-enter new passcode"
                   inputMode="numeric"
-                  className="text-center text-slate-900 dark:text-white font-mono font-semibold tracking-widest text-xs"
+                  className="text-slate-900 dark:text-white"
                 />
               </div>
 
@@ -1918,6 +1929,33 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   </div>
                 )}
               </div>
+
+              {!isEditingSuperAdmin && (
+                <div className="flex items-center justify-between p-3.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60">
+                  <div className="min-w-0 pr-3">
+                    <p className="text-xs font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                      <span>Account Status:</span>
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold ${
+                        updateStatus === 'Active'
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                          : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${updateStatus === 'Active' ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                        {updateStatus === 'Active' ? 'Active' : 'Disabled'}
+                      </span>
+                    </p>
+                    <p className="text-2xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      {updateStatus === 'Active'
+                        ? 'User can log in and access assigned modules'
+                        : 'User is disabled and blocked from logging into the platform'}
+                    </p>
+                  </div>
+                  <ToggleSwitch
+                    enabled={updateStatus === 'Active'}
+                    onChange={(active) => setUpdateStatus(active ? 'Active' : 'Disabled')}
+                  />
+                </div>
+              )}
 
               {isEditingSuperAdmin && (
                 <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-[11px] text-blue-800 dark:text-blue-300 leading-relaxed">

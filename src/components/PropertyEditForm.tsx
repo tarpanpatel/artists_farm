@@ -23,6 +23,7 @@ interface PropertyEditFormProps {
     gstin?: string;
     upi_id?: string;
     upi_qr_code_url?: string;
+    walk_in_table_count?: number;
     address?: string;
     google_maps_link?: string;
     instructions?: string;
@@ -58,6 +59,9 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
   const [gstin, setGstin] = useState(property.gstin || '');
   const [upiId, setUpiId] = useState(property.upi_id || '');
   const [upiQrCodeUrl, setUpiQrCodeUrl] = useState(property.upi_qr_code_url || '');
+  const [walkInTableCount, setWalkInTableCount] = useState(
+    property.walk_in_table_count != null ? String(property.walk_in_table_count) : '10'
+  );
   const [isUploadingQr, setIsUploadingQr] = useState(false);
   const [qrUploadError, setQrUploadError] = useState<string | null>(null);
   const [address, setAddress] = useState(property.address || '');
@@ -129,6 +133,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
         payload.gstin = gstin.trim().toUpperCase();
         payload.upi_id = upiId.trim();
         payload.upi_qr_code_url = upiQrCodeUrl.trim();
+        payload.walk_in_table_count = walkInTableCount;
         payload.address = address.trim();
         payload.google_maps_link = mapsLink.trim();
         payload.instructions = instructions;
@@ -278,6 +283,21 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {!isRoom && (
+        <div className="property-edit-form__field">
+          <Input
+            type="number"
+            min={1}
+            max={200}
+            label={t('walk_in_table_count_label', 'Number of Tables (Walk-in Orders)')}
+            value={walkInTableCount}
+            onChange={(e) => setWalkInTableCount(e.target.value)}
+            placeholder="10"
+            helperText={t('walk_in_table_count_help', "How many numbered tables (Table 1..N) the Kitchen walk-in order picker offers.")}
+          />
         </div>
       )}
 

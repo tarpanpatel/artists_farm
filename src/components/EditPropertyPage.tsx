@@ -24,6 +24,7 @@ interface EditPropertyPageProps {
     default_tariff?: number | null;
     checkin_time?: string | null;
     checkout_time?: string | null;
+    walk_in_table_count?: number;
   };
 }
 

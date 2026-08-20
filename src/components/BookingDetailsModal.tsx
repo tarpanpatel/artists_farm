@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2, Share2, LogOut, Upload, CreditCard, Globe, AlertTriangle, X } from 'lucide-react';
 import { Drawer as FlowbiteDrawer, DrawerItems, Checkbox } from 'flowbite-react';
-import { Button } from './Button';
 import { Badge } from './Badge';
 import { Guest } from '../types';
 import { markCFormFiled, checkinGuestInDB } from '../services/api';
@@ -718,6 +717,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           </div>
 
           {/* Modal Actions Footer: Clean Layout with Checkout on Bottom Right */}
+          {/* Modal Actions Footer: 3 Columns for Delete/Share/Edit, 2 Columns for Cancel/Save */}
           <div id="printableBookingDetailsActionsBar" className="booking-details-modal__footer mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
             {!isEditing ? (
               <div className="space-y-3 w-full">
@@ -737,76 +737,82 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                     }}
                     className="w-full h-10 px-4 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 active:scale-98"
                   >
-                    <CheckCircle2 className="w-4 h-4" />
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
                     <span>{t('mark_checked_in_button', 'Mark Checked In')}</span>
                   </button>
                 )}
 
-                {/* Bottom Buttons Bar */}
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  {/* Left Controls: Delete + Share with Guest */}
-                  <div className="flex items-center gap-2">
-                    {onDelete && (
-                      <button
-                        type="button"
-                        onClick={handleDelete}
-                        disabled={isDeleting}
-                        className="h-9 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 dark:text-rose-300 dark:border-rose-800 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
-                        title={t('today_delete_booking_button', 'Delete Booking')}
-                      >
-                        <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
-                        <span>{isDeleting ? t('deleting_button', 'Deleting...') : t('delete_button', 'Delete')}</span>
-                      </button>
-                    )}
+                {/* Checkout & Settle Bill (Full-width action if status is Checked In) */}
+                {onCheckout && (guest.status === GUEST_STATUS_CHECKED_IN || (guest.status as string) === GUEST_STATUS_ACTIVE_LEGACY) && (
+                  <button
+                    type="button"
+                    onClick={onCheckout}
+                    className="w-full h-10 px-4 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 active:scale-98"
+                  >
+                    <LogOut className="w-4 h-4 shrink-0" />
+                    <span>{t('checkout_settle_bill_button', 'Checkout & Settle Bill')}</span>
+                  </button>
+                )}
 
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={handleShareBooking}
-                      leftIcon={<Share2 className="w-4 h-4 text-emerald-600 shrink-0" />}
+                {/* 3 Columns: Delete, Share with Guest, Edit */}
+                <div className="grid grid-cols-3 gap-2.5 w-full">
+                  {onDelete ? (
+                    <button
+                      type="button"
+                      onClick={handleDelete}
+                      disabled={isDeleting}
+                      className="w-full h-10 px-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 dark:text-rose-300 dark:border-rose-800 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                      title={t('today_delete_booking_button', 'Delete Booking')}
                     >
-                      <span>{t('share_with_guest_button', 'Share with guest')}</span>
-                    </Button>
-                  </div>
+                      <Trash2 className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                      <span className="truncate">{isDeleting ? t('deleting_button', 'Deleting...') : t('delete_button', 'Delete')}</span>
+                    </button>
+                  ) : (
+                    <div />
+                  )}
 
-                  {/* Right Controls: Edit Button + Checkout & Settle Bill on bottom right */}
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => startEditing()}
-                      leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
-                    >
-                      <span>{t('edit_button', 'Edit')}</span>
-                    </Button>
+                  <button
+                    type="button"
+                    onClick={handleShareBooking}
+                    className="w-full h-10 px-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-300 dark:border-gray-600 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                    title={t('share_with_guest_button', 'Share with guest')}
+                  >
+                    <Share2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span className="truncate">{t('share_with_guest_button', 'Share')}</span>
+                  </button>
 
-                    {onCheckout && (guest.status === GUEST_STATUS_CHECKED_IN || (guest.status as string) === GUEST_STATUS_ACTIVE_LEGACY) && (
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={onCheckout}
-                        leftIcon={<LogOut className="w-4 h-4 shrink-0" />}
-                      >
-                        <span>{t('checkout_settle_bill_button', 'Checkout & Settle Bill')}</span>
-                      </Button>
-                    )}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => startEditing()}
+                    className="w-full h-10 px-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-300 dark:border-gray-600 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                    title={t('edit_button', 'Edit')}
+                  >
+                    <Pencil className="w-4 h-4 text-gray-600 dark:text-gray-400 shrink-0" />
+                    <span className="truncate">{t('edit_button', 'Edit')}</span>
+                  </button>
                 </div>
               </div>
             ) : (
-              <div className="flex items-center justify-end gap-2">
+              /* 2 Columns: Cancel, Save */
+              <div className="grid grid-cols-2 gap-2.5 w-full">
                 <button
                   type="button"
                   onClick={() => setIsEditing(false)}
                   disabled={isSaving}
-                  className="h-9 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                  className="w-full h-10 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 dark:border-gray-600 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  {t('cancel_button', 'Cancel')}
+                  <X className="w-4 h-4 shrink-0" />
+                  <span>{t('cancel_button', 'Cancel')}</span>
                 </button>
-                <Button variant="primary" size="sm" onClick={handleSave} disabled={isSaving}>
-                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="w-full h-10 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin shrink-0" /> : <Save className="w-4 h-4 shrink-0" />}
                   <span>{t('save_button', 'Save')}</span>
-                </Button>
+                </button>
               </div>
             )}
           </div>

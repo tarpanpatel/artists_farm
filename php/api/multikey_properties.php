@@ -564,7 +564,7 @@ function getMultiKeyProperty($pdo, $propertyId = 0, $currentProperty = []) {
         $stmt = $pdo->prepare("
             SELECT id, tenant_id, name, slug, property_type, address, currency, timezone, is_active, created_at,
                    email, phone, google_maps_link, whatsapp_voucher_template, gstin, upi_id, upi_qr_code_url, instructions,
-                   telegram_template_customization_enabled
+                   telegram_template_customization_enabled, walk_in_table_count
             FROM properties
             WHERE id = ? AND property_type = 'MULTI_KEY'
         ");
@@ -625,6 +625,7 @@ function getMultiKeyProperty($pdo, $propertyId = 0, $currentProperty = []) {
                 'gstin' => $property['gstin'] ?? null,
                 'upi_id' => $property['upi_id'] ?? null,
                 'upi_qr_code_url' => $property['upi_qr_code_url'] ?? null,
+                'walk_in_table_count' => (int)($property['walk_in_table_count'] ?? 10),
                 'whatsapp_voucher_template' => $property['whatsapp_voucher_template'] ?? null,
                 'telegram_template_customization_enabled' => (bool)($property['telegram_template_customization_enabled'] ?? false),
                 'address' => $property['address'],

@@ -27,7 +27,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
-  Receipt,
   User,
   Filter,
   LayoutGrid,
@@ -36,7 +35,7 @@ import {
 import { Guest, Order, OrderItem, MenuItem, Requisition, InventoryItem, WalkInTab } from '../types';
 import { GUEST_STATUS_CHECKED_IN, GUEST_STATUS_ACTIVE_LEGACY } from '../constants/guestStatus';
 import { recordTelescopeLog } from '../utils/telescopeLogger';
-import { resolveTelegramTemplate, fetchServedLogsFromDB, addServedLogToDB, fetchMaterialCategoriesFromDB, fetchRecipesFromDB, saveRecipeToDB, deleteRecipeFromDB, depleteStockForDish, getPropertySlug, updateOrderItemStatus, updateOrderStatusDB, updateItemReminderTimestamp, checkStaleReminders, StaleReminderItem, fetchTelegramConfigDB, fetchStaffMealOptionsFromDB, addStaffMealOptionToDB, fetchStaffMealLogsFromDB, addStaffMealLogToDB, addOrderToDB, fetchWalkInTabsFromDB, fetchWalkInTabHistoryFromDB, openWalkInTabDB } from '../services/api';
+import { resolveTelegramTemplate, fetchServedLogsFromDB, addServedLogToDB, fetchMaterialCategoriesFromDB, fetchRecipesFromDB, saveRecipeToDB, deleteRecipeFromDB, depleteStockForDish, getPropertySlug, updateOrderItemStatus, updateOrderStatusDB, updateItemReminderTimestamp, checkStaleReminders, StaleReminderItem, fetchTelegramConfigDB, fetchStaffMealOptionsFromDB, addStaffMealOptionToDB, fetchStaffMealLogsFromDB, addStaffMealLogToDB, addOrderToDB, fetchWalkInTabsFromDB, openWalkInTabDB } from '../services/api';
 import { StyledSelect } from './StyledSelect';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
@@ -88,6 +87,12 @@ interface KitchenManagementProps {
   propertyGstin?: string;
   propertyUpiId?: string;
   propertyUpiQrCodeUrl?: string;
+  // How many numbered tables the walk-in "Add New" picker offers (Table 1..N)
+  // - per-property (properties.walk_in_table_count, self-heals, defaults 10
+  // both in the DB and here) rather than a hardcoded 1-10 range, since a
+  // tenant with e.g. 20 tables would otherwise have no way to name half of
+  // them (found 20 Aug 2026).
+  propertyWalkInTableCount?: number;
 }
 
 // Sentinel dropdown value for the "New Customer" row in the walk-in tab
@@ -106,13 +111,14 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   propertyGstin = '',
   propertyUpiId = '',
   propertyUpiQrCodeUrl = '',
+  propertyWalkInTableCount = 10,
 }) => {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const { orders, addOrder, refreshOrders, updateOrderStatus, pendingOrdersCount } = useKitchenContext();
   const { inventory, requisitions } = useInventoryContext();
   const { currentUser, isAuthenticated } = useAuth();
-  const getInitialTab = (): 'kds' | 'new_order' | 'walk_in_bills' | 'menu_catalog' | 'requisitions' | 'staff_meals' | 'beta_recipe_builder' => {
+  const getInitialTab = (): 'kds' | 'new_order' | 'menu_catalog' | 'requisitions' | 'staff_meals' | 'beta_recipe_builder' => {
     const key = activeMenuItemKey || (typeof window !== 'undefined' ? window.location.hash.replace('#', '').trim() : '');
     if (key === 'take_food_order') return 'new_order';
     if (key === 'staff_meals') return 'staff_meals';
@@ -122,7 +128,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     return 'kds';
   };
 
-  const [activeTab, setActiveTab] = useState<'kds' | 'new_order' | 'walk_in_bills' | 'menu_catalog' | 'requisitions' | 'staff_meals' | 'beta_recipe_builder'>(getInitialTab);
+  const [activeTab, setActiveTab] = useState<'kds' | 'new_order' | 'menu_catalog' | 'requisitions' | 'staff_meals' | 'beta_recipe_builder'>(getInitialTab);
   const tabsRef = useRef<TabsRef>(null);
 
   useEffect(() => {
@@ -149,7 +155,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   }, []);
 
   useEffect(() => {
-    const tabOrder: ('kds' | 'new_order' | 'walk_in_bills')[] = ['kds', 'new_order', 'walk_in_bills'];
+    const tabOrder: ('kds' | 'new_order')[] = ['kds', 'new_order'];
     const index = tabOrder.indexOf(activeTab as any);
     if (index >= 0) {
       tabsRef.current?.setActiveTab(index);
@@ -197,23 +203,17 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   // rather than vanishing the instant the last item is tapped).
   const [completingOrderIds, setCompletingOrderIds] = useState<Record<string, 'completed' | 'processing'>>({});
 
-  // Walk-in tabs - open tabs (with their live running total) power both the
-  // "add to an existing tab" picker in New Order and the Walk-in Bills board.
-  // Loaded up front (not lazily per-tab) since New Order needs the list too.
+  // Walk-in tabs - open tabs (with their live running total) power the
+  // walk-in table picker + "Bill This Table" in Take Order (the standalone
+  // Walk-ins tab/board this used to also feed was removed 20 Aug 2026, once
+  // that same picker + billing became reachable directly from Take Order).
+  // Loaded up front (not lazily) since New Order needs the list too.
   const [walkInTabs, setWalkInTabs] = useState<WalkInTab[]>([]);
-  const [walkInTabsLoading, setWalkInTabsLoading] = useState(true);
   const refreshWalkInTabs = async () => {
     const data = await fetchWalkInTabsFromDB();
     setWalkInTabs(data.map(mapWalkInTabFromApi));
-    setWalkInTabsLoading(false);
   };
   useEffect(() => { refreshWalkInTabs(); }, []);
-
-  const [walkInTabHistory, setWalkInTabHistory] = useState<WalkInTab[]>([]);
-  useEffect(() => {
-    if (activeTab !== 'walk_in_bills') return;
-    fetchWalkInTabHistoryFromDB().then((data) => setWalkInTabHistory(data.map(mapWalkInTabFromApi)));
-  }, [activeTab]);
 
   const [billingTab, setBillingTab] = useState<WalkInTab | null>(null);
 
@@ -1055,8 +1055,12 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const handleStartWalkInOrder = async () => {
     const trimmedLabel = newTabLabel.trim();
     if (!trimmedLabel || isStartingNewTab) return;
+    // newTabLabel holds the raw picked table number ("5") from the dropdown
+    // below, not display text - the "Table N" label only gets composed here,
+    // right before it's actually saved.
+    const tabLabel = `Table ${trimmedLabel}`;
     setIsStartingNewTab(true);
-    const newTabId = await openWalkInTabDB(trimmedLabel);
+    const newTabId = await openWalkInTabDB(tabLabel);
     setIsStartingNewTab(false);
     if (newTabId == null) {
       showToast(t('tab_open_failed_toast', 'Could not start a new tab. Please try again.'), { type: 'error' });
@@ -1148,6 +1152,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           showToast(t('tab_open_failed_toast', 'Could not start a new tab. Please try again.'), { type: 'error' });
           return;
         }
+        // Defensive fallback path (the "+ Add New" popup normally opens and
+        // selects the tab before this ever runs) - keep it consistent with
+        // that flow so a tab opened this way also stays selected afterward.
+        setSelectedWalkInTabId(targetTabId);
       }
     }
 
@@ -1179,7 +1187,11 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     addOrder(newOrder);
     setCartItems([]);
     setNewTabLabel('');
-    setSelectedWalkInTabId(null);
+    // Deliberately NOT resetting selectedWalkInTabId here (20 Aug 2026) - a
+    // walk-in table usually gets more than one order sent to it over the
+    // course of a sitting, so staff should stay on the same table after
+    // "Send Order to Kitchen" instead of getting bounced back to "New
+    // Customer" and having to re-pick it for the next round.
     refreshOrders();
     refreshWalkInTabs();
   };
@@ -1240,13 +1252,13 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           text/shadow color changes on selection, so nothing shifts size or
           shape when a tab is clicked (§20's no-jitter rule generalized
           beyond just font-weight - see §21). Centered, not left-anchored. */}
-      {(activeTab === 'new_order' || activeTab === 'kds' || activeTab === 'walk_in_bills') && (
+      {(activeTab === 'new_order' || activeTab === 'kds') && (
         <Tabs
           ref={tabsRef}
           aria-label="Kitchen Management Tabs"
           variant="underline"
           onActiveTabChange={(tabIndex: number) => {
-            const tabs: ('kds' | 'new_order' | 'walk_in_bills')[] = ['kds', 'new_order', 'walk_in_bills'];
+            const tabs: ('kds' | 'new_order')[] = ['kds', 'new_order'];
             if (tabs[tabIndex]) {
               setActiveTab(tabs[tabIndex]);
               if (typeof window !== 'undefined') {
@@ -2222,87 +2234,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           );
         })()}
           </TabItem>
-
-          <TabItem
-            active={activeTab === 'walk_in_bills'}
-            title={`${t('walk_in_bills_button', 'Walk-ins')}${walkInTabs.filter((tab) => tab.status === 'open').length > 0 ? ` (${walkInTabs.filter((tab) => tab.status === 'open').length})` : ''}`}
-          >
-        <div className="space-y-6 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-3.5 sm:p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-                <Receipt className="w-4 h-4 text-emerald-600" /> {t('open_walk_in_tabs_heading', 'Open Tabs')}
-              </h3>
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">
-                {walkInTabs.filter((tab) => tab.status === 'open').length}
-              </span>
-            </div>
-
-            {walkInTabsLoading ? (
-              <p className="text-center py-8 text-slate-400 text-sm">{t('loading_text', 'Loading...')}</p>
-            ) : walkInTabs.filter((tab) => tab.status === 'open').length === 0 ? (
-              <div className="text-center py-10 border-2 border-dashed border-slate-200 dark:border-slate-600 rounded-lg">
-                <Receipt className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
-                <p className="text-slate-500 dark:text-slate-400 font-semibold text-sm">{t('no_open_tabs_text', 'No open walk-in tabs')}</p>
-                <p className="text-slate-400 dark:text-slate-500 text-xs mt-1">{t('no_open_tabs_hint', 'Start one from Take Food Order in Walk-in Guest mode.')}</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {walkInTabs.filter((tab) => tab.status === 'open').map((tab) => (
-                  <div key={tab.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-3.5 flex flex-col justify-between gap-3">
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-semibold text-slate-900 dark:text-white text-sm">{tab.label || t('walk_in_badge', 'Walk-in')}</h4>
-                        <span className="text-[10px] text-slate-400">{formatDateTimeDDMMYYYY(tab.openedAt)}</span>
-                      </div>
-                      <div className="space-y-1 text-xs text-slate-600 dark:text-slate-400 max-h-28 overflow-y-auto">
-                        {tab.items.map((it, idx) => (
-                          <div key={idx} className="flex justify-between">
-                            <span>{it.quantity}x {it.name}</span>
-                            <span>₹{it.lineTotal.toFixed(2)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700">
-                      <span className="font-bold text-slate-900 dark:text-white text-sm">₹{tab.subtotal.toLocaleString('en-IN')}</span>
-                      <button
-                        type="button"
-                        onClick={() => setBillingTab(tab)}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-3 py-1.5 rounded-lg cursor-pointer"
-                      >
-                        {t('bill_this_tab_heading', 'Bill This Tab')}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {walkInTabHistory.length > 0 && (
-            <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200/80 dark:border-slate-700 shadow-md overflow-hidden">
-              <div className="p-4 border-b border-slate-100 dark:border-slate-700">
-                <h3 className="font-semibold text-slate-800 dark:text-slate-200 text-sm">{t('recently_billed_heading', 'Recently Billed')}</h3>
-              </div>
-              <DataTable
-                columns={[
-                  { name: t('walk_in_badge', 'Walk-in'), selector: (row: WalkInTab) => row.label || '', sortable: true, cell: (row: WalkInTab) => <span className="font-semibold text-slate-800 dark:text-slate-200">{row.label || t('walk_in_badge', 'Walk-in')}</span> },
-                  { name: t('served_time_column', 'Served At'), selector: (row: WalkInTab) => row.billedAt || '', sortable: true, cell: (row: WalkInTab) => <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400">{row.billedAt ? formatDateTimeDDMMYYYY(row.billedAt) : '-'}</span> },
-                  { name: t('payment_method_label', 'Payment Method'), selector: (row: WalkInTab) => row.paymentMethod || '', sortable: true },
-                  { name: t('grand_total_label', 'Grand Total'), selector: (row: WalkInTab) => row.grandTotal || 0, sortable: true, cell: (row: WalkInTab) => <span className="font-semibold text-emerald-700 dark:text-emerald-400">₹{(row.grandTotal ?? 0).toLocaleString('en-IN')}</span> },
-                ]}
-                data={walkInTabHistory}
-                pagination
-                paginationPerPage={5}
-                paginationRowsPerPageOptions={[5, 10, 20]}
-                highlightOnHover
-                customStyles={flowbiteTableCustomStyles}
-              />
-            </div>
-          )}
-        </div>
-      </TabItem>
     </Tabs>
   )}
 
@@ -2313,7 +2244,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           onBilled={() => {
             refreshWalkInTabs();
             refreshOrders();
-            fetchWalkInTabHistoryFromDB().then((data) => setWalkInTabHistory(data.map(mapWalkInTabFromApi)));
           }}
           propertyName={propertyName}
           propertyGstin={propertyGstin}
@@ -2722,9 +2652,15 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           </div>
         </div>
       )}
-        {/* ADD NEW WALK-IN CUSTOMER MODAL - the walk-in picker above is a
-            closed dropdown, so this small popup is the only place left to
-            type a brand-new table/customer name (20 Aug 2026). */}
+        {/* ADD NEW WALK-IN TABLE MODAL - the walk-in picker above is a closed
+            dropdown, so this small popup is the only place left to pick a
+            table number for a brand-new tab (20 Aug 2026: switched from a
+            free-text name to a fixed Table 1..N picker - tables are numbered,
+            not named, and a picker avoids typos/duplicate-but-different
+            spellings of the same table ending up as separate tabs). Options
+            come from propertyWalkInTableCount (self-heals, defaults 10) so
+            this scales to however many tables a given property actually
+            has, instead of a hardcoded range. */}
         <Modal
           show={isAddNewWalkInOpen}
           onClose={() => { setIsAddNewWalkInOpen(false); setNewTabLabel(''); }}
@@ -2734,21 +2670,36 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         >
           <ModalHeader as="div">
             <h3 className="kitchen-management__subtitle font-semibold text-slate-800 dark:text-slate-200 text-xs tracking-wide flex items-center gap-2">
-              <Plus className="w-4 h-4" /> {t('add_new_walk_in_heading', 'Add New Walk-in')}
+              <Plus className="w-4 h-4" /> {t('add_new_walk_in_heading', 'Add New Table')}
             </h3>
           </ModalHeader>
           <ModalBody className="space-y-4">
-            <Input
-              label={t('walk_in_name_placeholder', 'Table / customer name')}
-              type="text"
-              placeholder={t('e_g_table_5_placeholder', 'e.g. Table 5, Rahul')}
-              value={newTabLabel}
-              onChange={(e) => setNewTabLabel(e.target.value)}
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && newTabLabel.trim() && !isStartingNewTab) handleStartWalkInOrder();
-              }}
-            />
+            {(() => {
+              const totalTables = Math.max(1, propertyWalkInTableCount || 10);
+              const openTabsForPicker = walkInTabs.filter((tab) => tab.status === 'open');
+              const tableOptions = Array.from({ length: totalTables }, (_, i) => {
+                const n = i + 1;
+                const label = `Table ${n}`;
+                const occupiedTab = openTabsForPicker.find((tab) => tab.label === label);
+                return {
+                  value: String(n),
+                  label: occupiedTab
+                    ? `${label} (in use · ₹${occupiedTab.subtotal.toLocaleString('en-IN')})`
+                    : label,
+                  disabled: !!occupiedTab,
+                };
+              });
+              return (
+                <StyledSelect
+                  label={t('table_number_label', 'Table Number')}
+                  searchable
+                  value={newTabLabel}
+                  onChange={(val) => setNewTabLabel(val)}
+                  options={tableOptions}
+                  placeholder={t('select_table_placeholder', 'Select a table...')}
+                />
+              );
+            })()}
             <Button
               variant="primary"
               size="md"

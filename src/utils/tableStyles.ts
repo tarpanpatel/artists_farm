@@ -86,7 +86,7 @@ export const flowbiteTableCustomStyles: TableStyles = {
   },
   pagination: {
     style: {
-      fontSize: '0.875rem',
+      fontSize: '0.75rem',
       color: 'var(--table-body-color, #6b7280)',
       backgroundColor: 'var(--table-row-bg, #ffffff)',
       borderTopWidth: '1px',
@@ -95,6 +95,13 @@ export const flowbiteTableCustomStyles: TableStyles = {
       minHeight: '48px',
     },
     pageButtonsStyle: {
+      borderRadius: '6px',
+      height: '32px',
+      width: '32px',
+      padding: '6px',
+      margin: '0 2px',
+      cursor: 'pointer',
+      transition: '0.15s ease',
       fill: 'var(--table-head-color, #374151)',
     },
   },

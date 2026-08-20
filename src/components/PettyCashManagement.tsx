@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo, useReducer } from 'react';
-import { Modal, ModalHeader, ModalBody, ModalFooter, Card, TextInput, Label, Checkbox } from 'flowbite-react';
-import { X, Search, Pencil, FileText, ImageIcon, Landmark, Loader2, Clock, User, Scale, Building2, FolderOpen, Camera, Plus, Trash2, Settings } from 'lucide-react';
+import { Modal, ModalHeader, ModalBody, ModalFooter, Card, TextInput as FlowbiteTextInput, Label, Checkbox, Dropdown, DropdownItem } from 'flowbite-react';
+import { X, Search, Pencil, Edit2, FileText, FileSpreadsheet, ImageIcon, Landmark, Loader2, Clock, User, Scale, Building2, FolderOpen, Camera, Plus, Trash2, Settings, Filter } from 'lucide-react';
 import DataTable from 'react-data-table-component';
 import { flowbiteTableCustomStyles } from '../utils/tableStyles';
 import { PettyCashEntry } from '../types';
 import { Button } from './Button';
+import { Badge } from './Badge';
 import { useStaff } from '../contexts/StaffContext';
 import { useFinance } from '../contexts/FinanceContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
@@ -426,12 +427,12 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   const [editValue, setEditValue] = useState<string>('');
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
 
-  // Search & Pagination State
-  // Was hardcoded to '2026-07' - every month after July this silently filtered out
-  // newly added expenses, since the Add Expense form's date defaults to today (see
-  // expenseDate init below) but the ledger view stayed stuck showing July forever.
-  const [selectedMonth, setSelectedMonth] = useState<string>(() => new Date().toISOString().slice(0, 7));
+  // Search & Timeframe Filter State (Flowbite Application UI Transactions Pattern)
+  const currentMonthKey = new Date().toISOString().slice(0, 7);
+  const [selectedTimeframe, setSelectedTimeframe] = useState<string>(() => currentMonthKey);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'property' | 'pocket' | 'split'>('all');
+  const [mobilePage, setMobilePage] = useState<number>(1);
 
   // Fetch prices from DB on mount
   useEffect(() => {
@@ -551,11 +552,6 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
   // Derive list of unique months in entries for dropdown
   const uniqueMonths = Array.from(new Set(pettyCash.map(e => e.date.substring(0, 7)))).sort().reverse();
-  // Was hardcoded to '2026-07' - with zero expenses recorded yet, the dropdown's only
-  // option was permanently "July 2026" regardless of the real date, which didn't match
-  // selectedMonth (today's month) and rendered the picker as a blank "Select..." with
-  // no way to pick the month that would actually show a freshly-added expense.
-  const currentMonthKey = new Date().toISOString().slice(0, 7);
   if (uniqueMonths.length === 0 && !uniqueMonths.includes(currentMonthKey)) {
     uniqueMonths.push(currentMonthKey);
   }
@@ -889,15 +885,101 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     };
   });
 
-  // Filter entries
-  const filteredEntries = [...pettyCash, ...mappedKitchenEntries]
-    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
-    .filter(e => {
-      const matchesMonth = e.date.startsWith(selectedMonth);
-      const text = (e.description + ' ' + (e.category || e.costCategory || '') + ' ' + (e.paidBy || '') + ' ' + e.amount).toLowerCase();
-      const matchesSearch = text.includes(searchQuery.toLowerCase());
-      return matchesMonth && matchesSearch;
+  // Filter entries based on timeframe filter & live search
+  const filteredEntries = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+    const currentYearStr = new Date().getFullYear().toString();
+    const currMonthKey = new Date().toISOString().slice(0, 7);
+
+    return [...pettyCash, ...mappedKitchenEntries]
+      .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+      .filter((e) => {
+        let matchesTimeframe = true;
+        if (selectedTimeframe === 'last_7_days') {
+          matchesTimeframe = e.date >= sevenDaysAgo && e.date <= today;
+        } else if (selectedTimeframe === 'today') {
+          matchesTimeframe = e.date === today;
+        } else if (selectedTimeframe === 'yesterday') {
+          matchesTimeframe = e.date === yesterday;
+        } else if (selectedTimeframe === 'month_to_date') {
+          matchesTimeframe = e.date.startsWith(currMonthKey) && e.date <= today;
+        } else if (selectedTimeframe === 'year_to_date') {
+          matchesTimeframe = e.date.startsWith(currentYearStr) && e.date <= today;
+        } else if (selectedTimeframe === 'all_time') {
+          matchesTimeframe = true;
+        } else if (selectedTimeframe) {
+          matchesTimeframe = e.date.startsWith(selectedTimeframe);
+        }
+
+        let matchesSource = true;
+        const anyEntry = e as any;
+        const isOutOfPocket = anyEntry.staffAmount && Number(anyEntry.staffAmount) > 0 && Number(anyEntry.staffAmount) === Number(anyEntry.amount);
+        const isSplit = anyEntry.staffAmount && Number(anyEntry.staffAmount) > 0 && anyEntry.drawerAmount && Number(anyEntry.drawerAmount) > 0;
+        if (sourceFilter === 'property') {
+          matchesSource = !isOutOfPocket && !isSplit;
+        } else if (sourceFilter === 'pocket') {
+          matchesSource = Boolean(isOutOfPocket);
+        } else if (sourceFilter === 'split') {
+          matchesSource = Boolean(isSplit);
+        }
+
+        const text = `${e.description || ''} ${e.category || e.costCategory || ''} ${e.paidBy || ''} ${e.vendor || ''} ${e.paymentMode || ''} ${e.id || ''} ${e.amount || ''}`.toLowerCase();
+        const matchesSearch = !searchQuery.trim() || text.includes(searchQuery.toLowerCase().trim());
+        return matchesTimeframe && matchesSource && matchesSearch;
+      });
+  }, [pettyCash, mappedKitchenEntries, selectedTimeframe, searchQuery, sourceFilter]);
+
+  const handleExportCSV = () => {
+    if (filteredEntries.length === 0) {
+      showToast('No expense records to export for the selected filter.', { type: 'error' });
+      return;
+    }
+    const headers = ['ID', 'Date', 'Time', 'Category', 'Description', 'Vendor / Payee', 'Amount (INR)', 'Payment Mode', 'Source'];
+    const rows = filteredEntries.map((e: any) => [
+      e.id,
+      e.date,
+      e.time || '12:00',
+      `"${(e.category || e.costCategory || '').replace(/"/g, '""')}"`,
+      `"${(e.description || '').replace(/"/g, '""')}"`,
+      `"${(e.vendor || e.paidBy || '').replace(/"/g, '""')}"`,
+      e.amount,
+      `"${(e.paymentMode || '').replace(/"/g, '""')}"`,
+      `"${(e.source || 'property').replace(/"/g, '""')}"`,
+    ]);
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `cost_logs_${selectedTimeframe}_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast(`Exported ${filteredEntries.length} expense records to CSV`, { type: 'success' });
+  };
+
+  const handleGenerateReport = () => {
+    if (filteredEntries.length === 0) {
+      showToast('No expense records available to generate a report.', { type: 'error' });
+      return;
+    }
+    const totalAmount = filteredEntries.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const categoryTotals: Record<string, number> = {};
+    filteredEntries.forEach(e => {
+      const cat = e.category || e.costCategory || 'Other';
+      categoryTotals[cat] = (categoryTotals[cat] || 0) + (Number(e.amount) || 0);
     });
+
+    const categoryBreakdown = Object.entries(categoryTotals)
+      .map(([cat, amt]) => `• ${cat}: ₹${amt.toFixed(2)}`)
+      .join('\n');
+
+    const reportSummary = `Cost Logs Summary Report (${selectedTimeframe}):\n\nTotal Entries: ${filteredEntries.length}\nTotal Expenditure: ₹${totalAmount.toFixed(2)}\n\nCategory Breakdown:\n${categoryBreakdown}`;
+
+    window.alert(reportSummary);
+  };
 
   // Render Add Expense Form
   const renderAddExpenseForm = () => (
@@ -1382,281 +1464,342 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
         subtitle={t('petty_cash_ledger_subtitle', 'Track outgoing utility expenditures, daily kitchen purchases, salaries, and floats.')}
       />
 
-      {/* Add Expenses form on the left, registered expenses on the right */}
-      <div className="petty-cash-management__layout grid grid-cols-1 lg:grid-cols-[550px_1fr] gap-6 items-start">
-        <Card className="add-expenses-container w-full shadow-md border-gray-200 dark:border-gray-700">
-          <h3 className="petty-cash-management__subtitle font-semibold text-slate-900 dark:text-white text-sm mb-4 flex items-center gap-1.5">
-            {t('add_expenses_heading', 'ADD EXPENSES')}
-          </h3>
-          {renderAddExpenseForm()}
-        </Card>
-
-      <div className="petty-cash-management__right-panel space-y-6 min-w-0">
-      {/* Live Search & Filter Panel */}
-      <Card className="expenses-filter-bar shadow-md border-gray-200 dark:border-gray-700">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-2 w-full md:w-auto">
-            <span className="font-semibold text-xs text-slate-700 dark:text-slate-300">{t('select_ledger_month_label', 'Select Ledger Month')}</span>
-            <StyledSelect
-              value={selectedMonth}
-              onChange={setSelectedMonth}
-              options={uniqueMonths.map(m => {
-                const [y, mm] = m.split('-');
-                const dateObj = new Date(Number(y), Number(mm) - 1, 1);
-                const label = dateObj.toLocaleString('en-US', { month: 'long', year: 'numeric' });
-                return { value: m, label };
-              })}
-            />
-          </div>
-
-          <div className="flex-1 max-w-md w-full">
-            <TextInput
-              id="expenses-search"
-              type="text"
-              icon={Search}
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder={t('search_expenses_placeholder', 'Search descriptions, payment modes, payees...')}
-            />
-          </div>
-        </div>
+      {/* Add Expenses form on top (Full Width Card) */}
+      <Card className="add-expenses-container w-full shadow-md border-gray-200 dark:border-gray-700">
+        <h3 className="petty-cash-management__subtitle font-semibold text-slate-900 dark:text-white text-sm mb-4 flex items-center gap-1.5">
+          {t('add_expenses_heading', 'ADD EXPENSES')}
+        </h3>
+        {renderAddExpenseForm()}
       </Card>
 
-      {/* Cost Logs Mobile Cards with 10-Item Pagination (md:hidden) */}
-      <div className="md:hidden bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-3 space-y-2.5">
-        <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-700">
-          <h3 className="petty-cash-management__subtitle font-semibold text-slate-800 dark:text-white text-xs">
-            {t('cost_logs_for_label', 'Cost Logs for')} {new Date(Number(selectedMonth.split('-')[0]), Number(selectedMonth.split('-')[1]) - 1).toLocaleString('en-US', { month: 'long', year: 'numeric' })}
-          </h3>
-          <span className="text-slate-400 font-semibold text-[10px]">{filteredEntries.length} entries</span>
+      {/* COST / EXPENSE LOGS - Matching Flowbite Datatable like #past_receipts_log */}
+      <div id="past_expenses_log" className="audit-logs__receipts bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+        {/* Flowbite Datatable Toolbar */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+          <div className="flex flex-wrap items-center gap-2.5 flex-1">
+            {/* Search Input */}
+            <div className="relative w-full sm:w-72">
+              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500 dark:text-gray-400">
+                <Search className="w-4 h-4" />
+              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search expenses by description, payee, ID..."
+                className="h-10 bg-gray-50 border border-gray-300 text-gray-900 text-xs font-medium rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-9 pr-3 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+              />
+            </div>
+
+            {/* Timeframe Filter Dropdown */}
+            <div className="w-auto min-w-[200px]">
+              <select
+                value={selectedTimeframe}
+                onChange={(e) => setSelectedTimeframe(e.target.value)}
+                className="h-10 bg-gray-50 border border-gray-300 text-gray-900 text-xs font-medium rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full px-3 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white cursor-pointer"
+              >
+                <option value="last_7_days">Last 7 days</option>
+                <option value={currentMonthKey}>{`This Month (${new Date().toLocaleString('en-US', { month: 'short', year: 'numeric' })})`}</option>
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="month_to_date">Month to Date</option>
+                <option value="year_to_date">Year to Date</option>
+                <option value="all_time">All time</option>
+                {uniqueMonths.filter(m => m !== currentMonthKey).map(m => {
+                  const [y, mm] = m.split('-');
+                  const dateObj = new Date(Number(y), Number(mm) - 1, 1);
+                  return <option key={m} value={m}>{dateObj.toLocaleString('en-US', { month: 'long', year: 'numeric' })}</option>;
+                })}
+              </select>
+            </div>
+
+            {/* Source / Payment Filter Dropdown */}
+            <Dropdown
+              label=""
+              dismissOnClick
+              renderTrigger={() => (
+                <button
+                  type="button"
+                  className="h-10 inline-flex items-center justify-center gap-2 px-3 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-blue-700 focus:outline-none focus:ring-4 focus:ring-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:text-white dark:focus:ring-gray-700 cursor-pointer shadow-xs whitespace-nowrap"
+                >
+                  <Filter className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
+                  <span>
+                    {sourceFilter === 'all'
+                      ? 'All Sources'
+                      : sourceFilter === 'property'
+                      ? 'Property Funds'
+                      : sourceFilter === 'pocket'
+                      ? 'Out of Pocket'
+                      : 'Split'}
+                  </span>
+                </button>
+              )}
+            >
+              <DropdownItem onClick={() => setSourceFilter('all')}>All Sources</DropdownItem>
+              <DropdownItem onClick={() => setSourceFilter('property')}>Property Funds</DropdownItem>
+              <DropdownItem onClick={() => setSourceFilter('pocket')}>Out of Pocket</DropdownItem>
+              <DropdownItem onClick={() => setSourceFilter('split')}>Split Payment</DropdownItem>
+            </Dropdown>
+
+            {/* Export CSV Button */}
+            <button
+              type="button"
+              onClick={handleExportCSV}
+              className="h-10 inline-flex items-center justify-center gap-2 px-3 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-blue-700 focus:outline-none focus:ring-4 focus:ring-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:text-white dark:focus:ring-gray-700 cursor-pointer shadow-xs whitespace-nowrap"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
+              <span>Export CSV</span>
+            </button>
+
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-400 pl-1 whitespace-nowrap">
+              {filteredEntries.length} {filteredEntries.length === 1 ? 'entry' : 'entries'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Generate Report Button */}
+            <button
+              type="button"
+              onClick={handleGenerateReport}
+              className="h-10 inline-flex items-center justify-center gap-2 px-4 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 cursor-pointer shadow-xs whitespace-nowrap"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>Generate report</span>
+            </button>
+          </div>
         </div>
 
-        <div className="space-y-2.5">
-          {filteredEntries.slice((costLogsPage - 1) * 10, costLogsPage * 10).map((entry: any) => {
-            const cat = entry.category || entry.costCategory || '';
-            const payer = entry.paidBy || entry.vendor;
-            return (
-              <div key={entry.id} className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-lg border border-slate-200/80 dark:border-slate-700/80 space-y-2 text-xs">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="font-bold text-slate-900 dark:text-white">{entry.description}</div>
-                  <span className="font-bold text-slate-900 dark:text-white text-sm tabular-numbers">₹{entry.amount.toFixed(2)}</span>
-                </div>
-
-                {payer && (
-                  <div className="text-[11px] text-slate-500">
-                    Vendor/Payee: <span className="font-semibold text-slate-700 dark:text-slate-300">{payer}</span>
+        {/* Desktop DataTable (hidden md:block) */}
+        <div className="hidden md:block">
+          <DataTable
+            columns={[
+              {
+                name: 'Expense ID',
+                selector: (entry: any) => entry.id,
+                width: '120px',
+                minWidth: '110px',
+                cell: (entry: any) => (
+                  <div className="py-1">
+                    <span className="font-semibold text-gray-900 dark:text-white text-xs block">
+                      #{entry.id}
+                    </span>
+                    <span className="block text-2xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      {formatDateDDMMYYYY(entry.date)} {entry.time || '12:00'}
+                    </span>
                   </div>
-                )}
-
-                <div className="flex items-center justify-between text-slate-500 pt-1.5 border-t border-slate-200/60 dark:border-slate-800">
-                  <span className="px-2 py-0.5 rounded font-semibold text-[10px] bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                    {cat}
+                ),
+              },
+              {
+                name: t('category_column', 'Category'),
+                selector: (entry: any) => entry.category || entry.costCategory,
+                sortable: true,
+                width: '130px',
+                minWidth: '120px',
+                cell: (entry: any) => {
+                  const cat = entry.category || entry.costCategory || '';
+                  const isAutoSalary = cat === 'Salary (Auto)' || entry.description?.startsWith('Salary (Auto):');
+                  return (
+                    <div className="py-1">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                        {isAutoSalary ? 'Salary (Auto)' : cat}
+                      </span>
+                    </div>
+                  );
+                },
+              },
+              {
+                name: t('description_column', 'Description'),
+                selector: (entry: any) => entry.description,
+                sortable: true,
+                minWidth: '220px',
+                grow: 2,
+                cell: (entry: any) => {
+                  const payer = entry.paidBy || entry.vendor;
+                  return (
+                    <div className="py-1">
+                      <span className="font-semibold text-gray-900 dark:text-white block text-xs">{entry.description}</span>
+                      {entry.moreInfoNotes && <span className="block text-2xs text-gray-500 dark:text-gray-400 italic mt-0.5">{entry.moreInfoNotes}</span>}
+                      {payer && (
+                        <span className="block text-2xs text-gray-500 dark:text-gray-400 mt-0.5">
+                          Vendor/Payee: <strong className="text-gray-700 dark:text-gray-300">{payer}</strong>
+                        </span>
+                      )}
+                    </div>
+                  );
+                },
+              },
+              {
+                name: t('total_column', 'Total Amount'),
+                selector: (entry: any) => entry.amount,
+                sortable: true,
+                width: '120px',
+                minWidth: '110px',
+                cell: (entry: any) => (
+                  <span className="font-semibold text-gray-900 dark:text-white text-xs tabular-numbers">
+                    ₹{Number(entry.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </span>
-                  <span className="font-mono text-[11px]">{formatDateDDMMYYYY(entry.date)}</span>
+                ),
+              },
+              {
+                name: 'Status / Method',
+                width: '170px',
+                minWidth: '160px',
+                cell: (entry: any) => {
+                  const anyEntry = entry as any;
+                  const isOutofPocket = anyEntry.staffAmount && Number(anyEntry.staffAmount) > 0 && Number(anyEntry.staffAmount) === Number(anyEntry.amount);
+                  const isSplit = anyEntry.staffAmount && Number(anyEntry.staffAmount) > 0 && anyEntry.drawerAmount && Number(anyEntry.drawerAmount) > 0;
+                  return (
+                    <Badge variant={isSplit ? 'warning' : isOutofPocket ? 'default' : 'success'} size="sm">
+                      {isSplit ? 'Split (Till + Pocket)' : isOutofPocket ? 'Out of Pocket' : `Property (${entry.paymentMode || 'UPI'})`}
+                    </Badge>
+                  );
+                },
+              },
+              ...(canManageExpense ? [{
+                name: t('actions_column', 'Actions'),
+                width: '185px',
+                minWidth: '180px',
+                cell: (entry: any) => (
+                  <div className="flex items-center gap-2 whitespace-nowrap">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      className="whitespace-nowrap shrink-0 text-xs font-medium"
+                      onClick={() => setEditingEntry({ ...entry, time: entry.time || new Date().toTimeString().slice(0, 5) })}
+                      leftIcon={<Edit2 className="w-3.5 h-3.5 shrink-0" />}
+                    >
+                      {t('edit_button', 'Edit')}
+                    </Button>
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      className="whitespace-nowrap shrink-0 text-xs font-medium"
+                      onClick={() => (entry as any).source === 'kitchen' ? handleDeleteKitchenPurchase(entry.id, entry.description) : handleDeleteExpense(entry.id, entry.description)}
+                      leftIcon={<Trash2 className="w-3.5 h-3.5 shrink-0" />}
+                    >
+                      {t('delete_button', 'Delete')}
+                    </Button>
+                  </div>
+                ),
+              }] : []),
+            ]}
+            data={filteredEntries}
+            pagination
+            paginationPerPage={15}
+            paginationRowsPerPageOptions={[15, 30, 50, 100]}
+            highlightOnHover
+            customStyles={flowbiteTableCustomStyles}
+            progressPending={pettyCashLoading || kitchenPurchasesLoading}
+            progressComponent={
+              <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
+                <Loader2 className="w-4 h-4 animate-spin text-blue-600" /> Loading operational expenses...
+              </div>
+            }
+            noDataComponent={
+              <div className="text-center p-8 text-slate-400 font-semibold text-xs">
+                No operational expenses found matching the current search & filters.
+              </div>
+            }
+          />
+        </div>
+
+        {/* Touch-First Mobile Cards View with 10-Item Pagination */}
+        <div className="md:hidden p-4 space-y-3">
+          {(() => {
+            const paginatedEntries = filteredEntries.slice((mobilePage - 1) * 10, mobilePage * 10);
+            return (
+              <>
+                <div className="space-y-3">
+                  {paginatedEntries.map((entry: any) => {
+                    const isOutofPocket = entry.staffAmount && Number(entry.staffAmount) > 0 && Number(entry.staffAmount) === Number(entry.amount);
+                    const isSplit = entry.staffAmount && Number(entry.staffAmount) > 0 && entry.drawerAmount && Number(entry.drawerAmount) > 0;
+                    const payer = entry.paidBy || entry.vendor;
+                    const cat = entry.category || entry.costCategory || '';
+
+                    return (
+                      <div key={entry.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3.5 space-y-2.5 shadow-md">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <span className="font-bold text-xs text-slate-400 block">#{entry.id}</span>
+                            <h4 className="font-semibold text-slate-900 dark:text-white text-xs mt-0.5">{entry.description}</h4>
+                            {payer && <span className="text-2xs text-slate-500 dark:text-slate-400 font-medium">Vendor/Payee: {payer}</span>}
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <Badge variant={isSplit ? 'warning' : isOutofPocket ? 'default' : 'success'} size="sm">
+                              {isSplit ? 'Split' : isOutofPocket ? 'Out of Pocket' : `Property (${entry.paymentMode || 'UPI'})`}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100 dark:border-slate-700">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                            {cat}
+                          </span>
+                          <span className="font-semibold text-xs text-slate-900 dark:text-white tabular-numbers">
+                            ₹{Number(entry.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+
+                        {canManageExpense && (
+                          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-700">
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              className="whitespace-nowrap shrink-0 text-xs font-medium"
+                              onClick={() => setEditingEntry({ ...entry, time: entry.time || new Date().toTimeString().slice(0, 5) })}
+                              leftIcon={<Edit2 className="w-3.5 h-3.5 shrink-0" />}
+                            >
+                              {t('edit_button', 'Edit')}
+                            </Button>
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              className="whitespace-nowrap shrink-0 text-xs font-medium"
+                              onClick={() => entry.source === 'kitchen' ? handleDeleteKitchenPurchase(entry.id, entry.description) : handleDeleteExpense(entry.id, entry.description)}
+                              leftIcon={<Trash2 className="w-3.5 h-3.5 shrink-0" />}
+                            >
+                              {t('delete_button', 'Delete')}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {filteredEntries.length === 0 && (
+                    <div className="text-center p-8 text-slate-400 font-semibold text-xs">
+                      No operational expenses found.
+                    </div>
+                  )}
                 </div>
 
-                {canManageExpense && (
-                  <div className="pt-1.5 flex justify-end gap-2 border-t border-slate-200/60 dark:border-slate-800">
-                    <Button variant="primary" size="sm" onClick={() => setEditingEntry({ ...entry, time: entry.time || new Date().toTimeString().slice(0, 5) })} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
-                      Edit
-                    </Button>
+                {/* Mobile Pagination Controls */}
+                {filteredEntries.length > 10 && (
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700">
                     <button
-                      onClick={() => handleDeleteExpense(entry.id, entry.description)}
-                      className="px-2.5 py-1 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 rounded-lg text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
+                      type="button"
+                      disabled={mobilePage === 1}
+                      onClick={() => setMobilePage((p) => Math.max(1, p - 1))}
+                      className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
                     >
-                      Delete
+                      Previous
+                    </button>
+                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                      Page {mobilePage} of {Math.ceil(filteredEntries.length / 10)}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={mobilePage >= Math.ceil(filteredEntries.length / 10)}
+                      onClick={() => setMobilePage((p) => Math.min(Math.ceil(filteredEntries.length / 10), p + 1))}
+                      className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+                    >
+                      Next
                     </button>
                   </div>
                 )}
-              </div>
+              </>
             );
-          })}
-          {filteredEntries.length === 0 && (
-            <div className="text-center p-6 text-slate-400 font-semibold text-xs">{t('no_expense_entries_found_message', 'No expense entries found.')}</div>
-          )}
+          })()}
         </div>
-
-        {/* Mobile 10-Item Pagination Controls */}
-        {filteredEntries.length > 10 && (
-          <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700">
-            <button
-              type="button"
-              disabled={costLogsPage === 1}
-              onClick={() => setCostLogsPage((p) => Math.max(1, p - 1))}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
-            >
-              Previous
-            </button>
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-              Page {costLogsPage} of {Math.ceil(filteredEntries.length / 10)}
-            </span>
-            <button
-              type="button"
-              disabled={costLogsPage >= Math.ceil(filteredEntries.length / 10)}
-              onClick={() => setCostLogsPage((p) => Math.min(Math.ceil(filteredEntries.length / 10), p + 1))}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
-            >
-              Next
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Cost Logs Desktop DataTable (hidden md:block) */}
-      <div className="petty-cash-management__table hidden md:block bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md overflow-hidden">
-        <DataTable
-          columns={[
-            {
-              name: t('date_column', 'Date'),
-              selector: (entry: any) => entry.date,
-              sortable: true,
-              width: '120px',
-              cell: (entry: any) => {
-                const isEditingDate = editingCell?.id === entry.id && editingCell.field === 'date';
-                return isEditingDate ? (
-                  <Input type="date" value={editValue} onChange={e => setEditValue(e.target.value)} onBlur={() => handleCellSave(entry.id)} onKeyDown={e => e.key === 'Enter' && handleCellSave(entry.id)} autoFocus />
-                ) : (
-                  <div>
-                    <span onDoubleClick={() => handleCellDoubleClick(entry.id, 'date', entry.date, entry.source)} className="cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-950 px-1 py-0.5 rounded transition-all font-mono text-[11px] text-slate-700 dark:text-slate-200 font-bold" title={t('double_click_to_edit_tooltip', 'Double click to edit')}>{formatDateDDMMYYYY(entry.date)}</span>
-                    <div className="text-[10px] text-slate-400 font-mono flex items-center gap-1 mt-0.5 pl-1">
-                      <Clock className="w-2.5 h-2.5 inline shrink-0" /> {entry.time || '12:00'}
-                    </div>
-                  </div>
-                );
-              },
-            },
-            {
-              name: t('category_column', 'Category'),
-              selector: (entry: any) => entry.category || entry.costCategory,
-              sortable: true,
-              width: '120px',
-              cell: (entry: any) => {
-                const cat = entry.category || entry.costCategory || '';
-                const isAutoSalary = cat === 'Salary (Auto)' || entry.description?.startsWith('Salary (Auto):');
-                return (
-                  <span className={`px-2 py-0.5 rounded font-semibold text-[10px] border ${
-                    isAutoSalary
-                      ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-700'
-                      : cat === 'Salaries'
-                      ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700'
-                      : 'bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
-                  }`}>
-                    {isAutoSalary ? 'Salary (Auto)' : cat}
-                  </span>
-                );
-              },
-            },
-            {
-              name: t('description_column', 'Description'),
-              selector: (entry: any) => entry.description,
-              sortable: true,
-              grow: 2,
-              cell: (entry: any) => {
-                const payer = entry.paidBy || entry.vendor;
-                return (
-                  <div className="py-1">
-                    <div className="font-semibold text-slate-800 dark:text-slate-200 text-xs">{entry.description}</div>
-                    {entry.moreInfoNotes && <p className="text-[10px] text-slate-400 italic mt-0.5">{entry.moreInfoNotes}</p>}
-                    {payer && payer !== currentUserName && (
-                      <p className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1">
-                        <span className="text-slate-400">Vendor / Payee:</span> <strong className="text-slate-700 dark:text-slate-300">{payer}</strong>
-                      </p>
-                    )}
-                  </div>
-                );
-              },
-            },
-            {
-              name: t('total_column', 'Total'),
-              selector: (entry: any) => entry.amount,
-              sortable: true,
-              width: '110px',
-              right: true,
-              cell: (entry: any) => {
-                const isEditingAmount = editingCell?.id === entry.id && editingCell.field === 'amount';
-                return isEditingAmount ? (
-                  <Input type="number" value={editValue} onChange={e => setEditValue(e.target.value)} onBlur={() => handleCellSave(entry.id)} onKeyDown={e => e.key === 'Enter' && handleCellSave(entry.id)} autoFocus className="w-24" />
-                ) : (
-                  <span onDoubleClick={() => handleCellDoubleClick(entry.id, 'amount', entry.amount, entry.source)} className="cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-950 px-1 py-0.5 rounded transition-all font-semibold text-slate-950 dark:text-white text-sm border-b border-dashed border-slate-400 tabular-numbers" title={t('double_click_to_edit_tooltip', 'Double click to edit')}>₹{entry.amount.toFixed(2)}</span>
-                );
-              },
-            },
-            {
-              name: t('source_column', 'Source & Mode'),
-              selector: (entry: any) => entry.paymentMode || 'Online',
-              sortable: true,
-              wrap: true,
-              cell: (entry: any) => {
-                const isOutofPocket = entry.staffAmount && Number(entry.staffAmount) > 0 && Number(entry.staffAmount) === Number(entry.amount);
-                const isSplit = entry.staffAmount && Number(entry.staffAmount) > 0 && entry.drawerAmount && Number(entry.drawerAmount) > 0;
-
-                if (isSplit) {
-                  return (
-                    <span className="text-xs text-purple-700 dark:text-purple-400 whitespace-nowrap" title={`Till: ₹${entry.drawerAmount} | Out of Pocket: ₹${entry.staffAmount}`}>
-                      Split (Till + Pocket)
-                    </span>
-                  );
-                }
-
-                if (isOutofPocket) {
-                  return (
-                    <span className="text-xs text-amber-700 dark:text-amber-400 whitespace-nowrap">
-                      Out of Pocket
-                    </span>
-                  );
-                }
-
-                return (
-                  <span className="text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                    Property ({entry.paymentMode || 'UPI'})
-                  </span>
-                );
-              },
-            },
-            ...(canManageExpense ? [{
-              name: t('actions_column', 'Actions'),
-              width: '150px',
-              center: true as const,
-              cell: (entry: any) => (
-                <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
-                  <Button variant="primary" size="sm" onClick={() => setEditingEntry({ ...entry, time: entry.time || new Date().toTimeString().slice(0, 5) })} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
-                      {t('edit_button', 'Edit')}
-                    </Button>
-                  <button onClick={() => entry.source === 'kitchen' ? handleDeleteKitchenPurchase(entry.id, entry.description) : handleDeleteExpense(entry.id, entry.description)} className="bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors border border-red-200 dark:border-red-800 whitespace-nowrap shadow-md">
-                    {t('delete_button', 'Delete')}
-                  </button>
-                </div>
-              ),
-            }] : []),
-          ]}
-          data={filteredEntries}
-          pagination
-          paginationPerPage={15}
-          paginationRowsPerPageOptions={[10, 15, 25, 50]}
-          highlightOnHover
-          subHeader={
-            <div className="w-full flex items-center justify-between py-2">
-              <h3 className="petty-cash-management__subtitle font-semibold text-slate-800 dark:text-white text-sm">
-                {t('cost_logs_for_label', 'Cost Logs for')} {new Date(Number(selectedMonth.split('-')[0]), Number(selectedMonth.split('-')[1]) - 1).toLocaleString('en-US', { month: 'long', year: 'numeric' })}
-              </h3>
-              <span className="text-slate-400 font-semibold text-xs">{pettyCashLoading || kitchenPurchasesLoading ? '…' : filteredEntries.length} {t('entries_label', 'entries')}</span>
-            </div>
-          }
-          customStyles={flowbiteTableCustomStyles}
-          progressPending={pettyCashLoading || kitchenPurchasesLoading}
-          progressComponent={
-            <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
-              <Loader2 className="w-4 h-4 animate-spin" /> Loading expenses...
-            </div>
-          }
-          noDataComponent={
-            <div className="p-8 text-center bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-400 font-semibold text-xs">
-              {t('no_expenses_this_month_message', 'No expenses recorded for this month.')}
-            </div>
-          }
-        />
-      </div>
-      </div>
       </div>
 
       {/* Edit Entry Modal for Admin & Super Admin */}
@@ -1689,55 +1832,59 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                   />
                 </div>
 
-                <div>
-                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('category_label', 'Category')}</label>
-                  <StyledSelect
-                    value={editingEntry.category || editingEntry.costCategory || 'Other'}
-                    onChange={val => setEditingEntry({ ...editingEntry, category: val, costCategory: val })}
-                    options={[
-                      { value: 'Other', label: t('category_other_label', 'Other') },
-                      { value: 'Bills', label: t('category_bills_label', 'Bills & Utilities') },
-                      { value: 'Staff Advance', label: t('category_staff_salaries_adv_label', 'Staff Salaries & Adv.') },
-                      { value: 'Kitchen', label: t('category_kitchen_label', 'Kitchen & Supplies') },
-                    ]}
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('category_label', 'Category')}</label>
+                    <StyledSelect
+                      value={editingEntry.category || editingEntry.costCategory || 'Other'}
+                      onChange={val => setEditingEntry({ ...editingEntry, category: val, costCategory: val })}
+                      options={[
+                        { value: 'Other', label: t('category_other_label', 'Other') },
+                        { value: 'Bills', label: t('category_bills_label', 'Bills & Utilities') },
+                        { value: 'Staff Advance', label: t('category_staff_salaries_adv_label', 'Staff Salaries & Adv.') },
+                        { value: 'Kitchen', label: t('category_kitchen_label', 'Kitchen & Supplies') },
+                      ]}
+                    />
+                  </div>
+
+                  <div>
+                    <Input
+                      label={t('details_description_label', 'Details Description')}
+                      type="text"
+                      required
+                      list="expense-items-list"
+                      value={editingEntry.description}
+                      onChange={e => setEditingEntry({ ...editingEntry, description: e.target.value })}
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <Input
-                    label={t('details_description_label', 'Details Description')}
-                    type="text"
-                    required
-                    list="expense-items-list"
-                    value={editingEntry.description}
-                    onChange={e => setEditingEntry({ ...editingEntry, description: e.target.value })}
-                  />
-                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Input
+                      label={t('expense_amount_rupees_label', 'Amount (₹)')}
+                      type="number"
+                      required
+                      step="any"
+                      value={editingEntry.amount}
+                      onChange={e => setEditingEntry({ ...editingEntry, amount: Number(e.target.value) })}
+                      className="font-semibold"
+                    />
+                  </div>
 
-                <div>
-                  <Input
-                    label={t('expense_amount_rupees_label', 'Amount (₹)')}
-                    type="number"
-                    required
-                    step="any"
-                    value={editingEntry.amount}
-                    onChange={e => setEditingEntry({ ...editingEntry, amount: Number(e.target.value) })}
-                    className="font-semibold"
-                  />
-                </div>
-
-                <div>
-                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('payment_mode_label', 'Payment Mode')}</label>
-                  <StyledSelect
-                    value={normalizePaymentMode(editingEntry.paymentMode)}
-                    onChange={val => setEditingEntry({ ...editingEntry, paymentMode: val })}
-                    options={[
-                      { value: 'UPI / QR', label: t('payment_mode_online_upi_qr_label', 'Online / UPI / QR') },
-                      { value: 'Cash', label: t('payment_mode_cash_label', 'Cash') },
-                      { value: 'Bank Transfer', label: t('payment_mode_bank_transfer_label', 'Bank Transfer') },
-                      { value: 'Card', label: t('payment_mode_card_label', 'Card') },
-                    ]}
-                  />
+                  <div>
+                    <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('payment_mode_label', 'Payment Mode')}</label>
+                    <StyledSelect
+                      value={normalizePaymentMode(editingEntry.paymentMode)}
+                      onChange={val => setEditingEntry({ ...editingEntry, paymentMode: val })}
+                      options={[
+                        { value: 'UPI / QR', label: t('payment_mode_online_upi_qr_label', 'Online / UPI / QR') },
+                        { value: 'Cash', label: t('payment_mode_cash_label', 'Cash') },
+                        { value: 'Bank Transfer', label: t('payment_mode_bank_transfer_label', 'Bank Transfer') },
+                        { value: 'Card', label: t('payment_mode_card_label', 'Card') },
+                      ]}
+                    />
+                  </div>
                 </div>
               </ModalBody>
 
