@@ -1,9 +1,14 @@
-# Workspace Agent Rules & Recommended Personas
-
 - STRICT NO DEPLOYMENT RULE: Never execute any deployment scripts or server sync commands (e.g. deploy-staging.ps1, deploy-production.ps1). Work strictly on local environment only.
 - Do not open files in editor tabs when viewing or making code edits unless explicitly requested by the user.
 - Strictly adhere to visual design tokens, iconography, modal form grid rules, and responsive mobile layouts defined in [DESIGN.md](file:///c:/xampp/htdocs/artists_farm/DESIGN.md).
 - Category Filter Toggle Rule: On all screens with search & category filtering (e.g. food menu, inventory, POS), category filters must not be open by default; they must be toggled open/closed via a `<Filter className="w-4 h-4" />` button next to the search input.
+- DataTable & Table Log Rules (Universal):
+  - **No Equal Height Stretches**: Never use equal-height side-by-side grids between action forms and table logs; place forms on top with the full-width log table below.
+  - **Toolbar Standardization**: All toolbar elements (Search, Timeframe/Filter dropdowns, Export CSV, Action buttons) must share exact `h-10` height, `text-xs font-medium` typography, and `rounded-lg` borders. Timeframe dropdowns must have at least `min-w-[200px]` to avoid label truncation.
+  - **Persistent Headers**: Always include `persistTableHead` on all `<DataTable>` components so column titles are permanently visible across all states.
+  - **Content-Based Column Widths**: Column widths must match content naturally (IDs: 110–120px, Dates: 140–160px, Amounts: 110–130px, Actions: 110–185px). Fluid description/name columns use `grow: 2` with adequate `minWidth`.
+  - **Typography Consistency**: ID and data cells use `text-xs font-semibold text-gray-900 dark:text-white` (never `font-mono` or fake blue links unless clickable). Subtitles use `text-2xs text-gray-500`.
+  - **Action Button Sizing**: Action cell buttons must use `<Button size="sm">` (`h-8`, `text-xs font-medium`, `whitespace-nowrap shrink-0`) to prevent multi-line button label wrapping.
 
 ---
 

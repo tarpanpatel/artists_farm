@@ -69,4 +69,34 @@ All single monthly calendars across the platform (such as single-room booking ca
   - Today date badge: highlighted with a blue circular badge (`inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold shadow-xs`).
   - Event / Booking pills: `rounded-md px-2 py-1 text-xs font-medium shadow-2xs` using Flowbite semantic color tokens (`blue`, `purple`, `emerald`, `amber`, `gray`).
 
+## DataTable & Table Log Specifications
+
+Canonical Flowbite Datatables reference: https://github.com/themesberg/flowbite/blob/main/content/components/tables.md
+
+All log tables, financial ledgers, receipts, and management tables across the application must adhere strictly to these rules:
+1. **Vertical Hierarchy over Equal Stretches**:
+   - Never stretch action forms and log tables side-by-side with equal height containers.
+   - Action/Creation forms sit naturally on top in a compact card, followed by the full-width DataTable below.
+2. **Standardized Toolbar Heights & Controls**:
+   - All top-bar controls (Search input, timeframe selectors, category/payment dropdowns, Export CSV, and Action buttons) must share uniform `h-10` (40px) height, `text-xs font-medium`, `rounded-lg` borders, and cohesive hover/focus states.
+   - Timeframe and date filter selects must specify at least `min-w-[200px]` to prevent month/year strings from truncating.
+3. **Persistent Column Headers**:
+   - Always include `persistTableHead` on all `<DataTable>` instances so column headers remain permanently visible during search, filter, and pagination changes.
+4. **Content-Proportioned Column Widths**:
+   - Column widths must fit their underlying content:
+     - **ID / Code Columns**: `width: '110px–120px'`, `minWidth: '100px'`
+     - **Timestamp / Date Billed**: `width: '140px–160px'`, `minWidth: '130px'`
+     - **Category / Status**: `width: '120px–160px'`, `minWidth: '110px'`
+     - **Monetary Totals**: `width: '110px–130px'`, `minWidth: '100px'`, with `tabular-numbers font-semibold`
+     - **Primary Description / Name Columns**: Fluid `grow: 2` with `minWidth: '180px–220px'` to comfortably absorb all remaining horizontal space
+     - **Actions Column**: Sized to fit contained buttons (`width: '110px–185px'`) with `whitespace-nowrap flex items-center gap-2` to prevent button text wrapping.
+5. **Standard Typography**:
+   - All cell primary values use standard application font (`text-xs font-semibold text-gray-900 dark:text-white`).
+   - Do NOT use `font-mono` on ID fields or fake blue links unless the ID actively navigates or opens a dedicated record modal.
+   - Secondary subtitle metadata uses `text-2xs text-gray-500 dark:text-gray-400`.
+6. **Action Buttons**:
+   - Use standard `<Button size="sm">` (`h-8`, `text-xs font-medium`, `whitespace-nowrap shrink-0`) for Edit, Delete, or View actions.
+7. **Pagination Dropdown**:
+   - Rows-per-page dropdown is styled with opaque backgrounds (`#ffffff` light / `#1f2937` dark) and custom Flowbite arrows so options never render with transparent or glitchy overlays.
+
 
