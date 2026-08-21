@@ -51,7 +51,7 @@ import { useStaff } from '../contexts/StaffContext';
 import { Input } from './Input';
 import { Button } from './Button';
 import { t } from '../i18n/en';
-import { formatDateTimeDDMMYYYY } from '../utils/dateUtils';
+import { formatDateTimeDDMMYYYY, toDatetimeLocalValue } from '../utils/dateUtils';
 import { TextInput as FlowbiteTextInput } from 'flowbite-react';
 
 const mapWalkInTabFromApi = (raw: any): WalkInTab => ({
@@ -722,7 +722,13 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   }, [reminderThresholdMinutes]);
 
   // Staff Meals State
-  const [smDateRecord, setSmDateRecord] = useState<string>(() => formatDateTimeDDMMYYYY(new Date().toISOString()));
+  // Native <input type="datetime-local"> value format ("YYYY-MM-DDTHH:mm"),
+  // NOT this app's usual DD/MM/YYYY display format - the field's own JSX
+  // (below) renders as a raw datetime-local input, and feeding it a
+  // DD/MM/YYYY string makes the browser reject it silently, showing a blank
+  // picker instead of defaulting to "now" (found + fixed 21 Aug 2026 -
+  // see toDatetimeLocalValue()'s doc comment in utils/dateUtils.ts).
+  const [smDateRecord, setSmDateRecord] = useState<string>(() => toDatetimeLocalValue(new Date()));
   const [smSelectedStaff, setSmSelectedStaff] = useState<string[]>([]);
   const [smConsumptionType, setSmConsumptionType] = useState('Freshly Prepared (New Stock)');
   const [smCustomMeal, setSmCustomMeal] = useState('');
@@ -774,28 +780,47 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     }
     
     setSmError('');
-    
-    const now = new Date();
-    const formattedDate = `${now.getDate()} ${now.toLocaleString('en-US', {month: 'short'})}, ${now.toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'})}`;
-    
+
+    // Use the user-editable Date & Time of Record field, not always "now" -
+    // it used to be collected via setSmDateRecord but never actually read
+    // here, so picking a backdated/custom timestamp in the field silently
+    // had no effect on the logged record (found + fixed 21 Aug 2026,
+    // alongside the field defaulting to a blank picker - see
+    // toDatetimeLocalValue()'s doc comment in utils/dateUtils.ts). Falls
+    // back to "now" if the field is empty or was left unparseable.
+    const parsedRecordDate = smDateRecord ? new Date(smDateRecord) : null;
+    const now = parsedRecordDate && !isNaN(parsedRecordDate.getTime()) ? parsedRecordDate : new Date();
+    // Build the display string directly in DD/MM/YYYY, matching
+    // fetchStaffMealLogsFromDB()'s format exactly (api.ts) - the previous
+    // "19 Aug, 09:15 AM" (no year) intermediate string, round-tripped through
+    // formatDateTimeDDMMYYYY(), relied on new Date() re-parsing a yearless
+    // string, which browsers resolve inconsistently (observed defaulting to
+    // year 2001, and dropping the time entirely - found 21 Aug 2026 while
+    // testing a backdated entry). This optimistic entry gets replaced by the
+    // real DB-fetched one on next reload regardless, but until then it's
+    // what the user sees immediately after clicking "Log Staff Meal", so it
+    // needs to be right, not just self-correcting later.
+    const formattedDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}, ${now.toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'})}`;
+
     const foodStr = smCustomMeal ? `${smQuantity}x ${smCustomMeal}` : `${smQuantity}x ${smConsumptionType}`;
-    
+
     const isLeftover = smConsumptionType === 'Leftover Buffer items';
     const newLog = {
-      date: formatDateTimeDDMMYYYY(formattedDate),
+      date: formattedDate,
       staff: smSelectedStaff.join(', '),
       food: foodStr,
       hasTag: isLeftover
     };
 
     setSmLogs(prev => [newLog, ...prev]);
-    addStaffMealLogToDB(smSelectedStaff.join(', '), foodStr, isLeftover);
+    addStaffMealLogToDB(smSelectedStaff.join(', '), foodStr, isLeftover, smDateRecord);
 
     // Reset Form
     setSmSelectedStaff([]);
     setSmQuantity(1);
     setSmCustomMeal('');
     setSmEstCost('');
+    setSmDateRecord(toDatetimeLocalValue(new Date()));
   };
 
   const handleSmToggleStaff = (staff: string) => {
@@ -2579,7 +2604,12 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       <div className="font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
                         {row.food}
                         {row.hasTag && (
-                          <span className="w-3.5 h-3.5 inline-flex items-center justify-center bg-amber-100 rounded text-3xs text-amber-700 font-bold border border-amber-300">G</span>
+                          <span
+                            className="w-3.5 h-3.5 inline-flex items-center justify-center bg-amber-100 rounded text-3xs text-amber-700 font-bold border border-amber-300 cursor-help"
+                            title={t('leftover_buffer_badge_tooltip', 'Made from leftover / buffer stock, not freshly prepared')}
+                          >
+                            {t('leftover_buffer_badge_label', 'L')}
+                          </span>
                         )}
                       </div>
                     </div>
@@ -2644,7 +2674,12 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                         <span className="text-xs font-medium text-gray-700 dark:text-gray-300 relative inline-flex items-center gap-1.5">
                           {row.food}
                           {row.hasTag && (
-                            <span className="w-3.5 h-3.5 inline-flex items-center justify-center bg-amber-100 rounded text-3xs text-amber-700 font-bold border border-amber-300">G</span>
+                            <span
+                              className="w-3.5 h-3.5 inline-flex items-center justify-center bg-amber-100 rounded text-3xs text-amber-700 font-bold border border-amber-300 cursor-help"
+                              title={t('leftover_buffer_badge_tooltip', 'Made from leftover / buffer stock, not freshly prepared')}
+                            >
+                              {t('leftover_buffer_badge_label', 'L')}
+                            </span>
                           )}
                         </span>
                       ),
@@ -3186,7 +3221,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               </div>
 
               <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('item_image_upload_label')}</label>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('item_image_label', 'Item Image')}</label>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition-colors border border-slate-300 dark:border-slate-600">
@@ -3208,14 +3243,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                         }}
                       />
                     </label>
-
-                    <Input
-                      type="text"
-                      value={newItemImagePath}
-                      onChange={(e) => setNewItemImagePath(e.target.value)}
-                      placeholder={t('or_enter_image_url_placeholder')}
-                      className="flex-1 font-mono text-[11px]"
-                    />
                   </div>
 
                   {/* Image Preview Box */}

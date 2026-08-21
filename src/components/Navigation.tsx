@@ -292,20 +292,20 @@ export const Navigation: React.FC<NavigationProps> = ({
     return filteredNavItems.filter(i => i.isVisible && i.customUrl && !i.parentId && isVisible(i.roles, i.tabKey));
   }, [filteredNavItems, isVisible]);
 
-  const handleTabClick = useCallback((item: { tabKey: string; uniqueKey: string; customUrl?: string; openInNewTab?: boolean }) => {
+  const handleTabClick = useCallback((item: { tabKey: string; uniqueKey: string; customUrl?: string; openInNewTab?: boolean }, opts?: { keepSidebarOpen?: boolean }) => {
     if (item.customUrl) {
       if (item.openInNewTab) {
         window.open(item.customUrl, '_blank', 'noopener,noreferrer');
       } else {
         window.location.href = item.customUrl;
       }
-      if (window.innerWidth < 768) onCloseSidebar();
+      if (!opts?.keepSidebarOpen && window.innerWidth < 768) onCloseSidebar();
       return;
     }
     setActiveTab(item.tabKey as TabType);
     setActiveMenuItemKey(item.uniqueKey);
     window.location.hash = `#${item.uniqueKey}`;
-    if (window.innerWidth < 768) onCloseSidebar();
+    if (!opts?.keepSidebarOpen && window.innerWidth < 768) onCloseSidebar();
   }, [setActiveTab, setActiveMenuItemKey, onCloseSidebar]);
 
   const { confirm } = useConfirm();
@@ -378,7 +378,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           }
           return next;
         });
-        handleTabClick({ tabKey: node.tabKey, uniqueKey: itemKey, customUrl: node.customUrl, openInNewTab: node.openInNewTab });
+        handleTabClick({ tabKey: node.tabKey, uniqueKey: itemKey, customUrl: node.customUrl, openInNewTab: node.openInNewTab }, { keepSidebarOpen: true });
       };
 
       return (

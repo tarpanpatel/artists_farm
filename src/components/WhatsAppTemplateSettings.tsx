@@ -50,22 +50,22 @@ export const WhatsAppTemplateSettings: React.FC<WhatsAppTemplateSettingsProps> =
     booking_id: 'BK-7892',
   };
 
-  const defaultTemplate = `Hello {guest_name}! ðŸ‘‹
+  const defaultTemplate = `Hello {guest_name}! 👋
 
 Thank you for booking with *{property_name}*! Your reservation is confirmed.
 
-ðŸ“‹ *Booking Details:*
+📋 *Booking Details:*
 • Booking ID: {booking_id}
 • Room: {room_number}
 • Check-in: {checkin_date} from {checkin_time}
 • Check-out: {checkout_date} until {checkout_time}
 • Total Amount: {total_amount}
 
-ðŸ“ *Address:* {property_address}
-ðŸ“ž *Contact:* {property_phone}
-ðŸ—ºï¸ *Google Maps:* {google_maps_link}
+📍 *Address:* {property_address}
+📞 *Contact:* {property_phone}
+🗺️ *Google Maps:* {google_maps_link}
 
-ðŸ“ *Important Notes:*
+📝 *Important Notes:*
 {instructions}
 
 We look forward to welcoming you!`;

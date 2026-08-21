@@ -201,6 +201,12 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
   // Registration Form State
   const [bookingRoomTariff, setBookingRoomTariff] = useState<number>(0);
+  // Tracks whether the rent field's current value came from the STAFF typing
+  // it, as opposed to an auto-fill from a room's default_tariff - see
+  // handleRoomChange()'s doc comment below for why this exists separately
+  // from bookingRoomTariff itself (found + fixed 21 Aug 2026, verifying the
+  // multi-key per-room tariff pre-fill).
+  const [tariffManuallyEdited, setTariffManuallyEdited] = useState(false);
   const [bookingAdvance, setBookingAdvance] = useState<number>(0);
   const [bookingPending, setBookingPending] = useState<number>(0);
   const [showBookingExtraCharges, setShowBookingExtraCharges] = useState<boolean>(false);
@@ -384,11 +390,24 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
   const handleTariffChange = (val: number) => {
     setBookingRoomTariff(val);
+    setTariffManuallyEdited(true);
     setBookingPending(val - bookingAdvance);
   };
+  // Pre-fills the rent field from the newly-selected room's own default_tariff
+  // (per-room, not shared across a multi-key property - see CLAUDE.md/DESIGN
+  // notes on luxe-stays-style properties having distinct real tariffs per
+  // room). Used to gate the pre-fill on `bookingRoomTariff === 0` instead of
+  // this tariffManuallyEdited flag - which meant it only ever worked for
+  // whichever room got picked FIRST: selecting Room 101 (₹4800) correctly
+  // filled the field, but then switching to Room 102 (₹5300) left the stale
+  // ₹4800 in place, because the field was no longer 0 (found + fixed 21 Aug
+  // 2026, verifying per-room tariff pre-fill). Gating on "has the staff
+  // actually typed a value" instead correctly re-fills on every room switch
+  // right up until the staff deliberately overrides it, and then respects
+  // that override for the rest of this booking.
   const handleRoomChange = (roomName: string) => {
     setRoomNumber(roomName);
-    if (bookingRoomTariff === 0) {
+    if (!tariffManuallyEdited) {
       const selectedRoom = rooms.find(r => r.name === roomName);
       if (selectedRoom && selectedRoom.default_tariff != null) {
         setBookingRoomTariff(selectedRoom.default_tariff);
@@ -423,6 +442,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     setIsForeignGuest(false);
     setNoOfGuests(1);
     setBookingRoomTariff(0);
+    setTariffManuallyEdited(false);
     setBookingAdvance(0);
     setBookingPending(0);
     setShowBookingExtraCharges(false);

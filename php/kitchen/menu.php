@@ -568,10 +568,27 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                     echo json_encode(['status' => 'error', 'message' => 'staff_names and food_description are required']);
                     break;
                 }
+                // Optional custom timestamp from the "Date & Time of Record"
+                // field (src/components/KitchenManagement.tsx's Staff Meals
+                // tab) - previously never sent at all, so that field was
+                // decorative: logged_at always fell back to the column's own
+                // DEFAULT CURRENT_TIMESTAMP regardless of what was picked
+                // (found + fixed 21 Aug 2026). Validated via
+                // DateTime::createFromFormat rather than trusted as-is, since
+                // it's client-supplied; falls back to NOW() on anything
+                // missing/malformed rather than rejecting the whole request.
+                $loggedAtRaw = trim($input['logged_at'] ?? '');
+                $loggedAt = date('Y-m-d H:i:s');
+                if ($loggedAtRaw !== '') {
+                    $parsed = DateTime::createFromFormat('Y-m-d H:i:s', $loggedAtRaw);
+                    if ($parsed !== false) {
+                        $loggedAt = $parsed->format('Y-m-d H:i:s');
+                    }
+                }
                 try {
 
-                    $stmt = $pdo->prepare("INSERT INTO staff_meal_logs (property_id, staff_names, food_description, is_leftover_buffer) VALUES (?, ?, ?, ?)");
-                    $stmt->execute([$propertyId, $staffNames, $foodDescription, $isLeftover]);
+                    $stmt = $pdo->prepare("INSERT INTO staff_meal_logs (property_id, staff_names, food_description, is_leftover_buffer, logged_at) VALUES (?, ?, ?, ?, ?)");
+                    $stmt->execute([$propertyId, $staffNames, $foodDescription, $isLeftover, $loggedAt]);
                     echo json_encode(['status' => 'success', 'id' => $pdo->lastInsertId()]);
                 } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);

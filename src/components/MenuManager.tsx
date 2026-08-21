@@ -36,9 +36,11 @@ import {
   Package,
   ShoppingBag,
   Filter,
+  LayoutGrid,
+  List,
 } from 'lucide-react';
 import { MenuItem, NavMenuItem } from '../types';
-import { uploadImageDB } from '../services/api';
+import { uploadImageDB, verifyAdminPasscodeDB } from '../services/api';
 import { NavMenuEditor } from './NavMenuEditor';
 import { StyledSelect } from './StyledSelect';
 import { PageHeader } from './PageHeader';
@@ -46,6 +48,9 @@ import { t } from '../i18n/en';
 import { SYSTEM_ROLES, NAV_CATEGORIES } from '../data/appConfig';
 import { useStaff } from '../contexts/StaffContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from './ToastContext';
+import { shareTextContent } from '../utils/shareText';
+import { Share2 } from 'lucide-react';
 
 interface MenuManagerProps {
   foodMenu: MenuItem[];
@@ -56,6 +61,11 @@ interface MenuManagerProps {
   onUpdateNavItems: (items: NavMenuItem[]) => void;
   activeMenuItemKey?: string;
   kitchenModuleEnabled?: boolean;
+  // For the "Share Menu" button's public link (food_menu.php via the
+  // /food_menu/{propertySlug}/ rewrite in .htaccess) - propertyName is just
+  // for the share message text, propertySlug is what actually builds the URL.
+  propertySlug?: string;
+  propertyName?: string;
 }
 
 const AVAILABLE_ICONS = [
@@ -92,10 +102,33 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
   onUpdateNavItems,
   activeMenuItemKey,
   kitchenModuleEnabled = true,
+  propertySlug,
+  propertyName,
 }) => {
   const { staff } = useStaff();
-  const { activeRole } = useAuth();
+  const { currentUser, activeRole } = useAuth();
+  const { showToast } = useToast();
   const [activeSubTab, setActiveSubTab] = useState<'food_menu' | 'nav_menu'>('food_menu');
+
+  const handleShareFoodMenu = () => {
+    if (!propertySlug) {
+      showToast('Save the property before sharing its menu link.', { type: 'warning' });
+      return;
+    }
+    const menuUrl = `${window.location.origin}/food_menu/${propertySlug}/`;
+    const message = `🍽️ Check out the menu at ${propertyName || 'our place'}!\n${menuUrl}`;
+    shareTextContent(
+      `${propertyName || 'Food'} Menu`,
+      message,
+      showToast,
+      'Menu link copied - paste it wherever you\'d like to share it.',
+      'Could not share or copy the menu link.',
+    );
+  };
+
+  // Super Admin / Tenant name for passcode modal
+  const tenantAdmin = staff.find(s => s.role === 'Super Admin') || staff.find(s => s.role === 'Admin') || currentUser;
+  const tenantName = tenantAdmin?.name || tenantAdmin?.username || 'Super Admin';
 
   useEffect(() => {
     if (activeMenuItemKey === 'edit_main_menu') {
@@ -109,6 +142,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
   const [foodSearch, setFoodSearch] = useState('');
   const [selectedFoodCategory, setSelectedFoodCategory] = useState<string>('All');
   const [showCategoryFilters, setShowCategoryFilters] = useState(false);
+  const [foodLayoutMode, setFoodLayoutMode] = useState<'thumbnail' | 'list'>('thumbnail');
   const [isAddFoodModalOpen, setIsAddFoodModalOpen] = useState(false);
   const [editingFoodItem, setEditingFoodItem] = useState<MenuItem | null>(null);
 
@@ -174,6 +208,8 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
   });
 
   // Passcode verification
+  const [isVerifyingPasscode, setIsVerifyingPasscode] = useState(false);
+
   const requirePasscode = (action: () => void) => {
     setPasscodeInput('');
     setPasscodeError('');
@@ -181,10 +217,39 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
     setPasscodeModalOpen(true);
   };
 
-  const handleVerifyPasscode = () => {
+  const handleVerifyPasscode = async () => {
     const entered = passcodeInput.trim();
-    const match = staff.find(s => (s.passcodePin || (s as any).passcode || '').toString().trim() === entered);
-    if (match) {
+    if (!entered) return;
+
+    setIsVerifyingPasscode(true);
+
+    // 1. Client-side check against Super Admin / Admin staff members
+    const superAdminStaff = staff.filter(s => s.role === 'Super Admin' || s.role === 'Admin');
+    const localMatch = superAdminStaff.find(s => (s.passcodePin || (s as any).passcode || '').toString().trim() === entered);
+
+    // 2. Client-side check against current logged in user (Root Admin / Super Admin)
+    const currentUserMatch = Boolean(
+      currentUser &&
+      (currentUser.role === 'Root Admin' || currentUser.role === 'Super Admin' || currentUser.role === 'Admin' || (currentUser as any).is_platform_admin) &&
+      (((currentUser as any).passcode || currentUser.passcodePin || '').toString().trim() === entered)
+    );
+
+    if (localMatch || currentUserMatch) {
+      setIsVerifyingPasscode(false);
+      setPasscodeModalOpen(false);
+      setPasscodeInput('');
+      setPasscodeError('');
+      const action = pendingPasscodeAction;
+      setPendingPasscodeAction(null);
+      if (action) action();
+      return;
+    }
+
+    // 3. Database check (verifies Root Admin / Super Admin passcodes from DB)
+    const result = await verifyAdminPasscodeDB(entered);
+    setIsVerifyingPasscode(false);
+
+    if (result.success) {
       setPasscodeModalOpen(false);
       setPasscodeInput('');
       setPasscodeError('');
@@ -396,7 +461,41 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                     <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-blue-500 border-2 border-white dark:border-gray-800" />
                   )}
                 </button>
+
+                {/* Thumbnail / List Layout Toggle */}
+                <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 p-0.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setFoodLayoutMode('thumbnail')}
+                    className={`p-2 rounded-md transition-all cursor-pointer ${
+                      foodLayoutMode === 'thumbnail'
+                        ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-xs'
+                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                    title={t('thumbnail_view_tooltip', 'Thumbnail View')}
+                    aria-label="Thumbnail View"
+                  >
+                    <LayoutGrid className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFoodLayoutMode('list')}
+                    className={`p-2 rounded-md transition-all cursor-pointer ${
+                      foodLayoutMode === 'list'
+                        ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-xs'
+                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                    title={t('list_view_tooltip', 'List View')}
+                    aria-label="List View"
+                  >
+                    <List className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
+
+              <Button variant="secondary" size="sm" onClick={handleShareFoodMenu} leftIcon={<Share2 className="w-4 h-4" />}>
+                <span>{t('share_food_menu_button', 'Share Menu')}</span>
+              </Button>
 
               <Button variant="primary" size="sm" onClick={handleOpenAddFood} leftIcon={<Plus className="w-4 h-4" />}>
                 <span>{t('add_food_menu_item_button', 'Add Food Menu Item')}</span>
@@ -427,107 +526,216 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
             )}
           </div>
 
-          {/* Food Grid (Matching #take_food_order POS 6-column grid) */}
-          <div className="menu-manager__food-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-            {filteredFoodItems.map((item) => (
-              <div
-                key={item.id}
-                className={`menu-manager__food-card bg-white dark:bg-slate-800 rounded-lg border border-slate-200/90 dark:border-slate-700 p-2.5 shadow-md hover:shadow-md transition-all flex flex-col justify-between ${
-                  item.available ? '' : 'bg-red-50/20 dark:bg-red-950/20'
-                }`}
-              >
-                <div className="space-y-1.5">
-                  {/* Category Tag & Availability Badge */}
-                  <div className="flex items-center justify-between gap-1">
-                    <div className="flex items-center gap-1 overflow-hidden">
-                      <span className="text-[9px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
-                        {item.category}
-                      </span>
+          {/* Empty State */}
+          {filteredFoodItems.length === 0 ? (
+            <div className="text-center py-10 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-lg">
+              <UtensilsCrossed className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+              <p className="text-slate-600 dark:text-slate-400 font-semibold text-xs">
+                {t('no_food_items_found_text', 'No food items found matching')} "{foodSearch}"
+              </p>
+            </div>
+          ) : foodLayoutMode === 'thumbnail' ? (
+            /* Thumbnail Card Grid */
+            <div className="menu-manager__food-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+              {filteredFoodItems.map((item) => (
+                <div
+                  key={item.id}
+                  className={`menu-manager__food-card bg-white dark:bg-slate-800 rounded-lg border border-slate-200/90 dark:border-slate-700 p-2.5 shadow-md hover:shadow-md transition-all flex flex-col justify-between ${
+                    item.available ? '' : 'bg-red-50/20 dark:bg-red-950/20'
+                  }`}
+                >
+                  <div className="space-y-1.5">
+                    {/* Category Tag & Availability Badge */}
+                    <div className="flex items-center justify-between gap-1">
+                      <div className="flex items-center gap-1 overflow-hidden">
+                        <span className="text-[9px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
+                          {item.category}
+                        </span>
+                      </div>
+
+                      <Badge
+                        variant={item.available ? 'success' : 'danger'}
+                        size="sm"
+                        onClick={() => onUpdateFoodItem(item.id, { available: !item.available })}
+                        className="shrink-0 cursor-pointer"
+                      >
+                        {item.available ? t('available_badge', 'Available') : t('out_of_stock_badge', 'Out of Stock')}
+                      </Badge>
                     </div>
 
-                    <Badge
-                      variant={item.available ? 'success' : 'danger'}
-                      size="sm"
-                      onClick={() => onUpdateFoodItem(item.id, { available: !item.available })}
-                      className="shrink-0 cursor-pointer"
-                    >
-                      {item.available ? t('available_badge', 'Available') : t('out_of_stock_badge', 'Out of Stock')}
-                    </Badge>
+                    {/* Image Preview & Quick Upload */}
+                    <div className="relative group rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-700/60 border border-slate-200/80 dark:border-slate-600 h-20 sm:h-16 flex items-center justify-center">
+                      {item.imagePath ? (
+                        <img
+                          src={item.imagePath}
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center gap-0.5 text-slate-400 dark:text-slate-500 p-1">
+                          <UtensilsCrossed className="w-5 h-5" />
+                        </div>
+                      )}
+
+                      <label
+                        className="absolute inset-0 bg-slate-900/70 text-white flex items-center justify-center gap-1 text-[10px] font-semibold opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer backdrop-blur-2xs"
+                        title={t('upload_image_for_item_tooltip', 'Upload Image for this item')}
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Upload</span>
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onloadend = async () => {
+                                const dataUri = reader.result as string;
+                                const uploadedUrl = await uploadImageDB(dataUri, 'menu');
+                                onUpdateFoodItem(item.id, { imagePath: uploadedUrl || dataUri });
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
+
+                    <div>
+                      <h4 className="font-semibold text-slate-800 dark:text-slate-200 text-xs leading-tight line-clamp-2 min-h-[28px]">
+                        {item.name}
+                      </h4>
+                      <p className="text-emerald-700 dark:text-emerald-400 font-extrabold text-xs sm:text-[11px] mt-0.5">
+                        ₹{item.price}
+                      </p>
+                    </div>
                   </div>
 
-                  {/* Image Preview & Quick Upload */}
-                  <div className="relative group rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-700/60 border border-slate-200/80 dark:border-slate-600 h-20 sm:h-16 flex items-center justify-center">
-                    {item.imagePath ? (
-                      <img
-                        src={item.imagePath}
-                        alt={item.name}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLElement).style.display = 'none';
-                        }}
-                      />
-                    ) : (
-                      <div className="flex flex-col items-center gap-0.5 text-slate-400 dark:text-slate-500 p-1">
-                        <UtensilsCrossed className="w-5 h-5" />
+                  {/* Footer Controls: Edit & Delete */}
+                  <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between mt-1 text-xs">
+                    <span className="font-mono text-[9px] text-slate-400 dark:text-slate-500">#{item.id}</span>
+                    <div className="flex items-center gap-1">
+                      <Button variant="primary" size="sm" onClick={() => requirePasscode(() => handleOpenEditFood(item))} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                        {t('edit_item_tooltip', 'Edit Item')}
+                      </Button>
+                      <button
+                        type="button"
+                        onClick={() => requirePasscode(() => onDeleteFoodItem(item.id))}
+                        className="p-1 rounded-md bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/60 text-red-600 dark:text-red-400 transition-colors cursor-pointer"
+                        title={t('delete_item_tooltip', 'Delete Item')}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            /* List Layout */
+            <div className="menu-manager__food-list space-y-2">
+              {filteredFoodItems.map((item) => (
+                <div
+                  key={item.id}
+                  className={`menu-manager__food-list-row bg-white dark:bg-slate-800 rounded-lg border border-slate-200/90 dark:border-slate-700 p-2.5 shadow-xs hover:border-blue-500 transition-all flex items-center justify-between gap-3 ${
+                    item.available ? '' : 'bg-red-50/20 dark:bg-red-950/20'
+                  }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    {/* Image Thumbnail with Upload on Hover */}
+                    <div className="relative group w-11 h-11 rounded-lg bg-slate-100 dark:bg-slate-700/60 border border-slate-200/80 dark:border-slate-600 overflow-hidden flex items-center justify-center shrink-0">
+                      {item.imagePath ? (
+                        <img
+                          src={item.imagePath}
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <UtensilsCrossed className="w-4 h-4 text-slate-400" />
+                      )}
+
+                      <label
+                        className="absolute inset-0 bg-slate-900/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer backdrop-blur-2xs"
+                        title={t('upload_image_for_item_tooltip', 'Upload Image for this item')}
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onloadend = async () => {
+                                const dataUri = reader.result as string;
+                                const uploadedUrl = await uploadImageDB(dataUri, 'menu');
+                                onUpdateFoodItem(item.id, { imagePath: uploadedUrl || dataUri });
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
+
+                    {/* Name, Category, ID, Badge */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-semibold text-slate-800 dark:text-slate-200 text-xs truncate m-0">
+                          {item.name}
+                        </h4>
+                        <span className="font-mono text-2xs text-slate-400 dark:text-slate-500 shrink-0">
+                          #{item.id}
+                        </span>
                       </div>
-                    )}
-
-                    <label
-                      className="absolute inset-0 bg-slate-900/70 text-white flex items-center justify-center gap-1 text-[10px] font-semibold opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer backdrop-blur-2xs"
-                      title={t('upload_image_for_item_tooltip', 'Upload Image for this item')}
-                    >
-                      <Upload className="w-3.5 h-3.5" />
-                      <span>Upload</span>
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            const reader = new FileReader();
-                            reader.onloadend = async () => {
-                              const dataUri = reader.result as string;
-                              const uploadedUrl = await uploadImageDB(dataUri, 'menu');
-                              onUpdateFoodItem(item.id, { imagePath: uploadedUrl || dataUri });
-                            };
-                            reader.readAsDataURL(file);
-                          }
-                        }}
-                      />
-                    </label>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-2xs font-medium text-slate-500 dark:text-slate-400 truncate">
+                          {item.category}
+                        </span>
+                        <Badge
+                          variant={item.available ? 'success' : 'danger'}
+                          size="sm"
+                          onClick={() => onUpdateFoodItem(item.id, { available: !item.available })}
+                          className="cursor-pointer text-2xs py-0 px-1.5"
+                        >
+                          {item.available ? t('available_badge', 'Available') : t('out_of_stock_badge', 'Out of Stock')}
+                        </Badge>
+                      </div>
+                    </div>
                   </div>
 
-                  <div>
-                    <h4 className="font-semibold text-slate-800 dark:text-slate-200 text-xs leading-tight line-clamp-2 min-h-[28px]">
-                      {item.name}
-                    </h4>
-                    <p className="text-emerald-700 dark:text-emerald-400 font-extrabold text-xs sm:text-[11px] mt-0.5">
+                  {/* Price & Actions */}
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="text-emerald-700 dark:text-emerald-400 font-extrabold text-xs">
                       ₹{item.price}
-                    </p>
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <Button variant="primary" size="sm" onClick={() => requirePasscode(() => handleOpenEditFood(item))} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                        {t('edit_item_tooltip', 'Edit Item')}
+                      </Button>
+                      <button
+                        type="button"
+                        onClick={() => requirePasscode(() => onDeleteFoodItem(item.id))}
+                        className="p-1.5 rounded-md bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/60 text-red-600 dark:text-red-400 transition-colors cursor-pointer"
+                        title={t('delete_item_tooltip', 'Delete Item')}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
-
-                {/* Footer Controls: Edit & Delete */}
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between mt-1 text-xs">
-                  <span className="font-mono text-[9px] text-slate-400 dark:text-slate-500">#{item.id}</span>
-                  <div className="flex items-center gap-1">
-                    <Button variant="primary" size="sm" onClick={() => requirePasscode(() => handleOpenEditFood(item))} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
-                      {t('edit_item_tooltip', 'Edit Item')}
-                    </Button>
-                    <button
-                      type="button"
-                      onClick={() => requirePasscode(() => onDeleteFoodItem(item.id))}
-                      className="p-1 rounded-md bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/60 text-red-600 dark:text-red-400 transition-colors cursor-pointer"
-                      title={t('delete_item_tooltip', 'Delete Item')}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -766,7 +974,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
             </div>
 
             <div>
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('item_image_upload_url_label', 'Item Image Upload / URL')}</label>
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('item_image_label', 'Item Image')}</label>
               <div className="menu-manager__field space-y-2">
                 <div className="menu-manager__upload-row flex items-center gap-2">
                   <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition-colors border border-slate-300 dark:border-slate-600">
@@ -788,14 +996,6 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                       }}
                     />
                   </label>
-
-                  <Input
-                    type="text"
-                    value={foodForm.imagePath}
-                    onChange={(e) => setFoodForm({ ...foodForm, imagePath: e.target.value })}
-                    placeholder={t('or_enter_image_url_placeholder', 'Or enter image URL / asset path...')}
-                    className="flex-1"
-                  />
                 </div>
 
                 {/* Image Preview Box */}
@@ -853,7 +1053,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
             </div>
             <div>
               <h3 className="font-semibold text-slate-900 dark:text-white text-sm">{t('passcode_required_heading', 'Passcode Required')}</h3>
-              <p className="text-slate-500 dark:text-slate-400 text-xs font-normal">{t('enter_staff_passcode_message', 'Enter any staff passcode to proceed')}</p>
+              <p className="text-slate-500 dark:text-slate-400 text-xs font-normal">{t('only_tenant_can_proceed', `Only ${tenantName} can proceed.`, { name: tenantName })}</p>
             </div>
           </div>
         </ModalHeader>
@@ -885,8 +1085,9 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
           <Button
             variant="warning"
             onClick={handleVerifyPasscode}
+            disabled={isVerifyingPasscode}
           >
-            {t('verify_continue_button', 'Verify & Continue')}
+            {isVerifyingPasscode ? 'Verifying...' : t('verify_continue_button', 'Verify & Continue')}
           </Button>
         </ModalFooter>
       </Modal>

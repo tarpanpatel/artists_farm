@@ -116,9 +116,9 @@ export const WalkInTabBillModal: React.FC<WalkInTabBillModalProps> = ({
     }
   };
 
-  const whatsappText = `ðŸ§¾ *WALK-IN BILL*${bill.label ? `\nðŸ‘¤ *${bill.label}*` : ''}\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n${bill.items
+  const whatsappText = `🧾 *WALK-IN BILL*${bill.label ? `\n👤 *${bill.label}*` : ''}\n━━━━━━━━━━━━━━━━━━\n${bill.items
     .map((it: any) => `${it.quantity}x ${it.name} - ₹${it.lineTotal.toFixed(2)}`)
-    .join('\n')}\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\nðŸ’µ *Subtotal:* ₹${bill.subtotal.toFixed(2)}${bill.discount > 0 ? `\nâž– *Discount:* ₹${bill.discount.toFixed(2)}` : ''}${bill.gstEnabled ? `\nâž• *GST (${bill.gstRate}%):* ₹${bill.gstAmount.toFixed(2)}` : ''}\nðŸ’° *Grand Total:* ₹${bill.grandTotal.toFixed(2)}${propertyUpiId ? `\nðŸ’³ *Pay via UPI:* ${propertyUpiId}` : ''}\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\nThank you!`;
+    .join('\n')}\n━━━━━━━━━━━━━━━━━━\n💵 *Subtotal:* ₹${bill.subtotal.toFixed(2)}${bill.discount > 0 ? `\n➖ *Discount:* ₹${bill.discount.toFixed(2)}` : ''}${bill.gstEnabled ? `\n➕ *GST (${bill.gstRate}%):* ₹${bill.gstAmount.toFixed(2)}` : ''}\n💰 *Grand Total:* ₹${bill.grandTotal.toFixed(2)}${propertyUpiId ? `\n💳 *Pay via UPI:* ${propertyUpiId}` : ''}\n━━━━━━━━━━━━━━━━━━\nThank you!`;
 
   return (
     // Right-side drawer (converted from a centered Modal 20 Aug 2026) so

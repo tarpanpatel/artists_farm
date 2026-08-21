@@ -821,6 +821,21 @@ export async function fetchMaterialCategoriesFromDB(): Promise<{ id: number; nam
   return [];
 }
 
+export async function verifyAdminPasscodeDB(passcode: string): Promise<{ success: boolean; role?: string; name?: string }> {
+  try {
+    const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=verify_admin_passcode`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ passcode }),
+    });
+    const json = await res.json();
+    return json;
+  } catch (err) {
+    console.error('Failed to verify admin passcode:', err);
+    return { success: false };
+  }
+}
+
 export async function updateMaterialCategoryInDB(id: number, name: string): Promise<boolean> {
   try {
     const res = await apiFetch(`${API_BASE}?action=update_material_category`, {
@@ -2835,12 +2850,19 @@ export async function fetchStaffMealLogsFromDB(): Promise<StaffMealLog[]> {
   return [];
 }
 
-export async function addStaffMealLogToDB(staffNames: string, foodDescription: string, isLeftoverBuffer: boolean): Promise<boolean> {
+export async function addStaffMealLogToDB(staffNames: string, foodDescription: string, isLeftoverBuffer: boolean, loggedAt?: string): Promise<boolean> {
   try {
+    // loggedAt (optional): the "Date & Time of Record" field's native
+    // datetime-local value ("YYYY-MM-DDTHH:mm") - converted to a MySQL
+    // DATETIME string here rather than at the call site, so every caller
+    // sends the same shape. Omitted entirely -> backend falls back to
+    // NOW(). See php/kitchen/menu.php's add_staff_meal_log case.
+    const body: Record<string, unknown> = { staff_names: staffNames, food_description: foodDescription, is_leftover_buffer: isLeftoverBuffer };
+    if (loggedAt) body.logged_at = `${loggedAt.replace('T', ' ')}:00`;
     const res = await apiFetch(`${API_BASE}?action=add_staff_meal_log`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ staff_names: staffNames, food_description: foodDescription, is_leftover_buffer: isLeftoverBuffer }),
+      body: JSON.stringify(body),
     });
     const json = await res.json();
     return json.status === 'success';

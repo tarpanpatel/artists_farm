@@ -185,37 +185,64 @@ function deleteLicense($pdo, $propertyId) {
 }
 
 /**
+ * Returns the 4 weekly Sunday reminder dates for a license expiring on
+ * $endDate, keyed 1 (earliest, furthest from expiry) through 4 (the last
+ * Sunday before expiry, most urgent) - "once every Sunday before the
+ * expiry", 4 reminders total (changed 21 Aug 2026, replacing the old
+ * fixed 7/4/1-day-before schedule). Never lands ON the expiry date itself,
+ * even if that date is a Sunday - the search starts the day before it.
+ */
+function getLicenseReminderSundays(string $endDate): array {
+    $cursor = new DateTime($endDate);
+    $cursor->modify('-1 day');
+    while ((int)$cursor->format('w') !== 0) { // 0 = Sunday
+        $cursor->modify('-1 day');
+    }
+    $dates = [];
+    for ($i = 4; $i >= 1; $i--) {
+        $dates[$i] = $cursor->format('Y-m-d');
+        $cursor->modify('-7 days');
+    }
+    ksort($dates);
+    return $dates;
+}
+
+/**
  * Check for expiring licenses and send notifications
- * This should be called daily via cron job or scheduled task
+ * This should be called daily via cron job or scheduled task - it's safe
+ * to run every day of the week: on a non-Sunday, no license's reminder
+ * dates (see getLicenseReminderSundays()) will match today, so nothing
+ * fires.
  */
 function checkExpiringLicenses($pdo) {
     try {
         $today = date('Y-m-d');
-        $expiryDates = [
-            7 => date('Y-m-d', strtotime('+7 days')),
-            4 => date('Y-m-d', strtotime('+4 days')),
-            1 => date('Y-m-d', strtotime('+1 day'))
-        ];
 
-        foreach ($expiryDates as $daysBeforeExpiry => $checkDate) {
-            // Find licenses expiring on this date
-            $stmt = $pdo->prepare("
-                SELECT pl.id, pl.property_id, pl.license_type, pl.license_name,
-                       pl.license_number, pl.end_date, p.name as property_name, p.slug
-                FROM property_licenses pl
-                JOIN properties p ON pl.property_id = p.id
-                WHERE DATE(pl.end_date) = ?
-                AND pl.property_id > 0
-                AND NOT EXISTS (
+        $stmt = $pdo->prepare("
+            SELECT pl.id, pl.property_id, pl.license_type, pl.license_name,
+                   pl.license_number, pl.end_date, p.name as property_name, p.slug,
+                   t.email as tenant_email
+            FROM property_licenses pl
+            JOIN properties p ON pl.property_id = p.id
+            LEFT JOIN tenants t ON p.tenant_id = t.id
+            WHERE pl.end_date >= CURDATE()
+            AND pl.property_id > 0
+        ");
+        $stmt->execute();
+        $licenses = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($licenses as $license) {
+            foreach (getLicenseReminderSundays($license['end_date']) as $reminderNumber => $sundayDate) {
+                if ($sundayDate !== $today) continue;
+
+                $checkStmt = $pdo->prepare("
                     SELECT 1 FROM license_expiry_notifications
-                    WHERE license_id = pl.id AND days_before = ?
-                )
-            ");
-            $stmt->execute([$checkDate, $daysBeforeExpiry]);
-            $expiringLicenses = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                    WHERE license_id = ? AND days_before = ?
+                ");
+                $checkStmt->execute([$license['id'], $reminderNumber]);
+                if ($checkStmt->fetchColumn()) continue;
 
-            foreach ($expiringLicenses as $license) {
-                sendLicenseExpiryNotification($pdo, $license, $daysBeforeExpiry);
+                sendLicenseExpiryNotification($pdo, $license, $reminderNumber);
             }
         }
 
@@ -226,51 +253,96 @@ function checkExpiringLicenses($pdo) {
 }
 
 /**
- * Send license expiry notification via Telegram
+ * Send one license expiry reminder via Telegram AND email.
+ *
+ * Telegram stays best-effort (already silently no-ops when a property has
+ * no Telegram routing configured - see CLAUDE.md's "Telegram Group
+ * Selection" note) and never blocks the email send. Email is the
+ * reliable channel - a property's Telegram setup is optional, but the
+ * tenant account email is expected to (almost) always be on file - so a
+ * Telegram failure must never prevent the email from being attempted, and
+ * vice versa.
+ *
+ * $reminderNumber is 1-4 (see getLicenseReminderSundays()) - the
+ * `days_before` column in license_expiry_notifications is repurposed to
+ * store this reminder ordinal rather than a literal day count, since the
+ * schedule changed from fixed 7/4/1-days-before to 4 weekly Sunday
+ * reminders (21 Aug 2026). The (license_id, days_before) unique key still
+ * gives one row per license per reminder slot, which is all the dedupe
+ * needs.
  */
-function sendLicenseExpiryNotification($pdo, $license, $daysBeforeExpiry) {
-    try {
-        if (file_exists(__DIR__ . '/../telegram/telegram.php')) {
-            require_once __DIR__ . '/../telegram/telegram.php';
-        }
+function sendLicenseExpiryNotification($pdo, $license, $reminderNumber) {
+    $telegramOk = false;
+    $emailOk = false;
 
+    try {
         $licenseId = $license['id'];
         $propertyId = $license['property_id'];
         $licenseType = $license['license_type'];
         $licenseName = $license['license_name'];
         $licenseNumber = $license['license_number'];
         $propertyName = $license['property_name'];
-        $propertySlug = $license['slug'];
         $endDate = $license['end_date'];
+        $tenantEmail = trim($license['tenant_email'] ?? '');
 
-        // Build notification message
-        $emoji = ($daysBeforeExpiry == 7) ? '⏰' : (($daysBeforeExpiry == 4) ? '⚠️' : '🚨');
-        $message = "$emoji *License Expiry Alert*\n\n";
+        $daysRemaining = (int)round((strtotime($endDate) - strtotime(date('Y-m-d'))) / 86400);
+        $licenseTypeLabel = ucfirst(str_replace('_', ' ', $licenseType));
+        // Reminder 4 (the last Sunday before expiry) reads as most urgent.
+        $emoji = $reminderNumber >= 4 ? '🚨' : ($reminderNumber === 3 ? '⚠️' : '⏰');
+
+        $message = "$emoji *License Expiry Reminder ($reminderNumber/4)*\n\n";
         $message .= "*Property:* $propertyName\n";
-        $message .= "*License Type:* " . ucfirst(str_replace('_', ' ', $licenseType)) . "\n";
+        $message .= "*License Type:* $licenseTypeLabel\n";
         $message .= "*License Name:* $licenseName\n";
         $message .= "*License Number:* `$licenseNumber`\n";
         $message .= "*Expiry Date:* `$endDate`\n";
-        $message .= "*Days Remaining:* *$daysBeforeExpiry days*\n\n";
+        $message .= "*Days Remaining:* *$daysRemaining days*\n\n";
         $message .= "Please renew the license before expiry.";
 
-        // Send to super admin via Telegram
-        sendPropertyTelegramMessage(
-            $pdo,
-            $propertyId,
-            'admin',
-            $message,
-            null,
-            'license_expiry_alert'
-        );
+        try {
+            if (file_exists(__DIR__ . '/../telegram/telegram.php')) {
+                require_once __DIR__ . '/../telegram/telegram.php';
+            }
+            sendPropertyTelegramMessage($pdo, $propertyId, 'admin', $message, null, 'license_expiry_alert');
+            $telegramOk = true;
+        } catch (Throwable $eTg) {
+            error_log("License Telegram notification failed for license {$licenseId}: " . $eTg->getMessage());
+        }
 
-        // Record notification sent
-        $stmt = $pdo->prepare("
-            INSERT INTO license_expiry_notifications
-            (license_id, property_id, days_before)
-            VALUES (?, ?, ?)
-        ");
-        $stmt->execute([$licenseId, $propertyId, $daysBeforeExpiry]);
+        if ($tenantEmail !== '') {
+            try {
+                require_once __DIR__ . '/../utils/mailer.php';
+                $subject = "$emoji License Expiry Reminder ($reminderNumber/4): $licenseName";
+                $body = "<p>$emoji <b>License Expiry Reminder ($reminderNumber of 4)</b></p>"
+                    . "<p><b>Property:</b> " . htmlspecialchars($propertyName) . "<br>"
+                    . "<b>License Type:</b> " . htmlspecialchars($licenseTypeLabel) . "<br>"
+                    . "<b>License Name:</b> " . htmlspecialchars($licenseName) . "<br>"
+                    . "<b>License Number:</b> " . htmlspecialchars($licenseNumber) . "<br>"
+                    . "<b>Expiry Date:</b> " . htmlspecialchars($endDate) . "<br>"
+                    . "<b>Days Remaining:</b> {$daysRemaining} days</p>"
+                    . "<p>Please renew this license before it expires.</p>";
+                $emailResult = sendSmtpEmail($pdo, $tenantEmail, $subject, $body);
+                $emailOk = $emailResult['success'];
+                if (!$emailOk) {
+                    error_log("License email notification failed for license {$licenseId}: " . $emailResult['error']);
+                }
+            } catch (Throwable $eMail) {
+                error_log("License email notification exception for license {$licenseId}: " . $eMail->getMessage());
+            }
+        }
+
+        // Record notification sent as long as at least one channel was
+        // attempted successfully (or attemptable) - keeps the dedupe from
+        // silently blocking a real retry attempt while still guaranteeing
+        // we never double-send once either channel has gone out.
+        if ($telegramOk || $emailOk || $tenantEmail === '') {
+            $stmt = $pdo->prepare("
+                INSERT INTO license_expiry_notifications
+                (license_id, property_id, days_before)
+                VALUES (?, ?, ?)
+            ");
+            $stmt->execute([$licenseId, $propertyId, $reminderNumber]);
+        }
 
     } catch (Throwable $e) {
         error_log("License notification failed: " . $e->getMessage());

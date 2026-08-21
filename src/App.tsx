@@ -1793,7 +1793,11 @@ ${itemsStr}
             dispatchLogs={telegramLogs}
             onSendTestNotification={handleSendTestNotification}
             kitchenModuleEnabled={kitchenEnabled}
-            templateCustomizationEnabled={!!preloadedData.currentProperty?.telegram_template_customization_enabled}
+            templateCustomizationEnabled={
+              activeRole?.toLowerCase().trim() === 'root admin' ||
+              activeRole?.toLowerCase().trim() === 'super admin' ||
+              !!preloadedData.currentProperty?.telegram_template_customization_enabled
+            }
           />
         </Suspense>
 
@@ -2157,6 +2161,8 @@ ${itemsStr}
                     onUpdateNavItems={handleUpdateNavItems}
                     activeMenuItemKey={activeMenuItemKey}
                     kitchenModuleEnabled={isModuleEnabled('kitchen')}
+                    propertySlug={preloadedData.currentProperty?.slug || ''}
+                    propertyName={preloadedData.currentProperty?.name || ''}
                   />
                 </ErrorBoundary>
               )}
@@ -2197,7 +2203,11 @@ ${itemsStr}
                     isEmbedded={true}
                     onLogAudit={logAudit}
                     kitchenModuleEnabled={kitchenEnabled}
-                    templateCustomizationEnabled={!!preloadedData.currentProperty?.telegram_template_customization_enabled}
+                    templateCustomizationEnabled={
+                      activeRole?.toLowerCase().trim() === 'root admin' ||
+                      activeRole?.toLowerCase().trim() === 'super admin' ||
+                      !!preloadedData.currentProperty?.telegram_template_customization_enabled
+                    }
                   />
                 </div>
               )}

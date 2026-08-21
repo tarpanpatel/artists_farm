@@ -10,6 +10,44 @@ if (file_exists($seedFile)) {
     require_once $seedFile;
 }
 
+require_once __DIR__ . '/../security/input_validator.php';
+
+/**
+ * First-pass input validation for petty-cash expense writes (mirrors
+ * validateGuestPiiInput()'s pattern in php/guests/guests.php - added 21 Aug
+ * 2026 as the first module extending InputValidator beyond guest PII, per
+ * ROADMAP.md's "extend the pattern module by module" note). Validates only
+ * the fields actually present in the payload and returns validated
+ * (trimmed/normalised) versions so callers can merge the result over
+ * $input. Throws Exception with a user-facing message on the first invalid
+ * field. Deliberately doesn't touch `id` (add_petty_cash generates its own;
+ * update_petty_cash's ids are a mix of real AUTO_INCREMENT ints and
+ * string-format "EXP-<timestamp>" ids from the legacy petty_cash table, so
+ * forcing it to a positive integer would break real updates) or the
+ * Telegram proof-image fields (base64 data-URIs, not PII/money).
+ */
+function validatePettyCashInput(array $input): array {
+    $validated = [];
+
+    if (isset($input['date']) && trim((string)$input['date']) !== '') {
+        $datePart = explode(' ', trim((string)$input['date']))[0];
+        InputValidator::validateDate($datePart, 'Y-m-d');
+        $validated['date'] = trim((string)$input['date']);
+    }
+
+    if (array_key_exists('amount', $input) && $input['amount'] !== null && $input['amount'] !== '') {
+        $validated['amount'] = InputValidator::validateFloat($input['amount'], 0);
+    }
+
+    foreach (['category' => 100, 'description' => 500, 'payment_mode' => 50, 'paymentMode' => 50, 'vendor' => 150, 'vendor_name' => 150, 'paidBy' => 150] as $textField => $maxLen) {
+        if (isset($input[$textField]) && trim((string)$input[$textField]) !== '') {
+            $validated[$textField] = InputValidator::validateString($input[$textField], 1, $maxLen);
+        }
+    }
+
+    return $validated;
+}
+
 function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
     require_once __DIR__ . '/../config/schema_cache.php';
     require_once __DIR__ . '/../config/guest_status.php';
@@ -18,6 +56,27 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
     try {
         $pdo->exec("ALTER TABLE farm_utility_expenses ADD COLUMN IF NOT EXISTS expense_time VARCHAR(10) DEFAULT '12:00'");
         $pdo->exec("ALTER TABLE petty_cash ADD COLUMN IF NOT EXISTS expense_time VARCHAR(10) DEFAULT '12:00'");
+    } catch (Exception $eCol) {}
+
+    // Self-heal: per-property override/tombstone flag for the shared
+    // system-default miscellaneous_catalog rows (property_id=1, read by every
+    // tenant - see get_misc_catalog below). Lets one property "delete" a
+    // shared default, or edit it, without ever touching the one canonical row
+    // every other tenant reads (added 21 Aug 2026 - see
+    // add_misc_charge_template/delete_misc_charge_template's copy-on-write).
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `miscellaneous_catalog` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `property_id` INT NOT NULL DEFAULT 1,
+            `label` VARCHAR(255) NOT NULL,
+            `default_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+            `category` VARCHAR(100) NOT NULL DEFAULT 'Services',
+            `description` TEXT,
+            `is_system_default` BOOLEAN DEFAULT FALSE,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY `unique_item_label_prop` (property_id, label)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+        $pdo->exec("ALTER TABLE miscellaneous_catalog ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT FALSE");
     } catch (Exception $eCol) {}
 
     switch ($action) {
@@ -40,6 +99,14 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
         case 'add_petty_cash':
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
+                if (!is_array($input)) $input = [];
+                try {
+                    $input = array_merge($input, validatePettyCashInput($input));
+                } catch (Exception $e) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+                    break;
+                }
                 $timeVal = !empty($input['time']) ? $input['time'] : date('H:i');
                 try {
                     $stmt = $pdo->prepare("INSERT INTO farm_utility_expenses (expense_date, expense_time, category, description, amount, payment_mode, vendor_name, property_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
@@ -152,6 +219,20 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
         case 'update_petty_cash':
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
+                if (!is_array($input)) $input = [];
+                // Validate BEFORE reverseFinancialSource() below - that call
+                // is a real side effect (neutralises the existing ledger
+                // entry), so it must never run against a request that's
+                // about to fail validation anyway. Doing it after would risk
+                // leaving a real expense's accounting half-reversed with no
+                // corrected entry to replace it.
+                try {
+                    $input = array_merge($input, validatePettyCashInput($input));
+                } catch (Exception $e) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+                    break;
+                }
                 // Never overwrite accounting history: neutralise the previous
                 // posting, then add the corrected value after the source update.
                 reverseFinancialSource($pdo, 'expense', (string)$input['id'], 'Expense corrected');
@@ -542,14 +623,51 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
                 // via the SELECT's "OR property_id = 1", so these are pure duplicates.
                 $pdo->exec("DELETE FROM miscellaneous_catalog WHERE property_id != 1 AND is_system_default = TRUE");
 
-                $stmt = $pdo->prepare("
-                    SELECT id, label, default_amount, category, description, is_system_default
+                // Merged in PHP rather than one UNION'd SELECT: this property's
+                // own rows (custom items, plus any per-property overrides/
+                // tombstones created by add_misc_charge_template /
+                // delete_misc_charge_template's copy-on-write) always take
+                // precedence over the shared property_id=1 default with the
+                // same label - an override replaces it, a tombstone
+                // (is_hidden) hides it, and neither ever touches the one
+                // canonical row every other tenant still reads.
+                $ownStmt = $pdo->prepare("
+                    SELECT id, label, default_amount, category, description, is_system_default, is_hidden
                     FROM miscellaneous_catalog
-                    WHERE property_id = ? OR property_id = 1
+                    WHERE property_id = ?
                     ORDER BY category ASC, label ASC
                 ");
-                $stmt->execute([$propertyId]);
-                $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $ownStmt->execute([$propertyId]);
+                $ownRows = $ownStmt->fetchAll(PDO::FETCH_ASSOC);
+
+                $data = [];
+                $ownLabels = [];
+                foreach ($ownRows as $row) {
+                    $ownLabels[mb_strtolower($row['label'])] = true;
+                    if (!$row['is_hidden']) {
+                        unset($row['is_hidden']);
+                        $data[] = $row;
+                    }
+                }
+
+                if ((int)$propertyId !== 1) {
+                    $globalStmt = $pdo->prepare("
+                        SELECT id, label, default_amount, category, description, is_system_default
+                        FROM miscellaneous_catalog
+                        WHERE property_id = 1
+                        ORDER BY category ASC, label ASC
+                    ");
+                    $globalStmt->execute();
+                    foreach ($globalStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                        if (isset($ownLabels[mb_strtolower($row['label'])])) continue;
+                        $data[] = $row;
+                    }
+                }
+
+                usort($data, function ($a, $b) {
+                    $catCmp = strcasecmp($a['category'], $b['category']);
+                    return $catCmp !== 0 ? $catCmp : strcasecmp($a['label'], $b['label']);
+                });
 
                 echo json_encode(['status' => 'success', 'data' => $data]);
             } catch (PDOException $e) {
@@ -568,11 +686,56 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
                     $id = $input['id'] ?? null;
 
                     if ($id) {
-                        $stmt = $pdo->prepare("
-                            UPDATE miscellaneous_catalog SET label = ?, default_amount = ?, category = ?, description = ?
-                            WHERE id = ? AND (property_id = ? OR property_id = 1)
-                        ");
-                        $stmt->execute([$label, $amount, $category, $description, $id, $propertyId]);
+                        $lookupStmt = $pdo->prepare("SELECT property_id, label FROM miscellaneous_catalog WHERE id = ?");
+                        $lookupStmt->execute([$id]);
+                        $target = $lookupStmt->fetch(PDO::FETCH_ASSOC);
+
+                        if (!$target) {
+                            echo json_encode(['status' => 'error', 'message' => 'Item not found']);
+                            break;
+                        }
+
+                        if ((int)$target['property_id'] === (int)$propertyId) {
+                            // Already this property's own row (a prior custom
+                            // item, or a prior override of a shared default) -
+                            // edit in place exactly as before.
+                            $stmt = $pdo->prepare("
+                                UPDATE miscellaneous_catalog SET label = ?, default_amount = ?, category = ?, description = ?, is_hidden = FALSE
+                                WHERE id = ? AND property_id = ?
+                            ");
+                            $stmt->execute([$label, $amount, $category, $description, $id, $propertyId]);
+                        } else {
+                            // Shared system-default row (property_id=1, read
+                            // by every tenant) - never mutate it in place,
+                            // that would silently change every OTHER
+                            // property's defaults too (see
+                            // [[multi_tenant_scale]]). Copy-on-write instead:
+                            // create/update THIS property's own override row
+                            // under the same label, which get_misc_catalog's
+                            // merge prefers over the shared row.
+                            $originalLabel = $target['label'];
+                            $stmt = $pdo->prepare("
+                                INSERT INTO miscellaneous_catalog (property_id, label, default_amount, category, description, is_system_default, is_hidden)
+                                VALUES (?, ?, ?, ?, ?, FALSE, FALSE)
+                                ON DUPLICATE KEY UPDATE
+                                default_amount = VALUES(default_amount), category = VALUES(category), description = VALUES(description), is_hidden = FALSE
+                            ");
+                            $stmt->execute([$propertyId, $label, $amount, $category, $description]);
+
+                            // Renaming a shared default: also tombstone the
+                            // original label for this property, otherwise the
+                            // un-renamed global row would keep showing
+                            // alongside the new name (the merge above keys on
+                            // label, so a rename alone doesn't suppress it).
+                            if (mb_strtolower($label) !== mb_strtolower($originalLabel)) {
+                                $hideStmt = $pdo->prepare("
+                                    INSERT INTO miscellaneous_catalog (property_id, label, is_system_default, is_hidden)
+                                    VALUES (?, ?, FALSE, TRUE)
+                                    ON DUPLICATE KEY UPDATE is_hidden = TRUE
+                                ");
+                                $hideStmt->execute([$propertyId, $originalLabel]);
+                            }
+                        }
                     } else {
                         $stmt = $pdo->prepare("
                             INSERT INTO miscellaneous_catalog (property_id, label, default_amount, category, description)
@@ -593,9 +756,36 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
-                    $stmt = $pdo->prepare("DELETE FROM miscellaneous_catalog WHERE (id = ? OR label = ?) AND (property_id = ? OR property_id = 1)");
-                    $stmt->execute([$input['id'] ?? null, $input['label'] ?? null, $propertyId]);
-                    echo json_encode(['status' => 'success', 'message' => 'Charge template deleted successfully', 'rows_deleted' => $stmt->rowCount()]);
+                    $lookupStmt = $pdo->prepare("SELECT id, property_id, label FROM miscellaneous_catalog WHERE (id = ? OR label = ?)");
+                    $lookupStmt->execute([$input['id'] ?? null, $input['label'] ?? null]);
+                    $target = $lookupStmt->fetch(PDO::FETCH_ASSOC);
+
+                    if (!$target) {
+                        echo json_encode(['status' => 'success', 'message' => 'Charge template deleted successfully', 'rows_deleted' => 0]);
+                        break;
+                    }
+
+                    if ((int)$target['property_id'] === (int)$propertyId) {
+                        // This property's own row (custom item or a previous
+                        // override) - delete outright, exactly as before.
+                        $stmt = $pdo->prepare("DELETE FROM miscellaneous_catalog WHERE id = ? AND property_id = ?");
+                        $stmt->execute([$target['id'], $propertyId]);
+                        echo json_encode(['status' => 'success', 'message' => 'Charge template deleted successfully', 'rows_deleted' => $stmt->rowCount()]);
+                    } else {
+                        // Shared system-default row (property_id=1) - never
+                        // delete the one canonical row every tenant reads
+                        // (see [[multi_tenant_scale]]). Copy-on-write
+                        // tombstone: mark it hidden for THIS property only,
+                        // so get_misc_catalog's merge excludes it here
+                        // without touching any other tenant's list.
+                        $hideStmt = $pdo->prepare("
+                            INSERT INTO miscellaneous_catalog (property_id, label, is_system_default, is_hidden)
+                            VALUES (?, ?, FALSE, TRUE)
+                            ON DUPLICATE KEY UPDATE is_hidden = TRUE
+                        ");
+                        $hideStmt->execute([$propertyId, $target['label']]);
+                        echo json_encode(['status' => 'success', 'message' => 'Charge template deleted successfully', 'rows_deleted' => 1]);
+                    }
                 } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
                 }

@@ -15,6 +15,18 @@ DirectoryIndex index.php index.html
     # updates to the real property URL), not a rewrite/cloak.
     RewriteRule ^demo/?$ /rivera-resorts/luxe-stays/ [R=302,L]
 
+    # Public, no-login "Share Menu" link (food_menu.php) - deliberately BEFORE
+    # the generic tenant/property routing rules below. Those match ANY first
+    # path segment (food_menu included) and always win once they hit [L], so
+    # with this block placed after them (as it used to be) /food_menu/... was
+    # unreachable - it always resolved to index.php?property_slug=food_menu
+    # instead, loading the React SPA rather than this page (found 21 Aug 2026
+    # while wiring up the Share Menu button; the single-segment fallback rule
+    # has no /php-style "real file" carve-out for food_menu.php the way static
+    # assets get, since the request path itself never has a .php extension).
+    RewriteRule ^food_menu/([a-z0-9-_]+)/?$ food_menu.php?property_slug=$1 [QSA,L]
+    RewriteRule ^food_menu/?$ food_menu.php [QSA,L]
+
     # Handle tenant/property routing for multi-tenant SaaS
     # e.g., /tenant-slug/property-slug/anything -> /index.php?tenant_slug=tenant-slug&property_slug=property-slug
     # Only rewrites when the full path isn't a real file/directory, so
@@ -29,9 +41,6 @@ DirectoryIndex index.php index.html
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^([a-z0-9-_]+)/?(.*)$ index.php?property_slug=$1 [QSA,L]
-
-    # Keep existing rules
-    RewriteRule ^food_menu/?$ food_menu.php [L]
 </IfModule>
 
 # Browser HTTP Asset Caching (Strategy 1)

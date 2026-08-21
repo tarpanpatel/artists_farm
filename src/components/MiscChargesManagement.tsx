@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
 import DataTable from 'react-data-table-component';
 import { flowbiteTableCustomStyles } from '../utils/tableStyles';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from 'flowbite-react';
 import { getPropertySlug } from '../services/api';
 import { useConfigurationData } from '../contexts/ConfigurationDataContext';
-import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { PageHeader, PageHeaderButton } from './PageHeader';
 import { Input } from './Input';
@@ -30,7 +29,6 @@ const API_BASE = `${_base}/php/api/router.php`;
 
 
 export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ onLogAudit }) => {
-  const { showToast } = useToast();
   const { confirm } = useConfirm();
   const { miscCharges, isLoadingMisc, refreshMiscCharges } = useConfigurationData();
   const [charges, setCharges] = useState<MiscChargeTemplate[]>([]);
@@ -103,12 +101,9 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
     const updatedCharge = charges.find(c => c.id === isEditing);
     if (!updatedCharge) return;
 
-    // Prevent editing system defaults
-    if (updatedCharge.is_system_default) {
-      showToast('System default expense items cannot be edited. Create a new custom item instead.', { type: 'warning' });
-      return;
-    }
-
+    // Editing a system default is allowed - the backend copy-on-writes it
+    // into a per-property override rather than mutating the shared row every
+    // other tenant reads (see petty_cash.php's add_misc_charge_template).
     const finalData = { ...updatedCharge, ...editForm };
 
     const changes: string[] = [];
@@ -137,12 +132,10 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
   const handleDelete = async (id: string | number) => {
     const target = charges.find(c => c.id === id);
 
-    // Prevent deletion of system defaults
-    if (target?.is_system_default) {
-      showToast('System default expense items cannot be deleted.', { type: 'warning' });
-      return;
-    }
-
+    // Deleting a system default is allowed - the backend hides it for this
+    // property only (a per-property tombstone) rather than deleting the
+    // shared row every other tenant reads (see
+    // petty_cash.php's delete_misc_charge_template).
     const confirmed = await confirm({
       title: t('delete_misc_charge_title', 'Delete Misc Charge Template'),
       message: t('delete_misc_charge_message', 'Are you sure you want to delete this charge template?'),
@@ -171,19 +164,11 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
 
   const columns = [
     {
-      name: t('service_id_column', 'Service ID'),
-      selector: (row: MiscChargeTemplate) => row.id,
-      width: '100px',
-      cell: (row: MiscChargeTemplate) => (
-        <span className="font-mono text-xs text-slate-500">{row.id}</span>
-      ),
-    },
-    {
       name: t('service_name_column', 'Item / Service Name'),
       selector: (row: MiscChargeTemplate) => row.label,
       sortable: true,
       grow: 2,
-      minWidth: '180px',
+      minWidth: '220px',
       cell: (row: MiscChargeTemplate) => {
         const editing = isEditing === row.id;
         return editing ? (
@@ -191,11 +176,12 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
             type="text"
             value={editForm.label || ''}
             onChange={(e) => setEditForm({ ...editForm, label: e.target.value })}
+            className="w-full"
           />
         ) : (
           <div className="flex items-center gap-2">
             <span className="font-semibold text-slate-900 dark:text-white text-xs">{row.label}</span>
-            {row.is_system_default && (
+            {!!row.is_system_default && (
               <Badge variant="neutral" size="sm">
                 {t('system_default_badge', 'Default')}
               </Badge>
@@ -208,7 +194,8 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
       name: t('category_column', 'Category'),
       selector: (row: MiscChargeTemplate) => row.category,
       sortable: true,
-      width: '140px',
+      width: '180px',
+      minWidth: '150px',
       cell: (row: MiscChargeTemplate) => {
         const editing = isEditing === row.id;
         return editing ? (
@@ -216,6 +203,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
             type="text"
             value={editForm.category || ''}
             onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+            className="w-full"
           />
         ) : (
           <Badge variant="info" size="sm">
@@ -229,46 +217,69 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
       selector: (row: MiscChargeTemplate) => row.default_amount,
       sortable: true,
       right: true,
-      width: '130px',
+      width: '160px',
+      minWidth: '140px',
       cell: (row: MiscChargeTemplate) => {
         const editing = isEditing === row.id;
         return editing ? (
           <Input
             type="number"
-            value={editForm.default_amount || 0}
+            value={editForm.default_amount ?? 0}
             onChange={(e) => setEditForm({ ...editForm, default_amount: Number(e.target.value) })}
+            className="w-full"
           />
         ) : (
-          <span className="font-semibold text-emerald-600 dark:text-emerald-400 text-xs">₹{row.default_amount?.toLocaleString('en-IN') || 0}</span>
+          <span className="font-semibold text-emerald-600 dark:text-emerald-400 text-xs tabular-nums">
+            ₹{row.default_amount?.toLocaleString('en-IN') || 0}
+          </span>
         );
       },
     },
     {
       name: t('actions_column', 'Actions'),
-      width: '130px',
+      width: '160px',
+      minWidth: '150px',
       right: true,
       cell: (row: MiscChargeTemplate) => {
         const editing = isEditing === row.id;
-        const isSystemDefault = row.is_system_default;
         return editing ? (
-          <div className="flex justify-end gap-2">
-            <button onClick={handleUpdate} className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer">{t('save_button', 'Save')}</button>
-            <button onClick={() => setIsEditing(null)} className="bg-slate-400 hover:bg-slate-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer">{t('cancel_button', 'Cancel')}</button>
+          <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+            <Button
+              variant="success"
+              size="sm"
+              onClick={handleUpdate}
+              className="h-8 px-2.5 text-xs whitespace-nowrap shrink-0"
+            >
+              {t('save_button', 'Save')}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setIsEditing(null)}
+              className="h-8 px-2.5 text-xs whitespace-nowrap shrink-0"
+            >
+              {t('cancel_button', 'Cancel')}
+            </Button>
           </div>
         ) : (
-          <div className="flex justify-end gap-3">
-            <Button variant="primary" size="sm" onClick={() => { setIsEditing(row.id); setEditForm(row); }} leftIcon={<Edit2 className="w-3.5 h-3.5 shrink-0" />}>
-              Edit
+          <div className="flex items-center justify-end gap-2 whitespace-nowrap">
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                setIsEditing(row.id);
+                setEditForm(row);
+              }}
+              leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
+              className="h-8 text-xs font-medium whitespace-nowrap shrink-0"
+            >
+              {t('edit_button', 'Edit')}
             </Button>
             <button
+              type="button"
               onClick={() => handleDelete(row.id)}
-              disabled={isSystemDefault}
-              title={isSystemDefault ? t('system_default_delete_disabled_tooltip', 'System default items cannot be deleted') : t('delete_button', 'Delete')}
-              className={`p-1 rounded-full transition-colors ${
-                isSystemDefault
-                  ? 'text-slate-400 cursor-not-allowed'
-                  : 'text-red-500 hover:text-red-700 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 cursor-pointer'
-              }`}
+              title={t('delete_button', 'Delete')}
+              className="p-1.5 rounded-lg transition-colors text-red-500 hover:text-red-700 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 cursor-pointer shrink-0"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -370,22 +381,19 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
                               setIsEditing(row.id);
                               setEditForm(row);
                             }}
-                            disabled={row.is_system_default}
-                            className="px-2.5 py-1 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-semibold text-xs rounded-lg transition cursor-pointer flex items-center gap-1 disabled:opacity-40 shrink-0"
+                            className="px-2.5 py-1 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-semibold text-xs rounded-lg transition cursor-pointer flex items-center gap-1 shrink-0"
                           >
                             <Pencil className="w-3 h-3" />
                             <span>{t('edit_button', 'Edit')}</span>
                           </button>
-                          {!row.is_system_default && (
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(row.id)}
-                              className="px-2 py-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 border border-slate-200 dark:border-slate-700 font-semibold text-xs rounded-lg transition cursor-pointer flex items-center gap-1 shrink-0"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                              <span>{t('delete_button', 'Delete')}</span>
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(row.id)}
+                            className="px-2 py-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 border border-slate-200 dark:border-slate-700 font-semibold text-xs rounded-lg transition cursor-pointer flex items-center gap-1 shrink-0"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            <span>{t('delete_button', 'Delete')}</span>
+                          </button>
                         </div>
                       </div>
                     </div>

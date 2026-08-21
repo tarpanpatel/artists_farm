@@ -1,0 +1,1500 @@
+/* All project-authored CSS lives here: design tokens, dark-mode overrides,
+   and the "Ground Code CUSTOM SEMANTIC CSS STYLING & ACCENTS" section below.
+   Split out of index.css 21 Aug 2026 - index.css is now Tailwind/Flowbite
+   bootstrap ONLY (imports/plugins/sources/@theme). Imported after index.css
+   in main.tsx, before mobile_screen_fix.css, so mobile-only fixes still win
+   on any specificity tie (most rules here use !important anyway, so in
+   practice load order rarely matters, but this keeps the same "base app
+   rules, then mobile overrides" order the two files already had). Plain CSS
+   throughout, no @apply/@theme/@layer beyond one small block below - doesn't
+   need to be processed by the same @import "tailwindcss" pipeline as
+   index.css, same as mobile_screen_fix.css already wasn't. */
+
+html,
+body {
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  color: rgb(17, 24, 39);
+  background-color: rgb(249, 250, 251);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.dark html,
+.dark body,
+:where(.dark) body {
+  color: rgb(243, 244, 246);
+  background-color: rgb(17, 24, 39);
+}
+
+/* Root font-size deliberately left at the browser default (16px, so
+   1rem = 16px) - this used to be forced to 14px, which shrank every
+   rem-based Tailwind/Flowbite utility (padding, gaps, border-radius, text)
+   by 12.5% app-wide, including inside Flowbite's own component internals
+   that live in node_modules and can't be overridden per-component. That
+   was the actual root cause of the app looking systematically smaller/
+   denser than Flowbite's own reference UI no matter how many individual
+   component styles got cleaned up - removed 19 Aug 2026 after confirming
+   via computed-style inspection that Flowbite-rendered elements (badges,
+   inputs) were rendering at scaled-down, non-standard pixel values because
+   of this. If a more compact feel is wanted again, scale specific dense
+   screens individually rather than the whole document root. */
+
+/* ==========================================================================
+   Design System Tokens (Buttons & Form Controls)
+   ========================================================================== */
+:root {
+  /* Button Variants - Light
+     primary/danger deliberately derive from --color-primary/--color-error
+     (set by src/services/themeService.ts's applyThemeSettings() from the
+     Appearance page, php/theme/theme_settings.php) rather than their own
+     hardcoded hex - this was the one gap CSS_THEMING_PLAN.md's Phases 1-3
+     didn't cover: Button.tsx already read --btn-* correctly, but --btn-*
+     itself was never connected to the Appearance page, so changing
+     "Primary" there silently did nothing to actual <Button> instances even
+     though it repainted raw Tailwind bg-blue-600 elements via
+     theme-overrides.css. Percentages match theme-overrides.css's own
+     700/800-shade convention (85%/70% mixed with black) for consistency.
+     secondary/ghost stay hardcoded neutral gray on purpose - not tied to
+     any brand color. Dark-mode block below is left untouched: confirmed
+     unreachable (nothing anywhere sets class="dark" since dark mode was
+     removed), not worth the risk of touching dead code for zero effect. */
+  --btn-primary-bg: var(--color-primary, #2563eb);
+  --btn-primary-hover: color-mix(in srgb, var(--color-primary, #2563eb) 85%, black);
+  --btn-primary-active: color-mix(in srgb, var(--color-primary, #2563eb) 70%, black);
+  --btn-primary-text: #ffffff;
+  --btn-primary-ring: color-mix(in srgb, var(--color-primary, #2563eb) 35%, transparent);
+
+  --btn-secondary-bg: #ffffff;
+  --btn-secondary-border: #cbd5e1;
+  --btn-secondary-hover: #f8fafc;
+  --btn-secondary-active: #f1f5f9;
+  --btn-secondary-text: #0f172a;
+  --btn-secondary-ring: rgba(148, 163, 184, 0.3);
+
+  --btn-danger-bg: var(--color-error, #dc2626);
+  --btn-danger-hover: color-mix(in srgb, var(--color-error, #dc2626) 85%, black);
+  --btn-danger-active: color-mix(in srgb, var(--color-error, #dc2626) 70%, black);
+  --btn-danger-text: #ffffff;
+  --btn-danger-ring: color-mix(in srgb, var(--color-error, #dc2626) 35%, transparent);
+
+  --btn-ghost-bg: transparent;
+  --btn-ghost-hover: rgba(241, 245, 249, 0.8);
+  --btn-ghost-active: #e2e8f0;
+  --btn-ghost-text: #334155;
+  --btn-ghost-ring: rgba(148, 163, 184, 0.25);
+
+  /* Input States - Light */
+  --input-bg-default: #ffffff;
+  --input-border-default: #cbd5e1;
+  --input-text-default: #0f172a;
+  --input-placeholder: #94a3b8;
+
+  --input-border-focus: #3b82f6;
+  --input-ring-focus: rgba(59, 130, 246, 0.25);
+
+  --input-bg-error: #fef2f2;
+  --input-border-error: #ef4444;
+  --input-ring-error: rgba(239, 68, 68, 0.25);
+  --input-text-error: #991b1b;
+
+  --input-bg-disabled: #f8fafc;
+  --input-border-disabled: #e2e8f0;
+  --input-text-disabled: #94a3b8;
+
+  /* Select - Light */
+  --select-bg: #ffffff;
+  --select-border-default: #cbd5e1;
+  --select-border-hover: #94a3b8;
+  --select-border-focus: #06b6d4;
+  --select-ring-focus: rgba(6, 182, 212, 0.25);
+  --select-dropdown-bg: #ffffff;
+  --select-dropdown-border: #e2e8f0;
+  --select-option-hover: #f8fafc;
+  --select-option-selected-bg: #eff6ff;
+  --select-option-selected-text: #1d4ed8;
+
+  /* Badge - Light */
+  --badge-success-bg: #d1fae5;
+  --badge-success-text: #065f46;
+  --badge-success-border: #a7f3d0;
+  --badge-danger-bg: #fee2e2;
+  --badge-danger-text: #991b1b;
+  --badge-danger-border: #fecaca;
+  --badge-warning-bg: #fef3c7;
+  --badge-warning-text: #92400e;
+  --badge-warning-border: #fde68a;
+  --badge-info-bg: #dbeafe;
+  --badge-info-text: #1e40af;
+  --badge-info-border: #bfdbfe;
+  --badge-neutral-bg: #f1f5f9;
+  --badge-neutral-text: #334155;
+  --badge-neutral-border: #e2e8f0;
+}
+
+html.dark {
+  /* Button Variants - Dark */
+  --btn-primary-bg: #3b82f6;
+  --btn-primary-hover: #2563eb;
+  --btn-primary-active: #1d4ed8;
+  --btn-primary-text: #ffffff;
+  --btn-primary-ring: rgba(59, 130, 246, 0.4);
+
+  --btn-secondary-bg: #1e293b;
+  --btn-secondary-border: #475569;
+  --btn-secondary-hover: #334155;
+  --btn-secondary-active: #475569;
+  --btn-secondary-text: #f8fafc;
+  --btn-secondary-ring: rgba(148, 163, 184, 0.4);
+
+  --btn-danger-bg: #ef4444;
+  --btn-danger-hover: #dc2626;
+  --btn-danger-active: #b91c1c;
+  --btn-danger-text: #ffffff;
+  --btn-danger-ring: rgba(239, 68, 68, 0.4);
+
+  --btn-ghost-bg: transparent;
+  --btn-ghost-hover: rgba(51, 65, 85, 0.7);
+  --btn-ghost-active: #334155;
+  --btn-ghost-text: #cbd5e1;
+  --btn-ghost-ring: rgba(148, 163, 184, 0.3);
+
+  /* Input States - Dark */
+  --input-bg-default: #0f172a;
+  --input-border-default: #334155;
+  --input-text-default: #f8fafc;
+  --input-placeholder: #64748b;
+
+  --input-border-focus: #60a5fa;
+  --input-ring-focus: rgba(96, 165, 250, 0.3);
+
+  --input-bg-error: rgba(69, 10, 10, 0.3);
+  --input-border-error: #f87171;
+  --input-ring-error: rgba(248, 113, 113, 0.3);
+  --input-text-error: #fca5a5;
+
+  --input-bg-disabled: #1e293b;
+  --input-border-disabled: #334155;
+  --input-text-disabled: #475569;
+
+  /* Select - Dark */
+  --select-bg: #0f172a;
+  --select-border-default: #475569;
+  --select-border-hover: #64748b;
+  --select-border-focus: #22d3ee;
+  --select-ring-focus: rgba(34, 211, 238, 0.3);
+  --select-dropdown-bg: #1e293b;
+  --select-dropdown-border: #334155;
+  --select-option-hover: #334155;
+  --select-option-selected-bg: rgba(30, 58, 138, 0.4);
+  --select-option-selected-text: #60a5fa;
+
+  /* Badge - Dark */
+  --badge-success-bg: rgba(6, 78, 59, 0.4);
+  --badge-success-text: #6ee7b7;
+  --badge-success-border: #065f46;
+  --badge-danger-bg: rgba(127, 29, 29, 0.4);
+  --badge-danger-text: #fca5a5;
+  --badge-danger-border: #991b1b;
+  --badge-warning-bg: rgba(120, 53, 15, 0.4);
+  --badge-warning-text: #fde68a;
+  --badge-warning-border: #92400e;
+  --badge-info-bg: rgba(30, 58, 95, 0.4);
+  --badge-info-text: #93c5fd;
+  --badge-info-border: #1e40af;
+  --badge-neutral-bg: #334155;
+  --badge-neutral-text: #e2e8f0;
+  --badge-neutral-border: #475569;
+}
+
+/* Mobile input focus auto-zoom fix: minimum 16px font-size enforced on mobile screens
+   in mobile_screen_fix.css to prevent iOS Safari/Chrome from zooming in on input focus. */
+
+/* Global Design System Typography: Unified Form Inputs & Select Controls */
+input,
+select,
+textarea,
+.app-input,
+.styled-select__trigger,
+.app-select-button,
+.form-field__input,
+.form-field__select,
+.styled-select__value,
+.styled-select__option {
+  font-family: inherit !important;
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: normal;
+}
+
+label,
+.app-label,
+.input__label {
+  font-family: inherit !important;
+  font-size: 10px !important;
+  line-height: 1.3 !important;
+  font-weight: 600;
+}
+
+/* Global Date Input - Click Anywhere to Open Picker */
+input[type="date"],
+input[type="datetime-local"],
+input[type="month"],
+input[type="time"] {
+  cursor: pointer;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+}
+
+@layer base {
+  h1, h2, h3, .heading-tight {
+    letter-spacing: -0.02em;
+  }
+}
+
+/* Flowbite Datepicker Popover Z-Index & Theme Styling */
+div[datepicker-popover],
+.datepicker-dropdown,
+[inline-datepicker] {
+  z-index: 999999 !important;
+}
+
+/* A hand-rolled hardcoded-hex override of the datepicker popup (background,
+   selected-cell blue, footer buttons, etc.) used to live here, fighting the
+   real Flowbite token classes flowbite-datepicker's own pickerTemplate.js
+   already applies (bg-neutral-primary-medium, bg-brand, rounded-base, ...) -
+   same antipattern as the .datepicker-cell.selected/.bg-blue-700 override
+   removed earlier in this migration. Removed entirely (20 Aug 2026): the
+   real token classes already render the correct look/dark-mode variants
+   without a shadow copy that can drift out of sync with them (this one had
+   drifted - .datepicker-grid's `grid-template-cols` isn't a real CSS
+   property, so that rule was already a silent no-op). */
+
+/* flowbite-datepicker v2.0.0's own DaysView.js has a real class-application
+   bug (not ours): .range-end always gets bg-neutral-tertiary-medium instead
+   of the bg-brand/text-white .range-start and .selected correctly get, and
+   when a range's start and end land on the same date (a single-day custom
+   range), the range-end branch's classList.add() runs after range-start's
+   without removing its bg-brand/text-white - the leftover white text sits
+   on top of whichever background wins the cascade, reading as a blank day
+   number (reported 20 Aug 2026 - the old hardcoded override above happened
+   to mask this the whole time by force-painting all three states the same
+   color). Force both endpoints to the same solid brand treatment as
+   .selected, via the real theme token variable rather than a hex literal,
+   so a future brand re-theme still keeps these in sync. */
+.datepicker-cell.range-start,
+.datepicker-cell.range-end {
+  background-color: var(--color-brand) !important;
+  color: white !important;
+}
+
+/* Numeric & Financial Alignment */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Card Elevation & Hover Transitions */
+.stat-card-elevated {
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1), border-color 180ms ease;
+}
+
+.stat-card-elevated:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.08);
+}
+
+/* Number inputs site-wide: no spin/increment arrows - staff type the amount
+   directly (money/quantity fields), the +/- steppers only invite mis-taps.
+   type="number" already forces a numeric keypad on mobile; this just hides
+   the desktop spinner UI without touching each field individually. */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* Checkboxes render as circles without this (found 21 Aug 2026, while
+   auditing a checkbox that already used flowbite-react's real <Checkbox> -
+   correct component, correct "rounded" class, matching theme.js literally -
+   and still rendered as a full circle). Root cause: this project imports
+   Flowbite's own theme package (see the @import above), and that package's
+   default.css sets --radius: 8px, which the bare "rounded" utility maps to
+   - Flowbite's own current published token, not a project misconfiguration.
+   8px radius on a 16px (w-4 h-4) checkbox is exactly 50% - a mathematical
+   circle, identical to how Radio deliberately achieves circular via
+   rounded-full. This is a real gap in Flowbite's own theme.js (Checkbox
+   uses bare "rounded" without accounting for its own --radius: 8px making
+   that circular at checkbox size) - invisible from reading source/class
+   names alone, only visible by actually rendering and measuring, which is
+   why it survived both an earlier code-only review and ai2's sweep. Scoped
+   to checkboxes only - never touch radio, which correctly wants circular. */
+input[type='checkbox'] {
+  border-radius: 4px !important;
+}
+
+/* Dark Mode UI Overrides */
+.dark body,
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body {
+  background-color: #0f172a;
+  color: #f1f5f9;
+}
+
+html.dark header,
+html.dark aside,
+html.dark .bg-white {
+  background-color: #1e293b;
+  color: #f8fafc;
+  border-color: #334155;
+}
+
+html.dark .bg-gray-50,
+html.dark .bg-slate-50 {
+  background-color: #0f172a;
+  color: #f1f5f9;
+  border-color: #334155;
+}
+
+html.dark .bg-gray-100,
+html.dark .bg-slate-100 {
+  background-color: #334155;
+  color: #f8fafc;
+}
+
+html.dark .bg-slate-200 {
+  background-color: #475569;
+}
+
+html.dark .bg-slate-300 {
+  background-color: #64748b;
+}
+
+html.dark .bg-slate-400 {
+  background-color: #94a3b8;
+}
+
+html.dark .text-gray-900,
+html.dark .text-slate-800,
+html.dark .text-slate-900 {
+  color: #f8fafc;
+}
+
+html.dark .text-gray-700,
+html.dark .text-gray-800,
+html.dark .text-slate-700 {
+  color: #cbd5e1;
+}
+
+html.dark .text-gray-500,
+html.dark .text-gray-600,
+html.dark .text-slate-400,
+html.dark .text-slate-500 {
+  color: #94a3b8;
+}
+
+html.dark .text-gray-400 {
+  color: #64748b;
+}
+
+html.dark .text-slate-600 {
+  color: #cbd5e1;
+}
+
+html.dark .border-gray-100,
+html.dark .border-gray-200,
+html.dark .border-gray-300,
+html.dark .border-slate-100,
+html.dark .border-slate-200,
+html.dark .border-slate-300 {
+  border-color: #334155;
+}
+
+html.dark input,
+html.dark select,
+html.dark textarea {
+  background-color: #0f172a;
+  color: #f8fafc;
+  border-color: #334155;
+}
+
+html.dark .divide-gray-100> :not([hidden])~ :not([hidden]),
+html.dark .divide-gray-200> :not([hidden])~ :not([hidden]),
+html.dark .divide-slate-100> :not([hidden])~ :not([hidden]),
+html.dark .divide-slate-200> :not([hidden])~ :not([hidden]) {
+  border-color: #334155;
+}
+
+/* Hover state overrides for dark mode */
+html.dark .hover\:bg-slate-50:hover {
+  background-color: #1e293b;
+}
+
+html.dark .hover\:bg-slate-100:hover {
+  background-color: #334155;
+}
+
+html.dark .hover\:bg-slate-200:hover {
+  background-color: #475569;
+}
+
+html.dark .hover\:border-slate-300:hover {
+  border-color: #475569;
+}
+
+html.dark .hover\:bg-gray-100:hover {
+  background-color: #334155;
+}
+
+html.dark .hover\:text-gray-900:hover {
+  color: #f8fafc;
+}
+
+/* Group hover overrides */
+html.dark .group:hover .group-hover\:bg-slate-200\/80 {
+  background-color: rgba(51, 65, 85, 0.8);
+}
+
+/* Focus ring overrides */
+html.dark .focus\:ring-blue-500:focus {
+  --tw-ring-color: #3b82f6;
+}
+
+html.dark .focus\:ring-cyan-500:focus {
+  --tw-ring-color: #06b6d4;
+}
+
+html.dark .focus\:ring-emerald-500:focus {
+  --tw-ring-color: #10b981;
+}
+
+html.dark .focus\:ring-indigo-500:focus {
+  --tw-ring-color: #6366f1;
+}
+
+html.dark .focus\:ring-red-500:focus {
+  --tw-ring-color: #ef4444;
+}
+
+html.dark .focus\:ring-amber-500:focus {
+  --tw-ring-color: #f59e0b;
+}
+
+html.dark .focus\:border-cyan-500:focus {
+  border-color: #06b6d4;
+}
+
+html.dark .focus\:border-emerald-500:focus {
+  border-color: #10b981;
+}
+
+html.dark .focus\:border-blue-500:focus {
+  border-color: #3b82f6;
+}
+
+/* Colored background overrides for dark mode */
+html.dark .bg-emerald-50 {
+  background-color: #064e3b;
+}
+
+html.dark .bg-emerald-100 {
+  background-color: #065f46;
+  color: #a7f3d0;
+}
+
+html.dark .bg-amber-50 {
+  background-color: #78350f;
+}
+
+html.dark .bg-amber-100 {
+  background-color: #92400e;
+  color: #fde68a;
+}
+
+html.dark .bg-amber-200 {
+  background-color: #b45309;
+}
+
+html.dark .bg-blue-50 {
+  background-color: #1e3a5f;
+}
+
+html.dark .bg-blue-100 {
+  background-color: #1e40af;
+  color: #93c5fd;
+}
+
+html.dark .bg-cyan-50 {
+  background-color: #164e63;
+}
+
+html.dark .bg-cyan-100 {
+  background-color: #155e75;
+  color: #a5f3fc;
+}
+
+html.dark .bg-indigo-50 {
+  background-color: #312e81;
+}
+
+html.dark .bg-indigo-100 {
+  background-color: #3730a3;
+  color: #a5b4fc;
+}
+
+html.dark .bg-red-50 {
+  background-color: #7f1d1d;
+}
+
+html.dark .bg-red-100 {
+  background-color: #991b1b;
+  color: #fecaca;
+}
+
+html.dark .text-red-800 {
+  color: #fecaca;
+}
+
+html.dark .border-red-200 {
+  border-color: #991b1b;
+}
+
+html.dark .border-red-300 {
+  border-color: #b91c1c;
+}
+
+html.dark .hover\:bg-red-200:hover {
+  background-color: #b91c1c;
+}
+
+html.dark .bg-green-50 {
+  background-color: #14532d;
+}
+
+html.dark .bg-green-100 {
+  background-color: #166534;
+  color: #bbf7d0;
+}
+
+html.dark .text-green-800 {
+  color: #bbf7d0;
+}
+
+html.dark .border-green-200 {
+  border-color: #166534;
+}
+
+html.dark .border-green-300 {
+  border-color: #15803d;
+}
+
+html.dark .hover\:bg-green-200:hover {
+  background-color: #15803d;
+}
+
+/* Colored text overrides for dark mode */
+html.dark .text-emerald-600 {
+  color: #6ee7b7;
+}
+
+html.dark .text-emerald-700 {
+  color: #6ee7b7;
+}
+
+html.dark .text-emerald-800 {
+  color: #a7f3d0;
+}
+
+html.dark .text-amber-600 {
+  color: #fbbf24;
+}
+
+html.dark .text-amber-700 {
+  color: #fcd34d;
+}
+
+html.dark .text-amber-800 {
+  color: #fde68a;
+}
+
+html.dark .text-amber-900 {
+  color: #fef3c7;
+}
+
+html.dark .text-blue-600 {
+  color: #93c5fd;
+}
+
+html.dark .text-blue-700 {
+  color: #93c5fd;
+}
+
+html.dark .text-blue-800 {
+  color: #a5f3fc;
+}
+
+html.dark .text-blue-900 {
+  color: #bfdbfe;
+}
+
+html.dark .text-cyan-600 {
+  color: #67e8f9;
+}
+
+html.dark .text-cyan-700 {
+  color: #67e8f9;
+}
+
+html.dark .text-cyan-800 {
+  color: #a5f3fc;
+}
+
+html.dark .text-sky-600 {
+  color: #7dd3fc;
+}
+
+html.dark .text-indigo-900 {
+  color: #c7d2fe;
+}
+
+html.dark .text-red-500 {
+  color: #fca5a5;
+}
+
+html.dark .text-red-600 {
+  color: #fca5a5;
+}
+
+html.dark .text-red-700 {
+  color: #fca5a5;
+}
+
+html.dark .text-green-600 {
+  color: #86efac;
+}
+
+html.dark .text-purple-600 {
+  color: #c4b5fd;
+}
+
+html.dark .text-pink-600 {
+  color: #f9a8d4;
+}
+
+html.dark .text-yellow-600 {
+  color: #fde68a;
+}
+
+/* Colored border overrides for dark mode */
+html.dark .border-emerald-200 {
+  border-color: #065f46;
+}
+
+html.dark .border-emerald-300 {
+  border-color: #047857;
+}
+
+html.dark .border-amber-200 {
+  border-color: #92400e;
+}
+
+html.dark .border-amber-300 {
+  border-color: #b45309;
+}
+
+html.dark .border-blue-200 {
+  border-color: #1e40af;
+}
+
+html.dark .border-cyan-200 {
+  border-color: #155e75;
+}
+
+html.dark .border-cyan-300 {
+  border-color: #0891b2;
+}
+
+html.dark .border-indigo-300 {
+  border-color: #4338ca;
+}
+
+/* Select option overrides for dark mode */
+html.dark option {
+  background-color: #0f172a;
+  color: #f8fafc;
+}
+
+/* Additional border overrides */
+html.dark .border-slate-50 {
+  border-color: #1e293b;
+}
+
+/* White element hover state */
+html.dark .hover\:bg-white:hover {
+  background-color: #1e293b;
+}
+
+/* Colored hover states */
+html.dark .hover\:bg-emerald-50:hover {
+  background-color: #064e3b;
+}
+
+html.dark .hover\:bg-emerald-100:hover {
+  background-color: #065f46;
+}
+
+html.dark .hover\:bg-amber-50:hover {
+  background-color: #78350f;
+}
+
+html.dark .hover\:bg-blue-50:hover {
+  background-color: #1e3a5f;
+}
+
+html.dark .hover\:bg-cyan-50:hover {
+  background-color: #164e63;
+}
+
+html.dark .hover\:bg-red-50:hover {
+  background-color: #7f1d1d;
+}
+
+html.dark .hover\:border-cyan-400:hover {
+  border-color: #22d3ee;
+}
+
+html.dark .hover\:border-emerald-400:hover {
+  border-color: #34d399;
+}
+
+html.dark .hover\:text-emerald-700:hover {
+  color: #6ee7b7;
+}
+
+html.dark .hover\:text-red-500:hover {
+  color: #fca5a5;
+}
+
+html.dark .hover\:text-red-700:hover {
+  color: #fca5a5;
+}
+
+html.dark .hover\:text-cyan-600:hover {
+  color: #67e8f9;
+}
+
+html.dark .hover\:text-slate-600:hover {
+  color: #cbd5e1;
+}
+
+/* Common background opacity variants */
+html.dark .bg-emerald-50\/50 {
+  background-color: rgba(6, 78, 59, 0.5);
+}
+
+html.dark .bg-slate-50\/60 {
+  background-color: rgba(30, 41, 59, 0.6);
+}
+
+html.dark .bg-slate-50\/90 {
+  background-color: rgba(30, 41, 59, 0.9);
+}
+
+html.dark .bg-slate-100\/60 {
+  background-color: rgba(51, 65, 85, 0.6);
+}
+
+html.dark .bg-blue-50\/40 {
+  background-color: rgba(30, 58, 95, 0.4);
+}
+
+html.dark .bg-blue-50\/50 {
+  background-color: rgba(30, 58, 95, 0.5);
+}
+
+html.dark .bg-blue-50\/80 {
+  background-color: rgba(30, 58, 95, 0.8);
+}
+
+html.dark .bg-purple-50\/20 {
+  background-color: rgba(88, 28, 135, 0.2);
+}
+
+html.dark .bg-purple-50 {
+  background-color: #3b0764;
+}
+
+html.dark .bg-purple-100 {
+  background-color: #581c87;
+  color: #e9d5ff;
+}
+
+html.dark .border-purple-500 {
+  border-color: #a855f7;
+}
+
+html.dark .border-purple-200 {
+  border-color: #581c87;
+}
+
+html.dark .text-purple-500 {
+  color: #c4b5fd;
+}
+
+html.dark .bg-amber-50\/20 {
+  background-color: rgba(120, 53, 15, 0.2);
+}
+
+/* Ring overrides */
+html.dark .ring-slate-200 {
+  --tw-ring-color: #334155;
+}
+
+/* Shadow overrides - ensure shadows are visible in dark mode */
+html.dark .shadow-2xs {
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+}
+
+html.dark .shadow-xs {
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.4);
+}
+
+/* ==========================================================================
+   Ground Code CUSTOM SEMANTIC CSS STYLING & ACCENTS
+   ========================================================================== */
+
+/* Custom Scrollbar for Matrix Tables & Containers */
+.overflow-x-auto::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+}
+
+html.dark .overflow-x-auto::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.4);
+  border-radius: 4px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.7);
+}
+
+/* react-data-table-component's own scroll wrapper (used by every DataTable
+   site-wide) sets overflow-x via its own inline styles, not the Tailwind
+   `.overflow-x-auto` class above, so it never picked up that scrollbar
+   styling. On mobile, most browsers auto-hide a default scrollbar entirely,
+   so a wide table (e.g. Staff & Permissions' 980px table in a ~380px
+   viewport) gave zero visual hint that more columns existed off-screen.
+   Mirrors the same scrollbar treatment so every table gets one consistent,
+   always-visible scroll affordance. */
+.rdt_responsiveWrapper::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+.rdt_responsiveWrapper::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+}
+
+html.dark .rdt_responsiveWrapper::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.rdt_responsiveWrapper::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.4);
+  border-radius: 4px;
+}
+
+.rdt_responsiveWrapper::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.7);
+}
+
+/* Firefox has no ::-webkit-scrollbar support - this is its equivalent, so
+   the same "thin, visible, indigo" scrollbar shows there too. */
+.rdt_responsiveWrapper {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99, 102, 241, 0.4) rgba(0, 0, 0, 0.05);
+}
+
+/* ==========================================================================
+   React Data Table - Unified Flowbite Table Theme
+   ========================================================================== */
+:root {
+  --table-head-bg: #f9fafb; /* bg-gray-50 */
+  --table-head-color: #374151; /* text-gray-700 */
+  --table-body-color: #6b7280; /* text-gray-500 */
+  --table-border-color: #e5e7eb; /* border-gray-200 */
+  --table-row-bg: #ffffff;
+  --table-row-hover: #f9fafb; /* hover:bg-gray-50 */
+}
+
+html.dark, .dark {
+  --table-head-bg: #374151; /* dark:bg-gray-700 */
+  --table-head-color: #9ca3af; /* dark:text-gray-400 */
+  --table-body-color: #9ca3af; /* dark:text-gray-400 */
+  --table-border-color: #4b5563; /* dark:border-gray-600 */
+  --table-row-bg: #1f2937; /* dark:bg-gray-800 */
+  --table-row-hover: #374151; /* dark:hover:bg-gray-700 */
+}
+
+.rdt_Table {
+  background-color: transparent !important;
+}
+
+.rdt_TableHead {
+  background-color: var(--table-head-bg) !important;
+}
+
+.rdt_TableHeadRow {
+  background-color: var(--table-head-bg) !important;
+  border-bottom: 1px solid var(--table-border-color) !important;
+  min-height: 44px !important;
+}
+
+.rdt_TableCol, .rdt_TableCol_Sortable {
+  background-color: var(--table-head-bg) !important;
+  font-size: 0.75rem !important; /* text-xs (12px) */
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  color: var(--table-head-color) !important;
+  padding-left: 16px !important;
+  padding-right: 16px !important;
+  padding-top: 12px !important; /* py-3 (12px) */
+  padding-bottom: 12px !important;
+}
+
+.rdt_TableCol:first-child, .rdt_TableCell:first-child {
+  padding-left: 20px !important;
+}
+
+.rdt_TableCol:last-child, .rdt_TableCell:last-child {
+  padding-right: 20px !important;
+}
+
+.rdt_TableRow {
+  background-color: var(--table-row-bg) !important;
+  color: var(--table-body-color) !important;
+  min-height: 52px !important;
+  border-bottom: 1px solid var(--table-border-color) !important;
+}
+
+.rdt_TableRow:hover {
+  background-color: var(--table-row-hover) !important;
+}
+
+.rdt_TableCell {
+  font-size: 0.875rem !important; /* text-sm (14px) */
+  color: var(--table-body-color) !important;
+  padding-left: 16px !important;
+  padding-right: 16px !important;
+  padding-top: 14px !important;
+  padding-bottom: 14px !important;
+}
+
+/* The select-all header checkbox (.rdt_columnCheckbox) and each row's
+   checkbox cell (.rdt_cellCheckbox) are library-fixed 48px, centered flex
+   boxes rendered with an internal $noPadding flag specifically so the two
+   line up - the generic padding-left/right rules above (and the :first-child
+   rule below) fight that and can shift the header checkbox out of line with
+   the row checkboxes beneath it. Zero the padding back out on both so they
+   stay centered in the same 48px column regardless of the row/first-child
+   padding tuning above. */
+.rdt_TableCol.rdt_columnCheckbox,
+.rdt_TableCell.rdt_cellCheckbox {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.rdt_Pagination {
+  background-color: var(--table-row-bg) !important;
+  color: var(--table-body-color) !important;
+  border-top: 1px solid var(--table-border-color) !important;
+  font-size: 0.75rem !important;
+  font-weight: 500 !important;
+  min-height: 48px !important;
+  padding: 0 12px !important;
+}
+
+.rdt_Pagination select {
+  background-color: #f9fafb !important;
+  color: #111827 !important;
+  border: 1px solid #d1d5db !important;
+  border-radius: 6px !important;
+  font-size: 0.75rem !important;
+  font-weight: 500 !important;
+  padding: 3px 22px 3px 8px !important;
+  margin: 0 6px !important;
+  cursor: pointer !important;
+  outline: none !important;
+  height: 28px !important;
+  line-height: 1 !important;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
+  background-position: right 4px center !important;
+  background-repeat: no-repeat !important;
+  background-size: 16px 16px !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}
+
+.rdt_Pagination select:hover {
+  background-color: #f3f4f6 !important;
+  border-color: #9ca3af !important;
+}
+
+.rdt_Pagination select:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+}
+
+.rdt_Pagination select option {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  font-size: 0.75rem !important;
+  padding: 6px 10px !important;
+}
+
+html.dark .rdt_Pagination select {
+  background-color: #374151 !important;
+  color: #f3f4f6 !important;
+  border-color: #4b5563 !important;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
+}
+
+html.dark .rdt_Pagination select:hover {
+  background-color: #4b5563 !important;
+}
+
+html.dark .rdt_Pagination select option {
+  background-color: #1f2937 !important;
+  color: #f3f4f6 !important;
+}
+
+.rdt_Pagination button {
+  fill: var(--table-head-color) !important;
+  border-radius: 6px !important;
+  padding: 6px !important;
+  margin: 0 2px !important;
+  cursor: pointer !important;
+  transition: background-color 0.15s ease !important;
+}
+
+.rdt_Pagination button:hover:not(:disabled) {
+  background-color: #f3f4f6 !important;
+}
+
+html.dark .rdt_Pagination button:hover:not(:disabled) {
+  background-color: #374151 !important;
+}
+
+.rdt_Pagination button:disabled {
+  opacity: 0.4 !important;
+  cursor: not-allowed !important;
+}
+
+
+
+/* Hide scrollbars cleanly on tab navigation bars while preserving touch/trackpad swipe */
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+.no-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+/* ==========================================================================
+   Flowbite Tabs - Flush & Connected to Content Block
+   ========================================================================== */
+div:has(> [role="tablist"]) {
+  gap: 0 !important;
+}
+
+[role="tablist"] {
+  margin-bottom: 0 !important;
+}
+
+[role="tabpanel"] {
+  padding-top: 0.5rem !important;
+}
+
+/* Attached Tabs (DESIGN.md's "Attached Tabs Specification") deliberately
+   render childless TabItems - the real content lives in a sibling Card
+   below, not as flowbite's own tabpanel - so flowbite still renders a real,
+   completely empty `[role="tabpanel"]` div for the active tab. The rule
+   above's `padding-top: 0.5rem !important` doesn't know that, and applies
+   the same 8px regardless - an empty div with only padding-top still
+   occupies that height, which was rendering as a visible gap between the
+   tab row and the attached card below it on every page using the pattern
+   (BillingCheckout.tsx, KitchenManagement.tsx) even though the component
+   code itself already zeroes every other gap (found 21 Aug 2026). `:empty`
+   is a precise, semantic way to target only this case - a tabpanel with
+   real content (the normal, non-attached case elsewhere in the app) never
+   matches it. Zeroes all four sides, not just padding-top - the real bug
+   turned out to be flowbite's default 'py-3' (top AND bottom padding),
+   and attachedTabsTheme's own `tabpanel: ''` override didn't remove it
+   either (an empty string added during a theme merge doesn't cancel a
+   class the base theme already contributed - it's a no-op), so
+   padding-bottom alone was still rendering a real ~12px gap even after
+   this rule originally only patched padding-top (found 21 Aug 2026,
+   confirmed live via computed styles - fixed at the source too, see
+   attachedTabsClearTheme in utils/tabsTheme.ts). This CSS rule stays as a
+   defensive backstop for any future use of the pattern that forgets to
+   pass that clearTheme prop. */
+[role="tabpanel"]:empty {
+  padding: 0 !important;
+}
+
+
+/* ==========================================================================
+   App-wide z-index scale (17 Aug 2026) - READ THIS before adding or
+   changing any z-index anywhere in the app.
+
+   This exists because the header/sidebar/mobile-drawer-scrim stack
+   (Navigation.tsx, Header.tsx) had its z-index adjusted in isolation three
+   separate times, each time fixing one visible conflict while creating a
+   new one, because nobody had ever written down how it related to the
+   REST of the app's z-index usage:
+     1. Sidebar at z-30 rendered BELOW an already-open StyledSelect
+        dropdown (z-50) - fixed by raising the sidebar to z-[56].
+     2. That put the sidebar ABOVE the header (still z-50), so opening the
+        drawer visually hid the header's own logo/hamburger toggle behind
+        the sidebar's opaque background - fixed by raising the header to
+        z-[57].
+     3. That put the header ABOVE every ordinary "fixed inset-0 z-50"
+        page modal (checkout, fulfill-edit, etc. - 50+ instances across
+        the app), so opening one of those while scrolled down cut its
+        title off behind the header and left part of its own backdrop
+        not actually covering the screen.
+
+   The actual scale, low to high (nothing here needs to change to add a
+   new modal - just use z-50 like everything else already does):
+     - z-50            ordinary in-page popovers/dropdowns (StyledSelect
+                        options panel, etc.) - the default for small,
+                        anchored UI. Left untouched (50+ existing uses).
+     - z-[55]/[56]/[57] mobile drawer scrim / sidebar / header, in that
+                        order - deliberately ABOVE ordinary popovers (so
+                        opening the drawer always covers a stale one) but
+                        BELOW real page modals (see below).
+     - z-[58]           every real full-page modal - anything shaped like
+                        `fixed inset-0 ... z-50` (a backdrop covering the
+                        whole viewport) gets bumped here by the rule right
+                        below, without editing 50+ individual components.
+                        Small popovers are exempt because they use
+                        `absolute`, never `fixed inset-0`.
+     - z-60/z-70/z-100  secondary modals deliberately meant to stack above
+                        an already-open page modal (date pickers, mobile
+                        cart drawers, image lightboxes) - unaffected,
+                        already above z-58.
+     - z-[9999]/[99999] toasts and the confirm dialog - always on top,
+                        unaffected.
+
+   If a future conflict shows up, fix it by placing the new element in
+   the correct EXISTING tier above, not by picking an arbitrary number
+   that happens to be higher than whatever it's currently losing to. */
+.fixed.inset-0.z-50 {
+  z-index: 58;
+}
+
+/* Attendance Matrix Enhancements */
+.attendance-matrix-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.attendance-staff-col {
+  box-shadow: 2px 0 5px -2px rgba(0, 0, 0, 0.1);
+  font-weight: 700;
+}
+
+html.dark .attendance-staff-col {
+  box-shadow: 2px 0 5px -2px rgba(0, 0, 0, 0.5);
+}
+
+.attendance-day-cell {
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.attendance-day-cell:hover {
+  background-color: rgba(59, 130, 246, 0.12);
+}
+
+/* Status Badges Styling */
+.attendance-badge-present {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  font-weight: 800;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+  transition: transform 0.1s ease;
+}
+
+.attendance-badge-present:hover {
+  transform: scale(1.15);
+}
+
+.attendance-badge-absent {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  font-weight: 800;
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+  transition: transform 0.1s ease;
+}
+
+.attendance-badge-absent:hover {
+  transform: scale(1.15);
+}
+
+.attendance-badge-leave {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: #ffffff;
+  font-weight: 800;
+  box-shadow: 0 2px 4px rgba(99, 102, 241, 0.3);
+  transition: transform 0.1s ease;
+}
+
+.attendance-badge-leave:hover {
+  transform: scale(1.15);
+}
+
+/* Button & Action Bar Enhancements */
+.btn-enable-bulk-select {
+  letter-spacing: 0.025em;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-enable-bulk-select:hover {
+  transform: translateY(-1px);
+}
+
+.btn-mark-present,
+.btn-mark-absent,
+.btn-mark-leave,
+.btn-submit-expense,
+.btn-send-order-kitchen,
+.btn-register-guest,
+.btn-checkout-guest,
+.btn-add-stock-item {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-mark-present:hover:not(:disabled),
+.btn-mark-absent:hover:not(:disabled),
+.btn-mark-leave:hover:not(:disabled),
+.btn-submit-expense:hover:not(:disabled),
+.btn-send-order-kitchen:hover:not(:disabled),
+.btn-register-guest:hover:not(:disabled),
+.btn-checkout-guest:hover:not(:disabled),
+.btn-add-stock-item:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Table Hover Polish */
+.cost-logs-table tr:hover,
+.inventory-master-table tr:hover,
+.salary-ledger-table tr:hover,
+.users-registry-table tr:hover,
+.payees-registry-table tr:hover {
+  background-color: rgba(99, 102, 241, 0.04);
+}
+
+html.dark .cost-logs-table tr:hover,
+html.dark .inventory-master-table tr:hover,
+html.dark .salary-ledger-table tr:hover,
+html.dark .users-registry-table tr:hover,
+html.dark .payees-registry-table tr:hover {
+  background-color: rgba(99, 102, 241, 0.1);
+}
+
+
+/* Sortable.js Drag States */
+.nav-sortable-ghost {
+  opacity: 0.4;
+  background-color: #eff6ff;
+  border-color: #93c5fd;
+}
+
+.nav-sortable-chosen {
+  box-shadow: 0 0 0 2px #3b82f6;
+  background-color: #f0f9ff;
+}
+
+.nav-sortable-drag {
+  opacity: 0.9;
+  background-color: white;
+  border: 2px solid #3b82f6;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  border-radius: 0.5rem;
+  z-index: 9999;
+}
+
+/* Sortable.js override for nested list borders */
+[data-sortable] {
+  min-height: 4px;
+}
+
+[data-sortable]:empty::before {
+  content: 'Drop here';
+  display: block;
+  padding: 8px 12px;
+  font-size: 11px;
+  color: #94a3b8;
+  border: 2px dashed #e2e8f0;
+  border-radius: 0.5rem;
+  text-align: center;
+}
+
+@keyframes toast-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-toast-in {
+  animation: toast-in 0.2s ease-out;
+}
+
+@keyframes slide-in {
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.25s ease-out;
+}
+
+/* Bottom sheet panels (e.g. MobileBottomNav's Quick Action drawer): slides
+   the whole panel up from off-screen rather than slide-in's small 16px
+   nudge. Note: "animate-in"/"slide-in-from-bottom" (the shadcn/
+   tailwindcss-animate naming) look similar but aren't real classes here -
+   that plugin isn't installed, so those class names are inert. */
+@keyframes sheet-slide-up {
+  0% {
+    transform: translateY(100%);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
+}
+
+.animate-sheet-slide-up {
+  animation: sheet-slide-up 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Telegram notification template manager overrides */
+.active-template-item {
+  background-color: #0284c7;
+  /* sky-600 */
+  color: #ffffff;
+}
+
+.active-template-item .template-category {
+  color: #e0f2fe;
+  /* sky-100 */
+}
+
+html.dark .active-template-item {
+  background-color: #0284c7;
+  /* sky-600 */
+  color: #ffffff;
+}
+
+html.dark .active-template-item .template-category {
+  color: #e0f2fe;
+  /* sky-100 */
+}
+
+/* Variable Chips styling in both modes */
+.variable-chip {
+  background-color: #f0f9ff;
+  color: #0369a1;
+  border-color: #bae6fd;
+}
+
+.variable-chip:hover {
+  background-color: #e0f2fe;
+}
+
+html.dark .variable-chip {
+  background-color: #0c4a6e;
+  /* sky-950 */
+  color: #38bdf8;
+  /* sky-400 */
+  border-color: #0369a1;
+  /* sky-700 */
+}
+
+html.dark .variable-chip:hover {
+  background-color: #0e5a84;
+}
+
+/* Catalog active category tab override */
+html.dark .category-tab-active {
+  background-color: #1e293b;
+  color: #38bdf8;
+  border-color: #38bdf8;
+}
+
+/* Global Font Weight Mapping / Font Size Constraint rules (capped every
+   heading and every text-* utility at font-weight 600 / a flat 14px
+   regardless of the actual Tailwind class used, e.g. text-4xl computed the
+   same as text-sm) removed 19 Aug 2026 - confirmed via live computed-style
+   inspection that this was the dominant reason headings/stat numbers could
+   never match Flowbite's real typography scale no matter how many
+   individual component fixes were made, since it silently overrode every
+   text-size utility site-wide, including inside already-correct Flowbite
+   components. Headings/text now render at their real Tailwind size. If the
+   "Custom CSS Override" Appearance-page setting (src/components/
+   CustomCSSOverride.tsx) still documents/mirrors this cap, reconcile that
+   page's copy too - it was described as syncing with this exact rule. */
+
+/* Enforce Flowbite Primary Font Family (Inter) Site-Wide */
+body,
+input,
+button,
+select,
+textarea,
+optgroup,
+table,
+th,
+td {
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+}

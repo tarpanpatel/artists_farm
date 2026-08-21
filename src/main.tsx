@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App';
 import './index.css';
+import './custom.css';
 import './mobile_screen_fix.css';
 import { recordTelescopeLog } from './utils/telescopeLogger';
 import { UpdateAvailableBanner } from './components/UpdateAvailableBanner';

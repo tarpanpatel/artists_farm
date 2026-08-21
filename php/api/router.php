@@ -374,7 +374,7 @@ $provided_key = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
 // non-sensitive branding/config columns (name, slug, type, currency,
 // colors, ...) - no guest, financial, or staff data - so this is exactly
 // the same "safe to read before login" class as the settings above.
-$public_actions = ['login_user', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token', 'check_session', 'logout', 'get_tenant_by_slug', 'get_demo_login_credentials', 'get_system_settings', 'get_theme_settings', 'get_current_property'];
+$public_actions = ['login_user', 'verify_admin_passcode', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token', 'check_session', 'logout', 'get_tenant_by_slug', 'get_demo_login_credentials', 'get_system_settings', 'get_theme_settings', 'get_current_property'];
 
 
 $request_method = $_SERVER['REQUEST_METHOD'];
@@ -1111,6 +1111,99 @@ switch ($action) {
             );
             echo json_encode(['success' => false, 'message' => 'Login error: ' . $e->getMessage()]);
         }
+        exit;
+
+    // Fast admin/root/tenant passcode verification
+    case 'verify_admin_passcode':
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        $passcode = trim($input['passcode'] ?? '');
+
+        if (!$passcode) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Passcode is required']);
+            exit;
+        }
+
+        $isValid = false;
+        $matchedRole = null;
+        $matchedName = null;
+
+        try {
+            // 1. Check Root Admin / Platform Admin passcodes in users table
+            $stmt = $pdo->prepare("SELECT id, username, full_name, role, is_platform_admin, passcode, password FROM users WHERE is_platform_admin = 1 OR role = 'root_admin'");
+            $stmt->execute();
+            $rootUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($rootUsers as $ru) {
+                $sp = $ru['passcode'] ?? '';
+                $spw = $ru['password'] ?? '';
+                if (($sp && $sp === $passcode) || ($spw && (password_verify($passcode, $spw) || $spw === $passcode))) {
+                    $isValid = true;
+                    $matchedRole = 'Root Admin';
+                    $matchedName = $ru['full_name'] ?: $ru['username'];
+                    break;
+                }
+            }
+
+            // 2. Check Super Admin / Tenant Admin / Property Admins in users table
+            if (!$isValid) {
+                $stmt = $pdo->prepare("
+                    SELECT u.id, u.username, u.full_name, u.role, u.passcode, u.password
+                    FROM users u
+                    WHERE (u.role IN ('super_admin', 'Super Admin', 'Admin') OR u.default_tenant_id IS NOT NULL)
+                      AND (u.is_platform_admin = 0 OR u.is_platform_admin IS NULL)
+                ");
+                $stmt->execute();
+                $tenantUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                foreach ($tenantUsers as $tu) {
+                    $sp = $tu['passcode'] ?? '';
+                    $spw = $tu['password'] ?? '';
+                    if (($sp && $sp === $passcode) || ($spw && (password_verify($passcode, $spw) || $spw === $passcode))) {
+                        $isValid = true;
+                        $matchedRole = 'Super Admin';
+                        $matchedName = $tu['full_name'] ?: $tu['username'];
+                        break;
+                    }
+                }
+            }
+
+            // 3. Check staff_users table for Super Admin / Admin
+            if (!$isValid) {
+                $stmt = $pdo->prepare("
+                    SELECT id, username, full_name, role, passcode
+                    FROM staff_users
+                    WHERE role IN ('Super Admin', 'Admin') AND status = 'Active'
+                ");
+                $stmt->execute();
+                $staffAdmins = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                foreach ($staffAdmins as $sa) {
+                    if (($sa['passcode'] ?? '') === $passcode) {
+                        $isValid = true;
+                        $matchedRole = $sa['role'];
+                        $matchedName = $sa['full_name'] ?: $sa['username'];
+                        break;
+                    }
+                }
+            }
+
+            // 4. Emergency fallback check
+            if (!$isValid) {
+                $emergencyPassword = getenv('EMERGENCY_ADMIN_PASSWORD');
+                if (!empty($emergencyPassword) && $passcode === $emergencyPassword) {
+                    $isValid = true;
+                    $matchedRole = 'Root Admin';
+                    $matchedName = 'Emergency Admin';
+                }
+            }
+        } catch (Exception $e) {
+            error_log("verify_admin_passcode error: " . $e->getMessage());
+        }
+
+        echo json_encode([
+            'success' => $isValid,
+            'role' => $matchedRole,
+            'name' => $matchedName,
+            'message' => $isValid ? 'Passcode verified' : 'Invalid passcode'
+        ]);
         exit;
 
     // First-login mandatory passcode change (see must_change_passcode on the
@@ -2523,6 +2616,17 @@ switch ($action) {
     case 'delete_multikey_room':
     case 'update_room_order':
     case 'update_room_name':
+    // update_room_tariff (21 Aug 2026): was fully implemented in
+    // multikey_properties.php and actively called by RoomsManagement.tsx's
+    // inline tariff editor, but never added to this dispatch list - every
+    // save request fell through to the router's default case (a generic
+    // "API online" status response, HTTP 200 with no `success` key), so the
+    // frontend's `if (data.success)` check always took the error branch and
+    // showed "Failed to update tariff" - the whole per-room tariff feature
+    // (see CLAUDE.md/DESIGN's multi-key tariff notes) was unusable from the
+    // UI despite both ends of it being fully built. Found while verifying
+    // luxe-stays' per-room tariffs (room-101..105).
+    case 'update_room_tariff':
     case 'restore_multikey_room':
     case 'get_multikey_property':
     case 'get_multikey_overview':

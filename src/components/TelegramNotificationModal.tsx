@@ -185,9 +185,9 @@ const FALLBACK_TEMPLATES: TelegramTemplateExtended[] = [
     category: 'Billing & Financial',
     description: 'Sent to Finance group when cash drawer additions or payouts occur.',
     variables: ['{staff_name}', '{action_type}', '{amount}', '{handed_to}', '{remarks}', '{net_balance_after}'],
-    template: `🏧 <b>FINANCIAL TRANSACTION (DRAWER ADJUSTMENT)</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Staff Handler:</b> {staff_name}\n🔄 <b>Action Type:</b> {action_type}\n🤝 <b>Handed To:</b> {handed_to}\n📝 <b>Remarks:</b> {remarks}\n💰 <b>Amount Movement:</b> ₹{amount}\n━━━━━━━━━━━━━━━━━━\nðŸ"Å  <b>Net Balance After: ₹{net_balance_after}</b>`,
+    template: `🏧 <b>FINANCIAL TRANSACTION (DRAWER ADJUSTMENT)</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Staff Handler:</b> {staff_name}\n🔄 <b>Action Type:</b> {action_type}\n🤝 <b>Handed To:</b> {handed_to}\n📝 <b>Remarks:</b> {remarks}\n💰 <b>Amount Movement:</b> ₹{amount}\n━━━━━━━━━━━━━━━━━━\n📊 <b>Net Balance After: ₹{net_balance_after}</b>`,
     buttons: [
-      [{ id: 'b1', text: 'ðŸ"Å  Open Cash Drawer Logs', callback_data: 'view_cash_drawer' }]
+      [{ id: 'b1', text: '📊 Open Cash Drawer Logs', callback_data: 'view_cash_drawer' }]
     ]
   },
   {
@@ -199,7 +199,7 @@ const FALLBACK_TEMPLATES: TelegramTemplateExtended[] = [
     variables: ['{expense_date}', '{category}', '{paid_by}', '{description}', '{payment_mode}', '{amount}'],
     template: `💸 <b>NEW FINANCIAL TRANSACTION (EXPENSE)</b>\n━━━━━━━━━━━━━━━━━━\n📅 <b>Date:</b> {expense_date}\n🗂️ <b>Category:</b> {category}\n👤 <b>Paid By:</b> {paid_by}\n📝 <b>Details:</b> {description}\n💳 <b>Method:</b> {payment_mode}\n━━━━━━━━━━━━━━━━━━\n🔴 <b>DEBIT AMOUNT: ₹{amount}</b>`,
     buttons: [
-      [{ id: 'b2', text: 'ðŸ"Å" View Expense Ledger', callback_data: 'view_ledger' }]
+      [{ id: 'b2', text: '📖 View Expense Ledger', callback_data: 'view_ledger' }]
     ]
   },
   {
@@ -425,11 +425,11 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
   hideRoutingControls = false,
 }) => {
   const { activeRole } = useAuth();
-  const isRootAdmin = activeRole?.toLowerCase().trim() === 'root admin';
-  // All templates are designed at the root admin level; a property's Super
-  // Admin can only edit them here if the root admin has explicitly turned on
-  // customization for this property.
-  const canEditTemplates = isRootAdmin || templateCustomizationEnabled;
+  const normalizedRole = activeRole?.toLowerCase().trim() || '';
+  const isRootAdmin = normalizedRole === 'root admin';
+  const isSuperAdmin = normalizedRole === 'super admin';
+  // Super Admin and Root Admin can always edit templates, or if template customization is explicitly enabled
+  const canEditTemplates = isRootAdmin || isSuperAdmin || templateCustomizationEnabled;
   const getLoggedInUserName = () => {
     if (typeof window !== 'undefined') {
       const savedUser = localStorage.getItem(`artists_farm_user_${getPropertySlug()}`);
@@ -810,7 +810,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
   const handleAddButtonRow = () => {
     const newBtn: TelegramInlineButton = {
       id: `btn-${Date.now()}`,
-      text: 'ðŸ"Ëœ New Action Button',
+      text: '⚡ New Action Button',
       callback_data: 'action_click',
     };
     const currentButtons = currentTpl.buttons || [];

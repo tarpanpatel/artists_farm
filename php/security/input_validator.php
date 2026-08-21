@@ -19,7 +19,21 @@ class InputValidator {
         }
 
         $sanitized = self::sanitize($input);
-        $length = strlen($sanitized);
+        // mb_strlen (character count), not strlen (byte count) - found 21 Aug
+        // 2026 while verifying guest PII validation: a 63-character Devanagari
+        // name ("अमित कुमार शर्मा ...", a completely normal-length real name)
+        // is 169 bytes in UTF-8, so the old strlen() check rejected it as
+        // "too long" against a 120-char limit meant for a 120-CHARACTER name,
+        // not 120 bytes. Any multi-byte script (Hindi, Chinese, Arabic,
+        // accented Latin, emoji, ...) was silently penalized this way - a
+        // false-positive rejection of legitimate guest names, not a real
+        // length violation. mb_strlen is a strict improvement here: it can
+        // only accept strings the old check wrongly rejected, never accept
+        // something the old check correctly rejected (char count <= byte
+        // count for UTF-8 always), and every DB column this feeds (e.g.
+        // guests.guest_name, varchar(255)) sizes itself in characters too, so
+        // there's no storage-overflow risk either.
+        $length = mb_strlen($sanitized, 'UTF-8');
 
         if ($length < $minLength || $length > $maxLength) {
             throw new Exception("String length must be between $minLength and $maxLength characters");

@@ -2743,7 +2743,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             </div>
 
             <div>
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('item_image_upload_label')}</label>
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('item_image_label', 'Item Image')}</label>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <label className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-2 rounded-lg cursor-pointer flex items-center gap-1.5 shadow-md text-xs shrink-0 transition-all">
@@ -2765,14 +2765,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                       }}
                     />
                   </label>
-
-                  <Input
-                    type="text"
-                    value={imagePath}
-                    onChange={(e) => setImagePath(e.target.value)}
-                    placeholder={t('or_enter_image_url_placeholder')}
-                    className="flex-1 font-mono text-[11px]"
-                  />
                 </div>
 
                 {/* Image Preview Box */}

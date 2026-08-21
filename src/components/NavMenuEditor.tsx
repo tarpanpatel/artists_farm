@@ -15,6 +15,7 @@ import { Button } from './Button';
 import { Input } from './Input';
 import { Checkbox } from 'flowbite-react';
 import { t } from '../i18n/en';
+import { useToast } from './ToastContext';
 
 interface NavMenuEditorProps {
   navItems: NavMenuItem[];
@@ -129,6 +130,8 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
     iconName: 'LayoutDashboard', customUrl: '', roles: ['Super Admin'] as string[],
     parentId: null as string | null
   });
+
+  const { showToast } = useToast();
 
   const sortableInstances = useRef<Sortable[]>([]);
   const sortableContainerRef = useRef<HTMLDivElement>(null);
@@ -283,6 +286,16 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
   // Shared by the main "Save Menu" button and any auto-save (e.g. rename) -
   // sends the full current tree, so it also picks up whatever else is
   // pending, same as a manual save would.
+  //
+  // Toast added 21 Aug 2026: saveNavMenuDB() catches its own errors and just
+  // resolves false (see api.ts) - with no toast, a failed save (CSRF hiccup,
+  // network blip, session expiry) looked IDENTICAL to a successful one from
+  // here: no error, no crash, the reordered items just stayed visually in
+  // place in local `items` state (nothing here reverts them on failure).
+  // The revert only became visible later, whenever this section re-fetched
+  // from the DB (e.g. navigating away and back) and the drag-reorder was
+  // gone - by then there was no way to tell "it never saved" from "I must
+  // have misremembered the change". A toast on both outcomes closes that gap.
   const persistItems = async (itemsToSave: NavMenuItem[]) => {
     setIsSaving(true);
     const treeNodes = buildTree(itemsToSave);
@@ -291,6 +304,9 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
     if (success) {
       onUpdateNavItems(flatList);
       setHasUnsaved(false);
+      showToast(t('nav_menu_saved_toast', 'Menu saved'), { type: 'success' });
+    } else {
+      showToast(t('nav_menu_save_failed_toast', 'Failed to save menu — please try again'), { type: 'error' });
     }
     setIsSaving(false);
     return success;

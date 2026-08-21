@@ -1,11 +1,13 @@
 import React, { useMemo, useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Calendar, LogOut, Bell, User, Globe } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Calendar, LogOut, Bell, User, Globe, Share2 } from 'lucide-react';
 import { Popover } from './Popover';
 import { Guest } from '../types';
 import { BookingDetailsModal } from './BookingDetailsModal';
 import { ConvertOtaBookingModal } from './ConvertOtaBookingModal';
 import { KpiCard } from './KpiCard';
 import { getPropertySlug } from '../services/api';
+import { useToast } from './ToastContext';
+import { shareTextContent } from '../utils/shareText';
 import { t } from '../i18n/en';
 
 interface TodayOverviewProps {
@@ -40,7 +42,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   guests,
   rooms = [],
   isMultiKeyProperty = false,
-  kitchenModuleEnabled: _kitchenModuleEnabled = true,
+  kitchenModuleEnabled = true,
   onNavigateToRoom: _onNavigateToRoom,
   onNavigate: _onNavigate,
   onAddBooking,
@@ -60,6 +62,8 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   propertyCheckoutTime = '',
   serviceRequests = [],
 }) => {
+  const { showToast } = useToast();
+
   const today = useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -67,6 +71,24 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   }, []);
 
   const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
+
+  // Public "Share Menu" link (food_menu.php via the /food_menu/{slug}/
+  // rewrite in .htaccess) - lives on the dashboard rather than buried in
+  // Edit Food Menu, since this is a "hand it to a guest right now" action,
+  // not a menu-editing one. getPropertySlug() reads straight from the URL
+  // (already imported/used elsewhere in this file), so no new prop needed.
+  const handleShareFoodMenu = () => {
+    const propertySlug = getPropertySlug();
+    const menuUrl = `${window.location.origin}/food_menu/${propertySlug}/`;
+    const message = `🍽️ Check out the menu at ${propertyName || 'our place'}!\n${menuUrl}`;
+    shareTextContent(
+      `${propertyName || 'Food'} Menu`,
+      message,
+      showToast,
+      'Menu link copied - paste it wherever you\'d like to share it.',
+      'Could not share or copy the menu link.',
+    );
+  };
 
   // OTA-synced blocked dates (Airbnb/Booking.com/etc via connected iCal
   // feeds) - same fetch OperationalDashboard.tsx already does for single
@@ -340,15 +362,26 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             {t('dashboard_subheading', "Who's arriving, what's ready, and what needs you now.")}
           </p>
         </div>
-        {onAddBooking && (
-          <button
-            onClick={onAddBooking}
-            className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-semibold rounded-lg text-xs px-3.5 py-2 flex items-center gap-2 shadow-md transition-all cursor-pointer whitespace-nowrap shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{t('add_booking_button', 'Add Booking')}</span>
-          </button>
-        )}
+        <div className="today-overview__header-actions flex items-center gap-2 shrink-0">
+          {kitchenModuleEnabled && (
+            <button
+              onClick={handleShareFoodMenu}
+              className="text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 focus:ring-4 focus:ring-slate-200 dark:focus:ring-slate-600 font-semibold rounded-lg text-xs px-3.5 py-2 flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap"
+            >
+              <Share2 className="w-4 h-4" />
+              <span>{t('share_food_menu_button', 'Share Menu')}</span>
+            </button>
+          )}
+          {onAddBooking && (
+            <button
+              onClick={onAddBooking}
+              className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-semibold rounded-lg text-xs px-3.5 py-2 flex items-center gap-2 shadow-md transition-all cursor-pointer whitespace-nowrap"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{t('add_booking_button', 'Add Booking')}</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Metric Blocks Grid - Sleek 1-Row Horizontal Cards */}

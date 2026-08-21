@@ -393,9 +393,8 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
             // on the platform, silently, on a page view. A property with no
             // marked attendance yet should show nothing, not fabricated data.
             try {
-                $stmt = $pdo->prepare("SELECT a.id, a.attendance_date as date, a.user_id as staffId, u.username as staffName, a.status
+                $stmt = $pdo->prepare("SELECT a.id, a.attendance_date as date, a.user_id as staffId, a.staff_name as staffName, a.status
                                     FROM staff_attendance a
-                                    LEFT JOIN staff_users u ON a.user_id = u.id
                                     WHERE a.property_id = ?
                                     ORDER BY a.attendance_date DESC");
                 $stmt->execute([$propertyId]);

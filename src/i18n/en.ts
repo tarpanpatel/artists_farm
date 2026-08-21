@@ -610,7 +610,8 @@ export const strings: Record<string, string> = {
   remove_image_tooltip: "Remove Image",
   item_currently_available_label: "Item Currently Available in Kitchen",
   passcode_required_heading: "Passcode Required",
-  enter_staff_passcode_message: "Enter any staff passcode to proceed",
+  enter_staff_passcode_message: "Only {name} can proceed",
+  only_tenant_can_proceed: "Only {name} can proceed.",
   enter_passcode_placeholder: "Enter passcode",
   verify_continue_button: "Verify & Continue",
 
@@ -1297,8 +1298,10 @@ export const strings: Record<string, string> = {
   freshly_prepared_option: "Freshly Prepared (New Stock)",
   leftover_buffer_option: "Leftover Buffer items",
   evening_chai_option: "Evening Chai",
+  leftover_buffer_badge_label: "L",
+  leftover_buffer_badge_tooltip: "Made from leftover / buffer stock, not freshly prepared",
   custom_meal_combination_label: "Custom Meal Combination",
-  select_database_meal_placeholder: "-- Select Database Meal --",
+  select_database_meal_placeholder: "Select Meal",
   new_button: "+ New",
   est_cost_value_label: "Est. Cost Value (₹)",
   log_staff_meal_button: "Log Staff Meal",
@@ -1435,7 +1438,7 @@ export const strings: Record<string, string> = {
 
   // Misc Charges Management
   misc_charges_heading: "Expense Categories & Items",
-  misc_charges_description: "System default categories (marked) cannot be edited or deleted. Add custom items within any category as needed.",
+  misc_charges_description: "Edit or delete any item, including system defaults (marked) - defaults are only ever changed for this property, never for others. Add custom items within any category as needed.",
   add_new_service_button: "Add New Service",
   service_id_column: "Service ID",
   service_name_column: "Service Name",
@@ -1595,7 +1598,7 @@ export const strings: Record<string, string> = {
 
   // Expense Items Management
   predefined_expense_items_heading: "Predefined Expense Items",
-  expense_items_description: "System defaults cannot be edited. Add custom items or modify the defaults through Root Admin.",
+  expense_items_description: "Add custom items, or delete any item including system defaults (marked) - changes to a default only apply to this property.",
   add_custom_item_button: "Add Custom Item",
   refresh_button: "Refresh",
   search_items_categories_placeholder: "Search items or categories...",
@@ -1816,8 +1819,14 @@ export const strings: Record<string, string> = {
   delete_dish_tooltip: "Remove this dish",
 };
 
-export function t(key: string, fallback?: string): string {
-  return strings[key] || fallback || key;
+export function t(key: string, fallback?: string, params?: Record<string, string | number>): string {
+  let str = strings[key] || fallback || key;
+  if (params) {
+    Object.entries(params).forEach(([k, v]) => {
+      str = str.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));
+    });
+  }
+  return str;
 }
 
 

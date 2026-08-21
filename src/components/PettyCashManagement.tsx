@@ -684,7 +684,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       }
 
       if (onDispatchTelegram) {
-        const msg = `<b>ðŸ ³ KITCHEN PURCHASE RECORDED</b>\nâ” â” â” â” â” â” â” â” â” â” â” â” â” â” â” â” \nðŸ“¦ <b>Item:</b> ${qty} ${unit} ${formState.description}\nðŸ ª <b>Vendor:</b> ${vendorName}\nðŸ’° <b>Total:</b> ₹${totalPrice.toLocaleString('en-IN')}\nâ” â” â” â” â” â” â” â” â” â” â” â” â” â” â” â” `;
+        const msg = `<b>🍳 KITCHEN PURCHASE RECORDED</b>\n━━━━━━━━━━━━━━━━━━\n📦 <b>Item:</b> ${qty} ${unit} ${formState.description}\n🏪 <b>Vendor:</b> ${vendorName}\n💰 <b>Total:</b> ₹${totalPrice.toLocaleString('en-IN')}\n━━━━━━━━━━━━━━━━━━`;
         onDispatchTelegram('Expense', msg, 'finance');
       }
 
@@ -773,12 +773,12 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       const s = Number(formState.staffAmount || 0);
       const isCashOrSplit = mode === 'Cash' || d > 0 || s > 0;
 
-      let paymentLine = `ðŸ’³ <b>Payment Mode:</b> ${mode}`;
+      let paymentLine = `💳 <b>Payment Mode:</b> ${mode}`;
       if (isCashOrSplit) {
-        paymentLine += `\nðŸ¦ <b>Farm Cash:</b> ₹${d.toLocaleString('en-IN')}\nðŸ‘ <b>Out of Pocket:</b> ₹${s.toLocaleString('en-IN')}`;
+        paymentLine += `\n🏦 <b>Farm Cash:</b> ₹${d.toLocaleString('en-IN')}\n👤 <b>Out of Pocket:</b> ₹${s.toLocaleString('en-IN')}`;
       }
 
-      const msg = `<b>ðŸ’¸ EXPENSE RECORDED</b>\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\nðŸ“‚ <b>Category:</b> ${formState.category}\nðŸ“ <b>Description:</b> ${finalDescription}\nðŸ‘¤ <b>Paid By:</b> ${formState.paidBy}\n${paymentLine}\nðŸ’° <b>Total:</b> ₹${Number(formState.amount).toLocaleString('en-IN')}\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”`;
+      const msg = `<b>💸 EXPENSE RECORDED</b>\n━━━━━━━━━━━━━━━━━━\n📁 <b>Category:</b> ${formState.category}\n📝 <b>Description:</b> ${finalDescription}\n👤 <b>Paid By:</b> ${formState.paidBy}\n${paymentLine}\n💰 <b>Total:</b> ₹${Number(formState.amount).toLocaleString('en-IN')}\n━━━━━━━━━━━━━━━━━━`;
 
       const allMedia = [
         ...(formState.invoiceBillUrls || []),

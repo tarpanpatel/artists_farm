@@ -43,8 +43,28 @@ export const formatDateTimeDDMMYYYY = (dateStr?: string | null): string => {
   const dmyOnly = cleaned.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (dmyOnly) return `${dmyOnly[1].padStart(2, '0')}/${dmyOnly[2].padStart(2, '0')}/${dmyOnly[3]}`;
 
+  // Handle native <input type="datetime-local"> value format "YYYY-MM-DDTHH:mm"
+  // (optionally with :ss/.SSS) - the base formatDateDDMMYYYY() fallback below
+  // parses this fine via `new Date(cleaned)` but silently drops the time
+  // component (it only ever formats date parts), so a datetime-local value fed
+  // through this function used to come out date-only with no time at all
+  // (found 21 Aug 2026, via KitchenManagement.tsx's Staff Meals date/time
+  // field - see toDatetimeLocalValue() below for the reverse direction).
+  const isoLocalMatch = cleaned.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (isoLocalMatch) return `${isoLocalMatch[3]}/${isoLocalMatch[2]}/${isoLocalMatch[1]} ${isoLocalMatch[4]}:${isoLocalMatch[5]}`;
+
   // Fallback: try the base formatter
   return formatDateDDMMYYYY(cleaned);
 };
 
 const pad = (n: number | string): string => String(n).padStart(2, '0');
+
+// Reverse of formatDateTimeDDMMYYYY's isoLocalMatch branch above: produces the
+// exact "YYYY-MM-DDTHH:mm" string a native <input type="datetime-local">'s
+// `value` prop requires. Feeding it a display-formatted (DD/MM/YYYY) string
+// instead - an easy mistake since that's this app's format everywhere else -
+// makes the browser silently reject the value and render the picker blank
+// (confirmed 21 Aug 2026: KitchenManagement.tsx's Staff Meals field did
+// exactly this before being fixed to call this helper instead).
+export const toDatetimeLocalValue = (date: Date): string =>
+  `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;

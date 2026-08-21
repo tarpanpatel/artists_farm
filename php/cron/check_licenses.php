@@ -5,8 +5,12 @@
  * Run daily via cron job:
  * 0 8 * * * /usr/bin/php /path/to/artists_farm/php/cron/check_licenses.php
  *
- * This checks for licenses expiring in 7 days, 4 days, and 1 day
- * and sends Telegram notifications to super admins
+ * Sends a reminder on each of the 4 Sundays before a license's expiry date
+ * (see getLicenseReminderSundays() in php/licenses/licenses.php) - via
+ * Telegram (best-effort, may not be configured for every property) AND
+ * email (the reliable channel, sent to the tenant's account email).
+ * Must still run daily even though reminders only land on Sundays - the
+ * check itself is a no-op on any other day.
  */
 
 require_once __DIR__ . '/../config/database.php';

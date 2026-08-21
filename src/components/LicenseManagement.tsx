@@ -336,6 +336,13 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
         </PageHeaderButton>
       </PageHeader>
 
+      <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-[11px] text-blue-800 dark:text-blue-300 leading-relaxed">
+        {t(
+          'license_notifications_banner_text',
+          'Automatic expiry reminders are ON: every license gets a reminder each Sunday for the 4 weeks before it expires, sent via Telegram (if set up for this property) and email.'
+        )}
+      </div>
+
       {licenses.length > 0 && (
         <Input
           type="text"
@@ -472,6 +479,12 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
         </ModalHeader>
         <form onSubmit={handleSubmit} className="app-form app-form--license">
           <ModalBody className="space-y-4">
+            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-[11px] text-blue-800 dark:text-blue-300 leading-relaxed">
+              {t(
+                'license_notifications_banner_modal_text',
+                "Reminders are ON for this license: once saved, you'll get a notification every Sunday for the 4 weeks before its expiry date, via Telegram (if set up) and email."
+              )}
+            </div>
             <div>
               <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                 {t('license_type_label', 'License Type *')}
