@@ -1,9 +1,0 @@
-﻿{
-  "name": "Ground Code Resort & Kitchen Management",
-  "description": "Comprehensive resort management system featuring operational environment dashboard, active resident management, guest check-in & billing, kitchen ticketing & requisitions, inventory stock alerts, petty cash logging, staff attendance, and system analytics.",
-  "requestFramePermissions": [],
-  "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
-}
-
