@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useReducer } from 'react';
-import { Modal, ModalHeader, ModalBody, ModalFooter, Card, TextInput as FlowbiteTextInput, Label, Checkbox, Dropdown, DropdownItem } from 'flowbite-react';
+import { Drawer, Card, TextInput as FlowbiteTextInput, Label, Checkbox, Dropdown, DropdownItem } from 'flowbite-react';
 import { X, Search, Pencil, Edit2, FileText, FileSpreadsheet, ImageIcon, Landmark, Loader2, Clock, User, Scale, Building2, FolderOpen, Camera, Plus, Trash2, Settings, Filter } from 'lucide-react';
 import DataTable from 'react-data-table-component';
 import { flowbiteTableCustomStyles } from '../utils/tableStyles';
