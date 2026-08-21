@@ -6,6 +6,7 @@ import './mobile_screen_fix.css';
 import { recordTelescopeLog } from './utils/telescopeLogger';
 import { UpdateAvailableBanner } from './components/UpdateAvailableBanner';
 import { ScrollToTopButton } from './components/ScrollToTopButton';
+import { setServiceWorkerRegistration } from './utils/serviceWorkerUpdate';
 
 // Error filtering - skip genuine noise only. This list previously also
 // matched "Cannot read property/properties" (the single most common real JS
@@ -90,6 +91,11 @@ if ('serviceWorker' in navigator) {
   if (import.meta.env.PROD) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/sw.js').then((registration) => {
+        // Shared with a manual "check for updates" trigger (Header.tsx) so
+        // it can run this exact same check on demand instead of waiting for
+        // the timer/focus listener below.
+        setServiceWorkerRegistration(registration);
+
         // sw.js's own install/activate handlers already call skipWaiting()
         // + clients.claim(), so a new worker takes over immediately once
         // the browser has actually fetched and installed it - the missing

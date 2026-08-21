@@ -660,35 +660,24 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     sortable: true,
                     width: '260px',
                     cell: (row: any) => {
-                      const initials = (row.fullName || row.username || 'U')
-                        .split(' ')
-                        .map((n: string) => n[0])
-                        .join('')
-                        .slice(0, 2)
-                        .toUpperCase();
                       const phoneVal = (row.username || '').replace(/\D/g, '');
                       return (
-                        <div className="flex items-center gap-3 py-3">
-                          <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-300 font-bold text-xs flex items-center justify-center shrink-0">
-                            {initials}
+                        <div className="py-3 min-w-0">
+                          <div className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                            {row.fullName}
                           </div>
-                          <div className="min-w-0">
-                            <div className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                              {row.fullName}
-                            </div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                              {phoneVal ? (
-                                <a
-                                  href={`tel:${phoneVal}`}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="hover:underline hover:text-blue-600 dark:hover:text-blue-400 font-medium"
-                                >
-                                  {row.username}
-                                </a>
-                              ) : (
-                                row.username
-                              )}
-                            </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                            {phoneVal ? (
+                              <a
+                                href={`tel:${phoneVal}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="hover:underline hover:text-blue-600 dark:hover:text-blue-400 font-medium"
+                              >
+                                {row.username}
+                              </a>
+                            ) : (
+                              row.username
+                            )}
                           </div>
                         </div>
                       );

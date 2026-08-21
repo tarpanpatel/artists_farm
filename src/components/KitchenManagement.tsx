@@ -266,12 +266,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     setCancelledItemKeys((prev) => ({ ...nextCancelled, ...prev }));
   }, [orders]);
 
-  const [ingredientCategoryNames, setIngredientCategoryNames] = useState<string[]>([]);
-  useEffect(() => {
-    fetchMaterialCategoriesFromDB().then((cats) => {
-      setIngredientCategoryNames(cats.filter(c => c.is_ingredient).map(c => c.name));
-    });
-  }, []);
 
   // Smart Polling / Auto-Refresh state (15s interval matching kitchen.php).
   // Always on, deliberately not user-toggleable - a KDS's whole job is

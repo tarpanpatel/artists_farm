@@ -14,7 +14,6 @@ export interface MiscChargeTemplate {
 export interface MaterialCategory {
   id: number;
   name: string;
-  is_ingredient: number;
 }
 
 interface ConfigurationDataContextValue {

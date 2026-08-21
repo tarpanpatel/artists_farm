@@ -418,6 +418,21 @@ export async function apiFetch(url: string, init?: RequestInit): Promise<Respons
     headers: getTestingHeaders(customHeaders),
   });
 
+  // Found 21 Aug 2026, directly downstream of finally fixing "Sign Out
+  // Terminal" (see router.php's 'logout' case): a real session ending -
+  // now that it can actually happen - left the frontend showing a stale
+  // "logged in" shell (cached property/user data still in component state)
+  // while every real data fetch silently 401'd in the background, with no
+  // redirect back to the login screen. login_user/check_session are
+  // excluded - a 401 there is either a wrong-credentials response (handled
+  // by the caller directly, not this generic path) or would just be noise
+  // during the check that's ABOUT to tell AuthContext it's unauthenticated
+  // anyway. AuthContext.tsx owns the actual localStorage-clearing logic
+  // (single source of truth for those keys) - this only signals it.
+  if (response.status === 401 && action !== 'login_user' && action !== 'check_session') {
+    window.dispatchEvent(new Event('artists_farm_session_expired'));
+  }
+
   if (isCacheable && response.ok) {
     try {
       const cloned = response.clone();
@@ -793,7 +808,7 @@ export async function deletePropertyCustomExpenseDB(id: number): Promise<boolean
 
 
 
-export async function fetchMaterialCategoriesFromDB(): Promise<{ id: number; name: string; is_ingredient: number }[]> {
+export async function fetchMaterialCategoriesFromDB(): Promise<{ id: number; name: string }[]> {
   try {
     const res = await apiFetch(`${API_BASE}?action=get_material_categories`);
     const json = await res.json();
@@ -804,21 +819,6 @@ export async function fetchMaterialCategoriesFromDB(): Promise<{ id: number; nam
     console.error('Failed to fetch material categories:', err);
   }
   return [];
-}
-
-export async function toggleIngredientCategoryInDB(id: number, is_ingredient: boolean): Promise<boolean> {
-  try {
-    const res = await apiFetch(`${API_BASE}?action=toggle_ingredient_category`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, is_ingredient }),
-    });
-    const json = await res.json();
-    return json.status === 'success';
-  } catch (err) {
-    console.error('Failed to toggle ingredient category:', err);
-    return false;
-  }
 }
 
 export async function updateMaterialCategoryInDB(id: number, name: string): Promise<boolean> {

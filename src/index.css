@@ -355,6 +355,25 @@ input[type='number'] {
   appearance: textfield;
 }
 
+/* Checkboxes render as circles without this (found 21 Aug 2026, while
+   auditing a checkbox that already used flowbite-react's real <Checkbox> -
+   correct component, correct "rounded" class, matching theme.js literally -
+   and still rendered as a full circle). Root cause: this project imports
+   Flowbite's own theme package (see the @import above), and that package's
+   default.css sets --radius: 8px, which the bare "rounded" utility maps to
+   - Flowbite's own current published token, not a project misconfiguration.
+   8px radius on a 16px (w-4 h-4) checkbox is exactly 50% - a mathematical
+   circle, identical to how Radio deliberately achieves circular via
+   rounded-full. This is a real gap in Flowbite's own theme.js (Checkbox
+   uses bare "rounded" without accounting for its own --radius: 8px making
+   that circular at checkbox size) - invisible from reading source/class
+   names alone, only visible by actually rendering and measuring, which is
+   why it survived both an earlier code-only review and ai2's sweep. Scoped
+   to checkboxes only - never touch radio, which correctly wants circular. */
+input[type='checkbox'] {
+  border-radius: 4px !important;
+}
+
 /* Dark Mode UI Overrides */
 .dark body,
 html.dark {

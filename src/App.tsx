@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback, Suspense, lazy } from 'react';
 import { Modal, ModalHeader, ModalBody, Drawer as FlowbiteDrawer, DrawerItems } from 'flowbite-react';
 import { Header } from './components/Header';
 import { Navigation, TabType } from './components/Navigation';
@@ -23,7 +23,7 @@ import { formatDateDDMMYYYY } from './utils/dateUtils';
 import { detectClientInfo } from './utils/clientInfo';
 import { isKitchenModuleNavItem } from './data/appConfig';
 import { fetchThemeSettings, applyThemeSettings, getDefaultTheme } from './services/themeService';
-import { fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fetchNavMenuFromDB, sendTelegramAlertDB, fetchGuestsFromDB, fetchAuditLogsFromDB, addAuditLogDB, saveReceiptToDB, addGuestToDB, updateGuestInDB, checkoutGuestInDB, deleteGuestFromDB, resolveTelegramTemplate, dedupMenuDB, fetchReceiptsFromDB, getPropertySlug, fetchServiceRequestsFromDB, ServiceRequest, createServiceRequestInDB } from './services/api';
+import { fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fetchNavMenuFromDB, sendTelegramAlertDB, fetchGuestsFromDB, fetchAuditLogsFromDB, addAuditLogDB, saveReceiptToDB, addGuestToDB, updateGuestInDB, checkoutGuestInDB, deleteGuestFromDB, resolveTelegramTemplate, dedupMenuDB, fetchReceiptsFromDB, getPropertySlug, fetchServiceRequestsFromDB, ServiceRequest, createServiceRequestInDB, apiFetch } from './services/api';
 import { ConfigurationDataProvider } from './contexts/ConfigurationDataContext';
 import { ModulesProvider, useModules } from './contexts/ModulesContext';
 import { DataLoader, PreloadedData } from './components/DataLoader';
@@ -2432,6 +2432,21 @@ export function App() {
   } | null>(null);
   const [isSessionLoaded, setIsSessionLoaded] = useState(false);
 
+  // Shared by every RootAdminDashboard/TenantDashboard/PlatformPropertyManagement
+  // render call site below (found 21 Aug 2026: this was 5 separately hand-copied
+  // inline onLogout={() => {...}} handlers, each doing ONLY
+  // setUserSession(null) + clearing the localStorage key - same bug as
+  // AuthContext.tsx's logout() had (see router.php's 'logout' case and its
+  // comment for the full story): none of the 5 ever called the backend, so
+  // the PHP session cookie stayed valid and a plain navigation silently
+  // re-authenticated the same admin/tenant user even after "signing out".
+  // One shared handler now, not 5 copies to keep in sync.
+  const handleAdminLogout = useCallback(() => {
+    apiFetch('/php/api/router.php?action=logout', { method: 'POST' }).catch(() => {});
+    setUserSession(null);
+    localStorage.removeItem('artists_farm_user_session');
+  }, []);
+
   const propertySlug = getPropertySlug();
   const isLoginPath = propertySlug === 'login';
   const isTenantDashboardPath = propertySlug === 'tenant_dashboard';
@@ -2524,7 +2539,7 @@ export function App() {
         <div className="min-h-screen bg-red-50 dark:bg-red-950 flex items-center justify-center">
           <div className="text-center">
             <p className="text-red-800 dark:text-red-300 font-medium">Access Denied: You do not have permission to view this tenant.</p>
-            <button onClick={() => { setUserSession(null); localStorage.removeItem('artists_farm_user_session'); }} className="mt-4 bg-red-600 text-white px-4 py-2 rounded-lg">Logout</button>
+            <button onClick={handleAdminLogout} className="mt-4 bg-red-600 text-white px-4 py-2 rounded-lg">Logout</button>
           </div>
         </div>
       );
@@ -2536,10 +2551,7 @@ export function App() {
           username={userSession.username}
           tenantId={dashboardTenantId}
           tenantInfo={resolvedTenant}
-          onLogout={() => {
-            setUserSession(null);
-            localStorage.removeItem('artists_farm_user_session');
-          }}
+          onLogout={handleAdminLogout}
         />
       </Suspense>
     );
@@ -2568,10 +2580,7 @@ export function App() {
           <Suspense fallback={<LoadingScreen message="Loading root admin dashboard..." />}>
             <RootAdminDashboard
               username={userSession.username}
-              onLogout={() => {
-                setUserSession(null);
-                localStorage.removeItem('artists_farm_user_session');
-              }}
+              onLogout={handleAdminLogout}
               activeRole="Root Admin"
             />
           </Suspense>
@@ -2595,10 +2604,7 @@ export function App() {
       <Suspense fallback={<LoadingScreen message="Loading property management..." />}>
         <PlatformPropertyManagement
           username={userSession.username}
-          onLogout={() => {
-            setUserSession(null);
-            localStorage.removeItem('artists_farm_user_session');
-          }}
+          onLogout={handleAdminLogout}
         />
       </Suspense>
     );
@@ -2623,10 +2629,7 @@ export function App() {
             <TenantDashboard
               username={userSession.username}
               tenantId={userSession.default_tenant_id}
-              onLogout={() => {
-                setUserSession(null);
-                localStorage.removeItem('artists_farm_user_session');
-              }}
+              onLogout={handleAdminLogout}
             />
           </Suspense>
         );
@@ -2659,10 +2662,7 @@ export function App() {
           <TenantDashboard
             username={userSession.username}
             tenantId={userSession.default_tenant_id}
-            onLogout={() => {
-              setUserSession(null);
-              localStorage.removeItem('artists_farm_user_session');
-            }}
+            onLogout={handleAdminLogout}
           />
         </Suspense>
       );
@@ -2674,7 +2674,7 @@ export function App() {
         <div className="text-center">
           <p className="text-red-800 dark:text-red-300 font-medium">Access Denied</p>
           <button
-            onClick={() => setUserSession(null)}
+            onClick={handleAdminLogout}
             className="mt-4 bg-red-600 text-white px-4 py-2 rounded-lg"
           >
             Logout

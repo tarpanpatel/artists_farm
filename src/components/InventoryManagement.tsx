@@ -13,7 +13,7 @@ import { Input } from './Input';
 import { Textarea } from './Textarea';
 import { StyledSelect } from './StyledSelect';
 import { DateRangePicker } from './DateRangePicker';
-import { fetchStockRequestsFromDB, createStockRequestInDB, updateStockRequestStatusInDB, fetchWastageLogsFromDB, createWastageLogDB, fetchStaffUsersFromDB, fetchMaterialCategoriesFromDB, updateMaterialCategoryInDB, deleteMaterialCategoryFromDB, addMaterialCategoryToDB, toggleIngredientCategoryInDB, addCatalogItemDB, updateCatalogItemDB, deleteCatalogItemDB, bulkUpdateCatalogCategoryDB, resolveTelegramTemplate, uploadImageDB } from '../services/api';
+import { fetchStockRequestsFromDB, createStockRequestInDB, updateStockRequestStatusInDB, fetchWastageLogsFromDB, createWastageLogDB, fetchStaffUsersFromDB, fetchMaterialCategoriesFromDB, updateMaterialCategoryInDB, deleteMaterialCategoryFromDB, addMaterialCategoryToDB, addCatalogItemDB, updateCatalogItemDB, deleteCatalogItemDB, bulkUpdateCatalogCategoryDB, resolveTelegramTemplate, uploadImageDB } from '../services/api';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { useStaff } from '../contexts/StaffContext';
@@ -266,7 +266,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
   // Material categories from database (for CRUD operations)
   // TODO: dbCategories should be passed as props from a central context instead of being fetched locally
-  const [dbCategories, setDbCategories] = useState<{ id: number; name: string; is_ingredient: number }[]>([]);
+  const [dbCategories, setDbCategories] = useState<{ id: number; name: string }[]>([]);
 
   useEffect(() => {
     fetchMaterialCategoriesFromDB().then((cats) => {
@@ -1622,32 +1622,16 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     ) : (
                       <>
                         <span className="flex-1 text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">{cat}</span>
-                        <Badge
-                          variant={dbCat?.is_ingredient ? 'success' : 'neutral'}
-                          size="sm"
-                          onClick={async () => {
-                            if (!dbCat) return;
-                            const newVal = !dbCat.is_ingredient;
-                            const ok = await toggleIngredientCategoryInDB(dbCat.id, newVal);
-                            if (ok) {
-                              setDbCategories((prev: any[]) => prev.map(c => c.id === dbCat.id ? { ...c, is_ingredient: newVal ? 1 : 0 } : c));
-                            }
-                          }}
-                          className="cursor-pointer"
-                          title={dbCat?.is_ingredient ? 'Used in recipes' : 'Not used in recipes'}
-                        >
-                          {dbCat?.is_ingredient ? t('ingredient_badge') : t('not_food_badge')}
-                        </Badge>
                         <button
                           onClick={() => { setEditingCategoryId(dbCat?.id || 0); setEditingCategoryName(cat); }}
-                          className="text-slate-400 hover:text-blue-600 text-xs cursor-pointer"
+                          className="text-slate-400 hover:text-blue-600 text-xs cursor-pointer p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                           title={t('rename_tooltip')}
                         >
                           <Pencil className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => handleDeleteCategory(dbCat?.id || 0, cat)}
-                          className="text-slate-400 hover:text-red-600 text-xs cursor-pointer"
+                          className="text-slate-400 hover:text-red-600 text-xs cursor-pointer p-1 rounded hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
                           title={t('delete_button')}
                         >
                           <X className="w-3.5 h-3.5" />

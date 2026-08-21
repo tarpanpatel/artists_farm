@@ -192,7 +192,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Listen for storage changes (e.g., from other tabs)
     window.addEventListener('storage', checkAuthState);
-    return () => window.removeEventListener('storage', checkAuthState);
+    // Same-tab equivalent (found 21 Aug 2026): 'storage' only fires in OTHER
+    // tabs, never the one that made the change, so a real session ending
+    // mid-session in THIS tab (session expired, or just-fixed Sign Out
+    // Terminal - see router.php's 'logout' case) had nothing telling this
+    // tab to re-check. apiFetch() in services/api.ts dispatches this event
+    // on any 401 that isn't login_user/check_session itself.
+    window.addEventListener('artists_farm_session_expired', checkAuthState);
+    return () => {
+      window.removeEventListener('storage', checkAuthState);
+      window.removeEventListener('artists_farm_session_expired', checkAuthState);
+    };
   }, []);
 
   const login = useCallback((staff: StaffMember) => {
@@ -204,6 +214,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const logout = useCallback(() => {
+    // Best-effort server-side invalidation (found 21 Aug 2026: this used to
+    // be client-state-only - PHP session cookie stayed valid, so a plain
+    // navigation silently re-authenticated the same user even after
+    // "signing out". See router.php's 'logout' case for the full story).
+    // Fire-and-forget: client-side state below still clears either way, so
+    // a failed request here doesn't block the sign-out UX.
+    apiFetch('/php/api/router.php?action=logout', { method: 'POST' }).catch(() => {});
     setIsAuthenticated(false);
     setCurrentUser(null);
     localStorage.removeItem(authKey());

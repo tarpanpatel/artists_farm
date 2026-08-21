@@ -76,15 +76,24 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
     const val = e.target.value.replace(/\D/g, '').slice(0, 6);
     setPasscode(val);
     setError(null);
-    // Auto-submit when 6 digits are entered and mobile number is valid
-    if (val.length === 6 && !isLoading) {
-      const validMobile = mobileNumber.length === 10 || mobileNumber === 'admin' || mobileNumber === 'root';
-      if (validMobile) {
-        setTimeout(() => {
-          loginFormRef.current?.requestSubmit();
-        }, 50);
-      }
-    }
+    // No auto-submit here (found 21 Aug 2026, directly downstream of finally
+    // fixing "Sign Out Terminal" server-side - see router.php's 'logout'
+    // case): this handler fires for BOTH real keystrokes AND the browser's
+    // own autofill repopulating a saved credential after any successful
+    // login on this shared-terminal form (autoComplete="off" above does not
+    // reliably stop Chrome from doing this for an already-saved login form -
+    // a known override, not something fixable from this attribute alone).
+    // Auto-submitting here meant Chrome silently re-logged in the PREVIOUS
+    // staff member the instant the login screen next rendered, no human
+    // interaction at all - a correctly-working sign-out was not enough to
+    // protect a shared terminal on its own. handlePasscodeKey's auto-submit
+    // (the on-screen keypad below, this component's actual intended fast-
+    // entry method for a shared terminal) is untouched - autofill can only
+    // ever reach this real <input>'s onChange, never the keypad's onClick
+    // handlers, so this closes the exploited path without changing the
+    // on-screen PIN-pad UX at all. A human typing on a physical keyboard now
+    // presses Enter or the submit button instead of auto-submitting - a
+    // normal login flow, not a meaningful regression.
   };
 
   const handlePasscodeKey = (num: string) => {
@@ -500,7 +509,17 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
                 className="w-full h-11 pl-[72px] pr-4 bg-slate-50/80 dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 rounded-lg text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 transition-all outline-none"
                 disabled={isLoading}
                 autoFocus
-                autoComplete="username"
+                // Found 21 Aug 2026, directly downstream of finally fixing "Sign Out
+                // Terminal" server-side (see router.php's 'logout' case): this form is
+                // also used on a shared front-desk device (see the touch-keypad comment
+                // below). autoComplete="username" invited Chrome to save/auto-refill a
+                // staff member's mobile number after any successful login - combined with
+                // the passcode field's own auto-refill (below) and handlePasscodeChange's
+                // auto-submit-on-6-digits, that silently re-logged in the PREVIOUS staff
+                // member the moment the login screen next rendered, with zero human
+                // interaction. A correctly-working sign-out was not enough to protect a
+                // shared terminal while the browser remembered the credentials for it.
+                autoComplete="off"
                 ref={mobileInputRef}
               />
             </div>
@@ -540,7 +559,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
                 inputMode="numeric"
                 className="w-full h-11 pl-[72px] pr-4 bg-slate-50/80 dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 rounded-lg text-left text-sm tracking-[0.25em] font-mono text-slate-900 dark:text-white placeholder:text-slate-400 placeholder:tracking-normal transition-all outline-none"
                 disabled={isLoading}
-                autoComplete="current-password"
+                // See the mobile number input's comment above - same reasoning, this is
+                // the field that actually gets auto-submitted once Chrome refills 6 digits.
+                autoComplete="off"
                 ref={passcodeInputRef}
               />
             </div>

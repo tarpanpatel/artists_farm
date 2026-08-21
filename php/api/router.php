@@ -374,7 +374,7 @@ $provided_key = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
 // non-sensitive branding/config columns (name, slug, type, currency,
 // colors, ...) - no guest, financial, or staff data - so this is exactly
 // the same "safe to read before login" class as the settings above.
-$public_actions = ['login_user', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token', 'check_session', 'get_tenant_by_slug', 'get_demo_login_credentials', 'get_system_settings', 'get_theme_settings', 'get_current_property'];
+$public_actions = ['login_user', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token', 'check_session', 'logout', 'get_tenant_by_slug', 'get_demo_login_credentials', 'get_system_settings', 'get_theme_settings', 'get_current_property'];
 
 
 $request_method = $_SERVER['REQUEST_METHOD'];
@@ -678,9 +678,15 @@ if (!in_array($action, $public_actions, true)) {
 // is currently running - a single slow request blocks every other tab's
 // request, even totally unrelated ones, until it finishes. All session
 // reads needed for auth/property resolution are done by this point, and the
-// only action that still needs to write session data is login_user, so it's
-// safe to release the lock for everything else.
-if ($action !== 'login_user') {
+// only actions that still need to write session data are login_user and
+// logout, so it's safe to release the lock for everything else.
+// (found 21 Aug 2026: 'logout' was missing from this exemption, so its
+// session_status() === PHP_SESSION_ACTIVE check further down was always
+// false by the time it ran - the clear-cookie/session_destroy() block never
+// executed, "Sign Out Terminal" silently did nothing server-side, and the
+// very next request on the same still-valid cookie re-authenticated the
+// same user. See the 'logout' case's own comment for the full story.)
+if ($action !== 'login_user' && $action !== 'logout') {
     session_write_close();
 }
 
@@ -762,6 +768,33 @@ switch ($action) {
         } else {
             echo json_encode(['status' => 'success', 'authenticated' => false]);
         }
+        break;
+
+    // Actually invalidates the server-side session (found 21 Aug 2026: the
+    // "Sign Out Terminal" button only ever cleared client-side React state
+    // and a few localStorage keys via AuthContext.tsx's logout() - nothing
+    // called the backend, so the PHP session cookie stayed valid and a
+    // plain page navigation silently re-authenticated the exact same user.
+    // On a shared front-desk terminal - which is what "Sign Out Terminal"
+    // is for - that meant sign-out gave false confidence while the next
+    // person to load the page inherited the previous session.) Clears
+    // $_SESSION, expires the session cookie, and destroys the session.
+    case 'logout':
+        // Idempotent - a double-fired logout (or one against an already-expired
+        // session) must not emit a "Trying to destroy uninitialized session"
+        // warning (found 21 Aug 2026: it does without this guard, which also
+        // corrupts the JSON response with PHP's inline warning HTML).
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            $_SESSION = [];
+            if (ini_get('session.use_cookies')) {
+                $params = session_get_cookie_params();
+                setcookie(session_name(), '', time() - 42000,
+                    $params['path'], $params['domain'],
+                    $params['secure'], $params['httponly']);
+            }
+            session_destroy();
+        }
+        echo json_encode(['status' => 'success', 'authenticated' => false]);
         break;
 
     // --- UNIFIED LOGIN ---

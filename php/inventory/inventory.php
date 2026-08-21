@@ -443,7 +443,7 @@ function handleInventoryRequests($pdo, $request_method, $action, $propertyId) {
                     }
                 }
 
-                $stmt = $pdo->prepare("SELECT id, name, is_ingredient FROM material_categories WHERE property_id = ? ORDER BY name ASC");
+                $stmt = $pdo->prepare("SELECT id, name FROM material_categories WHERE property_id = ? ORDER BY name ASC");
                 $stmt->execute([$propertyId]);
                 echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
             } catch (PDOException $e) {
@@ -505,25 +505,6 @@ function handleInventoryRequests($pdo, $request_method, $action, $propertyId) {
                     } else {
                         echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
                     }
-                }
-            }
-            break;
-
-        case 'toggle_ingredient_category':
-            if ($request_method === 'POST') {
-                $input = json_decode(file_get_contents('php://input'), true);
-                $id = $input['id'] ?? null;
-                $isIngredient = !empty($input['is_ingredient']) ? 1 : 0;
-                if (empty($id)) {
-                    echo json_encode(['status' => 'error', 'message' => 'id is required']);
-                    break;
-                }
-                try {
-                    $stmt = $pdo->prepare("UPDATE material_categories SET is_ingredient = ? WHERE id = ? AND property_id = ?");
-                    $stmt->execute([$isIngredient, $id, $propertyId]);
-                    echo json_encode(['status' => 'success', 'message' => 'Category updated']);
-                } catch (PDOException $e) {
-                    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
                 }
             }
             break;
