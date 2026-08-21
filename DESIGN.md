@@ -95,6 +95,25 @@ All single monthly calendars across the platform (such as single-room booking ca
   - Today date badge: highlighted with a blue circular badge (`inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold shadow-xs`).
   - Event / Booking pills: `rounded-md px-2 py-1 text-xs font-medium shadow-2xs` using Flowbite semantic color tokens (`blue`, `purple`, `emerald`, `amber`, `gray`).
 
+## Date/Time Input Fields (found 21 Aug 2026)
+
+The spec above governs full monthly **calendar views**. It says nothing about single date/time
+**input fields**, which is why two raw native inputs slipped through every prior pass unflagged:
+`KitchenManagement.tsx`'s Staff Meals "Date & Time of Record" (`type="datetime-local"`) and
+`PettyCashManagement.tsx`'s Edit Expense modal (`type="date"` + `type="time"`). A raw
+`type="date"`/`type="datetime-local"` input opens the browser's own OS-level picker (Chrome's
+month grid + scrollable hour/minute columns) — not Flowbite, not stylable past the
+`::-webkit-calendar-picker-indicator` icon (see `src/index.css`'s existing "Global Date Input"
+block), and visually inconsistent with the rest of the app by construction, not by mistake.
+
+**Rule**: any single date-entry field uses flowbite-react's real `Datepicker` component
+(`node_modules/flowbite-react/dist/components/Datepicker`), not a raw `<input type="date">`.
+**Caveat**: `Datepicker`'s props (`value`/`onChange`: `Date | null`, `minDate`, `maxDate`, etc.)
+are date-only — no time support at all. For a field that needs a time component too (Staff Meals,
+PettyCash's expense time), pair `Datepicker` for the date half with a separate `type="time"` input
+for the time half (still native, still opens an OS picker, but it's a narrower, unavoidable gap —
+flowbite-react has no Timepicker) rather than leaving the whole field as `type="datetime-local"`.
+
 ## DataTable & Table Log Specifications
 
 Canonical Flowbite Datatables reference: https://github.com/themesberg/flowbite/blob/main/content/components/tables.md
