@@ -46,6 +46,13 @@ interface BillingCheckoutProps {
   kitchenModuleEnabled?: boolean;
   propertyGstin?: string;
   propertyName?: string;
+  propertyPhone?: string;
+  propertyMapsLink?: string;
+  propertyWhatsappTemplate?: string;
+  propertyAddress?: string;
+  propertyInstructions?: string;
+  propertyCheckinTime?: string;
+  propertyCheckoutTime?: string;
   propertyUpiId?: string;
   propertyUpiQrCodeUrl?: string;
   focusGuestId?: string | null;
@@ -75,6 +82,13 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   kitchenModuleEnabled = true,
   propertyGstin = '',
   propertyName = '',
+  propertyPhone = '',
+  propertyMapsLink = '',
+  propertyWhatsappTemplate = '',
+  propertyAddress = '',
+  propertyInstructions = '',
+  propertyCheckinTime = '',
+  propertyCheckoutTime = '',
   propertyUpiId = '',
   propertyUpiQrCodeUrl = '',
   focusGuestId = null,
@@ -957,7 +971,15 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
           rooms={rooms}
           checkedInGuests={guests}
           propertyName={propertyName}
+          propertyPhone={propertyPhone}
+          propertyMapsLink={propertyMapsLink}
+          propertyWhatsappTemplate={propertyWhatsappTemplate}
+          propertyAddress={propertyAddress}
+          propertyInstructions={propertyInstructions}
+          propertyCheckinTime={propertyCheckinTime}
+          propertyCheckoutTime={propertyCheckoutTime}
           propertyUpiId={propertyUpiId}
+          propertyUpiQrCodeUrl={propertyUpiQrCodeUrl}
           onCheckout={() => {
             const guest = selectedGuestForDetails;
             setSelectedGuestForDetails(null);

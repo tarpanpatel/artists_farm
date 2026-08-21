@@ -1885,6 +1885,11 @@ ${itemsStr}
                         propertyPhone={preloadedData.currentProperty?.phone || ''}
                         propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template || ''}
                         propertyUpiId={preloadedData.currentProperty?.upi_id || ''}
+                        propertyUpiQrCodeUrl={preloadedData.currentProperty?.upi_qr_code_url || ''}
+                        propertyAddress={preloadedData.currentProperty?.address || ''}
+                        propertyInstructions={preloadedData.currentProperty?.instructions || ''}
+                        propertyCheckinTime={preloadedData.currentProperty?.checkin_time || ''}
+                        propertyCheckoutTime={preloadedData.currentProperty?.checkout_time || ''}
                         serviceRequests={serviceRequests}
                         onCheckout={(guestId) => {
                           setFocusGuestId(guestId);
@@ -1951,6 +1956,8 @@ ${itemsStr}
                         propertyAddress={preloadedData.currentProperty?.address || ''}
                         propertyGoogleMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
                         propertyInstructions={preloadedData.currentProperty?.instructions || ''}
+                        propertyCheckinTime={preloadedData.currentProperty?.checkin_time || ''}
+                        propertyCheckoutTime={preloadedData.currentProperty?.checkout_time || ''}
                         onSavePropertyLocation={handleSavePropertyLocation}
                         isMultiKeyProperty={preloadedData.isMultiKeyProperty}
                         onCheckout={(guestId) => {
@@ -1990,6 +1997,10 @@ ${itemsStr}
                     propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template || ''}
                     propertyUpiId={preloadedData.currentProperty?.upi_id || ''}
                     propertyUpiQrCodeUrl={preloadedData.currentProperty?.upi_qr_code_url || ''}
+                    propertyAddress={preloadedData.currentProperty?.address || ''}
+                    propertyInstructions={preloadedData.currentProperty?.instructions || ''}
+                    propertyCheckinTime={preloadedData.currentProperty?.checkin_time || ''}
+                    propertyCheckoutTime={preloadedData.currentProperty?.checkout_time || ''}
                     onNavigateToBilling={(_guestId) => {
                       // Navigate to billing view for guest
                     }}

@@ -49,7 +49,7 @@ export const EditPropertyPage: React.FC<EditPropertyPageProps> = ({ property, on
         />
       </div>
 
-      <div className="edit-property-page__grid grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="edit-property-page__grid grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
       {property.property_type === 'MULTI_KEY' && (
         <Card className="edit-property-page__rooms-card">
           <RoomsManagement

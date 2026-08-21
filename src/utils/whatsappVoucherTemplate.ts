@@ -18,30 +18,36 @@ export const DEFAULT_WHATSAPP_VOUCHER_TEMPLATE =
 💰 *Room Tariff:* ₹{room_tariff}
 💰 *Advance Paid:* ₹{advance_paid}
 📍 *Address:* {address}
-📞 *Contact:* {contact_phone}
+📞 *Contact / Phone:* {contact_phone}
 🧭 *Google Maps:* {maps_link}
 💳 *Pay via UPI:* {upi_id}
-📝 *Notes:* {other_notes}
+📷 *Payment QR Code:* {upi_qr_code_url}
+📝 *Notes & Instructions:* {other_notes}
 ━━━━━━━━━━━━━━━━━
 We look forward to welcoming you to {property_name}!`;
 
 /**
- * Substitute {token} values into a template. Optional tokens (maps_link,
- * contact_phone by default) whose value is empty get their WHOLE LINE
- * dropped, rather than left showing e.g. "📍 *Location:* " with nothing
- * after it - most properties won't have filled these in yet.
+ * Substitute {token} values into a template. Optional tokens whose value is
+ * empty get their WHOLE LINE dropped, rather than left showing empty labels.
  */
 export function renderWhatsappVoucherTemplate(
   template: string,
   values: Record<string, string>,
   optionalTokens: string[] = [
     '{maps_link}',
+    '{google_maps_link}',
     '{contact_phone}',
+    '{property_phone}',
+    '{phone}',
     '{checkin_time}',
     '{checkout_time}',
     '{upi_id}',
+    '{upi_qr_code_url}',
+    '{qr_code}',
     '{address}',
+    '{property_address}',
     '{other_notes}',
+    '{instructions}',
   ]
 ): string {
   const lines = template.split('\n');

@@ -27,6 +27,11 @@ interface TodayOverviewProps {
   propertyPhone?: string;
   propertyWhatsappTemplate?: string;
   propertyUpiId?: string;
+  propertyUpiQrCodeUrl?: string;
+  propertyAddress?: string;
+  propertyInstructions?: string;
+  propertyCheckinTime?: string;
+  propertyCheckoutTime?: string;
   serviceRequests?: any[];
 }
 
@@ -47,6 +52,11 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   propertyPhone = '',
   propertyWhatsappTemplate = '',
   propertyUpiId = '',
+  propertyUpiQrCodeUrl = '',
+  propertyAddress = '',
+  propertyInstructions = '',
+  propertyCheckinTime = '',
+  propertyCheckoutTime = '',
   serviceRequests = [],
 }) => {
   const today = useMemo(() => {
@@ -672,6 +682,11 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           propertyPhone={propertyPhone}
           propertyWhatsappTemplate={propertyWhatsappTemplate}
           propertyUpiId={propertyUpiId}
+          propertyUpiQrCodeUrl={propertyUpiQrCodeUrl}
+          propertyAddress={propertyAddress}
+          propertyInstructions={propertyInstructions}
+          propertyCheckinTime={propertyCheckinTime}
+          propertyCheckoutTime={propertyCheckoutTime}
           onCheckout={onCheckout ? () => { onCheckout(selectedGuest.id); setSelectedGuest(null); } : undefined}
         />
       )}

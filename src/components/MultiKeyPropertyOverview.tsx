@@ -39,6 +39,9 @@ interface MultiKeyProperty {
   gstin?: string;
   upi_id?: string;
   upi_qr_code_url?: string;
+  instructions?: string;
+  checkin_time?: string;
+  checkout_time?: string;
   shared_data: {
     staff?: any[];
     kitchen?: any;
@@ -215,8 +218,6 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
 
     return (
       <div className="space-y-6">
-
-
         {/* Show room's dashboard and content based on activeTab */}
         {(() => {
           const roomGuests = guests.filter((g) => {
@@ -255,6 +256,10 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                   propertyWhatsappTemplate={property.whatsapp_voucher_template || ''}
                   propertyUpiId={property.upi_id || ''}
                   propertyUpiQrCodeUrl={property.upi_qr_code_url || ''}
+                  propertyAddress={property.address || ''}
+                  propertyInstructions={property.instructions || ''}
+                  propertyCheckinTime={property.checkin_time || ''}
+                  propertyCheckoutTime={property.checkout_time || ''}
                   onUpdateRoomName={async (newName) => {
                     try {
                       const response = await fetch('/php/api/router.php?action=update_room_name', {
@@ -292,6 +297,16 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                   isMultiKeyProperty={true}
                   rooms={property.rooms}
                   selectedRoomSlug={selectedRoomSlug}
+                  propertyName={property.name}
+                  propertyMapsLink={property.google_maps_link || ''}
+                  propertyPhone={property.phone || ''}
+                  propertyWhatsappTemplate={property.whatsapp_voucher_template || ''}
+                  propertyUpiId={property.upi_id || ''}
+                  propertyUpiQrCodeUrl={property.upi_qr_code_url || ''}
+                  propertyAddress={property.address || ''}
+                  propertyInstructions={property.instructions || ''}
+                  propertyCheckinTime={property.checkin_time || ''}
+                  propertyCheckoutTime={property.checkout_time || ''}
                 />
               )}
 
@@ -316,75 +331,66 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                     <div className="edit-room-page__form-card bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 sm:p-6">
-                    <h2 className="edit-room-page__heading text-base font-semibold text-slate-900 dark:text-white mb-4">
-                      {t('edit_room_page_heading', 'Edit Room')}
-                    </h2>
-                    <PropertyEditForm
-                      property={{
-                        id: selectedRoom.id,
-                        name: selectedRoom.name,
-                        property_type: 'MULTI_KEY_ROOM',
-                        default_tariff: selectedRoom.default_tariff,
-                        checkin_time: selectedRoom.checkin_time,
-                        checkout_time: selectedRoom.checkout_time,
-                      }}
-                      onSaved={() => window.location.reload()}
-                      isRoom
-                    />
-                  </div>
-                  <div className="edit-room-page__calendar-card">
-                    <OperationalDashboard
-                      guests={roomGuests}
-                      receipts={receipts}
-                      menu={menu}
-                      rooms={property.rooms}
-                      roomName={selectedRoom.name}
-                      roomId={selectedRoom.id}
-                      propertySlug={propertySlug}
-                      onNavigate={(tab) => setActiveTab?.(tab)}
-                      onOpenCheckin={() => setActiveTab?.('guests')}
-                      onAddGuest={onAddGuest}
-                      onCheckoutGuest={onCheckoutGuest}
-                      onUpdateBooking={onUpdateBooking}
-                      onDeleteBooking={onDeleteBooking}
-                      onGuestVerificationUpdated={onGuestVerificationUpdated}
-                      onCFormFiledUpdated={onCFormFiledUpdated}
-                      onGuestCheckedIn={onGuestCheckedIn}
-                      onDispatchTelegram={onDispatchTelegram}
-                      activeMenuItemKey={activeMenuItemKey}
-                      propertyName={property.name}
-                      propertyMapsLink={property.google_maps_link || ''}
-                      propertyPhone={property.phone || ''}
-                      propertyWhatsappTemplate={property.whatsapp_voucher_template || ''}
-                      propertyUpiId={property.upi_id || ''}
-                  propertyUpiQrCodeUrl={property.upi_qr_code_url || ''}
-                      kitchenModuleEnabled={kitchenModuleEnabled}
-                      serviceRequests={serviceRequests}
-                      minimalMode
-                    />
-                  </div>
+                      <h2 className="edit-room-page__heading text-base font-semibold text-slate-900 dark:text-white mb-4">
+                        {t('edit_room_page_heading', 'Edit Room')}
+                      </h2>
+                      <PropertyEditForm
+                        property={{
+                          id: selectedRoom.id,
+                          name: selectedRoom.name,
+                          property_type: 'MULTI_KEY_ROOM',
+                          default_tariff: selectedRoom.default_tariff,
+                          checkin_time: selectedRoom.checkin_time,
+                          checkout_time: selectedRoom.checkout_time,
+                        }}
+                        onSaved={() => window.location.reload()}
+                        isRoom
+                      />
+                    </div>
+                    <div className="edit-room-page__calendar-card">
+                      <OperationalDashboard
+                        guests={roomGuests}
+                        receipts={receipts}
+                        menu={menu}
+                        rooms={property.rooms}
+                        roomName={selectedRoom.name}
+                        roomId={selectedRoom.id}
+                        propertySlug={propertySlug}
+                        onNavigate={(tab) => setActiveTab?.(tab)}
+                        onOpenCheckin={() => setActiveTab?.('guests')}
+                        onAddGuest={onAddGuest}
+                        onCheckoutGuest={onCheckoutGuest}
+                        onUpdateBooking={onUpdateBooking}
+                        onDeleteBooking={onDeleteBooking}
+                        onGuestVerificationUpdated={onGuestVerificationUpdated}
+                        onCFormFiledUpdated={onCFormFiledUpdated}
+                        onGuestCheckedIn={onGuestCheckedIn}
+                        onDispatchTelegram={onDispatchTelegram}
+                        activeMenuItemKey={activeMenuItemKey}
+                        propertyName={property.name}
+                        propertyMapsLink={property.google_maps_link || ''}
+                        propertyPhone={property.phone || ''}
+                        propertyWhatsappTemplate={property.whatsapp_voucher_template || ''}
+                        propertyUpiId={property.upi_id || ''}
+                        propertyUpiQrCodeUrl={property.upi_qr_code_url || ''}
+                        propertyAddress={property.address || ''}
+                        propertyInstructions={property.instructions || ''}
+                        propertyCheckinTime={property.checkin_time || ''}
+                        propertyCheckoutTime={property.checkout_time || ''}
+                        kitchenModuleEnabled={kitchenModuleEnabled}
+                        serviceRequests={serviceRequests}
+                        minimalMode
+                      />
+                    </div>
                   </div>
 
-                  {/* Calendar Sync (formerly its own standalone "iCal Sync"
-                      sidebar page, removed - each room's OTA calendar feeds
-                      now live on that room's own Edit Room page instead of a
-                      shared page with a room-picker dropdown). propertyId is
-                      this ROOM's own id, not the parent's - ICalSyncManager's
-                      backend (getICalSyncs) only expands scope to a
-                      property's own MULTI_KEY_ROOM children, and a room has
-                      none, so this naturally scopes to just this room's own
-                      feeds. parentPropertySlug (this component's own
-                      propertySlug prop) is separate - it's only used to build
-                      this room's Export iCal Feed URL, which is addressed as
-                      ?property=<parent>&room=<room>, not derivable from the
-                      room's own slug alone. */}
                   <div className="edit-room-page__ical-card bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 sm:p-6">
                     <ICalSyncManager propertyId={selectedRoom.id} propertySlug={selectedRoom.slug} parentPropertySlug={propertySlug} embedded />
                   </div>
                 </div>
-            )}
+              )}
             </>
           );
         })()}
@@ -396,51 +402,50 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
     <div className="multi-key-property-overview space-y-6">
       {error && (
         <div className="multi-key-property-overview__error flex gap-3 p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
-          <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+          <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
           <p className="text-sm text-red-800 dark:text-red-300">{error}</p>
         </div>
       )}
 
-       {/* Header - hide on dashboard overview. Add Room now lives in the
-          Rooms List section below, always visible regardless of hideHeader. */}
-       {!hideHeader && (
-       <div className="multi-key-property-overview__header flex items-center justify-between">
-         <div className="multi-key-property-overview__header-text">
-           <h1 className="multi-key-property-overview__page-title text-3xl font-semibold text-slate-900 dark:text-white">{property.name}</h1>
-           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{property.address || t('no_address_label', 'No address')}</p>
-         </div>
-       </div>
-       )}
+      {/* Header - hide on dashboard overview */}
+      {!hideHeader && (
+        <div className="multi-key-property-overview__header flex items-center justify-between">
+          <div className="multi-key-property-overview__header-text">
+            <h1 className="multi-key-property-overview__page-title text-3xl font-semibold text-slate-900 dark:text-white">{property.name}</h1>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{property.address || t('no_address_label', 'No address')}</p>
+          </div>
+        </div>
+      )}
 
-       {/* Stats - hide on dashboard overview */}
-       {!hideHeader && overview && (
-         <div className="multi-key-property-overview__stats grid grid-cols-2 md:grid-cols-4 gap-4">
-           <KpiCard
-             label={t('total_rooms_label', 'Total Rooms')}
-             value={overview.total_rooms}
-             icon={Users}
-             badge={{ text: 'Inventory', color: 'info' }}
-           />
-           <KpiCard
-             label={t('occupied_label', 'Occupied')}
-             value={overview.total_occupied}
-             icon={BarChart3}
-             badge={{ text: 'In-House', color: 'success' }}
-           />
-           <KpiCard
-             label={t('occupancy_rate_label', 'Occupancy Rate')}
-             value={`${overview.occupancy_rate}%`}
-             icon={TrendingUp}
-             badge={{ text: 'Occupancy', color: 'purple' }}
-           />
-           <KpiCard
-             label={t('monthly_revenue_label', 'Monthly Revenue')}
-             value={`₹${overview.total_revenue.toLocaleString('en-IN')}`}
-             icon={DollarSign}
-             badge={{ text: 'Revenue', color: 'success' }}
-           />
-         </div>
-       )}
-     </div>
+      {/* Stats - hide on dashboard overview */}
+      {!hideHeader && overview && (
+        <div className="multi-key-property-overview__stats grid grid-cols-2 md:grid-cols-4 gap-4">
+          <KpiCard
+            label={t('total_rooms_label', 'Total Rooms')}
+            value={overview.total_rooms}
+            icon={Users}
+            badge={{ text: 'Inventory', color: 'info' }}
+          />
+          <KpiCard
+            label={t('occupied_label', 'Occupied')}
+            value={overview.total_occupied}
+            icon={BarChart3}
+            badge={{ text: 'In-House', color: 'success' }}
+          />
+          <KpiCard
+            label={t('occupancy_rate_label', 'Occupancy Rate')}
+            value={`${overview.occupancy_rate}%`}
+            icon={TrendingUp}
+            badge={{ text: 'Occupancy', color: 'purple' }}
+          />
+          <KpiCard
+            label={t('monthly_revenue_label', 'Monthly Revenue')}
+            value={`₹${overview.total_revenue.toLocaleString('en-IN')}`}
+            icon={DollarSign}
+            badge={{ text: 'Revenue', color: 'success' }}
+          />
+        </div>
+      )}
+    </div>
   );
 };

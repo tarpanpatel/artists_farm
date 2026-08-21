@@ -67,6 +67,8 @@ interface OperationalDashboardProps {
   propertyAddress?: string;
   propertyGoogleMapsLink?: string;
   propertyInstructions?: string;
+  propertyCheckinTime?: string;
+  propertyCheckoutTime?: string;
   onSavePropertyLocation?: (address: string, googleMapsLink: string, instructions: string) => Promise<boolean>;
   isMultiKeyProperty?: boolean;
   serviceRequests?: any[];
@@ -110,6 +112,8 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   propertyAddress: _propertyAddress = '',
   propertyGoogleMapsLink: _propertyGoogleMapsLink = '',
   propertyInstructions: _propertyInstructions = '',
+  propertyCheckinTime = '',
+  propertyCheckoutTime = '',
   onSavePropertyLocation: _onSavePropertyLocation,
   isMultiKeyProperty = false,
   serviceRequests = [],
@@ -960,10 +964,15 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           rooms={rooms}
           checkedInGuests={guests}
           propertyName={propertyName}
-          propertyMapsLink={propertyMapsLink}
+          propertyMapsLink={propertyMapsLink || propertyGoogleMapsLink}
           propertyPhone={propertyPhone}
           propertyWhatsappTemplate={propertyWhatsappTemplate}
           propertyUpiId={propertyUpiId}
+          propertyUpiQrCodeUrl={propertyUpiQrCodeUrl}
+          propertyAddress={propertyAddress}
+          propertyInstructions={propertyInstructions}
+          propertyCheckinTime={propertyCheckinTime}
+          propertyCheckoutTime={propertyCheckoutTime}
           onOpenIdVerification={() => setShowCheckinVerification(true)}
           onCheckedIn={onGuestCheckedIn}
           onCheckout={onCheckout ? () => { onCheckout(selectedBooking.id); setSelectedBooking(null); } : undefined}

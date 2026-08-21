@@ -68,6 +68,10 @@ interface GuestManagementProps {
   propertyWhatsappTemplate?: string;
   propertyUpiId?: string;
   propertyUpiQrCodeUrl?: string;
+  propertyAddress?: string;
+  propertyInstructions?: string;
+  propertyCheckinTime?: string;
+  propertyCheckoutTime?: string;
 }
 
 
@@ -121,11 +125,15 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   kitchenModuleEnabled = true,
   propertyGstin = '',
   propertyName = '',
-  propertyMapsLink: _propertyMapsLink = '',
-  propertyPhone: _propertyPhone = '',
-  propertyWhatsappTemplate: _propertyWhatsappTemplate = '',
+  propertyMapsLink = '',
+  propertyPhone = '',
+  propertyWhatsappTemplate = '',
   propertyUpiId = '',
   propertyUpiQrCodeUrl = '',
+  propertyAddress = '',
+  propertyInstructions = '',
+  propertyCheckinTime = '',
+  propertyCheckoutTime = '',
 }) => {
   const { showToast } = useToast();
   const { staff } = useStaff();
@@ -907,6 +915,13 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       propertyGstin={propertyGstin}
       focusGuestId={focusGuestId}
       propertyName={propertyName}
+      propertyPhone={propertyPhone}
+      propertyMapsLink={propertyMapsLink}
+      propertyWhatsappTemplate={propertyWhatsappTemplate}
+      propertyAddress={propertyAddress}
+      propertyInstructions={propertyInstructions}
+      propertyCheckinTime={propertyCheckinTime}
+      propertyCheckoutTime={propertyCheckoutTime}
       propertyUpiId={propertyUpiId}
       propertyUpiQrCodeUrl={propertyUpiQrCodeUrl}
     />

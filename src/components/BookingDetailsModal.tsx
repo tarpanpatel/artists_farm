@@ -35,6 +35,9 @@ interface BookingDetailsModalProps {
   propertyPhone?: string;
   propertyWhatsappTemplate?: string;
   propertyUpiId?: string;
+  propertyUpiQrCodeUrl?: string;
+  propertyCheckinTime?: string;
+  propertyCheckoutTime?: string;
   propertyInstructions?: string;
   onOpenIdVerification?: () => void;
   onCheckedIn?: (guestId: string) => void;
@@ -69,6 +72,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   propertyPhone = '',
   propertyWhatsappTemplate = '',
   propertyUpiId = '',
+  propertyUpiQrCodeUrl = '',
+  propertyCheckinTime = '',
+  propertyCheckoutTime = '',
   propertyInstructions = '',
   onOpenIdVerification,
   onCheckedIn,
@@ -84,6 +90,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     phone?: string;
     google_maps_link?: string;
     upi_id?: string;
+    upi_qr_code_url?: string;
+    checkin_time?: string;
+    checkout_time?: string;
     instructions?: string;
   }>({});
 
@@ -260,22 +269,39 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     const phoneVal = propertyPhone || propDetails.phone || g.phone || '';
     const mapsVal = propertyMapsLink || propDetails.google_maps_link || g.google_maps_link || '';
     const upiVal = propertyUpiId || propDetails.upi_id || g.upi_id || '';
+    let qrVal = propertyUpiQrCodeUrl || propDetails.upi_qr_code_url || (g as any).upi_qr_code_url || '';
+    if (qrVal && qrVal.startsWith('/') && typeof window !== 'undefined') {
+      qrVal = window.location.origin + qrVal;
+    }
+    const checkinTimeVal = propertyCheckinTime || propDetails.checkin_time || '14:00';
+    const checkoutTimeVal = propertyCheckoutTime || propDetails.checkout_time || '11:00';
     const notesVal = propertyInstructions || propDetails.instructions || g.instructions || g.notes || '';
 
     return renderWhatsappVoucherTemplate(propertyWhatsappTemplate || DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, {
       guest_name: guest.guestName,
       room_name: unitName,
+      room_number: unitName,
       property_name: propertyName || propDetails.name || 'our property',
       checkin_date: formatDate(guest.checkinDate?.split(' ')[0] || ''),
+      checkin_time: checkinTimeVal,
       checkout_date: formatDate(guest.expectedCheckout?.split(' ')[0] || guest.checkoutDate?.split(' ')[0] || ''),
+      checkout_time: checkoutTimeVal,
       guest_count: String(noOfGuests),
       room_tariff: roomRent.toFixed(2),
+      total_amount: roomRent.toFixed(2),
       advance_paid: advancePaid.toFixed(2),
       address: addressVal,
+      property_address: addressVal,
       contact_phone: phoneVal,
+      property_phone: phoneVal,
+      phone: phoneVal,
       maps_link: mapsVal,
+      google_maps_link: mapsVal,
       upi_id: upiVal,
+      upi_qr_code_url: qrVal,
+      qr_code: qrVal,
       other_notes: notesVal,
+      instructions: notesVal,
     });
   };
 
