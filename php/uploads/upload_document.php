@@ -6,9 +6,10 @@
  * resize/recompress, unlike upload_image.php's thumbnailing pipeline -
  * a legal document must stay legible/byte-identical to what was scanned).
  *
- * POST fields: document=<file>, folder=licenses (only value supported today;
- * kept as a param, not hardcoded, so a second document-backed feature can
- * reuse this endpoint later without a new one)
+ * POST fields: document=<file>, folder=licenses|c_form (kept as a param,
+ * not hardcoded, so each document-backed feature gets its own folder
+ * without a new endpoint - c_form added 21 Aug 2026 for the uploaded Form
+ * 'C' confirmation attached when a guest's C-Form filing is saved)
  * Response: { "status": "success", "url": "/php/uploads/documents/{tenant}/{property}/{category}/abc123.pdf", "filename", "size", "mime" }
  *
  * Mirrors upload_image.php's auth/CORS/CSRF bootstrap (database.php +
@@ -65,7 +66,7 @@ if ($_FILES['document']['size'] > $MAX_BYTES) {
     exit;
 }
 
-$folder = in_array($_POST['folder'] ?? '', ['licenses']) ? $_POST['folder'] : 'licenses';
+$folder = in_array($_POST['folder'] ?? '', ['licenses', 'c_form']) ? $_POST['folder'] : 'licenses';
 
 $sanitizeSlug = function ($slug) {
     $clean = preg_replace('/[^a-zA-Z0-9_-]/', '', (string)$slug);

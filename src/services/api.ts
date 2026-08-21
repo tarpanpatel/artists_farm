@@ -686,7 +686,7 @@ export async function uploadImageDBVerbose(image: File | string, folder: 'menu' 
 // file as-is (php/uploads/upload_document.php does no resize/recompress) -
 // for legal/certificate documents (e.g. LicenseManagement) where the upload
 // has to stay byte-identical to what was scanned, not a compressed thumbnail.
-export async function uploadDocumentDB(file: File, folder: 'licenses' = 'licenses'): Promise<{ url: string; mime: string; size: number } | null> {
+export async function uploadDocumentDB(file: File, folder: 'licenses' | 'c_form' = 'licenses'): Promise<{ url: string; mime: string; size: number } | null> {
   try {
     const formData = new FormData();
     formData.append('document', file);
@@ -1222,12 +1222,16 @@ export async function checkinGuestInDB(guestId: string): Promise<boolean> {
   }
 }
 
-export async function markCFormFiled(guestId: string, filed: boolean = true, cFormNumber?: string): Promise<boolean> {
+// documentUrl: the uploaded Form 'C' confirmation (uploadDocumentDB(file,
+// 'c_form')'s returned url) - optional, and only meaningful when filed=true.
+// When present, the PHP side forwards that file to Telegram as part of THIS
+// save (not on file-select) - see mark_c_form_filed in guests.php.
+export async function markCFormFiled(guestId: string, filed: boolean = true, cFormNumber?: string, documentUrl?: string): Promise<boolean> {
   try {
     const res = await apiFetch(`${API_BASE}?action=mark_c_form_filed`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: guestId, filed, c_form_number: cFormNumber }),
+      body: JSON.stringify({ id: guestId, filed, c_form_number: cFormNumber, c_form_document_url: documentUrl }),
     });
     const json = await res.json();
     return json.status === 'success';

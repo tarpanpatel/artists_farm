@@ -151,6 +151,22 @@ function ensureComplianceSchema($pdo) {
     try {
         $pdo->exec("ALTER TABLE guests ADD COLUMN IF NOT EXISTS `c_form_filed_at` DATETIME DEFAULT NULL");
     } catch (PDOException $e) {}
+    try {
+        // Was referenced by mark_c_form_filed's UPDATE below with no
+        // self-heal block of its own (found 21 Aug 2026 while adding
+        // c_form_document_url next to it) - exactly the
+        // properties.checkin_time/checkout_time gap CLAUDE.md warns about:
+        // an environment that never got a manual ALTER for this column
+        // would have every C-Form save fail with a raw SQL error.
+        $pdo->exec("ALTER TABLE guests ADD COLUMN IF NOT EXISTS `c_form_number` VARCHAR(100) DEFAULT NULL");
+    } catch (PDOException $e) {}
+    try {
+        // The uploaded Form 'C' confirmation (PDF/photo) attached when a
+        // C-Form filing is saved - see upload_document.php's 'c_form'
+        // folder and mark_c_form_filed below. Stored so it can be
+        // re-displayed/re-sent later, not just forwarded to Telegram once.
+        $pdo->exec("ALTER TABLE guests ADD COLUMN IF NOT EXISTS `c_form_document_url` VARCHAR(500) DEFAULT NULL");
+    } catch (PDOException $e) {}
     markSchemaVerified('schema_compliance');
 }
 
@@ -895,10 +911,17 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                 try {
                     $filed = !array_key_exists('filed', $input) || !empty($input['filed']);
                     $cFormNumber = isset($input['c_form_number']) ? trim((string)$input['c_form_number']) : (isset($input['cFormNumber']) ? trim((string)$input['cFormNumber']) : null);
+                    // Set via a separate upload_document.php POST (folder=c_form) BEFORE
+                    // this save fires - see uploadDocumentDB()/markCFormFiled() in api.ts.
+                    // Deliberately only forwarded to Telegram from here, not at upload
+                    // time, so nothing gets sent to the group until the C-Form save
+                    // actually goes through (a selected-then-abandoned upload sends
+                    // nothing).
+                    $documentUrl = isset($input['c_form_document_url']) ? trim((string)$input['c_form_document_url']) : null;
                     $filedAt = $filed ? date('Y-m-d H:i:s') : null;
 
-                    $stmt = $pdo->prepare("UPDATE guests SET c_form_filed_at = ?, c_form_number = ? WHERE id = ? AND property_id = ?");
-                    $stmt->execute([$filedAt, $filed ? $cFormNumber : null, $guestId, $propertyId]);
+                    $stmt = $pdo->prepare("UPDATE guests SET c_form_filed_at = ?, c_form_number = ?, c_form_document_url = ? WHERE id = ? AND property_id = ?");
+                    $stmt->execute([$filedAt, $filed ? $cFormNumber : null, $filed ? $documentUrl : null, $guestId, $propertyId]);
 
                     // Send Telegram notification when C-Form is saved
                     if ($filed) {
@@ -916,7 +939,24 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                                 'booking_id'   => $guestId,
                                 'changes_list' => "• <b>C-Form Status:</b> Filed (No: {$cNumText})",
                             ]);
-                            sendPropertyTelegramMessage($pdo, $propertyId, 'admin', $editMsg);
+
+                            // If a Form 'C' confirmation was uploaded with this save,
+                            // send THAT (with the same text as its caption) instead of
+                            // a separate bare text message - one notification per
+                            // event, not two, and the file is the actually-useful part.
+                            $sentWithDocument = false;
+                            if (!empty($documentUrl) && preg_match('#/php/uploads/(.+)$#', $documentUrl, $m)) {
+                                $absPath = __DIR__ . '/../uploads/' . $m[1];
+                                if (file_exists($absPath)) {
+                                    $ext = strtolower(pathinfo($absPath, PATHINFO_EXTENSION));
+                                    $fileType = ($ext === 'pdf') ? 'document' : 'photo';
+                                    $result = sendPropertyTelegramPhoto($pdo, $propertyId, 'admin', [$absPath], $editMsg, 'c_form_filed', [$fileType]);
+                                    $sentWithDocument = is_array($result) && empty($result['skipped']);
+                                }
+                            }
+                            if (!$sentWithDocument) {
+                                sendPropertyTelegramMessage($pdo, $propertyId, 'admin', $editMsg);
+                            }
                         } catch (Exception $e) {
                             error_log("Failed to send C-Form Telegram notification: " . $e->getMessage());
                         }
@@ -928,7 +968,8 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         'data' => [
                             'c_form_filed_at' => $filedAt,
                             'c_form_filed' => $filed,
-                            'c_form_number' => $cFormNumber
+                            'c_form_number' => $cFormNumber,
+                            'c_form_document_url' => $filed ? $documentUrl : null
                         ]
                     ]);
                 } catch (PDOException $e) {
