@@ -77,6 +77,7 @@ export const strings: Record<string, string> = {
   alerts_col_action: "Action",
   view_resolve_button: "View & Resolve",
   view_button: "View",
+  view_more_button: "View More",
   resolve_button: "Resolve",
   resolving_label: "Resolving...",
   cleared_label: "Cleared",

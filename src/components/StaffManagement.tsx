@@ -1577,13 +1577,28 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
         </div>
       )}
 
-      {/* Add Staff Modal */}
-      <Modal show={isModalOpen} onClose={() => setIsModalOpen(false)} className="z-58" size="md" dismissible>
-        <ModalHeader as="div">
-          <span>{t('add_new_staff_member_heading', 'Add New Staff Member')}</span>
-        </ModalHeader>
-        <form onSubmit={handleAddStaffSubmit} className="app-form app-form--add-staff">
-          <ModalBody className="space-y-3 text-xs">
+      {/* Add Staff Drawer */}
+      <FlowbiteDrawer
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        position="right"
+        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <span className="flex items-center gap-2 font-bold text-gray-900 dark:text-white text-base">
+            <Plus className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+            {t('add_new_staff_member_heading', 'Add New Staff Member')}
+          </span>
+          <button
+            type="button"
+            onClick={() => setIsModalOpen(false)}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <form onSubmit={handleAddStaffSubmit} className="app-form app-form--add-staff flex-1 flex flex-col justify-between overflow-y-auto">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
             <div>
               <Input
                 label={t('staff_name_required_label', 'Staff Name *')}
@@ -1640,8 +1655,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 className="font-semibold"
               />
             </div>
-          </ModalBody>
-          <ModalFooter className="flex justify-end gap-2">
+          </div>
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
             <Button
               type="button"
               variant="secondary"
@@ -1652,9 +1667,9 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             <Button type="submit" variant="primary">
               Save Member
             </Button>
-          </ModalFooter>
+          </div>
         </form>
-      </Modal>
+      </FlowbiteDrawer>
 
       {/* TEAM MEMBER DRAWER (CREATE / UPDATE) - Flowbite Right Slide-Out Drawer */}
       <FlowbiteDrawer

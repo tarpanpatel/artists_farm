@@ -67,6 +67,7 @@ export const strings: Record<string, string> = {
   alerts_col_issue: "समस्या / अलर्ट",
   alerts_col_action: "कार्रवाई",
   view_resolve_button: "देखें और ठीक करें",
+  view_more_button: "और देखें",
   cleared_label: "साफ हो गया",
   cform_filing_due_heading: "C-Form भरना बाकी है",
   mark_filed_label: "फॉर्म भर दिया",

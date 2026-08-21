@@ -141,6 +141,18 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   // every row explicitly close its own popover in the same click that opens
   // the modal.
   const [openOverflowDateStr, setOpenOverflowDateStr] = useState<string | null>(null);
+  // Same pattern as above, for the single-booking summary popover on each day
+  // cell's chip: clicking the chip used to both toggle a hover-triggered
+  // Popover AND fire the chip's own onClick straight into
+  // setSelectedBooking() - opening BookingDetailsModal immediately, on the
+  // very same click that was supposed to just reveal the popover's summary
+  // first. On touch devices especially (no real hover state), this meant a
+  // single tap opened the popover AND the modal at once, with the popover
+  // rendering on top of the modal it was meant to lead into (found 22 Aug
+  // 2026). Fixed by making this popover click-triggered and controlled - the
+  // chip only ever toggles it open/closed now; only its own "View More"
+  // button opens the modal, closing the popover in that same click.
+  const [openBookingPopoverId, setOpenBookingPopoverId] = useState<string | null>(null);
   const [blockedDates, setBlockedDates] = useState<Array<{
     event_start: string;
     event_end: string;
@@ -893,8 +905,10 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                   const hasDayPending = dayPendingReasons.length > 0;
                   return (
                     <Popover
-                      trigger="hover"
+                      trigger="click"
                       placement="top"
+                      open={openBookingPopoverId === String(dayBooking.id)}
+                      onOpenChange={(isOpen) => setOpenBookingPopoverId(isOpen ? String(dayBooking.id) : null)}
                       content={
                         <div className="w-64 text-xs bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
                           <div className="px-3 py-2 bg-gray-50 dark:bg-gray-700/60 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
@@ -925,11 +939,23 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                               </div>
                             )}
                           </div>
+                          <div className="px-3 py-2 border-t border-gray-100 dark:border-gray-700/60">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedBooking(dayBooking);
+                                setOpenBookingPopoverId(null);
+                              }}
+                              className="w-full text-center text-2xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline cursor-pointer transition-colors"
+                            >
+                              {t('view_more_button', 'View More')} →
+                            </button>
+                          </div>
                         </div>
                       }
                     >
                       <button
-                        onClick={() => setSelectedBooking(dayBooking)}
+                        type="button"
                         className={`rounded-md px-2 py-1 ${isDayBookingCheckedOut ? checkedOutColor : isOtaBooking ? otaBookingColor : directBookingColor} text-xs font-medium flex flex-col justify-center shadow-2xs hover:opacity-90 transition-opacity cursor-pointer truncate w-full text-left`}
                       >
                         <div className="truncate font-semibold flex items-center gap-1.5 min-w-0">

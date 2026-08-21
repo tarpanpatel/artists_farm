@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Receipt, AlertCircle, Loader2, Search, CheckCircle2, FileText } from 'lucide-react';
-import { Modal, ModalHeader, ModalBody, Alert } from 'flowbite-react';
+import { Drawer, Alert } from 'flowbite-react';
+import { X } from './icons/FlowbiteIcons';
 import { useConfirm } from './ConfirmDialogContext';
 import { Button } from './Button';
 import { Input } from './Input';
@@ -305,15 +306,22 @@ export const DefaultBillsManager: React.FC = () => {
       )}
 
       {/* Edit Modal */}
-      <Modal show={!!editingItem} onClose={() => setEditingItem(null)} dismissible={!saving} size="md" className="z-58">
-        <ModalHeader as="div">
-          <span className="flex items-center gap-2">
+      <Drawer open={!!editingItem} onClose={() => { if (!saving) setEditingItem(null); }} position="right" className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <span className="flex items-center gap-2 font-bold text-gray-900 dark:text-white text-base">
             <Edit2 className="w-4 h-4 text-blue-600" />
             Edit Bill Item
           </span>
-        </ModalHeader>
-        <ModalBody>
-          <form onSubmit={handleEditItem} className="space-y-4">
+          <button
+            type="button"
+            onClick={() => { if (!saving) setEditingItem(null); }}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <form onSubmit={handleEditItem} className="flex-1 flex flex-col justify-between overflow-y-auto">
+          <div className="p-4 space-y-4">
             <Input
               label="Bill Name"
               value={editForm.label}
@@ -326,12 +334,14 @@ export const DefaultBillsManager: React.FC = () => {
               onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
               placeholder="e.g., Monthly electricity charges"
             />
+          </div>
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
             <Button type="submit" variant="primary" block disabled={saving}>
               {saving ? 'Saving...' : 'Update'}
             </Button>
-          </form>
-        </ModalBody>
-      </Modal>
+          </div>
+        </form>
+      </Drawer>
     </div>
   );
 };

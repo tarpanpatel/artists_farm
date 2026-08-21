@@ -2185,7 +2185,19 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             {/* MOBILE ONLY Light-Theme Bottom Cart Drawer (lg:hidden, Collapsible & 50vh Expandable, Floats Above MobileBottomNav) */}
             {cartItems.length > 0 && (
               <div
-                className={`fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-[55] lg:hidden bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-t-2xl shadow-lg border-t border-gray-200 dark:border-gray-700 transition-all duration-300 flex flex-col ${
+                // Was `bg-white ... shadow-lg border-t border-gray-200` - identical
+                // white to the page container behind it (take-food-order-container
+                // is also bg-white), with `shadow-lg` doing nothing useful: that's a
+                // downward-cast shadow, and this drawer sits at the very bottom of
+                // the viewport - there's nothing below it to shadow onto, so it
+                // rendered essentially invisibly. Found 22 Aug 2026 (reported as
+                // "cart drawer is very difficult to differentiate from rest of the
+                // site"). Fixed with an upward-cast shadow (negative Y offset, the
+                // correct direction for a bottom sheet - it falls onto the menu
+                // content directly above the drawer's top edge instead), a
+                // slightly-tinted surface instead of matching white, and a bolder
+                // accent top border so the boundary itself reads clearly too.
+                className={`fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-[55] lg:hidden bg-slate-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-t-2xl shadow-[0_-8px_30px_-6px_rgba(0,0,0,0.25)] dark:shadow-[0_-8px_30px_-6px_rgba(0,0,0,0.6)] border-t-2 border-blue-200 dark:border-blue-900/60 transition-all duration-300 flex flex-col ${
                   isCartDrawerExpanded ? 'h-[50vh]' : 'max-h-[260px]'
                 }`}
               >
@@ -2197,8 +2209,9 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   // separate floating chip (found 20 Aug 2026: shadow-sm
                   // still cast a visible line along the bottom edge even
                   // with border-b-0, since box-shadow isn't clipped by the
-                  // missing border).
-                  className="absolute top-0 right-4 -translate-y-full bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-bold px-4 py-1.5 rounded-t-xl border-t border-x border-b-0 border-gray-200 dark:border-gray-700 flex items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 z-20"
+                  // missing border). bg-slate-50 (not white) to match the
+                  // drawer body's surface tone after the 22 Aug 2026 fix.
+                  className="absolute top-0 right-4 -translate-y-full bg-slate-50 dark:bg-gray-800 hover:bg-slate-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-bold px-4 py-1.5 rounded-t-xl border-t-2 border-x border-b-0 border-blue-200 dark:border-blue-900/60 flex items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 z-20"
                   aria-label="Toggle Cart Drawer"
                 >
                   {isCartDrawerExpanded ? (
@@ -2218,7 +2231,11 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   {visibleDrawerItems.map((ci) => (
                     <div
                       key={ci.menuItem.id}
-                      className="bg-gray-50 dark:bg-gray-700/60 min-h-[38px] py-1 px-2.5 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center justify-between gap-2 text-xs text-gray-900 dark:text-gray-100"
+                      // bg-white (not gray-50) so each item card still pops
+                      // against the drawer's own now-tinted bg-slate-50
+                      // surface (22 Aug 2026) - it used to read as one shade
+                      // of gray-on-white, now it'd be gray-on-gray instead.
+                      className="bg-white dark:bg-gray-700/60 min-h-[38px] py-1 px-2.5 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center justify-between gap-2 text-xs text-gray-900 dark:text-gray-100"
                     >
                       <div className="flex-1 pr-1 truncate min-w-0">
                         <h4 className="kitchen-management__caption font-semibold text-gray-900 dark:text-white text-xs truncate m-0 p-0 leading-tight">

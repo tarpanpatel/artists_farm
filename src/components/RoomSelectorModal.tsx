@@ -1,6 +1,7 @@
 import React from 'react';
 import { Building2, ArrowRight, Lightbulb } from 'lucide-react';
-import { Modal, ModalHeader, ModalBody, Alert } from 'flowbite-react';
+import { Drawer, Alert } from 'flowbite-react';
+import { X } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';
 
 interface Room {
@@ -29,8 +30,8 @@ export const RoomSelectorModal: React.FC<RoomSelectorModalProps> = ({
   const activeRooms = rooms.filter((r) => r.is_active !== 0);
 
   return (
-    <Modal show={isOpen} onClose={onClose} dismissible={!isLoading} size="2xl" className="z-58 room-selector-modal__root">
-      <ModalHeader as="div">
+    <Drawer open={isOpen} onClose={() => { if (!isLoading) onClose(); }} position="right" className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between room-selector-modal__root">
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
             <Building2 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -44,8 +45,15 @@ export const RoomSelectorModal: React.FC<RoomSelectorModalProps> = ({
             </p>
           </div>
         </div>
-      </ModalHeader>
-      <ModalBody className="space-y-6">
+        <button
+          type="button"
+          onClick={() => { if (!isLoading) onClose(); }}
+          className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer shrink-0"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+      <div className="flex-1 overflow-y-auto p-4 space-y-6">
         <div>
           {activeRooms.length === 0 ? (
             <div className="text-center py-12">
@@ -53,7 +61,7 @@ export const RoomSelectorModal: React.FC<RoomSelectorModalProps> = ({
               <p className="text-slate-500 dark:text-slate-400 font-medium">{t('no_active_rooms_text')}</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-96 overflow-y-auto">
+            <div className="grid grid-cols-2 gap-3">
               {activeRooms
                 .sort((a, b) => (a.room_order ?? 0) - (b.room_order ?? 0))
                 .map((room) => (
@@ -92,7 +100,7 @@ export const RoomSelectorModal: React.FC<RoomSelectorModalProps> = ({
         <Alert color="blue" icon={Lightbulb} className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
           <p className="text-xs font-medium">{t('room_selector_tip')}</p>
         </Alert>
-      </ModalBody>
-    </Modal>
+      </div>
+    </Drawer>
   );
 };
