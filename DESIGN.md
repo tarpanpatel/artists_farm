@@ -124,6 +124,41 @@ All log tables, financial ledgers, receipts, and management tables across the ap
    - Use standard `<Button size="sm">` (`h-8`, `text-xs font-medium`, `whitespace-nowrap shrink-0`) for Edit, Delete, or View actions.
 7. **Pagination Dropdown**:
    - Rows-per-page dropdown is styled with opaque backgrounds (`#ffffff` light / `#1f2937` dark) and custom Flowbite arrows so options never render with transparent or glitchy overlays.
+8. **Column Header Titles Never Truncate** (found 21 Aug 2026 - satisfying rule 4's width bands
+   alone does not satisfy this):
+   - `react-data-table-component`'s default header-cell CSS forces single-line + ellipsis, so a
+     column sized correctly for its *cell content* (rule 4) can still clip its own header label
+     (e.g. "Status / Method" at a 170px column truncating to "STATUS / MET..."). Never leave a
+     header title ellipsized - either the column needs to be wider than rule 4's band to fit the
+     label, the header cell needs `white-space: normal` so it wraps to two lines instead of
+     clipping, or the label itself needs a shorter deliberate abbreviation (not an accidental
+     mid-word cut).
+9. **Row Selection** (reference: flowbite.com/application-ui/demo/e-commerce/transactions/,
+   added 21 Aug 2026) - only on tables where a real bulk action exists (bulk delete, bulk
+   export-selected, bulk status change). `selectableRows` + a `selectableRowsComponent` that
+   renders `flowbite-react`'s real `Checkbox` (see "Form Controls" above - never
+   `react-data-table-component`'s native default). Don't add selection checkboxes to a table
+   just to visually match the reference if nothing actually consumes the selection - check what
+   bulk action would attach before enabling this on a given table.
+10. **Numbered Pagination Footer** (same reference) - "Showing X-Y of Z" plus page-number
+    buttons, not just prev/next arrows. Every table in the app currently uses
+    `react-data-table-component`'s stock default pagination component (confirmed 21 Aug 2026:
+    zero hits for `paginationComponent` anywhere in `src/`). Build one shared numbered-pagination
+    component and pass it as `paginationComponent` on every `<DataTable>`, the same "one shared
+    object, import it everywhere" pattern as `attachedTabsTheme` - don't re-derive it per page.
+11. **Desktop Table / Mobile Card Split** (per [[mobile_first_requirement]] - a real Tailwind
+    breakpoint swap, not just responsive classes on the table itself) - every `<DataTable>` needs
+    a `hidden md:block` desktop table paired with a `md:hidden` mobile card list at the same
+    breakpoint. This is already the convention on ~9 of the app's biggest table screens
+    (`KitchenManagement.tsx`, `BillingCheckout.tsx`, `StaffManagement.tsx`,
+    `InventoryManagement.tsx`, `PettyCashManagement.tsx`, `AuditLogsView.tsx`,
+    `CashDrawerManager.tsx`, `MiscChargesManagement.tsx`, `ICalSyncManager.tsx`) - it just was
+    never written down, so nothing enforces it on tables that don't have it yet. **Gap found
+    21 Aug 2026**: each of those 9 files hand-rolls its own card markup and its own manual
+    pagination slicing independently - there is no shared mobile-card component, so the
+    breakpoint strategy is consistent but the actual card look can still drift page to page.
+    When touching this rule, prefer extracting one shared component over adding a 10th hand-rolled
+    copy.
 
 ## Attached Tabs Specification (Default Variant)
 

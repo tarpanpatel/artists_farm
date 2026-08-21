@@ -4,7 +4,7 @@ import { Button } from './Button';
 import { Badge } from './Badge';
 import DataTable from 'react-data-table-component';
 import { flowbiteTableCustomStyles } from '../utils/tableStyles';
-import { centeredTabsTheme } from '../utils/tabsTheme';
+import { centeredTabsTheme, attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
 import { Boxes, PackagePlus, AlertTriangle, Plus, CheckCircle2, X, Upload, Search, ShoppingCart, Settings, Package, Check, ClipboardEdit, Edit2, Pencil, ChevronDown, ChevronUp, Loader2, FlaskConical, Coffee, Milk, Apple, Banana, Cake, Carrot, Wheat, SprayCan, Drumstick, UtensilsCrossed, Croissant, Soup, Droplet, Snowflake, Fish, Wrench, Balloon, Refrigerator, Microwave, Fan, Blend, Bean, HandPlatter, GlassWater, LeafyGreen, Trash2, Candy, Flame, Cherry, Grape, Citrus, Egg, CupSoda, Utensils, Sandwich, Cookie, Nut, Filter, Eye, type LucideIcon } from 'lucide-react';
 import { InventoryItem, CatalogItem } from '../types';
 import { t } from '../i18n/en';
@@ -1177,20 +1177,21 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           </PageHeader>
         </div>
 
+        <div className="kitchen-stock-tabs-desk">
         <Tabs
           aria-label="Kitchen Stock Tabs"
           variant="default"
-          theme={centeredTabsTheme}
+          theme={attachedTabsTheme}
+          clearTheme={attachedTabsClearTheme}
           onActiveTabChange={(tabIndex: number) => {
             setCatalogView(tabIndex === 0 ? 'items' : 'categories');
           }}
         >
-          <TabItem active={catalogView === 'items'} title={t('master_materials_catalog_header')} icon={Package}>
-            {/* No chrome here - the desktop DataTable card and mobile card
-                below (hidden md:block / md:hidden) each already have their
-                own full bg/border/rounded/shadow, matching how KitchenManagement's
-                Take Food Order tabs put exactly one chromed card directly in
-                each TabItem ("block inside a block", found + fixed 20 Aug 2026). */}
+          <TabItem active={catalogView === 'items'} title={t('master_materials_catalog_header')} icon={Package} />
+          <TabItem active={catalogView === 'categories'} title={t('manage_categories_button')} icon={Settings} />
+        </Tabs>
+
+        {catalogView === 'items' && (
             <div className="space-y-4">
               {selectedCatalogItemIds.length > 0 && (
                 <div className="bulk-category-action-bar bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md animate-in fade-in slide-in-from-top-2 duration-250">
@@ -1445,17 +1446,15 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     </div>
                   )}
                 </div>
-
                 {(() => {
                   const filtered = filteredCatalogItems;
-                  const pageItems = filtered.slice((catalogPage - 1) * 10, catalogPage * 10);
+                  const paginated = filtered.slice((catalogPage - 1) * 10, catalogPage * 10);
 
                   return (
                     <>
                       <div className="space-y-2.5">
-                        {pageItems.map((item) => {
+                        {paginated.map((item) => {
                           const ItemIcon = getStockItemIcon(item.name, item.category);
-
                           return (
                             <div
                               key={item.id}
@@ -1548,10 +1547,10 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 })()}
               </div>
             </div>
-          </TabItem>
+        )}
 
-          <TabItem active={catalogView === 'categories'} title={t('manage_categories_button')} icon={Settings}>
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-b-2xl p-4 sm:p-5 shadow-md space-y-3">
+        {catalogView === 'categories' && (
+            <div className="bg-white dark:bg-slate-800 border border-t-0 border-slate-200 dark:border-slate-700 rounded-lg rounded-t-none p-4 sm:p-5 shadow-md space-y-3 -mt-px">
               <div className="flex items-center gap-2">
                 <Input
                   type="text"
@@ -1658,8 +1657,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               })}
               </div>
             </div>
-          </TabItem>
-        </Tabs>
+        )}
+        </div>
 
         {/* Add/Edit Modal */}
         <Modal show={isCatalogModalOpen} onClose={() => setIsCatalogModalOpen(false)} className="z-58" size="md" dismissible>
