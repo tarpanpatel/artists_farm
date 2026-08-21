@@ -127,14 +127,14 @@ All log tables, financial ledgers, receipts, and management tables across the ap
    - Timeframe and date filter selects must specify at least `min-w-[200px]` to prevent month/year strings from truncating.
 3. **Persistent Column Headers**:
    - Always include `persistTableHead` on all `<DataTable>` instances so column headers remain permanently visible during search, filter, and pagination changes.
-4. **Content-Proportioned Column Widths**:
-   - Column widths must fit their underlying content:
-     - **ID / Code Columns**: `width: '110px–120px'`, `minWidth: '100px'`
-     - **Timestamp / Date Billed**: `width: '140px–160px'`, `minWidth: '130px'`
-     - **Category / Status**: `width: '120px–160px'`, `minWidth: '110px'`
-     - **Monetary Totals**: `width: '110px–130px'`, `minWidth: '100px'`, with `tabular-numbers font-semibold`
-     - **Primary Description / Name Columns**: Fluid `grow: 2` with `minWidth: '180px–220px'` to comfortably absorb all remaining horizontal space
-     - **Actions Column**: Sized to fit contained buttons (`width: '110px–185px'`) with `whitespace-nowrap flex items-center gap-2` to prevent button text wrapping.
+4. **Content-Proportioned Column Widths & Sort Icon Clearances**:
+   - Column widths must fit their underlying content AND their full uppercase header title with sort icon clearance:
+     - **ID / Code Columns**: `minWidth: '130px–140px'` (never < 130px on sortable IDs)
+     - **Timestamp / Date Billed / Checkout**: `minWidth: '150px–170px'`
+     - **Category / Status / Payment Method**: `minWidth: '140px–160px'`
+     - **Monetary Totals & Currency Columns** (e.g. `Stay Tariff`, `Food & Extras`, `Total Earned (₹)`, `Pending Payout (₹)`): `minWidth: '135px–160px'` with `tabular-numbers font-semibold`
+     - **Primary Description / Name Columns**: Fluid `grow: 2` with `minWidth: '180px–220px'` to comfortably absorb remaining horizontal space without collapsing
+     - **Actions Column**: Sized to fit contained buttons (`minWidth: '120px–240px'`) with `whitespace-nowrap flex items-center gap-2` to prevent button label wrapping.
 5. **Standard Typography**:
    - All cell primary values use standard application font (`text-xs font-semibold text-gray-900 dark:text-white`).
    - Do NOT use `font-mono` on ID fields or fake blue links unless the ID actively navigates or opens a dedicated record modal.
@@ -143,15 +143,10 @@ All log tables, financial ledgers, receipts, and management tables across the ap
    - Use standard `<Button size="sm">` (`h-8`, `text-xs font-medium`, `whitespace-nowrap shrink-0`) for Edit, Delete, or View actions.
 7. **Pagination Dropdown**:
    - Rows-per-page dropdown is styled with opaque backgrounds (`#ffffff` light / `#1f2937` dark) and custom Flowbite arrows so options never render with transparent or glitchy overlays.
-8. **Column Header Titles Never Truncate** (found 21 Aug 2026 - satisfying rule 4's width bands
-   alone does not satisfy this):
-   - `react-data-table-component`'s default header-cell CSS forces single-line + ellipsis, so a
-     column sized correctly for its *cell content* (rule 4) can still clip its own header label
-     (e.g. "Status / Method" at a 170px column truncating to "STATUS / MET..."). Never leave a
-     header title ellipsized - either the column needs to be wider than rule 4's band to fit the
-     label, the header cell needs `white-space: normal` so it wraps to two lines instead of
-     clipping, or the label itself needs a shorter deliberate abbreviation (not an accidental
-     mid-word cut).
+8. **Column Header Titles Never Truncate or Wrap Letter-by-Letter**:
+   - **Horizontal Scroll Wrapper Requirement**: Every desktop `<DataTable>` must live inside a container with `overflow-x-auto` (e.g. `<div className="hidden md:block overflow-x-auto">`) so that wide multi-column tables scroll horizontally smoothly instead of shrinking column widths below their minimum readable size.
+   - **Header Text Whitespace**: Both `src/utils/tableStyles.ts` (`headCells`) and `src/custom.css` (`.rdt_columnText`) enforce `white-space: nowrap !important; overflow: hidden; text-overflow: ellipsis; line-height: 1.3 !important;`. Header labels must NEVER break or wrap character-by-character into single vertical letters.
+   - **Sortable Header Clearance**: `react-data-table-component` renders a sort arrow icon (~20px) inside sortable column headers alongside the 24px–28px cell padding. Sizing sortable columns with at least `minWidth: '130px–160px'` (per Rule 4) guarantees full header titles (`Receipt ID`, `Date Billed`, `Stay Tariff`, `Grand Total`, `Total Earned (₹)`) display completely without truncation or ellipses.
 9. **Row Selection** (reference: flowbite.com/application-ui/demo/e-commerce/transactions/,
    added 21 Aug 2026) - only on tables where a real bulk action exists (bulk delete, bulk
    export-selected, bulk status change). `selectableRows` + a `selectableRowsComponent` that

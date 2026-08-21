@@ -7,7 +7,9 @@
   - **No Equal Height Stretches**: Never use equal-height side-by-side grids between action forms and table logs; place forms on top with the full-width log table below.
   - **Toolbar Standardization**: All toolbar elements (Search, Timeframe/Filter dropdowns, Export CSV, Action buttons) must share exact `h-10` height, `text-xs font-medium` typography, and `rounded-lg` borders. Timeframe dropdowns must have at least `min-w-[200px]` to avoid label truncation.
   - **Persistent Headers**: Always include `persistTableHead` on all `<DataTable>` components so column titles are permanently visible across all states.
-  - **Content-Based Column Widths**: Column widths must match content naturally (IDs: 110–120px, Dates: 140–160px, Amounts: 110–130px, Actions: 110–185px). Fluid description/name columns use `grow: 2` with adequate `minWidth`.
+  - **Horizontal Scroll Container**: Desktop `<DataTable>` must always be wrapped in a container with `overflow-x-auto` (e.g. `<div className="hidden md:block overflow-x-auto">`) so multi-column tables scroll cleanly on narrower screens without squishing headers.
+  - **Content & Sort Icon Clearance Widths**: Column widths must fit cell content AND uppercase header titles with sort icons (~20px) and cell padding (IDs: 130–140px, Dates/Timestamps: 150–170px, Currency/Totals: 135–160px, Status/Method: 140–160px, Actions: 120–240px). Fluid description/name columns use `grow: 2` with `minWidth: '180px–220px'`.
+  - **Header Text Whitespace**: Header cells enforce `white-space: nowrap !important; overflow: hidden; text-overflow: ellipsis; line-height: 1.3 !important;`. Header labels must never wrap character-by-character into single vertical letters.
   - **Typography Consistency**: ID and data cells use `text-xs font-semibold text-gray-900 dark:text-white` (never `font-mono` or fake blue links unless clickable). Subtitles use `text-2xs text-gray-500`.
   - **Action Button Sizing**: Action cell buttons must use `<Button size="sm">` (`h-8`, `text-xs font-medium`, `whitespace-nowrap shrink-0`) to prevent multi-line button label wrapping.
 
