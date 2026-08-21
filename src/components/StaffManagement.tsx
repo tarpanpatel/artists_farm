@@ -681,7 +681,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                                 <a
                                   href={`tel:${phoneVal}`}
                                   onClick={(e) => e.stopPropagation()}
-                                  className="hover:underline hover:text-blue-600 dark:hover:text-blue-400 font-mono"
+                                  className="hover:underline hover:text-blue-600 dark:hover:text-blue-400 font-medium"
                                 >
                                   {row.username}
                                 </a>
@@ -764,19 +764,14 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                           ) : (
                             <>
                               {canEdit && (
-                                <Button variant="primary" size="xs" onClick={() => handleEditUser(row)} leftIcon={<Pencil className="w-3.5 h-3.5" />}>
+                                <Button variant="primary" size="sm" onClick={() => handleEditUser(row)} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
                                   <span className="whitespace-nowrap">Edit</span>
                                 </Button>
                               )}
                               {canDelete && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteUser(row.id)}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-md transition-all active:scale-95 cursor-pointer whitespace-nowrap"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                  <span>Delete</span>
-                                </button>
+                                <Button variant="danger" size="sm" onClick={() => handleDeleteUser(row.id)} leftIcon={<Trash2 className="w-3.5 h-3.5 shrink-0" />}>
+                                  <span className="whitespace-nowrap">Delete</span>
+                                </Button>
                               )}
                             </>
                           )}
@@ -796,6 +791,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 paginationPerPage={10}
                 paginationRowsPerPageOptions={[10, 20, 50]}
                 highlightOnHover
+                persistTableHead
                 customStyles={flowbiteTableCustomStyles}
                 noDataComponent={
                   <div className="p-8 text-center text-slate-400 font-semibold text-xs">{t('no_system_users_message', 'No system users registered.')}</div>
@@ -1234,9 +1230,9 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               >
                 <ChevronLeft className="w-3.5 h-3.5" /> Prev
               </button>
-<div className="font-semibold text-sm text-slate-800 dark:text-white">
-                              {selectedYear}
-                            </div>
+              <div className="font-semibold text-sm text-slate-800 dark:text-white">
+                {new Date(selectedYear, selectedMonth, 1).toLocaleString('en-US', { month: 'long', year: 'numeric' })}
+              </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => { setSelectedYear(now.getFullYear()); setSelectedMonth(now.getMonth()); }}
@@ -1447,7 +1443,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     selector: (row: any) => row.id,
                     sortable: true,
                     width: '100px',
-                    cell: (row: any) => <span className="font-mono font-semibold text-slate-500 dark:text-slate-400">{row.id}</span>,
+                    cell: (row: any) => <span className="font-semibold text-slate-500 dark:text-slate-400 text-xs">#{row.id}</span>,
                   },
                   {
                     name: 'Full Name',
@@ -1480,11 +1476,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         type="tel"
                         value={editStaffPhone}
                         onChange={e => setEditStaffPhone(e.target.value)}
-                        className="font-mono text-xs border-blue-300 bg-blue-50 dark:bg-blue-950/40 dark:border-blue-700"
+                        className="text-xs border-blue-300 bg-blue-50 dark:bg-blue-950/40 dark:border-blue-700"
                         fullWidth={false}
                       />
                     ) : (
-                      <span className="font-mono text-slate-600 dark:text-slate-300">{row.phone}</span>
+                      <span className="text-slate-600 dark:text-slate-300 font-medium text-xs">{row.phone}</span>
                     ),
                   },
                   {
@@ -1527,14 +1523,20 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   ...(updateStaff ? [{
                     name: 'Actions',
                     right: true,
-                    width: '130px',
+                    width: '140px',
                     cell: (row: any) => editingStaffId === row.id ? (
-                      <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => { updateStaff!(row.id, { role: editStaffRole, phone: editStaffPhone, monthlySalary: editStaffSalary, status: editStaffStatus }); setEditingStaffId(null); if (onLogAudit) onLogAudit(`Updated staff ${row.name}: role=${editStaffRole}, phone=${editStaffPhone}, salary=₹${editStaffSalary}, status=${editStaffStatus}`); }} className="bg-emerald-500 hover:bg-emerald-600 text-white px-2.5 py-1 rounded-lg text-[10px] font-semibold cursor-pointer">{t('save_button', 'Save')}</button>
-                        <button onClick={() => setEditingStaffId(null)} className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-2.5 py-1 rounded-lg text-[10px] font-semibold cursor-pointer">{t('cancel_button', 'Cancel')}</button>
+                      <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+                        <Button variant="primary" size="sm" onClick={() => { updateStaff!(row.id, { role: editStaffRole, phone: editStaffPhone, monthlySalary: editStaffSalary, status: editStaffStatus }); setEditingStaffId(null); if (onLogAudit) onLogAudit(`Updated staff ${row.name}: role=${editStaffRole}, phone=${editStaffPhone}, salary=₹${editStaffSalary}, status=${editStaffStatus}`); }}>
+                          {t('save_button', 'Save')}
+                        </Button>
+                        <Button variant="secondary" size="sm" onClick={() => setEditingStaffId(null)}>
+                          {t('cancel_button', 'Cancel')}
+                        </Button>
                       </div>
                     ) : (
-                      <button onClick={() => { setEditingStaffId(row.id); setEditStaffRole(row.role); setEditStaffPhone(row.phone); setEditStaffSalary(row.monthlySalary); setEditStaffStatus(row.status); }} className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-2.5 py-1 rounded-lg text-[10px] font-semibold cursor-pointer flex items-center gap-1"><Pencil className="w-3 h-3 text-slate-500" /> {t('edit_button', 'Edit')}</button>
+                      <Button variant="primary" size="sm" onClick={() => { setEditingStaffId(row.id); setEditStaffRole(row.role); setEditStaffPhone(row.phone); setEditStaffSalary(row.monthlySalary); setEditStaffStatus(row.status); }} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                        {t('edit_button', 'Edit')}
+                      </Button>
                     ),
                   }] : []),
                 ]}
@@ -1549,6 +1551,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 paginationPerPage={15}
                 paginationRowsPerPageOptions={[10, 15, 25, 50]}
                 highlightOnHover
+                persistTableHead
                 customStyles={flowbiteTableCustomStyles}
                 noDataComponent={
                   <div className="p-8 text-center text-slate-400 font-semibold text-xs">No staff members found.</div>

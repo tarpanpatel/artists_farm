@@ -563,7 +563,6 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
                         <span className="text-slate-400 italic text-[11px]">{t('never_synced_label', 'Never synced')}</span>
                       )}
                     </td>
-
                     {/* Status */}
                     <td className="ical-sync-manager__cell p-4 text-center">
                       <Badge variant="success" dot size="sm">
@@ -573,28 +572,25 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
 
                     {/* Actions */}
                     <td className="ical-sync-manager__cell p-4 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
+                      <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+                        <Button
+                          variant="secondary"
+                          size="sm"
                           onClick={() => handleManualSync(cal.id, cal.service_name)}
                           disabled={isSyncing}
-                          className="button button--sync px-3 py-1.5 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-600 dark:text-blue-400 font-semibold rounded-lg transition flex items-center gap-1 cursor-pointer border border-blue-200 dark:border-blue-800 text-[11px]"
+                          leftIcon={<RefreshCw className={`w-3.5 h-3.5 shrink-0 ${isSyncing ? 'animate-spin' : ''}`} />}
                           title={t('sync_channel_now_tooltip', 'Sync channel now')}
                         >
-                          <span className="button__icon flex items-center">
-                            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                          </span>
-                          <span>{isSyncing ? t('syncing_button', 'Syncing...') : t('sync_now_button', 'Sync Now')}</span>
-                        </button>
+                          {isSyncing ? t('syncing_button', 'Syncing...') : t('sync_now_button', 'Sync Now')}
+                        </Button>
 
-                        <button
+                        <Button
+                          variant="danger"
+                          size="sm"
                           onClick={() => handleDeleteCalendar(cal.id, cal.service_name)}
-                          className="button button--delete p-1.5 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition cursor-pointer border border-transparent hover:border-rose-200"
+                          leftIcon={<Trash2 className="w-3.5 h-3.5 shrink-0" />}
                           title={t('delete_integration_key_tooltip', 'Delete integration key')}
-                        >
-                          <span className="button__icon flex items-center">
-                            <Trash2 className="w-4 h-4" />
-                          </span>
-                        </button>
+                        />
                       </div>
                     </td>
                   </tr>
@@ -606,7 +602,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
                   <td colSpan={6} className="ical-sync-manager__cell text-center p-12 text-slate-400 space-y-3">
                     <Globe className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600 stroke-[1.5]" />
                     <p className="font-semibold text-xs">{t('no_ical_feeds_match_filter_message', 'No iCal integration feeds match your current filter.')}</p>
-<Button variant="primary" size="sm" onClick={() => setIsAddModalOpen(true)} leftIcon={<Plus className="w-4 h-4" />}>
+                    <Button variant="primary" size="sm" onClick={() => setIsAddModalOpen(true)} leftIcon={<Plus className="w-4 h-4" />}>
                       <span>{t('connect_first_ical_feed_button', 'Connect First iCal Feed')}</span>
                     </Button>
                   </td>
@@ -673,21 +669,22 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
                   </div>
 
                   <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100 dark:border-slate-700/60">
-                    <button
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       onClick={() => handleManualSync(cal.id, cal.service_name)}
                       disabled={isSyncing}
-                      className="button button--sync px-3 py-1.5 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-600 dark:text-blue-400 font-semibold rounded-lg transition flex items-center gap-1.5 cursor-pointer border border-blue-200 dark:border-blue-800 text-xs"
+                      leftIcon={<RefreshCw className={`w-3.5 h-3.5 shrink-0 ${isSyncing ? 'animate-spin' : ''}`} />}
                     >
-                      <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                      <span>{isSyncing ? t('syncing_button', 'Syncing...') : t('sync_now_button', 'Sync Now')}</span>
-                    </button>
+                      {isSyncing ? t('syncing_button', 'Syncing...') : t('sync_now_button', 'Sync Now')}
+                    </Button>
 
-                    <button
+                    <Button
+                      variant="danger"
+                      size="sm"
                       onClick={() => handleDeleteCalendar(cal.id, cal.service_name)}
-                      className="button button--delete p-1.5 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition cursor-pointer border border-slate-200 dark:border-slate-700"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                      leftIcon={<Trash2 className="w-3.5 h-3.5 shrink-0" />}
+                    />
                   </div>
                 </div>
               );
@@ -697,13 +694,9 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
               <div className="text-center p-8 text-slate-400 space-y-3">
                 <Globe className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600 stroke-[1.5]" />
                 <p className="font-semibold text-xs">{t('no_ical_feeds_match_filter_message', 'No iCal integration feeds match your current filter.')}</p>
-                <button
-                  onClick={() => setIsAddModalOpen(true)}
-                  className="button button--connect px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition text-xs inline-flex items-center gap-2 cursor-pointer shadow-md"
-                >
-                  <Plus className="w-4 h-4" />
+                <Button variant="primary" size="sm" onClick={() => setIsAddModalOpen(true)} leftIcon={<Plus className="w-4 h-4" />}>
                   <span>{t('connect_first_ical_feed_button', 'Connect First iCal Feed')}</span>
-                </button>
+                </Button>
               </div>
             )}
           </div>

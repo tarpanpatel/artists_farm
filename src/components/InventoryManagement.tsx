@@ -4,7 +4,7 @@ import { Button } from './Button';
 import { Badge } from './Badge';
 import DataTable from 'react-data-table-component';
 import { flowbiteTableCustomStyles } from '../utils/tableStyles';
-import { centeredTabsTheme, attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
+import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
 import { Boxes, PackagePlus, AlertTriangle, Plus, CheckCircle2, X, Upload, Search, ShoppingCart, Settings, Package, Check, ClipboardEdit, Edit2, Pencil, ChevronDown, ChevronUp, Loader2, FlaskConical, Coffee, Milk, Apple, Banana, Cake, Carrot, Wheat, SprayCan, Drumstick, UtensilsCrossed, Croissant, Soup, Droplet, Snowflake, Fish, Wrench, Balloon, Refrigerator, Microwave, Fan, Blend, Bean, HandPlatter, GlassWater, LeafyGreen, Trash2, Candy, Flame, Cherry, Grape, Citrus, Egg, CupSoda, Utensils, Sandwich, Cookie, Nut, Filter, Eye, type LucideIcon } from 'lucide-react';
 import { InventoryItem, CatalogItem } from '../types';
 import { t } from '../i18n/en';
@@ -1106,7 +1106,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   selector: (log: any) => log.date,
                   sortable: true,
                   width: '110px',
-                  cell: (log: any) => <span className="font-mono text-[11px] text-slate-500">{formatDateDDMMYYYY(log.date)}</span>,
+                  cell: (log: any) => <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{formatDateDDMMYYYY(log.date)}</span>,
                 },
                 {
                   name: 'Item Name',
@@ -1145,6 +1145,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               pagination
               paginationPerPage={10}
               highlightOnHover
+              persistTableHead
               customStyles={flowbiteTableCustomStyles}
               noDataComponent={<div className="p-8 text-center text-slate-400 text-xs font-semibold">No wastage incidents logged.</div>}
             />
@@ -1291,21 +1292,21 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     },
                     {
                       name: 'Actions',
-                      width: '180px',
+                      width: '200px',
                       cell: (row: CatalogItem) => (
-                        <div className="flex items-center gap-2 inventory-management__actions">
+                        <div className="flex items-center gap-1.5 inventory-management__actions whitespace-nowrap">
                           {!row.is_verified && (
-                            <button onClick={() => handleApproveItem(row.id)} className="button button--approve text-emerald-600 hover:text-emerald-700 font-medium text-xs cursor-pointer">
+                            <Button variant="secondary" size="sm" onClick={() => handleApproveItem(row.id)} className="text-emerald-600 dark:text-emerald-400">
                               {t('approve_button')}
-                            </button>
+                            </Button>
                           )}
                           <Button variant="primary" size="sm" onClick={() => handleEditCatalogItem(row)} leftIcon={<Edit2 className="w-3.5 h-3.5 shrink-0" />}>
                             {t('edit_button')}
                           </Button>
                           {canDeleteCatalogItem && (
-                            <button onClick={() => handleDeleteCatalogItem(row.id, row.name)} className="button button--delete text-red-600 hover:text-red-700 font-medium text-xs cursor-pointer">
+                            <Button variant="danger" size="sm" onClick={() => handleDeleteCatalogItem(row.id, row.name)} leftIcon={<Trash2 className="w-3.5 h-3.5 shrink-0" />}>
                               {t('delete_button')}
-                            </button>
+                            </Button>
                           )}
                         </div>
                       ),
@@ -1387,6 +1388,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   }
                   defaultSortFieldId={3}
                   defaultSortAsc={true}
+                  persistTableHead
                   customStyles={flowbiteTableCustomStyles}
                 />
               </div>
@@ -1820,22 +1822,22 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   {
                     name: 'Actions',
                     center: true,
-                    width: '240px',
+                    width: '260px',
                     cell: (row: any) => (
-                      <div className="flex items-center justify-center gap-2">
+                      <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
                         {row.status === 'PENDING' ? (
                           <>
-                            <button onClick={() => handleEditFulfill(row)} className="whitespace-nowrap inline-flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-[11px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-blue-200 shadow-md active:scale-95">
-                              <Pencil className="w-3.5 h-3.5" /> Edit & Deliver
-                            </button>
-                            <button onClick={() => handleQuickComplete(row)} className="whitespace-nowrap inline-flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold text-[11px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-emerald-200 shadow-md active:scale-95">
-                              <CheckCircle2 className="w-3.5 h-3.5" /> Complete
-                            </button>
+                            <Button variant="primary" size="sm" onClick={() => handleEditFulfill(row)} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                              Edit & Deliver
+                            </Button>
+                            <Button variant="secondary" size="sm" onClick={() => handleQuickComplete(row)} leftIcon={<CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}>
+                              Complete
+                            </Button>
                           </>
                         ) : (
-                          <button onClick={() => handleEditFulfill(row)} className="whitespace-nowrap inline-flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold text-[11px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-slate-200 dark:border-slate-600 shadow-md active:scale-95">
-                            <Eye className="w-3.5 h-3.5" /> View Request
-                          </button>
+                          <Button variant="secondary" size="sm" onClick={() => handleEditFulfill(row)} leftIcon={<Eye className="w-3.5 h-3.5 shrink-0" />}>
+                            View Request
+                          </Button>
                         )}
                       </div>
                     ),
@@ -1873,6 +1875,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 paginationPerPage={10}
                 paginationRowsPerPageOptions={[10, 15, 25, 50]}
                 highlightOnHover
+                persistTableHead
                 customStyles={flowbiteTableCustomStyles}
                 progressPending={stockRequestsLoading}
                 progressComponent={tableLoadingIndicator('Loading stock requests...')}
@@ -2568,6 +2571,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           paginationRowsPerPageOptions={[15, 30, 50, 100]}
           subHeader={stockLogSubHeader}
           highlightOnHover
+          persistTableHead
           customStyles={flowbiteTableCustomStyles}
           progressPending={inventoryLoading}
           progressComponent={tableLoadingIndicator('Loading inventory...')}

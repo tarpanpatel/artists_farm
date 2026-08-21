@@ -561,9 +561,9 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
         </section>
       </main>
 
-      {/* â"ۉ"€ Add Property Modal â"ۉ"€ */}
+      {/* Add Property Modal */}
       <Modal show={modal.type === 'add'} onClose={() => setModal({ type: 'none' })} dismissible size="md" className="z-58">
-        <ModalHeader>{t('add_new_property_heading', 'Add New Property')}</ModalHeader>
+        <ModalHeader as="div">{t('add_new_property_heading', 'Add New Property')}</ModalHeader>
         <ModalBody className="space-y-5 tenant-dashboard__modal-body">
               {addError && (
                 <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-300 tenant-dashboard__modal-error">
@@ -640,9 +640,9 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
         </ModalFooter>
       </Modal>
 
-      {/* â"ۉ"€ Edit Modal â"ۉ"€ */}
+      {/* Edit Modal */}
       <Modal show={modal.type === 'edit'} onClose={() => setModal({ type: 'none' })} dismissible size="md" className="z-58">
-        <ModalHeader>{t('tenant_edit_property_heading', 'Edit Property')}</ModalHeader>
+        <ModalHeader as="div">{t('tenant_edit_property_heading', 'Edit Property')}</ModalHeader>
         <ModalBody className="space-y-4 tenant-dashboard__modal-body">
               <div className="tenant-dashboard__form-group">
                 <Input
@@ -720,10 +720,10 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
         </ModalFooter>
       </Modal>
 
-      {/* â"ۉ"€ Delete Confirmation Modal â"ۉ"€ */}
+      {/* Delete Confirmation Modal */}
       {modal.type === 'delete' && (
         <Modal show onClose={() => { setModal({ type: 'none' }); setError(null); }} dismissible size="md" className="z-58">
-          <ModalHeader>{t('tenant_delete_property_heading', 'Delete Property')}</ModalHeader>
+          <ModalHeader as="div">{t('tenant_delete_property_heading', 'Delete Property')}</ModalHeader>
           <ModalBody className="space-y-3 tenant-dashboard__modal-body">
               <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg tenant-dashboard__warning-box">
                 <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5 tenant-dashboard__warning-icon" />

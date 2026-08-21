@@ -324,20 +324,25 @@ export const ThemeManagement: React.FC = () => {
 
       {/* Action Buttons */}
       <div className="flex items-center gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-<Button variant="primary" size="md" onClick={handleSave} disabled={isSaving}>
-                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                <span>{isSaving ? t('saving_ellipsis_button', 'Saving...') : t('save_settings_button', 'Save Settings')}</span>
-              </Button>
+        <Button
+          variant="primary"
+          size="md"
+          onClick={handleSave}
+          disabled={isSaving}
+          leftIcon={isSaving ? <Loader2 className="w-4 h-4 animate-spin shrink-0" /> : <Save className="w-4 h-4 shrink-0" />}
+        >
+          <span>{isSaving ? t('saving_ellipsis_button', 'Saving...') : t('save_settings_button', 'Save Settings')}</span>
+        </Button>
 
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          size="md"
           onClick={handleReset}
           disabled={isSaving}
-          className="inline-flex items-center gap-2 text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-100 font-medium rounded-lg text-sm px-5 py-2.5 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 dark:focus:ring-gray-700 disabled:opacity-50 cursor-pointer shadow-xs"
+          leftIcon={<RotateCcw className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />}
         >
-          <RotateCcw className="w-4 h-4 text-gray-500 dark:text-gray-400" />
           <span>{t('reset_button', 'Reset')}</span>
-        </button>
+        </Button>
       </div>
     </div>
   );

@@ -179,8 +179,11 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
       ),
     },
     {
-      name: t('service_name_column', 'Service Name'),
+      name: t('service_name_column', 'Item / Service Name'),
       selector: (row: MiscChargeTemplate) => row.label,
+      sortable: true,
+      grow: 2,
+      minWidth: '180px',
       cell: (row: MiscChargeTemplate) => {
         const editing = isEditing === row.id;
         return editing ? (
@@ -191,7 +194,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
           />
         ) : (
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-900 dark:text-white">{row.label}</span>
+            <span className="font-semibold text-slate-900 dark:text-white text-xs">{row.label}</span>
             {row.is_system_default && (
               <Badge variant="neutral" size="sm">
                 {t('system_default_badge', 'Default')}
@@ -204,6 +207,8 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
     {
       name: t('category_column', 'Category'),
       selector: (row: MiscChargeTemplate) => row.category,
+      sortable: true,
+      width: '140px',
       cell: (row: MiscChargeTemplate) => {
         const editing = isEditing === row.id;
         return editing ? (
@@ -222,6 +227,9 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
     {
       name: t('default_price_column', 'Default Price (₹)'),
       selector: (row: MiscChargeTemplate) => row.default_amount,
+      sortable: true,
+      right: true,
+      width: '130px',
       cell: (row: MiscChargeTemplate) => {
         const editing = isEditing === row.id;
         return editing ? (
@@ -231,13 +239,14 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
             onChange={(e) => setEditForm({ ...editForm, default_amount: Number(e.target.value) })}
           />
         ) : (
-          <span className="font-semibold text-emerald-600 dark:text-emerald-400">₹{row.default_amount?.toLocaleString('en-IN') || 0}</span>
+          <span className="font-semibold text-emerald-600 dark:text-emerald-400 text-xs">₹{row.default_amount?.toLocaleString('en-IN') || 0}</span>
         );
       },
     },
     {
       name: t('actions_column', 'Actions'),
-      width: '120px',
+      width: '130px',
+      right: true,
       cell: (row: MiscChargeTemplate) => {
         const editing = isEditing === row.id;
         const isSystemDefault = row.is_system_default;
@@ -249,8 +258,8 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
         ) : (
           <div className="flex justify-end gap-3">
             <Button variant="primary" size="sm" onClick={() => { setIsEditing(row.id); setEditForm(row); }} leftIcon={<Edit2 className="w-3.5 h-3.5 shrink-0" />}>
-                      Edit
-                    </Button>
+              Edit
+            </Button>
             <button
               onClick={() => handleDelete(row.id)}
               disabled={isSystemDefault}
@@ -303,6 +312,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
             data={filteredCharges}
             customStyles={flowbiteTableCustomStyles}
             highlightOnHover
+            persistTableHead
             pagination
             paginationPerPage={15}
             paginationRowsPerPageOptions={[5, 10, 15, 20, 25, 50]}
@@ -347,7 +357,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
                             <span className="text-[10px] font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded inline-block">
                               {row.category || 'Service'}
                             </span>
-                            <span className="font-mono font-extrabold text-blue-600 dark:text-blue-400 text-xs">
+                            <span className="font-bold text-blue-600 dark:text-blue-400 text-xs">
                               ₹{Number(row.default_amount).toFixed(2)}
                             </span>
                           </div>

@@ -590,7 +590,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
           so every Flowbite modal needs this override or it renders behind
           the header/sidebar. */}
       <FlowbiteModal show={isOpen} onClose={onClose} size="5xl" dismissible className="z-58">
-      <ModalHeader>
+      <ModalHeader as="div">
         <div>
           <h2 className="receipt-edit-modal__title text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
             <IndianRupee className="w-5 h-5 text-blue-600" />

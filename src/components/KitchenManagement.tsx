@@ -2415,6 +2415,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             paginationPerPage={15}
             paginationRowsPerPageOptions={[10, 15, 25, 50, 100]}
             highlightOnHover
+            persistTableHead
+            customStyles={flowbiteTableCustomStyles}
             responsive
             subHeader={
               <Input
@@ -2425,7 +2427,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 className="w-full max-w-xs"
               />
             }
-            customStyles={flowbiteTableCustomStyles}
             noDataComponent={
               <div className="py-10 text-center text-slate-400 font-semibold text-xs">
                 {t('no_requisitions_found_text')}
@@ -2666,6 +2667,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   paginationPerPage={10}
                   paginationRowsPerPageOptions={[10, 25, 50]}
                   highlightOnHover
+                  persistTableHead
                   noHeader
                   customStyles={flowbiteTableCustomStyles}
                   noDataComponent={
@@ -3012,7 +3014,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       width: '110px',
                       center: true,
                       cell: (row: RecipeIngredient) => (
-                        <span className="font-mono text-slate-700 dark:text-slate-300">{row.quantity} {row.unit}</span>
+                        <span className="text-slate-700 dark:text-slate-300 font-medium text-xs">{row.quantity} {row.unit}</span>
                       ),
                     },
                     {
@@ -3022,7 +3024,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       width: '110px',
                       center: true,
                       cell: (row: RecipeIngredient) => (
-                        <span className="font-mono text-blue-600 dark:text-blue-400 font-semibold">{(row.quantity * servings).toFixed(3)} {row.unit}</span>
+                        <span className="text-blue-600 dark:text-blue-400 font-semibold text-xs">{(row.quantity * servings).toFixed(3)} {row.unit}</span>
                       ),
                     },
                     {
@@ -3031,7 +3033,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       sortable: true,
                       width: '100px',
                       right: true,
-                      cell: (row: RecipeIngredient) => <span className="font-mono text-slate-600">₹{row.costPerUnit}</span>,
+                      cell: (row: RecipeIngredient) => <span className="text-slate-600 dark:text-slate-400 font-medium text-xs">₹{row.costPerUnit}</span>,
                     },
                     {
                       name: t('total_column'),
@@ -3039,7 +3041,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       sortable: true,
                       width: '100px',
                       right: true,
-                      cell: (row: RecipeIngredient) => <span className="font-semibold text-emerald-700 dark:text-emerald-400">₹{(row.quantity * servings * row.costPerUnit).toFixed(2)}</span>,
+                      cell: (row: RecipeIngredient) => <span className="font-semibold text-emerald-700 dark:text-emerald-400 text-xs">₹{(row.quantity * servings * row.costPerUnit).toFixed(2)}</span>,
                     },
                     {
                       name: '',
@@ -3062,6 +3064,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   paginationRowsPerPageOptions={[10, 25, 50]}
                   noHeader
                   highlightOnHover
+                  persistTableHead
                   responsive
                   customStyles={flowbiteTableCustomStyles}
                   noDataComponent={
@@ -3149,7 +3152,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
       {/* NEW MENU ITEM MODAL */}
       <Modal show={isNewMenuModalOpen} onClose={() => setIsNewMenuModalOpen(false)} dismissible size="md" className="z-58">
-        <ModalHeader>{t('add_new_food_menu_item_heading')}</ModalHeader>
+        <ModalHeader as="div">{t('add_new_food_menu_item_heading')}</ModalHeader>
         <form onSubmit={handleCreateMenuItem} className="app-form app-form--create-menu-item">
           <ModalBody className="space-y-3 text-xs">
               <div>
@@ -3253,7 +3256,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
       {/* MATERIAL REQUISITION MODAL */}
       <Modal show={isReqModalOpen} onClose={() => setIsReqModalOpen(false)} dismissible size="md" className="z-58">
-        <ModalHeader>{t('request_raw_material_heading')}</ModalHeader>
+        <ModalHeader as="div">{t('request_raw_material_heading')}</ModalHeader>
         <form onSubmit={handleReqSubmit} className="app-form app-form--submit-requisition">
           <ModalBody className="space-y-3 text-xs">
               <div>
@@ -3521,29 +3524,30 @@ const CurrentGuestServedDishes: React.FC<{ servedLogs: ServedLogEntry[] }> = ({ 
           <DataTable
             columns={[
               { name: 'ID', selector: (row: ServedLogEntry) => row.id, omit: true },
-              { name: t('ticket_column'), selector: (row: ServedLogEntry) => row.orderId, width: '80px', cell: (row: ServedLogEntry) => <span className="font-mono font-semibold text-slate-900 dark:text-white">#{row.orderId}</span> },
-              { name: t('dish_column'), selector: (row: ServedLogEntry) => row.itemName, grow: 2, cell: (row: ServedLogEntry) => <span className="font-semibold text-emerald-700 dark:text-emerald-400">{row.itemName}</span> },
+              { name: t('ticket_column'), selector: (row: ServedLogEntry) => row.orderId, width: '80px', cell: (row: ServedLogEntry) => <span className="font-semibold text-slate-900 dark:text-white text-xs">#{row.orderId}</span> },
+              { name: t('dish_column'), selector: (row: ServedLogEntry) => row.itemName, grow: 2, cell: (row: ServedLogEntry) => <span className="font-semibold text-emerald-700 dark:text-emerald-400 text-xs">{row.itemName}</span> },
               { name: t('qty_column'), selector: (row: ServedLogEntry) => row.quantity, width: '60px', center: true },
-              { name: t('guest_column'), selector: (row: ServedLogEntry) => row.guestName, cell: (row: ServedLogEntry) => <span className="font-semibold text-slate-800 dark:text-slate-200">{row.guestName || '-'}</span> },
-              { name: t('room_column'), selector: (row: ServedLogEntry) => row.roomNumber, width: '70px', cell: (row: ServedLogEntry) => <span className="text-slate-600 dark:text-slate-400">{row.roomNumber || '-'}</span> },
-              { name: t('served_by_column'), selector: (row: ServedLogEntry) => row.servedBy, cell: (row: ServedLogEntry) => <span className="text-slate-600 dark:text-slate-400">{row.servedBy}</span> },
+              { name: t('guest_column'), selector: (row: ServedLogEntry) => row.guestName, cell: (row: ServedLogEntry) => <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs">{row.guestName || '-'}</span> },
+              { name: t('room_column'), selector: (row: ServedLogEntry) => row.roomNumber, width: '70px', cell: (row: ServedLogEntry) => <span className="text-slate-600 dark:text-slate-400 text-xs">{row.roomNumber || '-'}</span> },
+              { name: t('served_by_column'), selector: (row: ServedLogEntry) => row.servedBy, cell: (row: ServedLogEntry) => <span className="text-slate-600 dark:text-slate-400 text-xs">{row.servedBy}</span> },
               {
                 name: t('serve_time_column', 'Serve Delay'),
                 selector: (row: ServedLogEntry) => row.readyAt,
                 width: '100px',
                 cell: (row: ServedLogEntry) => {
                   const diff = parseAndDiffMinutes(row.readyAt || '', row.servedAt || '');
-                  return <span className="font-mono text-[11px] font-semibold text-amber-600 dark:text-amber-500 whitespace-nowrap">{diff}</span>;
+                  return <span className="text-xs font-semibold text-amber-600 dark:text-amber-500 whitespace-nowrap">{diff}</span>;
                 }
               },
-              { name: t('ready_time_column', 'Ready At'), selector: (row: ServedLogEntry) => row.readyAt || '', width: '140px', cell: (row: ServedLogEntry) => <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">{row.readyAt ? formatDateTimeDDMMYYYY(row.readyAt) : '-'}</span> },
-              { name: t('served_time_column', 'Served At'), selector: (row: ServedLogEntry) => row.servedAt, width: '140px', cell: (row: ServedLogEntry) => <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">{formatDateTimeDDMMYYYY(row.servedAt)}</span> },
+              { name: t('ready_time_column', 'Ready At'), selector: (row: ServedLogEntry) => row.readyAt || '', width: '140px', cell: (row: ServedLogEntry) => <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">{row.readyAt ? formatDateTimeDDMMYYYY(row.readyAt) : '-'}</span> },
+              { name: t('served_time_column', 'Served At'), selector: (row: ServedLogEntry) => row.servedAt, width: '140px', cell: (row: ServedLogEntry) => <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">{formatDateTimeDDMMYYYY(row.servedAt)}</span> },
             ]}
             data={filteredLogs}
             pagination
             paginationPerPage={10}
             paginationRowsPerPageOptions={[10, 15, 25, 50, 100]}
             highlightOnHover
+            persistTableHead
             customStyles={flowbiteTableCustomStyles}
           />
         </div>

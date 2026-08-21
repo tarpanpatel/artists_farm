@@ -423,7 +423,7 @@ export const SystemStockManager: React.FC = () => {
 
       {/* Edit Modal */}
       <Modal show={!!editingItem} onClose={() => setEditingItem(null)} dismissible={!saving} size="md" className="z-58 default-stocks-manager__edit-modal">
-        <ModalHeader>{t('edit_stock_item_title', 'Edit Stock Item')}</ModalHeader>
+        <ModalHeader as="div">{t('edit_stock_item_title', 'Edit Stock Item')}</ModalHeader>
         <ModalBody>
           <form onSubmit={handleEditItem} className="app-form app-form--edit-stock-item space-y-4">
             <div className="grid grid-cols-1 gap-4">

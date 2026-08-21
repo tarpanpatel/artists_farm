@@ -613,7 +613,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                     selector: (entry: CashDrawerEntry) => entry.created_at,
                     sortable: true,
                     width: '160px',
-                    cell: (entry: CashDrawerEntry) => <span className="font-mono text-slate-500">{formatDateTimeDDMMYYYY(entry.created_at)}</span>,
+                    cell: (entry: CashDrawerEntry) => <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">{formatDateTimeDDMMYYYY(entry.created_at)}</span>,
                   },
                   {
                     name: t('staff_column', 'Staff'),
@@ -671,6 +671,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                 pagination
                 paginationPerPage={10}
                 highlightOnHover
+                persistTableHead
                 customStyles={flowbiteTableCustomStyles}
               />
             </div>
@@ -824,7 +825,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                 sortable: true,
                 right: true,
                 width: '120px',
-                cell: (row: any) => <span className="font-mono text-slate-600 dark:text-slate-300">₹{row.dailyWage.toFixed(2)}</span>,
+                cell: (row: any) => <span className="font-semibold text-slate-700 dark:text-slate-300 text-xs">₹{row.dailyWage.toFixed(2)}</span>,
               },
               {
                 name: 'Present Days',
@@ -900,7 +901,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                     <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
                       <Button
                         variant="secondary"
-                        size="xs"
+                        size="sm"
                         onClick={() => { setAdvanceStaff(row.staff); setAdvanceAmount(0); setAdvanceReason(''); setIsAdvanceModalOpen(true); }}
                         leftIcon={<Plus className="w-3 h-3 text-emerald-600" />}
                       >
@@ -913,7 +914,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                       ) : (
                         <Button
                           variant="primary"
-                          size="xs"
+                          size="sm"
                           disabled={isPaying || row.pendingPayout <= 0}
                           leftIcon={<IndianRupee className="w-3 h-3" />}
                           onClick={() => handlePayoutSubmit(row)}
@@ -936,6 +937,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
             pagination
             paginationPerPage={15}
             highlightOnHover
+            persistTableHead
             subHeader={
               <div className="w-full flex items-center py-2">
                 <Input type="text" value={searchPayout} onChange={e => setSearchPayout(e.target.value)} placeholder="Search by staff name..." className="w-full max-w-xs" />

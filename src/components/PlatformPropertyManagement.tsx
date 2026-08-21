@@ -1249,7 +1249,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
 
       {/* Edit Tenant Modal */}
       <Modal show={showEditTenantModal && !!editingTenant} onClose={() => setShowEditTenantModal(false)} dismissible size="md" className="z-58">
-        <ModalHeader>{t('edit_tenant_heading', 'Edit Tenant')}</ModalHeader>
+        <ModalHeader as="div">{t('edit_tenant_heading', 'Edit Tenant')}</ModalHeader>
         {editingTenant && (
           <ModalBody>
             <div className="space-y-4">
@@ -1366,7 +1366,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
         size="md"
         className="z-58"
       >
-        <ModalHeader>
+        <ModalHeader as="div">
           {showPropertyModal === 'add' ? t('add_property_heading', 'Add Property') : t('edit_property_heading', 'Edit Property')}
         </ModalHeader>
         {editingProperty && (
@@ -1567,7 +1567,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
         size="md"
         className="z-58"
       >
-        <ModalHeader>{t('delete_property_heading', 'Delete Property?')}</ModalHeader>
+        <ModalHeader as="div">{t('delete_property_heading', 'Delete Property?')}</ModalHeader>
         <ModalBody>
           <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 font-semibold text-red-600 flex items-center gap-1.5">
             <AlertTriangle className="w-4 h-4 flex-shrink-0" /> {t('deletion_consequences_label', 'Deletion Consequences for this Property:')}
@@ -1630,7 +1630,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
         size="md"
         className="z-58"
       >
-        <ModalHeader>{t('delete_tenant_heading', 'Delete Tenant?')}</ModalHeader>
+        <ModalHeader as="div">{t('delete_tenant_heading', 'Delete Tenant?')}</ModalHeader>
         <ModalBody>
           <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 font-semibold text-red-600 flex items-center gap-1.5">
             <AlertTriangle className="w-4 h-4 flex-shrink-0" /> {t('deletion_consequences_label', 'Deletion Consequences for this Property:').replace('this Property', 'this Tenant')}

@@ -551,14 +551,15 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                         <Button variant="primary" size="sm" onClick={() => handleEditGuest(guest)} leftIcon={<Edit2 className="w-3.5 h-3.5 shrink-0" />}>
                           {t('edit_button', 'Edit')}
                         </Button>
-                        <button
+                        <Button
+                          variant="warning"
+                          size="sm"
                           onClick={() => handleEditAndCheckoutGuest(guest)}
                           disabled={isProcessing}
-                          className="bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-semibold py-1.5 px-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5 text-xs cursor-pointer"
+                          leftIcon={<LogOut className="w-3.5 h-3.5 shrink-0" />}
                         >
-                          <LogOut className="w-3.5 h-3.5" />
                           {t('checkout_button', 'Checkout')}
-                        </button>
+                        </Button>
                       </div>
                     ) : (
                       <div className="billing-checkout__guest-card-actions pt-0.5">
@@ -611,7 +612,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
               <a
                 href={`tel:${row.phoneNumber}`}
                 onClick={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline font-mono"
+                className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
                 title={`Call ${row.phoneNumber}`}
               >
                 <Phone className="w-3 h-3 text-blue-500" />
@@ -991,7 +992,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       {/* Add Booking Modal */}
       <React.Suspense fallback={null}>
         <Modal show={showAddBookingModal} onClose={() => setShowAddBookingModal(false)} dismissible size="lg" className="z-58">
-          <ModalHeader className="border-b border-gray-200 dark:border-gray-700 p-4">
+          <ModalHeader as="div" className="border-b border-gray-200 dark:border-gray-700 p-4">
             Add Guest Booking
           </ModalHeader>
           <ModalBody className="p-4 sm:p-6 max-h-[85vh] overflow-y-auto">

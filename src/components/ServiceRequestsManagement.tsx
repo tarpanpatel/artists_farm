@@ -484,7 +484,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
         open={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         position="right"
-        className="z-58 w-full sm:w-[480px] p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
       >
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
           <span className="flex items-center gap-2 font-bold text-gray-900 dark:text-white text-base">
@@ -605,7 +605,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
         open={isManageModalOpen}
         onClose={() => setIsManageModalOpen(false)}
         position="right"
-        className="z-58 w-full sm:w-[480px] p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
       >
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
           <span className="flex items-center gap-2 font-bold text-gray-900 dark:text-white text-base">

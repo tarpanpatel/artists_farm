@@ -394,7 +394,7 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
         size="md"
         className="z-58 rooms-management__modal"
       >
-        <ModalHeader>{t('add_new_room_title', 'Add New Room')}</ModalHeader>
+        <ModalHeader as="div">{t('add_new_room_title', 'Add New Room')}</ModalHeader>
         <ModalBody className="space-y-4">
           {property.room_count >= 10 && (
             <Alert color="failure" className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 text-red-800 dark:text-red-300">

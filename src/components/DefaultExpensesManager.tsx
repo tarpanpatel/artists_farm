@@ -358,7 +358,7 @@ export const DefaultExpensesManager: React.FC = () => {
 
       {/* Edit Modal */}
       <Modal show={!!editingItem} onClose={() => setEditingItem(null)} dismissible={!saving} size="md" className="z-58 default-expenses-manager__edit-modal">
-        <ModalHeader>{t('edit_expense_item_title', 'Edit Expense Item')}</ModalHeader>
+        <ModalHeader as="div">{t('edit_expense_item_title', 'Edit Expense Item')}</ModalHeader>
         <ModalBody>
           <form onSubmit={handleEditItem} className="app-form app-form--edit-expense-item space-y-4">
             <Input

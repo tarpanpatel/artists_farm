@@ -21,6 +21,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { StyledSelect } from './StyledSelect';
 import { DateRangePicker } from './DateRangePicker';
 import { PageHeader } from './PageHeader';
+import { Button } from './Button';
 import { t } from '../i18n/en';
 
 interface DataExportCenterProps {
@@ -449,14 +450,14 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
                 {t('bookings_export_description', 'Extracts comprehensive check-in logs, occupancy timelines, advance splits, food bills, and total room collections.')}
               </p>
             </div>
-            <button
-              type="button"
+            <Button
+              variant="success"
+              size="sm"
               onClick={exportBookings}
-              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
+              leftIcon={<Download className="w-4 h-4 shrink-0" />}
             >
-              <Download className="w-4 h-4" />
               <span>{t('export_sheets_button', 'EXPORT SHEETS')}</span>
-            </button>
+            </Button>
           </div>
 
 
@@ -472,14 +473,14 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
                   {t('kitchen_purchases_export_description', 'Downloads inventory replenishment lists, raw ration tracking, volume unit weights, and market vendor bills.')}
                 </p>
               </div>
-              <button
-                type="button"
+              <Button
+                variant="success"
+                size="sm"
                 onClick={exportKitchenExpenses}
-                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
+                leftIcon={<Download className="w-4 h-4 shrink-0" />}
               >
-                <Download className="w-4 h-4" />
                 <span>{t('export_sheets_button', 'EXPORT SHEETS')}</span>
-              </button>
+              </Button>
             </div>
           )}
 
@@ -494,14 +495,14 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
                 {t('maintenance_utilities_export_description', 'Generates itemized expense spreadsheets for water tankers, electricity bills, hardware, and physical farm upkeep.')}
               </p>
             </div>
-            <button
-              type="button"
+            <Button
+              variant="success"
+              size="sm"
               onClick={exportFarmUpkeep}
-              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
+              leftIcon={<Download className="w-4 h-4 shrink-0" />}
             >
-              <Download className="w-4 h-4" />
               <span>{t('export_sheets_button', 'EXPORT SHEETS')}</span>
-            </button>
+            </Button>
           </div>
 
           {/* Card 4: Payroll & Salaries */}
@@ -515,14 +516,14 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
                 {t('payroll_salaries_export_description', 'Compiles all recorded payouts, staff management stipends, logged cash advances, and deductions.')}
               </p>
             </div>
-            <button
-              type="button"
+            <Button
+              variant="success"
+              size="sm"
               onClick={exportSalaries}
-              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
+              leftIcon={<Download className="w-4 h-4 shrink-0" />}
             >
-              <Download className="w-4 h-4" />
               <span>{t('export_sheets_button', 'EXPORT SHEETS')}</span>
-            </button>
+            </Button>
           </div>
 
           {/* Card 5: Master Ledger */}
@@ -536,14 +537,14 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
                 {t('master_ledger_export_description', 'The ultimate financial sheet compiling room rent advances, final settlements, food collections, supply purchases, and operational expenses.')}
               </p>
             </div>
-            <button
-              type="button"
+            <Button
+              variant="primary"
+              size="sm"
               onClick={exportMasterLedger}
-              className="px-4 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
+              leftIcon={<Download className="w-4 h-4 shrink-0" />}
             >
-              <Download className="w-4 h-4" />
               <span>{t('export_master_button', 'EXPORT MASTER')}</span>
-            </button>
+            </Button>
           </div>
 
           {/* Card 6: SQL Snapshot Backup (Root Admin) */}
@@ -558,14 +559,14 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
                   {t('snapshot_backup_export_description', 'Generates an instant raw SQL dump of the entire database — every tenant and property, not just this one.')}
                 </p>
               </div>
-              <button
-                type="button"
+              <Button
+                variant="danger"
+                size="sm"
                 onClick={exportFullSqlBackup}
-                className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
+                leftIcon={<HardDriveDownload className="w-4 h-4 shrink-0" />}
               >
-                <HardDriveDownload className="w-4 h-4" />
                 <span>{t('download_backup_button', 'DOWNLOAD BACKUP (.SQL)')}</span>
-              </button>
+              </Button>
             </div>
           )}
         </div>
