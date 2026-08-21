@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Card, Alert, Checkbox } from 'flowbite-react';
-import { Loader2, CheckCircle2, AlertCircle, MessageCircle } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, MessageCircle } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';
 import { Button } from './Button';
 import { Textarea } from './Textarea';

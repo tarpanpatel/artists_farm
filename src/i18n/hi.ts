@@ -1379,6 +1379,8 @@ export const strings: Record<string, string> = {
   loading_licenses_label: "लाइसेंस लोड हो रहे हैं...",
   license_management_heading: "लाइसेंस मैनेजमेंट",
   license_management_description: "प्रॉपर्टी के लाइसेंस ट्रैक और मैनेज करें",
+  license_notifications_banner_text: "Automatic expiry reminders चालू हैं: हर लाइसेंस को expire होने से पहले के 4 हफ्तों में हर Sunday को एक reminder मिलेगा, Telegram (अगर set up है) और email के ज़रिए।",
+  license_notifications_banner_modal_text: "इस लाइसेंस के लिए reminders चालू हैं: save करने के बाद, expiry date से पहले के 4 हफ्तों में हर Sunday को आपको एक notification मिलेगा, Telegram (अगर set up है) और email के ज़रिए।",
   add_license_button: "जोड़ें License",
   add_new_license_heading: "जोड़ें New License",
   edit_license_heading: "बदलें (Edit) License",

@@ -257,7 +257,24 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     const isCheckedIn = status === 'active' || status === 'checked in' || status === 'checkedin';
     const isBooked = !isCheckedIn;
 
-    // 1. ID Upload Pending
+    // Check if this is an upcoming booking (arrival date is in the future)
+    let isUpcoming = false;
+    if (isBooked && guest.checkinDate) {
+      const checkinDate = new Date(guest.checkinDate);
+      checkinDate.setHours(0, 0, 0, 0);
+      const todayStart = new Date(today);
+      todayStart.setHours(0, 0, 0, 0);
+      if (todayStart < checkinDate) {
+        isUpcoming = true;
+      }
+    }
+
+    // For upcoming bookings (guest has not arrived yet), ID, C-Form, and check-in are not pending
+    if (isUpcoming) {
+      return reasons;
+    }
+
+    // 1. ID Upload Pending (only for checked-in guests or guests arriving today/overdue)
     if (guest.idVerificationStatus !== 'Complete') {
       reasons.push('ID Pending');
     }
@@ -284,7 +301,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
       }
     }
 
-    // 4. C-Form Pending (Foreign guest without filed C-Form)
+    // 4. C-Form Pending (Foreign guest without filed C-Form arriving today or currently checked in)
     if (guest.isForeignGuest && !guest.cFormFiledAt && !guest.cFormNumber && !(guest as any).c_form_number) {
       reasons.push('C-Form Pending');
     }

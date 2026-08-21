@@ -50,6 +50,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useStaff } from '../contexts/StaffContext';
 import { Input } from './Input';
 import { Button } from './Button';
+import { Tooltip } from './Tooltip';
 import { t } from '../i18n/en';
 import { formatDateTimeDDMMYYYY, toDatetimeLocalValue } from '../utils/dateUtils';
 import { TextInput as FlowbiteTextInput } from 'flowbite-react';
@@ -1061,7 +1062,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const [posSearch, setPosSearch] = useState('');
   const [selectedPosCategory, setSelectedPosCategory] = useState<string>('all');
   const [showCategoryFilters, setShowCategoryFilters] = useState(false);
-  const [posLayoutMode, setPosLayoutMode] = useState<'thumbnail' | 'list'>('thumbnail');
+  const [posLayoutMode, setPosLayoutMode] = useState<'thumbnail' | 'list'>('list');
   const [recentlyAddedId, setRecentlyAddedId] = useState<number | null>(null);
   const [isCartDrawerExpanded, setIsCartDrawerExpanded] = useState<boolean>(false);
   const [showScrollTop, setShowScrollTop] = useState<boolean>(false);
@@ -1679,24 +1680,25 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               {/* Flowbite Touch Stepper - Symmetrical Buttons */}
               <div className="pt-1 border-t border-gray-100 dark:border-gray-700/60">
                 <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-700/60 rounded-lg p-0.5 w-full border border-gray-200 dark:border-gray-600">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (inCartQty > 0) {
-                        handleUpdateCartQuantity(item.id, -1);
-                      }
-                    }}
-                    disabled={inCartQty === 0}
-                    className={`w-7 h-7 rounded-md shrink-0 flex items-center justify-center transition-all ${
-                      inCartQty === 0
-                        ? 'bg-transparent text-gray-300 dark:text-gray-600 cursor-not-allowed opacity-40'
-                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 active:scale-90 cursor-pointer shadow-xs'
-                    }`}
-                    title="Decrease quantity"
-                  >
-                    <Minus className="w-3.5 h-3.5" />
-                  </button>
+                  <Tooltip content="Decrease quantity">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (inCartQty > 0) {
+                          handleUpdateCartQuantity(item.id, -1);
+                        }
+                      }}
+                      disabled={inCartQty === 0}
+                      className={`w-7 h-7 rounded-md shrink-0 flex items-center justify-center transition-all ${
+                        inCartQty === 0
+                          ? 'bg-transparent text-gray-300 dark:text-gray-600 cursor-not-allowed opacity-40'
+                          : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 active:scale-90 cursor-pointer shadow-xs'
+                      }`}
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </button>
+                  </Tooltip>
                   <span className={`font-bold text-xs px-1 ${
                     inCartQty > 0
                       ? 'text-gray-900 dark:text-white'
@@ -1704,21 +1706,22 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   }`}>
                     {inCartQty}
                   </span>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleAddToCartWithFeedback(item);
-                    }}
-                    className={`w-7 h-7 rounded-md shrink-0 flex items-center justify-center active:scale-90 transition-all cursor-pointer shadow-xs ${
-                      isRecentlyAdded
-                        ? 'bg-blue-600 text-white scale-95 animate-pulse'
-                        : 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600'
-                    }`}
-                    title="Increase quantity"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
+                  <Tooltip content="Increase quantity">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddToCartWithFeedback(item);
+                      }}
+                      className={`w-7 h-7 rounded-md shrink-0 flex items-center justify-center active:scale-90 transition-all cursor-pointer shadow-xs ${
+                        isRecentlyAdded
+                          ? 'bg-blue-600 text-white scale-95 animate-pulse'
+                          : 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600'
+                      }`}
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </Tooltip>
                 </div>
               </div>
             </div>
@@ -1765,42 +1768,44 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
                 {/* Symmetrical Flowbite Stepper */}
                 <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-700/60 rounded-lg p-0.5 border border-gray-200 dark:border-gray-600">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (inCartQty > 0) handleUpdateCartQuantity(item.id, -1);
-                    }}
-                    disabled={inCartQty === 0}
-                    className={`w-7 h-7 rounded-md shrink-0 flex items-center justify-center transition-all ${
-                      inCartQty === 0
-                        ? 'bg-transparent text-gray-300 dark:text-gray-600 cursor-not-allowed opacity-40'
-                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 active:scale-90 cursor-pointer shadow-xs'
-                    }`}
-                    title="Decrease quantity"
-                  >
-                    <Minus className="w-3.5 h-3.5" />
-                  </button>
+                  <Tooltip content="Decrease quantity">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (inCartQty > 0) handleUpdateCartQuantity(item.id, -1);
+                      }}
+                      disabled={inCartQty === 0}
+                      className={`w-7 h-7 rounded-md shrink-0 flex items-center justify-center transition-all ${
+                        inCartQty === 0
+                          ? 'bg-transparent text-gray-300 dark:text-gray-600 cursor-not-allowed opacity-40'
+                          : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 active:scale-90 cursor-pointer shadow-xs'
+                      }`}
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </button>
+                  </Tooltip>
                   <span className={`font-bold text-xs w-6 text-center ${
                     inCartQty > 0 ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'
                   }`}>
                     {inCartQty}
                   </span>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleAddToCartWithFeedback(item);
-                    }}
-                    className={`w-7 h-7 rounded-md shrink-0 text-white flex items-center justify-center active:scale-90 transition-all cursor-pointer shadow-xs ${
-                      isRecentlyAdded
-                        ? 'bg-blue-600 scale-95 animate-pulse'
-                        : 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600'
-                    }`}
-                    title="Increase quantity"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
+                  <Tooltip content="Increase quantity">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddToCartWithFeedback(item);
+                      }}
+                      className={`w-7 h-7 rounded-md shrink-0 text-white flex items-center justify-center active:scale-90 transition-all cursor-pointer shadow-xs ${
+                        isRecentlyAdded
+                          ? 'bg-blue-600 scale-95 animate-pulse'
+                          : 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600'
+                      }`}
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </Tooltip>
                 </div>
               </div>
             </div>
@@ -1992,32 +1997,34 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
                     {/* Thumbnail / List Layout Toggle */}
                     <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 p-0.5 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => setPosLayoutMode('thumbnail')}
-                        className={`p-2 rounded-md transition-all cursor-pointer ${
-                          posLayoutMode === 'thumbnail'
-                            ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-xs'
-                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                        }`}
-                        title="Thumbnail View"
-                        aria-label="Thumbnail View"
-                      >
-                        <LayoutGrid className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPosLayoutMode('list')}
-                        className={`p-2 rounded-md transition-all cursor-pointer ${
-                          posLayoutMode === 'list'
-                            ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-xs'
-                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                        }`}
-                        title="List View"
-                        aria-label="List View"
-                      >
-                        <List className="w-4 h-4" />
-                      </button>
+                      <Tooltip content="Thumbnail View">
+                        <button
+                          type="button"
+                          onClick={() => setPosLayoutMode('thumbnail')}
+                          className={`p-2 rounded-md transition-all cursor-pointer ${
+                            posLayoutMode === 'thumbnail'
+                              ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-xs'
+                              : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                          }`}
+                          aria-label="Thumbnail View"
+                        >
+                          <LayoutGrid className="w-4 h-4" />
+                        </button>
+                      </Tooltip>
+                      <Tooltip content="List View">
+                        <button
+                          type="button"
+                          onClick={() => setPosLayoutMode('list')}
+                          className={`p-2 rounded-md transition-all cursor-pointer ${
+                            posLayoutMode === 'list'
+                              ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-xs'
+                              : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                          }`}
+                          aria-label="List View"
+                        >
+                          <List className="w-4 h-4" />
+                        </button>
+                      </Tooltip>
                     </div>
                   </div>
 
@@ -2123,25 +2130,27 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                           </div>
 
                           <div className="flex items-center gap-1 rounded-md bg-gray-50 dark:bg-gray-700/60 p-0.5 border border-gray-200 dark:border-gray-600 shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => handleUpdateCartQuantity(ci.menuItem.id, -1)}
-                              className="w-7 h-7 rounded-md shrink-0 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90 border border-gray-200 dark:border-gray-600 shadow-xs"
-                              title="Decrease quantity"
-                            >
-                              <Minus className="w-3.5 h-3.5" />
-                            </button>
+                            <Tooltip content="Decrease quantity">
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateCartQuantity(ci.menuItem.id, -1)}
+                                className="w-7 h-7 rounded-md shrink-0 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90 border border-gray-200 dark:border-gray-600 shadow-xs"
+                              >
+                                <Minus className="w-3.5 h-3.5" />
+                              </button>
+                            </Tooltip>
                             <span className="w-6 text-center font-bold text-gray-900 dark:text-white text-xs">
                               {ci.quantity}
                             </span>
-                            <button
-                              type="button"
-                              onClick={() => handleUpdateCartQuantity(ci.menuItem.id, 1)}
-                              className="w-7 h-7 rounded-md shrink-0 bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center transition-colors cursor-pointer active:scale-90 shadow-xs"
-                              title="Increase quantity"
-                            >
-                              <Plus className="w-3.5 h-3.5" />
-                            </button>
+                            <Tooltip content="Increase quantity">
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateCartQuantity(ci.menuItem.id, 1)}
+                                className="w-7 h-7 rounded-md shrink-0 bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center transition-colors cursor-pointer active:scale-90 shadow-xs"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                              </button>
+                            </Tooltip>
                           </div>
                         </div>
                       ))
@@ -2164,9 +2173,11 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     </span>
                   </div>
 
-                  <Button variant="primary" size="lg" onClick={handleOrderSubmit} disabled={isOrderSubmitDisabled} title={orderSubmitTitle}>
-                    <span>{isSubmittingOrder ? t('sending_order_button', 'Sending...') : t('send_order_to_kitchen_button')}</span>
-                  </Button>
+                  <Tooltip content={orderSubmitTitle}>
+                    <Button variant="primary" size="lg" onClick={handleOrderSubmit} disabled={isOrderSubmitDisabled}>
+                      <span>{isSubmittingOrder ? t('sending_order_button', 'Sending...') : t('send_order_to_kitchen_button')}</span>
+                    </Button>
+                  </Tooltip>
                 </div>
               </div>
             </div>
@@ -2216,25 +2227,27 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       </div>
 
                       <div className="flex items-center gap-1 rounded-md bg-white dark:bg-gray-800 p-0.5 border border-gray-200 dark:border-gray-600 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateCartQuantity(ci.menuItem.id, -1)}
-                          className="w-7 h-7 rounded-md shrink-0 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90 border border-gray-200 dark:border-gray-600 shadow-xs"
-                          title="Decrease quantity"
-                        >
-                          <Minus className="w-3.5 h-3.5" />
-                        </button>
+                        <Tooltip content="Decrease quantity">
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateCartQuantity(ci.menuItem.id, -1)}
+                            className="w-7 h-7 rounded-md shrink-0 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90 border border-gray-200 dark:border-gray-600 shadow-xs"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+                        </Tooltip>
                         <span className="w-6 text-center font-bold text-gray-900 dark:text-white text-xs">
                           {ci.quantity}
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateCartQuantity(ci.menuItem.id, 1)}
-                          className="w-7 h-7 rounded-md shrink-0 bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center transition-colors cursor-pointer active:scale-90 shadow-xs"
-                          title="Increase quantity"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                        </button>
+                        <Tooltip content="Increase quantity">
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateCartQuantity(ci.menuItem.id, 1)}
+                            className="w-7 h-7 rounded-md shrink-0 bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center transition-colors cursor-pointer active:scale-90 shadow-xs"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        </Tooltip>
                       </div>
                     </div>
                   ))}
@@ -2248,32 +2261,35 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     actually constrains it to its own content width instead
                     of needing a one-off width override on the button itself. */}
                 <div className="p-3 pb-3.5 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shrink-0 flex justify-end">
-                  <Button variant="primary" size="lg" onClick={handleOrderSubmit} disabled={isOrderSubmitDisabled} title={orderSubmitTitle}>
-                    <span>{isSubmittingOrder ? t('sending_order_button', 'Sending...') : t('send_order_to_kitchen_button')}</span>
-                  </Button>
+                  <Tooltip content={orderSubmitTitle}>
+                    <Button variant="primary" size="lg" onClick={handleOrderSubmit} disabled={isOrderSubmitDisabled}>
+                      <span>{isSubmittingOrder ? t('sending_order_button', 'Sending...') : t('send_order_to_kitchen_button')}</span>
+                    </Button>
+                  </Tooltip>
                 </div>
               </div>
             )}
 
             {/* Mobile Scroll-to-Top Button */}
             {showScrollTop && (
-              <button
-                type="button"
-                onClick={() => {
-                  const c = document.querySelector('.take-food-order-container');
-                  if (c) c.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                className={`fixed right-4 z-50 lg:hidden w-11 h-11 bg-slate-900/90 dark:bg-slate-100/90 text-white dark:text-slate-900 rounded-full shadow-xl flex items-center justify-center cursor-pointer transition-all duration-300 active:scale-90 border border-slate-700 dark:border-slate-200 ${
-                  cartItems.length > 0
-                    ? isCartDrawerExpanded
-                      ? 'bottom-[calc(50vh+16px)]'
-                      : 'bottom-48 sm:bottom-52'
-                    : 'bottom-6'
-                }`}
-                title="Scroll to top"
-              >
-                <ArrowUp className="w-5 h-5 stroke-[2.5]" />
-              </button>
+              <Tooltip content="Scroll to top" position="left">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const c = document.querySelector('.take-food-order-container');
+                    if (c) c.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className={`fixed right-4 z-50 lg:hidden w-11 h-11 bg-slate-900/90 dark:bg-slate-100/90 text-white dark:text-slate-900 rounded-full shadow-xl flex items-center justify-center cursor-pointer transition-all duration-300 active:scale-90 border border-slate-700 dark:border-slate-200 ${
+                    cartItems.length > 0
+                      ? isCartDrawerExpanded
+                        ? 'bottom-[calc(50vh+16px)]'
+                        : 'bottom-48 sm:bottom-52'
+                      : 'bottom-6'
+                  }`}
+                >
+                  <ArrowUp className="w-5 h-5 stroke-[2.5]" />
+                </button>
+              </Tooltip>
             )}
           </div>
           );

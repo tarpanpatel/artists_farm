@@ -192,6 +192,12 @@ function AppBody({ preloadedData }: AppBodyProps) {
         misc_charges: { tab: 'petty_cash', key: 'misc_charges' },
         staff_payees_control: { tab: 'staff', key: 'staff_payees_control' },
         attendance_salaries: { tab: 'staff', key: 'attendance_salaries' },
+        // Singular typo/variant of the real (plural) key above - without
+        // this alias it fell through to the unmatched-route fallback, which
+        // defaults to dashboard (found 21 Aug 2026, same class of bug as the
+        // 'bookings' alias above - must stay in sync with the identical
+        // alias in the handleUrlChange routeMap below).
+        attendance_salary: { tab: 'staff', key: 'attendance_salaries' },
         attendance_calendar: { tab: 'staff', key: 'attendance_calendar' },
         staff_directory_salaries: { tab: 'staff', key: 'staff_directory_salaries' },
         staff_permissions: { tab: 'staff', key: 'staff_permissions' },
@@ -1087,6 +1093,9 @@ function AppBody({ preloadedData }: AppBodyProps) {
         petty_cash: { tab: 'petty_cash', key: 'expenses' },
         staff_payees_control: { tab: 'staff', key: 'staff_payees_control' },
         attendance_salaries: { tab: 'staff', key: 'attendance_salaries' },
+        // Must match getInitialActiveState()'s routeMap - see its comment
+        // on this same alias.
+        attendance_salary: { tab: 'staff', key: 'attendance_salaries' },
         attendance_calendar: { tab: 'staff', key: 'attendance_calendar' },
         staff_directory_salaries: { tab: 'staff', key: 'staff_directory_salaries' },
         staff_permissions: { tab: 'staff', key: 'staff_permissions' },

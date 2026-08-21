@@ -1230,7 +1230,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
             </div>
 
             {formState.showDrawerSplit && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 bg-amber-50/50 dark:bg-amber-950/20 p-3 rounded-lg border border-amber-200/60 dark:border-amber-900/40">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 {/* LEFT COLUMN: Property Cash in Hand (₹) */}
                 <div>
                   <Input
@@ -1573,14 +1573,13 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
         </div>
 
         {/* Desktop DataTable (hidden md:block) */}
-        <div className="hidden md:block">
+        <div className="hidden md:block overflow-x-auto">
           <DataTable
             columns={[
               {
                 name: 'ID',
                 selector: (entry: any) => entry.id,
-                width: '110px',
-                minWidth: '100px',
+                minWidth: '130px',
                 cell: (entry: any) => (
                   <div className="py-1">
                     <span className="font-semibold text-gray-900 dark:text-white text-xs block">
@@ -1596,8 +1595,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 name: t('category_column', 'Category'),
                 selector: (entry: any) => entry.category || entry.costCategory,
                 sortable: true,
-                width: '130px',
-                minWidth: '120px',
+                minWidth: '140px',
                 cell: (entry: any) => {
                   const cat = entry.category || entry.costCategory || '';
                   const isAutoSalary = cat === 'Salary (Auto)' || entry.description?.startsWith('Salary (Auto):');
@@ -1635,8 +1633,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 name: t('total_column', 'Total Amount'),
                 selector: (entry: any) => entry.amount,
                 sortable: true,
-                width: '120px',
-                minWidth: '110px',
+                minWidth: '135px',
                 cell: (entry: any) => (
                   <span className="font-semibold text-gray-900 dark:text-white text-xs tabular-numbers">
                     ₹{Number(entry.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
@@ -1645,7 +1642,6 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               },
               {
                 name: 'Status / Method',
-                width: '170px',
                 minWidth: '160px',
                 cell: (entry: any) => {
                   const anyEntry = entry as any;
@@ -1660,7 +1656,6 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               },
               ...(canManageExpense ? [{
                 name: t('actions_column', 'Actions'),
-                width: '185px',
                 minWidth: '180px',
                 cell: (entry: any) => (
                   <div className="flex items-center gap-2 whitespace-nowrap">

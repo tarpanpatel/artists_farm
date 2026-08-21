@@ -283,7 +283,6 @@ export const DefaultBillsManager: React.FC = () => {
                           setEditForm({ label: item.label, description: item.description || '' });
                         }}
                         className="flex-1 p-1 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded text-[11px] font-medium transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                        title="Edit"
                       >
                         <Edit2 className="w-3 h-3" />
                         Edit
@@ -292,7 +291,6 @@ export const DefaultBillsManager: React.FC = () => {
                         onClick={() => handleDeleteItem(item)}
                         disabled={saving}
                         className="flex-1 p-1 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded text-[11px] font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-1 cursor-pointer"
-                        title="Delete"
                       >
                         <Trash2 className="w-3 h-3" />
                         Delete

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Badge as FlowbiteBadge, createTheme } from 'flowbite-react';
+import { Tooltip } from './Tooltip';
 
 type BadgeVariant = 'success' | 'danger' | 'warning' | 'info' | 'neutral';
 type BadgeSize = 'sm' | 'md';
@@ -50,12 +51,11 @@ export const Badge: React.FC<BadgeProps> = ({
   children,
   className = '',
 }) => {
-  return (
+  const badge = (
     <FlowbiteBadge
       theme={badgeTheme}
       color={variant}
       size={size}
-      title={title}
       onClick={onClick}
       className={`app-badge-${variant} badge ${className}`}
     >
@@ -68,4 +68,10 @@ export const Badge: React.FC<BadgeProps> = ({
       {children}
     </FlowbiteBadge>
   );
+
+  // `title` used to forward straight to the DOM (a native browser tooltip) -
+  // DESIGN.md bans that everywhere. Wrapping here, once, fixes every caller
+  // across the app automatically instead of chasing each <Badge title=...>
+  // call site individually (found 22 Aug 2026 auditing Phase 5).
+  return title ? <Tooltip content={title}>{badge}</Tooltip> : badge;
 };

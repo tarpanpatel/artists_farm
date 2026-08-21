@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { RefreshCw, X } from 'lucide-react';
 import { Button } from './Button';
+import { Tooltip } from './Tooltip';
 
 // Listens for the 'sw-update-available' event dispatched by main.tsx when a
 // new service worker has taken control of an already-running session (see
@@ -28,13 +29,14 @@ export const UpdateAvailableBanner: React.FC = () => {
         <Button variant="primary" size="sm" onClick={() => window.location.reload()}>
                 Reload
               </Button>
+        <Tooltip content="Dismiss">
         <button
           onClick={() => setDismissed(true)}
           className="shrink-0 p-1 rounded hover:bg-white/10 transition-colors cursor-pointer"
-          title="Dismiss"
         >
           <X className="w-3.5 h-3.5" />
         </button>
+        </Tooltip>
       </div>
     </div>
   );

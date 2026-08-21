@@ -247,7 +247,21 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
     const isCheckedIn = status === 'active' || status === 'checked in' || status === 'checkedin';
     const isBooked = !isCheckedIn;
 
-    // 1. ID Upload Pending
+    // Check if this is an upcoming booking (arrival date is in the future)
+    let isUpcoming = false;
+    if (isBooked && g.checkinDate) {
+      const checkinDate = parseDateOnly(g.checkinDate);
+      if (checkinDate !== null && today < checkinDate) {
+        isUpcoming = true;
+      }
+    }
+
+    // For upcoming bookings (guest has not arrived yet), ID, C-Form, and check-in are not pending
+    if (isUpcoming) {
+      return reasons;
+    }
+
+    // 1. ID Upload Pending (only for checked-in guests or guests arriving today/overdue)
     if (g.idVerificationStatus !== 'Complete') {
       reasons.push('ID Pending');
     }
@@ -268,7 +282,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       }
     }
 
-    // 4. C-Form Pending (Foreign guest without filed C-Form)
+    // 4. C-Form Pending (Foreign guest without filed C-Form arriving today or currently checked in)
     if (g.isForeignGuest && !g.cFormFiledAt && !g.cFormNumber && !(g as any).c_form_number) {
       reasons.push('C-Form Pending');
     }

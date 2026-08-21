@@ -217,7 +217,6 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                         href={`tel:${guest.phoneNumber}`}
                         onClick={(e) => e.stopPropagation()}
                         className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1 w-fit hover:text-blue-600 dark:hover:text-blue-400 hover:underline"
-                        title="Call Guest"
                       >
                         <Phone className="w-3 h-3" /> {guest.phoneNumber}
                       </a>
@@ -304,7 +303,6 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                         onOpenWhatsApp(guest);
                       }}
                       className="min-h-[44px] px-3 py-2 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shrink-0 whitespace-nowrap"
-                      title="WhatsApp Voucher"
                     >
                       <MessageSquare className="w-4 h-4 text-emerald-600" />
                       <span>WhatsApp</span>

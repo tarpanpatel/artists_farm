@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Share2, Loader2, CheckCircle2, X } from 'lucide-react';
+import { Share2, Loader2, CheckCircle2, X } from './icons/FlowbiteIcons';
 import { Drawer as FlowbiteDrawer, DrawerItems, Checkbox } from 'flowbite-react';
 import * as htmlToImage from 'html-to-image';
 import { WalkInTab } from '../types';

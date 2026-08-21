@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, ModalHeader, ModalBody, ModalFooter, TextInput as FlowbiteTextInput, Checkbox } from 'flowbite-react';
+import DataTable from 'react-data-table-component';
+import { flowbiteTableCustomStyles } from '../utils/tableStyles';
 import { Button } from './Button';
 import { Badge } from './Badge';
 import { Input } from './Input';
+import { ToggleSwitch } from './ToggleSwitch';
 import {
   Utensils,
   Navigation as NavIcon,
@@ -142,7 +145,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
   const [foodSearch, setFoodSearch] = useState('');
   const [selectedFoodCategory, setSelectedFoodCategory] = useState<string>('All');
   const [showCategoryFilters, setShowCategoryFilters] = useState(false);
-  const [foodLayoutMode, setFoodLayoutMode] = useState<'thumbnail' | 'list'>('thumbnail');
+  const [foodLayoutMode, setFoodLayoutMode] = useState<'thumbnail' | 'list'>('list');
   const [isAddFoodModalOpen, setIsAddFoodModalOpen] = useState(false);
   const [editingFoodItem, setEditingFoodItem] = useState<MenuItem | null>(null);
 
@@ -534,207 +537,351 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                 {t('no_food_items_found_text', 'No food items found matching')} "{foodSearch}"
               </p>
             </div>
-          ) : foodLayoutMode === 'thumbnail' ? (
-            /* Thumbnail Card Grid */
-            <div className="menu-manager__food-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-              {filteredFoodItems.map((item) => (
-                <div
-                  key={item.id}
-                  className={`menu-manager__food-card bg-white dark:bg-slate-800 rounded-lg border border-slate-200/90 dark:border-slate-700 p-2.5 shadow-md hover:shadow-md transition-all flex flex-col justify-between ${
-                    item.available ? '' : 'bg-red-50/20 dark:bg-red-950/20'
-                  }`}
-                >
-                  <div className="space-y-1.5">
-                    {/* Category Tag & Availability Badge */}
-                    <div className="flex items-center justify-between gap-1">
-                      <div className="flex items-center gap-1 overflow-hidden">
-                        <span className="text-[9px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
-                          {item.category}
-                        </span>
-                      </div>
-
-                      <Badge
-                        variant={item.available ? 'success' : 'danger'}
-                        size="sm"
-                        onClick={() => onUpdateFoodItem(item.id, { available: !item.available })}
-                        className="shrink-0 cursor-pointer"
-                      >
-                        {item.available ? t('available_badge', 'Available') : t('out_of_stock_badge', 'Out of Stock')}
-                      </Badge>
-                    </div>
-
-                    {/* Image Preview & Quick Upload */}
-                    <div className="relative group rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-700/60 border border-slate-200/80 dark:border-slate-600 h-20 sm:h-16 flex items-center justify-center">
-                      {item.imagePath ? (
-                        <img
-                          src={item.imagePath}
-                          alt={item.name}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            (e.target as HTMLElement).style.display = 'none';
-                          }}
-                        />
-                      ) : (
-                        <div className="flex flex-col items-center gap-0.5 text-slate-400 dark:text-slate-500 p-1">
-                          <UtensilsCrossed className="w-5 h-5" />
-                        </div>
-                      )}
-
-                      <label
-                        className="absolute inset-0 bg-slate-900/70 text-white flex items-center justify-center gap-1 text-[10px] font-semibold opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer backdrop-blur-2xs"
-                        title={t('upload_image_for_item_tooltip', 'Upload Image for this item')}
-                      >
-                        <Upload className="w-3.5 h-3.5" />
-                        <span>Upload</span>
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={async (e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              const reader = new FileReader();
-                              reader.onloadend = async () => {
-                                const dataUri = reader.result as string;
-                                const uploadedUrl = await uploadImageDB(dataUri, 'menu');
-                                onUpdateFoodItem(item.id, { imagePath: uploadedUrl || dataUri });
-                              };
-                              reader.readAsDataURL(file);
-                            }
-                          }}
-                        />
-                      </label>
-                    </div>
-
-                    <div>
-                      <h4 className="font-semibold text-slate-800 dark:text-slate-200 text-xs leading-tight line-clamp-2 min-h-[28px]">
-                        {item.name}
-                      </h4>
-                      <p className="text-emerald-700 dark:text-emerald-400 font-extrabold text-xs sm:text-[11px] mt-0.5">
-                        ₹{item.price}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Footer Controls: Edit & Delete */}
-                  <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between mt-1 text-xs">
-                    <span className="font-mono text-[9px] text-slate-400 dark:text-slate-500">#{item.id}</span>
-                    <div className="flex items-center gap-1">
-                      <Button variant="primary" size="sm" onClick={() => requirePasscode(() => handleOpenEditFood(item))} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
-                        {t('edit_item_tooltip', 'Edit Item')}
-                      </Button>
-                      <button
-                        type="button"
-                        onClick={() => requirePasscode(() => onDeleteFoodItem(item.id))}
-                        className="p-1 rounded-md bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/60 text-red-600 dark:text-red-400 transition-colors cursor-pointer"
-                        title={t('delete_item_tooltip', 'Delete Item')}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
           ) : (
-            /* List Layout */
-            <div className="menu-manager__food-list space-y-2">
-              {filteredFoodItems.map((item) => (
-                <div
-                  key={item.id}
-                  className={`menu-manager__food-list-row bg-white dark:bg-slate-800 rounded-lg border border-slate-200/90 dark:border-slate-700 p-2.5 shadow-xs hover:border-blue-500 transition-all flex items-center justify-between gap-3 ${
-                    item.available ? '' : 'bg-red-50/20 dark:bg-red-950/20'
-                  }`}
-                >
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    {/* Image Thumbnail with Upload on Hover */}
-                    <div className="relative group w-11 h-11 rounded-lg bg-slate-100 dark:bg-slate-700/60 border border-slate-200/80 dark:border-slate-600 overflow-hidden flex items-center justify-center shrink-0">
-                      {item.imagePath ? (
-                        <img
-                          src={item.imagePath}
-                          alt={item.name}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            (e.target as HTMLElement).style.display = 'none';
-                          }}
-                        />
-                      ) : (
-                        <UtensilsCrossed className="w-4 h-4 text-slate-400" />
-                      )}
-
-                      <label
-                        className="absolute inset-0 bg-slate-900/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer backdrop-blur-2xs"
-                        title={t('upload_image_for_item_tooltip', 'Upload Image for this item')}
-                      >
-                        <Upload className="w-3.5 h-3.5" />
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={async (e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              const reader = new FileReader();
-                              reader.onloadend = async () => {
-                                const dataUri = reader.result as string;
-                                const uploadedUrl = await uploadImageDB(dataUri, 'menu');
-                                onUpdateFoodItem(item.id, { imagePath: uploadedUrl || dataUri });
-                              };
-                              reader.readAsDataURL(file);
-                            }
-                          }}
-                        />
-                      </label>
-                    </div>
-
-                    {/* Name, Category, ID, Badge */}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-semibold text-slate-800 dark:text-slate-200 text-xs truncate m-0">
-                          {item.name}
-                        </h4>
-                        <span className="font-mono text-2xs text-slate-400 dark:text-slate-500 shrink-0">
-                          #{item.id}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-2xs font-medium text-slate-500 dark:text-slate-400 truncate">
+            <>
+              {/* Desktop Table View (hidden md:block) */}
+              <div className="hidden md:block overflow-x-auto bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+                <DataTable
+                  columns={[
+                    {
+                      name: t('item_name_column', 'Item Name'),
+                      selector: (item: FoodItem) => item.name,
+                      sortable: true,
+                      grow: 2,
+                      minWidth: '240px',
+                      cell: (item: FoodItem) => (
+                        <div className="flex items-center gap-3 py-1.5 min-w-0">
+                          <div className="relative group w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-700/60 border border-slate-200/80 dark:border-slate-600 overflow-hidden flex items-center justify-center shrink-0">
+                            {item.imagePath ? (
+                              <img
+                                src={item.imagePath}
+                                alt={item.name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLElement).style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              <UtensilsCrossed className="w-4 h-4 text-slate-400" />
+                            )}
+                            <label
+                              className="absolute inset-0 bg-slate-900/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer backdrop-blur-2xs"
+                              title={t('upload_image_for_item_tooltip', 'Upload Image for this item')}
+                            >
+                              <Upload className="w-3.5 h-3.5" />
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    const reader = new FileReader();
+                                    reader.onloadend = async () => {
+                                      const dataUri = reader.result as string;
+                                      const uploadedUrl = await uploadImageDB(dataUri, 'menu');
+                                      onUpdateFoodItem(item.id, { imagePath: uploadedUrl || dataUri });
+                                    };
+                                    reader.readAsDataURL(file);
+                                  }
+                                }}
+                              />
+                            </label>
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-semibold text-slate-900 dark:text-white text-xs truncate">{item.name}</span>
+                              <span className="font-mono text-2xs text-slate-400 dark:text-slate-500 shrink-0">#{item.id}</span>
+                            </div>
+                            <span className="text-2xs text-slate-500 dark:text-slate-400 block mt-0.5">{item.category}</span>
+                          </div>
+                        </div>
+                      ),
+                    },
+                    {
+                      name: t('category_column', 'Category'),
+                      selector: (item: FoodItem) => item.category,
+                      sortable: true,
+                      minWidth: '150px',
+                      cell: (item: FoodItem) => (
+                        <Badge variant="info" size="sm">
                           {item.category}
+                        </Badge>
+                      ),
+                    },
+                    {
+                      name: t('price_column', 'Price (₹)'),
+                      selector: (item: FoodItem) => item.price,
+                      sortable: true,
+                      right: true,
+                      minWidth: '130px',
+                      cell: (item: FoodItem) => (
+                        <span className="font-bold text-emerald-700 dark:text-emerald-400 text-xs tabular-nums whitespace-nowrap">
+                          ₹{Number(item.price || 0).toLocaleString('en-IN')}
                         </span>
+                      ),
+                    },
+                    {
+                      name: t('status_column', 'Status'),
+                      selector: (item: FoodItem) => item.available,
+                      sortable: true,
+                      center: true,
+                      minWidth: '140px',
+                      cell: (item: FoodItem) => (
                         <Badge
                           variant={item.available ? 'success' : 'danger'}
                           size="sm"
                           onClick={() => onUpdateFoodItem(item.id, { available: !item.available })}
-                          className="cursor-pointer text-2xs py-0 px-1.5"
+                          className="cursor-pointer whitespace-nowrap"
                         >
                           {item.available ? t('available_badge', 'Available') : t('out_of_stock_badge', 'Out of Stock')}
                         </Badge>
-                      </div>
-                    </div>
-                  </div>
+                      ),
+                    },
+                    {
+                      name: t('actions_column', 'Actions'),
+                      minWidth: '180px',
+                      right: true,
+                      cell: (item: FoodItem) => (
+                        <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => requirePasscode(() => handleOpenEditFood(item))}
+                            className="whitespace-nowrap shrink-0"
+                            leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
+                          >
+                            {t('edit_button', 'Edit')}
+                          </Button>
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            onClick={() => requirePasscode(() => onDeleteFoodItem(item.id))}
+                            className="whitespace-nowrap shrink-0"
+                            leftIcon={<Trash2 className="w-3.5 h-3.5 shrink-0" />}
+                          >
+                            {t('delete_button', 'Delete')}
+                          </Button>
+                        </div>
+                      ),
+                    },
+                  ]}
+                  data={filteredFoodItems}
+                  customStyles={flowbiteTableCustomStyles}
+                  highlightOnHover
+                  persistTableHead
+                  pagination
+                  paginationPerPage={15}
+                  paginationRowsPerPageOptions={[10, 15, 25, 50]}
+                />
+              </div>
 
-                  {/* Price & Actions */}
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className="text-emerald-700 dark:text-emerald-400 font-extrabold text-xs">
-                      ₹{item.price}
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      <Button variant="primary" size="sm" onClick={() => requirePasscode(() => handleOpenEditFood(item))} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
-                        {t('edit_item_tooltip', 'Edit Item')}
-                      </Button>
-                      <button
-                        type="button"
-                        onClick={() => requirePasscode(() => onDeleteFoodItem(item.id))}
-                        className="p-1.5 rounded-md bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/60 text-red-600 dark:text-red-400 transition-colors cursor-pointer"
-                        title={t('delete_item_tooltip', 'Delete Item')}
+              {/* Mobile Card / Grid View (md:hidden) */}
+              <div className="md:hidden">
+                {foodLayoutMode === 'thumbnail' ? (
+                  /* Thumbnail Card Grid */
+                  <div className="menu-manager__food-grid grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {filteredFoodItems.map((item) => (
+                      <div
+                        key={item.id}
+                        className={`menu-manager__food-card bg-white dark:bg-slate-800 rounded-lg border border-slate-200/90 dark:border-slate-700 p-2.5 shadow-md hover:shadow-md transition-all flex flex-col justify-between ${
+                          item.available ? '' : 'bg-red-50/20 dark:bg-red-950/20'
+                        }`}
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                        <div className="space-y-1.5">
+                          {/* Category Tag & Availability Badge */}
+                          <div className="flex items-center justify-between gap-1">
+                            <div className="flex items-center gap-1 overflow-hidden">
+                              <span className="text-2xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
+                                {item.category}
+                              </span>
+                            </div>
+
+                            <Badge
+                              variant={item.available ? 'success' : 'danger'}
+                              size="sm"
+                              onClick={() => onUpdateFoodItem(item.id, { available: !item.available })}
+                              className="shrink-0 cursor-pointer"
+                            >
+                              {item.available ? t('available_badge', 'Available') : t('out_of_stock_badge', 'Out of Stock')}
+                            </Badge>
+                          </div>
+
+                          {/* Image Preview & Quick Upload */}
+                          <div className="relative group rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-700/60 border border-slate-200/80 dark:border-slate-600 h-20 sm:h-16 flex items-center justify-center">
+                            {item.imagePath ? (
+                              <img
+                                src={item.imagePath}
+                                alt={item.name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLElement).style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              <div className="flex flex-col items-center gap-0.5 text-slate-400 dark:text-slate-500 p-1">
+                                <UtensilsCrossed className="w-5 h-5" />
+                              </div>
+                            )}
+
+                            <label
+                              className="absolute inset-0 bg-slate-900/70 text-white flex items-center justify-center gap-1 text-2xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer backdrop-blur-2xs"
+                              title={t('upload_image_for_item_tooltip', 'Upload Image for this item')}
+                            >
+                              <Upload className="w-3.5 h-3.5" />
+                              <span>Upload</span>
+                              <Input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    const reader = new FileReader();
+                                    reader.onloadend = async () => {
+                                      const dataUri = reader.result as string;
+                                      const uploadedUrl = await uploadImageDB(dataUri, 'menu');
+                                      onUpdateFoodItem(item.id, { imagePath: uploadedUrl || dataUri });
+                                    };
+                                    reader.readAsDataURL(file);
+                                  }
+                                }}
+                              />
+                            </label>
+                          </div>
+
+                          <div>
+                            <h4 className="font-semibold text-slate-800 dark:text-slate-200 text-xs leading-tight line-clamp-2 min-h-7">
+                              {item.name}
+                            </h4>
+                            <p className="text-emerald-700 dark:text-emerald-400 font-extrabold text-xs sm:text-2xs mt-0.5">
+                              ₹{item.price}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Footer Controls: Edit & Delete */}
+                        <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between mt-1 text-xs">
+                          <span className="font-mono text-2xs text-slate-400 dark:text-slate-500">#{item.id}</span>
+                          <div className="flex items-center gap-1">
+                            <Button variant="primary" size="sm" onClick={() => requirePasscode(() => handleOpenEditFood(item))} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                              {t('edit_item_tooltip', 'Edit Item')}
+                            </Button>
+                            <button
+                              type="button"
+                              onClick={() => requirePasscode(() => onDeleteFoodItem(item.id))}
+                              className="p-1 rounded-md bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/60 text-red-600 dark:text-red-400 transition-colors cursor-pointer"
+                              title={t('delete_item_tooltip', 'Delete Item')}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
-              ))}
-            </div>
+                ) : (
+                  /* List Layout */
+                  <div className="menu-manager__food-list space-y-2">
+                    {filteredFoodItems.map((item) => (
+                      <div
+                        key={item.id}
+                        className={`menu-manager__food-list-row bg-white dark:bg-slate-800 rounded-lg border border-slate-200/90 dark:border-slate-700 p-2.5 shadow-xs hover:border-blue-500 transition-all flex items-center justify-between gap-3 ${
+                          item.available ? '' : 'bg-red-50/20 dark:bg-red-950/20'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          {/* Image Thumbnail with Upload on Hover */}
+                          <div className="relative group w-11 h-11 rounded-lg bg-slate-100 dark:bg-slate-700/60 border border-slate-200/80 dark:border-slate-600 overflow-hidden flex items-center justify-center shrink-0">
+                            {item.imagePath ? (
+                              <img
+                                src={item.imagePath}
+                                alt={item.name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLElement).style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              <UtensilsCrossed className="w-4 h-4 text-slate-400" />
+                            )}
+
+                            <label
+                              className="absolute inset-0 bg-slate-900/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer backdrop-blur-2xs"
+                              title={t('upload_image_for_item_tooltip', 'Upload Image for this item')}
+                            >
+                              <Upload className="w-3.5 h-3.5" />
+                              <Input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    const reader = new FileReader();
+                                    reader.onloadend = async () => {
+                                      const dataUri = reader.result as string;
+                                      const uploadedUrl = await uploadImageDB(dataUri, 'menu');
+                                      onUpdateFoodItem(item.id, { imagePath: uploadedUrl || dataUri });
+                                    };
+                                    reader.readAsDataURL(file);
+                                  }
+                                }}
+                              />
+                            </label>
+                          </div>
+
+                          {/* Name, Category, ID, Badge */}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-semibold text-slate-800 dark:text-slate-200 text-xs truncate m-0">
+                                {item.name}
+                              </h4>
+                              <span className="font-mono text-2xs text-slate-400 dark:text-slate-500 shrink-0">
+                                #{item.id}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-2xs font-medium text-slate-500 dark:text-slate-400 truncate">
+                                {item.category}
+                              </span>
+                              <Badge
+                                variant={item.available ? 'success' : 'danger'}
+                                size="sm"
+                                onClick={() => onUpdateFoodItem(item.id, { available: !item.available })}
+                                className="cursor-pointer text-2xs py-0 px-1.5"
+                              >
+                                {item.available ? t('available_badge', 'Available') : t('out_of_stock_badge', 'Out of Stock')}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Price & Actions */}
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className="text-emerald-700 dark:text-emerald-400 font-extrabold text-xs">
+                            ₹{item.price}
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <Button variant="primary" size="sm" onClick={() => requirePasscode(() => handleOpenEditFood(item))} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                              {t('edit_item_tooltip', 'Edit Item')}
+                            </Button>
+                            <button
+                              type="button"
+                              onClick={() => requirePasscode(() => onDeleteFoodItem(item.id))}
+                              className="p-1.5 rounded-md bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/60 text-red-600 dark:text-red-400 transition-colors cursor-pointer"
+                              title={t('delete_item_tooltip', 'Delete Item')}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </div>
       )}
@@ -1019,12 +1166,13 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               </div>
             </div>
 
-<Checkbox
-                  id="food-available-cb"
-                  checked={foodForm.available}
-                  onChange={e => setFoodForm({ ...foodForm, available: e.target.checked })}
+              <div className="pt-1">
+                <ToggleSwitch
+                  enabled={foodForm.available}
+                  onChange={(val) => setFoodForm({ ...foodForm, available: val })}
+                  label={t('item_currently_available_label', 'Active')}
                 />
-                <span className="font-semibold text-slate-800 dark:text-slate-200">{t('item_currently_available_label', 'Item Currently Available in Kitchen')}</span>
+              </div>
           </ModalBody>
           <ModalFooter className="flex justify-end gap-2">
             <Button

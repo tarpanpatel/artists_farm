@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Modal, ModalHeader, ModalBody, ModalFooter, Drawer as FlowbiteDrawer, DrawerItems, TextInput as FlowbiteTextInput, Tabs, TabItem } from 'flowbite-react';
 import { Button } from './Button';
 import { Badge } from './Badge';
+import { Tooltip } from './Tooltip';
 import DataTable from 'react-data-table-component';
 import { flowbiteTableCustomStyles } from '../utils/tableStyles';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
@@ -1470,9 +1471,11 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                                   <div className="flex items-center gap-1.5">
                                     <span className="font-semibold text-slate-800 dark:text-slate-100 text-sm truncate">{item.name}</span>
                                     {item.is_verified && (
-                                      <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0" title="Verified master item">
-                                        ✓
-                                      </span>
+                                      <Tooltip content="Verified master item">
+                                        <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">
+                                          ✓
+                                        </span>
+                                      </Tooltip>
                                     )}
                                   </div>
                                   <div className="flex items-center gap-2 mt-0.5">
@@ -2775,14 +2778,15 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                       alt="Preview"
                       className="w-full h-full object-cover"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setImagePath('')}
-                      className="absolute top-1 right-1 bg-slate-900/80 text-white p-0.5 rounded-full hover:bg-slate-900"
-                      title="Remove Image"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
+                    <Tooltip content="Remove Image">
+                      <button
+                        type="button"
+                        onClick={() => setImagePath('')}
+                        className="absolute top-1 right-1 bg-slate-900/80 text-white p-0.5 rounded-full hover:bg-slate-900"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </Tooltip>
                   </div>
                 )}
               </div>

@@ -1,12 +1,13 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { getIconComponent } from '../utils/iconResolver';
-import { ChevronRight, ChevronDown, LogOut, Link as LinkIcon, UserRound } from 'lucide-react';
+import { ChevronRight, ChevronDown, LogOut, LinkIcon, UserRound } from './icons/FlowbiteIcons';
 import { NavMenuItem } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { isKitchenModuleNavItem } from '../data/appConfig';
+import { Tooltip } from './Tooltip';
 
 export type TabType =
   | 'dashboard'
@@ -414,6 +415,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                 const childBadge = getBadge(child.uniqueKey || '', child.title);
                 const childKey = child.uniqueKey || child.tabKey;
                 const childHref = child.customUrl || `#${child.urlSlug || childKey}`;
+                const ChildIcon = getIconComponent(child.iconName);
 
                 return (
                   <li key={child.id}>
@@ -426,12 +428,19 @@ export const Navigation: React.FC<NavigationProps> = ({
                         e.preventDefault();
                         handleTabClick({ tabKey: child.tabKey, uniqueKey: childKey, customUrl: child.customUrl, openInNewTab: child.openInNewTab });
                       }}
-                      className={`flex items-center w-full p-2 text-sm transition duration-75 rounded-lg pl-11 group hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${
+                      className={`flex items-center w-full p-2 text-sm transition duration-75 rounded-lg pl-6 group hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${
                         childActive
                           ? 'bg-gray-100 text-blue-600 dark:bg-gray-700 dark:text-blue-400 font-semibold'
                           : 'text-gray-900 dark:text-white'
                       }`}
                     >
+                      <ChildIcon
+                        className={`w-4 h-4 me-2.5 transition duration-75 shrink-0 ${
+                          childActive
+                            ? 'text-blue-600 dark:text-blue-400'
+                            : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-900 dark:group-hover:text-white'
+                        }`}
+                      />
                       <span className="flex-1 truncate">{child.title}</span>
                       {childBadge && (
                         <span className={`inline-flex items-center justify-center px-2 py-0.5 ms-3 text-xs font-semibold rounded-full ${childBadge.className}`}>
@@ -552,22 +561,24 @@ export const Navigation: React.FC<NavigationProps> = ({
             </ul>
 
             <div className="flex flex-col items-center gap-2 w-full pb-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-              <button
-                type="button"
-                onClick={handleLogoutClick}
-                title="Sign Out Terminal"
-                className="w-10 h-10 flex items-center justify-center rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
-              >
-                <LogOut className="w-5 h-5" />
-              </button>
-              <button
-                type="button"
-                onClick={onToggleIconOnly}
-                title="Expand Navigation Menu"
-                className="w-10 h-10 flex items-center justify-center rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
+              <Tooltip content="Sign Out Terminal" position="right">
+                <button
+                  type="button"
+                  onClick={handleLogoutClick}
+                  className="w-10 h-10 flex items-center justify-center rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
+                >
+                  <LogOut className="w-5 h-5" />
+                </button>
+              </Tooltip>
+              <Tooltip content="Expand Navigation Menu" position="right">
+                <button
+                  type="button"
+                  onClick={onToggleIconOnly}
+                  className="w-10 h-10 flex items-center justify-center rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </Tooltip>
             </div>
           </div>
         ) : (

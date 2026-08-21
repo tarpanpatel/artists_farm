@@ -810,73 +810,75 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
         </div>
 
         {/* Desktop Payout DataTable (hidden md:block) */}
-        <div className="hidden md:block overflow-hidden p-4">
+        <div className="hidden md:block overflow-x-auto p-4">
           <DataTable
             columns={[
               {
                 name: 'Staff Name',
                 selector: (row: any) => row.staff.name,
                 sortable: true,
-                cell: (row: any) => <span className="font-semibold text-slate-900 dark:text-white text-sm">{row.staff.name}</span>,
+                grow: 2,
+                minWidth: '170px',
+                cell: (row: any) => <span className="font-semibold text-slate-900 dark:text-white text-sm whitespace-nowrap">{row.staff.name}</span>,
               },
               {
                 name: 'Daily Wage (₹)',
                 selector: (row: any) => row.dailyWage,
                 sortable: true,
                 right: true,
-                width: '120px',
-                cell: (row: any) => <span className="font-semibold text-slate-700 dark:text-slate-300 text-xs">₹{row.dailyWage.toFixed(2)}</span>,
+                minWidth: '135px',
+                cell: (row: any) => <span className="font-semibold text-slate-700 dark:text-slate-300 text-xs whitespace-nowrap">₹{row.dailyWage.toFixed(2)}</span>,
               },
               {
                 name: 'Present Days',
                 selector: (row: any) => row.presentDays,
                 sortable: true,
                 center: true,
-                width: '110px',
-                cell: (row: any) => <><span className="font-semibold text-slate-800 dark:text-slate-200">{row.presentDays}</span><span className="text-slate-400 dark:text-slate-500"> days</span></>,
+                minWidth: '125px',
+                cell: (row: any) => <span className="whitespace-nowrap"><span className="font-semibold text-slate-800 dark:text-slate-200">{row.presentDays}</span><span className="text-slate-400 dark:text-slate-500"> days</span></span>,
               },
               {
                 name: 'Total Earned (₹)',
                 selector: (row: any) => row.totalEarned,
                 sortable: true,
                 right: true,
-                width: '130px',
-                cell: (row: any) => <span className="font-semibold text-emerald-700 dark:text-emerald-400">₹{row.totalEarned.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
+                minWidth: '145px',
+                cell: (row: any) => <span className="font-semibold text-emerald-700 dark:text-emerald-400 whitespace-nowrap">₹{row.totalEarned.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
               },
               {
                 name: 'Collected (₹)',
                 selector: (row: any) => row.cashCollected,
                 sortable: true,
                 right: true,
-                width: '110px',
-                cell: (row: any) => <span className="font-semibold text-amber-700 dark:text-amber-400">₹{row.cashCollected.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
+                minWidth: '135px',
+                cell: (row: any) => <span className="font-semibold text-amber-700 dark:text-amber-400 whitespace-nowrap">₹{row.cashCollected.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
               },
               {
                 name: 'Out of Pocket (₹)',
                 selector: (row: any) => row.outOfPocket,
                 sortable: true,
                 right: true,
-                width: '120px',
-                cell: (row: any) => <span className="font-semibold text-purple-600 dark:text-purple-400">₹{row.outOfPocket.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
+                minWidth: '145px',
+                cell: (row: any) => <span className="font-semibold text-purple-600 dark:text-purple-400 whitespace-nowrap">₹{row.outOfPocket.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
               },
               {
                 name: 'Handovers (₹)',
                 selector: (row: any) => row.handovers,
                 sortable: true,
                 right: true,
-                width: '110px',
-                cell: (row: any) => <span className="font-semibold text-indigo-600 dark:text-indigo-400">₹{row.handovers.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
+                minWidth: '135px',
+                cell: (row: any) => <span className="font-semibold text-indigo-600 dark:text-indigo-400 whitespace-nowrap">₹{row.handovers.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
               },
               {
                 name: 'Advances (₹)',
                 selector: (row: any) => row.advances,
                 sortable: true,
                 right: true,
-                width: '120px',
+                minWidth: '135px',
                 cell: (row: any) => {
                   const isCredit = row.advances < 0;
                   return (
-                    <span className={`font-semibold ${isCredit ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                    <span className={`font-semibold whitespace-nowrap ${isCredit ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
                       {isCredit ? '+' : '-'} ₹{Math.abs(row.advances).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </span>
                   );
@@ -887,13 +889,13 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                 selector: (row: any) => row.pendingPayout,
                 sortable: true,
                 right: true,
-                width: '140px',
-                cell: (row: any) => <span className="font-semibold text-blue-700 dark:text-blue-400">₹{row.pendingPayout.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
+                minWidth: '160px',
+                cell: (row: any) => <span className="font-semibold text-blue-700 dark:text-blue-400 whitespace-nowrap">₹{row.pendingPayout.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
               },
               {
                 name: 'Actions',
                 center: true,
-                width: '240px',
+                minWidth: '220px',
                 cell: (row: any) => {
                   const isPaid = paidStaff.has(row.staff.id);
                   const isPaying = payingStaff === row.staff.id;

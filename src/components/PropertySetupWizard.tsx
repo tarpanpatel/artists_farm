@@ -3,6 +3,7 @@ import { Progress } from 'flowbite-react';
 import { MapPin, Users, DoorOpen, CheckCircle2, ArrowRight, Loader2, X } from 'lucide-react';
 import { Button } from './Button';
 import { Input } from './Input';
+import { Tooltip } from './Tooltip';
 import { t } from '../i18n/en';
 
 interface PropertySetupWizardProps {
@@ -81,17 +82,18 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
           <div className="w-28 sm:w-32">
             <Progress progress={Math.round((stepsDone / totalSteps) * 100)} color="yellow" size="sm" />
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              try { localStorage.setItem('dismissed_property_setup_wizard', 'true'); } catch {}
-              setIsDismissed(true);
-            }}
-            className="p-1 text-amber-700 dark:text-amber-300 hover:text-amber-950 dark:hover:text-white rounded-lg hover:bg-amber-200/70 dark:hover:bg-amber-800/70 transition-colors cursor-pointer"
-            title="Dismiss Setup Banner"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <Tooltip content="Dismiss Setup Banner">
+            <button
+              type="button"
+              onClick={() => {
+                try { localStorage.setItem('dismissed_property_setup_wizard', 'true'); } catch {}
+                setIsDismissed(true);
+              }}
+              className="p-1 text-amber-700 dark:text-amber-300 hover:text-amber-950 dark:hover:text-white rounded-lg hover:bg-amber-200/70 dark:hover:bg-amber-800/70 transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </Tooltip>
         </div>
       </div>
 

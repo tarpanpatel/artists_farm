@@ -3,19 +3,17 @@ import DataTable from 'react-data-table-component';
 import { flowbiteTableCustomStyles } from '../utils/tableStyles';
 import {
   Edit2,
-  Save,
   Home,
   Utensils,
-  PlusCircle,
+  Plus,
   CreditCard,
   Search,
   AlertTriangle,
   Receipt,
-  BedDouble,
   UtensilsCrossed,
-  IndianRupee,
+  DollarSign as IndianRupee,
   Filter,
-} from 'lucide-react';
+} from './icons/FlowbiteIcons';
 import { Modal, ModalHeader, ModalBody, Pagination, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, Dropdown, DropdownItem } from 'flowbite-react';
 import { Button } from './Button';
 import { Badge } from './Badge';
@@ -29,124 +27,94 @@ import { t } from '../i18n/en';
 import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../utils/dateUtils';
 
 interface AuditLogsViewProps {
-  logs: AuditLog[];
   receipts?: BillingReceipt[];
-  activeMenuItemKey?: string;
   onUpdateReceipt?: (updatedReceipt: BillingReceipt) => void;
+  auditLogs?: AuditLog[];
 }
 
 export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
   receipts = [],
   onUpdateReceipt,
+  auditLogs: _auditLogs = []
 }) => {
   const { showToast } = useToast();
-
-  // Edit Receipt Modal State
-  const [editingReceipt, setEditingReceipt] = useState<BillingReceipt | null>(null);
   const [receiptsSearch, setReceiptsSearch] = useState('');
-  const [paymentFilter, setPaymentFilter] = useState<string>('all');
+  const [paymentFilter, setPaymentFilter] = useState<'all' | 'cash' | 'card' | 'online' | 'split'>('all');
   const [receiptsPage, setReceiptsPage] = useState(1);
+  const [editingReceipt, setEditingReceipt] = useState<BillingReceipt | null>(null);
+
+  // Edit Modal internal form state
+  const [foodItemList, setFoodItemList] = useState<any[]>([]);
+  const [adjustmentsList, setAdjustmentsList] = useState<any[]>([]);
+  const [auditTrailList, setAuditTrailList] = useState<string[]>([]);
+  
+  // Quick Insert Dish State
+  const [selectedDish, setSelectedDish] = useState('');
+  const [dishQty, setDishQty] = useState(1);
+  const [dishRate, setDishRate] = useState(0);
+
+  // Quick Insert Adjustment State
+  const [adjType, setAdjType] = useState<string>('Discount (-)');
+  const [adjLabel, setAdjLabel] = useState<string>('');
+  const [adjAmount, setAdjAmount] = useState<string | number>('');
 
   const filteredReceipts = useMemo(() => {
     return receipts.filter(rec => {
       const q = receiptsSearch.toLowerCase().trim();
-      const matchesSearch = !q || (
-        rec.id.toLowerCase().includes(q) ||
-        rec.guestName.toLowerCase().includes(q) ||
-        rec.roomNumber.toLowerCase().includes(q) ||
-        (rec.paymentMethod || '').toLowerCase().includes(q)
-      );
-
+      const matchQuery = !q ||
+        rec.guestName?.toLowerCase().includes(q) ||
+        rec.roomNumber?.toLowerCase().includes(q) ||
+        rec.id?.toLowerCase().includes(q) ||
+        rec.paymentMethod?.toLowerCase().includes(q);
+      
       const method = (rec.paymentMethod || '').toLowerCase();
-      let matchesPayment = true;
-      if (paymentFilter === 'cash') matchesPayment = method.includes('cash');
-      else if (paymentFilter === 'online') matchesPayment = method.includes('online') || method.includes('upi') || method.includes('card');
-      else if (paymentFilter === 'split') matchesPayment = method.includes('split');
+      let matchPayment = true;
+      if (paymentFilter === 'cash') matchPayment = method.includes('cash');
+      else if (paymentFilter === 'card') matchPayment = method.includes('card');
+      else if (paymentFilter === 'online') matchPayment = method.includes('upi') || method.includes('online');
+      else if (paymentFilter === 'split') matchPayment = method.includes('split');
 
-      return matchesSearch && matchesPayment;
+      return matchQuery && matchPayment;
     });
   }, [receipts, receiptsSearch, paymentFilter]);
 
-  const totalInvoiced = useMemo(() => receipts.reduce((sum, r) => sum + (r.grandTotal || 0), 0), [receipts]);
-  const totalRoomRent = useMemo(() => receipts.reduce((sum, r) => sum + (r.roomRent || r.roomTotal || 0), 0), [receipts]);
-  const totalFoodExtras = useMemo(() => receipts.reduce((sum, r) => sum + (r.foodTotal || r.kitchenTotal || 0), 0), [receipts]);
+  // Invoice KPIs
+  const totalInvoiced = useMemo(() => receipts.reduce((acc, r) => acc + (r.grandTotal || 0), 0), [receipts]);
+  const totalRoomRent = useMemo(() => receipts.reduce((acc, r) => acc + (r.roomTotal || r.roomRent || 0), 0), [receipts]);
+  const totalFoodExtras = useMemo(() => receipts.reduce((acc, r) => acc + (r.foodTotal || r.kitchenTotal || 0), 0), [receipts]);
   const avgFolio = useMemo(() => receipts.length > 0 ? totalInvoiced / receipts.length : 0, [receipts, totalInvoiced]);
 
-  // Food items & Adjustments state for edit receipt modal
-  const [foodItemList, setFoodItemList] = useState<{ name: string; quantity: number; unitPrice: number; total: number }[]>([]);
-  const [adjustmentsList, setAdjustmentsList] = useState<{ type: string; label: string; amount: number }[]>([]);
-  const [auditTrailList, setAuditTrailList] = useState<string[]>([]);
-  const [selectedDish, setSelectedDish] = useState('');
-  const [dishQty, setDishQty] = useState(1);
-  const [adjType, setAdjType] = useState('Extra Incidentals Charge (+)');
-  const [adjLabel, setAdjLabel] = useState('');
-  const [adjAmount, setAdjAmount] = useState('');
-
-  const defaultMenuCatalog = [
-    { id: '12', name: 'Chicken Tikka', price: 359 },
-    { id: '35', name: 'Chicken Curry (4pcs)', price: 389 },
-    { id: '32', name: 'Shahi Paneer', price: 285 },
-    { id: '33', name: 'Kadhai Paneer', price: 285 },
-    { id: '3', name: 'Pyaz Pakoda (10pcs)', price: 149 },
-    { id: '2', name: 'Aloo Pakoda (6-8pcs)', price: 149 },
-    { id: '1', name: 'French Fries Regular', price: 149 },
-    { id: '4', name: 'French Fries Peri-Peri', price: 179 },
-    { id: '5', name: 'Crispy Corn', price: 180 },
-    { id: '27', name: 'Dal Tadka', price: 210 },
-    { id: '37', name: 'Butter Naan', price: 45 },
-    { id: '36', name: 'Tandoori Roti', price: 25 },
-    { id: '41', name: 'Cold Coffee with Ice Cream', price: 120 },
-    { id: '40', name: 'Fresh Lime Soda', price: 80 },
-  ];
-
-  const handleOpenEditModal = (rec: BillingReceipt) => {
-    setEditingReceipt(rec);
-    setFoodItemList(rec.foodItems || []);
-    setAdjustmentsList(rec.adjustments || []);
-    setAuditTrailList(rec.auditTrail || []);
-    setSelectedDish('');
-    setDishQty(1);
-    setAdjLabel('');
-    setAdjAmount('');
+  const handleOpenEditModal = (receipt: BillingReceipt) => {
+    setEditingReceipt(receipt);
+    setFoodItemList(receipt.foodItems ? [...receipt.foodItems] : []);
+    setAdjustmentsList(receipt.adjustments ? [...receipt.adjustments] : []);
+    setAuditTrailList(receipt.auditTrail ? [...receipt.auditTrail] : []);
   };
 
   const handleAddFoodItem = () => {
-    if (!selectedDish) return;
-    const matched = defaultMenuCatalog.find(d => d.name === selectedDish);
-    const price = matched ? matched.price : 100;
+    if (!selectedDish || dishQty <= 0) return;
     const newItem = {
       name: selectedDish,
       quantity: dishQty,
-      unitPrice: price,
-      total: price * dishQty
+      unitPrice: dishRate,
+      total: dishQty * dishRate
     };
     setFoodItemList(prev => [...prev, newItem]);
-    setAuditTrailList(prev => [...prev, `Added food item: ${selectedDish} (Qty: ${dishQty}, Price: ₹${price * dishQty})`]);
+    setAuditTrailList(prev => [...prev, `Added food item: ${selectedDish} x${dishQty} (₹${newItem.total})`]);
     setSelectedDish('');
     setDishQty(1);
+    setDishRate(0);
   };
 
-  const handleUpdateFoodQty = (index: number, newQty: number) => {
-    const updated = [...foodItemList];
-    const item = updated[index];
-    if (!item) return;
-
-    if (newQty <= 0) {
-      setAuditTrailList(prev => [...prev, `Removed food item: ${item.name}`]);
-      updated.splice(index, 1);
-    } else {
-      updated[index] = {
-        ...item,
-        quantity: newQty,
-        total: item.unitPrice * newQty
-      };
-      setAuditTrailList(prev => [...prev, `Updated quantity for ${item.name} to ${newQty}`]);
+  const handleRemoveFoodItem = (index: number) => {
+    const item = foodItemList[index];
+    setFoodItemList(prev => prev.filter((_, i) => i !== index));
+    if (item) {
+      setAuditTrailList(prev => [...prev, `Removed food item: ${item.name} (₹${item.total})`]);
     }
-    setFoodItemList(updated);
   };
 
-  const handleApplyAdjustment = () => {
-    if (!adjAmount) return;
+  const handleAddAdjustment = () => {
     const amt = Number(adjAmount);
     if (isNaN(amt) || amt <= 0) return;
     const newAdj = {
@@ -160,7 +128,6 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
     setAdjAmount('');
   };
 
-  // Calculations
   const calculatedStayRent = editingReceipt ? (editingReceipt.roomRent ?? editingReceipt.roomTotal ?? 0) : 0;
   const calculatedIncidentalsTotal = foodItemList.reduce((sum, item) => sum + (item.total || (item.quantity * item.unitPrice)), 0);
   const calculatedAdjustmentsTotal = adjustmentsList.reduce((sum, a) => a.type.includes('(-)') ? sum - a.amount : sum + a.amount, 0);
@@ -182,10 +149,8 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
       auditTrail: auditTrailList
     };
 
-    if (onUpdateReceipt) {
-      onUpdateReceipt(updated);
-    }
-    showToast(`Receipt #${editingReceipt.id} (${editingReceipt.guestName}) modified & audit saved successfully!`, { type: 'success' });
+    if (onUpdateReceipt) onUpdateReceipt(updated);
+    showToast(`Receipt #${editingReceipt.id} updated!`, { type: 'success' });
     setEditingReceipt(null);
   };
 
@@ -196,7 +161,6 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
         subtitle={t('past_receipts_log_subtitle', 'History of all generated guest folios, checkout settlements, and financial audit records')}
       />
 
-      {/* Flowbite Invoices KPI Summary Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
           label={t('total_invoiced_label', 'Total Invoiced')}
@@ -208,7 +172,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
           label={t('room_revenue_label', 'Stay Tariffs')}
           value={`₹${totalRoomRent.toLocaleString('en-IN')}`}
           subtext="Room night charges"
-          icon={BedDouble}
+          icon={Home}
         />
         <KpiCard
           label={t('food_incidentals_label', 'Food & Extras')}
@@ -224,9 +188,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
         />
       </div>
 
-      {/* PAST RECEIPTS LOG - Flowbite Datatable */}
       <div className="audit-logs__receipts bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
-        {/* Flowbite Datatable Toolbar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
           <div className="flex flex-wrap items-center gap-2.5 flex-1">
             <div className="relative w-full sm:w-80">
@@ -242,31 +204,25 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
               />
             </div>
 
-            {/* Payment Mode Filter Dropdown */}
             <Dropdown
               label=""
               dismissOnClick
               renderTrigger={() => (
                 <button
                   type="button"
-                  className="h-10 inline-flex items-center justify-center gap-2 px-3 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-blue-700 focus:outline-none focus:ring-4 focus:ring-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:text-white dark:focus:ring-gray-700 cursor-pointer shadow-xs whitespace-nowrap"
+                  className="h-10 inline-flex items-center gap-2 px-3 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-600 cursor-pointer"
                 >
-                  <Filter className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
-                  <span>
-                    {paymentFilter === 'all'
-                      ? t('all_payment_methods_label', 'All Payments')
-                      : paymentFilter === 'cash'
-                      ? 'Cash'
-                      : paymentFilter === 'online'
-                      ? 'Online / UPI / QR'
-                      : 'Split / Other'}
+                  <Filter className="w-3.5 h-3.5" />
+                  <span className="capitalize">
+                    {paymentFilter === 'all' ? 'All Payments' : `${paymentFilter} Only`}
                   </span>
                 </button>
               )}
             >
-              <DropdownItem onClick={() => setPaymentFilter('all')}>{t('all_payment_methods_label', 'All Payments')}</DropdownItem>
-              <DropdownItem onClick={() => setPaymentFilter('cash')}>Cash</DropdownItem>
-              <DropdownItem onClick={() => setPaymentFilter('online')}>Online / UPI / QR</DropdownItem>
+              <DropdownItem onClick={() => setPaymentFilter('all')}>All Payments</DropdownItem>
+              <DropdownItem onClick={() => setPaymentFilter('cash')}>Cash Only</DropdownItem>
+              <DropdownItem onClick={() => setPaymentFilter('card')}>Card Only</DropdownItem>
+              <DropdownItem onClick={() => setPaymentFilter('online')}>Online / UPI</DropdownItem>
               <DropdownItem onClick={() => setPaymentFilter('split')}>Split Payment</DropdownItem>
             </Dropdown>
 
@@ -276,17 +232,16 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
           </div>
         </div>
 
-        <div className="hidden md:block">
+        <div className="hidden md:block overflow-x-auto">
           <DataTable
             columns={[
               {
-                name: t('receipt_id_column', 'Invoice ID'),
+                name: t('receipt_id_column', 'Receipt ID'),
                 selector: (rec: BillingReceipt) => rec.id,
-                width: '120px',
-                minWidth: '110px',
+                minWidth: '130px',
                 cell: (rec: BillingReceipt) => (
                   <div className="py-1">
-                    <span className="font-semibold text-gray-900 dark:text-white text-xs block">
+                    <span className="font-semibold text-gray-900 dark:text-white text-xs block whitespace-nowrap">
                       #{rec.id}
                     </span>
                   </div>
@@ -296,11 +251,10 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                 name: t('date_billed_column', 'Date Billed'),
                 selector: (rec: BillingReceipt) => rec.checkoutDate || rec.paidAt || '',
                 sortable: true,
-                width: '150px',
-                minWidth: '140px',
+                minWidth: '150px',
                 cell: (rec: BillingReceipt) => (
                   <div className="py-1">
-                    <span className="text-xs text-gray-900 dark:text-white block font-medium">
+                    <span className="text-xs text-gray-900 dark:text-white block font-medium whitespace-nowrap">
                       {formatDateTimeDDMMYYYY(rec.checkoutDate || rec.paidAt || '')}
                     </span>
                   </div>
@@ -314,9 +268,9 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                 grow: 2,
                 cell: (rec: BillingReceipt) => (
                   <div className="py-1">
-                    <span className="font-semibold text-gray-900 dark:text-white block text-xs">{rec.guestName}</span>
+                    <span className="font-semibold text-gray-900 dark:text-white block text-xs whitespace-nowrap">{rec.guestName}</span>
                     {rec.roomNumber && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 mt-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                      <span className="inline-flex items-center px-2.5 py-0.5 mt-0.5 rounded-full text-2xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 whitespace-nowrap">
                         {rec.roomNumber}
                       </span>
                     )}
@@ -327,10 +281,9 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                 name: t('total_stay_rent_column', 'Stay Tariff'),
                 selector: (rec: BillingReceipt) => rec.roomTotal || rec.roomRent || 0,
                 sortable: true,
-                width: '120px',
-                minWidth: '110px',
+                minWidth: '130px',
                 cell: (rec: BillingReceipt) => (
-                  <span className="font-semibold text-gray-700 dark:text-gray-300 text-xs tabular-numbers">
+                  <span className="font-semibold text-gray-700 dark:text-gray-300 text-xs tabular-numbers whitespace-nowrap">
                     ₹{(rec.roomTotal || rec.roomRent || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </span>
                 ),
@@ -339,10 +292,9 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                 name: t('incidentals_food_column', 'Food & Extras'),
                 selector: (rec: BillingReceipt) => rec.foodTotal || rec.kitchenTotal || 0,
                 sortable: true,
-                width: '120px',
-                minWidth: '110px',
+                minWidth: '135px',
                 cell: (rec: BillingReceipt) => (
-                  <span className="font-semibold text-gray-700 dark:text-gray-300 text-xs tabular-numbers">
+                  <span className="font-semibold text-gray-700 dark:text-gray-300 text-xs tabular-numbers whitespace-nowrap">
                     ₹{(rec.foodTotal || rec.kitchenTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </span>
                 ),
@@ -351,17 +303,15 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                 name: t('grand_total_column', 'Grand Total'),
                 selector: (rec: BillingReceipt) => rec.grandTotal,
                 sortable: true,
-                width: '130px',
-                minWidth: '120px',
+                minWidth: '135px',
                 cell: (rec: BillingReceipt) => (
-                  <span className="font-bold text-gray-900 dark:text-white text-xs tabular-numbers">
+                  <span className="font-bold text-gray-900 dark:text-white text-xs tabular-numbers whitespace-nowrap">
                     ₹{rec.grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </span>
                 ),
               },
               {
                 name: t('status_column', 'Status / Method'),
-                width: '150px',
                 minWidth: '140px',
                 cell: (rec: BillingReceipt) => {
                   const method = (rec.paymentMethod || 'Cash').toLowerCase();
@@ -376,8 +326,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
               },
               {
                 name: t('actions_column', 'Actions'),
-                width: '110px',
-                minWidth: '100px',
+                minWidth: '120px',
                 cell: (rec: BillingReceipt) => (
                   <Button variant="primary" size="sm" onClick={() => handleOpenEditModal(rec)} leftIcon={<Edit2 className="w-3.5 h-3.5 shrink-0" />}>
                     {t('edit_button', 'Edit')}

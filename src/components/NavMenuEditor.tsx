@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Sortable from 'sortablejs';
-import * as LucideIcons from 'lucide-react';
 import {
   GripVertical, Plus, Trash2, Eye, EyeOff, ChevronDown, ChevronRight,
-  Check, X, LayoutDashboard, Navigation as NavIcon,
+  Check, X, LayoutDashboard, NavIcon,
   Layers, PanelLeftClose, PanelRightOpen,
-  ExternalLink, Loader2, ArrowLeft, ArrowRight
-} from 'lucide-react';
+  ExternalLink, Loader2, ArrowLeft, ArrowRight,
+  FLOWBITE_ICONS, IconProps
+} from './icons/FlowbiteIcons';
 import { NavMenuItem } from '../types';
 import { saveNavMenuDB, apiFetch } from '../services/api';
 import { isKitchenModuleNavItem } from '../data/appConfig';
@@ -67,13 +67,11 @@ function getDefaultPageOptions(): PageOption[] {
   ];
 }
 
-// Dynamic icon list extracted from lucide-react (all icons)
-const ALL_LUCIDE_ICON_NAMES: string[] = Object.keys(LucideIcons).filter(
-  (k) => k[0] === k[0].toUpperCase() && k.length > 1 && !k.endsWith('Icon') && !k.startsWith('create') && !k.startsWith('default') && typeof (LucideIcons as any)[k] === 'object' && (LucideIcons as any)[k]?.render
-).sort();
+// Curated Flowbite icon catalog for navigation
+const ALL_FLOWBITE_ICON_NAMES: string[] = Object.keys(FLOWBITE_ICONS).sort();
 
 const getIconComponent = (name: string): React.ComponentType<any> => {
-  return (LucideIcons as any)[name] || NavIcon;
+  return FLOWBITE_ICONS[name] || NavIcon;
 };
 
 // Tag synonyms so user search terms like "money" still find related icons
@@ -490,7 +488,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
     }
     return false;
   };
-  const filteredIcons = ALL_LUCIDE_ICON_NAMES.filter(name =>
+  const filteredIcons = ALL_FLOWBITE_ICON_NAMES.filter(name =>
     matchesSearch(name, iconSearch)
   );
   const filteredTabs = pageOptions.filter(p =>
@@ -630,7 +628,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
                 autoFocus
                 value={iconSearch}
                 onChange={(e) => setIconSearch(e.target.value)}
-                placeholder={`Search ${ALL_LUCIDE_ICON_NAMES.length} icons...`}
+                placeholder={`Search ${ALL_FLOWBITE_ICON_NAMES.length} icons...`}
               />
             </div>
             <div className="nav-menu-editor__picker-count text-[9px] text-slate-400 mb-1">{filteredIcons.length} icons</div>

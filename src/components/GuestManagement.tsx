@@ -5,6 +5,7 @@ import {
   Plus,
 } from 'lucide-react';
 import { Guest, BillingReceipt, MiscChargeTemplate, MenuItem } from '../types';
+import { Tooltip } from './Tooltip';
 import { useToast } from './ToastContext';
 import { useStaff } from '../contexts/StaffContext';
 import { useConfigurationData } from '../contexts/ConfigurationDataContext';
@@ -832,14 +833,15 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                           />
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveBookingExtraChargeLine(line.id)}
-                          className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer shrink-0"
-                          title="Delete Charge Line"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <Tooltip content="Delete Charge Line">
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveBookingExtraChargeLine(line.id)}
+                            className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer shrink-0"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </Tooltip>
                       </div>
 
                       {line.category === 'Misc' && (

@@ -197,8 +197,41 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
           }
         };
 
+        // BUG (found 22 Aug 2026, still reproducing live after the 13/15 Aug
+        // fixes above): fetchNavMenuFromDB() (services/api.ts) swallows any
+        // non-'success' backend response into an empty [] WITHOUT ever
+        // throwing - that's deliberate there, so other callers can just
+        // treat "no nav items" as "show nothing". But it means safeFetch()
+        // below can only ever detect a failure that surfaces as a thrown JS
+        // exception (network unreachable, bad JSON) - a backend that
+        // responds 200 with `{status:'error', ...}`, or any other
+        // non-success shape, looks IDENTICAL to "genuinely zero nav items"
+        // from here, so anyRealDataFetchFailed stays false and the
+        // retry-and-patch-in block further down never runs. Confirmed live:
+        // nav_menu_items has a full, healthy, platform-wide-shared row set
+        // (unscoped by property_id - see get_nav_menu in php/kitchen/
+        // menu.php) - so an empty result reaching this component is NEVER
+        // legitimately correct, unlike guests/receipts/menu below, which
+        // genuinely can be empty for a quiet/new property and must NOT be
+        // treated as a failure just for being []. This inline wrapper (nav
+        // items only) treats an empty result the same as a thrown failure,
+        // so the existing retry machinery actually gets a chance to run for
+        // the one fetch where "empty" is an unambiguous failure signal.
+        const safeFetchNavItems = async (): Promise<{ value: any[]; failed: boolean }> => {
+          try {
+            const value = await fetchNavMenuFromDB();
+            if (!Array.isArray(value) || value.length === 0) {
+              return { value: [], failed: true };
+            }
+            return { value, failed: false };
+          } catch (err) {
+            console.error('Failed to fetch nav items:', err);
+            return { value: [], failed: true };
+          }
+        };
+
         const runRealDataFetches = () => Promise.all([
-          safeFetch(fetchNavMenuFromDB, [] as any[], 'nav items'),
+          safeFetchNavItems(),
           safeFetch(fetchTelegramConfigDB, null as any, 'telegram config'),
           safeFetch(fetchGuestsFromDB, [] as any[], 'preloaded guests'),
           safeFetch(fetchReceiptsFromDB, [] as any[], 'preloaded receipts'),

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowUp } from 'lucide-react';
+import { Tooltip } from './Tooltip';
 
 interface ScrollToTopButtonProps {
   threshold?: number;
@@ -56,14 +57,15 @@ export const ScrollToTopButton: React.FC<ScrollToTopButtonProps> = ({ threshold 
   if (!isVisible) return null;
 
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      aria-label="Scroll to top"
-      title="Scroll to top"
-      className="fixed bottom-24 right-4 z-40 w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-700 active:scale-95 text-white shadow-lg flex items-center justify-center cursor-pointer transition-transform"
-    >
-      <ArrowUp className="w-5 h-5 shrink-0" />
-    </button>
+    <Tooltip content="Scroll to top" position="left">
+      <button
+        type="button"
+        onClick={handleClick}
+        aria-label="Scroll to top"
+        className="fixed bottom-24 right-4 z-40 w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-700 active:scale-95 text-white shadow-lg flex items-center justify-center cursor-pointer transition-transform"
+      >
+        <ArrowUp className="w-5 h-5 shrink-0" />
+      </button>
+    </Tooltip>
   );
 };

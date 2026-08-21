@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import DataTable from 'react-data-table-component';
 import { flowbiteTableCustomStyles } from '../utils/tableStyles';
-import { Plus, Trash2, RefreshCw, Loader2, Lock, Pencil } from 'lucide-react';
+import { Plus, Trash2, RefreshCw, Loader2, Lock, Pencil, ArrowLeft } from './icons/FlowbiteIcons';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
@@ -29,40 +29,34 @@ export const ExpenseItemsManagement: React.FC = () => {
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [newItem, setNewItem] = useState({ label: '', category: '', default_amount: '' });
   const [saving, setSaving] = useState(false);
-  // Set when the form (below) is editing an existing row rather than
-  // creating a new one - the form itself is reused for both, keyed off this.
-  // Editing a system-default row (is_system_default) is allowed too: the
-  // backend (add_misc_charge_template, see php/finance/petty_cash.php) is
-  // already copy-on-write for that case - it creates a per-property override
-  // row instead of mutating the one shared row every other tenant reads, so
-  // this component doesn't need to special-case defaults itself.
   const [editingId, setEditingId] = useState<number | null>(null);
   const [mobilePage, setMobilePage] = useState(1);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+
   const { showToast } = useToast();
   const { confirm } = useConfirm();
+
+  const CREATE_CATEGORY_OPTION = '__create_new_category__';
 
   const loadItems = async () => {
     try {
       setLoading(true);
-      // fetchMiscCatalogFromDB() (shared with PettyCashManagement.tsx et al.)
-      // returns a FLAT array of rows - render it as a flat DataTable (Category
-      // is just a column/badge here) rather than grouping into per-category
-      // sections. This used to `setExpenses(data.data)` directly with
-      // data.data being that flat array assigned straight into state typed as
-      // a grouped { [category]: item[] } shape - Object.keys() on an array
-      // returns numeric index strings ("0", "1", ...), so `expenses[category]`
-      // resolved to a single item object, not an array, and `.filter()` on it
-      // crashed the whole page immediately on every load (found 21 Aug 2026,
-      // via "categoryItems.filter is not a function"). Also switched off a
-      // bare fetch() with no property_slug/X-Property-Slug context - the
-      // backend resolves $propertyId from that, so this was silently at risk
-      // of loading (or, in handleAddItem/handleDeleteItem below,
-      // writing/deleting) against the wrong property in a multi-tenant
-      // request.
       const data = await fetchMiscCatalogFromDB();
-      setItems(data as ExpenseItem[]);
+      if (Array.isArray(data)) {
+        setItems(data as any as ExpenseItem[]);
+        const uniqueCats = Array.from(
+          new Set(
+            data
+              .map((item: any) => (item.category || '').trim())
+              .filter((c: string) => c.length > 0)
+          )
+        ).sort() as string[];
+        setCategories(uniqueCats);
+      }
     } catch (err) {
-      showToast('Failed to load expense categories', { type: 'error' });
+      showToast('Failed to load expense items', { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -72,57 +66,47 @@ export const ExpenseItemsManagement: React.FC = () => {
     loadItems();
   }, []);
 
-  const categories = useMemo(
-    () => Array.from(new Set(items.map((i) => i.category || 'Services'))).sort(),
-    [items]
-  );
-
-  // Category has no separate table/entity of its own - it's just a free-text
-  // column on miscellaneous_catalog, and `categories` above is derived from
-  // whatever items already exist. So "creating" a category needs no new
-  // endpoint at all: it's just letting the form accept a typed name instead
-  // of restricting the picker to names that already happen to exist yet.
-  // Sentinel option value the picker below watches for to flip into
-  // free-text entry mode.
-  const CREATE_CATEGORY_OPTION = '__create_new_category__';
-  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
-
-  // Shared by both "Add Custom Item" and "Edit" - the same form/endpoint
-  // handles both, distinguished only by whether `editingId` is set (sent as
-  // `id` in the payload). See add_misc_charge_template in petty_cash.php.
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newItem.label || !newItem.category || !newItem.default_amount) {
-      showToast('All fields are required', { type: 'error' });
+    if (!newItem.label.trim()) {
+      showToast('Please enter an item name', { type: 'error' });
       return;
     }
 
-    const isEditing = editingId !== null;
+    const finalCategory = isCreatingCategory ? newCategoryName.trim() : newItem.category.trim();
+    if (!finalCategory) {
+      showToast('Please select or enter a category', { type: 'error' });
+      return;
+    }
+
     try {
       setSaving(true);
+      const payload = {
+        id: editingId !== null ? editingId : undefined,
+        label: newItem.label.trim(),
+        category: finalCategory,
+        default_amount: parseFloat(newItem.default_amount) || 0,
+      };
+
       const response = await apiFetch('/php/api/router.php?action=add_misc_charge_template', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: editingId ?? undefined,
-          label: newItem.label,
-          category: newItem.category,
-          default_amount: parseFloat(newItem.default_amount),
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
       if (data.success || data.status === 'success') {
-        showToast(isEditing ? 'Expense item updated successfully!' : 'Expense item added successfully!', { type: 'success' });
-        setNewItem({ label: '', category: '', default_amount: '' });
-        setEditingId(null);
-        setIsAddingNew(false);
+        showToast(
+          editingId !== null ? 'Expense item updated successfully!' : 'Expense item added successfully!',
+          { type: 'success' }
+        );
+        handleCancelForm();
         loadItems();
       } else {
-        showToast(data.message || (isEditing ? 'Failed to update item' : 'Failed to add item'), { type: 'error' });
+        showToast(data.message || 'Failed to save item', { type: 'error' });
       }
     } catch (err) {
-      showToast(isEditing ? 'Failed to update expense item' : 'Failed to add expense item', { type: 'error' });
+      showToast('Failed to save expense item', { type: 'error' });
     } finally {
       setSaving(false);
     }
@@ -133,17 +117,19 @@ export const ExpenseItemsManagement: React.FC = () => {
     setNewItem({
       label: item.label,
       category: item.category || '',
-      default_amount: String(item.default_amount ?? ''),
+      default_amount: item.default_amount !== undefined ? String(item.default_amount) : '',
     });
     setIsCreatingCategory(false);
+    setNewCategoryName('');
     setIsAddingNew(true);
   };
 
   const handleCancelForm = () => {
     setIsAddingNew(false);
-    setIsCreatingCategory(false);
     setEditingId(null);
     setNewItem({ label: '', category: '', default_amount: '' });
+    setIsCreatingCategory(false);
+    setNewCategoryName('');
   };
 
   const handleDeleteItem = async (itemId: number, itemLabel: string) => {
@@ -210,7 +196,7 @@ export const ExpenseItemsManagement: React.FC = () => {
       name: t('category_column', 'Category'),
       selector: (row: ExpenseItem) => row.category,
       sortable: true,
-      width: '160px',
+      minWidth: '150px',
       cell: (row: ExpenseItem) => (
         <Badge variant="info" size="sm">
           {row.category}
@@ -218,32 +204,29 @@ export const ExpenseItemsManagement: React.FC = () => {
       ),
     },
     {
-      name: t('default_amount_label', 'Default Amount (₹)'),
+      name: t('default_amount_label', 'Amount (₹)'),
       selector: (row: ExpenseItem) => row.default_amount,
       sortable: true,
       right: true,
-      width: '150px',
+      minWidth: '135px',
       cell: (row: ExpenseItem) => (
-        <span className="font-semibold text-emerald-600 dark:text-emerald-400 text-xs tabular-nums">
+        <span className="font-semibold text-emerald-600 dark:text-emerald-400 text-xs tabular-nums whitespace-nowrap">
           ₹{Number(row.default_amount || 0).toLocaleString('en-IN')}
         </span>
       ),
     },
     {
       name: t('actions_column', 'Actions'),
-      width: '190px',
+      minWidth: '200px',
       right: true,
       cell: (row: ExpenseItem) => (
-        // Editing/deleting a default is allowed - both are copy-on-write on
-        // the backend (a per-property override/tombstone), never a mutation
-        // of the shared row every other tenant reads. See petty_cash.php's
-        // add_misc_charge_template / delete_misc_charge_template.
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
           <Button
             variant="secondary"
             size="sm"
             onClick={() => handleEditClick(row)}
             disabled={saving}
+            className="whitespace-nowrap shrink-0"
             leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
           >
             {t('edit_button', 'Edit')}
@@ -253,6 +236,7 @@ export const ExpenseItemsManagement: React.FC = () => {
             size="sm"
             onClick={() => handleDeleteItem(row.id, row.label)}
             disabled={saving}
+            className="whitespace-nowrap shrink-0"
             leftIcon={<Trash2 className="w-3.5 h-3.5 shrink-0" />}
           >
             {t('delete_button', 'Delete')}
@@ -300,13 +284,43 @@ export const ExpenseItemsManagement: React.FC = () => {
                 <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                   {t('category_required_label', 'Category *')}
                 </label>
-                <StyledSelect
-                  value={newItem.category}
-                  onChange={(value) => setNewItem({ ...newItem, category: value })}
-                  placeholder={t('select_category_placeholder', '-- Select Category --')}
-                  searchable
-                  options={categories.map((cat) => ({ value: cat, label: cat }))}
-                />
+                {isCreatingCategory ? (
+                  <div className="flex items-center gap-1.5">
+                    <Input
+                      autoFocus
+                      value={newItem.category}
+                      onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
+                      placeholder={t('new_category_name_placeholder', 'New category name')}
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => { setIsCreatingCategory(false); setNewItem({ ...newItem, category: '' }); }}
+                      title={t('back_to_category_list_tooltip', 'Back to category list')}
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                ) : (
+                  <StyledSelect
+                    value={newItem.category}
+                    onChange={(value) => {
+                      if (value === CREATE_CATEGORY_OPTION) {
+                        setIsCreatingCategory(true);
+                        setNewItem({ ...newItem, category: '' });
+                      } else {
+                        setNewItem({ ...newItem, category: value });
+                      }
+                    }}
+                    placeholder={t('select_category_placeholder', '-- Select Category --')}
+                    searchable
+                    options={[
+                      { value: CREATE_CATEGORY_OPTION, label: `+ ${t('create_new_category_option', 'Create New Category')}` },
+                      ...categories.map((cat) => ({ value: cat, label: cat })),
+                    ]}
+                  />
+                )}
               </div>
               <div>
                 <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
@@ -381,7 +395,7 @@ export const ExpenseItemsManagement: React.FC = () => {
             </div>
           </div>
 
-          <div className="hidden md:block">
+          <div className="hidden md:block overflow-x-auto">
             <DataTable
               columns={columns}
               data={filteredItems}

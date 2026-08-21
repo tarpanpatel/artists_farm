@@ -829,9 +829,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         <div className="flex items-center gap-1.5 shrink-0">
                           <span className="bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 px-2 py-0.5 rounded font-semibold text-[10px] shrink-0">{row.role}</span>
                           {canShareLogins && !!row.username && (
-                            <Button onClick={() => handleShareLogin(row)} variant="secondary" size="xs" className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 cursor-pointer px-2 shrink-0" title="Share login details">
-                              <Share2 className="w-3.5 h-3.5" />
-                            </Button>
+                            <Tooltip content="Share login details">
+                              <Button onClick={() => handleShareLogin(row)} variant="secondary" size="xs" className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 cursor-pointer px-2 shrink-0">
+                                <Share2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </Tooltip>
                           )}
                           {!isCurrentUser && (
                             <>

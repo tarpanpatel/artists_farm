@@ -993,6 +993,28 @@ html.dark, .dark {
   padding-right: 20px !important;
 }
 
+/* DESIGN.md rule 8 ("Column Header Titles Never Truncate", found 21 Aug
+   2026, confirmed still broken by a live screenshot of CashDrawerManager.tsx's
+   Monthly Payout Calculator - "Daily Wage (₹)" rendering as "DAI..."). The
+   truncation isn't on .rdt_TableCol itself (the cell customStyles.headCells
+   in utils/tableStyles.ts already controls) - react-data-table-component
+   renders the actual header LABEL in a separate inner element with its own
+   baked-in stylesheet class, `.rdt_columnText { overflow:hidden;
+   white-space:nowrap; text-overflow:ellipsis }`, which an inline style on
+   the outer cell can never reach (different element, and inline styles
+   don't cascade to children regardless). This is the one selector that
+   actually controls it - fixing it here fixes every table in the app at
+   once, matching tableStyles.ts's outer-cell overflow:visible change so
+   neither layer re-clips the other. A wrapped 2-line header grows the row
+   instead of clipping - .rdt_TableHeadRow's min-height above is a minimum,
+   not a fixed height. */
+.rdt_columnText {
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+  line-height: 1.3 !important;
+}
+
 .rdt_TableRow {
   background-color: var(--table-row-bg) !important;
   color: var(--table-body-color) !important;

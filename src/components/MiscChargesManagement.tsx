@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Plus, Pencil, Trash2, Loader2, ArrowLeft } from './icons/FlowbiteIcons';
 import DataTable from 'react-data-table-component';
 import { flowbiteTableCustomStyles } from '../utils/tableStyles';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from 'flowbite-react';
@@ -10,7 +10,15 @@ import { PageHeader, PageHeaderButton } from './PageHeader';
 import { Input } from './Input';
 import { Button } from './Button';
 import { Badge } from './Badge';
+import { StyledSelect } from './StyledSelect';
 import { t } from '../i18n/en';
+
+// Category has no separate table/entity of its own - it's just a free-text
+// column on miscellaneous_catalog, so "creating" one needs no new endpoint:
+// typing a name here that doesn't already exist and saving the item is all
+// it takes. This sentinel is what the pickers below watch for to flip from
+// "pick an existing category" into free-text entry.
+const CREATE_CATEGORY_OPTION = '__create_new_category__';
 
 interface MiscChargeTemplate {
   id: string | number;
@@ -38,6 +46,16 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
   const [newForm, setNewForm] = useState({ label: '', default_amount: '' as unknown as number, category: 'Service' });
   const [searchText, setSearchText] = useState('');
   const [mobilePage, setMobilePage] = useState(1);
+  // Two independent "creating a new category" toggles - the inline table-row
+  // edit and the Add Service modal are separate contexts that can each be
+  // mid-edit at the same time, so they can't share one flag.
+  const [isCreatingCategoryInline, setIsCreatingCategoryInline] = useState(false);
+  const [isCreatingCategoryModal, setIsCreatingCategoryModal] = useState(false);
+
+  const categories = useMemo(
+    () => Array.from(new Set(charges.map((c) => c.category).filter(Boolean))).sort(),
+    [charges]
+  );
 
   const getLoggedInUserName = () => {
     if (typeof window !== 'undefined') {
@@ -91,6 +109,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
           onLogAudit(`${currentUserName} added new miscellaneous charge template: '${newForm.label}' (Category: ${newForm.category}, Amount: ₹${newForm.default_amount})`);
         }
         setIsAddModalOpen(false);
+        setIsCreatingCategoryModal(false);
         setNewForm({ label: '', default_amount: '' as unknown as number, category: 'Service' });
       }
     });
@@ -125,6 +144,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
         }
         setCharges(charges.map(c => c.id === isEditing ? finalData as MiscChargeTemplate : c));
         setIsEditing(null);
+        setIsCreatingCategoryInline(false);
       }
     });
   };
@@ -198,17 +218,52 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
       minWidth: '150px',
       cell: (row: MiscChargeTemplate) => {
         const editing = isEditing === row.id;
-        return editing ? (
-          <Input
-            type="text"
-            value={editForm.category || ''}
-            onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
-            className="w-full"
-          />
+        if (!editing) {
+          return (
+            <Badge variant="info" size="sm">
+              {row.category}
+            </Badge>
+          );
+        }
+        return isCreatingCategoryInline ? (
+          <div className="flex items-center gap-1 w-full">
+            <Input
+              autoFocus
+              type="text"
+              value={editForm.category || ''}
+              onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+              placeholder={t('new_category_name_placeholder', 'New category name')}
+              className="w-full"
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => { setIsCreatingCategoryInline(false); setEditForm({ ...editForm, category: '' }); }}
+              title={t('back_to_category_list_tooltip', 'Back to category list')}
+              className="shrink-0"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+            </Button>
+          </div>
         ) : (
-          <Badge variant="info" size="sm">
-            {row.category}
-          </Badge>
+          <StyledSelect
+            value={editForm.category || ''}
+            onChange={(value) => {
+              if (value === CREATE_CATEGORY_OPTION) {
+                setIsCreatingCategoryInline(true);
+                setEditForm({ ...editForm, category: '' });
+              } else {
+                setEditForm({ ...editForm, category: value });
+              }
+            }}
+            placeholder={t('select_category_placeholder', '-- Select Category --')}
+            searchable
+            options={[
+              { value: CREATE_CATEGORY_OPTION, label: `+ ${t('create_new_category_option', 'Create New Category')}` },
+              ...categories.map((cat) => ({ value: cat, label: cat })),
+            ]}
+          />
         );
       },
     },
@@ -255,7 +310,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => setIsEditing(null)}
+              onClick={() => { setIsEditing(null); setIsCreatingCategoryInline(false); }}
               className="h-8 px-2.5 text-xs whitespace-nowrap shrink-0"
             >
               {t('cancel_button', 'Cancel')}
@@ -269,6 +324,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
               onClick={() => {
                 setIsEditing(row.id);
                 setEditForm(row);
+                setIsCreatingCategoryInline(false);
               }}
               leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
               className="h-8 text-xs font-medium whitespace-nowrap shrink-0"
@@ -293,9 +349,9 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
     <div className="misc-charges-management space-y-6">
       <PageHeader
         title={t('misc_charges_heading', 'Expense Categories & Items')}
-        subtitle={t('misc_charges_description', 'System default categories (marked) cannot be edited or deleted. Add custom items within any category as needed.')}
+        subtitle={t('misc_charges_description', 'Edit or delete any item, including system defaults (marked) - defaults are only ever changed for this property, never for others. Add custom items within any category as needed.')}
       >
-        <PageHeaderButton onClick={() => setIsAddModalOpen(true)} icon={Plus}>
+        <PageHeaderButton onClick={() => { setIsCreatingCategoryModal(false); setIsAddModalOpen(true); }} icon={Plus}>
           {t('add_new_service_button', 'Add New Service')}
         </PageHeaderButton>
       </PageHeader>
@@ -380,6 +436,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
                             onClick={() => {
                               setIsEditing(row.id);
                               setEditForm(row);
+                              setIsCreatingCategoryInline(false);
                             }}
                             className="px-2.5 py-1 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-semibold text-xs rounded-lg transition cursor-pointer flex items-center gap-1 shrink-0"
                           >
@@ -438,7 +495,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
 
       <Modal
         show={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
+        onClose={() => { setIsAddModalOpen(false); setIsCreatingCategoryModal(false); }}
         dismissible
         className="z-58 misc-charges-management__modal"
       >
@@ -459,12 +516,45 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
             </div>
             <div>
               <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('category_label', 'Category')}</label>
-              <Input
-                type="text"
-                required
-                value={newForm.category}
-                onChange={(e) => setNewForm({ ...newForm, category: e.target.value })}
-              />
+              {isCreatingCategoryModal ? (
+                <div className="flex items-center gap-1.5">
+                  <Input
+                    autoFocus
+                    type="text"
+                    required
+                    value={newForm.category}
+                    onChange={(e) => setNewForm({ ...newForm, category: e.target.value })}
+                    placeholder={t('new_category_name_placeholder', 'New category name')}
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => { setIsCreatingCategoryModal(false); setNewForm({ ...newForm, category: '' }); }}
+                    title={t('back_to_category_list_tooltip', 'Back to category list')}
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <StyledSelect
+                  value={newForm.category}
+                  onChange={(value) => {
+                    if (value === CREATE_CATEGORY_OPTION) {
+                      setIsCreatingCategoryModal(true);
+                      setNewForm({ ...newForm, category: '' });
+                    } else {
+                      setNewForm({ ...newForm, category: value });
+                    }
+                  }}
+                  placeholder={t('select_category_placeholder', '-- Select Category --')}
+                  searchable
+                  options={[
+                    { value: CREATE_CATEGORY_OPTION, label: `+ ${t('create_new_category_option', 'Create New Category')}` },
+                    ...categories.map((cat) => ({ value: cat, label: cat })),
+                  ]}
+                />
+              )}
             </div>
             <div>
               <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('default_price_label', 'Default Price (₹)')}</label>
