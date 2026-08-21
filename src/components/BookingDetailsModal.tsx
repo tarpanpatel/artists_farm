@@ -634,16 +634,11 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               </div>
             )}
 
-            {/* Foreign Guest C-Form Box */}
+            {/* Foreign Guest C-Form Section (plain, no colored callout box -
+                found 21 Aug 2026 this stood out more than any other field
+                group on the form for no real reason) */}
             {(editIsForeignGuest || guest.isForeignGuest) && (
-              <div
-                id="c-form-checkbox-container"
-                className={`p-3 rounded-lg border transition-all ${
-                  !isCFormFiled
-                    ? 'border-rose-400 dark:border-rose-700 bg-rose-50/70 dark:bg-rose-950/40'
-                    : 'border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-950/30'
-                }`}
-              >
+              <div id="c-form-checkbox-container" className="pt-1 border-t border-slate-100 dark:border-slate-700">
                 <div className="flex items-center justify-between gap-2">
                   <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-800 dark:text-slate-100 select-none">
                     <Checkbox
@@ -747,9 +742,12 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   </button>
                 )}
 
-                {/* 3 Columns: Delete, Share with Guest, Edit */}
-                <div className="grid grid-cols-3 gap-2.5 w-full">
-                  {onDelete ? (
+                {/* Delete, Share with Guest, Edit - 3 columns when Delete is
+                    available, otherwise a real 2-column grid so Share/Edit
+                    split the full width evenly instead of an invisible
+                    placeholder div eating a third column (found 21 Aug 2026). */}
+                <div className={`grid gap-2.5 w-full ${onDelete ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                  {onDelete && (
                     <button
                       type="button"
                       onClick={handleDelete}
@@ -760,8 +758,6 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                       <Trash2 className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
                       <span className="truncate">{isDeleting ? t('deleting_button', 'Deleting...') : t('delete_button', 'Delete')}</span>
                     </button>
-                  ) : (
-                    <div />
                   )}
 
                   <button
