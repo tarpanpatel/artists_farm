@@ -180,13 +180,30 @@ All primary sub-page and section tab bars across the platform (e.g. `#take_food_
 
 Ground truth is the theme.js files directly - `node_modules/flowbite-react/dist/components/
 {Checkbox,Radio,ToggleSwitch,Select}/theme.js` - not memory or assumption, same method as
-everything else in this file.
+everything else in this file. **But reading theme.js text is not sufficient on its own - see the
+correction below.**
 
-- **Checkbox**: `rounded` (slightly-rounded square, ~0.25rem) - **not** circular. A checkbox
-  styled as a circle is a bug, not a variant (found 21 Aug 2026: `InventoryManagement.tsx`'s
-  `selectableRows` DataTable had no `selectableRowsComponent`, so `react-data-table-component`
-  rendered its own native checkbox instead of routing through this theme at all - check any
-  `selectableRows` DataTable for the same gap).
+- **Checkbox**: theme.js says `rounded`, not circular. A checkbox styled as a circle is a bug,
+  not a variant (found 21 Aug 2026: `InventoryManagement.tsx`'s `selectableRows` DataTable had no
+  `selectableRowsComponent`, so `react-data-table-component` rendered its own native checkbox
+  instead of routing through this theme at all - check any `selectableRows` DataTable for the
+  same gap).
+  - **Correction, same day**: a checkbox using the exact correct component and exact correct
+    `rounded` class was *still* found rendering as a full circle (`KitchenManagement.tsx`'s Staff
+    Meals screen). Root cause: this project imports Flowbite's own theme package
+    (`@import "flowbite/src/themes/default"` in `src/index.css`), and that package's
+    `default.css` sets `--radius: 8px` as the token the bare `rounded` utility maps to - genuinely
+    Flowbite's own current default, not a project misconfiguration (confirmed by measuring
+    flowbite.com's own live checkbox demo, which renders ~4px, not circular - so this is a real
+    gap in Flowbite's own theme.js not accounting for its own token at checkbox scale, not
+    intended behavior to match). 8px radius on a 16px (`w-4 h-4`) checkbox is exactly 50% - a
+    mathematical circle. **Fixed** with a global override in `src/index.css`:
+    `input[type='checkbox'] { border-radius: 4px !important; }` - scoped to checkboxes only,
+    never touches Radio's legitimate `rounded-full`.
+  - **The actual lesson**: matching theme.js's literal class name text is necessary but **not
+    sufficient**. This exact component read as compliant from source alone. Verify any shape/size
+    claim by actually rendering the page and checking `getComputedStyle(el).borderRadius` (or a
+    screenshot) - not by reading class names against theme.js text.
 - **Radio**: `rounded-full` - circular is correct here, don't "fix" radios to match checkboxes.
 - **ToggleSwitch**: pill-shaped track, its own shape family - for genuine on/off switches, not a
   checkbox substitute.
