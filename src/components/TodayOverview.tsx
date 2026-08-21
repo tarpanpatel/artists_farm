@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Calendar, LogOut, Bell, User, Globe } from 'lucide-react';
+import { Popover } from './Popover';
 import { Guest } from '../types';
 import { BookingDetailsModal } from './BookingDetailsModal';
 import { ConvertOtaBookingModal } from './ConvertOtaBookingModal';
@@ -223,6 +224,50 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   const isCheckedOutStatus = (status: any) => {
     const s = String(status || '').trim().toLowerCase();
     return s === 'checkedout' || s === 'checked out';
+  };
+
+  const getGuestPendingReasons = (guest: any): string[] => {
+    const reasons: string[] = [];
+    const status = String(guest.status || '').trim().toLowerCase();
+    const isCheckedOut = status === 'checkedout' || status === 'checked out';
+    if (isCheckedOut || status === 'cancelled' || status === 'canceled') return reasons;
+
+    const isCheckedIn = status === 'active' || status === 'checked in' || status === 'checkedin';
+    const isBooked = !isCheckedIn;
+
+    // 1. ID Upload Pending
+    if (guest.idVerificationStatus !== 'Complete') {
+      reasons.push('ID Pending');
+    }
+
+    // 2. Check-in Pending (Arrival date was today or earlier, but stay is not checked in)
+    if (isBooked && guest.checkinDate) {
+      const checkinDate = new Date(guest.checkinDate);
+      checkinDate.setHours(0, 0, 0, 0);
+      const todayStart = new Date(today);
+      todayStart.setHours(0, 0, 0, 0);
+      if (todayStart >= checkinDate) {
+        reasons.push('Check-in Pending');
+      }
+    }
+
+    // 3. Checkout Pending (Expected checkout is today or earlier, but still checked in)
+    if (isCheckedIn && guest.expectedCheckout) {
+      const checkoutDate = new Date(guest.expectedCheckout);
+      checkoutDate.setHours(0, 0, 0, 0);
+      const todayStart = new Date(today);
+      todayStart.setHours(0, 0, 0, 0);
+      if (todayStart >= checkoutDate) {
+        reasons.push('Checkout Pending');
+      }
+    }
+
+    // 4. C-Form Pending (Foreign guest without filed C-Form)
+    if (guest.isForeignGuest && !guest.cFormFiledAt && !guest.cFormNumber && !(guest as any).c_form_number) {
+      reasons.push('C-Form Pending');
+    }
+
+    return reasons;
   };
 
   const getGuestsForRoom = (roomId: number, roomName?: string) => {
@@ -570,62 +615,105 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                         if (info.item.kind === 'ota') {
                           const otaItem = info.item;
                           return (
-                            // Native title, not the Tooltip.tsx component: this capsule
-                            // lives inside a row that needs overflow-hidden to clip long
-                            // capsule bars at the row's edge, which also clips any
-                            // absolutely-positioned hover tooltip trying to render outside
-                            // it (found 16 Aug 2026 - showed as a thin clipped black bar
-                            // instead of readable text). A native title tooltip is drawn by
-                            // the browser itself, so it can't be clipped by page CSS, and it
-                            // dismisses itself on click with no lingering-above-the-modal
-                            // z-index fight either.
-                            <button
+                            <Popover
                               key={`ota-${idx}`}
-                              type="button"
-                              onClick={() => {
-                                const ownDays = new Set(expandRangeToDayStrings(otaItem.block.event_start, otaItem.block.event_end));
-                                setOtaConversionTarget({
-                                  block: otaItem.block,
-                                  roomName: room.name,
-                                  blockedDateStrings: roomOccupiedDateStrings.filter((d) => !ownDays.has(d)),
-                                });
-                              }}
-                              title={otaItem.tooltip}
-                              className="px-2.5 rounded-md font-semibold cursor-pointer absolute bg-slate-700 dark:bg-slate-700 hover:bg-slate-600 text-white border border-slate-600 pointer-events-auto shadow-md flex items-center z-20 overflow-hidden transition-colors"
-                              style={commonStyle}
+                              trigger="hover"
+                              placement="top"
+                              content={
+                                <div className="w-64 text-xs bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                  <div className="px-3 py-2 bg-gray-50 dark:bg-gray-700/60 border-b border-gray-200 dark:border-gray-700">
+                                    <h4 className="font-semibold text-gray-900 dark:text-white truncate">{otaItem.label}</h4>
+                                  </div>
+                                  <div className="px-3 py-2 space-y-1 text-gray-600 dark:text-gray-300">
+                                    <div>{otaItem.tooltip}</div>
+                                    <div className="text-2xs text-blue-600 dark:text-blue-400 font-semibold pt-1">
+                                      Click to convert into booking
+                                    </div>
+                                  </div>
+                                </div>
+                              }
                             >
-                              <span className="font-semibold truncate text-[11px] leading-none">{otaItem.label}</span>
-                            </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const ownDays = new Set(expandRangeToDayStrings(otaItem.block.event_start, otaItem.block.event_end));
+                                  setOtaConversionTarget({
+                                    block: otaItem.block,
+                                    roomName: room.name,
+                                    blockedDateStrings: roomOccupiedDateStrings.filter((d) => !ownDays.has(d)),
+                                  });
+                                }}
+                                className="px-2.5 rounded-md font-semibold cursor-pointer absolute bg-slate-700 dark:bg-slate-700 hover:bg-slate-600 text-white border border-slate-600 pointer-events-auto shadow-md flex items-center z-20 overflow-hidden transition-colors"
+                                style={commonStyle}
+                              >
+                                <span className="font-semibold truncate text-[11px] leading-none">{otaItem.label}</span>
+                              </button>
+                            </Popover>
                           );
                         }
 
                         const guest = info.item.guest;
                         const isOtaBooking = !!(guest as any).otaSource;
-                        // Checked-out wins over the OTA amber tone (17 Aug 2026 fix) -
-                        // a past OTA booking was showing amber forever regardless of
-                        // status, since this ternary checked isOtaBooking before ever
-                        // asking getGuestColor whether the stay had already ended. The
-                        // Globe badge below still renders either way, so OTA origin
-                        // stays visible even once the cell has gone grey.
                         const isCheckedOut = isCheckedOutStatus(guest.status);
+                        const pendingReasons = getGuestPendingReasons(guest);
+                        const hasPending = pendingReasons.length > 0;
                         return (
-                          <div
+                          <Popover
                             key={`${guest.id}-${idx}`}
-                            className={`px-2.5 rounded-md font-semibold cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all absolute ${
-                              isOtaBooking && !isCheckedOut
-                                ? 'bg-amber-600 dark:bg-amber-700 hover:bg-amber-700 text-white border border-amber-700/30'
-                                : getGuestColor(guest.id, guest.status)
-                            } pointer-events-auto shadow-md flex items-center justify-between gap-1 z-20 overflow-hidden`}
-                            style={commonStyle}
-                            onClick={() => setSelectedGuest(guest)}
-                            title={`${guest.guestName} (₹${info.nightlyRate}/night)`}
+                            trigger="hover"
+                            placement="top"
+                            content={
+                              <div className="w-64 text-xs bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                <div className="px-3 py-2 bg-gray-50 dark:bg-gray-700/60 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
+                                  <h4 className="font-semibold text-gray-900 dark:text-white truncate">{guest.guestName}</h4>
+                                  {info.nightlyRate > 0 && (
+                                    <span className="text-2xs font-bold text-blue-600 dark:text-blue-400 shrink-0">
+                                      ₹{info.nightlyRate}/night
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="px-3 py-2 space-y-1.5 text-gray-600 dark:text-gray-300">
+                                  <div className="flex items-center justify-between text-2xs">
+                                    <span className="text-gray-500 dark:text-gray-400">Room:</span>
+                                    <span className="font-semibold text-gray-900 dark:text-white">{room.name}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between text-2xs">
+                                    <span className="text-gray-500 dark:text-gray-400">Dates:</span>
+                                    <span className="font-medium text-gray-700 dark:text-gray-200">
+                                      {guest.checkinDate} → {guest.expectedCheckout || (guest as any).checkoutDate}
+                                    </span>
+                                  </div>
+                                  {hasPending && (
+                                    <div className="pt-1.5 border-t border-gray-100 dark:border-gray-700/60 text-amber-600 dark:text-amber-400 text-2xs font-semibold flex items-center gap-1.5">
+                                      <span className="flex w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/40" />
+                                      <span>Action Pending: {pendingReasons.join(', ')}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            }
                           >
-                            <span className="font-semibold truncate text-[11px] leading-none flex items-center gap-1">
-                              {isOtaBooking && <Globe className="w-2.5 h-2.5 shrink-0" />}
-                              <span className="truncate">{guest.guestName}</span>
-                            </span>
-                            <span className="text-[10px] font-medium opacity-90 whitespace-nowrap leading-none shrink-0">₹{info.nightlyRate}</span>
-                          </div>
+                            <div
+                              className={`px-2.5 rounded-md font-semibold cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all absolute ${
+                                isOtaBooking && !isCheckedOut
+                                  ? 'bg-amber-600 dark:bg-amber-700 hover:bg-amber-700 text-white border border-amber-700/30'
+                                  : getGuestColor(guest.id, guest.status)
+                              } pointer-events-auto shadow-md flex items-center justify-between gap-1.5 z-20 overflow-hidden`}
+                              style={commonStyle}
+                              onClick={() => setSelectedGuest(guest)}
+                            >
+                              <span className="font-semibold truncate text-[11px] leading-none flex items-center gap-1.5 min-w-0">
+                                {hasPending && (
+                                  <span
+                                    className="flex w-2.5 h-2.5 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/50"
+                                  />
+                                )}
+                                {isOtaBooking && <Globe className="w-2.5 h-2.5 shrink-0" />}
+                                <span className="truncate">{guest.guestName}</span>
+                              </span>
+                              <span className="text-[10px] font-medium opacity-90 whitespace-nowrap leading-none shrink-0">₹{info.nightlyRate}</span>
+                            </div>
+                          </Popover>
                         );
                       })}
                     </div>
@@ -664,6 +752,10 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           <div className="flex items-center gap-2">
             <span className="w-5 h-3.5 rounded-xs bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 inline-block shadow-md" />
             <span>{t('legend_checked_out', 'Checked Out Stay')}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="flex w-2.5 h-2.5 bg-yellow-400 dark:bg-yellow-300 rounded-full shadow-xs ring-1 ring-yellow-600/50" />
+            <span>{t('legend_pending_action', 'Action Pending (ID, C-Form, Check-in/out)')}</span>
           </div>
         </div>
       </div>

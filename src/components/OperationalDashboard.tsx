@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, ModalHeader, ModalBody, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, Checkbox, Popover } from 'flowbite-react';
+import { Modal, ModalHeader, ModalBody, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, Checkbox } from 'flowbite-react';
+import { Popover } from './Popover';
 import {
   AlertTriangle,
   User,
@@ -235,6 +236,44 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
     const checkin = parseDateOnly(g.checkinDate);
     const checkout = parseDateOnly(g.expectedCheckout);
     return checkin !== null && checkout !== null && today >= checkin && today < checkout;
+  };
+
+  const getGuestPendingReasons = (g: Guest): string[] => {
+    const reasons: string[] = [];
+    const status = String(g.status || '').trim().toLowerCase();
+    const isCheckedOut = status === 'checkedout' || status === 'checked out';
+    if (isCheckedOut || status === 'cancelled' || status === 'canceled') return reasons;
+
+    const isCheckedIn = status === 'active' || status === 'checked in' || status === 'checkedin';
+    const isBooked = !isCheckedIn;
+
+    // 1. ID Upload Pending
+    if (g.idVerificationStatus !== 'Complete') {
+      reasons.push('ID Pending');
+    }
+
+    // 2. Check-in Pending (Arrival date was today or earlier, but stay is not checked in)
+    if (isBooked && g.checkinDate) {
+      const checkinDate = parseDateOnly(g.checkinDate);
+      if (checkinDate !== null && today >= checkinDate) {
+        reasons.push('Check-in Pending');
+      }
+    }
+
+    // 3. Checkout Pending (Expected checkout is today or earlier, but still checked in)
+    if (isCheckedIn && g.expectedCheckout) {
+      const checkoutDate = parseDateOnly(g.expectedCheckout);
+      if (checkoutDate !== null && today >= checkoutDate) {
+        reasons.push('Checkout Pending');
+      }
+    }
+
+    // 4. C-Form Pending (Foreign guest without filed C-Form)
+    if (g.isForeignGuest && !g.cFormFiledAt && !g.cFormNumber && !(g as any).c_form_number) {
+      reasons.push('C-Form Pending');
+    }
+
+    return reasons;
   };
 
   const todaysArrivalsCount = guests.filter((g) => (g.checkinDate || '').split(' ')[0] === todayStr).length;
@@ -835,18 +874,64 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                     </span>
                   )}
                 </div>
-                {dayBooking && (
-                  <button
-                    onClick={() => setSelectedBooking(dayBooking)}
-                    className={`rounded-md px-2 py-1 ${isDayBookingCheckedOut ? checkedOutColor : isOtaBooking ? otaBookingColor : directBookingColor} text-xs font-medium flex flex-col justify-center shadow-2xs hover:opacity-90 transition-opacity cursor-pointer truncate w-full text-left`}
-                  >
-                    <div className="truncate font-semibold flex items-center gap-1">
-                      {isOtaBooking && <Globe className="w-2.5 h-2.5 shrink-0" />}
-                      <span className="truncate">{dayBooking.guestName.split(' ')[0]}</span>
-                    </div>
-                    {nightlyRate > 0 && <div className="text-2xs font-normal opacity-85">₹{nightlyRate}</div>}
-                  </button>
-                )}
+                {dayBooking && (() => {
+                  const dayPendingReasons = getGuestPendingReasons(dayBooking);
+                  const hasDayPending = dayPendingReasons.length > 0;
+                  return (
+                    <Popover
+                      trigger="hover"
+                      placement="top"
+                      content={
+                        <div className="w-64 text-xs bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                          <div className="px-3 py-2 bg-gray-50 dark:bg-gray-700/60 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
+                            <h4 className="font-semibold text-gray-900 dark:text-white truncate">{dayBooking.guestName}</h4>
+                            {nightlyRate > 0 && (
+                              <span className="text-2xs font-bold text-blue-600 dark:text-blue-400 shrink-0">
+                                ₹{nightlyRate}/night
+                              </span>
+                            )}
+                          </div>
+                          <div className="px-3 py-2 space-y-1.5 text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                            {dayBooking.roomNumber && (
+                              <div className="flex items-center justify-between text-2xs">
+                                <span className="text-gray-500 dark:text-gray-400">Room:</span>
+                                <span className="font-semibold text-gray-900 dark:text-white">{dayBooking.roomNumber}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center justify-between text-2xs">
+                              <span className="text-gray-500 dark:text-gray-400">Dates:</span>
+                              <span className="font-medium text-gray-700 dark:text-gray-200">
+                                {dayBooking.checkinDate} → {dayBooking.expectedCheckout || (dayBooking as any).checkoutDate}
+                              </span>
+                            </div>
+                            {hasDayPending && (
+                              <div className="pt-1.5 border-t border-gray-100 dark:border-gray-700/60 text-amber-600 dark:text-amber-400 text-2xs font-semibold flex items-center gap-1.5">
+                                <span className="flex w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/40" />
+                                <span>Action Pending: {dayPendingReasons.join(', ')}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      }
+                    >
+                      <button
+                        onClick={() => setSelectedBooking(dayBooking)}
+                        className={`rounded-md px-2 py-1 ${isDayBookingCheckedOut ? checkedOutColor : isOtaBooking ? otaBookingColor : directBookingColor} text-xs font-medium flex flex-col justify-center shadow-2xs hover:opacity-90 transition-opacity cursor-pointer truncate w-full text-left`}
+                      >
+                        <div className="truncate font-semibold flex items-center gap-1.5 min-w-0">
+                          {hasDayPending && (
+                            <span
+                              className="flex w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/50"
+                            />
+                          )}
+                          {isOtaBooking && <Globe className="w-2.5 h-2.5 shrink-0" />}
+                          <span className="truncate">{dayBooking.guestName.split(' ')[0]}</span>
+                        </div>
+                        {nightlyRate > 0 && <div className="text-2xs font-normal opacity-85">₹{nightlyRate}</div>}
+                      </button>
+                    </Popover>
+                  );
+                })()}
                 {dayBookingOverflowCount > 0 && (
                   <Popover
                     trigger="click"
@@ -861,6 +946,8 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                         <div className="space-y-1 max-h-64 overflow-y-auto">
                           {dayBookingsForDate.map((g) => {
                             const amt = (g as any).totalCharge || (g as any).totalAmount || (g as any).total_charge || 0;
+                            const itemPendingReasons = getGuestPendingReasons(g);
+                            const hasItemPending = itemPendingReasons.length > 0;
                             return (
                               <button
                                 key={g.id}
@@ -872,7 +959,15 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                                 className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 text-left transition-colors cursor-pointer"
                               >
                                 <div className="min-w-0">
-                                  <div className="text-xs font-semibold text-slate-900 dark:text-white truncate">{g.guestName}</div>
+                                  <div className="text-xs font-semibold text-slate-900 dark:text-white truncate flex items-center gap-1.5">
+                                    {hasItemPending && (
+                                      <span
+                                        className="flex w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/50"
+                                        title={`Action Pending: ${itemPendingReasons.join(', ')}`}
+                                      />
+                                    )}
+                                    <span className="truncate">{g.guestName}</span>
+                                  </div>
                                   <div className="text-[10px] text-slate-500 dark:text-slate-400">
                                     {g.roomNumber}{amt > 0 ? ` · ₹${Math.round(amt)}` : ''}
                                   </div>
@@ -889,34 +984,48 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                   >
                     <button
                       type="button"
-                      className="rounded px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[9px] font-semibold hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors cursor-pointer w-full truncate"
+                      className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline py-0.5 text-left cursor-pointer transition-colors block w-full truncate"
                     >
                       +{dayBookingOverflowCount} more
                     </button>
                   </Popover>
                 )}
                 {otaBlock && (
-                  // Native title, not Tooltip.tsx: this cell sits in a grid whose
-                  // parent clips overflow for the calendar's layout, which also
-                  // clips an absolutely-positioned hover tooltip trying to render
-                  // outside it (found 16 Aug 2026 - rendered as a clipped black
-                  // bar, not readable text). A native tooltip is drawn by the
-                  // browser, so it can't be clipped by page CSS, and it dismisses
-                  // itself on click with no lingering-above-the-modal z-index fight.
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const ownDays = new Set(expandRangeToDayStrings(otaBlock.event_start, otaBlock.event_end));
-                      setOtaConversionTarget({
-                        block: otaBlock,
-                        blockedDateStrings: allOccupiedDateStrings.filter((dstr) => !ownDays.has(dstr)),
-                      });
-                    }}
-                    title={t('ota_blocked_tooltip_convertible', '{{source}} - not yet a booking. Click to convert.').replace('{{source}}', otaBlock.source_label || otaBlock.source || 'external calendar')}
-                    className="rounded-md px-2 py-1.5 bg-slate-500 dark:bg-slate-600 hover:bg-slate-600 dark:hover:bg-slate-500 text-white text-xs font-semibold flex flex-col justify-center shadow-md truncate w-full cursor-pointer transition-colors"
+                  <Popover
+                    trigger="hover"
+                    placement="top"
+                    content={
+                      <div className="w-64 text-xs bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                        <div className="px-3 py-2 bg-gray-50 dark:bg-gray-700/60 border-b border-gray-200 dark:border-gray-700">
+                          <h4 className="font-semibold text-gray-900 dark:text-white truncate">
+                            {otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}
+                          </h4>
+                        </div>
+                        <div className="px-3 py-2 space-y-1 text-gray-600 dark:text-gray-300">
+                          <div>
+                            {t('ota_blocked_tooltip_convertible', '{{source}} - not yet a booking. Click to convert.').replace('{{source}}', otaBlock.source_label || otaBlock.source || 'external calendar')}
+                          </div>
+                          <div className="text-2xs text-blue-600 dark:text-blue-400 font-semibold pt-1">
+                            Click to convert into booking
+                          </div>
+                        </div>
+                      </div>
+                    }
                   >
-                    <div className="truncate font-semibold">{otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}</div>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const ownDays = new Set(expandRangeToDayStrings(otaBlock.event_start, otaBlock.event_end));
+                        setOtaConversionTarget({
+                          block: otaBlock,
+                          blockedDateStrings: allOccupiedDateStrings.filter((dstr) => !ownDays.has(dstr)),
+                        });
+                      }}
+                      className="rounded-md px-2 py-1.5 bg-slate-500 dark:bg-slate-600 hover:bg-slate-600 dark:hover:bg-slate-500 text-white text-xs font-semibold flex flex-col justify-center shadow-md truncate w-full cursor-pointer transition-colors"
+                    >
+                      <div className="truncate font-semibold">{otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}</div>
+                    </button>
+                  </Popover>
                 )}
               </div>
             );
@@ -926,7 +1035,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
         })()}
 
         {/* Calendar Legend */}
-        <div className="pt-3 border-t border-slate-100 dark:border-slate-700 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-500 dark:text-slate-400">
+        <div className="pt-3 p-4 border-t border-slate-100 dark:border-slate-700 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-500 dark:text-slate-400">
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded bg-blue-100 dark:bg-blue-900/50 border border-blue-400" />
             <span>{t('legend_today', 'Today')}</span>
@@ -940,12 +1049,16 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             <span>{t('legend_checked_out', 'Checked Out (past stay)')}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded bg-teal-600" />
+            <span className="w-3 h-3 rounded bg-blue-600" />
             <span>{t('legend_active_resident', 'Confirmed Stay')}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded bg-amber-600" />
+            <span className="w-3 h-3 rounded bg-purple-600" />
             <span>{t('legend_ota_converted_booking', 'OTA-Converted Booking')}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="flex w-2.5 h-2.5 bg-yellow-400 dark:bg-yellow-300 rounded-full shadow-xs ring-1 ring-yellow-600/50" />
+            <span>{t('legend_pending_action', 'Action Pending (ID, C-Form, Check-in/out)')}</span>
           </div>
         </div>
       </div>
