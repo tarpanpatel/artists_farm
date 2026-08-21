@@ -37,6 +37,7 @@ import { StyledSelect } from './StyledSelect';
 import { Input } from './Input';
 import { PageHeader } from './PageHeader';
 import { t } from '../i18n/en';
+import { centeredTabsTheme } from '../utils/tabsTheme';
 
 interface AnalyticsRoom {
   id: number;
@@ -1184,6 +1185,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         ref={tabsRef}
         aria-label="Analytics Report Tabs"
         variant="default"
+        theme={centeredTabsTheme}
         onActiveTabChange={(tabIndex: number) => {
           const tabs: ('overview' | 'bookings' | 'pace' | 'kitchen' | 'expenses' | 'profit_loss' | 'fluctuations')[] = kitchenModuleEnabled
             ? ['overview', 'bookings', 'pace', 'kitchen', 'expenses', 'profit_loss', 'fluctuations']

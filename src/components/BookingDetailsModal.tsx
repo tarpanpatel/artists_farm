@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2, Share2, LogOut, Upload, CreditCard, Globe, AlertTriangle, X } from 'lucide-react';
+import { Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2, Share2, LogOut, Upload, CreditCard, Globe, AlertTriangle, X, IndianRupee } from 'lucide-react';
 import { Drawer as FlowbiteDrawer, DrawerItems, Checkbox } from 'flowbite-react';
 import { Badge } from './Badge';
 import { Guest } from '../types';
@@ -13,6 +13,7 @@ import { Textarea } from './Textarea';
 import { DateRangePicker } from './DateRangePicker';
 import { CheckinVerificationModal } from './CheckinVerificationModal';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
+import { shareTextContent } from '../utils/shareText';
 import { t } from '../i18n/en';
 import {
   GUEST_STATUS_BOOKED,
@@ -280,23 +281,13 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
 
   const handleShareBooking = async () => {
     const message = buildShareMessage();
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      try {
-        await navigator.share({ title: 'Booking Details', text: message });
-      } catch (err: any) {
-        if (err?.name !== 'AbortError') {
-          console.error('Web Share failed:', err);
-        }
-      }
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(message);
-      showToast('Booking details copied - paste them wherever you\'d like to send them.', { type: 'success' });
-    } catch (err) {
-      console.error('Clipboard copy failed:', err);
-      showToast('Could not copy booking details.', { type: 'error' });
-    }
+    await shareTextContent(
+      'Booking Details',
+      message,
+      showToast,
+      "Booking details copied - paste them wherever you'd like to send them.",
+      'Could not share or copy booking details.',
+    );
   };
 
   const financialHandlers = staff.filter((s) => s.isFinancialHandler).map((s) => ({ value: s.name, label: s.name }));
@@ -434,21 +425,19 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
 
           {/* Unified Booking Form: Clean, Form-Based Layout (Disabled by Default, Editable on Edit) */}
           <div className="booking-details-modal__body space-y-3.5">
-            {/* Row 0: Guest Name */}
-            <div>
-              <Input
-                label={t('today_guest_name_label', 'Guest Name *')}
-                type="text"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                disabled={!isEditing}
-                placeholder="Enter guest's full name"
-                required
-              />
-            </div>
-
-            {/* Row 1: Contact Phone + Assigned Room (or 1-col if no rooms) */}
-            <div className={`grid ${rooms.length > 0 ? 'grid-cols-2' : 'grid-cols-1'} gap-3 sm:gap-4`}>
+            {/* Row 0: Guest Name + Contact Phone */}
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <div>
+                <Input
+                  label={t('today_guest_name_label', 'Guest Name *')}
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  disabled={!isEditing}
+                  placeholder="Enter guest's full name"
+                  required
+                />
+              </div>
               <div>
                 <Input
                   label={t('contact_phone_label', 'Contact Phone Number *')}
@@ -461,30 +450,32 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   required
                 />
               </div>
-              {rooms.length > 0 && (
-                <div>
-                  <StyledSelect
-                    label={t('assigned_room_label', 'Assigned Room / Villa *')}
-                    value={editRoomId}
-                    onChange={setEditRoomId}
-                    disabled={!isEditing}
-                    options={rooms.map((room) => {
-                      const newCheckin = new Date(editCheckin || guest.checkinDate);
-                      const newCheckout = new Date(editCheckout || guest.expectedCheckout);
-                      const occupiedByOther = checkedInGuests.some((other) => {
-                        if (other.id === guest.id) return false;
-                        const otherRoomId = (other as any).roomId ?? (other as any).room_id;
-                        if (Number(otherRoomId) !== Number(room.id)) return false;
-                        const otherCheckin = new Date(other.checkinDate);
-                        const otherCheckout = new Date(other.expectedCheckout || other.checkoutDate || other.checkinDate);
-                        return newCheckin < otherCheckout && otherCheckin < newCheckout;
-                      });
-                      return { value: String(room.id), label: `${room.name}${occupiedByOther ? ' (occupied these dates)' : ''}`, disabled: occupiedByOther };
-                    })}
-                  />
-                </div>
-              )}
             </div>
+
+            {/* Row 1: Assigned Room (multi-key properties only) */}
+            {rooms.length > 0 && (
+              <div>
+                <StyledSelect
+                  label={t('assigned_room_label', 'Assigned Room / Villa *')}
+                  value={editRoomId}
+                  onChange={setEditRoomId}
+                  disabled={!isEditing}
+                  options={rooms.map((room) => {
+                    const newCheckin = new Date(editCheckin || guest.checkinDate);
+                    const newCheckout = new Date(editCheckout || guest.expectedCheckout);
+                    const occupiedByOther = checkedInGuests.some((other) => {
+                      if (other.id === guest.id) return false;
+                      const otherRoomId = (other as any).roomId ?? (other as any).room_id;
+                      if (Number(otherRoomId) !== Number(room.id)) return false;
+                      const otherCheckin = new Date(other.checkinDate);
+                      const otherCheckout = new Date(other.expectedCheckout || other.checkoutDate || other.checkinDate);
+                      return newCheckin < otherCheckout && otherCheckin < newCheckout;
+                    });
+                    return { value: String(room.id), label: `${room.name}${occupiedByOther ? ' (occupied these dates)' : ''}`, disabled: occupiedByOther };
+                  })}
+                />
+              </div>
+            )}
 
             {/* Row 2: Booking Source + No. of Guests */}
             <div className="grid grid-cols-2 gap-3 sm:gap-4">
@@ -528,12 +519,13 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <Input
-                  label={t('room_rent', 'Room Rent / Price (₹)')}
+                  label={t('room_rent', 'Room Rent')}
                   type="number"
                   min={0}
                   value={editRoomRent}
                   onChange={(e) => setEditRoomRent(e.target.value)}
                   disabled={!isEditing}
+                  leftIcon={<IndianRupee className="w-3.5 h-3.5" />}
                 />
               </div>
               <div>
@@ -556,6 +548,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   value={editAdvance}
                   onChange={(e) => setEditAdvance(e.target.value)}
                   disabled={!isEditing}
+                  leftIcon={<IndianRupee className="w-3.5 h-3.5" />}
                 />
               </div>
               <div>

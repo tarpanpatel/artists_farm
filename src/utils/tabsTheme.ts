@@ -73,6 +73,12 @@ export const attachedTabsTheme = {
   base: 'flex flex-col gap-0',
   tabpanel: '',
   tablist: {
+    // Flowbite's own tablist.base is just 'flex text-center' - centering the
+    // *text inside* each tab, not the row of tabs as a group - so with few
+    // short tabs the whole strip packed flush left, leaving a lopsided gap
+    // of bare border on the right. justify-center centers the tab group
+    // itself within the tablist's full width (found 21 Aug 2026).
+    base: 'justify-center',
     // Deliberately NOT overriding this to border-b-0 (tried first, found
     // wrong 21 Aug 2026): with only 2-3 short tabs, the tablist is usually
     // much wider than the tabs themselves, and without the tablist's own
@@ -99,4 +105,16 @@ export const attachedTabsTheme = {
       },
     },
   },
+};
+
+/**
+ * Minimal centering override for plain `<Tabs variant="default">` usages
+ * that are NOT part of the attached-tabs pattern above (no shared card
+ * below, TabItems keep their own children/tabpanel as normal) - e.g.
+ * `AnalyticsDashboard.tsx`, `AppearanceSettings.tsx`. Same fix as
+ * `attachedTabsTheme.tablist.base` above and for the same reason: Flowbite's
+ * default tablist packs the tab group flush left (found 21 Aug 2026).
+ */
+export const centeredTabsTheme = {
+  tablist: { base: 'justify-center' },
 };

@@ -54,6 +54,24 @@ function fromIsoDate(value: string): Date | undefined {
  * Checkin/checkout field built directly on flowbite-datepicker's own
  * DateRangePicker - the vanilla-JS library flowbite.com's own docs use for
  * their "Date Range Picker" example.
+ *
+ * Both inputs are deliberately readOnly + inputMode="none" (found 21 Aug
+ * 2026) - the reference markup in flowbite's own component docs
+ * (themesberg/flowbite content/components/datepicker.md) uses plain typeable
+ * text inputs with no readonly attribute, but that lets a mobile OS keyboard
+ * pop up alongside the calendar popover on focus, which fights the popover
+ * for screen space and reads as "it's forcing me to type the date" even
+ * though tapping a day cell always worked. readOnly still allows focus/
+ * click/tap (Datepicker.js's onFocus/onClickInput handlers, which is what
+ * actually opens the popover) and doesn't block arrow-key navigation inside
+ * it - it only suppresses direct keyboard text entry, which is exactly the
+ * "calendar-only" behavior wanted here.
+ *
+ * The library also ships no dedicated Close button in its footer (only
+ * Today/Clear - confirmed against flowbite's own docs) - one is injected as
+ * a real DOM button into each side's own popover footer right after
+ * construction, since Picker's own constructor already synchronously builds
+ * and appends its element before this effect's next line runs.
  */
 export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   checkinDate,
@@ -96,6 +114,32 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       language: 'en',
     });
     rangepickerRef.current = rangepicker;
+
+    // The library has no built-in "Close" button (checked flowbite's own
+    // component docs 21 Aug 2026 - only Today/Clear exist in the footer) and
+    // its two inputs are plain type="text" fields, so on mobile focusing
+    // one to open the calendar also raises the OS keyboard, which visually
+    // fights the popover and makes it look like typing is the only option.
+    // Both fixed here: readOnly+inputMode="none" below stop the keyboard
+    // (tap-to-pick-only, arrow-key/click selection inside the popover still
+    // works - readonly doesn't block those), and this injects a real Close
+    // button into each side's own footer (built once at construction, since
+    // Picker's own constructor already synchronously creates+appends
+    // picker.element to its container - see picker/Picker.js).
+    rangepicker.datepickers.forEach((dp) => {
+      const footerControls = dp.pickerElement?.querySelector('.datepicker-footer .datepicker-controls');
+      if (!footerControls || footerControls.querySelector('.datepicker-close-btn')) return;
+      footerControls.querySelectorAll('.today-btn, .clear-btn').forEach((btn) => {
+        btn.classList.remove('w-1/2');
+        btn.classList.add('flex-1');
+      });
+      const closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.textContent = 'Close';
+      closeBtn.className = 'datepicker-close-btn flex-1 text-body bg-neutral-secondary-medium border border-default-medium hover:bg-neutral-tertiary-medium focus:ring-4 focus:ring-neutral-tertiary font-medium rounded-base text-sm px-5 py-2 text-center';
+      closeBtn.addEventListener('click', () => dp.hide());
+      footerControls.appendChild(closeBtn);
+    });
 
     const reportCurrentRange = () => {
       const [start, end] = rangepicker.dates;
@@ -140,14 +184,32 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
             <CalendarIcon />
           </div>
-          <input ref={startInputRef} name="start" type="text" disabled={disabled} className={fieldClass} placeholder={fromPlaceholder} />
+          <input
+            ref={startInputRef}
+            name="start"
+            type="text"
+            readOnly
+            inputMode="none"
+            disabled={disabled}
+            className={fieldClass}
+            placeholder={fromPlaceholder}
+          />
         </div>
         <span className="shrink-0 text-xs font-medium text-gray-500 dark:text-gray-400">to</span>
         <div className="relative flex-1">
           <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
             <CalendarIcon />
           </div>
-          <input ref={endInputRef} name="end" type="text" disabled={disabled} className={fieldClass} placeholder={toPlaceholder} />
+          <input
+            ref={endInputRef}
+            name="end"
+            type="text"
+            readOnly
+            inputMode="none"
+            disabled={disabled}
+            className={fieldClass}
+            placeholder={toPlaceholder}
+          />
         </div>
       </div>
     </div>

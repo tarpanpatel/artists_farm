@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Building2, LogOut, Plus, AlertCircle, Loader2,
   Pencil, Trash2, ExternalLink, CheckCircle, XCircle, Layers,
-  Home, TrendingUp, ChevronRight, Lock, Zap, User, MessageSquare,
-  Settings, Calendar, Users, Bell,
+  Home, TrendingUp, ChevronRight, Lock, Zap, User,
+  Calendar, Bell,
 } from 'lucide-react';
 import { Input } from './Input';
 import { Textarea } from './Textarea';
@@ -85,7 +85,6 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [modal, setModal] = useState<ModalState>({ type: 'none' });
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
   const [, setGuests] = useState<any[]>([]);
   const [, setServiceRequests] = useState<any[]>([]);
   const [todaysArrivalsCount, setTodaysArrivalsCount] = useState(0);
@@ -526,82 +525,6 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                   </div>
                 );
               })}
-            </div>
-          )}
-        </section>
-
-        {/* â"ۉ"€ Quick Actions â"ۉ"€ */}
-        <section className="tenant-dashboard__quick-actions">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4 tenant-dashboard__quick-actions-heading">{t('quick_actions_heading', 'Quick Actions')}</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 tenant-dashboard__quick-actions-grid">
-            {[
-              { label: t('guest_check_in_action', 'Guest Check-In'), icon: User, href: '#checkin', color: 'teal' },
-              { label: t('guest_check_out_action', 'Guest Check-Out'), icon: User, href: '#checkout', color: 'orange' },
-              { label: t('pending_actions_label', 'Pending Actions'), icon: AlertCircle, href: '#pending', color: 'amber' },
-              { label: t('new_booking_action', 'New Booking'), icon: Calendar, href: '#new-booking', color: 'indigo' },
-              { label: t('staff_management_action', 'Staff'), icon: Users, href: '#staff', color: 'purple' },
-              { label: t('telegram_setup_action', 'Telegram'), icon: MessageSquare, href: '#telegram', color: 'blue' },
-              { label: t('gst_settings_action', 'GST'), icon: Settings, href: '#gst', color: 'emerald' },
-            ].map((action) => {
-              const Icon = action.icon;
-              const colorMap: Record<string, string> = {
-                teal: 'bg-teal-50 dark:bg-teal-950/30 text-teal-600 dark:text-teal-400 border-teal-200 dark:border-teal-800',
-                orange: 'bg-orange-50 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800',
-                amber: 'bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800',
-                indigo: 'bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800',
-                purple: 'bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800',
-                blue: 'bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800',
-                emerald: 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
-                slate: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700',
-              };
-              return (
-                <button
-                  key={action.label}
-                  onClick={() => {
-                    if (properties.length === 1) {
-                      const p = properties[0];
-                      const tenantSlug = tenantInfo?.slug ?? '';
-                      const url = tenantSlug
-                        ? `${API_ROOT_BASE}/${tenantSlug}/${p.slug}/${action.href}`
-                        : `${API_ROOT_BASE}/${p.slug}/${action.href}`;
-                      window.location.href = url;
-                    } else if (properties.length > 1) {
-                      setSelectedPropertyId(prev => {
-                        const target = prev ?? properties[0].id;
-                        const p = properties.find(x => x.id === target) ?? properties[0];
-                        const tenantSlug = tenantInfo?.slug ?? '';
-                        const url = tenantSlug
-                          ? `${API_ROOT_BASE}/${tenantSlug}/${p.slug}/${action.href}`
-                          : `${API_ROOT_BASE}/${p.slug}/${action.href}`;
-                        window.location.href = url;
-                        return target;
-                      });
-                    }
-                  }}
-                  className={`flex flex-col items-center justify-center gap-2 p-4 rounded-lg border-2 transition-all active:scale-95 ${colorMap[action.color] ?? colorMap.slate} tenant-dashboard__quick-action-btn`}
-                >
-                  <Icon className="w-6 h-6 tenant-dashboard__quick-action-icon" />
-                  <span className="text-xs font-semibold text-center leading-tight tenant-dashboard__quick-action-label">{action.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Property selector for multi-property tenants */}
-          {properties.length > 1 && (
-            <div className="mt-4 flex items-center gap-3 tenant-dashboard__property-selector">
-              <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 tenant-dashboard__property-selector-label">{t('select_property_label', 'Select Property')}</label>
-              <div className="flex-1 max-w-xs tenant-dashboard__property-selector-wrapper">
-                <StyledSelect
-                  value={String(selectedPropertyId ?? properties[0]?.id ?? '')}
-                  onChange={(val) => setSelectedPropertyId(Number(val))}
-                  options={properties.map(p => ({
-                    value: String(p.id),
-                    label: p.name,
-                  }))}
-                  placeholder={t('select_property_label', 'Select Property')}
-                />
-              </div>
             </div>
           )}
         </section>

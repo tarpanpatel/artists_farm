@@ -203,6 +203,14 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
             break;
 
         case 'get_nav_menu':
+            // Self-heal block below (seed rows + ~15 idempotent renames/deletes) used to
+            // run on every single get_nav_menu call, unconditionally - this is a global,
+            // unscoped nav structure the sidebar/every editor screen fetches on basically
+            // every page load, so that's 15+ synchronous write queries per load, not once.
+            // Gated behind isSchemaVerified() now, same pattern every other self-heal block
+            // in this app already uses, instead of re-running the same no-op writes forever
+            // (found 21 Aug 2026, reported as "Edit Main Menu takes ages to load").
+            if (!isSchemaVerified('nav_menu_self_heal_v1')) {
             try {
 
 
@@ -260,6 +268,10 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                     $pdo->exec("DELETE FROM nav_menu_items WHERE custom_url IS NOT NULL AND custom_url != '' AND LOWER(title) = 'team'");
                     $pdo->exec("UPDATE nav_menu_items SET url_slug = 'team' WHERE (LOWER(title) = 'team' OR unique_key IN ('team', 'team_overview')) AND (url_slug LIKE 'custom_nav%' OR url_slug = 'team_overview' OR url_slug IS NULL)");
                 } catch (Exception $e) {}
+            } catch (Exception $e) {}
+                markSchemaVerified('nav_menu_self_heal_v1');
+            }
+            try {
                 $stmt = $pdo->query("SELECT id, title, tab_key as tabKey, unique_key as uniqueKey, COALESCE(NULLIF(url_slug, ''), unique_key) as urlSlug, category, icon_name as iconName, display_order as `order`, roles_json, is_visible as isVisible, COALESCE(custom_url, '') as customUrl, IFNULL(open_in_new_tab, 0) as openInNewTab, parent_id as parentId FROM nav_menu_items ORDER BY display_order ASC");
                 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 $data = array_map(function($r) {

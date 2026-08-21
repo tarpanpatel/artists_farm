@@ -4,6 +4,7 @@ import { Button } from './Button';
 import { Badge } from './Badge';
 import DataTable from 'react-data-table-component';
 import { flowbiteTableCustomStyles } from '../utils/tableStyles';
+import { centeredTabsTheme } from '../utils/tabsTheme';
 import { Boxes, PackagePlus, AlertTriangle, Plus, CheckCircle2, X, Upload, Search, ShoppingCart, Settings, Package, Check, ClipboardEdit, Edit2, Pencil, ChevronDown, ChevronUp, Loader2, FlaskConical, Coffee, Milk, Apple, Banana, Cake, Carrot, Wheat, SprayCan, Drumstick, UtensilsCrossed, Croissant, Soup, Droplet, Snowflake, Fish, Wrench, Balloon, Refrigerator, Microwave, Fan, Blend, Bean, HandPlatter, GlassWater, LeafyGreen, Trash2, Candy, Flame, Cherry, Grape, Citrus, Egg, CupSoda, Utensils, Sandwich, Cookie, Nut, Filter, Eye, type LucideIcon } from 'lucide-react';
 import { InventoryItem, CatalogItem } from '../types';
 import { t } from '../i18n/en';
@@ -1179,6 +1180,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         <Tabs
           aria-label="Kitchen Stock Tabs"
           variant="default"
+          theme={centeredTabsTheme}
           onActiveTabChange={(tabIndex: number) => {
             setCatalogView(tabIndex === 0 ? 'items' : 'categories');
           }}
@@ -1749,7 +1751,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         // available width - both tabs now stay on one row, scrolling
         // horizontally instead of wrapping if a title is ever still too
         // long for a very narrow screen (found 21 Aug 2026).
-        theme={{ tablist: { variant: { default: 'flex-nowrap overflow-x-auto' } } }}
+        theme={{ tablist: { base: 'justify-center', variant: { default: 'flex-nowrap overflow-x-auto' } } }}
         onActiveTabChange={(tabIndex: number) => {
           const tabs: ('fulfill' | 'requisitions')[] = ['fulfill', 'requisitions'];
           if (tabs[tabIndex]) setActiveTab(tabs[tabIndex]);

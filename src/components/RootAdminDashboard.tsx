@@ -77,6 +77,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
   }, [activeSection]);
 
   const [navItems, setNavItems] = useState<any[]>([]);
+  const [navItemsError, setNavItemsError] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   // Kept in local state so a username change in Account Settings reflects
   // immediately in the sidebar/header without needing a full re-login.
@@ -190,16 +191,25 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
   useEffect(() => {
     if (activeSection === 'edit_main_menu') {
       const loadNavItems = async () => {
+        setNavItemsError(null);
         try {
           const response = await fetch('/php/api/router.php?action=get_nav_menu', {
             credentials: 'include',
           });
-          const data = await response.json();
-          if (data.status === 'success' && Array.isArray(data.data)) {
+          // fetch() only rejects on a genuine network failure - a 401/403/500
+          // response still resolves normally, so without this check an error
+          // response silently left navItems at its empty default with no
+          // indication anything went wrong (found 21 Aug 2026, reported as
+          // "Menu Structure shows 0 items" with no error visible anywhere).
+          const data = await response.json().catch(() => null);
+          if (response.ok && data?.status === 'success' && Array.isArray(data.data)) {
             setNavItems(data.data);
+          } else {
+            setNavItemsError(data?.message || `Failed to load menu items (HTTP ${response.status}).`);
           }
-        } catch (err) {
+        } catch (err: any) {
           console.error('Failed to load nav items:', err);
+          setNavItemsError(err?.message || 'Network error while loading menu items.');
         }
       };
       loadNavItems();
@@ -481,12 +491,20 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
 
           {/* Edit Main Menu */}
           {activeSection === 'edit_main_menu' && (
-            <NavMenuEditor
-              navItems={navItems}
-              onUpdateNavItems={setNavItems}
-              activeRole={activeRole}
-              hideKitchenItems={false}
-            />
+            <>
+              {navItemsError && (
+                <div className="flex items-start gap-2 p-3 mb-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-300">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{navItemsError}</span>
+                </div>
+              )}
+              <NavMenuEditor
+                navItems={navItems}
+                onUpdateNavItems={setNavItems}
+                activeRole={activeRole}
+                hideKitchenItems={false}
+              />
+            </>
           )}
 
           {/* Appearance Settings */}

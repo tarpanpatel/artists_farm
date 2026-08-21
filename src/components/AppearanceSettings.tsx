@@ -4,6 +4,7 @@ import { Palette, Code } from 'lucide-react';
 import { ThemeManagement } from './ThemeManagement';
 import { CustomCSSOverride } from './CustomCSSOverride';
 import { t } from '../i18n/en';
+import { centeredTabsTheme } from '../utils/tabsTheme';
 
 interface AppearanceSettingsProps {
   activeRole?: string;
@@ -12,7 +13,7 @@ interface AppearanceSettingsProps {
 export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({ activeRole = '' }) => {
   return (
     <div className="space-y-6 appearance-settings">
-      <Tabs variant="default">
+      <Tabs variant="default" theme={centeredTabsTheme}>
         <TabItem active title={t('appearance_settings_theme_tab', 'Theme Colors')} icon={Palette}>
           <div className="pt-4">
             <ThemeManagement />

@@ -37,6 +37,7 @@ import { addStaffUserDB, deleteStaffUserDB, updateStaffUserDB, updateTenantSuper
 import { PageHeader } from './PageHeader';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import { t } from '../i18n/en';
+import { shareTextContent } from '../utils/shareText';
 
 interface StaffManagementProps {
   activeMenuItemKey?: string;
@@ -347,23 +348,13 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   // still works for every staff member regardless of username format.
   const handleShareLogin = async (user: { fullName: string; username: string; passcodePin?: string }) => {
     const message = buildStaffLoginShareMessage(user);
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      try {
-        await navigator.share({ title: 'Ground Code Login Details', text: message });
-      } catch (err: any) {
-        if (err?.name !== 'AbortError') {
-          console.error('Web Share failed:', err);
-        }
-      }
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(message);
-      showToast("Login details copied - paste them wherever you'd like to send them.", { type: 'success' });
-    } catch (err) {
-      console.error('Clipboard copy failed:', err);
-      showToast('Could not copy login details.', { type: 'error' });
-    }
+    await shareTextContent(
+      'Ground Code Login Details',
+      message,
+      showToast,
+      "Login details copied - paste them wherever you'd like to send them.",
+      'Could not share or copy login details.',
+    );
   };
 
 

@@ -11,6 +11,7 @@ import { useStaff } from '../contexts/StaffContext';
 import { t } from '../i18n/en';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import { UpiPaymentBlock } from '../utils/upiQrCode';
+import { shareTextContent } from '../utils/shareText';
 import { Modal as FlowbiteModal, ModalHeader, ModalBody, ModalFooter, Drawer as FlowbiteDrawer, DrawerItems } from 'flowbite-react';
 
 interface ReceiptEditModalProps {
@@ -510,28 +511,20 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   // WhatsApp, SMS, Telegram, "Copy", whatever's installed - instead of this
   // app assuming WhatsApp specifically (found 20 Aug 2026: a plain wa.me
   // link isn't what "generic share button" means, it's one fixed channel).
-  // Falls back to copying the message to the clipboard on browsers without
-  // Web Share support (desktop Firefox, etc). Same pattern as
-  // StaffManagement.tsx's handleShareLogin.
+  // Falls back to clipboard, then a legacy copy technique, on browsers/
+  // contexts without Web Share support - see shareTextContent for why both
+  // of those can be silently unavailable (e.g. testing over plain HTTP on a
+  // phone, found 21 Aug 2026, same pattern as StaffManagement.tsx's
+  // handleShareLogin).
   const handleShareReceipt = async () => {
     const message = buildReceiptShareMessage();
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      try {
-        await navigator.share({ title: 'Guest Checkout Bill', text: message });
-      } catch (err: any) {
-        if (err?.name !== 'AbortError') {
-          console.error('Web Share failed:', err);
-        }
-      }
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(message);
-      showToast('Bill details copied - paste them wherever you\'d like to send them.', { type: 'success' });
-    } catch (err) {
-      console.error('Clipboard copy failed:', err);
-      showToast('Could not copy bill details.', { type: 'error' });
-    }
+    await shareTextContent(
+      'Guest Checkout Bill',
+      message,
+      showToast,
+      "Bill details copied - paste them wherever you'd like to send them.",
+      'Could not share or copy bill details.',
+    );
   };
 
   const handleSaveOrCheckout = () => {
