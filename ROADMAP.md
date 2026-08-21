@@ -6,9 +6,8 @@ This document tracks identified bugs, pending backend API integrations, and upco
 
 ## ðŸŸ¢ Open Items
 ---top priority starts---
-:All buttons should be samstyled everywhere. For exampke edit button styling is different on different pages.
+:All buttons should be same tyled everywhere. For exampke edit button styling is different on different pages.
 in  Modify Team Member modal, passcode should be asked twice.
-[use lucide icons everywhere ](http://localhost:3000/rivera-resorts/luxe-stays/#expenses)
 
 ---top priority ends--- 
 

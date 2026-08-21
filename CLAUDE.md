@@ -4,38 +4,19 @@ This file documents ALL project conventions and rules. Every AI agent must follo
 
 ## 🎨 UI & Design Rules
 
-**`DESIGN.md` no longer maintains a separate hand-written design spec (removed 19 Aug 2026)** - the project now strictly follows Flowbite's own design system instead of a parallel rule set that had drifted out of sync with it (see `DESIGN.md` for what replaced it: pointers to `node_modules/flowbite-react/dist/components/*/theme.js` as the real ground truth, and to flowbite.com/application-ui/demo/ for whole-page patterns - **not** flowbite.com/docs/components/*, which is on an unreleased newer token system). Before building any new table, modal form, or summary-card UI, check what `flowbite-react` component already covers it rather than hand-rolling something.
+**All design, styling, icon, font, and component-library rules live in `DESIGN.md`** - that's the single source of truth for how things should look, kept in its own file so this always-loaded CLAUDE.md doesn't carry UI detail that most tasks don't need. Read `DESIGN.md` before building or touching any table, modal, tab bar, button, or summary-card UI.
 
 ### Protected Components (do not touch without explicit permission)
-- **`MultiRoomCalendar.tsx`/`CalendarView.tsx`** (the multi-room booking calendar grid) - proprietary, custom-built PMS logic (booking grid rendering, date math). Never refactor, restyle, or otherwise modify these without the user explicitly asking - including as part of a broader Flowbite-migration sweep. `DateRangePicker.tsx` is NOT in this list - it's in scope for the Flowbite migration like any other shared component.
+- **`OperationalDashboard.tsx`** (its "Booking Calendar Row" - the multi-room booking calendar grid: color-coded bookings, blocked dates, OTA-block conversion, edit modal) - proprietary, custom-built PMS logic. Reused per-room by `MultiKeyPropertyOverview.tsx` for the multi-key `#dashboard` view, not just the single-property dashboard. Never refactor, restyle, or otherwise modify this booking-calendar logic without the user explicitly asking - including as part of a broader Flowbite-migration sweep (corrected 21 Aug 2026 - this rule previously named `MultiRoomCalendar.tsx`/`CalendarView.tsx`, files that never existed anywhere in this repo's history, so the protection was silently not attached to anything real). `DateRangePicker.tsx` and `TodayOverview.tsx` are NOT in this list - they're in scope for the Flowbite migration like any other shared component.
 
-### Icon Library (CRITICAL)
-- **Use ONLY Lucide React icons** (`lucide-react` package)
-- NO other icon libraries (FontAwesome, Material-UI, etc.)
-- Examples: `Building`, `Users`, `Calendar`, `LogOut`, `DollarSign`, etc.
-- This includes: sidebar icons, button icons, navigation icons, property type icons
-- Search Lucide docs: https://lucide.dev/
+## 🧠 State & Data Management
 
-### Color & Styling
-- Use Tailwind CSS only
-- Follow existing color scheme: blue-600 (primary), emerald-600 (success), red-600 (error), amber-600 (warning)
-- Dark mode support: use `dark:` prefix for all colors
-- Always include dark theme variants
-
-### Component Library (Flowbite React & Core Flowbite Code - Standard across entire site)
-- **Core Flowbite Source Repository & Component Codes**:
-  - Reference: **https://github.com/themesberg/flowbite/tree/main/content/components**
-  - These are the standard, canonical Flowbite component codes and markup patterns to be used all over the site.
-- **Standing rule (Active Full Site Migration)**: `flowbite-react` (+ the `flowbite` Tailwind plugin and official Flowbite markup patterns from the repo above) are the standard across all pages, modals, forms, and tables.
-- For **new** components/screens, and anything getting rebuilt or updated: use official Flowbite components (forms, modals, inputs, checkboxes, dropdowns, tabs, buttons, badges, tables, tooltips, drawers, etc.) matching the core Flowbite implementation.
-- The **existing** hand-built shared components (`src/components/Input.tsx`, `StyledSelect.tsx`, `Button.tsx`, `Tooltip.tsx`, etc.) are still in active use across most of the app and are NOT dead code - don't delete or bypass them ad hoc. They get replaced screen-by-screen as part of the migration.
-- Always include dark theme variants (`dark:` prefix) and use Lucide icons (`lucide-react`).
-
-### Category Filter Toggle Pattern
-- On all screens with search and category filtering (e.g. `MenuManager.tsx`, `InventoryManagement.tsx`, `KitchenManagement.tsx`), category filter pills/bars **must not be open by default**.
-- Provide a `<Filter className="w-4 h-4" />` toggle button immediately next to the search input.
-- Reveal category pills only when the user clicks the filter toggle button.
-- Show an active dot indicator on the filter button when a non-default category is filtered while the bar is collapsed.
+### Field Name Conventions
+- **Database**: snake_case (e.g., `guest_name`, `checkin_date`, `room_id`)
+- **API Response**: camelCase (e.g., `guestName`, `checkinDate`, `roomNumber`)
+- **React Components**: camelCase properties
+- Apply `convertSnakeToCamel()` in PHP API responses
+- Apply field mapping in `fetchGuestsFromDB()` in `src/services/api.ts`
 
 ### Date Format (CRITICAL)
 - **Display format: DD/MM/YYYY** (e.g., `02/08/2026`, `15/12/2025`)
@@ -49,15 +30,6 @@ This file documents ALL project conventions and rules. Every AI agent must follo
     return `${parts[2]}/${parts[1]}/${parts[0]}`; // Convert to DD/MM/YYYY
   };
   ```
-
-## 🧠 State & Data Management
-
-### Field Name Conventions
-- **Database**: snake_case (e.g., `guest_name`, `checkin_date`, `room_id`)
-- **API Response**: camelCase (e.g., `guestName`, `checkinDate`, `roomNumber`)
-- **React Components**: camelCase properties
-- Apply `convertSnakeToCamel()` in PHP API responses
-- Apply field mapping in `fetchGuestsFromDB()` in `src/services/api.ts`
 
 ### Multi-Tenant Architecture
 - Property hierarchy: SINGLE (root) → MULTI_KEY (parent) → MULTI_KEY_ROOM (child rooms)
@@ -80,10 +52,7 @@ This file documents ALL project conventions and rules. Every AI agent must follo
 - **Property-level settings fan out wide.** `propertyGstin`/`propertyMapsLink`/`propertyPhone`/`propertyWhatsappTemplate`/`propertyUpiId` all originate in `App.tsx` (from `preloadedData.currentProperty`) and pass through up to 3 wrapper components (`MultiKeyPropertyOverview` → `OperationalDashboard`/`BillingCheckout` → `GuestManagement`/`ReceiptEditModal`/`BookingDetailsModal`) before reaching the leaf that actually builds a WhatsApp share or voucher. When adding a new property-level setting that needs to reach a share/voucher screen, `grep` an existing one (e.g. `propertyUpiId`) across `src/` to find every call site that needs the new prop added - App.tsx alone has 4+ separate render call sites for the same component (main render, Global Add Booking Modal, etc.) and it's easy to miss one.
 
 ### Modal & Dialog Rules
-- Always include close button (X icon from Lucide)
-- Include Cancel + Action buttons
-- Use fixed positioning with backdrop: `fixed inset-0 bg-black bg-opacity-50 z-50`
-- Show loading state on action button when `isProcessing`
+See `DESIGN.md`'s "Flowbite Modals & Drawers Specification" - all modals/dialogs open as a right-side drawer, not a centered popup.
 
 ### Receipt & Checkout
 - ReceiptEditModal: Show preview + allow editing charges
@@ -125,6 +94,7 @@ Features whose UI/backend wiring isn't obvious from file names alone - check her
 ### Financial Ledger - `postFinancialLedger()` requires `$propertyId` (CRITICAL, found 15 Aug 2026)
 - `postFinancialLedger($pdo, array $entry, int $propertyId = 1)` in `php/finance/ledger.php` silently defaults to property 1 if the 3rd argument is omitted.
 - **Every real (non-demo) call site except one had been omitting it** - guest-advance postings in `guests.php`, checkout settlements in `receipts.php`, and all 5 expense/salary/cash-drawer postings in `petty_cash.php`. Every property other than whichever one is actually `id=1` was having its financial-ledger entries silently misattributed to property 1's books, and property 1's ledger/petty-cash views were showing entries from every tenant mixed together. Fixed 15 Aug 2026 - all real call sites now pass `$propertyId` explicitly; `reverseFinancialSource()` already did.
+- Current real call sites (verified 21 Aug 2026, all passing `$propertyId`): `guests.php`, `receipts.php`, `petty_cash.php` (x5), plus `inventory.php` (kitchen purchase postings) and `walk_in_tabs.php` (walk-in tab billing) - check for new call sites with `grep -rn "postFinancialLedger(" php/` rather than trusting this list to stay complete.
 - **Always pass `$propertyId` explicitly on every `postFinancialLedger()` call** - never rely on the default.
 
 ### Critical multi-step writes use transactions
@@ -135,7 +105,7 @@ Features whose UI/backend wiring isn't obvious from file names alone - check her
 - Location: `php/api/demo_data.php`
 - Functions: `generateDemoData($pdo, $propertyId)`, `clearDemoData($pdo, $propertyId)`
 - Creates: 2 demo guests (1 per room for multi-key), 13 menu items, 6 inventory items, 4 staff, 4 property licenses (homestay/FSSAI/fire safety/GST - one of each deliberately active/expiring-soon/expired/active so License Management's expiry-alert states all have something to show, added 20 Aug 2026)
-- Guest names: "John Smith" (Room 101), "Sarah Johnson" (Room 102)
+- Guest names: randomly shuffled from a fixed pool of Indian names (e.g. Arjun Mehta, Priya Sharma, Rahul Verma...) in `demo_data.php`, not fixed names - don't assume a specific demo guest name will appear in a given room.
 
 ## 🧪 Testing & Development
 
@@ -181,7 +151,7 @@ Features whose UI/backend wiring isn't obvious from file names alone - check her
 
 ## ⚠️ Common Mistakes (DO NOT REPEAT)
 
-1. ❌ Using non-Lucide icons anywhere → Always use Lucide
+1. ❌ Using `lucide-react` icons in new/touched UI → `lucide-react` is deprecated site-wide (standing rule since 21 Aug 2026); use Flowbite's icon set instead (see DESIGN.md's "Icons" rule). Existing Lucide usage is still present across ~76 files and gets replaced screen-by-screen, not ripped out wholesale.
 2. ❌ Forgetting camelCase conversion in API mapping → Check `fetchGuestsFromDB()`
 3. ❌ Not filtering MULTI_KEY_ROOM from property lists → Always filter them out
 4. ❌ Creating multiple bookings in same room → Only 1 active booking per room
@@ -207,7 +177,7 @@ src/
   │   ├── GuestManagement.tsx           (Guest registration & checkout)
   │   ├── LicenseManagement.tsx         (License tracking & expiry reminders)
   │   ├── ErrorBoundary.tsx             (Per-section crash isolation, reports to Telescope)
-  │   ├── Header.tsx                    (Navigation + Test button)
+  │   ├── Header.tsx                    (Navigation - no Test button, see "Test/Demo Mode Indicator (REMOVED)")
   │   └── ...
   ├── utils/
   │   ├── upiQrCode.tsx                 (UPI deep link + QR block for shared vouchers/bills)
@@ -247,11 +217,11 @@ php/
 3. **Implement** following ALL rules strictly
 4. **Test** in browser (F12 → Console for errors)
 5. **Verify** dark mode support
-6. **Verify** Lucide icons only
+6. **Verify** Flowbite icons only (no new `lucide-react` usage)
 7. **Verify** camelCase/snake_case consistency
 
 ---
 
-**Last Updated**: 2026-08-19
+**Last Updated**: 2026-08-21
 **Project**: Ground Code Resort Management System
-**Tech Stack**: React + TypeScript + Tailwind CSS + Flowbite React + Lucide Icons + PHP + MySQL
+**Tech Stack**: React + TypeScript + Tailwind CSS + Flowbite React + Flowbite Icons (migrating off Lucide) + PHP + MySQL

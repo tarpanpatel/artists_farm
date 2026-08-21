@@ -28,11 +28,26 @@ one - it gives every future change a plausible-looking but wrong thing to match 
   (confirmed `0.12.17` is both installed and the latest published version). Comparing against those
   pages produces false mismatches. See project memory `flowbite_design_system_gap` for the full
   detail if this needs re-verifying later.
-- **Icons**: `lucide-react` only, no raw emojis in UI controls - see CLAUDE.md's "Icon Library"
-  section, which already states this independent of any Flowbite-specific guidance.
-- **Colors/dark-mode/z-index/etc.**: still governed by CLAUDE.md's relevant sections (`UI & Design
-  Rules`, the documented z-index scale in `src/index.css`) - those weren't part of the removed
-  design-rule set and remain in force.
+- **Icons (CRITICAL - standing rule since 21 Aug 2026)**: Use Flowbite's icon set - see the
+  [Flowbite icons reference](https://github.com/themesberg/flowbite/blob/main/content/customize/icons.md).
+  No raw emojis in UI controls either. `lucide-react` is being phased out project-wide and must not
+  be used for any new or touched UI - do not reintroduce Lucide imports in new components. Migration
+  is in progress, not done: as of 21 Aug 2026 `lucide-react` is still a dependency and still imported
+  in ~76 files across `src/`. Replace icons screen-by-screen as you touch a file - don't do a mass
+  find-replace sweep unless explicitly asked for one.
+- **Fonts**: Flowbite's default fonts everywhere.
+- **Component library**: `flowbite-react` (+ the `flowbite` Tailwind plugin and the official markup
+  patterns linked above) is the standard for all new, rebuilt, or updated components, modals, forms,
+  and tables. The **existing** hand-built shared components (`src/components/Input.tsx`,
+  `StyledSelect.tsx`, `Button.tsx`, `Tooltip.tsx`, etc.) are still in active use across most of the
+  app and are **not** dead code - don't delete or bypass them ad hoc. They get replaced
+  screen-by-screen as part of the migration, same as icons.
+- **Dark mode**: every color utility needs a `dark:` variant - no exceptions.
+- **Z-index**: governed by the scale documented directly in `src/index.css` - never adjust
+  header/sidebar/modal z-index in isolation.
+- **Colors**: not a separate hand-picked palette - follow `flowbite-react`'s own semantic color
+  tokens per `node_modules/flowbite-react/dist/components/*/theme.js` rather than hand-picking
+  Tailwind color classes, same ground-truth approach as everything else here.
 
 ## If a genuinely new, non-Flowbite-covered pattern comes up
 
@@ -50,6 +65,17 @@ On screens with search and category filtering (e.g. `MenuManager.tsx`, `Inventor
 - Display a filter toggle button (`<Filter className="w-4 h-4" />`) immediately to the right of the search input box.
 - The category filter pills bar/carousel is revealed **only when the user clicks the filter toggle button**.
 - Active filter indication: When a non-default category is selected and the filter bar is collapsed, display an active dot indicator on the filter toggle button.
+
+## Tooltips & Popovers Specification (Flowbite Popover Standard)
+
+Canonical reference: https://github.com/themesberg/flowbite/blob/main/content/components/popover.md
+
+- **Never use generic OS/browser `title="..."` attributes** for UI information, tooltips, or hover alerts.
+- All hover tooltips and interactive micro-cards across the site must strictly use Flowbite Popover / Tooltip styling:
+  - **Container**: `bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg text-xs`
+  - **Header** (when titled): `px-3 py-2 bg-gray-50 dark:bg-gray-700/60 border-b border-gray-200 dark:border-gray-700 font-semibold text-gray-900 dark:text-white rounded-t-lg`
+  - **Body**: `px-3 py-2 text-gray-600 dark:text-gray-300`
+  - **Trigger**: Support `trigger="hover"` for informative popover tooltips and `trigger="click"` for action popovers.
 
 ## Single Calendar Specification (Flowbite Application UI Demo Calendar)
 
@@ -114,6 +140,22 @@ All primary sub-page and section tab bars across the platform (e.g. `#take_food_
 
 - **No button ever has a box-shadow**, in any state (default/hover/active/focus) - flat fill + border only. This is a deliberate departure from Flowbite's own `Button` theme.js, which puts `shadow-sm` on its base and additional `shadow-sm`/`shadow-xs` on solid color variants; the shared `src/components/Button.tsx` explicitly cancels all of it with `shadow-none` per color (20 Aug 2026).
 - Any hand-rolled `<button>` styled to look like an action button (rather than a plain icon-only control) should be migrated to `src/components/Button.tsx` when touched, both for this shadow rule and for the DataTable Action Buttons rule below - don't hand-copy its color classes onto a raw `<button>`.
+
+## Form Controls (Checkboxes, Radios, Toggles, Selects)
+
+Ground truth is the theme.js files directly - `node_modules/flowbite-react/dist/components/
+{Checkbox,Radio,ToggleSwitch,Select}/theme.js` - not memory or assumption, same method as
+everything else in this file.
+
+- **Checkbox**: `rounded` (slightly-rounded square, ~0.25rem) - **not** circular. A checkbox
+  styled as a circle is a bug, not a variant (found 21 Aug 2026: `InventoryManagement.tsx`'s
+  `selectableRows` DataTable had no `selectableRowsComponent`, so `react-data-table-component`
+  rendered its own native checkbox instead of routing through this theme at all - check any
+  `selectableRows` DataTable for the same gap).
+- **Radio**: `rounded-full` - circular is correct here, don't "fix" radios to match checkboxes.
+- **ToggleSwitch**: pill-shaped track, its own shape family - for genuine on/off switches, not a
+  checkbox substitute.
+- **Select**: `rounded-lg` field.
 
 ## Flowbite Modals & Drawers Specification (Right Slide-over Drawers)
 
