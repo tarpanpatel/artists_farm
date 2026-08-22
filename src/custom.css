@@ -969,6 +969,46 @@ html.dark .rdt_responsiveWrapper::-webkit-scrollbar-track {
   scrollbar-color: rgba(99, 102, 241, 0.4) rgba(0, 0, 0, 0.05);
 }
 
+/* Main page scrollbar (22 Aug 2026) - on any page tall enough to actually
+   scroll, `html`'s scrollbar was left as bare unstyled OS/browser chrome
+   (classic Win32-style on Windows, ~15px, with its own inset gradient).
+   Against this app's off-white page background (`rgb(249,250,251)`, see the
+   `html, body` rule near the top of this file) that native gradient read as
+   an unexplained "shadow" running down the right edge - confirmed via
+   Playwright to be nothing but the OS scrollbar (no box-shadow anywhere on
+   html/body/the root wrapper div; every actual scrollbar rule in this file
+   before this point only targets `.overflow-x-auto`/`.rdt_responsiveWrapper`
+   table containers, never the page itself). Applying the exact same
+   thin/indigo treatment here instead of leaving it as bare OS chrome. */
+html::-webkit-scrollbar {
+  width: 10px;
+}
+
+html::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+html.dark::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+html::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.4);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+html::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.7);
+  background-clip: padding-box;
+}
+
+html {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99, 102, 241, 0.4) rgba(0, 0, 0, 0.05);
+}
+
 /* ==========================================================================
    React Data Table - Unified Flowbite Table Theme
    ========================================================================== */
