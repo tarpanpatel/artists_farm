@@ -12,6 +12,8 @@ tests/e2e/.auth/
 !tsconfig*.json
 !vite.config.*
 !tailwind.config.*
+!manifest.json
+!php/errors/manifest.json
 test_*.php
 fix_*.php
 temp_*.sql
@@ -25,6 +27,7 @@ artists_farm.zip
 production_export.sql
 vite-log.txt
 php/config/db_pass.php
+php/config/telescope_pass.php
 php/config/whatsapp_token.php
 php/config/unsplash_key.php
 .env

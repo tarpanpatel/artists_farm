@@ -333,22 +333,25 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
       <div className="analytics-kpi-grid grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
         <KpiCard
           label={t('total_cash_collected_label', 'Total Cash Collected')}
-          value={<><IndianRupee className="w-6 h-6 text-emerald-600 mr-0.5" />{totalCollected.toLocaleString('en-IN')}</>}
+          value={<><IndianRupee className="w-5 h-5 text-emerald-600 mr-0.5 shrink-0" /><span className="whitespace-nowrap">{totalCollected.toLocaleString('en-IN')}</span></>}
           subtext={t('from_guest_checkouts_label', 'From Guest Checkouts')}
           badge={{ text: 'Collected', color: 'success' }}
+          layout="stacked"
         />
         <KpiCard
           label={t('handed_over_to_safe_label', 'Handed Over to Safe')}
-          value={<><IndianRupee className="w-6 h-6 text-blue-600 mr-0.5" />{totalHandedOver.toLocaleString('en-IN')}</>}
+          value={<><IndianRupee className="w-5 h-5 text-blue-600 mr-0.5 shrink-0" /><span className="whitespace-nowrap">{totalHandedOver.toLocaleString('en-IN')}</span></>}
           subtext={t('deposited_by_staff_label', 'Deposited by Staff')}
           badge={{ text: 'Safe Handovers', color: 'info' }}
+          layout="stacked"
         />
         <KpiCard
           label={t('net_in_staff_hands_label', 'Net in Staff Hands')}
-          value={<><IndianRupee className="w-6 h-6 mr-0.5" />{totalCashInSystem.toLocaleString('en-IN')}</>}
+          value={<><IndianRupee className="w-5 h-5 mr-0.5 shrink-0" /><span className="whitespace-nowrap">{totalCashInSystem.toLocaleString('en-IN')}</span></>}
           valueClassName={totalCashInSystem > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-900 dark:text-white'}
           subtext={t('active_drawer_balances_label', 'Active Drawer Balances')}
           badge={{ text: 'In Hands', color: 'warning' }}
+          layout="stacked"
         />
       </div>
 
@@ -645,7 +648,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
             </div>
 
             {/* Desktop DataTable (hidden md:block) */}
-            <div className="hidden md:block overflow-hidden">
+            <div className="hidden md:block overflow-x-auto">
               <DataTable
                 columns={[
                   {
@@ -940,8 +943,8 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                 selector: (row: any) => row.pendingPayout,
                 sortable: true,
                 right: true,
-                width: '160px',
-                minWidth: '160px',
+                width: '210px',
+                minWidth: '210px',
                 cell: (row: any) => <span className="font-semibold text-blue-700 dark:text-blue-400 whitespace-nowrap">₹{row.pendingPayout.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
               },
               {

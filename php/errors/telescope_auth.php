@@ -1,0 +1,121 @@
+<?php
+/**
+ * Login gate for the Telescope Error Center (added 22 Aug 2026, at the
+ * user's explicit request - this page previously had no auth at all).
+ *
+ * Deliberately NOT wired to the main app's staff/session system
+ * (StaffContext, artists_farm_session, the staff_users table) - Telescope's
+ * whole reason for existing is to still work when the rest of the app is
+ * broken, including "the database itself is down" (a SQL Error is one of
+ * the very things it alerts on). If logging in here required a working DB
+ * connection, the one moment you most need to open Telescope - a live
+ * outage - is exactly the moment you'd be locked out of it. So this is a
+ * single shared password, file-backed, zero DB dependency, same pattern as
+ * php/config/db_pass.php.
+ *
+ * Uses its own session name (telescope_session) - entirely separate cookie
+ * from the main app's artists_farm_session, so logging in/out here can
+ * never interact with a staff member's own logged-in session on the real
+ * app, and vice versa.
+ */
+
+if (!function_exists('getTelescopePassword')) {
+
+    function getTelescopePassword(): string {
+        $envPass = getenv('TELESCOPE_ACCESS_PASSWORD');
+        if ($envPass) {
+            return $envPass;
+        }
+
+        $path = __DIR__ . '/../config/telescope_pass.php';
+        if (file_exists($path)) {
+            $stored = require $path;
+            if (is_string($stored) && $stored !== '') {
+                return $stored;
+            }
+        }
+
+        // Self-heal: first-ever access generates and persists a strong random
+        // password rather than shipping any hardcoded default (this app has
+        // already been burned once by exactly that - see ROADMAP.md's "hardcoded
+        // emergency-admin backdoor" entry - not repeating it here). Read it the
+        // same way db_pass.php's own value is normally retrieved: open the file
+        // on the server once (SSH/file manager) to see what got generated.
+        $generated = bin2hex(random_bytes(12));
+        @file_put_contents($path, "<?php\nreturn " . var_export($generated, true) . ";\n", LOCK_EX);
+        @chmod($path, 0600);
+        return $generated;
+    }
+
+    function telescopeStartSession(): void {
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            return;
+        }
+        session_name('telescope_session');
+        session_set_cookie_params([
+            'lifetime' => 86400 * 30,
+            'path' => '/php/errors/',
+            'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
+        session_start();
+    }
+
+    function isTelescopeAuthed(): bool {
+        telescopeStartSession();
+        return !empty($_SESSION['telescope_authed']);
+    }
+
+    function renderTelescopeLoginPage(?string $error = null): void {
+        ?>
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telescope Error Center</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0b0f19">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0b0f19; color: #f3f4f6; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center px-4">
+    <form id="loginForm" class="w-full max-w-sm bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-4 shadow-2xl">
+        <div class="flex items-center gap-2.5 mb-2">
+            <div class="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">🔭</div>
+            <h1 class="text-base font-bold text-white tracking-wider uppercase">Telescope Error Center</h1>
+        </div>
+        <?php if ($error): ?>
+        <div class="text-xs text-red-400 bg-red-950/40 border border-red-900 rounded-lg px-3 py-2"><?= htmlspecialchars($error) ?></div>
+        <?php endif; ?>
+        <input type="password" id="passwordInput" placeholder="Access password" autofocus
+            class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500">
+        <button type="submit" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-semibold rounded-lg px-3 py-2 transition cursor-pointer">
+            Unlock
+        </button>
+    </form>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const password = document.getElementById('passwordInput').value;
+            const res = await fetch('index.php?action=telescope_login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password }),
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                window.location.reload();
+            } else {
+                window.location.href = 'index.php?login_error=1';
+            }
+        });
+    </script>
+</body>
+</html>
+        <?php
+    }
+}

@@ -38,7 +38,7 @@ export const KpiCard: React.FC<KpiCardProps> = ({
               <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider leading-none truncate m-0">
                 {label}
               </p>
-              <span className={`text-base sm:text-lg font-extrabold tracking-tight leading-none ${valueClassName}`}>
+              <span className={`text-base sm:text-lg font-extrabold tracking-tight leading-none inline-flex items-center whitespace-nowrap shrink-0 ${valueClassName}`}>
                 {value}
               </span>
             </div>
@@ -47,7 +47,7 @@ export const KpiCard: React.FC<KpiCardProps> = ({
               <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider leading-tight truncate m-0">
                 {label}
               </p>
-              <div className={`text-xl sm:text-2xl font-extrabold tracking-tight flex items-center leading-none mt-1 ${valueClassName}`}>
+              <div className={`text-xl sm:text-2xl font-extrabold tracking-tight inline-flex items-center leading-none mt-1 whitespace-nowrap ${valueClassName}`}>
                 {value}
               </div>
             </>

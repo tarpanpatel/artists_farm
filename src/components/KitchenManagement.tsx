@@ -2683,7 +2683,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               </div>
 
               {/* Desktop DataTable (hidden md:block) */}
-              <div className="hidden md:block">
+              <div className="hidden md:block overflow-x-auto">
                 <DataTable
                   columns={[
                     {
@@ -3710,7 +3710,7 @@ const CurrentGuestServedDishes: React.FC<{ servedLogs: ServedLogEntry[] }> = ({ 
         </div>
 
         {/* Desktop DataTable (hidden md:block) */}
-        <div className="hidden md:block overflow-hidden">
+        <div className="hidden md:block overflow-x-auto">
           <DataTable
             columns={[
               { name: 'ID', selector: (row: ServedLogEntry) => row.id, omit: true },

@@ -897,388 +897,395 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           ))}
         </div>
 
-        {/* Calendar Grid - Full Width Dividers */}
+        {/* Calendar Grid - true week-segmented spanning capsules (22 Aug 2026
+            full rewrite, explicit request after being shown Airbnb's own
+            host multi-calendar as the target: a multi-night booking should
+            be ONE continuous bar, not per-day chips glued together with
+            negative margins - that lighter merge (still in git history/the
+            comments removed here) always left a faint 1px seam at the
+            grid's own `divide-x` line between cells, which can't be
+            removed without this: bars are now absolutely positioned OVER a
+            per-WEEK grid, spanning exactly the columns they cover via CSS
+            Grid's `gridColumn` placement, with no cell boundary crossing
+            through the bar itself at all - same reason TodayOverview's own
+            bars never show a seam.
+            Scope note: this still only shows the "primary" (first, by array
+            order) booking per day plus a "+N more" overflow count, exactly
+            like before - it does NOT add multi-lane stacking for several
+            simultaneously-active bookings on different rooms the same
+            night (a real, common case for this property-wide calendar).
+            That's a materially bigger feature (proper lane assignment
+            across the whole month, like TodayOverview's timelineLanesInfo)
+            and wasn't what was asked for - only the already-shown "primary"
+            booking becomes a true spanning bar instead of a chip. */}
         {(() => {
           const allOccupiedDateStrings = [
             ...guests.flatMap((g) => expandRangeToDayStrings(g.checkinDate, g.expectedCheckout || (g as any).checkoutDate || g.checkinDate)),
             ...blockedDates.flatMap((bd) => expandRangeToDayStrings(bd.event_start, bd.event_end)),
           ];
-          return (
-        <div className="grid grid-cols-7 divide-x divide-y divide-gray-200 dark:divide-gray-700 text-xs">
-          {Array.from({ length: firstDay }).map((_, idx) => (
-            <div key={`empty-${idx}`} className="min-h-[96px] sm:min-h-[110px] p-2 bg-gray-50/50 dark:bg-gray-800/40" />
-          ))}
 
-          {daysArray.map((d) => {
+          const checkedOutColor = 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600';
+          const otaBookingColor = 'bg-amber-600 dark:bg-amber-700 text-white border border-amber-700/30';
+          const directBookingColor = 'bg-blue-600 dark:bg-blue-600 text-white border border-blue-700/30';
+
+          // Precompute once per day - reused both for the day cell's own
+          // content (date number, "+more" overflow) and for grouping
+          // contiguous days into spanning-bar segments below.
+          const daysInfo = daysArray.map((d) => {
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
             // .filter(), not .find() - a property-wide calendar (no roomName,
-            // see the heading above) can have several rooms occupied the same
-            // night. The cell still only shows one chip (below) to keep the
-            // existing single-booking layout untouched, but the rest are no
-            // longer silently dropped - see the "+N more" pill.
+            // see the heading above) can have several rooms occupied the
+            // same night. The cell still only shows one bar (below) to keep
+            // the existing single-booking layout untouched, but the rest
+            // are no longer silently dropped - see the "+N more" pill.
+            // Bug found 22 Aug 2026 while verifying the spanning-bar
+            // rewrite: `dateStr < g.expectedCheckout` compared a bare date
+            // ("2026-08-21") against a full datetime ("2026-08-21
+            // 11:00:00") as plain strings - since the bare date is a
+            // literal PREFIX of the datetime string, JS string comparison
+            // ranks it as "less than" the datetime, so the filter kept
+            // matching on the actual checkout day too (one extra day past
+            // the real stay). Harder to notice as separate per-day chips;
+            // impossible to miss once that extra day became part of one
+            // visibly-too-long spanning bar. Stripping the time component
+            // before comparing (same normalization the OTA-block matching
+            // just below already does) fixes it for both. checkoutDate is
+            // already a bare date column, not touched.
             const dayBookingsForDate = guests.filter(
-              (g) => dateStr >= g.checkinDate && dateStr < (g.checkoutDate || g.expectedCheckout)
+              (g) => dateStr >= g.checkinDate && dateStr < (g.checkoutDate || (g.expectedCheckout || '').split(' ')[0].split('T')[0])
             );
-            const dayBooking = dayBookingsForDate[0];
+            const dayBooking = dayBookingsForDate[0] || null;
             const dayBookingOverflowCount = dayBookingsForDate.length - 1;
-
-            // Lighter-touch visual merge (22 Aug 2026, chosen over a full
-            // week-segmented spanning-capsule rewrite): a booking spanning
-            // several days still renders one chip per day cell, but when the
-            // SAME guest also occupies the adjacent day cell in this same
-            // calendar row, the shared edge drops its rounding and the chip
-            // stretches to meet it - reading as one continuous bar instead of
-            // separate pills with a gap between them. Only checks within the
-            // same week row (column 0/6 = Sun/Sat has no neighbor in this
-            // row) - the grid wraps every 7 days, so a booking crossing a
-            // week boundary is still two visually separate bars, one per row.
-            const colIndex = (firstDay + d - 1) % 7;
-            // Guard against the month's own edges, not just the grid row's:
-            // colIndex alone would let day 1 (if not a Sunday) build a
-            // nonsensical "day 0" lookup, and the month's last day (if not a
-            // Saturday) build a "day 32"-style string that can spuriously
-            // string-compare as "less than" a real guest's checkout in the
-            // FOLLOWING month - both harmless as strings, but the second one
-            // could wrongly report a continuation into a cell that doesn't
-            // exist in this month's grid at all.
-            const prevDayBooking = colIndex > 0 && d > 1
-              ? guests.find((g) => {
-                  const prevDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d - 1).padStart(2, '0')}`;
-                  return prevDateStr >= g.checkinDate && prevDateStr < (g.checkoutDate || g.expectedCheckout);
-                })
-              : null;
-            const nextDayBooking = colIndex < 6 && d < daysInMonth
-              ? guests.find((g) => {
-                  const nextDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d + 1).padStart(2, '0')}`;
-                  return nextDateStr >= g.checkinDate && nextDateStr < (g.checkoutDate || g.expectedCheckout);
-                })
-              : null;
-            const continuesFromPrevDay = !!(dayBooking && prevDayBooking && prevDayBooking.id === dayBooking.id);
-            const continuesToNextDay = !!(dayBooking && nextDayBooking && nextDayBooking.id === dayBooking.id);
-            // px-2 on the chip button itself already keeps its inner text
-            // spaced correctly regardless of where these margins shift the
-            // box - no extra padding compensation needed here.
-            // IMPORTANT: the chip button below must NOT also carry `w-full`
-            // (width:100%) - found 22 Aug 2026, reproduced live with a real
-            // multi-day booking: percentage widths resolve against the
-            // day-cell's content-box regardless of the chip's own margins,
-            // so a negative margin here shifts the box but the box's WIDTH
-            // stayed locked at 100% of the un-merged content area, leaving a
-            // visible gap (equal to the cell's own padding, ~6-8px) on every
-            // "merged" edge instead of the two chips actually touching. The
-            // day cell is a plain `flex flex-col` with no `items-*` override,
-            // so its default `align-items: stretch` already sizes a
-            // width-less flex child to fill the cross-axis AND correctly
-            // grows into a negative margin the way `width:100%` cannot -
-            // leave `w-full` off the button entirely (for every rounding
-            // state, not just the merged one) and let stretch handle it.
-            // border-l-0/border-r-0 on merged sides (22 Aug 2026, added
-            // alongside the bold-color match with TodayOverview): its
-            // chip/bar colors all carry a real `border`, and a plain
-            // Tailwind `border` applies to all 4 sides - left un-suppressed,
-            // a merged run of same-booking day-chips would show a visible
-            // 1-2px seam at every shared edge (each neighbor's own border
-            // meeting the other's), undoing the seamless-capsule fix above.
-            // Only the outer edges of the whole run should show a border,
-            // same as a single spanning bar only has one border around its
-            // true perimeter.
-            const chipEdgeRounding = `${continuesFromPrevDay ? 'rounded-l-none border-l-0 -ml-1.5 sm:-ml-2' : 'rounded-l-md'} ${continuesToNextDay ? 'rounded-r-none border-r-0 -mr-1.5 sm:-mr-2' : 'rounded-r-md'}`;
             // OTA-synced block for this day, on this room's own feed (this
-            // component already fetches get_blocked_dates scoped to whichever
-            // room's page it's rendered on). Only relevant when there's no
-            // direct guest booking already occupying the day - a synced OTA
-            // event usually corresponds 1:1 with a guest row once it's been
-            // turned into an actual booking, and the guest row should win.
+            // component already fetches get_blocked_dates scoped to
+            // whichever room's page it's rendered on). Only relevant when
+            // there's no direct guest booking already occupying the day - a
+            // synced OTA event usually corresponds 1:1 with a guest row
+            // once it's been turned into an actual booking, and the guest
+            // row should win.
             const otaBlock = !dayBooking
               ? blockedDates.find((bd) => {
                   const start = bd.event_start.split(' ')[0].split('T')[0];
                   const end = bd.event_end.split(' ')[0].split('T')[0];
                   return dateStr >= start && dateStr < end;
-                })
+                }) || null
               : null;
-            // Same "lighter-touch visual merge" as continuesFromPrevDay/
-            // continuesToNextDay above, applied to OTA-blocked chips too
-            // (found 22 Aug 2026 - reported as "OTA capsule is a different
-            // shape and size than others": the merge above was added for
-            // guest-booking chips only, so a multi-day OTA block still
-            // rendered as a chain of separate small rounded-md boxes with
-            // gaps instead of one joined bar, right next to guest bookings
-            // that now DO join - the mismatch got more visible, not less,
-            // the moment the guest-booking side of this was fixed).
-            // blockedDates rows have no id, so identity is the same
-            // event_start/event_end pair otaBlock itself was matched on.
-            const otaPrevDayBlock = colIndex > 0 && d > 1
-              ? blockedDates.find((bd) => {
-                  const prevDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d - 1).padStart(2, '0')}`;
-                  const start = bd.event_start.split(' ')[0].split('T')[0];
-                  const end = bd.event_end.split(' ')[0].split('T')[0];
-                  return prevDateStr >= start && prevDateStr < end;
-                })
-              : null;
-            const otaNextDayBlock = colIndex < 6 && d < daysInMonth
-              ? blockedDates.find((bd) => {
-                  const nextDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d + 1).padStart(2, '0')}`;
-                  const start = bd.event_start.split(' ')[0].split('T')[0];
-                  const end = bd.event_end.split(' ')[0].split('T')[0];
-                  return nextDateStr >= start && nextDateStr < end;
-                })
-              : null;
-            const otaBlockContinuesFromPrevDay = !!(
-              otaBlock && otaPrevDayBlock
-              && otaPrevDayBlock.event_start === otaBlock.event_start
-              && otaPrevDayBlock.event_end === otaBlock.event_end
-            );
-            const otaBlockContinuesToNextDay = !!(
-              otaBlock && otaNextDayBlock
-              && otaNextDayBlock.event_start === otaBlock.event_start
-              && otaNextDayBlock.event_end === otaBlock.event_end
-            );
-            // Same border-l-0/border-r-0 reasoning as chipEdgeRounding above.
-            const otaChipEdgeRounding = `${otaBlockContinuesFromPrevDay ? 'rounded-l-none border-l-0 -ml-1.5 sm:-ml-2' : 'rounded-l-md'} ${otaBlockContinuesToNextDay ? 'rounded-r-none border-r-0 -mr-1.5 sm:-mr-2' : 'rounded-r-md'}`;
             // monthOffset === 0 is required too, not just the day number -
-            // once the calendar can navigate away from the real current
-            // month (added 22 Aug 2026), a day number matching today's could
+            // the calendar can navigate away from the real current month
+            // (added 22 Aug 2026), so a day number matching today's could
             // otherwise light up in whatever OTHER month is being viewed.
             const isToday = monthOffset === 0 && d === today.getDate();
-
             const amount = (dayBooking as any)?.totalCharge || (dayBooking as any)?.totalAmount || (dayBooking as any)?.total_charge || 0;
             const nightlyRate = Math.round(amount / Math.max(1, 1));
-
-            // Colors matched exactly to TodayOverview.tsx's multi-property
-            // calendar (22 Aug 2026, explicit request for style parity
-            // between the two calendars) - see its `getGuestColor()` and the
-            // isOtaBooking ternary next to its own guest-chip render, plus
-            // its OTA-blocked chip and legend footer. Only the SHAPE stays
-            // different (per-day chip here vs a full spanning bar there) -
-            // that's structural, not a style choice.
-            const checkedOutColor = 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600';
             const isDayBookingCheckedOut = (() => {
               const s = String((dayBooking as any)?.status || '').trim().toLowerCase();
               return s === 'checkedout' || s === 'checked out';
             })();
-
             const isOtaBooking = !!(dayBooking as any)?.otaSource;
-            const otaBookingColor = 'bg-amber-600 dark:bg-amber-700 text-white border border-amber-700/30';
-            const directBookingColor = 'bg-blue-600 dark:bg-blue-600 text-white border border-blue-700/30';
+            return { d, dateStr, dayBookingsForDate, dayBooking, dayBookingOverflowCount, otaBlock, isToday, nightlyRate, isDayBookingCheckedOut, isOtaBooking };
+          });
 
-            return (
-              <div
-                key={`day-${d}`}
-                className={`min-h-[96px] sm:min-h-[110px] p-1.5 sm:p-2 flex flex-col justify-between transition-colors ${
-                  isToday
-                    ? 'bg-blue-50/40 dark:bg-blue-900/10'
-                    : 'bg-white dark:bg-gray-800 hover:bg-gray-50/60 dark:hover:bg-gray-700/30'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  {isToday ? (
-                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold shadow-xs">
-                      {d}
-                    </span>
-                  ) : (
-                    <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 ml-0.5">
-                      {d}
-                    </span>
-                  )}
-                </div>
-                {dayBooking && (() => {
-                  const dayPendingReasons = getGuestPendingReasons(dayBooking);
-                  const hasDayPending = dayPendingReasons.length > 0;
-                  return (
-                    <Popover
-                      trigger="click"
-                      placement="top"
-                      open={openBookingPopoverId === `${dayBooking.id}-${dateStr}`}
-                      onOpenChange={(isOpen) => setOpenBookingPopoverId(isOpen ? `${dayBooking.id}-${dateStr}` : null)}
-                      title={
-                        <div className="flex items-center justify-between gap-2">
-                          <h4 className="font-semibold text-gray-900 dark:text-white text-xs truncate">{dayBooking.guestName}</h4>
-                          {nightlyRate > 0 && (
-                            <span className="text-2xs font-bold text-blue-600 dark:text-blue-400 shrink-0">
-                              ₹{nightlyRate}/night
-                            </span>
-                          )}
-                        </div>
+          type DayInfo = (typeof daysInfo)[number];
+          // Same slot layout the old single grid used: `firstDay` blanks,
+          // then one entry per day of the month - chunked into groups of 7
+          // this gives each week row starting on the correct weekday,
+          // matching CSS Grid's own auto-wrap exactly (including a short
+          // last row; no trailing blanks are added, same as before).
+          const slots: (DayInfo | null)[] = [
+            ...Array.from({ length: firstDay }, () => null),
+            ...daysInfo,
+          ];
+          const weeks: (DayInfo | null)[][] = [];
+          for (let i = 0; i < slots.length; i += 7) {
+            weeks.push(slots.slice(i, i + 7));
+          }
+
+          type Segment = { startCol: number; endCol: number; kind: 'booking' | 'ota'; info: DayInfo };
+
+          return (
+            <div className="divide-y divide-gray-200 dark:divide-gray-700 text-xs">
+              {weeks.map((week, weekIdx) => {
+                // Group this week's columns into contiguous same-booking /
+                // same-OTA-block runs - each run becomes one spanning bar. A
+                // blank slot, or a change in which booking/block occupies
+                // the day, always ends the current run (bookings from
+                // different rooms never merge into one bar just because
+                // they're adjacent).
+                const segments: Segment[] = [];
+                let runStart: number | null = null;
+                let runKind: 'booking' | 'ota' | null = null;
+                let runKey: string | null = null;
+                const flush = (endCol: number) => {
+                  if (runStart !== null && runKind !== null) {
+                    segments.push({ startCol: runStart, endCol, kind: runKind, info: week[runStart]! });
+                  }
+                  runStart = null;
+                  runKind = null;
+                  runKey = null;
+                };
+                week.forEach((slot, col) => {
+                  const key = slot?.dayBooking ? `b-${slot.dayBooking.id}` : slot?.otaBlock ? `o-${slot.otaBlock.event_start}-${slot.otaBlock.event_end}` : null;
+                  const kind: 'booking' | 'ota' | null = slot?.dayBooking ? 'booking' : slot?.otaBlock ? 'ota' : null;
+                  if (key !== runKey) {
+                    flush(col - 1);
+                    if (key !== null) {
+                      runStart = col;
+                      runKind = kind;
+                      runKey = key;
+                    }
+                  }
+                });
+                flush(6);
+
+                return (
+                  <div key={`week-${weekIdx}`} className="relative grid grid-cols-7 divide-x divide-gray-200 dark:divide-gray-700">
+                    {week.map((slot, col) => {
+                      if (!slot) {
+                        return <div key={`blank-${col}`} className="min-h-[96px] sm:min-h-[110px] p-2 bg-gray-50/50 dark:bg-gray-800/40" />;
                       }
-                      content={
-                        <div className="w-64 text-xs">
-                          <div className="p-3 space-y-1.5 text-gray-600 dark:text-gray-300">
-                            {dayBooking.roomNumber && (
-                              <div className="flex items-center justify-between text-2xs">
-                                <span className="text-gray-500 dark:text-gray-400">Room:</span>
-                                <span className="font-semibold text-gray-900 dark:text-white">{dayBooking.roomNumber}</span>
-                              </div>
-                            )}
-                            <div className="flex items-center justify-between text-2xs">
-                              <span className="text-gray-500 dark:text-gray-400">Dates:</span>
-                              <span className="font-medium text-gray-700 dark:text-gray-200">
-                                {dayBooking.checkinDate} → {dayBooking.expectedCheckout || (dayBooking as any).checkoutDate}
+                      const { d, dateStr, dayBookingsForDate, dayBookingOverflowCount, isToday } = slot;
+                      return (
+                        <div
+                          key={`day-${d}`}
+                          className={`min-h-[96px] sm:min-h-[110px] p-1.5 sm:p-2 flex flex-col justify-between transition-colors ${
+                            isToday
+                              ? 'bg-blue-50/40 dark:bg-blue-900/10'
+                              : 'bg-white dark:bg-gray-800 hover:bg-gray-50/60 dark:hover:bg-gray-700/30'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            {isToday ? (
+                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold shadow-xs">
+                                {d}
                               </span>
-                            </div>
-                            {hasDayPending && (
-                              <div className="pt-1.5 border-t border-gray-100 dark:border-gray-700/60 text-amber-600 dark:text-amber-400 text-2xs font-semibold flex items-center gap-1.5">
-                                <span className="flex w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/40" />
-                                <span>Action Pending: {dayPendingReasons.join(', ')}</span>
-                              </div>
+                            ) : (
+                              <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 ml-0.5">
+                                {d}
+                              </span>
                             )}
                           </div>
-                          <div className="px-3 py-2 border-t border-gray-100 dark:border-gray-700/60 bg-gray-50/50 dark:bg-gray-800/50">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedBooking(dayBooking);
-                                setOpenBookingPopoverId(null);
-                              }}
-                              className="w-full text-center text-2xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline cursor-pointer transition-colors"
-                            >
-                              {t('view_more_button', 'View More')} →
-                            </button>
+                          {/* Invisible spacer reserving the same two-line
+                              height the overlay bar occupies, so the
+                              "+more" button below sits at the same spot it
+                              always has - the real, visible bar is drawn by
+                              the absolute overlay beneath this grid, not
+                              here. */}
+                          <div className="invisible px-2 py-1 text-xs" aria-hidden="true">
+                            <div>&nbsp;</div>
+                            <div className="text-2xs">&nbsp;</div>
                           </div>
-                        </div>
-                      }
-                    >
-                      <button
-                        type="button"
-                        className={`rounded-t-md rounded-b-md ${chipEdgeRounding} px-2 py-1 ${isDayBookingCheckedOut ? checkedOutColor : isOtaBooking ? otaBookingColor : directBookingColor} text-xs font-medium flex flex-col justify-center shadow-2xs hover:opacity-90 transition-opacity cursor-pointer truncate text-left relative z-10`}
-                      >
-                        <div className="truncate font-semibold flex items-center gap-1.5 min-w-0">
-                          {hasDayPending && (
-                            <span
-                              className="flex w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/50"
-                            />
-                          )}
-                          {isOtaBooking && <Globe className="w-2.5 h-2.5 shrink-0" />}
-                          <span className="truncate">{dayBooking.guestName.split(' ')[0]}</span>
-                        </div>
-                        {nightlyRate > 0 && <div className="text-2xs font-normal opacity-85">₹{nightlyRate}</div>}
-                      </button>
-                    </Popover>
-                  );
-                })()}
-                {dayBookingOverflowCount > 0 && (
-                  <Popover
-                    trigger="click"
-                    placement="auto"
-                    open={openOverflowDateStr === dateStr}
-                    onOpenChange={(isOpen) => setOpenOverflowDateStr(isOpen ? dateStr : null)}
-                    content={
-                      <div className="w-60 p-2">
-                        <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 px-1 pb-2">
-                          {formatDateDDMMYYYY(dateStr)} · {dayBookingsForDate.length} bookings
-                        </div>
-                        <div className="space-y-1 max-h-64 overflow-y-auto">
-                          {dayBookingsForDate.map((g) => {
-                            const amt = (g as any).totalCharge || (g as any).totalAmount || (g as any).total_charge || 0;
-                            const itemPendingReasons = getGuestPendingReasons(g);
-                            const hasItemPending = itemPendingReasons.length > 0;
-                            return (
-                              <button
-                                key={g.id}
-                                type="button"
-                                onClick={() => {
-                                  setSelectedBooking(g);
-                                  setOpenOverflowDateStr(null);
-                                }}
-                                className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 text-left transition-colors cursor-pointer"
-                              >
-                                <div className="min-w-0">
-                                  <div className="text-xs font-semibold text-slate-900 dark:text-white truncate flex items-center gap-1.5">
-                                    {hasItemPending && (
-                                      <span
-                                        className="flex w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/50"
-                                        title={`Action Pending: ${itemPendingReasons.join(', ')}`}
-                                      />
-                                    )}
-                                    <span className="truncate">{g.guestName}</span>
+                          {dayBookingOverflowCount > 0 && (
+                            <Popover
+                              trigger="click"
+                              placement="auto"
+                              open={openOverflowDateStr === dateStr}
+                              onOpenChange={(isOpen) => setOpenOverflowDateStr(isOpen ? dateStr : null)}
+                              content={
+                                <div className="w-60 p-2">
+                                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 px-1 pb-2">
+                                    {formatDateDDMMYYYY(dateStr)} · {dayBookingsForDate.length} bookings
                                   </div>
-                                  <div className="text-2xs text-slate-500 dark:text-slate-400">
-                                    {g.roomNumber}{amt > 0 ? ` · ₹${Math.round(amt)}` : ''}
+                                  <div className="space-y-1 max-h-64 overflow-y-auto">
+                                    {dayBookingsForDate.map((g) => {
+                                      const amt = (g as any).totalCharge || (g as any).totalAmount || (g as any).total_charge || 0;
+                                      const itemPendingReasons = getGuestPendingReasons(g);
+                                      const hasItemPending = itemPendingReasons.length > 0;
+                                      return (
+                                        <button
+                                          key={g.id}
+                                          type="button"
+                                          onClick={() => {
+                                            setSelectedBooking(g);
+                                            setOpenOverflowDateStr(null);
+                                          }}
+                                          className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 text-left transition-colors cursor-pointer"
+                                        >
+                                          <div className="min-w-0">
+                                            <div className="text-xs font-semibold text-slate-900 dark:text-white truncate flex items-center gap-1.5">
+                                              {hasItemPending && (
+                                                <span
+                                                  className="flex w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/50"
+                                                  title={`Action Pending: ${itemPendingReasons.join(', ')}`}
+                                                />
+                                              )}
+                                              <span className="truncate">{g.guestName}</span>
+                                            </div>
+                                            <div className="text-2xs text-slate-500 dark:text-slate-400">
+                                              {g.roomNumber}{amt > 0 ? ` · ₹${Math.round(amt)}` : ''}
+                                            </div>
+                                          </div>
+                                          <span className="text-2xs font-semibold text-blue-600 dark:text-blue-400 shrink-0">
+                                            {t('view_booking_button', 'View')} →
+                                          </span>
+                                        </button>
+                                      );
+                                    })}
                                   </div>
                                 </div>
-                                <span className="text-2xs font-semibold text-blue-600 dark:text-blue-400 shrink-0">
-                                  {t('view_booking_button', 'View')} →
-                                </span>
+                              }
+                            >
+                              <button
+                                type="button"
+                                className="text-2xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline py-0.5 text-left cursor-pointer transition-colors block w-full truncate"
+                              >
+                                +{dayBookingOverflowCount} more
                               </button>
-                            );
-                          })}
+                            </Popover>
+                          )}
                         </div>
-                      </div>
-                    }
-                  >
-                    <button
-                      type="button"
-                      className="text-2xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline py-0.5 text-left cursor-pointer transition-colors block w-full truncate"
-                    >
-                      +{dayBookingOverflowCount} more
-                    </button>
-                  </Popover>
-                )}
-                {otaBlock && (() => {
-                  // Same popover-first pattern as the guest-booking chip above
-                  // (22 Aug 2026, explicit request: "clicking any past or
-                  // future booking should show popover first ... a button to
-                  // view more"). This OTA-blocked chip previously used
-                  // trigger="hover" with the conversion action wired directly
-                  // to the chip's onClick - inconsistent with the
-                  // guest-booking chip's click-to-preview-then-"View More"
-                  // flow, and a hover trigger has the same stuck-open-on-
-                  // mobile-tap problem documented on Popover.tsx/CLAUDE.md
-                  // mistake #15 (no mouseleave on touch). Keyed by
-                  // `${event_start}-${dateStr}`, not just event_start, for
-                  // the same reason as openBookingPopoverId above: a block
-                  // spanning several days renders one chip per day sharing
-                  // the same event_start, so keying by event_start alone
-                  // would pop every day's chip open at once.
-                  const otaPopoverKey = `${otaBlock.event_start}-${dateStr}`;
-                  const handleConvert = () => {
-                    const ownDays = new Set(expandRangeToDayStrings(otaBlock.event_start, otaBlock.event_end));
-                    setOtaConversionTarget({
-                      block: otaBlock,
-                      blockedDateStrings: allOccupiedDateStrings.filter((dstr) => !ownDays.has(dstr)),
-                    });
-                    setOpenOtaPopoverId(null);
-                  };
-                  return (
-                    <Popover
-                      trigger="click"
-                      placement="top"
-                      open={openOtaPopoverId === otaPopoverKey}
-                      onOpenChange={(isOpen) => setOpenOtaPopoverId(isOpen ? otaPopoverKey : null)}
-                      title={
-                        <h4 className="font-semibold text-gray-900 dark:text-white text-xs truncate">
-                          {otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}
-                        </h4>
-                      }
-                      content={
-                        <div className="w-64 text-xs">
-                          <div className="p-3 space-y-1.5 text-gray-600 dark:text-gray-300">
-                            <div>
-                              {t('ota_blocked_tooltip_convertible', '{{source}} - not yet a booking.').replace('{{source}}', otaBlock.source_label || otaBlock.source || 'external calendar')}
+                      );
+                    })}
+
+                    {/* Absolute overlay: one true spanning bar per
+                        contiguous run computed above, positioned via CSS
+                        Grid column placement so the math (which columns it
+                        covers) is declarative rather than hand-rolled
+                        percentage/pixel positioning. top-[30px]/[32px]
+                        matches the day cell's own padding (p-1.5/p-2) plus
+                        its date-number row height (the w-6 h-6 today-circle,
+                        24px) - verified against the invisible spacer above
+                        via Playwright, not guessed. */}
+                    <div className="absolute inset-x-0 top-[30px] sm:top-[32px] pointer-events-none grid grid-cols-7 px-1.5 sm:px-2">
+                      {segments.map((seg, segIdx) => {
+                        const gridColumn = `${seg.startCol + 1} / span ${seg.endCol - seg.startCol + 1}`;
+                        if (seg.kind === 'booking') {
+                          const dayBooking = seg.info.dayBooking!;
+                          const { isDayBookingCheckedOut, isOtaBooking, nightlyRate } = seg.info;
+                          const dayPendingReasons = getGuestPendingReasons(dayBooking);
+                          const hasDayPending = dayPendingReasons.length > 0;
+                          const popoverKey = `${dayBooking.id}-${seg.info.dateStr}`;
+                          return (
+                            <div key={`seg-b-${weekIdx}-${segIdx}`} style={{ gridColumn }} className="pointer-events-auto px-0.5">
+                              <Popover
+                                trigger="click"
+                                placement="top"
+                                open={openBookingPopoverId === popoverKey}
+                                onOpenChange={(isOpen) => setOpenBookingPopoverId(isOpen ? popoverKey : null)}
+                                title={
+                                  <div className="flex items-center justify-between gap-2">
+                                    <h4 className="font-semibold text-gray-900 dark:text-white text-xs truncate">{dayBooking.guestName}</h4>
+                                    {nightlyRate > 0 && (
+                                      <span className="text-2xs font-bold text-blue-600 dark:text-blue-400 shrink-0">
+                                        ₹{nightlyRate}/night
+                                      </span>
+                                    )}
+                                  </div>
+                                }
+                                content={
+                                  <div className="w-64 text-xs">
+                                    <div className="p-3 space-y-1.5 text-gray-600 dark:text-gray-300">
+                                      {dayBooking.roomNumber && (
+                                        <div className="flex items-center justify-between text-2xs">
+                                          <span className="text-gray-500 dark:text-gray-400">Room:</span>
+                                          <span className="font-semibold text-gray-900 dark:text-white">{dayBooking.roomNumber}</span>
+                                        </div>
+                                      )}
+                                      <div className="flex items-center justify-between text-2xs">
+                                        <span className="text-gray-500 dark:text-gray-400">Dates:</span>
+                                        <span className="font-medium text-gray-700 dark:text-gray-200">
+                                          {dayBooking.checkinDate} → {dayBooking.expectedCheckout || (dayBooking as any).checkoutDate}
+                                        </span>
+                                      </div>
+                                      {hasDayPending && (
+                                        <div className="pt-1.5 border-t border-gray-100 dark:border-gray-700/60 text-amber-600 dark:text-amber-400 text-2xs font-semibold flex items-center gap-1.5">
+                                          <span className="flex w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/40" />
+                                          <span>Action Pending: {dayPendingReasons.join(', ')}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="px-3 py-2 border-t border-gray-100 dark:border-gray-700/60 bg-gray-50/50 dark:bg-gray-800/50">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setSelectedBooking(dayBooking);
+                                          setOpenBookingPopoverId(null);
+                                        }}
+                                        className="w-full text-center text-2xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline cursor-pointer transition-colors"
+                                      >
+                                        {t('view_more_button', 'View More')} →
+                                      </button>
+                                    </div>
+                                  </div>
+                                }
+                              >
+                                <button
+                                  type="button"
+                                  className={`w-full rounded-md px-2 py-1 ${isDayBookingCheckedOut ? checkedOutColor : isOtaBooking ? otaBookingColor : directBookingColor} text-xs font-medium flex flex-col justify-center shadow-2xs hover:opacity-90 transition-opacity cursor-pointer truncate text-left`}
+                                >
+                                  <div className="truncate font-semibold flex items-center gap-1.5 min-w-0">
+                                    {hasDayPending && (
+                                      <span className="flex w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/50" />
+                                    )}
+                                    {isOtaBooking && <Globe className="w-2.5 h-2.5 shrink-0" />}
+                                    <span className="truncate">{dayBooking.guestName.split(' ')[0]}</span>
+                                  </div>
+                                  {nightlyRate > 0 && <div className="text-2xs font-normal opacity-85">₹{nightlyRate}</div>}
+                                </button>
+                              </Popover>
                             </div>
+                          );
+                        }
+                        // OTA-blocked segment - same popover-first pattern as
+                        // the guest-booking segment above (22 Aug 2026,
+                        // explicit request: clicking should show a popover
+                        // first with a button to proceed, not act
+                        // immediately - and a hover trigger has the same
+                        // stuck-open-on-mobile-tap problem documented on
+                        // Popover.tsx/CLAUDE.md mistake #15).
+                        const otaBlock = seg.info.otaBlock!;
+                        const otaPopoverKey = `${otaBlock.event_start}-${seg.info.dateStr}`;
+                        const handleConvert = () => {
+                          const ownDays = new Set(expandRangeToDayStrings(otaBlock.event_start, otaBlock.event_end));
+                          setOtaConversionTarget({
+                            block: otaBlock,
+                            blockedDateStrings: allOccupiedDateStrings.filter((dstr) => !ownDays.has(dstr)),
+                          });
+                          setOpenOtaPopoverId(null);
+                        };
+                        return (
+                          <div key={`seg-o-${weekIdx}-${segIdx}`} style={{ gridColumn }} className="pointer-events-auto px-0.5">
+                            <Popover
+                              trigger="click"
+                              placement="top"
+                              open={openOtaPopoverId === otaPopoverKey}
+                              onOpenChange={(isOpen) => setOpenOtaPopoverId(isOpen ? otaPopoverKey : null)}
+                              title={
+                                <h4 className="font-semibold text-gray-900 dark:text-white text-xs truncate">
+                                  {otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}
+                                </h4>
+                              }
+                              content={
+                                <div className="w-64 text-xs">
+                                  <div className="p-3 space-y-1.5 text-gray-600 dark:text-gray-300">
+                                    <div>
+                                      {t('ota_blocked_tooltip_convertible', '{{source}} - not yet a booking.').replace('{{source}}', otaBlock.source_label || otaBlock.source || 'external calendar')}
+                                    </div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={handleConvert}
+                                    className="w-full text-center py-2 text-2xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 border-t border-gray-100 dark:border-gray-700/60 transition-colors"
+                                  >
+                                    {t('convert_to_booking_button', 'Convert to Booking')} →
+                                  </button>
+                                </div>
+                              }
+                            >
+                              <button
+                                type="button"
+                                className="w-full rounded-md px-2 py-1 bg-slate-700 dark:bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white text-xs font-medium flex flex-col justify-center shadow-2xs truncate text-left cursor-pointer transition-colors"
+                              >
+                                <div className="truncate font-semibold">{otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}</div>
+                              </button>
+                            </Popover>
                           </div>
-                          <button
-                            type="button"
-                            onClick={handleConvert}
-                            className="w-full text-center py-2 text-2xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 border-t border-gray-100 dark:border-gray-700/60 transition-colors"
-                          >
-                            {t('convert_to_booking_button', 'Convert to Booking')} →
-                          </button>
-                        </div>
-                      }
-                    >
-                      <button
-                        type="button"
-                        className={`rounded-t-md rounded-b-md ${otaChipEdgeRounding} px-2 py-1 bg-slate-700 dark:bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white text-xs font-medium flex flex-col justify-center shadow-2xs truncate text-left cursor-pointer transition-colors relative z-10`}
-                      >
-                        <div className="truncate font-semibold">{otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}</div>
-                      </button>
-                    </Popover>
-                  );
-                })()}
-              </div>
-            );
-          })}
-        </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           );
         })()}
 

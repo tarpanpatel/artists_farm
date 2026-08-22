@@ -5,13 +5,75 @@
  */
 
 require_once __DIR__ . '/logger.php';
+require_once __DIR__ . '/web_push.php';
+require_once __DIR__ . '/telescope_auth.php';
 
 // Handle API requests
 $rawBody = file_get_contents('php://input');
 $jsonInput = !empty($rawBody) ? json_decode($rawBody, true) : null;
 $action = $_GET['action'] ?? $_POST['action'] ?? ($jsonInput['action'] ?? null);
 
-if ($action === 'fetch_logs' || $action === 'log_event' || $action === 'reset_logs' || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false)) {
+// log_event MUST stay reachable with no login at all - it's the ingestion
+// endpoint EVERY visitor's browser posts to automatically on a JS crash
+// (recordTelescopeLog() in src/utils/telescopeLogger.ts, via sendBeacon),
+// not just the root admin's. Gating this would silently blind the entire
+// JS Browser portal again for every real user, not just lock out a stranger.
+if ($action === 'log_event') {
+    header('Content-Type: application/json');
+    $input = is_array($jsonInput) ? $jsonInput : $_POST;
+    TelescopeLogger::log(
+        $input['portal'] ?? 'js',
+        $input['severity'] ?? 'JS Exception',
+        $input['msg'] ?? 'Client Error',
+        $input['origin'] ?? 'Browser Client',
+        $input['extra'] ?? []
+    );
+    echo json_encode(['status' => 'success', 'message' => 'Log entry captured successfully']);
+    exit();
+}
+
+// ---- Login gate (added 22 Aug 2026) - everything below this line requires
+// a valid telescope_session. See telescope_auth.php's file comment for why
+// this is a standalone file-backed password rather than the main app's
+// staff/DB login. ----
+if ($action === 'telescope_login') {
+    header('Content-Type: application/json');
+    telescopeStartSession();
+    $password = is_array($jsonInput) ? ($jsonInput['password'] ?? '') : ($_POST['password'] ?? '');
+    if (hash_equals(getTelescopePassword(), (string) $password)) {
+        $_SESSION['telescope_authed'] = true;
+        echo json_encode(['status' => 'success']);
+    } else {
+        http_response_code(401);
+        echo json_encode(['status' => 'error', 'message' => 'Incorrect password']);
+    }
+    exit();
+}
+if ($action === 'telescope_logout') {
+    telescopeStartSession();
+    $_SESSION = [];
+    session_destroy();
+    header('Content-Type: application/json');
+    echo json_encode(['status' => 'success']);
+    exit();
+}
+
+$pushActions = ['get_vapid_public_key', 'save_push_subscription', 'delete_push_subscription', 'send_test_push'];
+$isGatedApiAction = $action === 'fetch_logs' || $action === 'reset_logs' || in_array($action, $pushActions, true);
+$wantsJson = $isGatedApiAction || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
+
+if (!isTelescopeAuthed()) {
+    if ($wantsJson) {
+        http_response_code(401);
+        header('Content-Type: application/json');
+        echo json_encode(['status' => 'error', 'message' => 'Not authenticated']);
+        exit();
+    }
+    renderTelescopeLoginPage(!empty($_GET['login_error']) ? 'Incorrect password.' : null);
+    exit();
+}
+
+if ($wantsJson) {
     header('Content-Type: application/json');
     header('Access-Control-Allow-Origin: *');
     header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
@@ -28,23 +90,62 @@ if ($action === 'fetch_logs' || $action === 'log_event' || $action === 'reset_lo
     $dateFrom = $_GET['date_from'] ?? '';
     $dateTo = $_GET['date_to'] ?? '';
 
-    if ($action === 'log_event') {
-        $input = is_array($jsonInput) ? $jsonInput : $_POST;
-        $portalInput = $input['portal'] ?? 'js';
-        $severityInput = $input['severity'] ?? 'JS Exception';
-        $msgInput = $input['msg'] ?? 'Client Error';
-        $originInput = $input['origin'] ?? 'Browser Client';
-        $extraData = $input['extra'] ?? [];
-
-        TelescopeLogger::log($portalInput, $severityInput, $msgInput, $originInput, $extraData);
-
-        echo json_encode(['status' => 'success', 'message' => 'Log entry captured successfully']);
-        exit();
-    }
-
     if ($action === 'reset_logs') {
         $ok = TelescopeLogger::clear();
         echo json_encode(['status' => $ok ? 'success' : 'error', 'message' => $ok ? 'Telescope logs cleared' : 'Failed to clear log file']);
+        exit();
+    }
+
+    if ($action === 'get_vapid_public_key') {
+        $keys = getVapidKeys();
+        echo json_encode(['status' => 'success', 'publicKey' => $keys['public_raw_b64url']]);
+        exit();
+    }
+
+    if ($action === 'save_push_subscription') {
+        $sub = is_array($jsonInput) ? ($jsonInput['subscription'] ?? null) : null;
+        if (!is_array($sub) || empty($sub['endpoint']) || empty($sub['keys']['p256dh']) || empty($sub['keys']['auth'])) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'Invalid subscription payload']);
+            exit();
+        }
+        wp_add_subscription($sub);
+        echo json_encode(['status' => 'success']);
+        exit();
+    }
+
+    if ($action === 'delete_push_subscription') {
+        $endpoint = is_array($jsonInput) ? ($jsonInput['endpoint'] ?? '') : ($_POST['endpoint'] ?? '');
+        if ($endpoint) {
+            wp_remove_subscription($endpoint);
+        }
+        echo json_encode(['status' => 'success']);
+        exit();
+    }
+
+    if ($action === 'send_test_push') {
+        $subs = wp_load_subscriptions();
+        if (empty($subs)) {
+            echo json_encode(['status' => 'error', 'message' => 'No devices subscribed yet - tap "Enable Alerts" first.']);
+            exit();
+        }
+        $results = broadcastWebPush([
+            'title' => '✅ Telescope test alert',
+            'body' => 'If you can see this, push notifications are working.',
+            'url' => '/php/errors/',
+            'tag' => 'telescope-test',
+        ]);
+        $okCount = count(array_filter($results, fn($r) => $r['ok']));
+        $failCount = count($results) - $okCount;
+        if ($failCount === 0) {
+            echo json_encode(['status' => 'success', 'message' => "Delivered to $okCount device(s)."]);
+        } else {
+            $firstError = '';
+            foreach ($results as $r) {
+                if (!$r['ok']) { $firstError = $r['error'] ?: ('HTTP ' . $r['status']); break; }
+            }
+            echo json_encode(['status' => 'error', 'message' => "Delivered to $okCount, failed for $failCount. First error: $firstError"]);
+        }
         exit();
     }
 
@@ -65,6 +166,9 @@ if ($action === 'fetch_logs' || $action === 'log_event' || $action === 'reset_lo
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Telescope Error Center</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0b0f19">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #0b0f19; color: #f3f4f6; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
@@ -89,6 +193,12 @@ if ($action === 'fetch_logs' || $action === 'log_event' || $action === 'reset_lo
             <div id="liveClock" class="text-red-500 font-mono font-bold text-lg tracking-wider ml-4"></div>
         </div>
         <div class="flex items-center gap-4 text-xs font-sans">
+            <div class="flex items-center gap-1.5">
+                <button id="pushToggleBtn" onclick="togglePushSubscription()" class="flex items-center gap-1 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition border border-gray-700 cursor-pointer" title="Get a real push notification on this device whenever a real error happens - no need to keep this page open">
+                    <svg class="icon text-[11px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+                    <span id="pushBtnLabel">Enable Alerts</span>
+                </button>
+            </div>
             <button onclick="resetLogs()" class="flex items-center gap-1 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition border border-gray-700 cursor-pointer" title="Clear and reset Telescope logs">
                 <svg class="icon text-red-400 text-[11px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                 <span>Reset Logs</span>
@@ -103,6 +213,9 @@ if ($action === 'fetch_logs' || $action === 'log_event' || $action === 'reset_lo
             <a href="../../index.php" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-md font-semibold transition border border-gray-700">
                 &larr; Back to App
             </a>
+            <button onclick="telescopeLogout()" class="px-3 py-1.5 bg-gray-800 hover:bg-red-900/60 text-gray-300 hover:text-red-300 rounded-md font-semibold transition border border-gray-700 cursor-pointer" title="Log out of Telescope">
+                Log Out
+            </button>
         </div>
     </header>
 
@@ -533,6 +646,131 @@ if ($action === 'fetch_logs' || $action === 'log_event' || $action === 'reset_lo
 
     window.addEventListener('telescope_log_added', () => loadPortalLogs());
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+    // ---- Web Push (added 22 Aug 2026) ----
+    // "Enable Alerts" registers this page's own dedicated service worker
+    // (sw-telescope.js, scoped to /php/errors/ - separate from the main
+    // app's sw.js) and subscribes it to push via the VAPID public key the
+    // backend generates/serves. Real notifications arrive even if this tab
+    // isn't open, as long as the Telescope PWA has been installed at least
+    // once (required on iOS Safari; Chrome/Android/desktop work without
+    // installing too, but installing makes delivery far more reliable
+    // everywhere since the browser doesn't need to keep a tab process alive).
+    let swRegistration = null;
+
+    function urlBase64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const rawData = atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; i++) outputArray[i] = rawData.charCodeAt(i);
+        return outputArray;
+    }
+
+    async function initPush() {
+        const btn = document.getElementById('pushToggleBtn');
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+            if (btn) {
+                btn.disabled = true;
+                btn.title = 'Push notifications are not supported in this browser';
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+            return;
+        }
+        try {
+            swRegistration = await navigator.serviceWorker.register('sw-telescope.js', { scope: './' });
+        } catch (e) {
+            console.warn('Telescope service worker registration failed:', e);
+            return;
+        }
+        const existing = await swRegistration.pushManager.getSubscription();
+        updatePushButton(!!existing);
+    }
+
+    function updatePushButton(isSubscribed) {
+        const label = document.getElementById('pushBtnLabel');
+        const btn = document.getElementById('pushToggleBtn');
+        if (!label || !btn) return;
+        label.textContent = isSubscribed ? 'Alerts On' : 'Enable Alerts';
+        btn.classList.toggle('border-emerald-600', isSubscribed);
+        btn.classList.toggle('text-emerald-400', isSubscribed);
+
+        let testBtn = document.getElementById('pushTestBtn');
+        if (isSubscribed && !testBtn) {
+            testBtn = document.createElement('button');
+            testBtn.id = 'pushTestBtn';
+            testBtn.textContent = 'Send Test';
+            testBtn.title = 'Send a test push notification to every subscribed device';
+            testBtn.className = 'text-cyan-400 hover:text-cyan-300 underline text-[11px] cursor-pointer';
+            testBtn.onclick = sendTestPush;
+            btn.insertAdjacentElement('afterend', testBtn);
+        } else if (!isSubscribed && testBtn) {
+            testBtn.remove();
+        }
+    }
+
+    async function togglePushSubscription() {
+        if (!swRegistration) {
+            alert('Push is not ready yet - try again in a moment.');
+            return;
+        }
+        const existing = await swRegistration.pushManager.getSubscription();
+        if (existing) {
+            await existing.unsubscribe();
+            await fetch('index.php?action=delete_push_subscription', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ endpoint: existing.endpoint }),
+            });
+            updatePushButton(false);
+            return;
+        }
+
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+            alert('Notification permission was not granted.');
+            return;
+        }
+
+        const res = await fetch('index.php?action=get_vapid_public_key');
+        const data = await res.json();
+        if (!data || !data.publicKey) {
+            alert('Could not fetch the push key from the server.');
+            return;
+        }
+
+        let subscription;
+        try {
+            subscription = await swRegistration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(data.publicKey),
+            });
+        } catch (e) {
+            alert('Could not subscribe to push notifications: ' + e.message);
+            return;
+        }
+
+        await fetch('index.php?action=save_push_subscription', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subscription: subscription.toJSON() }),
+        });
+
+        updatePushButton(true);
+    }
+
+    async function sendTestPush() {
+        const res = await fetch('index.php?action=send_test_push', { method: 'POST' });
+        const data = await res.json();
+        alert(data.message || (data.status === 'success' ? 'Test push sent.' : 'Failed to send test push.'));
+    }
+
+    async function telescopeLogout() {
+        await fetch('index.php?action=telescope_logout', { method: 'POST' });
+        window.location.reload();
+    }
+
+    initPush();
 
     loadPortalLogs();
     togglePollingMode();

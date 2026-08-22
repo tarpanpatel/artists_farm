@@ -1065,7 +1065,7 @@ export const strings: Record<string, string> = {
   guest_billing_checkout_title: "All Bookings",
   today_tab: "Today",
   upcoming_tab: "Upcoming",
-  past_bookings_tab: "Past Bookings",
+  past_bookings_tab: "Past",
   search_guest_placeholder: "Search guest name, phone, or room...",
   filter_room_all_label: "Filter Room: All",
   no_guest_records_found: "No Guest Records Found",

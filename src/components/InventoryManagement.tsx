@@ -1099,7 +1099,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           </div>
 
           {/* Desktop DataTable (hidden md:block) */}
-          <div className="hidden md:block overflow-hidden">
+          <div className="hidden md:block overflow-x-auto">
             <DataTable
               columns={[
                 {
@@ -1230,7 +1230,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 </div>
               )}
 
-              <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md overflow-hidden">
+              <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md overflow-x-auto">
                 <DataTable
                   key={catalogTableKey}
                   columns={[
@@ -1782,7 +1782,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               this unconditional just doubled the border/shadow around a
               single piece of content ("block inside a block", 20 Aug 2026). */}
           <div className="space-y-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3.5 sm:p-4 md:bg-transparent md:dark:bg-transparent md:border-0 md:rounded-none md:p-0">
-            <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md overflow-hidden">
+            <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md overflow-x-auto">
               <DataTable
                 columns={[
                   {
@@ -2576,7 +2576,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       <PageHeader title={t('inventory_catalog_heading')} subtitle={t('inventory_catalog_subtitle')} />
 
       {/* Desktop DataTable */}
-      <div className="hidden md:block">
+      <div className="hidden md:block overflow-x-auto">
         <DataTable
           columns={stockLogColumns}
           data={filteredInventory}

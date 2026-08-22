@@ -467,44 +467,39 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                             )}
                           </div>
                         </div>
-                        <Badge variant={stayStatus.variant} size="sm">
-                          {stayStatus.label}
-                        </Badge>
-                      </div>
+                        {/* Right Side Stack: Stay Status Badge (Checked In Today, etc.) + Warnings directly below */}
+                        <div className="flex flex-col items-end gap-1.5 shrink-0">
+                          <Badge variant={stayStatus.variant} size="sm" className="whitespace-nowrap">
+                            {stayStatus.label}
+                          </Badge>
 
-                      {/* C-Form Filing Status - foreign guests only (regulatory: Foreigner
-                          Registration Office reporting). Was previously only visible on the
-                          removed "Past Guests" archive page; the actual filing toggle lives in
-                          BookingDetailsModal (Edit Booking), this is just the at-a-glance
-                          indicator so a pending filing isn't only discoverable by opening every
-                          card one by one. */}
-                      {(guest.isForeignGuest || guest.idVerificationStatus !== 'Complete') && (
-                        <div className="mt-1.5 flex flex-wrap gap-1.5">
                           {guest.isForeignGuest && (
                             guest.cFormFiledAt ? (
-                              <Badge variant="success" size="sm">
-                                <CheckCircle2 className="w-3 h-3" />
-                                {t('c_form_filed_badge', 'C-Form Filed')}
+                              <Badge variant="success" size="sm" className="whitespace-nowrap">
+                                <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                                  <CheckCircle2 className="w-3 h-3 shrink-0" />
+                                  <span>{t('c_form_filed_badge', 'C-Form Filed')}</span>
+                                </span>
                               </Badge>
                             ) : (
-                              <Badge variant="warning" size="sm">
-                                <AlertCircle className="w-3 h-3" />
-                                {t('c_form_pending_badge', 'C-Form Pending')}
+                              <Badge variant="warning" size="sm" className="whitespace-nowrap">
+                                <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                                  <AlertCircle className="w-3 h-3 shrink-0" />
+                                  <span>{t('c_form_pending_badge', 'C-Form Pending')}</span>
+                                </span>
                               </Badge>
                             )
                           )}
-                          {/* ID docs pending - same idVerificationStatus the
-                              Dashboard's Alerts widget counts, surfaced here too
-                              so it's visible per-booking, not just as an
-                              aggregate elsewhere. */}
                           {guest.idVerificationStatus !== 'Complete' && (
-                            <Badge variant="warning" size="sm">
-                              <AlertCircle className="w-3 h-3" />
-                              {t('id_verification_pending_badge', 'ID Pending')}
+                            <Badge variant="warning" size="sm" className="whitespace-nowrap">
+                              <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                                <AlertCircle className="w-3 h-3 shrink-0" />
+                                <span>{t('id_verification_pending_badge', 'ID Pending')}</span>
+                              </span>
                             </Badge>
                           )}
                         </div>
-                      )}
+                      </div>
 
                       {/* Stay Dates */}
                       <div className="billing-checkout__guest-card-dates mt-2 text-xs text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-200/60 dark:border-slate-700">
@@ -757,7 +752,6 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     <div className="billing-checkout space-y-6">
       <PageHeader
         title={t('bookings_page_title', 'Bookings')}
-        subtitle="Manage all guest stays, reservations, and billing checkouts."
         hideBorder
       >
         <PageHeaderButton
@@ -788,59 +782,40 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
           driven by the same activeTab state, rather than as this
           component's own tabpanel. */}
       <div className="billing-checkout__desk">
-        <Tabs
-          aria-label="Booking Status Tabs"
-          variant="default"
-          theme={attachedTabsTheme}
-          clearTheme={attachedTabsClearTheme}
-          onActiveTabChange={(tabIndex: number) => {
-            const tabs: ('today' | 'upcoming' | 'past_bookings')[] = ['today', 'upcoming', 'past_bookings'];
-            if (tabs[tabIndex]) setActiveTab(tabs[tabIndex]);
-          }}
-        >
-          <TabItem
-            active={activeTab === 'today'}
-            title={`${t('today_tab', 'Today')}${tabCounts.today ? ` (${tabCounts.today})` : ''}`}
-          />
-          <TabItem
-            active={activeTab === 'upcoming'}
-            title={`${t('upcoming_tab', 'Upcoming')}${tabCounts.upcoming ? ` (${tabCounts.upcoming})` : ''}`}
-          />
-          <TabItem
-            active={activeTab === 'past_bookings'}
-            title={`${t('past_bookings_tab', 'Past Bookings')}${tabCounts.past_bookings ? ` (${tabCounts.past_bookings})` : ''}`}
-          />
-        </Tabs>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <Tabs
+            aria-label="Booking Status Tabs"
+            variant="default"
+            theme={attachedTabsTheme}
+            clearTheme={attachedTabsClearTheme}
+            onActiveTabChange={(tabIndex: number) => {
+              const tabs: ('today' | 'upcoming' | 'past_bookings')[] = ['today', 'upcoming', 'past_bookings'];
+              if (tabs[tabIndex]) setActiveTab(tabs[tabIndex]);
+            }}
+          >
+            <TabItem
+              active={activeTab === 'today'}
+              title={`${t('today_tab', 'Today')}${tabCounts.today ? ` (${tabCounts.today})` : ''}`}
+            />
+            <TabItem
+              active={activeTab === 'upcoming'}
+              title={`${t('upcoming_tab', 'Upcoming')}${tabCounts.upcoming ? ` (${tabCounts.upcoming})` : ''}`}
+            />
+            <TabItem
+              active={activeTab === 'past_bookings'}
+              title={`${t('past_bookings_tab', 'Past')}${tabCounts.past_bookings ? ` (${tabCounts.past_bookings})` : ''}`}
+            />
+          </Tabs>
 
-        {/* rounded-t-none: the tabs above already own the rounded top edge
-            of the whole unit (attachedTabsTheme's rounded-t-lg tab shapes),
-            so the card itself only needs rounding at the bottom - keeping
-            rounded-lg on all 4 corners here would fight the flat seam where
-            the tabs sit on top of it. -mt-px pulls the card itself up to
-            overlap the tab row by 1px - a more robust guarantee of "no
-            visible gap" than relying only on each tab's own -mb-px, which
-            on a high-DPI mobile screen can round to sub-pixel amounts and
-            leave a hairline gap visible (found 20 Aug 2026, real device).
-            border-t-0: Card's own default theme draws a full 4-sided
-            border, so without this its top edge doubles up as a second
-            dividing line right under the tabs, contradicting the spec's
-            "opens into the card with no dividing line" (found 21 Aug 2026 -
-            same fix needed everywhere this pattern is used, see the
-            [role="tabpanel"]:empty rule in index.css for the matching gap
-            fix, since neither is specific to this one page).
-            "Booking desk" icon/title/subtitle header removed (20 Aug 2026)
-            - the tabs above and the page's own "Bookings" PageHeader
-            already identify this section, so the intro row was redundant.
-            The "today" attention-count badge it was paired with still
-            applies regardless of tab, so it stays as the lead-in row
-            rather than being removed with it. */}
-        <Card className="billing-checkout__desk-body shadow-md space-y-4 rounded-t-none border-t-0 -mt-px">
-          <div className="flex justify-end border-b border-slate-200 pb-4 dark:border-slate-700">
-            <div className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">
-              <CreditCard className="h-4 w-4" />
-              {tabCounts.today} requiring attention today
+          {tabCounts.today > 0 && (
+            <div className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300 self-end sm:self-center mb-1.5 sm:mb-0 shrink-0">
+              <CreditCard className="h-3.5 w-3.5" />
+              <span>{tabCounts.today} requiring attention today</span>
             </div>
-          </div>
+          )}
+        </div>
+
+        <Card className="billing-checkout__desk-body shadow-md space-y-4 rounded-t-none border-t-0 -mt-px">
 
           {/* Search Bar - covers room too (guest name, phone, OR room number) */}
           <div className="billing-checkout__search flex flex-col items-center gap-3 sm:flex-row">
@@ -889,7 +864,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                 />
               </div>
 
-              <div className="hidden md:block billing-checkout__past-table overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+              <div className="hidden md:block billing-checkout__past-table overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
                 <DataTable
                   columns={pastBookingsColumns}
                   data={searchedGuests}

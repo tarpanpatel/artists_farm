@@ -651,7 +651,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             </div>
 
             {/* Desktop View: Full DataTable */}
-            <div className="hidden md:block">
+            <div className="hidden md:block overflow-x-auto">
               <DataTable
                 columns={[
                   {
@@ -1426,7 +1426,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             </div>
 
             {/* Desktop DataTable (hidden md:block) */}
-            <div className="hidden md:block">
+            <div className="hidden md:block overflow-x-auto">
               <DataTable
                 columns={[
                   {

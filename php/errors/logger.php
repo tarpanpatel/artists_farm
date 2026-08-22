@@ -41,77 +41,78 @@ if (!class_exists('TelescopeLogger')) {
             ], $extraData);
 
             self::appendLog($entry);
-            self::maybeAlertAdmin($portal, $severity, $msg, $origin);
+            self::maybeSendWebPushAlert($portal, $severity, $msg, $origin);
         }
 
+        // NOTE (22 Aug 2026): Telegram used to also get a best-effort ping here
+        // for Fatal Error/Exception/SQL Error, direct to the Telegram Bot API.
+        // Removed at the user's explicit request - Telegram must not send or be
+        // involved in ANY error/crash notification any more, full stop. The Web
+        // Push channel below is now the only admin-alert channel. This is
+        // strictly about ADMIN ALERTING - Telegram's other, unrelated job of
+        // delivering real guest/business notifications (bookings, kitchen
+        // orders, etc. via telegram/sender.php) is completely untouched, and
+        // those sends still get logged to Telescope's own 'telegram' portal as
+        // before; only the "ping the admin when something breaks" behavior is
+        // gone.
+
         /**
-         * Best-effort Telegram ping to the platform admin for the severities that mean
-         * "something is actually broken" (as opposed to a routine 404 or deprecation
-         * notice). Previously, a Fatal Error/SQL Error only ever reached logs.json - the
-         * only way to find out was opening Telescope and looking, which for something
-         * like a broken guest check-in could mean hours before anyone noticed.
-         *
-         * Deliberately does NOT go through telegram/sender.php - that file itself
-         * require_once's this logger.php (for its own error logging), so requiring it
-         * back from here would be a circular include. Talks to the Telegram Bot API
-         * directly instead, which only needs the two constants below.
-         *
-         * Silently does nothing if TELEGRAM_BOT_TOKEN/TELEGRAM_ADMIN_CHAT_ID aren't set
-         * (e.g. local XAMPP, which loads no .env - see CLAUDE.md's Telegram section) -
-         * this is expected there, not a failure.
+         * Real OS-level push notification to whichever device(s) the root admin
+         * has subscribed via the Telescope PWA (added 22 Aug 2026, "browse
+         * Telescope rather than have Telegram send me things"). Deliberately
+         * broader than maybeAlertAdmin() above: that one only covers the
+         * narrow "PHP backend definitely broke" case (Fatal Error/Exception/
+         * SQL Error) - this covers every portal's actual error-level signal,
+         * including frontend JS crashes (portal 'js', severity 'ERROR'/
+         * 'CRITICAL') and security-portal events, which is exactly the class
+         * of error a real user hits that the narrower PHP-only alert has
+         * never covered (see ErrorBoundary.tsx's crash reports, none of which
+         * carry the exact strings 'Fatal Error'/'Exception'/'SQL Error').
+         * Denylist, not allowlist, so a new severity string introduced later
+         * defaults to "alert on it" rather than silently never alerting until
+         * someone remembers to add it to a list.
          */
-        private static function maybeAlertAdmin($portal, $severity, $msg, $origin) {
-            $alertWorthy = ['Fatal Error', 'Exception', 'SQL Error'];
-            if (!in_array($severity, $alertWorthy, true)) {
+        private static function maybeSendWebPushAlert($portal, $severity, $msg, $origin) {
+            $routineNoise = ['INFO', 'SUCCESS', 'Notice', 'Deprecated'];
+            if ($portal !== 'security' && in_array($severity, $routineNoise, true)) {
                 return;
             }
 
             try {
-                require_once __DIR__ . '/../telegram/config.php';
+                require_once __DIR__ . '/web_push.php';
             } catch (\Throwable $e) {
                 return;
             }
-            if (empty(TELEGRAM_BOT_TOKEN) || empty(TELEGRAM_ADMIN_CHAT_ID)) {
-                return;
+
+            if (empty(wp_load_subscriptions())) {
+                return; // nobody has tapped "Enable Alerts" yet - nothing to do
             }
 
-            // Cooldown so a broken deploy fatal-erroring on every single request
-            // doesn't spam dozens of identical Telegram messages per minute - one
-            // alert every 2 minutes is still "found out immediately", not hours later.
-            $cooldownFile = __DIR__ . '/last_alert.txt';
+            // Own, shorter cooldown than the Telegram one above (60s vs 120s) -
+            // this is now the PRIMARY alert channel per the user's own framing,
+            // so it deliberately gets first/faster notice, in its own file so
+            // the two channels' cooldowns can never block each other.
+            $cooldownFile = __DIR__ . '/push_alert_cooldown.txt';
             $now = time();
             if (file_exists($cooldownFile)) {
                 $last = (int) @file_get_contents($cooldownFile);
-                if ($now - $last < 120) {
+                if ($now - $last < 60) {
                     return;
                 }
             }
             @file_put_contents($cooldownFile, (string) $now, LOCK_EX);
 
-            $text = "🚨 *{$severity}* on " . ($_SERVER['HTTP_HOST'] ?? 'artists-farm') . "\n"
-                  . "Portal: {$portal}\n"
-                  . "Origin: {$origin}\n"
-                  . "Message: " . mb_substr((string) $msg, 0, 500);
+            $shortMsg = mb_substr((string) $msg, 0, 150);
+            if (mb_strlen((string) $msg) > 150) {
+                $shortMsg .= '…';
+            }
 
-            $url = 'https://api.telegram.org/bot' . TELEGRAM_BOT_TOKEN . '/sendMessage';
-            $payload = http_build_query([
-                'chat_id' => TELEGRAM_ADMIN_CHAT_ID,
-                'text' => $text,
-                'parse_mode' => 'Markdown',
+            broadcastWebPush([
+                'title' => "🚨 {$severity} — " . ($_SERVER['HTTP_HOST'] ?? 'artists-farm'),
+                'body' => "[{$portal}] {$shortMsg}",
+                'url' => '/php/errors/?portal=' . urlencode((string) $portal),
+                'tag' => 'telescope-' . $portal,
             ]);
-
-            $context = stream_context_create([
-                'http' => [
-                    'method' => 'POST',
-                    'header' => "Content-Type: application/x-www-form-urlencoded\r\n",
-                    'content' => $payload,
-                    'timeout' => 3, // never let a Telegram hiccup stall the real request
-                ],
-            ]);
-
-            // @-suppressed and result ignored on purpose - this must never throw back
-            // into the error logger it's being called from, or fail the original request.
-            @file_get_contents($url, false, $context);
         }
 
         private static function appendLog($entry) {

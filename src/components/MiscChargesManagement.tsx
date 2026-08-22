@@ -373,7 +373,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
           </span>
         </div>
 
-        <div className="hidden md:block">
+        <div className="hidden md:block overflow-x-auto">
           <DataTable
             columns={columns}
             data={filteredCharges}

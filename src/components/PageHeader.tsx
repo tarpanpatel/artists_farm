@@ -35,7 +35,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, childre
   // column almost no room: min-w-0 flex-1 let it shrink indefinitely while
   // the shrink-0 buttons kept their full width, wrapping the title one or
   // two words per line instead of the buttons dropping to their own row.
-  <div className="gen_page_head flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 mb-4 page-header">
+  <div className="gen_page_head flex flex-row items-center justify-between gap-3 pb-3 mb-4 page-header">
     <div className="min-w-0 flex-1 page-header__left">
       <h1 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight sm:text-2xl page-header__title">
         {title}
