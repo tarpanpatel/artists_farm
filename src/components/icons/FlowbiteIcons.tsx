@@ -78,6 +78,7 @@ export const RefreshCw = wrap(getOutline('Refresh'));
 export const Upload = wrap(getOutline('Upload'));
 export const Download = wrap(getOutline('Download'));
 export const LogOut = wrap(getOutline('ArrowRightToBracket'));
+export const Save = wrap(getOutline('FloppyDisk') || getOutline('Check') || getOutline('Download'));
 export const Share2 = wrap(getOutline('ShareNodes') || getOutline('ShareAll'));
 export const LinkIcon = wrap(getOutline('Link'));
 export const ExternalLink = wrap(getOutline('ArrowUpRightFromSquare') || getOutline('Link'));

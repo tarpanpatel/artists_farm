@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Modal, ModalHeader, ModalBody, ModalFooter, TextInput as FlowbiteTextInput } from 'flowbite-react';
-import { ArrowRightLeft, Loader2, Search, AlertTriangle, CheckCircle2, IndianRupee, Handshake, Sliders, ChevronUp, ChevronDown, Plus, Trash2, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Drawer, TextInput as FlowbiteTextInput } from 'flowbite-react';
+import { X } from './icons/FlowbiteIcons';
+import { ArrowRightLeft, Loader2, Search, AlertTriangle, CheckCircle2, IndianRupee, Handshake, Sliders, ChevronUp, ChevronDown, Plus, Trash2, Check, ChevronLeft, ChevronRight, HelpCircle } from 'lucide-react';
 import { CashDrawerEntry, CashDrawerSummary, StaffAdvance, StaffMember } from '../types';
 import { PageHeader } from './PageHeader';
 import { Badge } from './Badge';
 import { KpiCard } from './KpiCard';
+import { Popover } from './Popover';
 import { t } from '../i18n/en';
 import { fetchCashDrawerSummaryFromDB, addDrawerEntryToDB, fetchDrawerEntriesFromDB, resolveTelegramTemplate, fetchStaffAdvancesFromDB, addStaffAdvanceToDB, deleteStaffAdvanceFromDB, saveAttendanceToDB, generateSalaryEntry } from '../services/api';
 import DataTable from 'react-data-table-component';
@@ -173,6 +175,20 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
   };
 
   const handlePayoutSubmit = async (row: typeof payoutData[number]) => {
+    const formattedAmount = `₹${row.pendingPayout.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+    const confirmed = await confirm({
+      title: t('confirm_salary_payout_title', 'Confirm Salary Payout'),
+      message: t(
+        'confirm_salary_payout_message',
+        `Are you sure you want to process the payout of ${formattedAmount} for ${row.staff.name} for ${monthKey}? This will generate a salary entry and record the settlement.`,
+        { amount: formattedAmount, staffName: row.staff.name, month: monthKey }
+      ),
+      confirmText: t('confirm_pay_now_button', 'Yes, Pay Now'),
+      cancelText: t('cancel_button', 'Cancel'),
+      variant: 'info',
+    });
+    if (!confirmed) return;
+
     setPayingStaff(row.staff.id);
     const recs = attendance.filter(a => a.staffId === row.staff.id && a.date.startsWith(monthKey));
     await saveAttendanceToDB(recs);
@@ -186,10 +202,13 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
     setPayingStaff(null);
     if (ok) {
       setPaidStaff(prev => new Set(prev).add(row.staff.id));
+      showToast(`Payout of ${formattedAmount} for ${row.staff.name} processed successfully!`, { type: 'success' });
       if (onDispatchTelegram) {
         const msg = `<b>💰 SALARY PAYMENT</b>\n━━━━━━━━━━━━━━━━\n👤 <b>Staff:</b> ${row.staff.name}\n📅 <b>Month:</b> ${monthKey}\n💵 <b>Amount:</b> ₹${row.pendingPayout.toLocaleString('en-IN')}\n━━━━━━━━━━━━━━━━`;
         onDispatchTelegram('Salary Payment', msg, 'finance');
       }
+    } else {
+      showToast('Failed to process salary payment. Please try again.', { type: 'error' });
     }
   };
 
@@ -436,15 +455,36 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
 
         {/* Form B: Manual Balance Adjustment */}
         <div className="cash-drawer__form-card bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 w-full">
-          <h3 className="cash-drawer-manager__subtitle font-semibold text-slate-900 dark:text-white text-sm mb-3 flex items-center gap-1.5 border-b border-slate-100 dark:border-slate-700/50 pb-2">
-            <Sliders className="w-4 h-4 text-blue-600 dark:text-blue-500" />
-            <span>{t('manual_balance_adjustment_heading', 'Manual Balance Adjustment')}</span>
-          </h3>
-
-          <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-4 leading-relaxed bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800 space-y-1">
-            <p><strong>What this does:</strong> Manual adjustments are used to directly <strong>add cash</strong> to a staff member's pocket/drawer balance (e.g. seeding initial cash or correcting entry errors).</p>
-            <p>• <span className="font-semibold text-emerald-600 dark:text-emerald-400">Example (Add Cash):</span> If Vikram starts his shift with ₹2,000 opening cash, apply a <strong>₹2,000</strong> adjustment to seed the drawer.</p>
-            <p>• <span className="font-semibold text-amber-600 dark:text-amber-500">To Deduct Cash instead:</span> If Vikram hands over cash, use the <strong>Record Cash Handover</strong> form on the left to record the transfer.</p>
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/50 pb-2 mb-4">
+            <h3 className="cash-drawer-manager__subtitle font-bold text-slate-900 dark:text-white text-sm tracking-wider uppercase flex items-center gap-1.5 m-0">
+              <Sliders className="w-4 h-4 text-blue-600 dark:text-blue-500" />
+              <span>{t('manual_balance_adjustment_heading', 'Manual Balance Adjustment')}</span>
+            </h3>
+            <Popover
+              trigger="click"
+              placement="bottom"
+              title={
+                <div className="flex items-center gap-1.5 font-semibold text-gray-900 dark:text-white">
+                  <Sliders className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <span>{t('manual_balance_adjustment_heading', 'Manual Balance Adjustment')}</span>
+                </div>
+              }
+              content={
+                <div className="w-72 sm:w-80 text-xs space-y-2 text-slate-600 dark:text-slate-300 p-3.5">
+                  <p><strong>What this does:</strong> Manual adjustments are used to directly <strong>add cash</strong> to a staff member's pocket/drawer balance (e.g. seeding initial cash or correcting entry errors).</p>
+                  <p>• <span className="font-semibold text-emerald-600 dark:text-emerald-400">Example (Add Cash):</span> If Vikram starts his shift with ₹2,000 opening cash, apply a <strong>₹2,000</strong> adjustment to seed the drawer.</p>
+                  <p>• <span className="font-semibold text-amber-600 dark:text-amber-500">To Deduct Cash instead:</span> If Vikram hands over cash, use the <strong>Record Cash Handover</strong> form on the left to record the transfer.</p>
+                </div>
+              }
+            >
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline cursor-pointer transition-colors"
+              >
+                <HelpCircle className="w-3.5 h-3.5" />
+                <span>Help?</span>
+              </button>
+            </Popover>
           </div>
 
           <form onSubmit={handleAdjustmentSubmit} className="app-form app-form--cash-drawer space-y-4">
@@ -982,14 +1022,30 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
         )}
       </div>
 
-      {/* GIVE ADVANCE MODAL */}
-      <Modal show={isAdvanceModalOpen && Boolean(advanceStaff)} onClose={() => setIsAdvanceModalOpen(false)} className="z-58" size="sm" dismissible>
+      {/* GIVE ADVANCE DRAWER */}
+      <Drawer
+        open={isAdvanceModalOpen && Boolean(advanceStaff)}
+        onClose={() => setIsAdvanceModalOpen(false)}
+        position="right"
+        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+      >
         {advanceStaff && (
           <>
-            <ModalHeader as="div">
-              <span>{t('give_advance_heading', 'Give Advance —')} {advanceStaff.name}</span>
-            </ModalHeader>
-            <ModalBody className="space-y-4">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+              <span className="flex items-center gap-2 font-bold text-gray-900 dark:text-white text-base">
+                <Handshake className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                {t('give_advance_heading', 'Give Advance —')} {advanceStaff.name}
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsAdvanceModalOpen(false)}
+                className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
               <div>
                 <Input
                   label="Amount (₹) *"
@@ -1011,8 +1067,9 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                   placeholder="e.g. Personal emergency"
                 />
               </div>
-            </ModalBody>
-            <ModalFooter className="flex items-center justify-end gap-2">
+            </div>
+
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end gap-2 bg-gray-50 dark:bg-gray-850">
               <Button
                 variant="secondary"
                 onClick={() => setIsAdvanceModalOpen(false)}
@@ -1026,10 +1083,10 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
               >
                 Confirm Advance
               </Button>
-            </ModalFooter>
+            </div>
           </>
         )}
-      </Modal>
+      </Drawer>
     </div>
   );
 };

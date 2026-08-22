@@ -12,7 +12,7 @@ import { t } from '../i18n/en';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import { UpiPaymentBlock } from '../utils/upiQrCode';
 import { shareTextContent } from '../utils/shareText';
-import { Modal as FlowbiteModal, ModalHeader, ModalBody, ModalFooter, Drawer as FlowbiteDrawer, DrawerItems } from 'flowbite-react';
+import { Drawer as FlowbiteDrawer, DrawerItems } from 'flowbite-react';
 
 interface ReceiptEditModalProps {
   isOpen: boolean;
@@ -580,29 +580,39 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
     saveGuestEdits();
     setInternalMode('edit-and-checkout');
   };
-
   return (
     <>
-      {/* z-[58] matches the app's "real full-page modal" z-index tier (see the
-          scale note in src/index.css) - Flowbite's Modal portals to
-          document.body at a bare z-50, which the CSS rule that auto-bumps
-          `fixed inset-0 z-50` backdrops can't reach (different class tokens),
-          so every Flowbite modal needs this override or it renders behind
-          the header/sidebar. */}
-      <FlowbiteModal show={isOpen} onClose={onClose} size="5xl" dismissible className="z-58">
-      <ModalHeader as="div">
-        <div>
-          <h2 className="receipt-edit-modal__title text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-            <IndianRupee className="w-5 h-5 text-blue-600" />
-            {internalMode === 'edit-only' ? t('edit_booking_billing_heading', 'Edit Guest Booking & Billing Details') : t('checkout_settlement_heading', 'Guest Billing & Final Checkout Settlement')}
-          </h2>
-          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
-            Room: {guest.roomNumber} • Guest: {editGuestName || guest.guestName} ({editPhoneNumber || guest.phoneNumber})
-          </p>
+      {/* MAIN RIGHT DRAWER: GUEST BILLING & FINAL CHECKOUT SETTLEMENT */}
+      <FlowbiteDrawer
+        open={isOpen}
+        onClose={onClose}
+        position="right"
+        className="z-58 w-full sm:max-w-4xl lg:max-w-5xl p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-lg bg-sky-50 dark:bg-sky-950 border border-sky-200 dark:border-sky-800 flex items-center justify-center text-sky-600 dark:text-sky-400">
+              <IndianRupee className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="receipt-edit-modal__title text-base font-semibold text-slate-900 dark:text-white m-0">
+                {internalMode === 'edit-only' ? t('edit_booking_billing_heading', 'Edit Guest Booking & Billing Details') : t('checkout_settlement_heading', 'Guest Billing & Final Checkout Settlement')}
+              </h2>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 m-0">
+                Room: {guest.roomNumber} • Guest: {editGuestName || guest.guestName} ({editPhoneNumber || guest.phoneNumber})
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
-      </ModalHeader>
 
-      <ModalBody className="p-4 sm:p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
             {/* LEFT COLUMN: Accommodation + Food Orders (LG: 7 cols) */}
@@ -1199,53 +1209,53 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
           </div>
         </div>
-      </ModalBody>
+      </div>
 
-      {/* Footer Actions */}
-      <ModalFooter className="flex items-center gap-3">
-        {internalMode === 'edit-and-checkout' && (
+        {/* Footer Actions */}
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3 bg-gray-50 dark:bg-gray-850">
+          {internalMode === 'edit-and-checkout' && (
+            <button
+              type="button"
+              onClick={() => setIsPrintModalOpen(true)}
+              className="flex-1 h-12 py-3 px-4 bg-cyan-600 hover:bg-cyan-700 active:scale-98 text-white font-bold text-xs rounded-lg transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md shrink-0"
+            >
+              <Printer className="w-4 h-4 shrink-0" />
+              <span>{t('preview_share_bill_button', 'Preview & Share Bill')}</span>
+            </button>
+          )}
+
           <button
             type="button"
-            onClick={() => setIsPrintModalOpen(true)}
-            className="flex-1 h-12 py-3 px-4 bg-cyan-600 hover:bg-cyan-700 active:scale-98 text-white font-bold text-xs rounded-lg transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md shrink-0"
+            onClick={handleSaveOrCheckout}
+            disabled={isProcessing || (internalMode === 'edit-and-checkout' && !isSplitMatching)}
+            className="flex-1 h-12 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs rounded-lg transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md shrink-0"
           >
-            <Printer className="w-4 h-4 shrink-0" />
-            <span>{t('preview_share_bill_button', 'Preview & Share Bill')}</span>
+            {isProcessing ? <Loader2 className="w-4 h-4 animate-spin shrink-0" /> : <CheckCircle2 className="w-4 h-4 shrink-0" />}
+            <span>
+              {isProcessing
+                ? (internalMode === 'edit-only' ? 'Saving Changes...' : 'Processing Checkout...')
+                : internalMode === 'edit-only'
+                ? t('save_booking_changes_button', 'Save Booking Changes')
+                : !isSplitMatching
+                ? `Split Total Must Equal ₹${grandTargetDue.toFixed(2)}`
+                : t('checkout_close_booking_button', 'Checkout & Close Booking')
+              }
+            </span>
           </button>
-        )}
 
-        <button
-          type="button"
-          onClick={handleSaveOrCheckout}
-          disabled={isProcessing || (internalMode === 'edit-and-checkout' && !isSplitMatching)}
-          className="flex-1 h-12 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs rounded-lg transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md shrink-0"
-        >
-          {isProcessing ? <Loader2 className="w-4 h-4 animate-spin shrink-0" /> : <CheckCircle2 className="w-4 h-4 shrink-0" />}
-          <span>
-            {isProcessing
-              ? (internalMode === 'edit-only' ? 'Saving Changes...' : 'Processing Checkout...')
-              : internalMode === 'edit-only'
-              ? t('save_booking_changes_button', 'Save Booking Changes')
-              : !isSplitMatching
-              ? `Split Total Must Equal ₹${grandTargetDue.toFixed(2)}`
-              : t('checkout_close_booking_button', 'Checkout & Close Booking')
-            }
-          </span>
-        </button>
-
-        {internalMode === 'edit-only' && (
-          <button
-            type="button"
-            onClick={handleSaveAndProceedToCheckout}
-            disabled={isProcessing}
-            className="flex-1 h-12 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold text-xs rounded-lg transition-all cursor-pointer shadow-md flex items-center justify-center gap-2 shrink-0"
-          >
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
-            <span>{t('save_and_proceed_checkout_button', 'Save and Proceed to Checkout')}</span>
-          </button>
-        )}
-      </ModalFooter>
-    </FlowbiteModal>
+          {internalMode === 'edit-only' && (
+            <button
+              type="button"
+              onClick={handleSaveAndProceedToCheckout}
+              disabled={isProcessing}
+              className="flex-1 h-12 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold text-xs rounded-lg transition-all cursor-pointer shadow-md flex items-center justify-center gap-2 shrink-0"
+            >
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <span>{t('save_and_proceed_checkout_button', 'Save and Proceed to Checkout')}</span>
+            </button>
+          )}
+        </div>
+      </FlowbiteDrawer>
 
 
 

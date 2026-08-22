@@ -11,7 +11,8 @@ import {
   ShieldCheck,
   Search,
   Layers} from 'lucide-react';
-import { Modal, ModalHeader, ModalBody, ModalFooter } from 'flowbite-react';
+import { Drawer } from 'flowbite-react';
+import { X } from './icons/FlowbiteIcons';
 import { getPropertySlug, getPropertyAndRoomSlugs, API_ROOT_BASE } from '../services/api';
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
@@ -899,21 +900,31 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
         </div>
       )}
 
-      {/* Modal for Connecting New iCal Feed */}
-      <Modal
-        show={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        dismissible={!isAdding}
-        size="lg"
-        className="z-58 ical-sync-manager__add-modal"
+      {/* Drawer for Connecting New iCal Feed */}
+      <Drawer
+        open={isAddModalOpen}
+        onClose={() => !isAdding && setIsAddModalOpen(false)}
+        position="right"
+        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between ical-sync-manager__add-modal"
       >
-        <ModalHeader as="div">
-          <h3 className="ical-sync-manager__subtitle text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-            <Plus className="w-5 h-5 text-blue-600" />
-            <span>{t('connect_new_ical_feed_heading', 'Connect New iCal Feed')}</span>
-          </h3>
-        </ModalHeader>
-        <ModalBody className="space-y-4 text-xs">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-950 border border-sky-200 dark:border-sky-800 flex items-center justify-center text-sky-600 dark:text-sky-400">
+              <Plus className="w-4 h-4" />
+            </div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white m-0">
+              {t('connect_new_ical_feed_heading', 'Connect New iCal Feed')}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => !isAdding && setIsAddModalOpen(false)}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
           <div>
             <label className="block font-extrabold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider text-[10px]">
               {t('select_channel_platform_label', '1. Select Channel Platform')}
@@ -973,19 +984,29 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
               {t('ical_url_helper_text', 'Copy the export .ics calendar link from your OTA host dashboard and paste it here.')}
             </p>
           </div>
-        </ModalBody>
-        <ModalFooter className="justify-end">
+        </div>
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => setIsAddModalOpen(false)}
+            disabled={isAdding}
+          >
+            {t('cancel', 'Cancel')}
+          </Button>
           <Button
             type="button"
             variant="primary"
+            size="sm"
             onClick={() => handleAddCalendar()}
             disabled={isAdding || !newImportUrl.trim()}
             leftIcon={isAdding ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
           >
             {isAdding ? t('connecting_button', 'Connecting...') : t('connect_feed_button', 'Connect Feed')}
           </Button>
-        </ModalFooter>
-      </Modal>
+        </div>
+      </Drawer>
     </div>
   );
 };

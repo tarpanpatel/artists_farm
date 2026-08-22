@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, AlertCircle, Loader2, Search, CheckCircle2, RefreshCw } from 'lucide-react';
-import { Modal, ModalHeader, ModalBody, Alert } from 'flowbite-react';
+import { Plus, Edit2, Trash2, AlertCircle, Loader2, Search, CheckCircle2, RefreshCw, Package } from 'lucide-react';
+import { Drawer, Alert } from 'flowbite-react';
+import { X } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
 import { Button } from './Button';
 import { Input } from './Input';
-import { Package } from 'lucide-react';
 
 interface StockItem {
   id: number;
@@ -421,11 +421,32 @@ export const SystemStockManager: React.FC = () => {
       </div>
       )}
 
-      {/* Edit Modal */}
-      <Modal show={!!editingItem} onClose={() => setEditingItem(null)} dismissible={!saving} size="md" className="z-58 default-stocks-manager__edit-modal">
-        <ModalHeader as="div">{t('edit_stock_item_title', 'Edit Stock Item')}</ModalHeader>
-        <ModalBody>
-          <form onSubmit={handleEditItem} className="app-form app-form--edit-stock-item space-y-4">
+      {/* Edit Drawer */}
+      <Drawer
+        open={!!editingItem}
+        onClose={() => !saving && setEditingItem(null)}
+        position="right"
+        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between default-stocks-manager__edit-modal"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-950 border border-sky-200 dark:border-sky-800 flex items-center justify-center text-sky-600 dark:text-sky-400">
+              <Package className="w-4 h-4" />
+            </div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white m-0">
+              {t('edit_stock_item_title', 'Edit Stock Item')}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => !saving && setEditingItem(null)}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <form onSubmit={handleEditItem} className="app-form app-form--edit-stock-item flex-1 flex flex-col justify-between overflow-y-auto">
+          <div className="p-4 space-y-4">
             <div className="grid grid-cols-1 gap-4">
               <Input
                 label={t('item_name_name', 'Item Name')}
@@ -462,12 +483,29 @@ export const SystemStockManager: React.FC = () => {
                 />
               </div>
             </div>
-            <Button type="submit" variant="primary" block disabled={saving}>
+          </div>
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setEditingItem(null)}
+              disabled={saving}
+            >
+              {t('cancel', 'Cancel')}
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              disabled={saving}
+              leftIcon={saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : undefined}
+            >
               {saving ? t('saving_button', 'Saving...') : t('update_button', 'Update')}
             </Button>
-          </form>
-        </ModalBody>
-      </Modal>
+          </div>
+        </form>
+      </Drawer>
     </div>
   );
 };

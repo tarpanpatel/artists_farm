@@ -285,11 +285,43 @@ div[datepicker-popover],
    to mask this the whole time by force-painting all three states the same
    color). Force both endpoints to the same solid brand treatment as
    .selected, via the real theme token variable rather than a hex literal,
-   so a future brand re-theme still keeps these in sync. */
+   so a future brand re-theme still keeps these in sync.
+
+   FOLLOW-UP (found 22 Aug 2026 - reported as "dates hidden", every real
+   two-point range, not just the same-day edge case): --color-brand ITSELF
+   was resolving to nothing here. flowbite/src/themes/default.css defines it
+   as `var(--color-blue-700)` (light) / `var(--color-blue-600)` (dark), but
+   Tailwind v4 only emits :root custom properties for theme colors an actual
+   scanned utility class references - nothing in this app's scanned content
+   uses bg-blue-700/blue-600 directly, so those two never get emitted at all
+   (confirmed by inspecting Vite's served index.css output - --color-brand
+   itself IS present, since a real .bg-brand utility elsewhere pulls it in,
+   but the --color-blue-700 it points to is entirely absent). A custom
+   property whose value chain bottoms out on an undefined var() is invalid at
+   computed-value time, which is exactly what var()'s fallback argument
+   exists for - same pattern this file already uses for --color-primary/
+   --color-error a few dozen lines up, for the same underlying reason. */
 .datepicker-cell.range-start,
 .datepicker-cell.range-end {
-  background-color: var(--color-brand) !important;
+  background-color: var(--color-brand, #1d4ed8) !important;
   color: white !important;
+}
+
+/* Booked/unavailable calendar dates (added 22 Aug 2026 - "Booking Dates"
+   pickers must grey out + strike through + block already-booked days for the
+   selected room, see CLAUDE.md's Multi-Key Rooms & Bookings section).
+   DaysView.js already adds the real `.disabled` class (+ cursor-not-allowed +
+   text-fg-disabled, which resolves via the --color-fg-disabled fix above) to
+   any day passed via the `datesDisabled` option (DateRangePicker.tsx's
+   blockedDates prop), same as it does for minDate/maxDate/daysOfWeekDisabled
+   - but ships no background or strikethrough of its own, so a merely-grey-
+   text day sitting next to normal ones reads as "slightly muted", not
+   "actually unavailable, don't try this". Deliberately does NOT touch
+   .prev/.next (out-of-month greying) - those get text-fg-disabled too but
+   never the .disabled class, so this selector leaves them alone. */
+.datepicker-cell.disabled {
+  background-color: var(--color-default-medium, #e5e7eb) !important;
+  text-decoration: line-through;
 }
 
 /* Numeric & Financial Alignment */
@@ -1236,7 +1268,31 @@ div:has(> [role="tablist"]) {
 
    If a future conflict shows up, fix it by placing the new element in
    the correct EXISTING tier above, not by picking an arbitrary number
-   that happens to be higher than whatever it's currently losing to. */
+   that happens to be higher than whatever it's currently losing to.
+
+   CONFIRMED VIOLATION FOUND + FIXED 22 Aug 2026 (this is why the user kept
+   seeing "z-index problems" resurface - not every offender lives in this
+   file, since Tailwind classes are scattered across ~40 component files and
+   nobody had grepped all of them against this scale in one pass): the
+   app's own hand-rolled `src/components/Popover.tsx` (used by
+   OperationalDashboard.tsx's and TodayOverview.tsx's OTA-blocked calendar
+   chips - NOT flowbite-react's Popover, a from-scratch one with its own
+   createPortal(document.body) + position:fixed popup) hardcoded
+   `zIndex: 99999` directly in a style object, i.e. invisible to any grep
+   for Tailwind z-* classes and NOT in this scale at all. That's the
+   toasts/confirm-dialog "always on top" tier, so this ordinary info bubble
+   was rendering above every real drawer/modal in the app whenever it
+   stayed open - which, combined with a separate touch bug (a hover-
+   triggered popover has no matching "mouseleave" on tap, so nothing ever
+   closed it), is exactly why the "Convert to Booking" drawer showed a
+   leftover tooltip floating over its own buttons on mobile. Fixed: lowered
+   to z-index 50 (it's functionally an ordinary in-page popover, same tier
+   as StyledSelect, just portaled+fixed-positioned to escape the calendar
+   row's own overflow clipping) and the touch-stuck-open bug fixed
+   separately in Popover.tsx itself. If you're hunting a z-index bug that
+   isn't explained by anything in this file, grep for `zIndex` (camelCase,
+   inline style objects) in addition to `z-\[?\d` Tailwind classes - both
+   exist in this codebase and only one is greppable by "z-" alone. */
 .fixed.inset-0.z-50 {
   z-index: 58;
 }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Globe, Loader2, CheckCircle2, Hash } from 'lucide-react';
-import { Modal, ModalHeader, ModalBody, ModalFooter } from 'flowbite-react';
+import { Drawer } from 'flowbite-react';
+import { X } from './icons/FlowbiteIcons';
 import { Guest } from '../types';
 import { Input } from './Input';
 import { DateRangePicker } from './DateRangePicker';
@@ -95,31 +96,45 @@ export const ConvertOtaBookingModal: React.FC<ConvertOtaBookingModalProps> = ({
   const fieldLabelClass = 'text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase';
 
   return (
-    // z-70: this modal opens from within an already-open calendar/booking
-    // context, so it must stack above that z-58 page modal (see the z-index
-    // scale note in src/index.css - z-60/70/100 are the "secondary modal
-    // deliberately above an open page modal" tier).
-    <Modal show onClose={onClose} dismissible={!isSaving} size="md" className="z-70 convert-ota-booking-modal__root">
-      <ModalHeader as="div">
-        <h2 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-          <Globe className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-          {t('convert_ota_booking_heading', 'Convert to Booking')}
-        </h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-normal">
-          {t('convert_ota_booking_subtitle', '{{source}} reservation, {{start}} - {{end}}. Editing this only changes this app - it never writes back to {{source}}.')
-            .replace(/\{\{source\}\}/g, sourceLabel)
-            .replace('{{start}}', formatDateDDMMYYYY(otaBlock.event_start))
-            .replace('{{end}}', formatDateDDMMYYYY(otaBlock.event_end))}
-        </p>
-      </ModalHeader>
-      <ModalBody className="space-y-4">
+    <Drawer
+      open
+      onClose={onClose}
+      position="right"
+      className="z-70 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between convert-ota-booking-modal__root"
+    >
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 flex items-center justify-center text-amber-600 dark:text-amber-400">
+            <Globe className="w-4 h-4" />
+          </div>
+          <div>
+            <h2 className="text-base font-semibold text-slate-900 dark:text-white m-0">
+              {t('convert_ota_booking_heading', 'Convert to Booking')}
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 m-0 font-normal">
+              {t('convert_ota_booking_subtitle', '{{source}} reservation, {{start}} - {{end}}. Editing this only changes this app - it never writes back to {{source}}.')
+                .replace(/\{\{source\}\}/g, sourceLabel)
+                .replace('{{start}}', formatDateDDMMYYYY(otaBlock.event_start))
+                .replace('{{end}}', formatDateDDMMYYYY(otaBlock.event_end))}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {otaBlock.event_title && (() => {
           const cleanTitle = otaBlock.event_title.replace(/\s*-\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*/gi, '').trim();
           return (
             <div className="px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 flex items-center gap-2">
               <Hash className="w-3.5 h-3.5 text-slate-400 shrink-0" />
               <div className="min-w-0">
-                <div className="text-[10px] font-semibold text-slate-400 uppercase">{t('ota_reference_label', 'OTA Reference (not a guest name)')}</div>
+                <div className="text-2xs font-semibold text-slate-400 uppercase">{t('ota_reference_label', 'OTA Reference (not a guest name)')}</div>
                 <div className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">{cleanTitle || otaBlock.event_title}</div>
               </div>
             </div>
@@ -172,8 +187,16 @@ export const ConvertOtaBookingModal: React.FC<ConvertOtaBookingModalProps> = ({
             </div>
           </div>
         </div>
-      </ModalBody>
-      <ModalFooter className="justify-end">
+      </div>
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={isSaving}
+          className="h-9 px-4 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+        >
+          {t('cancel_button', 'Cancel')}
+        </button>
         <button
           type="button"
           onClick={handleConvert}
@@ -183,7 +206,7 @@ export const ConvertOtaBookingModal: React.FC<ConvertOtaBookingModalProps> = ({
           {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
           <span>{t('convert_to_booking_button', 'Convert to Booking')}</span>
         </button>
-      </ModalFooter>
-    </Modal>
+      </div>
+    </Drawer>
   );
 };

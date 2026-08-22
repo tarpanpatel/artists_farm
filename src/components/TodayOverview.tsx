@@ -457,7 +457,16 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
       >
         <div className="min-w-max">
           <div className="flex border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80">
-            <div className="w-32 min-w-32 sticky left-0 z-20 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 border-r border-slate-200 dark:border-slate-700">
+            {/* w-24 (not w-32) - MUST match each room row's own sticky
+                room-name column width below (found 22 Aug 2026, reported as
+                "booking dates don't match what I'm seeing"). The header and
+                each room row are separate flex rows stacked vertically -
+                nothing structurally forces their day-columns to align, so a
+                header label column wider than the rows' own label column
+                shifts every date header 32px to the right of the actual
+                day-column grid lines the capsules are positioned against,
+                making bookings appear to sit under the wrong date. */}
+            <div className="w-24 min-w-24 sticky left-0 z-20 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 border-r border-slate-200 dark:border-slate-700">
               Room
             </div>
             {daysArray.map((day, idx) => {
@@ -669,16 +678,14 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                               key={`ota-${idx}`}
                               trigger="hover"
                               placement="top"
+                              title={
+                                <h4 className="font-semibold text-gray-900 dark:text-white text-xs truncate">{otaItem.label}</h4>
+                              }
                               content={
-                                <div className="w-64 text-xs bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                                  <div className="px-3 py-2 bg-gray-50 dark:bg-gray-700/60 border-b border-gray-200 dark:border-gray-700">
-                                    <h4 className="font-semibold text-gray-900 dark:text-white truncate">{otaItem.label}</h4>
-                                  </div>
-                                  <div className="px-3 py-2 space-y-1 text-gray-600 dark:text-gray-300">
-                                    <div>{otaItem.tooltip}</div>
-                                    <div className="text-2xs text-blue-600 dark:text-blue-400 font-semibold pt-1">
-                                      Click to convert into booking
-                                    </div>
+                                <div className="w-64 p-3 space-y-1 text-xs text-gray-600 dark:text-gray-300">
+                                  <div>{otaItem.tooltip}</div>
+                                  <div className="text-2xs text-blue-600 dark:text-blue-400 font-semibold pt-1">
+                                    Click to convert into booking
                                   </div>
                                 </div>
                               }
@@ -712,34 +719,34 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                             key={`${guest.id}-${idx}`}
                             trigger="hover"
                             placement="top"
+                            title={
+                              <div className="flex items-center justify-between gap-2">
+                                <h4 className="font-semibold text-gray-900 dark:text-white text-xs truncate">{guest.guestName}</h4>
+                                {info.nightlyRate > 0 && (
+                                  <span className="text-2xs font-bold text-blue-600 dark:text-blue-400 shrink-0">
+                                    ₹{info.nightlyRate}/night
+                                  </span>
+                                )}
+                              </div>
+                            }
                             content={
-                              <div className="w-64 text-xs bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                                <div className="px-3 py-2 bg-gray-50 dark:bg-gray-700/60 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
-                                  <h4 className="font-semibold text-gray-900 dark:text-white truncate">{guest.guestName}</h4>
-                                  {info.nightlyRate > 0 && (
-                                    <span className="text-2xs font-bold text-blue-600 dark:text-blue-400 shrink-0">
-                                      ₹{info.nightlyRate}/night
-                                    </span>
-                                  )}
+                              <div className="w-64 p-3 text-xs space-y-1.5 text-gray-600 dark:text-gray-300">
+                                <div className="flex items-center justify-between text-2xs">
+                                  <span className="text-gray-500 dark:text-gray-400">Room:</span>
+                                  <span className="font-semibold text-gray-900 dark:text-white">{room.name}</span>
                                 </div>
-                                <div className="px-3 py-2 space-y-1.5 text-gray-600 dark:text-gray-300">
-                                  <div className="flex items-center justify-between text-2xs">
-                                    <span className="text-gray-500 dark:text-gray-400">Room:</span>
-                                    <span className="font-semibold text-gray-900 dark:text-white">{room.name}</span>
-                                  </div>
-                                  <div className="flex items-center justify-between text-2xs">
-                                    <span className="text-gray-500 dark:text-gray-400">Dates:</span>
-                                    <span className="font-medium text-gray-700 dark:text-gray-200">
-                                      {guest.checkinDate} → {guest.expectedCheckout || (guest as any).checkoutDate}
-                                    </span>
-                                  </div>
-                                  {hasPending && (
-                                    <div className="pt-1.5 border-t border-gray-100 dark:border-gray-700/60 text-amber-600 dark:text-amber-400 text-2xs font-semibold flex items-center gap-1.5">
-                                      <span className="flex w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/40" />
-                                      <span>Action Pending: {pendingReasons.join(', ')}</span>
-                                    </div>
-                                  )}
+                                <div className="flex items-center justify-between text-2xs">
+                                  <span className="text-gray-500 dark:text-gray-400">Dates:</span>
+                                  <span className="font-medium text-gray-700 dark:text-gray-200">
+                                    {guest.checkinDate} → {guest.expectedCheckout || (guest as any).checkoutDate}
+                                  </span>
                                 </div>
+                                {hasPending && (
+                                  <div className="pt-1.5 border-t border-gray-100 dark:border-gray-700/60 text-amber-600 dark:text-amber-400 text-2xs font-semibold flex items-center gap-1.5">
+                                    <span className="flex w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/40" />
+                                    <span>Action Pending: {pendingReasons.join(', ')}</span>
+                                  </div>
+                                )}
                               </div>
                             }
                           >

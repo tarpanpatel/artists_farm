@@ -199,6 +199,57 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     }
   };
 
+  // Booked days for whichever room is currently assigned (editRoomId, live-
+  // updated if the admin changes the Assigned Room dropdown while editing),
+  // excluding this guest's OWN booking - fed to the Booking Dates picker
+  // below so an already-booked day for that room renders greyed-out/struck-
+  // through/unselectable instead of silently allowing a double-booking (see
+  // CLAUDE.md's Multi-Key Rooms & Bookings: "1 room = 1 active booking").
+  // Mirrors GuestManagement.tsx's own getBlockedDateStrings() for the Add
+  // Guest flow - kept separate rather than shared since the room-matching
+  // fallback here needs guest.roomNumber (single-property, no room selector)
+  // instead of GuestManagement's roomNumber state.
+  const getEditBlockedDateStrings = (): string[] => {
+    const blocked: string[] = [];
+    const selectedRoomId = editRoomId ? parseInt(editRoomId, 10) : undefined;
+
+    checkedInGuests
+      .filter((other) => other.id !== guest.id)
+      .filter((other) => {
+        const otherRoomId = (other as any).roomId ?? (other as any).room_id;
+        if (selectedRoomId != null && otherRoomId != null) {
+          return Number(otherRoomId) === Number(selectedRoomId);
+        }
+        // Single-property fallback (no Assigned Room dropdown rendered at
+        // all when rooms.length === 0) - match by room name instead.
+        return !!guest.roomNumber && !!other.roomNumber
+          && other.roomNumber.toLowerCase().trim() === guest.roomNumber.toLowerCase().trim();
+      })
+      .forEach((other) => {
+        const checkinStr = (other.checkinDate || '').split(' ')[0].split('T')[0];
+        const checkoutStr = (other.expectedCheckout || other.checkoutDate || other.checkinDate || '').split(' ')[0].split('T')[0];
+        if (!checkinStr) return;
+
+        const [sy, sm, sd] = checkinStr.split('-').map(Number);
+        const [ey, em, ed] = (checkoutStr || checkinStr).split('-').map(Number);
+        if (!sy || !sm || !sd) return;
+
+        const start = new Date(sy, sm - 1, sd, 12, 0, 0);
+        const end = ey && em && ed ? new Date(ey, em - 1, ed, 12, 0, 0) : new Date(start);
+
+        const current = new Date(start);
+        while (current < end) {
+          const y = current.getFullYear();
+          const m = String(current.getMonth() + 1).padStart(2, '0');
+          const d = String(current.getDate()).padStart(2, '0');
+          blocked.push(`${y}-${m}-${d}`);
+          current.setDate(current.getDate() + 1);
+        }
+      });
+
+    return blocked;
+  };
+
   const startEditing = (highlightReceiver: boolean = false) => {
     setHighlightReceiverFields(highlightReceiver);
     setIsEditing(true);
@@ -546,6 +597,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 onCheckinChange={setEditCheckin}
                 onCheckoutChange={setEditCheckout}
                 disabled={!isEditing}
+                blockedDates={getEditBlockedDateStrings()}
               />
             </div>
 

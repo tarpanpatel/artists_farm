@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Building2, Plus, Loader2, AlertCircle, AlertTriangle, BarChart3, ChevronDown, ChevronRight, Pencil, Eye, CheckCircle2, Share2, Copy, XCircle, ExternalLink, KeyRound, X, DoorOpen, RotateCcw, Mail, MessageCircle } from 'lucide-react';
-import { Modal, ModalHeader, ModalBody, ModalFooter, Alert, Checkbox } from 'flowbite-react';
+import { Drawer, Alert, Checkbox } from 'flowbite-react';
 import { ToggleSwitch } from './ToggleSwitch';
 import { StyledSelect } from './StyledSelect';
 import { Button } from './Button';
@@ -1247,12 +1247,33 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
         </div>
       </main>
 
-      {/* Edit Tenant Modal */}
-      <Modal show={showEditTenantModal && !!editingTenant} onClose={() => setShowEditTenantModal(false)} dismissible size="md" className="z-58">
-        <ModalHeader as="div">{t('edit_tenant_heading', 'Edit Tenant')}</ModalHeader>
+      {/* Edit Tenant Drawer */}
+      <Drawer
+        open={showEditTenantModal && !!editingTenant}
+        onClose={() => setShowEditTenantModal(false)}
+        position="right"
+        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-950 border border-sky-200 dark:border-sky-800 flex items-center justify-center text-sky-600 dark:text-sky-400">
+              <Pencil className="w-4 h-4" />
+            </div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white m-0">
+              {t('edit_tenant_heading', 'Edit Tenant')}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowEditTenantModal(false)}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
         {editingTenant && (
-          <ModalBody>
-            <div className="space-y-4">
+          <>
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
               <div>
                 <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                   {t('tenant_name_label', 'Tenant Name')}
@@ -1296,8 +1317,6 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                 />
               </div>
 
-
-
               <div>
                 <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                   {t('slug_label', 'Slug')}
@@ -1336,7 +1355,8 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                 />
               </div>
 
-              <Checkbox
+              <div className="flex items-center gap-2">
+                <Checkbox
                   id="editTenantActiveCheck"
                   checked={!!editingTenant.is_active}
                   onChange={e =>
@@ -1345,38 +1365,61 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                       is_active: e.target.checked ? 1 : 0,
                     })
                   }
-                />{t('active_status_badge', 'Active')}
+                />
+                <label htmlFor="editTenantActiveCheck" className="text-sm font-medium text-slate-700 dark:text-slate-200 cursor-pointer">
+                  {t('active_status_badge', 'Active')}
+                </label>
+              </div>
             </div>
-          </ModalBody>
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowEditTenantModal(false)}
+              >
+                {t('cancel_button', 'Cancel')}
+              </Button>
+              <Button onClick={handleSaveTenant} variant="primary" size="sm">
+                {t('save_button', 'Save')}
+              </Button>
+            </div>
+          </>
         )}
-        {editingTenant && (
-          <ModalFooter>
-            <Button onClick={handleSaveTenant} className="flex-1" variant="primary" size="md">
-              {t('save_button', 'Save')}
-            </Button>
-          </ModalFooter>
-        )}
-      </Modal>
+      </Drawer>
 
-      {/* Property Add/Edit Modal */}
-      <Modal
-        show={!!showPropertyModal && !!editingProperty}
-        onClose={() => { setShowPropertyModal(null); setEditingProperty(null); }}
-        dismissible={!operationLoading}
-        size="md"
-        className="z-58"
+      {/* Property Add/Edit Drawer */}
+      <Drawer
+        open={!!showPropertyModal && !!editingProperty}
+        onClose={() => { if (!operationLoading) { setShowPropertyModal(null); setEditingProperty(null); } }}
+        position="right"
+        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
       >
-        <ModalHeader as="div">
-          {showPropertyModal === 'add' ? t('add_property_heading', 'Add Property') : t('edit_property_heading', 'Edit Property')}
-        </ModalHeader>
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-950 border border-sky-200 dark:border-sky-800 flex items-center justify-center text-sky-600 dark:text-sky-400">
+              <Building2 className="w-4 h-4" />
+            </div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white m-0">
+              {showPropertyModal === 'add' ? t('add_property_heading', 'Add Property') : t('edit_property_heading', 'Edit Property')}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => { if (!operationLoading) { setShowPropertyModal(null); setEditingProperty(null); } }}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
         {editingProperty && (
-          <ModalBody>
-            <div className="space-y-4">
+          <>
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
               <div>
                 <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                   {t('property_name_label', 'Property Name')}
                   <span
-                    className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 cursor-help hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                    className="text-2xs font-semibold text-slate-400 dark:text-slate-500 cursor-help hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                     title={t('property_name_help_tooltip', 'The display name guests see for this property/room. Automatically generates the URL slug.')}
                   >
                     {t('help_label', 'Help?')}
@@ -1534,45 +1577,59 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                 </div>
               )}
             </div>
-          </ModalBody>
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => { setShowPropertyModal(null); setEditingProperty(null); }}
+                disabled={operationLoading}
+              >
+                {t('cancel_button', 'Cancel')}
+              </Button>
+              <Button
+                onClick={showPropertyModal === 'add' ? handleAddProperty : handleEditProperty}
+                disabled={operationLoading}
+                variant="primary"
+                size="sm"
+                leftIcon={operationLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : undefined}
+              >
+                {operationLoading ? 'Saving...' : (showPropertyModal === 'add' ? t('add_button', 'Add') : t('update_button', 'Update'))}
+              </Button>
+            </div>
+          </>
         )}
-        {editingProperty && (
-          <ModalFooter>
-            <Button
-              onClick={showPropertyModal === 'add' ? handleAddProperty : handleEditProperty}
-              disabled={operationLoading}
-              block
-              className="flex items-center justify-center gap-2"
-              variant="primary"
-              size="md"
-            >
-              {operationLoading ? (
-                <>
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                showPropertyModal === 'add' ? t('add_button', 'Add') : t('update_button', 'Update')
-              )}
-            </Button>
-          </ModalFooter>
-        )}
-      </Modal>
+      </Drawer>
 
-      {/* Delete Property Confirmation */}
-      <Modal
-        show={!!showDeletePropertyModal}
-        onClose={() => { setShowDeletePropertyModal(null); setDeleteConfirmText(''); setError(null); }}
-        dismissible={!operationLoading}
-        size="md"
-        className="z-58"
+      {/* Delete Property Confirmation Drawer */}
+      <Drawer
+        open={!!showDeletePropertyModal}
+        onClose={() => { if (!operationLoading) { setShowDeletePropertyModal(null); setDeleteConfirmText(''); setError(null); } }}
+        position="right"
+        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
       >
-        <ModalHeader as="div">{t('delete_property_heading', 'Delete Property?')}</ModalHeader>
-        <ModalBody>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 font-semibold text-red-600 flex items-center gap-1.5">
-            <AlertTriangle className="w-4 h-4 flex-shrink-0" /> {t('deletion_consequences_label', 'Deletion Consequences for this Property:')}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 flex items-center justify-center text-red-600 dark:text-red-400">
+              <AlertTriangle className="w-4 h-4" />
+            </div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white m-0">
+              {t('delete_property_heading', 'Delete Property?')}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => { if (!operationLoading) { setShowDeletePropertyModal(null); setDeleteConfirmText(''); setError(null); } }}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <p className="text-sm mb-2 font-semibold text-red-600 dark:text-red-400 flex items-center gap-1.5">
+            <AlertTriangle className="w-4 h-4 shrink-0" /> {t('deletion_consequences_label', 'Deletion Consequences for this Property:')}
           </p>
-          <ul className="text-sm text-slate-600 dark:text-slate-400 mb-4 list-disc list-inside space-y-1">
+          <ul className="text-sm text-slate-600 dark:text-slate-400 list-disc list-inside space-y-1">
             <li>All <strong>active and upcoming bookings</strong> will be permanently deleted.</li>
             <li>Past bookings and financial ledger records <strong>will remain intact</strong> for historical audits.</li>
             <li>Menus, inventory stock, staff assignments, and modules will be removed.</li>
@@ -1589,53 +1646,66 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
             className="font-mono"
           />
 
-          {/* Now structurally impossible to render behind the modal - Flowbite's
-              Modal portals to document.body at the correct z-index tier,
-              unlike the old fixed-overlay div this used to be. */}
           {error && (
             <Alert color="failure" icon={AlertCircle} className="mt-4 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 text-red-800 dark:text-red-300">
               <p className="text-sm">{error}</p>
             </Alert>
           )}
-        </ModalBody>
-        <ModalFooter>
+        </div>
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => { setShowDeletePropertyModal(null); setDeleteConfirmText(''); setError(null); }}
+            disabled={operationLoading}
+          >
+            {t('cancel_button', 'Cancel')}
+          </Button>
           <Button
             onClick={() => {
               handleDeleteProperty(showDeletePropertyModal);
               setDeleteConfirmText('');
             }}
             disabled={operationLoading || deleteConfirmText !== 'DELETE'}
-            block
-            className="flex items-center justify-center gap-2"
             variant="danger"
-            size="md"
+            size="sm"
+            leftIcon={operationLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : undefined}
           >
-            {operationLoading ? (
-              <>
-                <Loader2 className="w-3 h-3 animate-spin" />
-                Deleting...
-              </>
-            ) : (
-              t('delete_property_button', 'Delete Property')
-            )}
+            {operationLoading ? 'Deleting...' : t('delete_property_button', 'Delete Property')}
           </Button>
-        </ModalFooter>
-      </Modal>
+        </div>
+      </Drawer>
 
-      {/* Delete Tenant Confirmation */}
-      <Modal
-        show={!!showDeleteTenantModal}
-        onClose={() => { setShowDeleteTenantModal(null); setDeleteConfirmText(''); setError(null); }}
-        dismissible={!operationLoading}
-        size="md"
-        className="z-58"
+      {/* Delete Tenant Confirmation Drawer */}
+      <Drawer
+        open={!!showDeleteTenantModal}
+        onClose={() => { if (!operationLoading) { setShowDeleteTenantModal(null); setDeleteConfirmText(''); setError(null); } }}
+        position="right"
+        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
       >
-        <ModalHeader as="div">{t('delete_tenant_heading', 'Delete Tenant?')}</ModalHeader>
-        <ModalBody>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 font-semibold text-red-600 flex items-center gap-1.5">
-            <AlertTriangle className="w-4 h-4 flex-shrink-0" /> {t('deletion_consequences_label', 'Deletion Consequences for this Property:').replace('this Property', 'this Tenant')}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 flex items-center justify-center text-red-600 dark:text-red-400">
+              <AlertTriangle className="w-4 h-4" />
+            </div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white m-0">
+              {t('delete_tenant_heading', 'Delete Tenant?')}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => { if (!operationLoading) { setShowDeleteTenantModal(null); setDeleteConfirmText(''); setError(null); } }}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <p className="text-sm mb-2 font-semibold text-red-600 dark:text-red-400 flex items-center gap-1.5">
+            <AlertTriangle className="w-4 h-4 shrink-0" /> {t('deletion_consequences_label', 'Deletion Consequences for this Property:').replace('this Property', 'this Tenant')}
           </p>
-          <ul className="text-sm text-slate-600 dark:text-slate-400 mb-4 list-disc list-inside space-y-1">
+          <ul className="text-sm text-slate-600 dark:text-slate-400 list-disc list-inside space-y-1">
             <li><strong>Every property under this tenant</strong> (
               {properties.filter((p) => p.tenant_id === showDeleteTenantModal).length} total) will be permanently deleted too - not just the tenant record.
             </li>
@@ -1660,212 +1730,217 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
               <p className="text-sm">{error}</p>
             </Alert>
           )}
-        </ModalBody>
-        <ModalFooter>
+        </div>
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => { setShowDeleteTenantModal(null); setDeleteConfirmText(''); setError(null); }}
+            disabled={operationLoading}
+          >
+            {t('cancel_button', 'Cancel')}
+          </Button>
           <Button
             onClick={() => {
               handleDeleteTenant(showDeleteTenantModal);
               setDeleteConfirmText('');
             }}
             disabled={operationLoading || deleteConfirmText !== 'DELETE'}
-            block
-            className="flex items-center justify-center gap-2"
             variant="danger"
-            size="md"
+            size="sm"
+            leftIcon={operationLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : undefined}
           >
-            {operationLoading ? (
-              <>
-                <Loader2 className="w-3 h-3 animate-spin" />
-                Deleting...
-              </>
-            ) : (
-              t('delete_tenant_button', 'Delete Tenant')
-            )}
+            {operationLoading ? 'Deleting...' : t('delete_tenant_button', 'Delete Tenant')}
           </Button>
-        </ModalFooter>
-      </Modal>
+        </div>
+      </Drawer>
 
-      {/* Add Tenant Modal */}
-      <Modal show={showAddTenantModal} onClose={() => setShowAddTenantModal(false)} dismissible={!operationLoading} size="md" className="z-58">
-        <ModalBody>
-            {newTenantCredentials ? (
-              <>
-                <div className="flex items-center gap-2 mb-1">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                  <h3 className="platform-property-management__subtitle text-lg font-semibold text-slate-900 dark:text-white">
-                    {t('tenant_created_heading', 'Tenant Created')}
-                  </h3>
+      {/* Add Tenant Drawer */}
+      <Drawer
+        open={showAddTenantModal}
+        onClose={() => { if (!operationLoading) setShowAddTenantModal(false); }}
+        position="right"
+        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-950 border border-sky-200 dark:border-sky-800 flex items-center justify-center text-sky-600 dark:text-sky-400">
+              {newTenantCredentials ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Plus className="w-4 h-4" />}
+            </div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white m-0">
+              {newTenantCredentials ? t('tenant_created_heading', 'Tenant Created') : t('add_new_tenant_heading', 'Add New Tenant')}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => { if (!operationLoading) setShowAddTenantModal(false); }}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {newTenantCredentials ? (
+            <>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+                {t('temp_passcode_only_shown_hint', "This is the only time the temporary passcode is shown - share it now.")}
+              </p>
+
+              {newTenantCredentials.loginNote ? (
+                <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg text-xs text-amber-800 dark:text-amber-300 mb-4">
+                  {newTenantCredentials.loginNote}
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-                  {t('temp_passcode_only_shown_hint', "This is the only time the temporary passcode is shown - share it now.")}
-                </p>
-
-                {newTenantCredentials.loginNote ? (
-                  <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg text-xs text-amber-800 dark:text-amber-300 mb-4">
-                    {newTenantCredentials.loginNote}
+              ) : (
+                <>
+                  <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4 space-y-2 mb-3">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-500 dark:text-slate-400">{t('username_column', 'Username')}</span>
+                      <span className="font-mono font-semibold text-slate-900 dark:text-white">{newTenantCredentials.username}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-500 dark:text-slate-400">{t('temporary_passcode_label', 'Temporary Passcode')}</span>
+                      <span className="font-mono font-semibold text-slate-900 dark:text-white tracking-widest">{newTenantCredentials.tempPasscode}</span>
+                    </div>
                   </div>
-                ) : (
-                  <>
-                    <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4 space-y-2 mb-3">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-500 dark:text-slate-400">{t('username_column', 'Username')}</span>
-                        <span className="font-mono font-semibold text-slate-900 dark:text-white">{newTenantCredentials.username}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-500 dark:text-slate-400">{t('temporary_passcode_label', 'Temporary Passcode')}</span>
-                        <span className="font-mono font-semibold text-slate-900 dark:text-white tracking-widest">{newTenantCredentials.tempPasscode}</span>
-                      </div>
-                    </div>
 
-                    <div className={`flex items-center gap-2 text-xs font-semibold mb-4 ${newTenantCredentials.emailSent ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                      {newTenantCredentials.emailSent ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : <XCircle className="w-3.5 h-3.5 shrink-0" />}
-                      {newTenantCredentials.emailSent ? 'Welcome email sent' : `Email not sent${newTenantCredentials.emailError ? ` - ${newTenantCredentials.emailError}` : ''}`}
-                    </div>
+                  <div className={`flex items-center gap-2 text-xs font-semibold mb-4 ${newTenantCredentials.emailSent ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                    {newTenantCredentials.emailSent ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : <XCircle className="w-3.5 h-3.5 shrink-0" />}
+                    {newTenantCredentials.emailSent ? 'Welcome email sent' : `Email not sent${newTenantCredentials.emailError ? ` - ${newTenantCredentials.emailError}` : ''}`}
+                  </div>
 
-                    <div className="flex gap-2 mb-2">
-                      <a
-                        href={`https://api.whatsapp.com/send?phone=91${newTenantCredentials.whatsappPhone}&text=${encodeURIComponent(newTenantCredentials.renderedMessage)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
-                      >
-                        <Share2 className="w-4 h-4" /> {t('share_whatsapp_button', 'Share via WhatsApp')}
-                      </a>
-                      <Button
-                        onClick={() => navigator.clipboard?.writeText(newTenantCredentials.renderedMessage)}
-                        title={t('copy_message_tooltip', 'Copy message')}
-                        variant="secondary"
-                        size="sm"
-                      >
-                        <Copy className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </>
-                )}
-
-                <Button
-                  onClick={() => {
-                    setShowAddTenantModal(false);
-                    setNewTenantCredentials(null);
+                  <div className="flex gap-2 mb-2">
+                    <a
+                      href={`https://api.whatsapp.com/send?phone=91${newTenantCredentials.whatsappPhone}&text=${encodeURIComponent(newTenantCredentials.renderedMessage)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Share2 className="w-4 h-4" /> {t('share_whatsapp_button', 'Share via WhatsApp')}
+                    </a>
+                    <Button
+                      onClick={() => navigator.clipboard?.writeText(newTenantCredentials.renderedMessage)}
+                      title={t('copy_message_tooltip', 'Copy message')}
+                      variant="secondary"
+                      size="sm"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </>
+              )}
+            </>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
+                  {t('tenant_name_label', 'Tenant Name')}
+                </label>
+                <Input
+                  type="text"
+                  value={newTenant.name}
+                  onChange={(e) => {
+                    const name = e.target.value;
+                    setNewTenant((prev) => ({
+                      ...prev,
+                      name,
+                      slug: slugManuallyEdited ? prev.slug : slugify(name),
+                    }));
                   }}
-                  className="mt-2"
-                  variant="primary"
-                  size="md"
-                  block
-                >
-                  {t('done_button', 'Done')}
-                </Button>
-              </>
-            ) : (
-              <>
-                <h3 className="platform-property-management__subtitle text-lg font-semibold text-slate-900 dark:text-white mb-4">
-                  {t('add_new_tenant_heading', 'Add New Tenant')}
-                </h3>
+                  placeholder={t('tenant_name_placeholder', 'e.g., Vrikshawan')}
+                />
+              </div>
 
-                <div className="space-y-4 mb-6">
-                  <div>
-                    <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-                      {t('tenant_name_label', 'Tenant Name')}
-                    </label>
-                    <Input
-                      type="text"
-                      value={newTenant.name}
-                      onChange={(e) => {
-                        const name = e.target.value;
-                        setNewTenant((prev) => ({
-                          ...prev,
-                          name,
-                          slug: slugManuallyEdited ? prev.slug : slugify(name),
-                        }));
-                      }}
-                      placeholder={t('tenant_name_placeholder', 'e.g., Vrikshawan')}
-                    />
-                  </div>
+              <div>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
+                  {t('url_slug_label', 'URL Slug')}
+                </label>
+                <Input
+                  type="text"
+                  value={newTenant.slug}
+                  onChange={(e) => {
+                    setSlugManuallyEdited(true);
+                    setNewTenant({ ...newTenant, slug: slugify(e.target.value) });
+                  }}
+                  className="font-mono"
+                  placeholder={t('tenant_slug_placeholder', 'e.g., vrikshawan')}
+                />
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  {t('url_slug_hint', "Auto-filled from the name. Used in the property URL - not the login username (that's the phone number below).")}
+                </p>
+              </div>
 
-                  <div>
-                    <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-                      {t('url_slug_label', 'URL Slug')}
-                    </label>
-                    <Input
-                      type="text"
-                      value={newTenant.slug}
-                      onChange={(e) => {
-                        setSlugManuallyEdited(true);
-                        setNewTenant({ ...newTenant, slug: slugify(e.target.value) });
-                      }}
-                      className="font-mono"
-                      placeholder={t('tenant_slug_placeholder', 'e.g., vrikshawan')}
-                    />
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                      {t('url_slug_hint', "Auto-filled from the name. Used in the property URL - not the login username (that's the phone number below).")}
-                    </p>
-                  </div>
+              <div>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
+                  {t('email_label', 'Email')}
+                </label>
+                <Input
+                  type="email"
+                  value={newTenant.email}
+                  onChange={(e) =>
+                    setNewTenant({ ...newTenant, email: e.target.value })
+                  }
+                  placeholder={t('email_placeholder', 'tenant@example.com')}
+                />
+              </div>
 
-                  <div>
-                    <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-                      {t('email_label', 'Email')}
-                    </label>
-                    <Input
-                      type="email"
-                      value={newTenant.email}
-                      onChange={(e) =>
-                        setNewTenant({ ...newTenant, email: e.target.value })
-                      }
-                      placeholder={t('email_placeholder', 'tenant@example.com')}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-                      {t('tenant_phone_login_username_label', 'Phone (also becomes their login username)')}
-                    </label>
-                    <Input
-                      type="tel"
-                      value={newTenant.phone}
-                      onChange={(e) =>
-                        setNewTenant({ ...newTenant, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })
-                      }
-                      maxLength={10}
-                      className="font-mono"
-                      placeholder={t('phone_placeholder', '10-digit mobile number')}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex gap-3">
-                  <Button
-                    onClick={() => {
-                      setShowAddTenantModal(false);
-                      setNewTenant({ name: '', slug: '', email: '', phone: '' });
-                      setSlugManuallyEdited(false);
-                    }}
-                    className="flex-1"
-                    variant="secondary"
-                    size="md"
-                  >
-                    {t('cancel_button', 'Cancel')}
-                  </Button>
-                  <Button
-                    onClick={handleAddTenant}
-                    disabled={operationLoading}
-                    className="flex-1 flex items-center justify-center gap-2"
-                    variant="primary"
-                    size="md"
-                  >
-                    {operationLoading ? (
-                      <>
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                        Creating...
-                      </>
-                    ) : (
-                      t('create_button', 'Create')
-                    )}
-                  </Button>
-                </div>
-              </>
-            )}
-        </ModalBody>
-      </Modal>
+              <div>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
+                  {t('tenant_phone_login_username_label', 'Phone (also becomes their login username)')}
+                </label>
+                <Input
+                  type="tel"
+                  value={newTenant.phone}
+                  onChange={(e) =>
+                    setNewTenant({ ...newTenant, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })
+                  }
+                  maxLength={10}
+                  className="font-mono"
+                  placeholder={t('phone_placeholder', '10-digit mobile number')}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+          {newTenantCredentials ? (
+            <Button
+              onClick={() => {
+                setShowAddTenantModal(false);
+                setNewTenantCredentials(null);
+              }}
+              variant="primary"
+              size="sm"
+              block
+            >
+              {t('done_button', 'Done')}
+            </Button>
+          ) : (
+            <>
+              <Button
+                onClick={() => {
+                  setShowAddTenantModal(false);
+                  setNewTenant({ name: '', slug: '', email: '', phone: '' });
+                  setSlugManuallyEdited(false);
+                }}
+                variant="secondary"
+                size="sm"
+              >
+                {t('cancel_button', 'Cancel')}
+              </Button>
+              <Button
+                onClick={handleAddTenant}
+                disabled={operationLoading}
+                variant="primary"
+                size="sm"
+                leftIcon={operationLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : undefined}
+              >
+                {operationLoading ? 'Creating...' : t('create_button', 'Create')}
+              </Button>
+            </>
+          )}
+        </div>
+      </Drawer>
     </div>
   );
 };

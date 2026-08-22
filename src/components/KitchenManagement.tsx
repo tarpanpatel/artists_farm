@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Modal, ModalHeader, ModalBody, ModalFooter, Tabs, TabItem, type TabsRef } from 'flowbite-react';
+import { Drawer, Tabs, TabItem, type TabsRef } from 'flowbite-react';
 import {
   UtensilsCrossed,
   Plus,
@@ -2235,7 +2235,14 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       // against the drawer's own now-tinted bg-slate-50
                       // surface (22 Aug 2026) - it used to read as one shade
                       // of gray-on-white, now it'd be gray-on-gray instead.
-                      className="bg-white dark:bg-gray-700/60 min-h-[38px] py-1 px-2.5 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center justify-between gap-2 text-xs text-gray-900 dark:text-gray-100"
+                      // min-h/py/button-size shrunk ~30% (22 Aug 2026, on
+                      // request) - previously min-h-[38px] py-1 with w-7 h-7
+                      // (28px) stepper buttons actually rendered ~40px tall
+                      // (content height won over the min-h floor); w-6 h-6
+                      // (24px) buttons + py-0 gets this row down to ~28px,
+                      // about 30% shorter, without dropping the stepper
+                      // buttons below a reasonable tap target.
+                      className="bg-white dark:bg-gray-700/60 min-h-[27px] py-0 px-2.5 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center justify-between gap-2 text-xs text-gray-900 dark:text-gray-100"
                     >
                       <div className="flex-1 pr-1 truncate min-w-0">
                         <h4 className="kitchen-management__caption font-semibold text-gray-900 dark:text-white text-xs truncate m-0 p-0 leading-tight">
@@ -2248,9 +2255,9 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                           <button
                             type="button"
                             onClick={() => handleUpdateCartQuantity(ci.menuItem.id, -1)}
-                            className="w-7 h-7 rounded-md shrink-0 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90 border border-gray-200 dark:border-gray-600 shadow-xs"
+                            className="w-6 h-6 rounded-md shrink-0 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90 border border-gray-200 dark:border-gray-600 shadow-xs"
                           >
-                            <Minus className="w-3.5 h-3.5" />
+                            <Minus className="w-3 h-3" />
                           </button>
                         </Tooltip>
                         <span className="w-6 text-center font-bold text-gray-900 dark:text-white text-xs">
@@ -2260,9 +2267,9 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                           <button
                             type="button"
                             onClick={() => handleUpdateCartQuantity(ci.menuItem.id, 1)}
-                            className="w-7 h-7 rounded-md shrink-0 bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center transition-colors cursor-pointer active:scale-90 shadow-xs"
+                            className="w-6 h-6 rounded-md shrink-0 bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center transition-colors cursor-pointer active:scale-90 shadow-xs"
                           >
-                            <Plus className="w-3.5 h-3.5" />
+                            <Plus className="w-3 h-3" />
                           </button>
                         </Tooltip>
                       </div>
@@ -2750,19 +2757,31 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             come from propertyWalkInTableCount (self-heals, defaults 10) so
             this scales to however many tables a given property actually
             has, instead of a hardcoded range. */}
-        <Modal
-          show={isAddNewWalkInOpen}
-          onClose={() => { setIsAddNewWalkInOpen(false); setNewTabLabel(''); }}
-          dismissible={!isStartingNewTab}
-          size="sm"
-          className="z-58"
+        {/* ADD NEW TABLE DRAWER */}
+        <Drawer
+          open={isAddNewWalkInOpen}
+          onClose={() => { if (!isStartingNewTab) { setIsAddNewWalkInOpen(false); setNewTabLabel(''); } }}
+          position="right"
+          className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
         >
-          <ModalHeader as="div">
-            <h3 className="kitchen-management__subtitle font-semibold text-slate-800 dark:text-slate-200 text-xs tracking-wide flex items-center gap-2">
-              <Plus className="w-4 h-4" /> {t('add_new_walk_in_heading', 'Add New Table')}
-            </h3>
-          </ModalHeader>
-          <ModalBody className="space-y-4">
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                <Plus className="w-4 h-4" />
+              </div>
+              <h2 className="kitchen-management__subtitle font-semibold text-slate-800 dark:text-slate-200 text-sm m-0">
+                {t('add_new_walk_in_heading', 'Add New Table')}
+              </h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => { if (!isStartingNewTab) { setIsAddNewWalkInOpen(false); setNewTabLabel(''); } }}
+              className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {(() => {
               const totalTables = Math.max(1, propertyWalkInTableCount || 10);
               const openTabsForPicker = walkInTabs.filter((tab) => tab.status === 'open');
@@ -2789,26 +2808,53 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 />
               );
             })()}
+          </div>
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => { setIsAddNewWalkInOpen(false); setNewTabLabel(''); }}
+              disabled={isStartingNewTab}
+            >
+              {t('cancel_button', 'Cancel')}
+            </Button>
             <Button
               variant="primary"
-              size="md"
-              block
+              size="sm"
               onClick={handleStartWalkInOrder}
               disabled={!newTabLabel.trim() || isStartingNewTab}
             >
               {isStartingNewTab ? t('starting_order_button', 'Starting…') : t('start_order_button', 'Start Order')}
             </Button>
-          </ModalBody>
-        </Modal>
+          </div>
+        </Drawer>
 
-        {/* CUSTOM MEAL MODAL */}
-        <Modal show={isCustomMealModalOpen} onClose={() => setIsCustomMealModalOpen(false)} dismissible size="sm" className="z-58">
-          <ModalHeader as="div">
-            <h3 className="kitchen-management__subtitle font-semibold text-slate-800 dark:text-slate-200 text-xs tracking-wide flex items-center gap-2">
-              <Plus className="w-4 h-4" /> {t('create_custom_meal_heading')}
-            </h3>
-          </ModalHeader>
-          <ModalBody className="space-y-5">
+        {/* CUSTOM MEAL DRAWER */}
+        <Drawer
+          open={isCustomMealModalOpen}
+          onClose={() => setIsCustomMealModalOpen(false)}
+          position="right"
+          className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+        >
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                <Plus className="w-4 h-4" />
+              </div>
+              <h2 className="kitchen-management__subtitle font-semibold text-slate-800 dark:text-slate-200 text-sm m-0">
+                {t('create_custom_meal_heading')}
+              </h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsCustomMealModalOpen(false)}
+              className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-5">
             <Input
               label={t('combo_meal_name_label')}
               type="text"
@@ -2823,26 +2869,51 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               value={newMealCost}
               onChange={(e) => setNewMealCost(e.target.value)}
             />
-          </ModalBody>
-          <ModalFooter>
+          </div>
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setIsCustomMealModalOpen(false)}
+            >
+              {t('cancel_button', 'Cancel')}
+            </Button>
             <Button variant="success" size="sm" onClick={handleSaveCustomMeal}>
               {t('save_to_database_button')}
             </Button>
-          </ModalFooter>
-        </Modal>
+          </div>
+        </Drawer>
 
       {/* TAB: BETA RECIPE BUILDER */}
       {activeTab === 'beta_recipe_builder' && (
-    <div className="space-y-6 kitchen-management">
-          {/* Recipe Preset Save Modal */}
-          <Modal show={showPresetModal} onClose={() => setShowPresetModal(false)} dismissible size="sm" className="z-58">
-            <ModalHeader as="div">
-              <h3 className="kitchen-management__subtitle font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-                <Bookmark className="w-4 h-4 text-indigo-500" /> {t('save_recipe_preset_heading')}
-              </h3>
-            </ModalHeader>
-            <ModalBody className="space-y-4">
-              <p className="text-[11px] text-slate-500">{t('save_preset_description')}</p>
+        <div className="space-y-6 kitchen-management">
+          {/* Recipe Preset Save Drawer */}
+          <Drawer
+            open={showPresetModal}
+            onClose={() => setShowPresetModal(false)}
+            position="right"
+            className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+          >
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                  <Bookmark className="w-4 h-4" />
+                </div>
+                <h2 className="kitchen-management__subtitle font-semibold text-slate-900 dark:text-white text-sm m-0">
+                  {t('save_recipe_preset_heading')}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPresetModal(false)}
+                className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <p className="text-xs text-slate-500 m-0">{t('save_preset_description')}</p>
               <Input
                 type="text"
                 value={presetNameInput}
@@ -2851,13 +2922,21 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 autoFocus
                 onKeyDown={(e) => { if (e.key === 'Enter') handleSavePreset(); }}
               />
-            </ModalBody>
-            <ModalFooter>
+            </div>
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowPresetModal(false)}
+              >
+                {t('cancel_button', 'Cancel')}
+              </Button>
               <Button variant="primary" size="sm" leftIcon={<Save className="w-3 h-3" />} onClick={handleSavePreset}>
                 {t('save_preset_button')}
               </Button>
-            </ModalFooter>
-          </Modal>
+            </div>
+          </Drawer>
 
           {/* Header */}
           <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md">
@@ -3212,150 +3291,207 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         </div>
       )}
 
-      {/* NEW MENU ITEM MODAL */}
-      <Modal show={isNewMenuModalOpen} onClose={() => setIsNewMenuModalOpen(false)} dismissible size="md" className="z-58">
-        <ModalHeader as="div">{t('add_new_food_menu_item_heading')}</ModalHeader>
-        <form onSubmit={handleCreateMenuItem} className="app-form app-form--create-menu-item">
-          <ModalBody className="space-y-3 text-xs">
+      {/* NEW MENU ITEM DRAWER */}
+      <Drawer
+        open={isNewMenuModalOpen}
+        onClose={() => setIsNewMenuModalOpen(false)}
+        position="right"
+        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+              <UtensilsCrossed className="w-4 h-4" />
+            </div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white m-0">
+              {t('add_new_food_menu_item_heading')}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsNewMenuModalOpen(false)}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <form onSubmit={handleCreateMenuItem} className="app-form app-form--create-menu-item flex-1 flex flex-col justify-between overflow-y-auto">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 text-xs">
+            <div>
+              <Input
+                label={t('item_name_required_label')}
+                type="text"
+                required
+                value={newItemName}
+                onChange={(e) => setNewItemName(e.target.value)}
+                placeholder="e.g. Tandoori Butter Roti"
+              />
+            </div>
+
+            <div>
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('category_label')}</label>
+              <StyledSelect
+                value={newItemCategory}
+                onChange={(val) => setNewItemCategory(val as any)}
+                options={[
+                  { value: 'Starters', label: 'Starters' },
+                  { value: 'Main Course', label: 'Main Course' },
+                  { value: 'Beverages', label: 'Beverages' },
+                  { value: 'Farm Specials', label: 'Farm Specials' },
+                  { value: 'Desserts', label: 'Desserts' },
+                ]}
+              />
+            </div>
+
+            <div>
+              <Input
+                label={t('price_label')}
+                type="number"
+                required
+                value={newItemPrice}
+                onChange={(e) => setNewItemPrice(Number(e.target.value))}
+              />
+            </div>
+
+            <div>
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('item_image_label', 'Item Image')}</label>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition-colors border border-slate-300 dark:border-slate-600">
+                    <Upload className="w-4 h-4" />
+                    <span>{t('upload_image_button')}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setNewItemImagePath(reader.result as string);
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+
+                {/* Image Preview Box */}
+                {newItemImagePath && (
+                  <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-slate-300 bg-slate-50">
+                    <img
+                      src={newItemImagePath}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setNewItemImagePath('')}
+                      className="absolute top-1 right-1 bg-slate-900/80 text-white p-0.5 rounded-full hover:bg-slate-900 cursor-pointer"
+                      title={t('remove_image_tooltip')}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setIsNewMenuModalOpen(false)}
+            >
+              {t('cancel_button', 'Cancel')}
+            </Button>
+            <Button type="submit" variant="success" size="sm">
+              {t('save_item_button')}
+            </Button>
+          </div>
+        </form>
+      </Drawer>
+
+      {/* MATERIAL REQUISITION DRAWER */}
+      <Drawer
+        open={isReqModalOpen}
+        onClose={() => setIsReqModalOpen(false)}
+        position="right"
+        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+              <Boxes className="w-4 h-4" />
+            </div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white m-0">
+              {t('request_raw_material_heading')}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsReqModalOpen(false)}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <form onSubmit={handleReqSubmit} className="app-form app-form--submit-requisition flex-1 flex flex-col justify-between overflow-y-auto">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 text-xs">
+            <div>
+              <Input
+                label={t('material_name_required_label')}
+                type="text"
+                required
+                value={reqItemName}
+                onChange={(e) => setReqItemName(e.target.value)}
+                placeholder={t('e_g_milk_placeholder')}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
               <div>
                 <Input
-                  label={t('item_name_required_label')}
-                  type="text"
-                  required
-                  value={newItemName}
-                  onChange={(e) => setNewItemName(e.target.value)}
-                  placeholder="e.g. Tandoori Butter Roti"
+                  label={t('quantity_label')}
+                  type="number"
+                  value={reqQty}
+                  onChange={(e) => setReqQty(Number(e.target.value))}
                 />
               </div>
 
               <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('category_label')}</label>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('unit_label')}</label>
                 <StyledSelect
-                  value={newItemCategory}
-                  onChange={(val) => setNewItemCategory(val as any)}
+                  value={reqUnit}
+                  onChange={setReqUnit}
                   options={[
-                    { value: 'Starters', label: 'Starters' },
-                    { value: 'Main Course', label: 'Main Course' },
-                    { value: 'Beverages', label: 'Beverages' },
-                    { value: 'Farm Specials', label: 'Farm Specials' },
-                    { value: 'Desserts', label: 'Desserts' },
+                    { value: 'kg', label: 'kg' },
+                    { value: 'liters', label: 'liters' },
+                    { value: 'pcs', label: 'pcs' },
+                    { value: 'packets', label: 'packets' },
                   ]}
                 />
               </div>
-
-              <div>
-                <Input
-                  label={t('price_label')}
-                  type="number"
-                  required
-                  value={newItemPrice}
-                  onChange={(e) => setNewItemPrice(Number(e.target.value))}
-                />
-              </div>
-
-              <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('item_image_label', 'Item Image')}</label>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition-colors border border-slate-300 dark:border-slate-600">
-                      <Upload className="w-4 h-4" />
-                      <span>{t('upload_image_button')}</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            const reader = new FileReader();
-                            reader.onloadend = () => {
-                              setNewItemImagePath(reader.result as string);
-                            };
-                            reader.readAsDataURL(file);
-                          }
-                        }}
-                      />
-                    </label>
-                  </div>
-
-                  {/* Image Preview Box */}
-                  {newItemImagePath && (
-                    <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-slate-300 bg-slate-50">
-                      <img
-                        src={newItemImagePath}
-                        alt="Preview"
-                        className="w-full h-full object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setNewItemImagePath('')}
-                        className="absolute top-1 right-1 bg-slate-900/80 text-white p-0.5 rounded-full hover:bg-slate-900"
-                        title={t('remove_image_tooltip')}
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-          </ModalBody>
-          <ModalFooter>
-            <Button type="submit" variant="success">
-              {t('save_item_button')}
+            </div>
+          </div>
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setIsReqModalOpen(false)}
+            >
+              {t('cancel_button', 'Cancel')}
             </Button>
-          </ModalFooter>
-        </form>
-      </Modal>
-
-      {/* MATERIAL REQUISITION MODAL */}
-      <Modal show={isReqModalOpen} onClose={() => setIsReqModalOpen(false)} dismissible size="md" className="z-58">
-        <ModalHeader as="div">{t('request_raw_material_heading')}</ModalHeader>
-        <form onSubmit={handleReqSubmit} className="app-form app-form--submit-requisition">
-          <ModalBody className="space-y-3 text-xs">
-              <div>
-                <Input
-                  label={t('material_name_required_label')}
-                  type="text"
-                  required
-                  value={reqItemName}
-                  onChange={(e) => setReqItemName(e.target.value)}
-                  placeholder={t('e_g_milk_placeholder')}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Input
-                    label={t('quantity_label')}
-                    type="number"
-                    value={reqQty}
-                    onChange={(e) => setReqQty(Number(e.target.value))}
-                  />
-                </div>
-
-                <div>
-                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('unit_label')}</label>
-                  <StyledSelect
-                    value={reqUnit}
-                    onChange={setReqUnit}
-                    options={[
-                      { value: 'kg', label: 'kg' },
-                      { value: 'liters', label: 'liters' },
-                      { value: 'pcs', label: 'pcs' },
-                      { value: 'packets', label: 'packets' },
-                    ]}
-                  />
-                </div>
-              </div>
-          </ModalBody>
-          <ModalFooter>
-            <Button type="submit" variant="success">
+            <Button type="submit" variant="success" size="sm">
               {t('submit_requisition_button')}
             </Button>
-          </ModalFooter>
+          </div>
         </form>
-      </Modal>
+      </Drawer>
     </div>
   );
 };

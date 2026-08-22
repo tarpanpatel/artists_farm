@@ -692,6 +692,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 onCheckinChange={setCheckinDate}
                 onCheckoutChange={setExpectedCheckout}
                 blockedDates={getBlockedDateStrings()}
+                disablePastDates
               />
             </div>
 

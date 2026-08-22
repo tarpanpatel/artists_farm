@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { IdCard, Upload, Trash2, CheckCircle2, AlertCircle, Loader2, Plus } from 'lucide-react';
-import { Modal, ModalHeader, ModalBody, ModalFooter, Alert } from 'flowbite-react';
+import { Drawer, Alert } from 'flowbite-react';
+import { X } from './icons/FlowbiteIcons';
 import { Guest } from '../types';
 import {
   GuestIdDocument,
@@ -138,26 +139,35 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
   const totalSlotCount = Math.max(initialSlotCount, highestUploadedIndex + 1) + extraSlots;
 
   return (
-    // z-70: opened from within the already-open guest check-in flow modal,
-    // so it stacks above that z-58 page modal (see the z-index scale note
-    // in src/index.css).
-    <Modal show={isOpen} onClose={onClose} dismissible={!completing} size="2xl" className="z-70 checkin-verification-modal__overlay">
-      <ModalHeader as="div">
+    <Drawer
+      open={isOpen}
+      onClose={onClose}
+      position="right"
+      className="z-70 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between checkin-verification-modal__overlay"
+    >
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
             <IdCard className="w-5 h-5 text-purple-600 dark:text-purple-400" />
           </div>
           <div>
-            <h3 className="checkin-verification-modal__subtitle text-lg font-semibold text-slate-800 dark:text-slate-100">
+            <h3 className="checkin-verification-modal__subtitle text-base font-semibold text-slate-800 dark:text-slate-100 m-0">
               {t('complete_checkin_heading_prefix')} {guest.guestName}
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 m-0">
               {guest.roomNumber} · {requiredCount} {t('id_documents_required_text')}{requiredCount > 1 ? 's' : ''} required
             </p>
           </div>
         </div>
-      </ModalHeader>
-      <ModalBody className="space-y-5">
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+      <div className="flex-1 overflow-y-auto p-4 space-y-5">
         {successMsg && (
           <Alert color="success" icon={CheckCircle2} className="border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
             <p className="text-xs font-medium">{successMsg}</p>
@@ -183,7 +193,7 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
           </div>
         ) : (
           <>
-            <div className="checkin-verification-modal__grid grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="checkin-verification-modal__grid grid grid-cols-2 gap-3">
               {Array.from({ length: totalSlotCount }, (_, index) => {
                 const doc = docForIndex(index);
                 const isUploading = uploadingIndex === index;
@@ -228,14 +238,14 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
                       ) : (
                         <>
                           <Upload className="w-6 h-6 text-slate-400" />
-                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold mt-1 text-center px-1">
+                          <span className="text-2xs text-slate-500 dark:text-slate-400 font-semibold mt-1 text-center px-1">
                             {label}
                           </span>
                         </>
                       )}
                     </label>
                     {doc && (
-                      <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400">
+                      <div className="flex items-center justify-between text-2xs text-slate-500 dark:text-slate-400">
                         <span>{formatUploadedAt(doc.uploadedAt)}</span>
                         <button
                           onClick={() => handleDelete(doc.id)}
@@ -258,9 +268,9 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
             </button>
           </>
         )}
-      </ModalBody>
-      <ModalFooter className="flex-col items-stretch gap-3">
-        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium text-center">
+      </div>
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex flex-col items-stretch gap-3 bg-gray-50 dark:bg-gray-850">
+        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium text-center m-0">
           {requiredUploadedCount} of {requiredCount} required ID document uploaded
         </p>
         <button
@@ -278,7 +288,7 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
             </>
           )}
         </button>
-      </ModalFooter>
-    </Modal>
+      </div>
+    </Drawer>
   );
 };

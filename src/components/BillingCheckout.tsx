@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Modal, ModalHeader, ModalBody, TextInput, Checkbox, Tabs, TabItem } from 'flowbite-react';
+import { Card, Drawer, TextInput, Checkbox, Tabs, TabItem } from 'flowbite-react';
 import { Button } from './Button';
 import DataTable from 'react-data-table-component';
 import { flowbiteTableCustomStyles } from '../utils/tableStyles';
@@ -20,6 +20,7 @@ import {
   CreditCard,
   Edit2,
   Pencil,
+  X,
 } from 'lucide-react';
 import { Guest, BillingReceipt } from '../types';
 import { t } from '../i18n/en';
@@ -989,13 +990,32 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
         />
       )}
 
-      {/* Add Booking Modal */}
+      {/* Add Booking Drawer */}
       <React.Suspense fallback={null}>
-        <Modal show={showAddBookingModal} onClose={() => setShowAddBookingModal(false)} dismissible size="lg" className="z-58">
-          <ModalHeader as="div" className="border-b border-gray-200 dark:border-gray-700 p-4">
-            Add Guest Booking
-          </ModalHeader>
-          <ModalBody className="p-4 sm:p-6 max-h-[85vh] overflow-y-auto">
+        <Drawer
+          open={showAddBookingModal}
+          onClose={() => setShowAddBookingModal(false)}
+          position="right"
+          className="z-58 w-full sm:max-w-4xl lg:max-w-5xl p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+        >
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                <Plus className="w-4 h-4" />
+              </div>
+              <h2 className="text-base font-semibold text-gray-900 dark:text-white m-0">
+                Add Guest Booking
+              </h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAddBookingModal(false)}
+              className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6">
             <LazyGuestManagement
               guests={guests}
               receipts={receipts}
@@ -1013,8 +1033,8 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
               propertyUpiId={propertyUpiId}
               propertyUpiQrCodeUrl={propertyUpiQrCodeUrl}
             />
-          </ModalBody>
-        </Modal>
+          </div>
+        </Drawer>
       </React.Suspense>
     </div>
   );

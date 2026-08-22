@@ -10,7 +10,8 @@ import { Textarea } from './Textarea';
 import { StyledSelect } from './StyledSelect';
 import { API_ROOT_BASE, apiFetch, getPropertySlug } from '../services/api';
 import { Button } from './Button';
-import { Alert as FlowbiteAlert, Modal, ModalHeader, ModalBody, ModalFooter, Checkbox } from 'flowbite-react';
+import { Alert as FlowbiteAlert, Drawer, Checkbox } from 'flowbite-react';
+import { X } from './icons/FlowbiteIcons';
 import { KpiCard } from './KpiCard';
 import { t } from '../i18n/en';
 
@@ -561,71 +562,100 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
         </section>
       </main>
 
-      {/* Add Property Modal */}
-      <Modal show={modal.type === 'add'} onClose={() => setModal({ type: 'none' })} dismissible size="md" className="z-58">
-        <ModalHeader as="div">{t('add_new_property_heading', 'Add New Property')}</ModalHeader>
-        <ModalBody className="space-y-5 tenant-dashboard__modal-body">
-              {addError && (
-                <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-300 tenant-dashboard__modal-error">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0 tenant-dashboard__modal-error-icon" />
-                  {addError}
-                </div>
-              )}
-              <div className="tenant-dashboard__form-group">
-                <Input
-                  id="new-property-name"
-                  label={t('tenant_property_name_label', 'Property Name')}
-                  value={newPropName}
-                  onChange={e => setNewPropName(e.target.value)}
-                  placeholder={t('property_name_placeholder', 'e.g. Sea View Villa')}
-                  className="tenant-dashboard__input"
-                />
-                {newPropName && (
-                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 tenant-dashboard__slug-preview">{t('tenant_slug_label', 'Slug:')} <span className="font-mono text-indigo-500">/{autoSlug(newPropName)}</span></p>
-                )}
-              </div>
-              <div className="tenant-dashboard__form-group">
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 tenant-dashboard__form-label">{t('tenant_property_type_label', 'Property Type')}</label>
-                <div className="grid grid-cols-2 gap-3 tenant-dashboard__type-selector">
-                  <button
-                    onClick={() => setNewPropType('SINGLE')}
-                    className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${newPropType === 'SINGLE' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300'} tenant-dashboard__type-btn`}
-                  >
-                    <Home className={`w-5 h-5 ${newPropType === 'SINGLE' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'} tenant-dashboard__type-icon`} />
-                    <span className={`text-xs font-semibold ${newPropType === 'SINGLE' ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-500 dark:text-slate-400'} tenant-dashboard__type-label`}>{t('single_type_label', 'Single')}</span>
-                    <span className="text-xs text-slate-400 tenant-dashboard__type-desc">{t('one_slot_label', '1 slot')}</span>
-                  </button>
-                  <button
-                    onClick={() => setNewPropType('MULTI_KEY')}
-                    className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${newPropType === 'MULTI_KEY' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300'} tenant-dashboard__type-btn`}
-                  >
-                    <Layers className={`w-5 h-5 ${newPropType === 'MULTI_KEY' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'} tenant-dashboard__type-icon`} />
-                    <span className={`text-xs font-semibold ${newPropType === 'MULTI_KEY' ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-500 dark:text-slate-400'} tenant-dashboard__type-label`}>{t('multi_key_type_label', 'Multi-Key')}</span>
-                    <span className="text-xs text-slate-400 tenant-dashboard__type-desc">{t('n_slots_label', 'N slots')}</span>
-                  </button>
-                </div>
-              </div>
-              {newPropType === 'MULTI_KEY' && (
-                <div className="tenant-dashboard__form-group">
-                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 tenant-dashboard__form-label">
-                    {t('number_of_rooms_label', 'Number of Rooms')}
-                    <span className="text-slate-400 font-normal ml-1 tenant-dashboard__form-hint">(max {remaining} slot{remaining !== 1 ? 's' : ''} available)</span>
-                  </label>
-                  <Input
-                    id="new-property-rooms"
-                    type="number"
-                    min={1}
-                    max={remaining}
-                    value={newPropRooms}
-                    onChange={e => setNewPropRooms(Math.max(1, parseInt(e.target.value) || 1))}
-                    helperText={newPropRooms > remaining ? `Not enough slots — you have ${remaining} remaining` : undefined}
-                    error={newPropRooms > remaining}
-                    className="tenant-dashboard__input"
-                  />
-                </div>
-              )}
-        </ModalBody>
-        <ModalFooter>
+      {/* Add Property Drawer */}
+      <Drawer
+        open={modal.type === 'add'}
+        onClose={() => setModal({ type: 'none' })}
+        position="right"
+        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+              <Plus className="w-4 h-4" />
+            </div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white m-0">
+              {t('add_new_property_heading', 'Add New Property')}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => setModal({ type: 'none' })}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-5 tenant-dashboard__modal-body">
+          {addError && (
+            <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-300 tenant-dashboard__modal-error">
+              <AlertCircle className="w-4 h-4 shrink-0 tenant-dashboard__modal-error-icon" />
+              {addError}
+            </div>
+          )}
+          <div className="tenant-dashboard__form-group">
+            <Input
+              id="new-property-name"
+              label={t('tenant_property_name_label', 'Property Name')}
+              value={newPropName}
+              onChange={e => setNewPropName(e.target.value)}
+              placeholder={t('property_name_placeholder', 'e.g. Sea View Villa')}
+              className="tenant-dashboard__input"
+            />
+            {newPropName && (
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 tenant-dashboard__slug-preview">{t('tenant_slug_label', 'Slug:')} <span className="font-mono text-indigo-500">/{autoSlug(newPropName)}</span></p>
+            )}
+          </div>
+          <div className="tenant-dashboard__form-group">
+            <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 tenant-dashboard__form-label">{t('tenant_property_type_label', 'Property Type')}</label>
+            <div className="grid grid-cols-2 gap-3 tenant-dashboard__type-selector">
+              <button
+                onClick={() => setNewPropType('SINGLE')}
+                className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${newPropType === 'SINGLE' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300'} tenant-dashboard__type-btn`}
+              >
+                <Home className={`w-5 h-5 ${newPropType === 'SINGLE' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'} tenant-dashboard__type-icon`} />
+                <span className={`text-xs font-semibold ${newPropType === 'SINGLE' ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-500 dark:text-slate-400'} tenant-dashboard__type-label`}>{t('single_type_label', 'Single')}</span>
+                <span className="text-xs text-slate-400 tenant-dashboard__type-desc">{t('one_slot_label', '1 slot')}</span>
+              </button>
+              <button
+                onClick={() => setNewPropType('MULTI_KEY')}
+                className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${newPropType === 'MULTI_KEY' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300'} tenant-dashboard__type-btn`}
+              >
+                <Layers className={`w-5 h-5 ${newPropType === 'MULTI_KEY' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'} tenant-dashboard__type-icon`} />
+                <span className={`text-xs font-semibold ${newPropType === 'MULTI_KEY' ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-500 dark:text-slate-400'} tenant-dashboard__type-label`}>{t('multi_key_type_label', 'Multi-Key')}</span>
+                <span className="text-xs text-slate-400 tenant-dashboard__type-desc">{t('n_slots_label', 'N slots')}</span>
+              </button>
+            </div>
+          </div>
+          {newPropType === 'MULTI_KEY' && (
+            <div className="tenant-dashboard__form-group">
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 tenant-dashboard__form-label">
+                {t('number_of_rooms_label', 'Number of Rooms')}
+                <span className="text-slate-400 font-normal ml-1 tenant-dashboard__form-hint">(max {remaining} slot{remaining !== 1 ? 's' : ''} available)</span>
+              </label>
+              <Input
+                id="new-property-rooms"
+                type="number"
+                min={1}
+                max={remaining}
+                value={newPropRooms}
+                onChange={e => setNewPropRooms(Math.max(1, parseInt(e.target.value) || 1))}
+                helperText={newPropRooms > remaining ? `Not enough slots — you have ${remaining} remaining` : undefined}
+                error={newPropRooms > remaining}
+                className="tenant-dashboard__input"
+              />
+            </div>
+          )}
+        </div>
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => setModal({ type: 'none' })}
+          >
+            {t('cancel_button', 'Cancel')}
+          </Button>
           <Button
             id="confirm-add-property-btn"
             variant="primary"
@@ -637,77 +667,111 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           >
             {t('create_property_button', 'Create Property')}
           </Button>
-        </ModalFooter>
-      </Modal>
+        </div>
+      </Drawer>
 
-      {/* Edit Modal */}
-      <Modal show={modal.type === 'edit'} onClose={() => setModal({ type: 'none' })} dismissible size="md" className="z-58">
-        <ModalHeader as="div">{t('tenant_edit_property_heading', 'Edit Property')}</ModalHeader>
-        <ModalBody className="space-y-4 tenant-dashboard__modal-body">
+      {/* Edit Property Drawer */}
+      <Drawer
+        open={modal.type === 'edit'}
+        onClose={() => setModal({ type: 'none' })}
+        position="right"
+        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-950 border border-sky-200 dark:border-sky-800 flex items-center justify-center text-sky-600 dark:text-sky-400">
+              <Pencil className="w-4 h-4" />
+            </div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white m-0">
+              {t('tenant_edit_property_heading', 'Edit Property')}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => setModal({ type: 'none' })}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 tenant-dashboard__modal-body">
+          <div className="tenant-dashboard__form-group">
+            <Input
+              label={t('tenant_property_name_label', 'Property Name')}
+              value={editName}
+              onChange={e => setEditName(e.target.value)}
+              className="tenant-dashboard__input"
+            />
+          </div>
+          <div className="tenant-dashboard__form-group">
+            <Input
+              label={t('gstin_optional_label', 'GSTIN (optional)')}
+              value={editGstin}
+              onChange={e => setEditGstin(e.target.value.toUpperCase())}
+              placeholder={t('gstin_placeholder', 'e.g. 27ABCDE1234F1Z5')}
+              helperText={t('gstin_help_text', 'Printed on GST tax invoices at checkout.')}
+              className="tenant-dashboard__input"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="editTelegramTemplateCustomizationCheck"
+              checked={editTelegramTemplateCustomization}
+              onChange={e => setEditTelegramTemplateCustomization(e.target.checked)}
+            />
+            <label htmlFor="editTelegramTemplateCustomizationCheck" className="text-sm font-medium text-slate-700 dark:text-slate-200 cursor-pointer">
+              {t('allow_telegram_template_customization_label', 'Enable Telegram Template Customization')}
+            </label>
+          </div>
+
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 tenant-dashboard__edit-section">
+            <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3 tenant-dashboard__edit-section-title">{t('whatsapp_booking_confirmation_heading', 'WhatsApp Booking Confirmation')}</p>
+            <div className="grid grid-cols-2 gap-3 mb-3 tenant-dashboard__edit-grid">
               <div className="tenant-dashboard__form-group">
                 <Input
-                  label={t('tenant_property_name_label', 'Property Name')}
-                  value={editName}
-                  onChange={e => setEditName(e.target.value)}
+                  label={t('tenant_contact_phone_label', 'Contact Phone')}
+                  labelClassName="text-xs"
+                  value={editPhone}
+                  onChange={e => setEditPhone(e.target.value)}
+                  placeholder={t('contact_phone_placeholder', '99999 99999')}
                   className="tenant-dashboard__input"
                 />
               </div>
               <div className="tenant-dashboard__form-group">
                 <Input
-                  label={t('gstin_optional_label', 'GSTIN (optional)')}
-                  value={editGstin}
-                  onChange={e => setEditGstin(e.target.value.toUpperCase())}
-                  placeholder={t('gstin_placeholder', 'e.g. 27ABCDE1234F1Z5')}
-                  helperText={t('gstin_help_text', 'Printed on GST tax invoices at checkout.')}
+                  label={t('google_maps_link_label', 'Google Maps Link')}
+                  labelClassName="text-xs"
+                  value={editMapsLink}
+                  onChange={e => setEditMapsLink(e.target.value)}
+                  placeholder={t('google_maps_link_placeholder', 'https://maps.app.goo.gl/...')}
                   className="tenant-dashboard__input"
                 />
               </div>
-              <Checkbox
-                  id="editTelegramTemplateCustomizationCheck"
-                  checked={editTelegramTemplateCustomization}
-                  onChange={e => setEditTelegramTemplateCustomization(e.target.checked)}
-                />{t('allow_telegram_template_customization_label', 'Enable Telegram Template Customization')}
-
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 tenant-dashboard__edit-section">
-                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3 tenant-dashboard__edit-section-title">{t('whatsapp_booking_confirmation_heading', 'WhatsApp Booking Confirmation')}</p>
-                <div className="grid grid-cols-2 gap-3 mb-3 tenant-dashboard__edit-grid">
-                  <div className="tenant-dashboard__form-group">
-                    <Input
-                      label={t('tenant_contact_phone_label', 'Contact Phone')}
-                      labelClassName="text-xs"
-                      value={editPhone}
-                      onChange={e => setEditPhone(e.target.value)}
-                      placeholder={t('contact_phone_placeholder', '99999 99999')}
-                      className="tenant-dashboard__input"
-                    />
-                  </div>
-                  <div className="tenant-dashboard__form-group">
-                    <Input
-                      label={t('google_maps_link_label', 'Google Maps Link')}
-                      labelClassName="text-xs"
-                      value={editMapsLink}
-                      onChange={e => setEditMapsLink(e.target.value)}
-                      placeholder={t('google_maps_link_placeholder', 'https://maps.app.goo.gl/...')}
-                      className="tenant-dashboard__input"
-                    />
-                  </div>
-                </div>
-                <p className="text-xs text-slate-400 dark:text-slate-500 mb-3 tenant-dashboard__edit-help-text">
-                  {t('whatsapp_share_help_text', 'Included in the "Share via WhatsApp" message on the booking voucher. Left blank, those lines are simply omitted.')}
-                </p>
-                <div className="tenant-dashboard__form-group">
-                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 tenant-dashboard__form-label">{t('other_notes_label', 'Other Notes')}</label>
-                  <Textarea
-                    value={editInstructions}
-                    onChange={e => setEditInstructions(e.target.value)}
-                    placeholder={t('other_notes_placeholder', 'e.g. How to reach, check-in instructions, parking notes…')}
-                    rows={3}
-                    className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y tenant-dashboard__textarea"
-                  />
-                </div>
-              </div>
-        </ModalBody>
-        <ModalFooter>
+            </div>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mb-3 tenant-dashboard__edit-help-text">
+              {t('whatsapp_share_help_text', 'Included in the "Share via WhatsApp" message on the booking voucher. Left blank, those lines are simply omitted.')}
+            </p>
+            <div className="tenant-dashboard__form-group">
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 tenant-dashboard__form-label">{t('other_notes_label', 'Other Notes')}</label>
+              <Textarea
+                value={editInstructions}
+                onChange={e => setEditInstructions(e.target.value)}
+                placeholder={t('other_notes_placeholder', 'e.g. How to reach, check-in instructions, parking notes…')}
+                rows={3}
+                className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y tenant-dashboard__textarea"
+              />
+            </div>
+          </div>
+        </div>
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => setModal({ type: 'none' })}
+          >
+            {t('cancel_button', 'Cancel')}
+          </Button>
           <Button
             variant="primary"
             size="sm"
@@ -717,20 +781,42 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           >
             {t('save_changes_button', 'Save Changes')}
           </Button>
-        </ModalFooter>
-      </Modal>
+        </div>
+      </Drawer>
 
-      {/* Delete Confirmation Modal */}
-      {modal.type === 'delete' && (
-        <Modal show onClose={() => { setModal({ type: 'none' }); setError(null); }} dismissible size="md" className="z-58">
-          <ModalHeader as="div">{t('tenant_delete_property_heading', 'Delete Property')}</ModalHeader>
-          <ModalBody className="space-y-3 tenant-dashboard__modal-body">
+      {/* Delete Confirmation Drawer */}
+      <Drawer
+        open={modal.type === 'delete'}
+        onClose={() => { setModal({ type: 'none' }); setError(null); }}
+        position="right"
+        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-850">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 flex items-center justify-center text-red-600 dark:text-red-400">
+              <Trash2 className="w-4 h-4" />
+            </div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white m-0">
+              {t('tenant_delete_property_heading', 'Delete Property')}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => { setModal({ type: 'none' }); setError(null); }}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        {modal.type === 'delete' && (
+          <>
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 tenant-dashboard__modal-body">
               <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg tenant-dashboard__warning-box">
-                <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5 tenant-dashboard__warning-icon" />
+                <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5 tenant-dashboard__warning-icon" />
                 <div className="text-sm text-red-800 dark:text-red-300 space-y-1 w-full tenant-dashboard__warning-content">
                   <p className="font-semibold text-red-700 dark:text-red-400 tenant-dashboard__warning-text">{t('permanent_irreversible_warning', 'This action is permanent and irreversible.')}</p>
                   <div className="text-xs space-y-2 mt-1 tenant-dashboard__warning-details">
-                    <p className="font-semibold text-[10px] uppercase tracking-wider text-red-600 dark:text-red-400 tenant-dashboard__warning-subtitle">{t('deletion_consequences_for_label', 'Deletion Consequences for')} "{modal.property.name}":</p>
+                    <p className="font-semibold text-2xs uppercase tracking-wider text-red-600 dark:text-red-400 tenant-dashboard__warning-subtitle">{t('deletion_consequences_for_label', 'Deletion Consequences for')} "{modal.property.name}":</p>
                     <ul className="list-disc list-inside space-y-1 text-red-800 dark:text-red-300 tenant-dashboard__warning-list">
                       <li className="tenant-dashboard__warning-list-item">All <strong>active and upcoming bookings</strong> (present and future stays) will be permanently deleted.</li>
                       <li className="tenant-dashboard__warning-list-item">Past bookings (checked-out/cancelled) and associated financial ledger records <strong>will remain intact</strong> for historical audit trail.</li>
@@ -749,68 +835,104 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 </span>{' '}
                 back to your subscription.
               </p>
-              {/* This modal is a fixed full-screen overlay, so the page-level
-                  error banner further up the tree renders behind it - surface
-                  failures here too instead of the delete silently doing
-                  nothing visible. */}
               {error && (
                 <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg tenant-dashboard__modal-error">
-                  <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0" />
+                  <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />
                   <p className="text-sm text-red-800 dark:text-red-300">{error}</p>
                 </div>
               )}
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="tertiary" size="sm" onClick={() => { setModal({ type: 'none' }); setError(null); }} className="tenant-dashboard__modal-cancel-btn">
-              {t('cancel_button', 'Cancel')}
-            </Button>
-            <Button
-              id="confirm-delete-property-btn"
-              variant="danger"
-              size="sm"
-              onClick={() => handleDeleteProperty(modal.property)}
-              className="tenant-dashboard__modal-delete-btn"
-            >
-              {t('delete_permanently_button', 'Delete Permanently')}
-            </Button>
-          </ModalFooter>
-        </Modal>
-      )}
-
-      {/* â"ۉ"€ Slots Exceeded Modal â"ۉ"€ */}
-      {modal.type === 'slots_exceeded' && (
-        <Modal show onClose={() => setModal({ type: 'none' })} dismissible size="md" className="z-58">
-          <ModalHeader as="div">
-            <div className="flex items-center gap-3 tenant-dashboard__modal-header">
-              <Zap className="w-5 h-5 text-amber-500 tenant-dashboard__modal-icon" />
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white tenant-dashboard__modal-title">{t('not_enough_slots_heading', 'Not Enough Slots')}</h3>
             </div>
-          </ModalHeader>
-          <ModalBody className="tenant-dashboard__modal-body">
-            <p className="text-sm text-slate-600 dark:text-slate-400 tenant-dashboard__slots-info">
-              You need <span className="font-semibold text-slate-900 dark:text-white tenant-dashboard__slots-needed">{modal.needed} slot(s)</span> but only have{' '}
-              <span className="font-semibold text-amber-600 dark:text-amber-400 tenant-dashboard__slots-remaining">{modal.remaining} remaining</span>.
-            </p>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 tenant-dashboard__slots-message">
-              {t('contact_root_admin_upgrade_message', 'Please contact your Root Admin to upgrade your subscription package.')}
-            </p>
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="tertiary" size="sm" onClick={() => setModal({ type: 'add' })} className="tenant-dashboard__modal-back-btn">
-              {t('back_button', 'Back')}
-            </Button>
-            <Button variant="warning" size="sm" leftIcon={<Zap className="w-4 h-4" />} onClick={() => setModal({ type: 'upgrade' })} className="tenant-dashboard__modal-upgrade-btn">
-              {t('upgrade_package_button', 'Upgrade Package')}
-            </Button>
-          </ModalFooter>
-        </Modal>
-      )}
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+              <Button variant="secondary" size="sm" onClick={() => { setModal({ type: 'none' }); setError(null); }} className="tenant-dashboard__modal-cancel-btn">
+                {t('cancel_button', 'Cancel')}
+              </Button>
+              <Button
+                id="confirm-delete-property-btn"
+                variant="danger"
+                size="sm"
+                onClick={() => handleDeleteProperty(modal.property)}
+                className="tenant-dashboard__modal-delete-btn"
+              >
+                {t('delete_permanently_button', 'Delete Permanently')}
+              </Button>
+            </div>
+          </>
+        )}
+      </Drawer>
 
-      {/* â"ۉ"€ Upgrade Modal (Roadmap Placeholder) â"ۉ"€ */}
-      <Modal show={modal.type === 'upgrade'} onClose={() => setModal({ type: 'none' })} dismissible size="sm" className="z-58">
-        <ModalHeader as="div" />
-        <ModalBody className="text-center space-y-4 tenant-dashboard__modal-body">
-          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mx-auto shadow-lg tenant-dashboard__upgrade-icon-container">
+      {/* Slots Exceeded Drawer */}
+      <Drawer
+        open={modal.type === 'slots_exceeded'}
+        onClose={() => setModal({ type: 'none' })}
+        position="right"
+        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 flex items-center justify-center text-amber-600 dark:text-amber-400">
+              <Zap className="w-4 h-4" />
+            </div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white m-0">
+              {t('not_enough_slots_heading', 'Not Enough Slots')}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => setModal({ type: 'none' })}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        {modal.type === 'slots_exceeded' && (
+          <>
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 tenant-dashboard__modal-body">
+              <p className="text-sm text-slate-600 dark:text-slate-400 tenant-dashboard__slots-info m-0">
+                You need <span className="font-semibold text-slate-900 dark:text-white tenant-dashboard__slots-needed">{modal.needed} slot(s)</span> but only have{' '}
+                <span className="font-semibold text-amber-600 dark:text-amber-400 tenant-dashboard__slots-remaining">{modal.remaining} remaining</span>.
+              </p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 tenant-dashboard__slots-message m-0">
+                {t('contact_root_admin_upgrade_message', 'Please contact your Root Admin to upgrade your subscription package.')}
+              </p>
+            </div>
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+              <Button variant="secondary" size="sm" onClick={() => setModal({ type: 'add' })} className="tenant-dashboard__modal-back-btn">
+                {t('back_button', 'Back')}
+              </Button>
+              <Button variant="warning" size="sm" leftIcon={<Zap className="w-4 h-4" />} onClick={() => setModal({ type: 'upgrade' })} className="tenant-dashboard__modal-upgrade-btn">
+                {t('upgrade_package_button', 'Upgrade Package')}
+              </Button>
+            </div>
+          </>
+        )}
+      </Drawer>
+
+      {/* Upgrade Drawer (Roadmap Placeholder) */}
+      <Drawer
+        open={modal.type === 'upgrade'}
+        onClose={() => setModal({ type: 'none' })}
+        position="right"
+        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+              <Zap className="w-4 h-4" />
+            </div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white m-0">
+              {t('upgrade_package_button', 'Upgrade Package')}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => setModal({ type: 'none' })}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-6 text-center space-y-4 tenant-dashboard__modal-body">
+          <div className="w-14 h-14 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center mx-auto shadow-lg tenant-dashboard__upgrade-icon-container">
             <Zap className="w-7 h-7 text-white tenant-dashboard__upgrade-icon" />
           </div>
           <h3 className="text-xl font-semibold text-slate-900 dark:text-white tenant-dashboard__modal-title">{t('upgrade_package_button', 'Upgrade Package')}</h3>
@@ -821,19 +943,19 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
             <ChevronRight className="w-3 h-3 tenant-dashboard__upgrade-subtext-icon" />
             {t('upgrade_portal_coming_soon_message', 'Self-service upgrade portal — coming soon')}
           </div>
-        </ModalBody>
-        <ModalFooter className="tenant-dashboard__modal-footer">
+        </div>
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850 tenant-dashboard__modal-footer">
           <Button
-            variant="tertiary"
-            size="md"
+            variant="primary"
+            size="sm"
             block
             onClick={() => setModal({ type: 'none' })}
             className="tenant-dashboard__modal-got-it-btn"
           >
             {t('got_it_button', 'Got it')}
           </Button>
-        </ModalFooter>
-      </Modal>
+        </div>
+      </Drawer>
     </div>
   );
 };

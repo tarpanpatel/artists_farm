@@ -11,11 +11,28 @@ interface DateRangePickerProps {
   className?: string;
   label?: string;
   disabled?: boolean;
+  // Blocks selecting any day before today (found 22 Aug 2026, Add Guest
+  // booking dates) - opt-in, not the default, since other callers of this
+  // same shared component genuinely need past dates selectable (e.g.
+  // LicenseManagement.tsx's "Validity Period", where a license's real start
+  // date is very often months/years in the past).
+  disablePastDates?: boolean;
+  // ISO ("YYYY-MM-DD") dates to render greyed-out + struck-through + entirely
+  // unselectable (found 22 Aug 2026 - this prop existed on the interface for
+  // "seamless compatibility" but was never actually read anywhere in this
+  // component's body, so every caller already passing it - GuestManagement's
+  // Add Guest picker included - was silently getting zero effect. Wired up
+  // for real 22 Aug 2026: feeds flowbite-datepicker's own `datesDisabled`
+  // option, kept in sync reactively (not fixed-at-construction like
+  // disablePastDates above) since which dates are booked changes whenever
+  // the caller's room selection changes (see BookingDetailsModal.tsx's
+  // Assigned Room dropdown). CLAUDE.md: any booking-dates picker MUST pass
+  // this - see "Multi-Key Rooms & Bookings".
+  blockedDates?: string[];
   // Optional legacy props for seamless compatibility
   isOpen?: boolean;
   onClose?: () => void;
   onClear?: () => void;
-  blockedDates?: string[];
   heading?: string;
   description?: string;
   fromLabel?: string;
@@ -50,6 +67,18 @@ function fromIsoDate(value: string): Date | undefined {
   return new Date(year, month - 1, day);
 }
 
+// flowbite-datepicker's own `datesDisabled` option takes Date objects (or
+// parseable strings, but ISO "YYYY-MM-DD" round-trips through its internal
+// dd/mm/yyyy `format` option incorrectly, so Date objects are the only safe
+// choice here - see fromIsoDate above, already used elsewhere in this file
+// for the exact same reason).
+function toDisabledDates(blockedDates: string[] | undefined): Date[] {
+  if (!blockedDates || blockedDates.length === 0) return [];
+  return blockedDates
+    .map((d) => fromIsoDate(d))
+    .filter((d): d is Date => d !== undefined);
+}
+
 /**
  * Checkin/checkout field built directly on flowbite-datepicker's own
  * DateRangePicker - the vanilla-JS library flowbite.com's own docs use for
@@ -68,10 +97,12 @@ function fromIsoDate(value: string): Date | undefined {
  * "calendar-only" behavior wanted here.
  *
  * The library also ships no dedicated Close button in its footer (only
- * Today/Clear - confirmed against flowbite's own docs) - one is injected as
- * a real DOM button into each side's own popover footer right after
- * construction, since Picker's own constructor already synchronously builds
- * and appends its element before this effect's next line runs.
+ * Today/Clear by default, confirmed against flowbite's own docs - Today is
+ * turned off site-wide below, 22 Aug 2026, so the footer is Clear + the
+ * injected Close button only) - Close is injected as a real DOM button into
+ * each side's own popover footer right after construction, since Picker's
+ * own constructor already synchronously builds and appends its element
+ * before this effect's next line runs.
  */
 export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   checkinDate,
@@ -83,6 +114,8 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   className = '',
   label,
   disabled = false,
+  disablePastDates = false,
+  blockedDates,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const startInputRef = useRef<HTMLInputElement>(null);
@@ -90,6 +123,12 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   const rangepickerRef = useRef<InstanceType<typeof FlowbiteDateRangePicker> | null>(null);
   const callbacksRef = useRef({ onCheckinChange, onCheckoutChange });
   callbacksRef.current = { onCheckinChange, onCheckoutChange };
+  // Dedupe guard for the blockedDates sync effect below - callers typically
+  // pass a freshly-computed array literal on every render (e.g.
+  // `blockedDates={getBlockedDateStrings()}`, not memoized), so without this
+  // every parent re-render would call setOptions()/force a picker re-render
+  // even when the actual blocked-day list hasn't changed.
+  const lastBlockedDatesKeyRef = useRef<string>('');
 
   useEffect(() => {
     const container = containerRef.current;
@@ -100,7 +139,11 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     const rangepicker = new FlowbiteDateRangePicker(container, {
       format: 'dd/mm/yyyy',
       autohide: false,
-      todayBtn: true,
+      // Today button hidden site-wide (22 Aug 2026, explicit request) - was
+      // jumping the calendar to the current month/day, which isn't a useful
+      // action on a booking/license date range picker (most real dates being
+      // picked are future check-ins or past license start dates, not today).
+      todayBtn: false,
       clearBtn: true,
       todayHighlight: true,
       // Explicit, not relying on the library's own 'en' default - the footer's
@@ -112,8 +155,18 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       // every internal options merge instead of depending on it surviving
       // untouched across the range-picker's own update()/render() calls.
       language: 'en',
+      // Fixed at construction, same as every other option here - this
+      // component doesn't support toggling disablePastDates after mount.
+      ...(disablePastDates ? { minDate: new Date(new Date().setHours(0, 0, 0, 0)) } : {}),
+      // Initial value only - kept live afterward by the blockedDates sync
+      // effect below via setOptions(), since (unlike disablePastDates) which
+      // dates are booked can change after mount (room selector changes,
+      // etc). Set here too so there's no flash of selectable booked dates
+      // before that effect's first run.
+      datesDisabled: toDisabledDates(blockedDates),
     });
     rangepickerRef.current = rangepicker;
+    lastBlockedDatesKeyRef.current = (blockedDates ?? []).join(',');
 
     // The library has no built-in "Close" button (checked flowbite's own
     // component docs 21 Aug 2026 - only Today/Clear exist in the footer) and
@@ -129,7 +182,9 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     rangepicker.datepickers.forEach((dp) => {
       const footerControls = dp.pickerElement?.querySelector('.datepicker-footer .datepicker-controls');
       if (!footerControls || footerControls.querySelector('.datepicker-close-btn')) return;
-      footerControls.querySelectorAll('.today-btn, .clear-btn').forEach((btn) => {
+      // Only .clear-btn now that todayBtn is off - was '.today-btn,
+      // .clear-btn' when the footer still had both (22 Aug 2026).
+      footerControls.querySelectorAll('.clear-btn').forEach((btn) => {
         btn.classList.remove('w-1/2');
         btn.classList.add('flex-1');
       });
@@ -169,6 +224,20 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       fromIsoDate(checkoutDate) ?? { clear: true }
     );
   }, [checkinDate, checkoutDate]);
+
+  // Keeps already-booked days greyed-out/struck-through/unselectable (see
+  // .datepicker-cell.disabled in custom.css) in sync with whichever room/
+  // context the caller currently has selected - e.g. BookingDetailsModal's
+  // "Assigned Room" dropdown recomputes its blocked days on every change,
+  // and this picker needs to reflect that without remounting.
+  useEffect(() => {
+    const rangepicker = rangepickerRef.current;
+    if (!rangepicker) return;
+    const key = (blockedDates ?? []).join(',');
+    if (key === lastBlockedDatesKeyRef.current) return;
+    lastBlockedDatesKeyRef.current = key;
+    rangepicker.setOptions({ datesDisabled: toDisabledDates(blockedDates) });
+  }, [blockedDates]);
 
   return (
     <div className="w-full">

@@ -1801,19 +1801,31 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
         </div>
       </div>
 
-      {/* Edit Entry Modal for Admin & Super Admin */}
-      <Modal show={Boolean(editingEntry)} onClose={() => setEditingEntry(null)} className="z-58" dismissible>
+      {/* Edit Entry Drawer for Admin & Super Admin */}
+      <Drawer
+        open={Boolean(editingEntry)}
+        onClose={() => setEditingEntry(null)}
+        position="right"
+        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+      >
         {editingEntry && (
           <>
-            <ModalHeader as="div">
-              <div className="flex items-center gap-2">
-                <Pencil className="w-4 h-4 text-blue-600" />
-                <span>{t('edit_expense_record_heading', 'EDIT EXPENSE RECORD #')}{editingEntry.id}</span>
-              </div>
-            </ModalHeader>
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+              <span className="flex items-center gap-2 font-bold text-gray-900 dark:text-white text-base">
+                <Pencil className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                {t('edit_expense_record_heading', 'EDIT EXPENSE RECORD #')}{editingEntry.id}
+              </span>
+              <button
+                type="button"
+                onClick={() => setEditingEntry(null)}
+                className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
-            <form onSubmit={handleSaveModalEdit} className="app-form app-form--edit-expense">
-              <ModalBody className="space-y-4">
+            <form onSubmit={handleSaveModalEdit} className="app-form app-form--edit-expense flex-1 flex flex-col justify-between overflow-y-auto">
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <Input
                     label={t('expense_date_label', 'Expense Date')}
@@ -1885,17 +1897,24 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                     />
                   </div>
                 </div>
-              </ModalBody>
+              </div>
 
-              <ModalFooter className="flex justify-end gap-2">
+              <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setEditingEntry(null)}
+                >
+                  {t('cancel_button', 'Cancel')}
+                </Button>
                 <Button type="submit" variant="primary">
                   {t('save_changes_button', 'Save Changes')}
                 </Button>
-              </ModalFooter>
+              </div>
             </form>
           </>
         )}
-      </Modal>
+      </Drawer>
     </div>
   );
 };

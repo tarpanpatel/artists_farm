@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, ModalHeader, ModalBody, ModalFooter, TextInput as FlowbiteTextInput, Checkbox } from 'flowbite-react';
+import { Drawer, TextInput as FlowbiteTextInput, Checkbox } from 'flowbite-react';
 import DataTable from 'react-data-table-component';
 import { flowbiteTableCustomStyles } from '../utils/tableStyles';
 import { Button } from './Button';
@@ -545,11 +545,11 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                   columns={[
                     {
                       name: t('item_name_column', 'Item Name'),
-                      selector: (item: FoodItem) => item.name,
+                      selector: (item: MenuItem) => item.name,
                       sortable: true,
                       grow: 2,
                       minWidth: '240px',
-                      cell: (item: FoodItem) => (
+                      cell: (item: MenuItem) => (
                         <div className="flex items-center gap-3 py-1.5 min-w-0">
                           <div className="relative group w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-700/60 border border-slate-200/80 dark:border-slate-600 overflow-hidden flex items-center justify-center shrink-0">
                             {item.imagePath ? (
@@ -600,10 +600,10 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                     },
                     {
                       name: t('category_column', 'Category'),
-                      selector: (item: FoodItem) => item.category,
+                      selector: (item: MenuItem) => item.category,
                       sortable: true,
                       minWidth: '150px',
-                      cell: (item: FoodItem) => (
+                      cell: (item: MenuItem) => (
                         <Badge variant="info" size="sm">
                           {item.category}
                         </Badge>
@@ -611,11 +611,11 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                     },
                     {
                       name: t('price_column', 'Price (₹)'),
-                      selector: (item: FoodItem) => item.price,
+                      selector: (item: MenuItem) => item.price,
                       sortable: true,
                       right: true,
                       minWidth: '130px',
-                      cell: (item: FoodItem) => (
+                      cell: (item: MenuItem) => (
                         <span className="font-bold text-emerald-700 dark:text-emerald-400 text-xs tabular-nums whitespace-nowrap">
                           ₹{Number(item.price || 0).toLocaleString('en-IN')}
                         </span>
@@ -623,11 +623,11 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                     },
                     {
                       name: t('status_column', 'Status'),
-                      selector: (item: FoodItem) => item.available,
+                      selector: (item: MenuItem) => item.available,
                       sortable: true,
                       center: true,
                       minWidth: '140px',
-                      cell: (item: FoodItem) => (
+                      cell: (item: MenuItem) => (
                         <Badge
                           variant={item.available ? 'success' : 'danger'}
                           size="sm"
@@ -642,7 +642,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                       name: t('actions_column', 'Actions'),
                       minWidth: '180px',
                       right: true,
-                      cell: (item: FoodItem) => (
+                      cell: (item: MenuItem) => (
                         <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
                           <Button
                             variant="secondary"
@@ -886,13 +886,32 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
         </div>
       )}
 
-      {/* ICON PICKER MODAL */}
-      <Modal show={Boolean(iconPickerTargetId)} onClose={() => setIconPickerTargetId(null)} className="z-58" size="md" dismissible>
-        <ModalHeader as="div">
-          <span>{t('select_navigation_icon_heading', 'Select Navigation Icon')}</span>
-        </ModalHeader>
-        <ModalBody>
-          <div className="menu-manager__icon-grid grid grid-cols-4 gap-3 p-2 bg-slate-50 dark:bg-slate-900 rounded-lg max-h-80 overflow-y-auto">
+      {/* ICON PICKER DRAWER */}
+      <Drawer
+        open={Boolean(iconPickerTargetId)}
+        onClose={() => setIconPickerTargetId(null)}
+        position="right"
+        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+              <Grid className="w-4 h-4" />
+            </div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white m-0">
+              {t('select_navigation_icon_heading', 'Select Navigation Icon')}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIconPickerTargetId(null)}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="menu-manager__icon-grid grid grid-cols-4 gap-3 p-2 bg-slate-50 dark:bg-slate-900 rounded-lg">
             {AVAILABLE_ICONS.map((item) => {
               const IconComp = item.icon;
               return (
@@ -909,16 +928,35 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               );
             })}
           </div>
-        </ModalBody>
-      </Modal>
+        </div>
+      </Drawer>
 
-      {/* ADD / EDIT MAIN MENU ITEM MODAL */}
-      <Modal show={isNavModalOpen} onClose={() => setIsNavModalOpen(false)} className="z-58" size="md" dismissible>
-        <ModalHeader as="div">
-          <span>{editingNavItem ? t('edit_main_menu_item_heading', 'Edit Main Menu Item') : t('add_new_main_menu_item_heading', 'Add New Main Menu Item')}</span>
-        </ModalHeader>
-        <form onSubmit={handleSaveNavItem} className="app-form app-form--save-nav-item menu-manager__nav-form">
-          <ModalBody className="space-y-3.5 text-xs">
+      {/* ADD / EDIT MAIN MENU ITEM DRAWER */}
+      <Drawer
+        open={isNavModalOpen}
+        onClose={() => setIsNavModalOpen(false)}
+        position="right"
+        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+              <NavIcon className="w-4 h-4" />
+            </div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white m-0">
+              {editingNavItem ? t('edit_main_menu_item_heading', 'Edit Main Menu Item') : t('add_new_main_menu_item_heading', 'Add New Main Menu Item')}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsNavModalOpen(false)}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <form onSubmit={handleSaveNavItem} className="app-form app-form--save-nav-item menu-manager__nav-form flex-1 flex flex-col justify-between overflow-y-auto">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3.5 text-xs">
             <div>
               <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('menu_title_label', 'Menu Title / Label')}</label>
               <Input
@@ -974,7 +1012,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                   })),
                 ]}
               />
-              <p className="text-[10px] text-slate-400 mt-1">{t('nest_item_hierarchy_help', 'Nest this item under another menu item to create a hierarchy group.')}</p>
+              <p className="text-2xs text-slate-400 mt-1">{t('nest_item_hierarchy_help', 'Nest this item under another menu item to create a hierarchy group.')}</p>
             </div>
 
             <div>
@@ -1034,15 +1072,19 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               </div>
             </div>
 
-<Checkbox
-                  id="nav-visibility-cb"
-                  checked={navForm.isVisible}
-                  onChange={e => setNavForm({ ...navForm, isVisible: e.target.checked })}
-                />
-                <span className="font-semibold text-slate-800 dark:text-slate-200">{t('visible_in_system_navigation_label', 'Visible in System Navigation')}</span>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="nav-visibility-cb"
+                checked={navForm.isVisible}
+                onChange={e => setNavForm({ ...navForm, isVisible: e.target.checked })}
+              />
+              <label htmlFor="nav-visibility-cb" className="font-semibold text-slate-800 dark:text-slate-200 cursor-pointer text-sm">
+                {t('visible_in_system_navigation_label', 'Visible in System Navigation')}
+              </label>
+            </div>
 
             <div className="menu-manager__custom-link-box bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-3 space-y-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{t('custom_link_optional_heading', 'Custom Link (Optional)')}</p>
+              <p className="text-2xs font-semibold uppercase tracking-wider text-slate-500">{t('custom_link_optional_heading', 'Custom Link (Optional)')}</p>
               <div>
                 <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('external_url_custom_link_label', 'External URL / Custom Link')}</label>
                 <Input
@@ -1051,20 +1093,25 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                   onChange={(e) => setNavForm({ ...navForm, customUrl: e.target.value })}
                   placeholder={t('custom_link_url_placeholder', 'e.g. https://example.com or /some/path')}
                 />
-                <p className="text-[10px] text-slate-400 mt-1">{t('custom_link_help', 'If set, clicking this menu item opens this link instead of an internal tab.')}</p>
+                <p className="text-2xs text-slate-400 mt-1">{t('custom_link_help', 'If set, clicking this menu item opens this link instead of an internal tab.')}</p>
               </div>
-              <Checkbox
+              <div className="flex items-center gap-2">
+                <Checkbox
                   id="nav-open-in-new-tab-cb"
                   checked={navForm.openInNewTab}
                   onChange={e => setNavForm({ ...navForm, openInNewTab: e.target.checked })}
                 />
-                <span className="font-semibold text-slate-700 dark:text-slate-300 text-xs">{t('open_link_new_browser_tab_label', 'Open link in new browser tab')}</span>
+                <label htmlFor="nav-open-in-new-tab-cb" className="font-semibold text-slate-700 dark:text-slate-300 text-xs cursor-pointer">
+                  {t('open_link_new_browser_tab_label', 'Open link in new browser tab')}
+                </label>
+              </div>
             </div>
-          </ModalBody>
-          <ModalFooter className="flex justify-end gap-2">
+          </div>
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
             <Button
               type="button"
               variant="secondary"
+              size="sm"
               onClick={() => setIsNavModalOpen(false)}
             >
               {t('cancel_button', 'Cancel')}
@@ -1072,20 +1119,40 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
             <Button
               type="submit"
               variant="primary"
+              size="sm"
             >
               {editingNavItem ? t('save_changes_button', 'Save Changes') : t('create_item_button', 'Create Item')}
             </Button>
-          </ModalFooter>
+          </div>
         </form>
-      </Modal>
+      </Drawer>
 
-      {/* ADD/EDIT FOOD ITEM MODAL */}
-      <Modal show={isAddFoodModalOpen} onClose={() => setIsAddFoodModalOpen(false)} className="z-58" size="md" dismissible>
-        <ModalHeader as="div">
-          <span>{editingFoodItem ? t('edit_food_menu_item_heading', 'Edit Food Menu Item') : t('add_new_food_menu_item_heading', 'Add New Food Menu Item')}</span>
-        </ModalHeader>
-        <form onSubmit={handleSaveFoodItem} className="app-form app-form--save-food-item menu-manager__food-form">
-          <ModalBody className="space-y-3 text-xs">
+      {/* ADD/EDIT FOOD ITEM DRAWER */}
+      <Drawer
+        open={isAddFoodModalOpen}
+        onClose={() => setIsAddFoodModalOpen(false)}
+        position="right"
+        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+              <Utensils className="w-4 h-4" />
+            </div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white m-0">
+              {editingFoodItem ? t('edit_food_menu_item_heading', 'Edit Food Menu Item') : t('add_new_food_menu_item_heading', 'Add New Food Menu Item')}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsAddFoodModalOpen(false)}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <form onSubmit={handleSaveFoodItem} className="app-form app-form--save-food-item menu-manager__food-form flex-1 flex flex-col justify-between overflow-y-auto">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 text-xs">
             <div>
               <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('item_title_name_label', 'Item Title / Name')}</label>
               <Input
@@ -1166,18 +1233,19 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               </div>
             </div>
 
-              <div className="pt-1">
-                <ToggleSwitch
-                  enabled={foodForm.available}
-                  onChange={(val) => setFoodForm({ ...foodForm, available: val })}
-                  label={t('item_currently_available_label', 'Active')}
-                />
-              </div>
-          </ModalBody>
-          <ModalFooter className="flex justify-end gap-2">
+            <div className="pt-1">
+              <ToggleSwitch
+                enabled={foodForm.available}
+                onChange={(val) => setFoodForm({ ...foodForm, available: val })}
+                label={t('item_currently_available_label', 'Active')}
+              />
+            </div>
+          </div>
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
             <Button
               type="button"
               variant="secondary"
+              size="sm"
               onClick={() => setIsAddFoodModalOpen(false)}
             >
               {t('cancel_button', 'Cancel')}
@@ -1185,27 +1253,40 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
             <Button
               type="submit"
               variant="primary"
+              size="sm"
             >
               {editingFoodItem ? t('save_changes_button', 'Save Changes') : t('create_item_button', 'Create Item')}
             </Button>
-          </ModalFooter>
+          </div>
         </form>
-      </Modal>
+      </Drawer>
 
-      {/* PASSCODE VERIFICATION MODAL */}
-      <Modal show={passcodeModalOpen} onClose={() => { setPasscodeModalOpen(false); setPendingPasscodeAction(null); setPasscodeInput(''); setPasscodeError(''); }} className="z-58" size="sm" dismissible>
-        <ModalHeader as="div">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-              <ShieldCheck className="w-4 h-4 text-amber-600" />
+      {/* PASSCODE VERIFICATION DRAWER */}
+      <Drawer
+        open={passcodeModalOpen}
+        onClose={() => { setPasscodeModalOpen(false); setPendingPasscodeAction(null); setPasscodeInput(''); setPasscodeError(''); }}
+        position="right"
+        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
+              <ShieldCheck className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-semibold text-slate-900 dark:text-white text-sm">{t('passcode_required_heading', 'Passcode Required')}</h3>
-              <p className="text-slate-500 dark:text-slate-400 text-xs font-normal">{t('only_tenant_can_proceed', `Only ${tenantName} can proceed.`, { name: tenantName })}</p>
+              <h3 className="font-semibold text-slate-900 dark:text-white text-sm m-0">{t('passcode_required_heading', 'Passcode Required')}</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-xs font-normal m-0">{t('only_tenant_can_proceed', `Only ${tenantName} can proceed.`, { name: tenantName })}</p>
             </div>
           </div>
-        </ModalHeader>
-        <ModalBody className="space-y-4">
+          <button
+            type="button"
+            onClick={() => { setPasscodeModalOpen(false); setPendingPasscodeAction(null); setPasscodeInput(''); setPasscodeError(''); }}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
           <Input
             type="password"
             autoComplete="new-password"
@@ -1222,23 +1303,25 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
           {passcodeError && (
             <p className="menu-manager__passcode-error text-red-500 text-xs font-semibold text-center">{passcodeError}</p>
           )}
-        </ModalBody>
-        <ModalFooter className="flex justify-end gap-2">
+        </div>
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
           <Button
             variant="secondary"
+            size="sm"
             onClick={() => { setPasscodeModalOpen(false); setPendingPasscodeAction(null); setPasscodeInput(''); setPasscodeError(''); }}
           >
             {t('cancel_button', 'Cancel')}
           </Button>
           <Button
             variant="warning"
+            size="sm"
             onClick={handleVerifyPasscode}
             disabled={isVerifyingPasscode}
           >
             {isVerifyingPasscode ? 'Verifying...' : t('verify_continue_button', 'Verify & Continue')}
           </Button>
-        </ModalFooter>
-      </Modal>
+        </div>
+      </Drawer>
     </div>
   );
 };

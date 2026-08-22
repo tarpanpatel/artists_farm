@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 
 export interface PopoverProps {
@@ -43,11 +43,19 @@ export const Popover: React.FC<PopoverProps> = ({
   const popoverRef = useRef<HTMLDivElement | null>(null);
   const hideTimeoutRef = useRef<number | null>(null);
 
-  const [coords, setCoords] = useState<{ top: number; left: number; actualPlacement: string }>({
+  const [coords, setCoords] = useState<{
+    top: number;
+    left: number;
+    actualPlacement: 'top' | 'bottom' | 'left' | 'right';
+    arrowOffset: number;
+  }>({
     top: 0,
     left: 0,
     actualPlacement: placement === 'auto' ? 'top' : placement,
+    arrowOffset: 0,
   });
+
+  const [isMeasured, setIsMeasured] = useState(false);
 
   const updatePosition = useCallback(() => {
     if (!targetRef.current || !popoverRef.current) return;
@@ -57,21 +65,32 @@ export const Popover: React.FC<PopoverProps> = ({
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
 
-    let chosenPlacement = placement;
+    let chosenPlacement: 'top' | 'bottom' | 'left' | 'right' =
+      placement === 'auto' ? 'top' : placement;
 
     if (placement === 'auto' || placement === 'top') {
-      // If not enough room on top, flip to bottom
       if (targetRect.top - popoverRect.height - offset < 8) {
         chosenPlacement = 'bottom';
       } else {
         chosenPlacement = 'top';
       }
     } else if (placement === 'bottom') {
-      // If not enough room on bottom, flip to top
       if (targetRect.bottom + popoverRect.height + offset > viewportHeight - 8) {
         chosenPlacement = 'top';
       } else {
         chosenPlacement = 'bottom';
+      }
+    } else if (placement === 'left') {
+      if (targetRect.left - popoverRect.width - offset < 8) {
+        chosenPlacement = 'right';
+      } else {
+        chosenPlacement = 'left';
+      }
+    } else if (placement === 'right') {
+      if (targetRect.right + popoverRect.width + offset > viewportWidth - 8) {
+        chosenPlacement = 'left';
+      } else {
+        chosenPlacement = 'right';
       }
     }
 
@@ -94,38 +113,47 @@ export const Popover: React.FC<PopoverProps> = ({
 
     // Keep within horizontal viewport boundaries with padding
     const padding = 8;
-    if (left < padding) {
-      left = padding;
-    } else if (left + popoverRect.width > viewportWidth - padding) {
-      left = viewportWidth - popoverRect.width - padding;
-    }
+    const clampedLeft = Math.max(padding, Math.min(viewportWidth - popoverRect.width - padding, left));
+    const clampedTop = Math.max(padding, Math.min(viewportHeight - popoverRect.height - padding, top));
 
-    // Keep within vertical viewport boundaries
-    if (top < padding) {
-      top = padding;
-    } else if (top + popoverRect.height > viewportHeight - padding) {
-      top = viewportHeight - popoverRect.height - padding;
+    // Calculate exact arrow offset so it points directly at the center of the trigger element
+    const targetCenterX = targetRect.left + targetRect.width / 2;
+    const targetCenterY = targetRect.top + targetRect.height / 2;
+
+    let arrowOffset = 0;
+    if (chosenPlacement === 'top' || chosenPlacement === 'bottom') {
+      arrowOffset = targetCenterX - clampedLeft;
+      arrowOffset = Math.max(16, Math.min(popoverRect.width - 16, arrowOffset));
+    } else {
+      arrowOffset = targetCenterY - clampedTop;
+      arrowOffset = Math.max(16, Math.min(popoverRect.height - 16, arrowOffset));
     }
 
     setCoords({
-      top: Math.round(top),
-      left: Math.round(left),
+      top: Math.round(clampedTop),
+      left: Math.round(clampedLeft),
       actualPlacement: chosenPlacement,
+      arrowOffset: Math.round(arrowOffset),
     });
+    setIsMeasured(true);
   }, [offset, placement]);
+
+  const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
+
+  useIsomorphicLayoutEffect(() => {
+    if (!isOpen) {
+      setIsMeasured(false);
+      return;
+    }
+
+    updatePosition();
+  }, [isOpen, updatePosition]);
 
   useEffect(() => {
     if (!isOpen) return;
 
-    // Initial position measurement
-    updatePosition();
-
-    const handleScroll = () => {
-      updatePosition();
-    };
-    const handleResize = () => {
-      updatePosition();
-    };
+    const handleScroll = () => updatePosition();
+    const handleResize = () => updatePosition();
 
     window.addEventListener('scroll', handleScroll, true);
     window.addEventListener('resize', handleResize);
@@ -191,13 +219,18 @@ export const Popover: React.FC<PopoverProps> = ({
     }
     if (trigger === 'click') {
       setIsOpen(!isOpen);
+    } else if (trigger === 'hover') {
+      if (hideTimeoutRef.current) {
+        window.clearTimeout(hideTimeoutRef.current);
+        hideTimeoutRef.current = null;
+      }
+      setIsOpen(false);
     }
   };
 
   const clonedChild = React.cloneElement(children, {
     ref: (node: HTMLElement | null) => {
       targetRef.current = node;
-      // Forward ref if child already had one
       const childRef = (children as any).ref;
       if (typeof childRef === 'function') {
         childRef(node);
@@ -231,7 +264,9 @@ export const Popover: React.FC<PopoverProps> = ({
               position: 'fixed',
               top: `${coords.top}px`,
               left: `${coords.left}px`,
-              zIndex: 99999,
+              zIndex: 50,
+              opacity: isMeasured ? 1 : 0,
+              visibility: isMeasured ? 'visible' : 'hidden',
             }}
             className={`transition-opacity duration-150 animate-in fade-in zoom-in-95 inline-block ${className}`}
           >
@@ -249,17 +284,31 @@ export const Popover: React.FC<PopoverProps> = ({
               {content}
             </div>
 
-            {/* Pointer arrow */}
-            {arrow && (
+            {/* Dynamic Pointer Arrow matching trigger center & header background */}
+            {arrow && isMeasured && (
               <div
-                className={`absolute w-2 h-2 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 rotate-45 pointer-events-none ${
-                  coords.actualPlacement === 'top'
-                    ? 'bottom-[-5px] left-1/2 -translate-x-1/2 border-r border-b'
+                style={{
+                  position: 'absolute',
+                  ...(coords.actualPlacement === 'top'
+                    ? { bottom: '-5px', left: `${coords.arrowOffset}px`, transform: 'translateX(-50%) rotate(45deg)' }
                     : coords.actualPlacement === 'bottom'
-                    ? 'top-[-5px] left-1/2 -translate-x-1/2 border-l border-t'
+                    ? { top: '-5px', left: `${coords.arrowOffset}px`, transform: 'translateX(-50%) rotate(45deg)' }
                     : coords.actualPlacement === 'left'
-                    ? 'right-[-5px] top-1/2 -translate-y-1/2 border-r border-t'
-                    : 'left-[-5px] top-1/2 -translate-y-1/2 border-l border-b'
+                    ? { right: '-5px', top: `${coords.arrowOffset}px`, transform: 'translateY(-50%) rotate(45deg)' }
+                    : { left: '-5px', top: `${coords.arrowOffset}px`, transform: 'translateY(-50%) rotate(45deg)' }),
+                }}
+                className={`w-2.5 h-2.5 pointer-events-none ${
+                  coords.actualPlacement === 'bottom' && title
+                    ? 'bg-gray-50 dark:bg-gray-700/70'
+                    : 'bg-white dark:bg-gray-800'
+                } ${
+                  coords.actualPlacement === 'top'
+                    ? 'border-r border-b border-gray-200 dark:border-gray-700'
+                    : coords.actualPlacement === 'bottom'
+                    ? 'border-l border-t border-gray-200 dark:border-gray-700'
+                    : coords.actualPlacement === 'left'
+                    ? 'border-r border-t border-gray-200 dark:border-gray-700'
+                    : 'border-l border-b border-gray-200 dark:border-gray-700'
                 }`}
               />
             )}
@@ -269,3 +318,4 @@ export const Popover: React.FC<PopoverProps> = ({
     </>
   );
 };
+

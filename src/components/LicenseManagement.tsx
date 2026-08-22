@@ -18,7 +18,7 @@ import {
   ExternalLink,
   Upload,
 } from 'lucide-react';
-import { Modal, ModalHeader, ModalBody, ModalFooter } from 'flowbite-react';
+import { Drawer } from 'flowbite-react';
 import { apiFetch, API_ROOT_BASE, uploadDocumentDB } from '../services/api';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
@@ -466,19 +466,27 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
         </div>
       )}
 
-      <Modal
-        show={isModalOpen}
+      <Drawer
+        open={isModalOpen}
         onClose={closeModal}
-        dismissible={!isSaving && !isUploadingDoc}
-        className="z-58 license-management__modal"
+        position="right"
+        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between license-management__modal"
       >
-        <ModalHeader as="div">
-          <h3 className="font-semibold text-lg text-slate-900 dark:text-white">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <span className="flex items-center gap-2 font-bold text-gray-900 dark:text-white text-base">
+            <ScrollText className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
             {editingLicense ? t('edit_license_heading', 'Edit License') : t('add_new_license_heading', 'Add New License')}
-          </h3>
-        </ModalHeader>
-        <form onSubmit={handleSubmit} className="app-form app-form--license">
-          <ModalBody className="space-y-4">
+          </span>
+          <button
+            type="button"
+            onClick={closeModal}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="app-form app-form--license flex-1 flex flex-col justify-between overflow-y-auto">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
             <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-[11px] text-blue-800 dark:text-blue-300 leading-relaxed">
               {t(
                 'license_notifications_banner_modal_text',
@@ -593,14 +601,21 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
                 </button>
               )}
             </div>
-          </ModalBody>
-          <ModalFooter className="justify-end">
+          </div>
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={closeModal}
+            >
+              {t('cancel_button', 'Cancel')}
+            </Button>
             <Button type="submit" variant="primary" disabled={isSaving || isUploadingDoc} leftIcon={isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}>
               {editingLicense ? t('update_license_button', 'Update License') : t('add_license_button', 'Add License')}
             </Button>
-          </ModalFooter>
+          </div>
         </form>
-      </Modal>
+      </Drawer>
     </div>
   );
 };

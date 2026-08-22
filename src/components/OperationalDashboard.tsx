@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, ModalHeader, ModalBody, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, Checkbox } from 'flowbite-react';
+import { Drawer, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, Checkbox } from 'flowbite-react';
+import { X } from './icons/FlowbiteIcons';
 import { Popover } from './Popover';
 import {
   AlertTriangle,
@@ -37,6 +38,8 @@ import { KpiCard } from './KpiCard';
 import { Input } from './Input';
 import { t } from '../i18n/en';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
+import { shareTextContent } from '../utils/shareText';
+import { Share2 } from './icons/FlowbiteIcons';
 
 interface OperationalDashboardProps {
   guests: Guest[];
@@ -408,6 +411,29 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
     setCFormSavingId(null);
   };
 
+  // Public "Share Menu" link (food_menu.php via the /food_menu/{slug}/
+  // rewrite in .htaccess) - same pattern as TodayOverview.tsx's (the
+  // multi-key dashboard) and MenuManager.tsx's Share Menu buttons, added
+  // here for the single-property Dashboard, which had no way to hand a
+  // guest the public menu link at all (found 22 Aug 2026). Only rendered in
+  // the non-minimal branch below - minimalMode is this same component
+  // reused per-room inside MultiKeyPropertyOverview.tsx, and the food menu
+  // is one shared thing per property, not per-room, so a per-room Share
+  // Menu button would be redundant (TodayOverview.tsx already covers the
+  // multi-key case once, at the property level).
+  const handleShareFoodMenu = () => {
+    const propertySlug = getPropertySlug();
+    const menuUrl = `${window.location.origin}/food_menu/${propertySlug}/`;
+    const message = `🍽️ Check out the menu at ${propertyName || 'our place'}!\n${menuUrl}`;
+    shareTextContent(
+      `${propertyName || 'Food'} Menu`,
+      message,
+      showToast,
+      'Menu link copied - paste it wherever you\'d like to share it.',
+      'Could not share or copy the menu link.',
+    );
+  };
+
   return (
     <div className="operational-dashboard space-y-6">
       {minimalMode ? (
@@ -421,6 +447,9 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           title={t('dashboard_heading', 'Dashboard')}
           subtitle={t('dashboard_subheading', "Who's arriving, what's ready, and what needs you now.")}
         >
+          <PageHeaderButton onClick={handleShareFoodMenu} icon={Share2}>
+            {t('share_food_menu_button', 'Share Menu')}
+          </PageHeaderButton>
           <PageHeaderButton onClick={() => setShowAddGuestModal(true)} icon={Plus}>
             {t('add_booking_button', 'Add Booking')}
           </PageHeaderButton>
@@ -851,6 +880,44 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             );
             const dayBooking = dayBookingsForDate[0];
             const dayBookingOverflowCount = dayBookingsForDate.length - 1;
+
+            // Lighter-touch visual merge (22 Aug 2026, chosen over a full
+            // week-segmented spanning-capsule rewrite): a booking spanning
+            // several days still renders one chip per day cell, but when the
+            // SAME guest also occupies the adjacent day cell in this same
+            // calendar row, the shared edge drops its rounding and the chip
+            // stretches to meet it - reading as one continuous bar instead of
+            // separate pills with a gap between them. Only checks within the
+            // same week row (column 0/6 = Sun/Sat has no neighbor in this
+            // row) - the grid wraps every 7 days, so a booking crossing a
+            // week boundary is still two visually separate bars, one per row.
+            const colIndex = (firstDay + d - 1) % 7;
+            // Guard against the month's own edges, not just the grid row's:
+            // colIndex alone would let day 1 (if not a Sunday) build a
+            // nonsensical "day 0" lookup, and the month's last day (if not a
+            // Saturday) build a "day 32"-style string that can spuriously
+            // string-compare as "less than" a real guest's checkout in the
+            // FOLLOWING month - both harmless as strings, but the second one
+            // could wrongly report a continuation into a cell that doesn't
+            // exist in this month's grid at all.
+            const prevDayBooking = colIndex > 0 && d > 1
+              ? guests.find((g) => {
+                  const prevDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d - 1).padStart(2, '0')}`;
+                  return prevDateStr >= g.checkinDate && prevDateStr < (g.checkoutDate || g.expectedCheckout);
+                })
+              : null;
+            const nextDayBooking = colIndex < 6 && d < daysInMonth
+              ? guests.find((g) => {
+                  const nextDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d + 1).padStart(2, '0')}`;
+                  return nextDateStr >= g.checkinDate && nextDateStr < (g.checkoutDate || g.expectedCheckout);
+                })
+              : null;
+            const continuesFromPrevDay = !!(dayBooking && prevDayBooking && prevDayBooking.id === dayBooking.id);
+            const continuesToNextDay = !!(dayBooking && nextDayBooking && nextDayBooking.id === dayBooking.id);
+            // px-2 on the chip button itself already keeps its inner text
+            // spaced correctly regardless of where these margins shift the
+            // box - no extra padding compensation needed here.
+            const chipEdgeRounding = `${continuesFromPrevDay ? 'rounded-l-none -ml-1.5 sm:-ml-2' : 'rounded-l-md'} ${continuesToNextDay ? 'rounded-r-none -mr-1.5 sm:-mr-2' : 'rounded-r-md'}`;
             // OTA-synced block for this day, on this room's own feed (this
             // component already fetches get_blocked_dates scoped to whichever
             // room's page it's rendered on). Only relevant when there's no
@@ -864,6 +931,44 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                   return dateStr >= start && dateStr < end;
                 })
               : null;
+            // Same "lighter-touch visual merge" as continuesFromPrevDay/
+            // continuesToNextDay above, applied to OTA-blocked chips too
+            // (found 22 Aug 2026 - reported as "OTA capsule is a different
+            // shape and size than others": the merge above was added for
+            // guest-booking chips only, so a multi-day OTA block still
+            // rendered as a chain of separate small rounded-md boxes with
+            // gaps instead of one joined bar, right next to guest bookings
+            // that now DO join - the mismatch got more visible, not less,
+            // the moment the guest-booking side of this was fixed).
+            // blockedDates rows have no id, so identity is the same
+            // event_start/event_end pair otaBlock itself was matched on.
+            const otaPrevDayBlock = colIndex > 0 && d > 1
+              ? blockedDates.find((bd) => {
+                  const prevDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d - 1).padStart(2, '0')}`;
+                  const start = bd.event_start.split(' ')[0].split('T')[0];
+                  const end = bd.event_end.split(' ')[0].split('T')[0];
+                  return prevDateStr >= start && prevDateStr < end;
+                })
+              : null;
+            const otaNextDayBlock = colIndex < 6 && d < daysInMonth
+              ? blockedDates.find((bd) => {
+                  const nextDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d + 1).padStart(2, '0')}`;
+                  const start = bd.event_start.split(' ')[0].split('T')[0];
+                  const end = bd.event_end.split(' ')[0].split('T')[0];
+                  return nextDateStr >= start && nextDateStr < end;
+                })
+              : null;
+            const otaBlockContinuesFromPrevDay = !!(
+              otaBlock && otaPrevDayBlock
+              && otaPrevDayBlock.event_start === otaBlock.event_start
+              && otaPrevDayBlock.event_end === otaBlock.event_end
+            );
+            const otaBlockContinuesToNextDay = !!(
+              otaBlock && otaNextDayBlock
+              && otaNextDayBlock.event_start === otaBlock.event_start
+              && otaNextDayBlock.event_end === otaBlock.event_end
+            );
+            const otaChipEdgeRounding = `${otaBlockContinuesFromPrevDay ? 'rounded-l-none -ml-1.5 sm:-ml-2' : 'rounded-l-md'} ${otaBlockContinuesToNextDay ? 'rounded-r-none -mr-1.5 sm:-mr-2' : 'rounded-r-md'}`;
             const isToday = d === today.getDate();
 
             const amount = (dayBooking as any)?.totalCharge || (dayBooking as any)?.totalAmount || (dayBooking as any)?.total_charge || 0;
@@ -909,17 +1014,19 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                       placement="top"
                       open={openBookingPopoverId === String(dayBooking.id)}
                       onOpenChange={(isOpen) => setOpenBookingPopoverId(isOpen ? String(dayBooking.id) : null)}
+                      title={
+                        <div className="flex items-center justify-between gap-2">
+                          <h4 className="font-semibold text-gray-900 dark:text-white text-xs truncate">{dayBooking.guestName}</h4>
+                          {nightlyRate > 0 && (
+                            <span className="text-2xs font-bold text-blue-600 dark:text-blue-400 shrink-0">
+                              ₹{nightlyRate}/night
+                            </span>
+                          )}
+                        </div>
+                      }
                       content={
-                        <div className="w-64 text-xs bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                          <div className="px-3 py-2 bg-gray-50 dark:bg-gray-700/60 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
-                            <h4 className="font-semibold text-gray-900 dark:text-white truncate">{dayBooking.guestName}</h4>
-                            {nightlyRate > 0 && (
-                              <span className="text-2xs font-bold text-blue-600 dark:text-blue-400 shrink-0">
-                                ₹{nightlyRate}/night
-                              </span>
-                            )}
-                          </div>
-                          <div className="px-3 py-2 space-y-1.5 text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                        <div className="w-64 text-xs">
+                          <div className="p-3 space-y-1.5 text-gray-600 dark:text-gray-300">
                             {dayBooking.roomNumber && (
                               <div className="flex items-center justify-between text-2xs">
                                 <span className="text-gray-500 dark:text-gray-400">Room:</span>
@@ -939,7 +1046,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                               </div>
                             )}
                           </div>
-                          <div className="px-3 py-2 border-t border-gray-100 dark:border-gray-700/60">
+                          <div className="px-3 py-2 border-t border-gray-100 dark:border-gray-700/60 bg-gray-50/50 dark:bg-gray-800/50">
                             <button
                               type="button"
                               onClick={() => {
@@ -956,7 +1063,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                     >
                       <button
                         type="button"
-                        className={`rounded-md px-2 py-1 ${isDayBookingCheckedOut ? checkedOutColor : isOtaBooking ? otaBookingColor : directBookingColor} text-xs font-medium flex flex-col justify-center shadow-2xs hover:opacity-90 transition-opacity cursor-pointer truncate w-full text-left`}
+                        className={`rounded-t-md rounded-b-md ${chipEdgeRounding} px-2 py-1 ${isDayBookingCheckedOut ? checkedOutColor : isOtaBooking ? otaBookingColor : directBookingColor} text-xs font-medium flex flex-col justify-center shadow-2xs hover:opacity-90 transition-opacity cursor-pointer truncate w-full text-left relative z-10`}
                       >
                         <div className="truncate font-semibold flex items-center gap-1.5 min-w-0">
                           {hasDayPending && (
@@ -1008,11 +1115,11 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                                     )}
                                     <span className="truncate">{g.guestName}</span>
                                   </div>
-                                  <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                                  <div className="text-2xs text-slate-500 dark:text-slate-400">
                                     {g.roomNumber}{amt > 0 ? ` · ₹${Math.round(amt)}` : ''}
                                   </div>
                                 </div>
-                                <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 shrink-0">
+                                <span className="text-2xs font-semibold text-blue-600 dark:text-blue-400 shrink-0">
                                   {t('view_booking_button', 'View')} →
                                 </span>
                               </button>
@@ -1024,7 +1131,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                   >
                     <button
                       type="button"
-                      className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline py-0.5 text-left cursor-pointer transition-colors block w-full truncate"
+                      className="text-2xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline py-0.5 text-left cursor-pointer transition-colors block w-full truncate"
                     >
                       +{dayBookingOverflowCount} more
                     </button>
@@ -1034,20 +1141,18 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                   <Popover
                     trigger="hover"
                     placement="top"
+                    title={
+                      <h4 className="font-semibold text-gray-900 dark:text-white text-xs truncate">
+                        {otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}
+                      </h4>
+                    }
                     content={
-                      <div className="w-64 text-xs bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                        <div className="px-3 py-2 bg-gray-50 dark:bg-gray-700/60 border-b border-gray-200 dark:border-gray-700">
-                          <h4 className="font-semibold text-gray-900 dark:text-white truncate">
-                            {otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}
-                          </h4>
+                      <div className="w-64 p-3 space-y-1 text-xs text-gray-600 dark:text-gray-300">
+                        <div>
+                          {t('ota_blocked_tooltip_convertible', '{{source}} - not yet a booking. Click to convert.').replace('{{source}}', otaBlock.source_label || otaBlock.source || 'external calendar')}
                         </div>
-                        <div className="px-3 py-2 space-y-1 text-gray-600 dark:text-gray-300">
-                          <div>
-                            {t('ota_blocked_tooltip_convertible', '{{source}} - not yet a booking. Click to convert.').replace('{{source}}', otaBlock.source_label || otaBlock.source || 'external calendar')}
-                          </div>
-                          <div className="text-2xs text-blue-600 dark:text-blue-400 font-semibold pt-1">
-                            Click to convert into booking
-                          </div>
+                        <div className="text-2xs text-blue-600 dark:text-blue-400 font-semibold pt-1">
+                          Click to convert into booking
                         </div>
                       </div>
                     }
@@ -1061,7 +1166,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                           blockedDateStrings: allOccupiedDateStrings.filter((dstr) => !ownDays.has(dstr)),
                         });
                       }}
-                      className="rounded-md px-2 py-1.5 bg-slate-500 dark:bg-slate-600 hover:bg-slate-600 dark:hover:bg-slate-500 text-white text-xs font-semibold flex flex-col justify-center shadow-md truncate w-full cursor-pointer transition-colors"
+                      className={`rounded-t-md rounded-b-md ${otaChipEdgeRounding} px-2 py-1 bg-slate-500 dark:bg-slate-600 hover:bg-slate-600 dark:hover:bg-slate-500 text-white text-xs font-medium flex flex-col justify-center shadow-2xs truncate w-full text-left cursor-pointer transition-colors relative z-10`}
                     >
                       <div className="truncate font-semibold">{otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}</div>
                     </button>
@@ -1167,9 +1272,31 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
         />
       )}
 
-      {/* Add Guest Modal */}
-      <Modal show={showAddGuestModal} onClose={() => setShowAddGuestModal(false)} dismissible size="lg" className="z-[99999]">
-        <ModalBody className="p-0 max-h-[90vh] overflow-y-auto rounded-lg">
+      {/* Add Guest Drawer */}
+      <Drawer
+        open={showAddGuestModal}
+        onClose={() => setShowAddGuestModal(false)}
+        position="right"
+        className="z-58 w-full sm:max-w-4xl lg:max-w-5xl p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+              <User className="w-4 h-4" />
+            </div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white m-0">
+              {t('add_guest_heading', 'Add Guest')}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowAddGuestModal(false)}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4">
           <GuestManagement
             guests={guests}
             receipts={receipts}
@@ -1193,18 +1320,34 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             propertyUpiId={propertyUpiId}
             propertyUpiQrCodeUrl={propertyUpiQrCodeUrl}
           />
-        </ModalBody>
-      </Modal>
+        </div>
+      </Drawer>
 
-      {/* All System Alerts Modal */}
-      <Modal show={showAllAlertsModal} onClose={() => setShowAllAlertsModal(false)} dismissible size="2xl" className="z-58">
-        <ModalHeader as="div">
-          <h3 className="operational-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-red-600" />
-            <span>All System Alerts ({combinedAlerts.length})</span>
-          </h3>
-        </ModalHeader>
-        <ModalBody className="max-h-[85vh] overflow-y-auto">
+      {/* All System Alerts Drawer */}
+      <Drawer
+        open={showAllAlertsModal}
+        onClose={() => setShowAllAlertsModal(false)}
+        position="right"
+        className="z-58 w-full sm:max-w-2xl lg:max-w-3xl p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 flex items-center justify-center text-red-600 dark:text-red-400">
+              <AlertTriangle className="w-4 h-4" />
+            </div>
+            <h2 className="operational-dashboard__subtitle font-semibold text-slate-900 dark:text-white text-base m-0">
+              All System Alerts ({combinedAlerts.length})
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowAllAlertsModal(false)}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4">
           <div className="overflow-x-auto">
             <Table className="operational-dashboard__table operational-dashboard__table--alerts">
               <TableHead>
@@ -1234,7 +1377,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                             className={`text-xs font-medium ${severity === 'red' ? 'text-red-700 dark:text-red-400' : 'text-amber-700 dark:text-amber-400'}`}
                           >
                             <div>{r.label}</div>
-                            <div className="text-[10px] opacity-80">{r.detail}</div>
+                            <div className="text-2xs opacity-80">{r.detail}</div>
                           </div>
                         ))}
                       </div>
@@ -1257,8 +1400,8 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               </TableBody>
             </Table>
           </div>
-        </ModalBody>
-      </Modal>
+        </div>
+      </Drawer>
     </div>
   );
 };

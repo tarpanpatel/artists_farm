@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Modal, ModalHeader, ModalBody, ModalFooter, Drawer as FlowbiteDrawer, DrawerItems, TextInput as FlowbiteTextInput, Tabs, TabItem } from 'flowbite-react';
+import { Drawer as FlowbiteDrawer, DrawerItems, TextInput as FlowbiteTextInput, Tabs, TabItem } from 'flowbite-react';
 import { Button } from './Button';
 import { Badge } from './Badge';
 import { Tooltip } from './Tooltip';
@@ -1649,13 +1649,32 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         )}
         </div>
 
-        {/* Add/Edit Modal */}
-        <Modal show={isCatalogModalOpen} onClose={() => setIsCatalogModalOpen(false)} className="z-58" size="md" dismissible>
-          <ModalHeader as="div">
-            <span>{editingCatalogItem ? t('edit_catalog_item_heading') : t('register_new_material_heading')}</span>
-          </ModalHeader>
-          <form onSubmit={handleSaveCatalogItem} className="app-form app-form--save-catalog-item">
-            <ModalBody className="space-y-4 text-xs">
+        {/* Add/Edit Catalog Drawer */}
+        <FlowbiteDrawer
+          open={isCatalogModalOpen}
+          onClose={() => setIsCatalogModalOpen(false)}
+          position="right"
+          className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+        >
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                <PackagePlus className="w-4 h-4" />
+              </div>
+              <h2 className="text-base font-semibold text-gray-900 dark:text-white m-0">
+                {editingCatalogItem ? t('edit_catalog_item_heading') : t('register_new_material_heading')}
+              </h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsCatalogModalOpen(false)}
+              className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <form onSubmit={handleSaveCatalogItem} className="app-form app-form--save-catalog-item flex-1 flex flex-col justify-between overflow-y-auto">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
               <div>
                 <Input label={t('item_name_label')} type="text" required value={catItemName} onChange={e => setCatItemName(e.target.value)} placeholder="e.g. Tomato Puree" />
               </div>
@@ -1695,19 +1714,27 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 <Input type="file" accept="image/*" onChange={handleImageUpload} className="w-full p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 rounded-lg text-slate-500 dark:text-slate-400" />
                 {catImagePath && (
                   <div className="mt-2">
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mb-1">{t('preview_label')}</p>
+                    <p className="text-2xs text-slate-500 dark:text-slate-400 mb-1">{t('preview_label')}</p>
                     <img src={catImagePath} alt="Preview" className="w-[150px] h-[50px] object-cover border border-slate-200 dark:border-slate-700 rounded shadow-md" />
                   </div>
                 )}
               </div>
-            </ModalBody>
-            <ModalFooter className="flex justify-end">
-              <Button type="submit" variant="primary">
+            </div>
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setIsCatalogModalOpen(false)}
+              >
+                {t('cancel_button')}
+              </Button>
+              <Button type="submit" variant="primary" size="sm">
                 {t('save_commit_updates_button')}
               </Button>
-            </ModalFooter>
+            </div>
           </form>
-        </Modal>
+        </FlowbiteDrawer>
       </div>
     );
   }
@@ -2678,13 +2705,32 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         )}
       </div>
 
-      {/* Add Item Modal */}
-      <Modal show={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} className="z-58" size="md" dismissible>
-        <ModalHeader as="div">
-          <span>{t('add_new_item_button')}</span>
-        </ModalHeader>
-        <form onSubmit={handleCreateItem} className="app-form app-form--create-item">
-          <ModalBody className="space-y-3 text-xs">
+      {/* Add Item Drawer */}
+      <FlowbiteDrawer
+        open={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        position="right"
+        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+              <Plus className="w-4 h-4" />
+            </div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white m-0">
+              {t('add_new_item_button')}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsAddModalOpen(false)}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <form onSubmit={handleCreateItem} className="app-form app-form--create-item flex-1 flex flex-col justify-between overflow-y-auto">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 text-xs">
             <div>
               <Input
                 label={`${t('item_name_label')} *`}
@@ -2791,21 +2837,22 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 )}
               </div>
             </div>
-          </ModalBody>
-          <ModalFooter className="flex justify-end gap-2">
+          </div>
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
             <Button
               type="button"
               variant="secondary"
+              size="sm"
               onClick={() => setIsAddModalOpen(false)}
             >
               {t('cancel_button')}
             </Button>
-            <Button type="submit" variant="primary">
+            <Button type="submit" variant="primary" size="sm">
               {t('save_item_button')}
             </Button>
-          </ModalFooter>
+          </div>
         </form>
-      </Modal>
+      </FlowbiteDrawer>
     </div>
   );
 };

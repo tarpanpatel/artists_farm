@@ -1714,4 +1714,9 @@ export const strings: Record<string, string> = {
   delete_dish_title: "डिश हटाएं",
   delete_dish_confirm_button: "डिश हटाएं",
   delete_dish_tooltip: "यह डिश हटाएं",
+
+  // Finances & Payroll - Pay Now confirmation
+  confirm_salary_payout_title: "वेतन भुगतान की पुष्टि करें",
+  confirm_salary_payout_message: "क्या आप वाकई {month} के लिए {staffName} को {amount} का भुगतान प्रोसेस करना चाहते हैं? इससे वेतन प्रविष्टि और निपटान दर्ज हो जाएगा।",
+  confirm_pay_now_button: "हाँ, अभी भुगतान करें",
 };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, Suspense, lazy } from 'react';
-import { Modal, ModalHeader, ModalBody, Drawer as FlowbiteDrawer, DrawerItems } from 'flowbite-react';
+import { Drawer as FlowbiteDrawer, DrawerItems } from 'flowbite-react';
 import { Header } from './components/Header';
 import { Navigation, TabType } from './components/Navigation';
 import { MobileBottomNav } from './components/MobileBottomNav';
@@ -2133,7 +2133,7 @@ ${itemsStr}
 
               {!selectedRoomSlugOverride && activeTab === 'audit_logs' && (
                 <ErrorBoundary section="Audit Logs">
-                  <AuditLogsView logs={auditLogs} receipts={receipts} activeMenuItemKey={activeMenuItemKey} />
+                  <AuditLogsView auditLogs={auditLogs} receipts={receipts} />
                 </ErrorBoundary>
               )}
 
@@ -2288,21 +2288,31 @@ ${itemsStr}
           </DrawerItems>
         </FlowbiteDrawer>
 
-        {/* Global Add Expense Modal Overlay */}
-        <Modal
-          show={isAddExpenseModalOpen}
+        {/* Global Add Expense Drawer Overlay */}
+        <FlowbiteDrawer
+          open={isAddExpenseModalOpen}
           onClose={() => setIsAddExpenseModalOpen(false)}
-          size="lg"
-          dismissible
-          className="z-58"
+          position="right"
+          className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
         >
-          <ModalHeader as="div" className="border-b border-gray-200 dark:border-gray-700 p-4">
-            <span className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-              <Receipt className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              Add Expense
-            </span>
-          </ModalHeader>
-          <ModalBody className="p-4 sm:p-6 max-h-[85vh] overflow-y-auto">
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                <Receipt className="w-4 h-4" />
+              </div>
+              <h2 className="text-base font-semibold text-gray-900 dark:text-white m-0">
+                Add Expense
+              </h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsAddExpenseModalOpen(false)}
+              className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+            >
+              <CloseIcon className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6">
             <Suspense fallback={<TabContentFallback />}>
               <PettyCashManagement
                 activeRole={activeRole}
@@ -2311,8 +2321,8 @@ ${itemsStr}
                 onClose={() => setIsAddExpenseModalOpen(false)}
               />
             </Suspense>
-          </ModalBody>
-        </Modal>
+          </div>
+        </FlowbiteDrawer>
 
         {/* Unauthenticated: show login-only content */}
         {!isAuthenticated && (

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Loader2, AlertCircle, Pencil, Check, X } from 'lucide-react';
-import { Modal, ModalHeader, ModalBody, ModalFooter, Alert } from 'flowbite-react';
+import { Drawer, Alert } from 'flowbite-react';
 import { t } from '../i18n/en';
 import { Button } from './Button';
 import { Input } from './Input';
@@ -383,19 +383,41 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
         </div>
       )}
 
-      {/* Add Room Modal */}
-      <Modal
-        show={showAddRoomModal}
+      {/* Add Room Drawer */}
+      <Drawer
+        open={showAddRoomModal}
         onClose={() => {
-          setShowAddRoomModal(false);
-          setNewRoom({ name: '', slug: '', default_tariff: '' });
+          if (!addingRoom) {
+            setShowAddRoomModal(false);
+            setNewRoom({ name: '', slug: '', default_tariff: '' });
+          }
         }}
-        dismissible={!addingRoom}
-        size="md"
-        className="z-58 rooms-management__modal"
+        position="right"
+        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between rooms-management__modal"
       >
-        <ModalHeader as="div">{t('add_new_room_title', 'Add New Room')}</ModalHeader>
-        <ModalBody className="space-y-4">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-950 border border-sky-200 dark:border-sky-800 flex items-center justify-center text-sky-600 dark:text-sky-400">
+              <Plus className="w-4 h-4" />
+            </div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white m-0">
+              {t('add_new_room_title', 'Add New Room')}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              if (!addingRoom) {
+                setShowAddRoomModal(false);
+                setNewRoom({ name: '', slug: '', default_tariff: '' });
+              }
+            }}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {property.room_count >= 10 && (
             <Alert color="failure" className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 text-red-800 dark:text-red-300">
               <p className="text-sm">{t('max_rooms_allowed_message', 'Maximum 10 rooms allowed')}</p>
@@ -429,19 +451,31 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
             onChange={(e) => setNewRoom({ ...newRoom, default_tariff: e.target.value })}
             placeholder={t('default_tariff_placeholder', 'e.g. 2000')}
           />
-        </ModalBody>
-        <ModalFooter>
+        </div>
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              setShowAddRoomModal(false);
+              setNewRoom({ name: '', slug: '', default_tariff: '' });
+            }}
+            disabled={addingRoom}
+          >
+            {t('cancel', 'Cancel')}
+          </Button>
           <Button
             variant="primary"
-            block
+            size="sm"
             onClick={handleAddRoom}
             disabled={addingRoom || !newRoom.name || !newRoom.slug}
             leftIcon={addingRoom ? <Loader2 className="w-3 h-3 animate-spin" /> : undefined}
           >
             {addingRoom ? t('adding_room_button', 'Adding...') : t('add_room_button', 'Add Room')}
           </Button>
-        </ModalFooter>
-      </Modal>
+        </div>
+      </Drawer>
     </div>
   );
 };

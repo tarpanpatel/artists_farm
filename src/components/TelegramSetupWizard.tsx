@@ -16,7 +16,7 @@ import {
   Save,
   HelpCircle,
 } from 'lucide-react';
-import { Modal, ModalHeader, ModalBody, ModalFooter } from 'flowbite-react';
+import { Drawer } from 'flowbite-react';
 import { Input } from './Input';
 import {
   fetchTelegramBotIdentity,
@@ -295,11 +295,11 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
   const isConnected = currentState.status === 'connected' || currentState.chatId !== null;
 
   return (
-    // z-60: this wizard can be opened from a screen with another page modal
-    // already behind it, so it needs the "secondary modal above an open page
-    // modal" tier (see the z-index scale note in src/index.css).
-    <Modal show={isOpen} onClose={onClose} dismissible size="lg" className="z-60 telegram-setup-wizard__root">
-      <ModalHeader as="div">
+    // z-60: this wizard can be opened from a screen with another page drawer
+    // already behind it, so it needs the "secondary drawer above an open page
+    // drawer" tier (see the z-index scale note in src/index.css).
+    <Drawer open={isOpen} onClose={onClose} position="right" className="z-60 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between telegram-setup-wizard__root">
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-lg bg-sky-50 dark:bg-sky-950 border border-sky-200 dark:border-sky-800 flex items-center justify-center text-sky-600 dark:text-sky-400">
             <Rocket className="w-4.5 h-4.5" />
@@ -309,8 +309,15 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
             <p className="text-[11px] text-slate-500 dark:text-slate-400 m-0">{t('configure_bot_subtitle', 'Configure bot settings and pairing alerts')}</p>
           </div>
         </div>
-      </ModalHeader>
-      <ModalBody className="p-0 flex flex-col max-h-[75vh]">
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+      <div className="p-0 flex-1 flex flex-col overflow-y-auto">
         {/* Progress Navigation */}
         <div className="flex items-center justify-center gap-2 px-6 pt-5 pb-2">
           {STEPS.map((step, idx) => {
@@ -615,25 +622,14 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                         </button>
                       </div>
                     )}
-                    {currentState.status === 'error' && (
-                      <div className="space-y-2">
-                        <div className="text-xs font-semibold text-red-600 dark:text-red-400">{currentState.errorMessage}</div>
-                        <button
-                          onClick={startPairing}
-                          className="text-xs font-semibold text-sky-600 dark:text-sky-400 flex items-center gap-1.5 cursor-pointer"
-                        >
-                          <RefreshCw className="w-3.5 h-3.5" /> {t('try_again_button', 'Try again')}
-                        </button>
-                      </div>
-                    )}
                   </div>
                 </>
               )}
             </>
           )}
         </div>
-      </ModalBody>
-      <ModalFooter className="justify-between">
+      </div>
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-850">
         <button
           onClick={goBack}
           disabled={currentIndex === 0}
@@ -657,8 +653,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
             {isLastStep ? t('finish_button', 'Finish') : t('next_button', 'Next')} <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
-      </ModalFooter>
-    </Modal>
+      </div>
+    </Drawer>
   );
 };
-

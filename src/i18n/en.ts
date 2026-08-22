@@ -1820,6 +1820,11 @@ export const strings: Record<string, string> = {
   delete_dish_title: "Remove Dish",
   delete_dish_confirm_button: "Remove Dish",
   delete_dish_tooltip: "Remove this dish",
+
+  // Finances & Payroll - Pay Now confirmation
+  confirm_salary_payout_title: "Confirm Salary Payout",
+  confirm_salary_payout_message: "Are you sure you want to process the payout of {amount} for {staffName} for {month}? This will generate a salary entry and record the settlement.",
+  confirm_pay_now_button: "Yes, Pay Now",
 };
 
 export function t(key: string, fallback?: string, params?: Record<string, string | number>): string {
