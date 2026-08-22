@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Globe, Loader2, CheckCircle2, Hash } from 'lucide-react';
+import { Globe, Loader2, CheckCircle2, Hash } from './icons/FlowbiteIcons';
 import { Drawer } from 'flowbite-react';
 import { X } from './icons/FlowbiteIcons';
 import { Guest } from '../types';

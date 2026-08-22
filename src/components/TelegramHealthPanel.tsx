@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Table, TableHead, TableBody, TableRow, TableCell } from 'flowbite-react';
-import { ShieldCheck, RefreshCw, Save, Loader2, CheckCircle2, XCircle, HelpCircle, FolderCog } from 'lucide-react';
+import { ShieldCheck, RefreshCw, Save, Loader2, CheckCircle2, XCircle, HelpCircle, FolderCog } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';
 import { Input } from './Input';
 

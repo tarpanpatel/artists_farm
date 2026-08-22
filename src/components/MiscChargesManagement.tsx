@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Pencil, Trash2, Loader2, ArrowLeft, X } from './icons/FlowbiteIcons';
-import DataTable from 'react-data-table-component';
-import { flowbiteTableCustomStyles } from '../utils/tableStyles';
-import { Drawer } from 'flowbite-react';
+import { Drawer, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell } from 'flowbite-react';
+import { TablePagination } from './TablePagination';
 import { getPropertySlug } from '../services/api';
 import { useConfigurationData } from '../contexts/ConfigurationDataContext';
 import { useConfirm } from './ConfirmDialogContext';
@@ -46,6 +45,8 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
   const [newForm, setNewForm] = useState({ label: '', default_amount: '' as unknown as number, category: 'Service' });
   const [searchText, setSearchText] = useState('');
   const [mobilePage, setMobilePage] = useState(1);
+  const [desktopPage, setDesktopPage] = useState(1);
+  const DESKTOP_PAGE_SIZE = 15;
   // Two independent "creating a new category" toggles - the inline table-row
   // edit and the Add Service modal are separate contexts that can each be
   // mid-edit at the same time, so they can't share one flag.
@@ -185,10 +186,6 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
   const columns = [
     {
       name: t('service_name_column', 'Item / Service Name'),
-      selector: (row: MiscChargeTemplate) => row.label,
-      sortable: true,
-      grow: 2,
-      minWidth: '220px',
       cell: (row: MiscChargeTemplate) => {
         const editing = isEditing === row.id;
         return editing ? (
@@ -212,10 +209,6 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
     },
     {
       name: t('category_column', 'Category'),
-      selector: (row: MiscChargeTemplate) => row.category,
-      sortable: true,
-      width: '180px',
-      minWidth: '150px',
       cell: (row: MiscChargeTemplate) => {
         const editing = isEditing === row.id;
         if (!editing) {
@@ -269,11 +262,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
     },
     {
       name: t('default_price_column', 'Default Price (₹)'),
-      selector: (row: MiscChargeTemplate) => row.default_amount,
-      sortable: true,
-      right: true,
-      width: '160px',
-      minWidth: '140px',
+      align: 'right' as const,
       cell: (row: MiscChargeTemplate) => {
         const editing = isEditing === row.id;
         return editing ? (
@@ -292,9 +281,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
     },
     {
       name: t('actions_column', 'Actions'),
-      width: '160px',
-      minWidth: '150px',
-      right: true,
+      align: 'right' as const,
       cell: (row: MiscChargeTemplate) => {
         const editing = isEditing === row.id;
         return editing ? (
@@ -374,28 +361,47 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
         </div>
 
         <div className="hidden md:block overflow-x-auto">
-          <DataTable
-            columns={columns}
-            data={filteredCharges}
-            customStyles={flowbiteTableCustomStyles}
-            highlightOnHover
-            persistTableHead
-            pagination
-            paginationPerPage={15}
-            paginationRowsPerPageOptions={[5, 10, 15, 20, 25, 50]}
-            progressPending={isLoadingMisc}
-            progressComponent={
-              <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
-                <Loader2 className="w-4 h-4 animate-spin" /> Loading charges...
-              </div>
-            }
-            noDataComponent={
-              <div className="text-center py-8 text-slate-500 font-medium">
-                {t('no_misc_charges_found_label', 'No miscellaneous charges found.')}
-              </div>
-            }
-            responsive
-          />
+          {isLoadingMisc ? (
+            <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
+              <Loader2 className="w-4 h-4 animate-spin" /> Loading charges...
+            </div>
+          ) : filteredCharges.length === 0 ? (
+            <div className="text-center py-8 text-slate-500 font-medium">
+              {t('no_misc_charges_found_label', 'No miscellaneous charges found.')}
+            </div>
+          ) : (
+            <>
+              <Table hoverable>
+                <TableHead>
+                  <TableRow>
+                    {columns.map((col) => (
+                      <TableHeadCell key={col.name} className={col.align === 'right' ? 'text-right' : ''}>
+                        {col.name}
+                      </TableHeadCell>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {filteredCharges.slice((desktopPage - 1) * DESKTOP_PAGE_SIZE, desktopPage * DESKTOP_PAGE_SIZE).map((row) => (
+                    <TableRow key={row.id} className="bg-white dark:bg-gray-800">
+                      {columns.map((col) => (
+                        <TableCell key={col.name} className={col.align === 'right' ? 'text-right' : ''}>
+                          {col.cell(row)}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <TablePagination
+                page={desktopPage}
+                totalItems={filteredCharges.length}
+                pageSize={DESKTOP_PAGE_SIZE}
+                onPageChange={setDesktopPage}
+                itemLabel="items"
+              />
+            </>
+          )}
         </div>
 
         {/* Touch-First Mobile Cards View with 10-Item Pagination */}

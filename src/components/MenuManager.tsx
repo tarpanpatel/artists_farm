@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Drawer, TextInput as FlowbiteTextInput, Checkbox } from 'flowbite-react';
-import DataTable from 'react-data-table-component';
-import { flowbiteTableCustomStyles } from '../utils/tableStyles';
+import { Drawer, TextInput as FlowbiteTextInput, Checkbox, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell } from 'flowbite-react';
+import { TablePagination } from './TablePagination';
 import { Button } from './Button';
 import { Badge } from './Badge';
 import { Input } from './Input';
@@ -41,7 +40,7 @@ import {
   Filter,
   LayoutGrid,
   List,
-} from 'lucide-react';
+} from './icons/FlowbiteIcons';
 import { MenuItem, NavMenuItem } from '../types';
 import { uploadImageDB, verifyAdminPasscodeDB } from '../services/api';
 import { NavMenuEditor } from './NavMenuEditor';
@@ -53,7 +52,7 @@ import { useStaff } from '../contexts/StaffContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from './ToastContext';
 import { shareTextContent } from '../utils/shareText';
-import { Share2 } from 'lucide-react';
+import { Share2 } from './icons/FlowbiteIcons';
 
 interface MenuManagerProps {
   foodMenu: MenuItem[];
@@ -378,6 +377,120 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
 
   const isStandalonePage = activeMenuItemKey === 'edit_food_menu' || activeMenuItemKey === 'edit_main_menu';
 
+  const [foodDesktopPage, setFoodDesktopPage] = useState(1);
+  const FOOD_DESKTOP_PAGE_SIZE = 15;
+
+  const foodColumns = [
+    {
+      name: t('item_name_column', 'Item Name'),
+      cell: (item: MenuItem) => (
+        <div className="flex items-center gap-3 py-1.5 min-w-0">
+          <div className="relative group w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-700/60 border border-slate-200/80 dark:border-slate-600 overflow-hidden flex items-center justify-center shrink-0">
+            {item.imagePath ? (
+              <img
+                src={item.imagePath}
+                alt={item.name}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = 'none';
+                }}
+              />
+            ) : (
+              <UtensilsCrossed className="w-4 h-4 text-slate-400" />
+            )}
+            <label
+              className="absolute inset-0 bg-slate-900/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer backdrop-blur-2xs"
+              title={t('upload_image_for_item_tooltip', 'Upload Image for this item')}
+            >
+              <Upload className="w-3.5 h-3.5" />
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = async () => {
+                      const dataUri = reader.result as string;
+                      const uploadedUrl = await uploadImageDB(dataUri, 'menu');
+                      onUpdateFoodItem(item.id, { imagePath: uploadedUrl || dataUri });
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+              />
+            </label>
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold text-slate-900 dark:text-white text-xs truncate">{item.name}</span>
+              <span className="font-mono text-2xs text-slate-400 dark:text-slate-500 shrink-0">#{item.id}</span>
+            </div>
+            <span className="text-2xs text-slate-500 dark:text-slate-400 block mt-0.5">{item.category}</span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      name: t('category_column', 'Category'),
+      cell: (item: MenuItem) => (
+        <Badge variant="info" size="sm">
+          {item.category}
+        </Badge>
+      ),
+    },
+    {
+      name: t('price_column', 'Price (₹)'),
+      align: 'right' as const,
+      cell: (item: MenuItem) => (
+        <span className="font-bold text-emerald-700 dark:text-emerald-400 text-xs tabular-nums whitespace-nowrap">
+          ₹{Number(item.price || 0).toLocaleString('en-IN')}
+        </span>
+      ),
+    },
+    {
+      name: t('status_column', 'Status'),
+      align: 'center' as const,
+      cell: (item: MenuItem) => (
+        <Badge
+          variant={item.available ? 'success' : 'danger'}
+          size="sm"
+          onClick={() => onUpdateFoodItem(item.id, { available: !item.available })}
+          className="cursor-pointer whitespace-nowrap"
+        >
+          {item.available ? t('available_badge', 'Available') : t('out_of_stock_badge', 'Out of Stock')}
+        </Badge>
+      ),
+    },
+    {
+      name: t('actions_column', 'Actions'),
+      align: 'right' as const,
+      cell: (item: MenuItem) => (
+        <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => requirePasscode(() => handleOpenEditFood(item))}
+            className="whitespace-nowrap shrink-0"
+            leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
+          >
+            {t('edit_button', 'Edit')}
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={() => requirePasscode(() => onDeleteFoodItem(item.id))}
+            className="whitespace-nowrap shrink-0"
+            leftIcon={<Trash2 className="w-3.5 h-3.5 shrink-0" />}
+          >
+            {t('delete_button', 'Delete')}
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="menu-manager space-y-5">
       {/* Header Banner (Hidden on direct standalone pages) */}
@@ -541,138 +654,40 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
             <>
               {/* Desktop Table View (hidden md:block) */}
               <div className="hidden md:block overflow-x-auto bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
-                <DataTable
-                  columns={[
-                    {
-                      name: t('item_name_column', 'Item Name'),
-                      selector: (item: MenuItem) => item.name,
-                      sortable: true,
-                      grow: 2,
-                      minWidth: '240px',
-                      cell: (item: MenuItem) => (
-                        <div className="flex items-center gap-3 py-1.5 min-w-0">
-                          <div className="relative group w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-700/60 border border-slate-200/80 dark:border-slate-600 overflow-hidden flex items-center justify-center shrink-0">
-                            {item.imagePath ? (
-                              <img
-                                src={item.imagePath}
-                                alt={item.name}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  (e.target as HTMLElement).style.display = 'none';
-                                }}
-                              />
-                            ) : (
-                              <UtensilsCrossed className="w-4 h-4 text-slate-400" />
-                            )}
-                            <label
-                              className="absolute inset-0 bg-slate-900/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer backdrop-blur-2xs"
-                              title={t('upload_image_for_item_tooltip', 'Upload Image for this item')}
-                            >
-                              <Upload className="w-3.5 h-3.5" />
-                              <input
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={async (e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) {
-                                    const reader = new FileReader();
-                                    reader.onloadend = async () => {
-                                      const dataUri = reader.result as string;
-                                      const uploadedUrl = await uploadImageDB(dataUri, 'menu');
-                                      onUpdateFoodItem(item.id, { imagePath: uploadedUrl || dataUri });
-                                    };
-                                    reader.readAsDataURL(file);
-                                  }
-                                }}
-                              />
-                            </label>
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-semibold text-slate-900 dark:text-white text-xs truncate">{item.name}</span>
-                              <span className="font-mono text-2xs text-slate-400 dark:text-slate-500 shrink-0">#{item.id}</span>
-                            </div>
-                            <span className="text-2xs text-slate-500 dark:text-slate-400 block mt-0.5">{item.category}</span>
-                          </div>
-                        </div>
-                      ),
-                    },
-                    {
-                      name: t('category_column', 'Category'),
-                      selector: (item: MenuItem) => item.category,
-                      sortable: true,
-                      minWidth: '150px',
-                      cell: (item: MenuItem) => (
-                        <Badge variant="info" size="sm">
-                          {item.category}
-                        </Badge>
-                      ),
-                    },
-                    {
-                      name: t('price_column', 'Price (₹)'),
-                      selector: (item: MenuItem) => item.price,
-                      sortable: true,
-                      right: true,
-                      minWidth: '130px',
-                      cell: (item: MenuItem) => (
-                        <span className="font-bold text-emerald-700 dark:text-emerald-400 text-xs tabular-nums whitespace-nowrap">
-                          ₹{Number(item.price || 0).toLocaleString('en-IN')}
-                        </span>
-                      ),
-                    },
-                    {
-                      name: t('status_column', 'Status'),
-                      selector: (item: MenuItem) => item.available,
-                      sortable: true,
-                      center: true,
-                      minWidth: '140px',
-                      cell: (item: MenuItem) => (
-                        <Badge
-                          variant={item.available ? 'success' : 'danger'}
-                          size="sm"
-                          onClick={() => onUpdateFoodItem(item.id, { available: !item.available })}
-                          className="cursor-pointer whitespace-nowrap"
+                <Table hoverable>
+                  <TableHead>
+                    <TableRow>
+                      {foodColumns.map((col) => (
+                        <TableHeadCell
+                          key={col.name}
+                          className={col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : ''}
                         >
-                          {item.available ? t('available_badge', 'Available') : t('out_of_stock_badge', 'Out of Stock')}
-                        </Badge>
-                      ),
-                    },
-                    {
-                      name: t('actions_column', 'Actions'),
-                      minWidth: '180px',
-                      right: true,
-                      cell: (item: MenuItem) => (
-                        <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => requirePasscode(() => handleOpenEditFood(item))}
-                            className="whitespace-nowrap shrink-0"
-                            leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
+                          {col.name}
+                        </TableHeadCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {filteredFoodItems.slice((foodDesktopPage - 1) * FOOD_DESKTOP_PAGE_SIZE, foodDesktopPage * FOOD_DESKTOP_PAGE_SIZE).map((item) => (
+                      <TableRow key={item.id} className="bg-white dark:bg-gray-800">
+                        {foodColumns.map((col) => (
+                          <TableCell
+                            key={col.name}
+                            className={col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : ''}
                           >
-                            {t('edit_button', 'Edit')}
-                          </Button>
-                          <Button
-                            variant="danger"
-                            size="sm"
-                            onClick={() => requirePasscode(() => onDeleteFoodItem(item.id))}
-                            className="whitespace-nowrap shrink-0"
-                            leftIcon={<Trash2 className="w-3.5 h-3.5 shrink-0" />}
-                          >
-                            {t('delete_button', 'Delete')}
-                          </Button>
-                        </div>
-                      ),
-                    },
-                  ]}
-                  data={filteredFoodItems}
-                  customStyles={flowbiteTableCustomStyles}
-                  highlightOnHover
-                  persistTableHead
-                  pagination
-                  paginationPerPage={15}
-                  paginationRowsPerPageOptions={[10, 15, 25, 50]}
+                            {col.cell(item)}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <TablePagination
+                  page={foodDesktopPage}
+                  totalItems={filteredFoodItems.length}
+                  pageSize={FOOD_DESKTOP_PAGE_SIZE}
+                  onPageChange={setFoodDesktopPage}
+                  itemLabel="items"
                 />
               </div>
 

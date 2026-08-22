@@ -4,7 +4,7 @@ import {
   Pencil, Trash2, ExternalLink, CheckCircle, XCircle, Layers,
   Home, TrendingUp, ChevronRight, Lock, Zap, User,
   Calendar, Bell,
-} from 'lucide-react';
+} from './icons/FlowbiteIcons';
 import { Input } from './Input';
 import { Textarea } from './Textarea';
 import { StyledSelect } from './StyledSelect';

@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Drawer, TextInput, Checkbox, Tabs, TabItem } from 'flowbite-react';
+import { Card, Drawer, TextInput, Checkbox, Tabs, TabItem, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell } from 'flowbite-react';
 import { Button } from './Button';
-import DataTable from 'react-data-table-component';
-import { flowbiteTableCustomStyles } from '../utils/tableStyles';
+import { TablePagination } from './TablePagination';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
 import { lazyWithRetry } from '../utils/lazyWithRetry';
 import {
@@ -22,7 +21,7 @@ import {
   Edit2,
   Pencil,
   X,
-} from 'lucide-react';
+} from './icons/FlowbiteIcons';
 import { Guest, BillingReceipt } from '../types';
 import { t } from '../i18n/en';
 import { GUEST_STATUS_CHECKEDOUT_LEGACY, GUEST_STATUS_CHECKED_OUT } from '../constants/guestStatus';
@@ -99,6 +98,8 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   const { showToast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'today' | 'upcoming' | 'past_bookings'>('today');
+  const [pastBookingsDesktopPage, setPastBookingsDesktopPage] = useState(1);
+  const PAST_BOOKINGS_PAGE_SIZE = 15;
   const [isProcessing] = useState(false);
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
   const [showAddBookingModal, setShowAddBookingModal] = useState(false);
@@ -457,12 +458,14 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                               <Badge
                                 variant="warning"
                                 size="sm"
-                                className="billing-checkout__ota-badge shrink-0"
+                                className="billing-checkout__ota-badge whitespace-nowrap shrink-0"
                                 title={t('ota_converted_badge_tooltip', 'Converted from an OTA calendar sync - editing this only changes this app, not the original platform')}
                               >
-                                <Globe className="w-2.5 h-2.5" />
-                                {guest.otaSourceLabel || guest.otaSource}
-                                {guest.roomNumber && <span className="opacity-70">&middot; {guest.roomNumber}</span>}
+                                <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                                  <Globe className="w-2.5 h-2.5 shrink-0" />
+                                  <span>{guest.otaSourceLabel || guest.otaSource}</span>
+                                  {guest.roomNumber && <span className="opacity-70">&middot; {guest.roomNumber}</span>}
+                                </span>
                               </Badge>
                             )}
                           </div>
@@ -597,10 +600,6 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   const pastBookingsColumns = [
     {
       name: t('guest_details_column', 'Guest Details'),
-      selector: (row: Guest) => row.guestName,
-      sortable: true,
-      grow: 2,
-      minWidth: '200px',
       cell: (row: Guest) => (
         <div className="flex flex-col py-1">
           <div className="font-bold text-gray-900 dark:text-white text-sm">{row.guestName}</div>
@@ -625,10 +624,6 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     },
     {
       name: t('stay_dates_column', 'Stay Dates'),
-      selector: (row: Guest) => row.checkinDate,
-      sortable: true,
-      width: '150px',
-      minWidth: '130px',
       cell: (row: Guest) => (
         <div className="flex flex-col py-1 text-xs">
           <div className="font-medium text-gray-900 dark:text-white flex items-center gap-1.5">
@@ -644,10 +639,6 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     },
     {
       name: t('cottage_room_column', 'Cottage / Room'),
-      selector: (row: Guest) => row.roomNumber,
-      sortable: true,
-      width: '140px',
-      minWidth: '110px',
       cell: (row: Guest) => (
         <div className="flex items-center gap-1.5 font-medium text-gray-900 dark:text-white text-xs">
           <Home className="w-4 h-4 text-gray-400" />
@@ -657,10 +648,6 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     },
     {
       name: t('stay_status_column', 'Stay Status'),
-      selector: (row: Guest) => row.status,
-      sortable: true,
-      width: '150px',
-      minWidth: '110px',
       cell: (row: Guest) => {
         const status = getGuestStayStatus(row);
         return (
@@ -672,10 +659,6 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     },
     {
       name: t('financial_ledger_column', 'Financial Ledger'),
-      selector: (row: Guest) => calculateGuestTotal(row),
-      sortable: true,
-      grow: 2,
-      minWidth: '180px',
       cell: (row: Guest) => (
         <div className="flex flex-col py-1 text-xs">
           <div className="flex items-center gap-1 font-semibold text-gray-900 dark:text-white">
@@ -694,10 +677,6 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     },
     {
       name: t('c_form_filing_column', 'C-Form Filing'),
-      selector: (row: Guest) => row.cFormFiledAt || '',
-      sortable: true,
-      grow: 2,
-      minWidth: '160px',
       cell: (row: Guest) => {
         if (!row.isForeignGuest) {
           return <span className="text-gray-400 dark:text-gray-500 text-xs">{t('na_indian_national_label', 'N/A (Indian National)')}</span>;
@@ -728,7 +707,6 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     },
     {
       name: t('actions_column', 'Actions'),
-      width: '160px',
       cell: (row: Guest) => (
         // Standard <Button size="sm"> per DESIGN.md's DataTable Action
         // Buttons rule (20 Aug 2026) - was a hand-rolled <button> that had
@@ -842,7 +820,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
               since they fill this whole area rather than sitting alongside
               other items in it. */}
           <div className="billing-checkout__list-content border-t border-gray-200 pt-4 dark:border-gray-700">
-          {/* Upcoming & Past Bookings: Mobile Card Stack on phone viewports (md:hidden), Desktop DataTable on md+ */}
+          {/* Upcoming & Past Bookings: Mobile Card Stack on phone viewports (md:hidden), Desktop Flowbite Table on md+ */}
           {(activeTab === 'upcoming' || activeTab === 'past_bookings') ? (
             <>
               <div className="md:hidden">
@@ -865,27 +843,45 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
               </div>
 
               <div className="hidden md:block billing-checkout__past-table overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
-                <DataTable
-                  columns={pastBookingsColumns}
-                  data={searchedGuests}
-                  customStyles={flowbiteTableCustomStyles}
-                  highlightOnHover
-                  persistTableHead
-                  pagination
-                  paginationPerPage={15}
-                  paginationRowsPerPageOptions={[10, 15, 20, 30, 50]}
-                  noDataComponent={
-                    <div className="p-12 text-center">
-                      <Search className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-                      <h3 className="billing-checkout__subtitle text-lg font-semibold text-gray-800 dark:text-gray-200 mb-1">
-                        {t('no_guest_records_found', 'No Guest Records Found')}
-                      </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {t('no_guest_records_description', 'No guest records match the current tab filter or search term. Switch tabs or room filter to view other reservations.')}
-                      </p>
-                    </div>
-                  }
-                />
+                {searchedGuests.length === 0 ? (
+                  <div className="p-12 text-center">
+                    <Search className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                    <h3 className="billing-checkout__subtitle text-lg font-semibold text-gray-800 dark:text-gray-200 mb-1">
+                      {t('no_guest_records_found', 'No Guest Records Found')}
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {t('no_guest_records_description', 'No guest records match the current tab filter or search term. Switch tabs or room filter to view other reservations.')}
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <Table hoverable>
+                      <TableHead>
+                        <TableRow>
+                          {pastBookingsColumns.map((col) => (
+                            <TableHeadCell key={col.name}>{col.name}</TableHeadCell>
+                          ))}
+                        </TableRow>
+                      </TableHead>
+                      <TableBody className="divide-y divide-gray-200 dark:divide-gray-700">
+                        {searchedGuests.slice((pastBookingsDesktopPage - 1) * PAST_BOOKINGS_PAGE_SIZE, pastBookingsDesktopPage * PAST_BOOKINGS_PAGE_SIZE).map((row) => (
+                          <TableRow key={row.id} className="bg-white dark:bg-gray-800">
+                            {pastBookingsColumns.map((col) => (
+                              <TableCell key={col.name}>{col.cell(row)}</TableCell>
+                            ))}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    <TablePagination
+                      page={pastBookingsDesktopPage}
+                      totalItems={searchedGuests.length}
+                      pageSize={PAST_BOOKINGS_PAGE_SIZE}
+                      onPageChange={setPastBookingsDesktopPage}
+                      itemLabel="bookings"
+                    />
+                  </>
+                )}
               </div>
             </>
           ) : (

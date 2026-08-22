@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Loader2, AlertCircle, Pencil, Check, X } from 'lucide-react';
+import { Plus, Trash2, Loader2, AlertCircle, Pencil, Check, X } from './icons/FlowbiteIcons';
 import { Drawer, Alert } from 'flowbite-react';
 import { t } from '../i18n/en';
 import { Button } from './Button';

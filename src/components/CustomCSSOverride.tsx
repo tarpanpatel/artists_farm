@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Card, Alert } from 'flowbite-react';
-import { Paintbrush, Save, RotateCcw, Copy, Check, Trash2, Download, Upload, Eye, Code, Search, ChevronDown, ChevronUp, Palette, Minus, Plus, X, Lock, Loader2 } from 'lucide-react';
+import { Paintbrush, Save, Copy, Check, Trash2, Download, Upload, Eye, Code, Search, ChevronDown, ChevronUp, Palette, X, Lock, FLOWBITE_ICONS } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';
 import { Input } from './Input';
 import { Button } from './Button';
@@ -8,10 +8,6 @@ import { Badge } from './Badge';
 import { Textarea } from './Textarea';
 
 const STYLE_ID = 'artists-farm-custom-css-override';
-const LUCIDE_STORAGE_KEY = 'artists_farm_lucide_settings';
-const LUCIDE_STYLE_ID = 'artists-farm-lucide-global';
-
-const DEFAULT_LUCIDE = { size: 24, strokeWidth: 2, color: '#334155' };
 
 interface CustomCSSOverrideProps {
   activeRole?: string;
@@ -29,23 +25,6 @@ function injectCSS(css: string) {
 
 function removeCSS() {
   const el = document.getElementById(STYLE_ID);
-  if (el) el.remove();
-}
-
-function injectLucideGlobal(size: number, strokeWidth: number, color: string) {
-  let el = document.getElementById(LUCIDE_STYLE_ID) as HTMLStyleElement | null;
-  if (!el) {
-    el = document.createElement('style');
-    el.id = LUCIDE_STYLE_ID;
-    document.head.appendChild(el);
-  }
-  el.textContent = `
-    .lucide { width: ${size}px; height: ${size}px; stroke-width: ${strokeWidth}; color: ${color}; }
-  `;
-}
-
-function removeLucideGlobal() {
-  const el = document.getElementById(LUCIDE_STYLE_ID);
   if (el) el.remove();
 }
 
@@ -70,12 +49,6 @@ const DEFAULT_CSS = `/* Ground Code — Custom CSS Override
    .text-slate-900 { color: #1e293b; }
 */`;
 
-const PRESET_COLORS = [
-  '#000000', '#ffffff', '#ef4444', '#f97316', '#eab308', '#22c55e',
-  '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b', '#0ea5e9',
-  '#14b8a6', '#a855f7', '#f43f5e', '#84cc16',
-];
-
 const ICONS_PER_PAGE = 120;
 
 interface IconEntry {
@@ -97,18 +70,23 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
 
   // Icon browser state
   const [showIconBrowser, setShowIconBrowser] = useState(false);
-  const [allIcons, setAllIcons] = useState<IconEntry[]>([]);
-  const [iconsLoaded, setIconsLoaded] = useState(false);
   const [iconSearch, setIconSearch] = useState('');
-  const [iconSize, setIconSize] = useState(DEFAULT_LUCIDE.size);
-  const [iconStroke, setIconStroke] = useState(DEFAULT_LUCIDE.strokeWidth);
-  const [iconColor, setIconColor] = useState(DEFAULT_LUCIDE.color);
   const [iconPage, setIconPage] = useState(1);
   const [selectedIcon, setSelectedIcon] = useState<IconEntry | null>(null);
   const [copiedIcon, setCopiedIcon] = useState<string | null>(null);
-  const [customColor, setCustomColor] = useState(DEFAULT_LUCIDE.color);
-  const [lucideSaved, setLucideSaved] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+
+  // The full Flowbite icon catalog (444 outline+solid icons, already bundled
+  // via FlowbiteIcons.tsx - no dynamic import/loading state needed, unlike
+  // the old lucide-react version of this browser which had to import('lucide-react')
+  // on demand since that library isn't otherwise part of the app bundle).
+  const allIcons: IconEntry[] = useMemo(
+    () =>
+      Object.entries(FLOWBITE_ICONS)
+        .map(([name, Component]) => ({ name, Component }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    []
+  );
   const iconBrowserRef = useRef<HTMLDivElement>(null);
 
   // Load system settings from API on mount
@@ -137,20 +115,6 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
             setCss(DEFAULT_CSS);
             setSavedCss(DEFAULT_CSS);
           }
-
-          if (settings.lucide_settings) {
-            try {
-              const lucide = JSON.parse(settings.lucide_settings);
-              setIconSize(lucide.size ?? DEFAULT_LUCIDE.size);
-              setIconStroke(lucide.strokeWidth ?? DEFAULT_LUCIDE.strokeWidth);
-              setIconColor(lucide.color ?? DEFAULT_LUCIDE.color);
-              setCustomColor(lucide.color ?? DEFAULT_LUCIDE.color);
-              setLucideSaved(true);
-              injectLucideGlobal(lucide.size, lucide.strokeWidth, lucide.color);
-            } catch (e) {
-              console.error('Failed to parse lucide settings:', e);
-            }
-          }
         }
       } catch (err) {
         console.error('Failed to load system settings:', err);
@@ -163,50 +127,6 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
 
     loadSettings();
   }, [isRootAdmin]);
-
-  // Load saved Lucide icon settings on mount
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(LUCIDE_STORAGE_KEY);
-      if (raw) {
-        const saved = JSON.parse(raw);
-        const s = saved.size ?? DEFAULT_LUCIDE.size;
-        const sw = saved.strokeWidth ?? DEFAULT_LUCIDE.strokeWidth;
-        const c = saved.color ?? DEFAULT_LUCIDE.color;
-        setIconSize(s);
-        setIconStroke(sw);
-        setIconColor(c);
-        setCustomColor(c);
-        setLucideSaved(true);
-        injectLucideGlobal(s, sw, c);
-      }
-    } catch { /* ignore corrupt data */ }
-  }, []);
-
-  // Dynamic import of all Lucide icons when browser is opened
-  useEffect(() => {
-    if (showIconBrowser && !iconsLoaded) {
-      import('lucide-react').then((mod) => {
-        const icons: IconEntry[] = [];
-        Object.keys(mod).forEach((k) => {
-          if (
-            k[0] === k[0].toUpperCase() &&
-            k.length > 1 &&
-            !k.endsWith('Icon') &&
-            !k.startsWith('create') &&
-            !k.startsWith('default') &&
-            typeof (mod as any)[k] === 'object' &&
-            (mod as any)[k]?.render
-          ) {
-            icons.push({ name: k, Component: (mod as any)[k] });
-          }
-        });
-        icons.sort((a, b) => a.name.localeCompare(b.name));
-        setAllIcons(icons);
-        setIconsLoaded(true);
-      });
-    }
-  }, [showIconBrowser, iconsLoaded]);
 
   const filteredIcons = useMemo(() => {
     if (!iconSearch.trim()) return allIcons;
@@ -315,76 +235,19 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleLucideSave = async () => {
-    if (!isRootAdmin) return;
-    try {
-      const data = { size: iconSize, strokeWidth: iconStroke, color: iconColor };
-      const response = await fetch(`/php/api/router.php?action=save_system_settings`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-Role': 'root_admin',
-        },
-        body: JSON.stringify({ setting_key: 'lucide_settings', setting_value: JSON.stringify(data) }),
-      });
-      const result = await response.json();
-      if (result.status === 'success') {
-        injectLucideGlobal(iconSize, iconStroke, iconColor);
-        setLucideSaved(true);
-        setToast('Icon settings applied to all properties');
-        setTimeout(() => setToast(null), 2500);
-      }
-    } catch (err) {
-      console.error('Failed to save icon settings:', err);
-      setToast('Error saving icon settings');
-      setTimeout(() => setToast(null), 2500);
-    }
-  };
-
-  const handleLucideReset = async () => {
-    if (!isRootAdmin) return;
-    try {
-      const response = await fetch(`/php/api/router.php?action=save_system_settings`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-Role': 'root_admin',
-        },
-        body: JSON.stringify({ setting_key: 'lucide_settings', setting_value: JSON.stringify(DEFAULT_LUCIDE) }),
-      });
-      const result = await response.json();
-      if (result.status === 'success') {
-        setIconSize(DEFAULT_LUCIDE.size);
-        setIconStroke(DEFAULT_LUCIDE.strokeWidth);
-        setIconColor(DEFAULT_LUCIDE.color);
-        setCustomColor(DEFAULT_LUCIDE.color);
-        removeLucideGlobal();
-        setLucideSaved(false);
-        setToast('Icon settings reset for all properties');
-        setTimeout(() => setToast(null), 2500);
-      }
-    } catch (err) {
-      console.error('Failed to reset icon settings:', err);
-      setToast('Error resetting icon settings');
-      setTimeout(() => setToast(null), 2500);
-    }
-  };
-
   const handleCopyIconImport = useCallback((name: string) => {
-    const text = `import { ${name} } from 'lucide-react';`;
+    const text = `import { FLOWBITE_ICONS } from './icons/FlowbiteIcons';\nconst Icon = FLOWBITE_ICONS['${name}'];`;
     navigator.clipboard.writeText(text);
     setCopiedIcon(name);
     setTimeout(() => setCopiedIcon(null), 2000);
   }, []);
 
   const handleCopyIconJSX = useCallback((name: string) => {
-    const text = `<${name} className="w-${Math.round(iconSize / 4)} h-${Math.round(iconSize / 4)}" />`;
+    const text = `<Icon className="w-5 h-5" />`;
     navigator.clipboard.writeText(text);
     setCopiedIcon(name);
     setTimeout(() => setCopiedIcon(null), 2000);
-  }, [iconSize]);
+  }, []);
 
   const hasChanges = css !== savedCss;
 
@@ -530,7 +393,21 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
         </div>
       </div>
 
-      {/* Lucide Icon Browser */}
+      {/* Flowbite Icon Browser (was the "Lucide Icon Browser" until the 22 Aug
+          2026 "remove lucide-react site-wide" sweep - see FlowbiteIcons.tsx's
+          own note on the retirement aliases. The old version dynamically
+          import()'d lucide-react to enumerate ~1500 icons and injected a
+          `.lucide { width/height/stroke-width/color }` global CSS rule to
+          live-restyle every icon on the site - both mechanisms were entirely
+          lucide-react-specific (the CSS keyed off a class lucide-react
+          stamps on its own output) and had nothing left to do once
+          lucide-react was removed. Rebuilt as a reference/lookup tool over
+          the 444-icon FLOWBITE_ICONS catalog instead: no dynamic import
+          needed (the catalog is already part of the app bundle), and no
+          global size/stroke/color override, since Flowbite icons are
+          rendered per-instance via Tailwind classes already, not through a
+          single library-wide CSS hook the way lucide-react's `.lucide` class
+          allowed. */}
       <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md overflow-hidden custom-css-override__icon-browser">
         <button
           onClick={() => setShowIconBrowser(!showIconBrowser)}
@@ -541,9 +418,9 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
               <Palette className="w-5 h-5 text-white" />
             </div>
             <div className="text-left">
-              <h3 className="custom-cssoverride__subtitle text-sm font-semibold text-slate-900 dark:text-white">{t('lucide_icon_browser_title', 'Lucide Icon Browser')}</h3>
+              <h3 className="custom-cssoverride__subtitle text-sm font-semibold text-slate-900 dark:text-white">{t('flowbite_icon_browser_title', 'Flowbite Icon Browser')}</h3>
               <p className="text-[11px] text-slate-500">
-                {iconsLoaded ? `${allIcons.length} icons available` : t('browse_copy_lucide_message', 'Browse, customize, and copy the complete Lucide icon library')}
+                {t('browse_copy_flowbite_message', 'Browse, search, and copy an import for any of the {count} icons used across the app.', { count: allIcons.length })}
               </p>
             </div>
           </div>
@@ -556,121 +433,9 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
 
         {showIconBrowser && (
           <div ref={iconBrowserRef} className="border-t border-slate-200 dark:border-slate-700">
-            {/* Customization Controls */}
+            {/* Search */}
             <div className="px-5 py-4 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Size */}
-                <div>
-                  <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                    <span>{t('icon_size_label', 'Size')}</span>
-                    <span className="font-mono text-blue-600 dark:text-blue-400">{iconSize}px</span>
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setIconSize(Math.max(8, iconSize - 2))}
-                      className="p-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"
-                    >
-                      <Minus className="w-3 h-3" />
-                    </button>
-                    <Input
-                      type="range"
-                      min="8"
-                      max="64"
-                      value={iconSize}
-                      onChange={(e) => setIconSize(Number(e.target.value))}
-                      className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                    />
-                    <button
-                      onClick={() => setIconSize(Math.min(64, iconSize + 2))}
-                      className="p-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"
-                    >
-                      <Plus className="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Stroke Width */}
-                <div>
-                  <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                    <span>{t('icon_stroke_width_label', 'Stroke Width')}</span>
-                    <span className="font-mono text-blue-600 dark:text-blue-400">{iconStroke}px</span>
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setIconStroke(Math.max(0.5, +(iconStroke - 0.25).toFixed(2)))}
-                      className="p-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"
-                    >
-                      <Minus className="w-3 h-3" />
-                    </button>
-                    <Input
-                      type="range"
-                      min="0.5"
-                      max="4"
-                      step="0.25"
-                      value={iconStroke}
-                      onChange={(e) => setIconStroke(Number(e.target.value))}
-                      className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                    />
-                    <button
-                      onClick={() => setIconStroke(Math.min(4, +(iconStroke + 0.25).toFixed(2)))}
-                      className="p-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"
-                    >
-                      <Plus className="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Color */}
-                <div>
-                  <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-                    {t('icon_color_label', 'Color')}
-                  </label>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {PRESET_COLORS.map((c) => (
-                      <button
-                        key={c}
-                        onClick={() => { setIconColor(c); setCustomColor(c); }}
-                        className={`w-5 h-5 rounded-full border-2 cursor-pointer transition-transform hover:scale-110 ${
-                          iconColor === c ? 'border-blue-500 ring-2 ring-blue-200 dark:ring-blue-800' : 'border-slate-200 dark:border-slate-600'
-                        }`}
-                        style={{ backgroundColor: c }}
-                        title={c}
-                      />
-                    ))}
-                    <div className="relative">
-                      <Input
-                        type="color"
-                        value={customColor}
-                        onChange={(e) => { setCustomColor(e.target.value); setIconColor(e.target.value); }}
-                        className="w-5 h-5 rounded-full border-2 border-slate-200 dark:border-slate-600 cursor-pointer appearance-none bg-transparent"
-                        title={t('custom_color_tooltip', 'Custom color')}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Save / Reset Buttons */}
-              <div className="mt-3 flex items-center gap-2">
-                <Button variant="primary" size="sm" onClick={handleLucideSave} leftIcon={<Save className="w-3.5 h-3.5" />}>
-                  {t('save_apply_site_wide_button', 'Save & Apply Site-Wide')}
-                </Button>
-                <button
-                  onClick={handleLucideReset}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg cursor-pointer transition-colors"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  {t('reset_to_defaults_button', 'Reset to Defaults')}
-                </button>
-                {lucideSaved && (
-                  <Badge variant="info" size="sm">
-                    <Eye className="w-2.5 h-2.5" /> {t('active_badge', 'ACTIVE')}
-                  </Badge>
-                )}
-              </div>
-
-              {/* Search */}
-              <div className="mt-3 relative">
+              <div className="relative">
                 <Input
                   type="text"
                   value={iconSearch}
@@ -692,12 +457,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
 
             {/* Icon Grid */}
             <div className="p-5">
-              {!iconsLoaded ? (
-                <div className="text-center py-16">
-                  <Loader2 className="w-8 h-8 text-blue-500 animate-spin mx-auto mb-3" />
-                  <p className="text-xs text-slate-400 font-medium">{t('loading_lucide_library_message', 'Loading complete Lucide library...')}</p>
-                </div>
-              ) : filteredIcons.length === 0 ? (
+              {filteredIcons.length === 0 ? (
                 <div className="text-center py-16">
                   <p className="text-sm text-slate-400 font-semibold">No icons match "{iconSearch}"</p>
                 </div>
@@ -720,11 +480,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
                           }`}
                           title={icon.name}
                         >
-                          <icon.Component
-                            size={iconSize > 32 ? 32 : iconSize}
-                            strokeWidth={iconStroke}
-                            color={iconColor}
-                          />
+                          <icon.Component className="w-6 h-6 text-slate-700 dark:text-slate-200" />
                           <span className="text-[8px] mt-1 text-slate-400 dark:text-slate-500 font-medium truncate w-full text-center leading-tight">
                             {icon.name}
                           </span>
@@ -753,11 +509,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
                 <div className="flex items-start gap-5">
                   {/* Preview */}
                   <div className="flex-shrink-0 w-28 h-28 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center">
-                    <selectedIcon.Component
-                      size={iconSize}
-                      strokeWidth={iconStroke}
-                      color={iconColor}
-                    />
+                    <selectedIcon.Component className="w-8 h-8 text-slate-700 dark:text-slate-200" />
                   </div>
 
                   {/* Details */}
@@ -767,21 +519,14 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
                       <div className="flex items-center gap-2">
                         <span className="text-slate-400 w-16">{t('icon_import_label', 'Import:')}</span>
                         <code className="bg-white dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 font-mono text-[10px] text-emerald-600 dark:text-emerald-400 truncate">
-                          {`import { ${selectedIcon.name} } from 'lucide-react'`}
+                          {`FLOWBITE_ICONS['${selectedIcon.name}']`}
                         </code>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-slate-400 w-16">{t('icon_jsx_label', 'JSX:')}</span>
                         <code className="bg-white dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 font-mono text-[10px] text-blue-600 dark:text-blue-400 truncate">
-                          {`<${selectedIcon.name} size={${iconSize}} strokeWidth={${iconStroke}} color="${iconColor}" />`}
+                          {`<Icon className="w-5 h-5" />`}
                         </code>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-slate-400 w-16">{t('icon_size_detail_label', 'Size:')}</span>
-                        <span className="font-mono text-slate-600 dark:text-slate-300">{iconSize}px</span>
-                        <span className="text-slate-300 dark:text-slate-600">|</span>
-                        <span className="text-slate-400">{t('icon_stroke_detail_label', 'Stroke:')}</span>
-                        <span className="font-mono text-slate-600 dark:text-slate-300">{iconStroke}</span>
                       </div>
                     </div>
 
@@ -798,7 +543,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
                           {copiedIcon === selectedIcon.name ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                           {copiedIcon === selectedIcon.name ? t('copied_exclamation_button', 'Copied!') : t('copy_jsx_button', 'Copy JSX')}
                         </Button>
-<Button variant="primary" size="sm" onClick={() => setSelectedIcon(null)}> 
+<Button variant="primary" size="sm" onClick={() => setSelectedIcon(null)}>
                         <X className="w-4 h-4" />
                       </Button>
                     </div>

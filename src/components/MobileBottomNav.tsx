@@ -10,7 +10,7 @@ import {
   ChefHat,
   Receipt,
   X
-} from 'lucide-react';
+} from './icons/FlowbiteIcons';
 import { TabType } from './Navigation';
 
 interface MobileBottomNavProps {

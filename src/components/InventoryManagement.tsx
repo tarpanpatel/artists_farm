@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Drawer as FlowbiteDrawer, DrawerItems, TextInput as FlowbiteTextInput, Tabs, TabItem } from 'flowbite-react';
+import { Drawer as FlowbiteDrawer, DrawerItems, TextInput as FlowbiteTextInput, Tabs, TabItem, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, Checkbox } from 'flowbite-react';
 import { Button } from './Button';
 import { Badge } from './Badge';
 import { Tooltip } from './Tooltip';
-import DataTable from 'react-data-table-component';
-import { flowbiteTableCustomStyles } from '../utils/tableStyles';
+import { TablePagination } from './TablePagination';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
-import { Boxes, PackagePlus, AlertTriangle, Plus, CheckCircle2, X, Upload, Search, ShoppingCart, Settings, Package, Check, ClipboardEdit, Edit2, Pencil, ChevronDown, ChevronUp, Loader2, FlaskConical, Coffee, Milk, Apple, Banana, Cake, Carrot, Wheat, SprayCan, Drumstick, UtensilsCrossed, Croissant, Soup, Droplet, Snowflake, Fish, Wrench, Balloon, Refrigerator, Microwave, Fan, Blend, Bean, HandPlatter, GlassWater, LeafyGreen, Trash2, Candy, Flame, Cherry, Grape, Citrus, Egg, CupSoda, Utensils, Sandwich, Cookie, Nut, Filter, Eye, type LucideIcon } from 'lucide-react';
+import { Boxes, PackagePlus, AlertTriangle, Plus, CheckCircle2, X, Upload, Search, ShoppingCart, Settings, Package, Check, ClipboardEdit, Edit2, Pencil, ChevronDown, ChevronUp, Loader2, FlaskConical, Coffee, Milk, Apple, Banana, Cake, Carrot, Wheat, SprayCan, Drumstick, UtensilsCrossed, Croissant, Soup, Droplet, Snowflake, Fish, Wrench, Balloon, Refrigerator, Microwave, Fan, Blend, Bean, HandPlatter, GlassWater, LeafyGreen, Trash2, Candy, Flame, Cherry, Grape, Citrus, Egg, CupSoda, Utensils, Sandwich, Cookie, Nut, Filter, Eye, type FlowbiteIconComponent } from './icons/FlowbiteIcons';
 import { InventoryItem, CatalogItem } from '../types';
 import { t } from '../i18n/en';
 import { PageHeader, PageHeaderButton } from './PageHeader';
@@ -32,7 +31,7 @@ import { formatDateDDMMYYYY } from '../utils/dateUtils';
 // mapped as fresh vegetables. Covers common English + Hindi/Hinglish
 // kitchen-stock vocabulary; anything unmatched falls through to the
 // category rules below, then to a generic Package icon.
-const STOCK_NAME_ICON_RULES: [RegExp, LucideIcon][] = [
+const STOCK_NAME_ICON_RULES: [RegExp, FlowbiteIconComponent][] = [
   [/balloon/i, Balloon],
   [/\bfridge\b|refrigerator/i, Refrigerator],
   [/microwave/i, Microwave],
@@ -79,7 +78,7 @@ const STOCK_NAME_ICON_RULES: [RegExp, LucideIcon][] = [
   [/fork|knife|spoon/i, Utensils],
 ];
 
-const STOCK_CATEGORY_ICON_RULES: [RegExp, LucideIcon][] = [
+const STOCK_CATEGORY_ICON_RULES: [RegExp, FlowbiteIconComponent][] = [
   [/spice|season|masala/i, FlaskConical],
   [/oil|ghee|fat/i, Droplet],
   [/frozen|cold/i, Snowflake],
@@ -101,7 +100,7 @@ const STOCK_CATEGORY_ICON_RULES: [RegExp, LucideIcon][] = [
 // Item name is checked first (specific, e.g. "Sugar" -> Candy) since real
 // catalogs bucket very different items under one loose category; category
 // is only a fallback for names that don't match anything above.
-const getStockItemIcon = (name?: string, category?: string): LucideIcon => {
+const getStockItemIcon = (name?: string, category?: string): FlowbiteIconComponent => {
   if (name) {
     const nameMatch = STOCK_NAME_ICON_RULES.find(([pattern]) => pattern.test(name));
     if (nameMatch) return nameMatch[1];
@@ -164,7 +163,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   const normalizedRole = (currentUser?.role || activeRole || '').toLowerCase().replace(/_/g, ' ').trim();
   const canDeleteCatalogItem = normalizedRole.includes('admin');
   const { inventory, inventoryLoading } = useInventoryContext();
-  // Shared spinner for every DataTable's progressComponent in this file
+  // Shared spinner for every table's loading state in this file
   // (14 Aug 2026 loading-state pass) - kept as one constant so all of this
   // page's tables show a consistent "still loading" indicator instead of
   // their "No X found" empty state flashing before the fetch resolves.
@@ -186,8 +185,12 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   const [selectedCatalogItemIds, setSelectedCatalogItemIds] = useState<number[]>([]);
   const [bulkTargetCategory, setBulkTargetCategory] = useState<string>('');
   const [inventoryPage, setInventoryPage] = useState(1);
+  const [stockLogDesktopPage, setStockLogDesktopPage] = useState(1);
+  const STOCK_LOG_DESKTOP_PAGE_SIZE = 15;
   const [catalogPage, setCatalogPage] = useState(1);
   const [wastagePage, setWastagePage] = useState(1);
+  const [wastageDesktopPage, setWastageDesktopPage] = useState(1);
+  const WASTAGE_DESKTOP_PAGE_SIZE = 10;
 
   // Sync catalogItems from live DB inventory data
   useEffect(() => {
@@ -243,7 +246,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   }, [inventory]);
 
   const [catalogSearch, setCatalogSearch] = useState('');
-  const [catalogTableKey, setCatalogTableKey] = useState(0);
+  const [catalogDesktopPage, setCatalogDesktopPage] = useState(1);
+  const CATALOG_DESKTOP_PAGE_SIZE = 25;
   const [isCatalogModalOpen, setIsCatalogModalOpen] = useState(false);
   const [editingCatalogItem, setEditingCatalogItem] = useState<CatalogItem | null>(null);
   const [catItemName, setCatItemName] = useState('');
@@ -356,7 +360,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       }
 
       setSelectedCatalogItemIds([]);
-      setCatalogTableKey(k => k + 1);
       setBulkTargetCategory('');
       showToast(`Successfully assigned selected items to category "${targetCategory}"!`, { type: 'success' });
     } else {
@@ -680,6 +683,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   // resolved. Defaults true.
   const [stockRequestsLoading, setStockRequestsLoading] = useState(true);
   const [fulfillSearch, setFulfillSearch] = useState('');
+  const [fulfillDesktopPage, setFulfillDesktopPage] = useState(1);
+  const FULFILL_DESKTOP_PAGE_SIZE = 10;
 
   const todayDate = new Date();
   const padDate = (n: number) => String(n).padStart(2, '0');
@@ -1098,36 +1103,24 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             )}
           </div>
 
-          {/* Desktop DataTable (hidden md:block) */}
+          {/* Desktop Table (hidden md:block) */}
           <div className="hidden md:block overflow-x-auto">
-            <DataTable
-              columns={[
+            {(() => {
+              const wastageColumns = [
                 {
                   name: 'Date',
-                  selector: (log: any) => log.date,
-                  sortable: true,
-                  width: '110px',
                   cell: (log: any) => <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{formatDateDDMMYYYY(log.date)}</span>,
                 },
                 {
                   name: 'Item Name',
-                  selector: (log: any) => log.itemName,
-                  sortable: true,
-                  grow: 2,
                   cell: (log: any) => <span className="font-semibold text-slate-900 dark:text-white text-xs">{log.itemName}</span>,
                 },
                 {
                   name: 'Wasted Qty',
-                  selector: (log: any) => log.wastedQty,
-                  sortable: true,
-                  width: '100px',
                   cell: (log: any) => <span className="font-semibold text-red-600 dark:text-red-400 text-xs">{log.wastedQty} {log.unit}</span>,
                 },
                 {
                   name: 'Reason',
-                  selector: (log: any) => log.reason,
-                  sortable: true,
-                  width: '140px',
                   cell: (log: any) => (
                     <Badge variant="warning" size="sm">
                                   {log.reason}
@@ -1136,20 +1129,43 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 },
                 {
                   name: 'Reported By',
-                  selector: (log: any) => log.reportedBy,
-                  sortable: true,
-                  grow: 1,
                   cell: (log: any) => <span className="text-[11px] text-slate-600 dark:text-slate-400">{log.reportedBy}</span>,
                 },
-              ]}
-              data={wastageLogs}
-              pagination
-              paginationPerPage={10}
-              highlightOnHover
-              persistTableHead
-              customStyles={flowbiteTableCustomStyles}
-              noDataComponent={<div className="p-8 text-center text-slate-400 text-xs font-semibold">No wastage incidents logged.</div>}
-            />
+              ];
+
+              if (wastageLogs.length === 0) {
+                return <div className="p-8 text-center text-slate-400 text-xs font-semibold">No wastage incidents logged.</div>;
+              }
+              return (
+                <>
+                  <Table hoverable>
+                    <TableHead>
+                      <TableRow>
+                        {wastageColumns.map((col) => (
+                          <TableHeadCell key={col.name}>{col.name}</TableHeadCell>
+                        ))}
+                      </TableRow>
+                    </TableHead>
+                    <TableBody className="divide-y divide-gray-200 dark:divide-gray-700">
+                      {wastageLogs.slice((wastageDesktopPage - 1) * WASTAGE_DESKTOP_PAGE_SIZE, wastageDesktopPage * WASTAGE_DESKTOP_PAGE_SIZE).map((log: any, idx: number) => (
+                        <TableRow key={log.id || idx} className="bg-white dark:bg-gray-800">
+                          {wastageColumns.map((col) => (
+                            <TableCell key={col.name}>{col.cell(log)}</TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  <TablePagination
+                    page={wastageDesktopPage}
+                    totalItems={wastageLogs.length}
+                    pageSize={WASTAGE_DESKTOP_PAGE_SIZE}
+                    onPageChange={setWastageDesktopPage}
+                    itemLabel="incidents"
+                  />
+                </>
+              );
+            })()}
           </div>
         </div>
       </div>
@@ -1231,12 +1247,65 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               )}
 
               <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md overflow-x-auto">
-                <DataTable
-                  key={catalogTableKey}
-                  columns={[
+                <div className="w-full flex flex-col gap-3 p-4 border-b border-slate-100 dark:border-slate-700/80">
+                  <div className="flex items-center gap-2">
+                    <div className="relative max-w-sm w-full">
+                      <FlowbiteTextInput
+                        type="text"
+                        placeholder={t('search_by_name_category_placeholder')}
+                        value={catalogSearch}
+                        onChange={(e) => setCatalogSearch(e.target.value)}
+                        icon={Search}
+                        className="w-full"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowCatalogCategoryFilters((v) => !v)}
+                      className={`relative h-10 w-10 shrink-0 rounded-lg border flex items-center justify-center transition-all cursor-pointer ${
+                        showCatalogCategoryFilters
+                          ? 'bg-blue-600 border-blue-600 text-white shadow-md'
+                          : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600'
+                      }`}
+                      title={t('toggle_category_filters_tooltip', 'Filter by category')}
+                      aria-label="Toggle category filters"
+                      aria-expanded={showCatalogCategoryFilters}
+                    >
+                      <Filter className="w-4 h-4" />
+                      {selectedCategory !== 'All' && selectedCategory !== 'All Items' && !showCatalogCategoryFilters && (
+                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-cyan-500 border-2 border-white dark:border-slate-800" />
+                      )}
+                    </button>
+                  </div>
+
+                  {showCatalogCategoryFilters && (
+                    <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1">
+                      {catalogCategories.map(cat => {
+                        const count = cat === 'All' || cat === 'All Items' ? catalogItems.length : catalogItems.filter(i => i.category === cat).length;
+                        const isActive = selectedCategory === cat;
+                        return (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => setSelectedCategory(cat)}
+                            className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border ${
+                              isActive
+                                ? 'border-blue-600 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold shadow-md'
+                                : 'bg-transparent text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 font-semibold'
+                            }`}
+                          >
+                            {cat === 'All Items' || cat === 'All' ? 'All' : cat} ({count})
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {(() => {
+                  const catalogColumns = [
                     {
                       name: t('image_column_header'),
-                      width: '80px',
                       cell: (row: CatalogItem) => {
                         const ItemIcon = getStockItemIcon(row.name, row.category);
                         return (
@@ -1245,44 +1314,28 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                           </div>
                         );
                       },
-                      sortable: false,
                     },
                     {
                       name: t('item_name_label'),
-                      selector: (row: CatalogItem) => row.name,
-                      sortable: true,
-                      grow: 2,
                       cell: (row: CatalogItem) => <span className="font-semibold text-slate-800 dark:text-white">{row.name}</span>,
                     },
                     {
                       name: t('category_label'),
-                      selector: (row: CatalogItem) => row.category,
-                      sortable: true,
-                      width: '170px',
                       cell: (row: CatalogItem) => (
                         <span className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-2 py-0.5 rounded text-2xs font-semibold">{row.category}</span>
                       ),
                     },
                     {
                       name: t('pack_column_header'),
-                      selector: (row: CatalogItem) => `${row.packSize} ${row.packUnit}`,
-                      sortable: true,
-                      width: '160px',
                       cell: (row: CatalogItem) => <span className="text-slate-600 dark:text-slate-300">{row.packSize} {row.packUnit}</span>,
                     },
                     {
                       name: t('cost_column_header'),
-                      selector: (row: CatalogItem) => row.price,
-                      sortable: true,
-                      width: '130px',
-                      right: true,
+                      align: 'right' as const,
                       cell: (row: CatalogItem) => <span className="text-slate-600 dark:text-slate-300">₹{row.price.toFixed(2)}</span>,
                     },
                     {
                       name: t('status_column_header'),
-                      selector: (row: CatalogItem) => row.is_verified ? 1 : 0,
-                      sortable: true,
-                      width: '170px',
                       cell: (row: CatalogItem) => (
                         row.is_verified ? (
                           <Badge variant="success" size="sm">{t('active_status_badge')}</Badge>
@@ -1293,7 +1346,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     },
                     {
                       name: 'Actions',
-                      width: '200px',
                       cell: (row: CatalogItem) => (
                         <div className="flex items-center gap-1.5 inventory-management__actions whitespace-nowrap">
                           {!row.is_verified && (
@@ -1311,87 +1363,77 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                           )}
                         </div>
                       ),
-                      ignoreRowClick: true,
-                      allowOverflow: true,
                     },
-                  ]}
-                  data={filteredCatalogItems}
-                  subHeader={
-                    <div className="w-full flex flex-col gap-3 p-4 border-b border-slate-100 dark:border-slate-700/80">
-                      <div className="flex items-center gap-2">
-                        <div className="relative max-w-sm w-full">
-                          <FlowbiteTextInput
-                            type="text"
-                            placeholder={t('search_by_name_category_placeholder')}
-                            value={catalogSearch}
-                            onChange={(e) => setCatalogSearch(e.target.value)}
-                            icon={Search}
-                            className="w-full"
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setShowCatalogCategoryFilters((v) => !v)}
-                          className={`relative h-10 w-10 shrink-0 rounded-lg border flex items-center justify-center transition-all cursor-pointer ${
-                            showCatalogCategoryFilters
-                              ? 'bg-blue-600 border-blue-600 text-white shadow-md'
-                              : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600'
-                          }`}
-                          title={t('toggle_category_filters_tooltip', 'Filter by category')}
-                          aria-label="Toggle category filters"
-                          aria-expanded={showCatalogCategoryFilters}
-                        >
-                          <Filter className="w-4 h-4" />
-                          {selectedCategory !== 'All' && selectedCategory !== 'All Items' && !showCatalogCategoryFilters && (
-                            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-cyan-500 border-2 border-white dark:border-slate-800" />
-                          )}
-                        </button>
-                      </div>
+                  ];
 
-                      {showCatalogCategoryFilters && (
-                        <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1">
-                          {catalogCategories.map(cat => {
-                            const count = cat === 'All' || cat === 'All Items' ? catalogItems.length : catalogItems.filter(i => i.category === cat).length;
-                            const isActive = selectedCategory === cat;
+                  if (inventoryLoading) return tableLoadingIndicator('Loading catalog...');
+                  if (filteredCatalogItems.length === 0) {
+                    return <div className="p-8 text-center text-slate-400 text-sm">{t('no_catalog_items_search_message')}</div>;
+                  }
+
+                  const pagedCatalogItems = filteredCatalogItems.slice((catalogDesktopPage - 1) * CATALOG_DESKTOP_PAGE_SIZE, catalogDesktopPage * CATALOG_DESKTOP_PAGE_SIZE);
+                  const allPageIdsSelected = pagedCatalogItems.length > 0 && pagedCatalogItems.every((row) => selectedCatalogItemIds.includes(row.id));
+
+                  return (
+                    <>
+                      <Table hoverable>
+                        <TableHead>
+                          <TableRow>
+                            <TableHeadCell className="p-4">
+                              <Checkbox
+                                checked={allPageIdsSelected}
+                                onChange={(e) => {
+                                  const pageIds = pagedCatalogItems.map((r) => r.id);
+                                  setSelectedCatalogItemIds((prev) =>
+                                    e.target.checked
+                                      ? Array.from(new Set([...prev, ...pageIds]))
+                                      : prev.filter((id) => !pageIds.includes(id))
+                                  );
+                                }}
+                              />
+                            </TableHeadCell>
+                            {catalogColumns.map((col) => (
+                              <TableHeadCell key={col.name} className={col.align === 'right' ? 'text-right' : ''}>
+                                {col.name}
+                              </TableHeadCell>
+                            ))}
+                          </TableRow>
+                        </TableHead>
+                        <TableBody className="divide-y divide-gray-200 dark:divide-gray-700">
+                          {pagedCatalogItems.map((row) => {
+                            const isSelected = selectedCatalogItemIds.includes(row.id);
                             return (
-                              <button
-                                key={cat}
-                                type="button"
-                                onClick={() => setSelectedCategory(cat)}
-                                className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border ${
-                                  isActive
-                                    ? 'border-blue-600 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold shadow-md'
-                                    : 'bg-transparent text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 font-semibold'
-                                }`}
-                              >
-                                {cat === 'All Items' || cat === 'All' ? 'All' : cat} ({count})
-                              </button>
+                              <TableRow key={row.id} className={isSelected ? 'bg-blue-50 dark:bg-blue-950/40' : 'bg-white dark:bg-gray-800'}>
+                                <TableCell className="p-4">
+                                  <Checkbox
+                                    checked={isSelected}
+                                    onChange={(e) => {
+                                      setSelectedCatalogItemIds((prev) =>
+                                        e.target.checked ? [...prev, row.id] : prev.filter((id) => id !== row.id)
+                                      );
+                                    }}
+                                  />
+                                </TableCell>
+                                {catalogColumns.map((col) => (
+                                  <TableCell key={col.name} className={col.align === 'right' ? 'text-right' : ''}>
+                                    {col.cell(row)}
+                                  </TableCell>
+                                ))}
+                              </TableRow>
                             );
                           })}
-                        </div>
-                      )}
-                    </div>
-                  }
-                  pagination
-                  paginationPerPage={25}
-                  paginationRowsPerPageOptions={[10, 25, 50, 100]}
-                  highlightOnHover
-                  pointerOnHover
-                  selectableRows
-                  selectableRowsHighlight
-                  onSelectedRowsChange={({ selectedRows }) => {
-                    setSelectedCatalogItemIds(selectedRows.map((r: CatalogItem) => r.id));
-                  }}
-                  progressPending={inventoryLoading}
-                  progressComponent={tableLoadingIndicator('Loading catalog...')}
-                  noDataComponent={
-                    <div className="p-8 text-center text-slate-400 text-sm">{t('no_catalog_items_search_message')}</div>
-                  }
-                  defaultSortFieldId={3}
-                  defaultSortAsc={true}
-                  persistTableHead
-                  customStyles={flowbiteTableCustomStyles}
-                />
+                        </TableBody>
+                      </Table>
+                      <TablePagination
+                        page={catalogDesktopPage}
+                        totalItems={filteredCatalogItems.length}
+                        pageSize={CATALOG_DESKTOP_PAGE_SIZE}
+                        onPageChange={setCatalogDesktopPage}
+                        itemLabel="items"
+                      />
+                    </>
+                  );
+                })()}
               </div>
 
               <div className="md:hidden bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md overflow-hidden p-3 space-y-3">
@@ -1778,18 +1820,35 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           icon={CheckCircle2}
         >
           {/* Chrome (bg/border/rounded/padding) is mobile-only - at md: and up
-              the DataTable's own card below already provides it, so keeping
+              the table's own card below already provides it, so keeping
               this unconditional just doubled the border/shadow around a
               single piece of content ("block inside a block", 20 Aug 2026). */}
           <div className="space-y-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3.5 sm:p-4 md:bg-transparent md:dark:bg-transparent md:border-0 md:rounded-none md:p-0">
             <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md overflow-x-auto">
-              <DataTable
-                columns={[
+              <div className="w-full flex flex-col sm:flex-row sm:items-center gap-3 p-4 border-b border-slate-100 dark:border-slate-700/80">
+                <FlowbiteTextInput
+                  type="text"
+                  icon={Search}
+                  placeholder="Search requests by item name, status..."
+                  value={fulfillSearch}
+                  onChange={(e) => setFulfillSearch(e.target.value)}
+                  className="w-full sm:max-w-md"
+                />
+                <div className="w-full sm:w-72 sm:shrink-0">
+                  <DateRangePicker
+                    checkinDate={fulfillFromDraft}
+                    checkoutDate={fulfillToDraft}
+                    onCheckinChange={setFulfillFromDraft}
+                    onCheckoutChange={setFulfillToDraft}
+                    fromPlaceholder={t('from_label', 'From')}
+                    toPlaceholder={t('to_label', 'To')}
+                  />
+                </div>
+              </div>
+              {(() => {
+                const fulfillColumns = [
                   {
                     name: 'Request ID',
-                    selector: (row: any) => row.id,
-                    sortable: true,
-                    width: '190px',
                     cell: (row: any) => (
                       <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">
                         #{row.id}
@@ -1798,14 +1857,10 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   },
                   {
                     name: 'Date',
-                    selector: (row: any) => row.date,
-                    sortable: true,
-                    width: '160px',
+                    cell: (row: any) => <span>{row.date}</span>,
                   },
                   {
                     name: 'Requested Items',
-                    selector: (row: any) => Array.isArray(row.items) ? row.items.join(', ') : row.items,
-                    grow: 3,
                     cell: (row: any) => (
                       <div className="py-2 space-y-1">
                         <div className="flex flex-wrap gap-1">
@@ -1820,10 +1875,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   },
                   {
                     name: 'Status',
-                    selector: (row: any) => row.status,
-                    sortable: true,
-                    center: true,
-                    width: '170px',
+                    align: 'center' as const,
                     cell: (row: any) => (
                       <Badge
                         variant={row.status === 'PENDING' ? 'warning' : row.status === 'FULFILLED' ? 'success' : 'neutral'}
@@ -1835,8 +1887,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   },
                   {
                     name: 'Actions',
-                    center: true,
-                    width: '260px',
+                    align: 'center' as const,
                     cell: (row: any) => (
                       <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
                         {row.status === 'PENDING' ? (
@@ -1856,47 +1907,53 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                       </div>
                     ),
                   },
-                ]}
-                data={filteredFulfillSheets.filter((row) => {
+                ];
+
+                const filteredFulfillRows = filteredFulfillSheets.filter((row) => {
                   if (!fulfillSearch.trim()) return true;
                   const term = fulfillSearch.toLowerCase();
                   const itemsStr = Array.isArray(row.items) ? row.items.join(' ').toLowerCase() : '';
                   return row.date.toLowerCase().includes(term) || row.status.toLowerCase().includes(term) || itemsStr.includes(term);
-                })}
-                subHeader={
-                  <div className="w-full flex flex-col sm:flex-row sm:items-center gap-3 py-3">
-                    <FlowbiteTextInput
-                      type="text"
-                      icon={Search}
-                      placeholder="Search requests by item name, status..."
-                      value={fulfillSearch}
-                      onChange={(e) => setFulfillSearch(e.target.value)}
-                      className="w-full sm:max-w-md"
+                });
+
+                if (stockRequestsLoading) return tableLoadingIndicator('Loading stock requests...');
+                if (filteredFulfillRows.length === 0) {
+                  return <div className="p-8 text-center text-slate-400 text-sm">No material requisition sheets found.</div>;
+                }
+                return (
+                  <>
+                    <Table hoverable>
+                      <TableHead>
+                        <TableRow>
+                          {fulfillColumns.map((col) => (
+                            <TableHeadCell key={col.name} className={col.align === 'center' ? 'text-center' : ''}>
+                              {col.name}
+                            </TableHeadCell>
+                          ))}
+                        </TableRow>
+                      </TableHead>
+                      <TableBody className="divide-y divide-gray-200 dark:divide-gray-700">
+                        {filteredFulfillRows.slice((fulfillDesktopPage - 1) * FULFILL_DESKTOP_PAGE_SIZE, fulfillDesktopPage * FULFILL_DESKTOP_PAGE_SIZE).map((row: any) => (
+                          <TableRow key={row.id} className="bg-white dark:bg-gray-800">
+                            {fulfillColumns.map((col) => (
+                              <TableCell key={col.name} className={col.align === 'center' ? 'text-center' : ''}>
+                                {col.cell(row)}
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    <TablePagination
+                      page={fulfillDesktopPage}
+                      totalItems={filteredFulfillRows.length}
+                      pageSize={FULFILL_DESKTOP_PAGE_SIZE}
+                      onPageChange={setFulfillDesktopPage}
+                      itemLabel="requests"
                     />
-                    <div className="w-full sm:w-72 sm:shrink-0">
-                      <DateRangePicker
-                        checkinDate={fulfillFromDraft}
-                        checkoutDate={fulfillToDraft}
-                        onCheckinChange={setFulfillFromDraft}
-                        onCheckoutChange={setFulfillToDraft}
-                        fromPlaceholder={t('from_label', 'From')}
-                        toPlaceholder={t('to_label', 'To')}
-                      />
-                    </div>
-                  </div>
-                }
-                pagination
-                paginationPerPage={10}
-                paginationRowsPerPageOptions={[10, 15, 25, 50]}
-                highlightOnHover
-                persistTableHead
-                customStyles={flowbiteTableCustomStyles}
-                progressPending={stockRequestsLoading}
-                progressComponent={tableLoadingIndicator('Loading stock requests...')}
-                noDataComponent={
-                  <div className="p-8 text-center text-slate-400 text-sm">No material requisition sheets found.</div>
-                }
-              />
+                  </>
+                );
+              })()}
             </div>
 
             {/* Mobile Card Stack View with 10-Item Pagination */}
@@ -2467,7 +2524,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   const stockLogColumns = [
     {
       name: t('image_column_header'),
-      width: '70px',
       cell: (item: InventoryItem) => {
         const ItemIcon = getStockItemIcon(item.name, item.category);
         return (
@@ -2479,17 +2535,12 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     },
     {
       name: t('item_name_label'),
-      selector: (item: InventoryItem) => item.name,
-      sortable: true,
-      grow: 1,
       cell: (item: InventoryItem) => (
         <span className="font-semibold text-slate-900 dark:text-white text-sm">{item.name}</span>
       ),
     },
     {
       name: t('category_label'),
-      selector: (item: InventoryItem) => item.category,
-      sortable: true,
       cell: (item: InventoryItem) => (
         <span className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-2.5 py-0.5 rounded font-medium text-xs">
           {item.category}
@@ -2498,25 +2549,18 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     },
     {
       name: t('current_stock_column_header'),
-      selector: (item: InventoryItem) => item.currentStock,
-      sortable: true,
-      width: '130px',
       cell: (item: InventoryItem) => (
         <span className="font-semibold text-slate-800 dark:text-slate-200">{item.currentStock} {item.unit}</span>
       ),
     },
     {
       name: t('min_threshold_column_header'),
-      selector: (item: InventoryItem) => item.minThreshold,
-      sortable: true,
-      width: '130px',
       cell: (item: InventoryItem) => (
         <span className="text-slate-500">{item.minThreshold} {item.unit}</span>
       ),
     },
     {
       name: t('status_column_header'),
-      width: '160px',
       cell: (item: InventoryItem) => {
         const isLow = item.currentStock <= item.minThreshold;
         return isLow ? (
@@ -2534,7 +2578,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     },
     {
       name: t('tracking_column_header', 'Tracking'),
-      width: '180px',
       cell: (item: InventoryItem) => (
         item.source === 'custom' ? (
           <span className="text-[10px] bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-800 font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 w-max">
@@ -2575,26 +2618,48 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     <div className="stock-inventory-container space-y-6">
       <PageHeader title={t('inventory_catalog_heading')} subtitle={t('inventory_catalog_subtitle')} />
 
-      {/* Desktop DataTable */}
+      {/* Desktop Table */}
       <div className="hidden md:block overflow-x-auto">
-        <DataTable
-          columns={stockLogColumns}
-          data={filteredInventory}
-          pagination
-          paginationPerPage={15}
-          paginationRowsPerPageOptions={[15, 30, 50, 100]}
-          subHeader={stockLogSubHeader}
-          highlightOnHover
-          persistTableHead
-          customStyles={flowbiteTableCustomStyles}
-          progressPending={inventoryLoading}
-          progressComponent={tableLoadingIndicator('Loading inventory...')}
-          noDataComponent={
-            <div className="text-center p-8 text-slate-400 font-semibold text-xs">
-              {inventory.length === 0 ? 'No inventory items found.' : 'No items match your search.'}
-            </div>
+        {stockLogSubHeader}
+        {(() => {
+          if (inventoryLoading) return tableLoadingIndicator('Loading inventory...');
+          if (filteredInventory.length === 0) {
+            return (
+              <div className="text-center p-8 text-slate-400 font-semibold text-xs">
+                {inventory.length === 0 ? 'No inventory items found.' : 'No items match your search.'}
+              </div>
+            );
           }
-        />
+          return (
+            <>
+              <Table hoverable>
+                <TableHead>
+                  <TableRow>
+                    {stockLogColumns.map((col) => (
+                      <TableHeadCell key={col.name}>{col.name}</TableHeadCell>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {filteredInventory.slice((stockLogDesktopPage - 1) * STOCK_LOG_DESKTOP_PAGE_SIZE, stockLogDesktopPage * STOCK_LOG_DESKTOP_PAGE_SIZE).map((item) => (
+                    <TableRow key={item.id} className="bg-white dark:bg-gray-800">
+                      {stockLogColumns.map((col) => (
+                        <TableCell key={col.name}>{col.cell(item)}</TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <TablePagination
+                page={stockLogDesktopPage}
+                totalItems={filteredInventory.length}
+                pageSize={STOCK_LOG_DESKTOP_PAGE_SIZE}
+                onPageChange={setStockLogDesktopPage}
+                itemLabel="items"
+              />
+            </>
+          );
+        })()}
       </div>
 
       {/* Mobile Cards with Search, Category Filter Carousel & 10-Item Pagination */}

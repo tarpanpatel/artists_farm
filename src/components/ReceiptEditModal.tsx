@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { IndianRupee, Home, AlertCircle, Plus, Trash2, CheckCircle2, Printer, QrCode, Loader2, CornerDownRight, Share2, X } from 'lucide-react';
+import { IndianRupee, Home, AlertCircle, Plus, Trash2, CheckCircle2, Printer, QrCode, Loader2, CornerDownRight, Share2, X } from './icons/FlowbiteIcons';
 import { Guest, BillingReceipt, PayeeEntity } from '../types';
 import { StyledSelect } from './StyledSelect';
 import { DateRangePicker } from './DateRangePicker';

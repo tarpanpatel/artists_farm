@@ -3,7 +3,7 @@ import { Button, Badge, Checkbox } from 'flowbite-react';
 import {
   Trash2,
   Plus,
-} from 'lucide-react';
+} from './icons/FlowbiteIcons';
 import { Guest, BillingReceipt, MiscChargeTemplate, MenuItem } from '../types';
 import { Tooltip } from './Tooltip';
 import { useToast } from './ToastContext';

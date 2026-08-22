@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { RefreshCw, X } from 'lucide-react';
+import { RefreshCw, X } from './icons/FlowbiteIcons';
 import { Button } from './Button';
 import { Tooltip } from './Tooltip';
 

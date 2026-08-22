@@ -190,7 +190,12 @@ export const Navigation: React.FC<NavigationProps> = ({
         category: 'Kitchen & Food',
         iconName: 'Utensils',
         order: 10,
-        roles: ['Super Admin', 'Admin', 'Staff Kitchen', 'Staff Supervisor', 'Staff'],
+        // Staff (generic/base role) deliberately excluded - matches the
+        // real DB-seeded kitchen_overview row (fixed 22 Aug 2026, it used
+        // to include "Staff" there too, which is what actually let plain
+        // Staff reach kitchen pages at all - this synthetic fallback is
+        // only used before that real row has loaded, so it needs to agree).
+        roles: ['Super Admin', 'Admin', 'Staff Kitchen', 'Staff Supervisor'],
         isVisible: true,
         parentId: null,
       };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Badge } from 'flowbite-react';
+import { Dropdown, DropdownItem } from 'flowbite-react';
 import { Popover } from './Popover';
 import {
   Building2,
@@ -16,8 +16,10 @@ import {
   RefreshCw,
   HelpCircle,
   ArrowRight,
+  Eye,
+  Check,
   Home as RoomIcon
-} from 'lucide-react';
+} from './icons/FlowbiteIcons';
 import { useAuth } from '../contexts/AuthContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
@@ -69,7 +71,16 @@ export const Header: React.FC<HeaderProps> = ({
   onInstallIconClick,
   onNavigate,
 }) => {
-  const { currentUser } = useAuth();
+  const { currentUser, activeRole, setActiveRole } = useAuth();
+  // "View site as" (Root Admin only) - a pure frontend preview: it only
+  // changes what activeRole-gated UI shows/hides, never the real backend
+  // session, so nothing about actual permissions is gained or lost. Gated
+  // on the user's REAL role (currentUser.role, untouched by this) rather
+  // than the currently-displayed activeRole, so the control stays visible
+  // and usable even while previewing as something else - otherwise picking
+  // "Staff" would immediately hide the only way back.
+  const isRealRootAdmin = (currentUser?.role || '').toLowerCase().replace(/_/g, ' ').trim() === 'root admin';
+  const VIEW_AS_ROLES = ['Root Admin', 'Super Admin', 'Admin', 'Staff Supervisor', 'Staff Kitchen', 'Staff'];
   const { showToast } = useToast();
   const { lowStockCount } = useInventoryContext();
   const { orders } = useKitchenContext();
@@ -240,11 +251,8 @@ export const Header: React.FC<HeaderProps> = ({
               <Building2 className="w-5 h-5" />
             </div>
             <div className="header__logo-text block">
-              <span className="text-sm font-semibold text-slate-700 dark:text-white tracking-tight flex items-center gap-2">
+              <span className="text-sm font-semibold text-slate-700 dark:text-white tracking-tight">
                 {propertyName}
-                <Badge color="info" size="xs" className="hidden sm:inline-flex">
-                  {t('pos_badge', 'POS')}
-                </Badge>
               </span>
             </div>
           </div>
@@ -252,6 +260,50 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Right Section: Notifications + Dark Mode + Profile Username */}
         <div className="header__right flex items-center gap-2">
+          {/* "View site as" (Root Admin only) - minimalistic icon-only
+              dropdown, positioned just before Install App. Lit up (blue)
+              whenever activeRole isn't the real role, as a quiet reminder
+              a preview is active; "Root Admin" in the menu returns to it. */}
+          {isRealRootAdmin && (
+            <Dropdown
+              placement="bottom-end"
+              dismissOnClick
+              label=""
+              className="z-60 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg overflow-hidden text-xs p-1 min-w-40"
+              renderTrigger={() => (
+                <button
+                  title={t('view_site_as_tooltip', 'View site as...')}
+                  aria-label={t('view_site_as_aria', 'View site as a specific role')}
+                  className={`header__view-as-role relative p-2 rounded-lg transition-colors cursor-pointer ${
+                    activeRole !== 'Root Admin'
+                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300'
+                      : 'text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  <Eye className="w-5 h-5" />
+                </button>
+              )}
+            >
+              <div className="px-2.5 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                {t('view_site_as_label', 'View site as')}
+              </div>
+              {VIEW_AS_ROLES.map((role) => (
+                <DropdownItem
+                  key={role}
+                  onClick={() => setActiveRole(role)}
+                  className={`flex items-center justify-between gap-2 px-2.5 py-1.5 text-xs rounded-md ${
+                    activeRole === role
+                      ? 'bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300 font-semibold'
+                      : 'text-slate-700 dark:text-slate-200'
+                  }`}
+                >
+                  <span>{role === 'Root Admin' ? t('view_as_my_role_label', 'Root Admin (you)') : role}</span>
+                  {activeRole === role && <Check className="w-3.5 h-3.5" />}
+                </DropdownItem>
+              ))}
+            </Dropdown>
+          )}
+
           {/* Install App Button (12 Aug 2026) - persistent affordance to the
               left of the notification bell, only shown when the app isn't
               already installed (see App.tsx's isAppInstalled/

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MapPin, Pencil, Loader2, CheckCircle2, ExternalLink, Building2 } from 'lucide-react';
+import { MapPin, Pencil, Loader2, CheckCircle2, ExternalLink, Building2 } from './icons/FlowbiteIcons';
 import { Drawer } from 'flowbite-react';
 import { X } from './icons/FlowbiteIcons';
 import { useAuth } from '../contexts/AuthContext';

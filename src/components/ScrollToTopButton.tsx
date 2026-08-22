@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowUp } from 'lucide-react';
+import { ArrowUp } from './icons/FlowbiteIcons';
 import { Tooltip } from './Tooltip';
 
 interface ScrollToTopButtonProps {

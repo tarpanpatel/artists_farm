@@ -17,7 +17,7 @@ import {
   Image as ImageIcon,
   ExternalLink,
   Upload,
-} from 'lucide-react';
+} from './icons/FlowbiteIcons';
 import { Drawer } from 'flowbite-react';
 import { apiFetch, API_ROOT_BASE, uploadDocumentDB } from '../services/api';
 import { useToast } from './ToastContext';

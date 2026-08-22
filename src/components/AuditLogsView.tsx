@@ -1,6 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import DataTable from 'react-data-table-component';
-import { flowbiteTableCustomStyles } from '../utils/tableStyles';
 import {
   Edit2,
   Home,
@@ -43,6 +41,8 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
   const [receiptsSearch, setReceiptsSearch] = useState('');
   const [paymentFilter, setPaymentFilter] = useState<'all' | 'cash' | 'card' | 'online' | 'split'>('all');
   const [receiptsPage, setReceiptsPage] = useState(1);
+  const [receiptsDesktopPage, setReceiptsDesktopPage] = useState(1);
+  const RECEIPTS_DESKTOP_PAGE_SIZE = 15;
   const [editingReceipt, setEditingReceipt] = useState<BillingReceipt | null>(null);
 
   // Edit Modal internal form state
@@ -254,12 +254,10 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
         </div>
 
         <div className="hidden md:block overflow-x-auto">
-          <DataTable
-            columns={[
+          {(() => {
+            const receiptColumns = [
               {
                 name: t('receipt_id_column', 'Receipt ID'),
-                selector: (rec: BillingReceipt) => rec.id,
-                minWidth: '130px',
                 cell: (rec: BillingReceipt) => (
                   <div className="py-1">
                     <span className="font-semibold text-gray-900 dark:text-white text-xs block whitespace-nowrap">
@@ -270,9 +268,6 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
               },
               {
                 name: t('date_billed_column', 'Date Billed'),
-                selector: (rec: BillingReceipt) => rec.checkoutDate || rec.paidAt || '',
-                sortable: true,
-                minWidth: '150px',
                 cell: (rec: BillingReceipt) => (
                   <div className="py-1">
                     <span className="text-xs text-gray-900 dark:text-white block font-medium whitespace-nowrap">
@@ -283,10 +278,6 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
               },
               {
                 name: t('resident_group_column', 'Customer / Resident'),
-                selector: (rec: BillingReceipt) => rec.guestName,
-                sortable: true,
-                minWidth: '180px',
-                grow: 2,
                 cell: (rec: BillingReceipt) => (
                   <div className="py-1">
                     <span className="font-semibold text-gray-900 dark:text-white block text-xs whitespace-nowrap">{rec.guestName}</span>
@@ -300,9 +291,6 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
               },
               {
                 name: t('total_stay_rent_column', 'Stay Tariff'),
-                selector: (rec: BillingReceipt) => rec.roomTotal || rec.roomRent || 0,
-                sortable: true,
-                minWidth: '130px',
                 cell: (rec: BillingReceipt) => (
                   <span className="font-semibold text-gray-700 dark:text-gray-300 text-xs tabular-numbers whitespace-nowrap">
                     ₹{(rec.roomTotal || rec.roomRent || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
@@ -311,9 +299,6 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
               },
               {
                 name: t('incidentals_food_column', 'Food & Extras'),
-                selector: (rec: BillingReceipt) => rec.foodTotal || rec.kitchenTotal || 0,
-                sortable: true,
-                minWidth: '135px',
                 cell: (rec: BillingReceipt) => (
                   <span className="font-semibold text-gray-700 dark:text-gray-300 text-xs tabular-numbers whitespace-nowrap">
                     ₹{(rec.foodTotal || rec.kitchenTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
@@ -322,9 +307,6 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
               },
               {
                 name: t('grand_total_column', 'Grand Total'),
-                selector: (rec: BillingReceipt) => rec.grandTotal,
-                sortable: true,
-                minWidth: '135px',
                 cell: (rec: BillingReceipt) => (
                   <span className="font-bold text-gray-900 dark:text-white text-xs tabular-numbers whitespace-nowrap">
                     ₹{rec.grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
@@ -333,7 +315,6 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
               },
               {
                 name: t('status_column', 'Status / Method'),
-                minWidth: '140px',
                 cell: (rec: BillingReceipt) => {
                   const method = (rec.paymentMethod || 'Cash').toLowerCase();
                   const isCash = method.includes('cash');
@@ -347,27 +328,56 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
               },
               {
                 name: t('actions_column', 'Actions'),
-                minWidth: '120px',
                 cell: (rec: BillingReceipt) => (
                   <Button variant="primary" size="sm" onClick={() => handleOpenEditModal(rec)} leftIcon={<Edit2 className="w-3.5 h-3.5 shrink-0" />}>
                     {t('edit_button', 'Edit')}
                   </Button>
                 ),
               },
-            ]}
-            data={filteredReceipts}
-            persistTableHead
-            pagination
-            paginationPerPage={15}
-            paginationRowsPerPageOptions={[15, 30, 50, 100]}
-            highlightOnHover
-            customStyles={flowbiteTableCustomStyles}
-            noDataComponent={
-              <div className="text-center p-8 text-slate-400 font-semibold text-xs">
-                {t('no_billing_receipts_message', 'No invoices found matching the current search & filters.')}
-              </div>
+            ];
+
+            if (filteredReceipts.length === 0) {
+              return (
+                <div className="text-center p-8 text-slate-400 font-semibold text-xs">
+                  {t('no_billing_receipts_message', 'No invoices found matching the current search & filters.')}
+                </div>
+              );
             }
-          />
+            return (
+              <>
+                <Table hoverable>
+                  <TableHead>
+                    <TableRow>
+                      {receiptColumns.map((col) => (
+                        <TableHeadCell key={col.name}>{col.name}</TableHeadCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {filteredReceipts.slice((receiptsDesktopPage - 1) * RECEIPTS_DESKTOP_PAGE_SIZE, receiptsDesktopPage * RECEIPTS_DESKTOP_PAGE_SIZE).map((rec) => (
+                      <TableRow key={rec.id} className="bg-white dark:bg-gray-800">
+                        {receiptColumns.map((col) => (
+                          <TableCell key={col.name}>{col.cell(rec)}</TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                {filteredReceipts.length > RECEIPTS_DESKTOP_PAGE_SIZE && (
+                  <div className="flex justify-center py-3 border-t border-gray-200 dark:border-gray-700 overflow-x-auto">
+                    <Pagination
+                      layout="table"
+                      currentPage={receiptsDesktopPage}
+                      itemsPerPage={RECEIPTS_DESKTOP_PAGE_SIZE}
+                      totalItems={filteredReceipts.length}
+                      onPageChange={setReceiptsDesktopPage}
+                      className="text-xs"
+                    />
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
 
         {/* Touch-First Mobile Cards View with 10-Item Pagination */}

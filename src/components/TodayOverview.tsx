@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Calendar, LogOut, Bell, User, Globe, Share2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Calendar, LogOut, Bell, User, Globe, Share2 } from './icons/FlowbiteIcons';
 import { Popover } from './Popover';
 import { Guest } from '../types';
 import { BookingDetailsModal } from './BookingDetailsModal';

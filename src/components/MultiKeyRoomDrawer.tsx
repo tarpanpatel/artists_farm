@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, Home, Layers } from 'lucide-react';
+import { ChevronDown, Home, Layers } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';
 
 interface Room {

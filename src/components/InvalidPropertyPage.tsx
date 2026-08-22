@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from 'flowbite-react';
-import { AlertCircle, Home } from 'lucide-react';
+import { AlertCircle, Home } from './icons/FlowbiteIcons';
 import { Button } from './Button';
 import { t } from '../i18n/en';
 

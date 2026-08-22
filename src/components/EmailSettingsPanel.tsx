@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from 'flowbite-react';
-import { Mail, Send, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { Mail, Send, Loader2, CheckCircle2, XCircle } from './icons/FlowbiteIcons';
 import { StyledSelect } from './StyledSelect';
 import { Button } from './Button';
 import { Input } from './Input';

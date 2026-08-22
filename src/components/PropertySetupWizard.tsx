@@ -124,10 +124,10 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
                 onClick={() => setActiveStepIndex(step.id)}
                 className={`flex items-center cursor-pointer ${
                   !isLast
-                    ? 'w-full after:content-[\'\'] after:w-full after:h-1 after:border-b after:border-2 after:inline-block after:mx-2 sm:after:mx-4 ' +
+                    ? 'w-full after:content-[\'\'] after:w-full after:h-1.5 after:rounded-full after:inline-block after:mx-2 sm:after:mx-4 ' +
                       (step.isDone
-                        ? 'after:border-emerald-500 dark:after:border-emerald-600'
-                        : 'after:border-slate-300 dark:after:border-slate-700')
+                        ? 'after:bg-emerald-500 dark:after:bg-emerald-600'
+                        : 'after:bg-slate-200 dark:after:bg-slate-700')
                     : ''
                 }`}
               >

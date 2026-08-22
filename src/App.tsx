@@ -28,7 +28,7 @@ import { fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fet
 import { ConfigurationDataProvider } from './contexts/ConfigurationDataContext';
 import { ModulesProvider, useModules } from './contexts/ModulesContext';
 import { DataLoader, PreloadedData } from './components/DataLoader';
-import { Smartphone, Download, X as CloseIcon, Share, PlusSquare, MoreVertical, Receipt } from 'lucide-react';
+import { Smartphone, Download, X as CloseIcon, Share, PlusSquare, MoreVertical, Receipt } from './components/icons/FlowbiteIcons';
 import { LoadingScreen } from './components/LoadingScreen';
 import { LoginPage } from './components/LoginPage';
 import { MultiKeyPropertyOverview } from './components/MultiKeyPropertyOverview';
@@ -574,6 +574,30 @@ function AppBody({ preloadedData }: AppBodyProps) {
       setNavItems(preloadedData.navItems);
     }
   }, [preloadedData.navItems]);
+
+  // Re-validates the CURRENT page against the CURRENT role whenever either
+  // changes, and bounces to Dashboard if it's no longer allowed - hiding a
+  // nav link (Navigation.tsx's isVisible) only stops someone from clicking
+  // their way TO a restricted page, it does nothing once they're already ON
+  // one. Found 22 Aug 2026 via "View site as" (Header.tsx): switching role
+  // while already sitting on a page that role shouldn't see (e.g. Take Food
+  // Order) left the page rendered anyway, since nothing had ever re-checked
+  // it. Reuses the exact same roles_json data + role-match logic Navigation
+  // already applies to sidebar visibility, so this can't drift from it -
+  // no separate hardcoded page/role list to keep in sync.
+  useEffect(() => {
+    if (navItems.length === 0) return;
+    if (getPropertySlug() === 'root_dashboard') return;
+    const normalizedRole = (activeRole || '').toLowerCase().trim();
+    if (normalizedRole === 'super admin' || normalizedRole === 'root admin') return;
+    const currentItem = navItems.find((i) => (i.uniqueKey || i.tabKey) === activeMenuItemKey);
+    if (!currentItem || !currentItem.roles || currentItem.roles.length === 0) return;
+    const isAllowed = currentItem.roles.some((r) => r.toLowerCase().trim() === normalizedRole);
+    if (!isAllowed) {
+      handleNavigateTab('dashboard');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeRole, activeMenuItemKey, navItems]);
 
   // Keeps the address bar in sync with activeMenuItemKey - shows the item's
   // current urlSlug (regenerated on rename) rather than the stable routing
@@ -1803,11 +1827,15 @@ ${itemsStr}
             dispatchLogs={telegramLogs}
             onSendTestNotification={handleSendTestNotification}
             kitchenModuleEnabled={kitchenEnabled}
-            templateCustomizationEnabled={
-              activeRole?.toLowerCase().trim() === 'root admin' ||
-              activeRole?.toLowerCase().trim() === 'super admin' ||
-              !!preloadedData.currentProperty?.telegram_template_customization_enabled
-            }
+            // Raw DB flag only - role-based bypass (Root Admin always edits;
+            // Admin/Super Admin only when this is on) is handled entirely
+            // inside TelegramNotificationModal's own canEditTemplates, so
+            // OR'ing role checks in here too double-applied the same rule
+            // and made the toggle a no-op for Super Admin (found 22 Aug
+            // 2026 via "View site as" - Super Admin kept showing Edit with
+            // the property's toggle off, since this prop was already
+            // forcing true before canEditTemplates ever ran).
+            templateCustomizationEnabled={!!preloadedData.currentProperty?.telegram_template_customization_enabled}
           />
         </Suspense>
 
@@ -2213,11 +2241,10 @@ ${itemsStr}
                     isEmbedded={true}
                     onLogAudit={logAudit}
                     kitchenModuleEnabled={kitchenEnabled}
-                    templateCustomizationEnabled={
-                      activeRole?.toLowerCase().trim() === 'root admin' ||
-                      activeRole?.toLowerCase().trim() === 'super admin' ||
-                      !!preloadedData.currentProperty?.telegram_template_customization_enabled
-                    }
+                    // See the other TelegramNotificationModal render site's
+                    // comment above - raw DB flag only, role bypass lives
+                    // inside the component's own canEditTemplates.
+                    templateCustomizationEnabled={!!preloadedData.currentProperty?.telegram_template_customization_enabled}
                   />
                 </div>
               )}

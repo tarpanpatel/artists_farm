@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import DataTable from 'react-data-table-component';
-import { flowbiteTableCustomStyles } from '../utils/tableStyles';
+import React, { useState, useEffect } from 'react';
+import { Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell } from 'flowbite-react';
+import { TablePagination } from './TablePagination';
 import { Plus, Trash2, RefreshCw, Loader2, Lock, Pencil, ArrowLeft } from './icons/FlowbiteIcons';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
@@ -31,6 +31,8 @@ export const ExpenseItemsManagement: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [mobilePage, setMobilePage] = useState(1);
+  const [desktopPage, setDesktopPage] = useState(1);
+  const DESKTOP_PAGE_SIZE = 15;
   const [categories, setCategories] = useState<string[]>([]);
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -173,10 +175,6 @@ export const ExpenseItemsManagement: React.FC = () => {
   const columns = [
     {
       name: t('item_name_column', 'Item Name'),
-      selector: (row: ExpenseItem) => row.label,
-      sortable: true,
-      grow: 2,
-      minWidth: '220px',
       cell: (row: ExpenseItem) => {
         const ItemIcon = getExpenseItemIcon(row.label, row.category);
         return (
@@ -194,9 +192,6 @@ export const ExpenseItemsManagement: React.FC = () => {
     },
     {
       name: t('category_column', 'Category'),
-      selector: (row: ExpenseItem) => row.category,
-      sortable: true,
-      minWidth: '150px',
       cell: (row: ExpenseItem) => (
         <Badge variant="info" size="sm">
           {row.category}
@@ -205,10 +200,7 @@ export const ExpenseItemsManagement: React.FC = () => {
     },
     {
       name: t('default_amount_label', 'Amount (₹)'),
-      selector: (row: ExpenseItem) => row.default_amount,
-      sortable: true,
-      right: true,
-      minWidth: '135px',
+      align: 'right' as const,
       cell: (row: ExpenseItem) => (
         <span className="font-semibold text-emerald-600 dark:text-emerald-400 text-xs tabular-nums whitespace-nowrap">
           ₹{Number(row.default_amount || 0).toLocaleString('en-IN')}
@@ -217,8 +209,7 @@ export const ExpenseItemsManagement: React.FC = () => {
     },
     {
       name: t('actions_column', 'Actions'),
-      minWidth: '200px',
-      right: true,
+      align: 'right' as const,
       cell: (row: ExpenseItem) => (
         <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
           <Button
@@ -396,28 +387,47 @@ export const ExpenseItemsManagement: React.FC = () => {
           </div>
 
           <div className="hidden md:block overflow-x-auto">
-            <DataTable
-              columns={columns}
-              data={filteredItems}
-              customStyles={flowbiteTableCustomStyles}
-              highlightOnHover
-              persistTableHead
-              pagination
-              paginationPerPage={15}
-              paginationRowsPerPageOptions={[5, 10, 15, 20, 25, 50]}
-              progressPending={loading}
-              progressComponent={
-                <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
-                  <Loader2 className="w-4 h-4 animate-spin" /> Loading items...
-                </div>
-              }
-              noDataComponent={
-                <div className="text-center py-8 text-slate-500 font-medium">
-                  {t('no_expense_items_loaded_text')}
-                </div>
-              }
-              responsive
-            />
+            {loading ? (
+              <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
+                <Loader2 className="w-4 h-4 animate-spin" /> Loading items...
+              </div>
+            ) : filteredItems.length === 0 ? (
+              <div className="text-center py-8 text-slate-500 font-medium">
+                {t('no_expense_items_loaded_text')}
+              </div>
+            ) : (
+              <>
+                <Table hoverable>
+                  <TableHead>
+                    <TableRow>
+                      {columns.map((col) => (
+                        <TableHeadCell key={col.name} className={col.align === 'right' ? 'text-right' : ''}>
+                          {col.name}
+                        </TableHeadCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {filteredItems.slice((desktopPage - 1) * DESKTOP_PAGE_SIZE, desktopPage * DESKTOP_PAGE_SIZE).map((row) => (
+                      <TableRow key={row.id} className="bg-white dark:bg-gray-800">
+                        {columns.map((col) => (
+                          <TableCell key={col.name} className={col.align === 'right' ? 'text-right' : ''}>
+                            {col.cell(row)}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <TablePagination
+                  page={desktopPage}
+                  totalItems={filteredItems.length}
+                  pageSize={DESKTOP_PAGE_SIZE}
+                  onPageChange={setDesktopPage}
+                  itemLabel="items"
+                />
+              </>
+            )}
           </div>
 
           {/* Touch-First Mobile Cards View with 10-Item Pagination */}

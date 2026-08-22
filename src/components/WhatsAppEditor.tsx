@@ -1,5 +1,5 @@
 import React, { useRef, useCallback } from 'react';
-import { Bold, Italic, Strikethrough, List, Quote, Code } from 'lucide-react';
+import { Bold, Italic, Strikethrough, List, Quote, Code } from './icons/FlowbiteIcons';
 import { Button } from './Button';
 import { Textarea } from './Textarea';
 

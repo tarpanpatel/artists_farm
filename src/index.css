@@ -87,6 +87,36 @@
   --color-brand: #1A56DB;            /* blue-700 */
   --color-brand-medium: #C3DDFD;     /* blue-200 */
   --color-brand-strong: #1E429F;     /* blue-800 */
+
+  /* Same short-circuit, same root cause, different victim (found 22 Aug
+     2026 - reported as an entire desktop staff table rendering with every
+     name/role/status cell blank, in flowbite-react's own <Table>/<TableCell>
+     components this time, not the datepicker). Confirmed via live DOM
+     inspection: --color-gray-950 exists (it's Tailwind's native default,
+     oklch(13% 0.028 261.692) = #030712 below, matches exactly) but NONE of
+     gray-50 through gray-900 were being published as real CSS variables,
+     while every sibling scale (slate/zinc/neutral/stone) had its full
+     50-950 range - gray is the one family flowbite's classic v3-style
+     plugins ALSO bake literal hex into (per the comment above), and
+     whichever generator's .text-gray-900 rule lands later in the cascade
+     wins; when that's Tailwind's native var(--color-gray-900)-based one
+     with nothing published to resolve it, the property goes invalid and
+     the element falls through to search for a value from an
+     inherited/nowhere else. Publishing the real values here - standard,
+     official Tailwind gray palette hex, identical to what gray-950 already
+     resolves to - makes both generators agree, so it doesn't matter which
+     one wins the tie. */
+  --color-gray-50: #F9FAFB;
+  --color-gray-100: #F3F4F6;
+  --color-gray-200: #E5E7EB;
+  --color-gray-300: #D1D5DB;
+  --color-gray-400: #9CA3AF;
+  --color-gray-500: #6B7280;
+  --color-gray-600: #4B5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1F2937;
+  --color-gray-900: #111827;
+  --color-gray-950: #030712;
 }
 
 @theme {

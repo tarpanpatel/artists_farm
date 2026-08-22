@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card } from 'flowbite-react';
-import { Calendar, ShieldCheck, Users2, ArrowRight } from 'lucide-react';
+import { Calendar, ShieldCheck, Users2, ArrowRight } from './icons/FlowbiteIcons';
 import { Button } from './Button';
 import { PageHeader } from './PageHeader';
 import { t } from '../i18n/en';

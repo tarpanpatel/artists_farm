@@ -2479,6 +2479,10 @@ export interface DbTelegramTemplate {
   description: string;
   content: string;
   variables: string[];
+  // Manual "move to group" override (Kitchen/Admin/Finances) for the
+  // Templates Catalog tab this template shows under - null means no
+  // override, fall back to the automatic dbKey/category classification.
+  groupOverride: string | null;
 }
 
 // Full template records (not just content) for the Templates Catalog editor -
@@ -2503,6 +2507,7 @@ export async function fetchTemplatesFromDB(): Promise<DbTelegramTemplate[]> {
             .split(',')
             .map((v: string) => v.trim())
             .filter((v: string) => v.length > 0),
+          groupOverride: t.group_override || null,
         };
       });
     }
@@ -2510,6 +2515,23 @@ export async function fetchTemplatesFromDB(): Promise<DbTelegramTemplate[]> {
     console.error('Failed to fetch Telegram templates from DB:', err);
   }
   return [];
+}
+
+// Moves a Telegram template to a different Templates Catalog tab (Kitchen/
+// Admin/Finances), overriding the automatic dbKey/category classification.
+export async function updateTemplateGroupInDB(templateKey: string, group: 'Kitchen' | 'Admin' | 'Finances'): Promise<boolean> {
+  try {
+    const res = await apiFetch(`${API_ROOT_BASE}/php/telegram/manager.php?action=update_template_group`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `template_key=${encodeURIComponent(templateKey)}&group=${encodeURIComponent(group)}`,
+    });
+    const json = await res.json();
+    return !!json.success;
+  } catch (err) {
+    console.error('Failed to move Telegram template group:', err);
+    return false;
+  }
 }
 
 // =========================================================================

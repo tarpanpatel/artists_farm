@@ -10,6 +10,7 @@ if (file_exists(__DIR__ . '/../config/database.php')) {
 } elseif (file_exists(__DIR__ . '/../config/db.php')) {
     require_once __DIR__ . '/../config/db.php';
 }
+require_once __DIR__ . '/../config/schema_cache.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -21,9 +22,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-// 1. Ensure MySQL system_telegram_templates table exists if $pdo is available
-if (isset($pdo)) {
+// 1. Self-heal: system_telegram_templates.group_override lets a template be
+// manually reassigned to a different Templates Catalog tab (Kitchen/Admin/
+// Finances) from the "move to group" dropdown, overriding the automatic
+// dbKey/category keyword classification in getTemplateGroup() on the
+// frontend. NULL = no override, use the automatic classification.
+if (isset($pdo) && !isSchemaVerified('schema_telegram_templates_group_override')) {
     try {
+        $col = $pdo->query("SHOW COLUMNS FROM system_telegram_templates LIKE 'group_override'")->fetch();
+        if (!$col) {
+            $pdo->exec("ALTER TABLE system_telegram_templates ADD COLUMN group_override VARCHAR(20) NULL DEFAULT NULL");
+        }
+        markSchemaVerified('schema_telegram_templates_group_override');
     } catch (Exception $e) {
         error_log("Telegram template table error: " . $e->getMessage());
     }
@@ -368,6 +378,43 @@ if ($action === 'save_template') {
         'success' => true,
         'message' => '✔ Template saved successfully!',
         'updated_key' => $key
+    ]);
+    exit();
+}
+
+if ($action === 'update_template_group') {
+    $key = trim($_POST['template_key'] ?? '');
+    $group = trim($_POST['group'] ?? '');
+    $validGroups = ['Kitchen', 'Admin', 'Finances'];
+
+    if (!$key || !in_array($group, $validGroups, true)) {
+        echo json_encode(['success' => false, 'message' => 'Invalid template key or group.']);
+        exit();
+    }
+
+    $saved = false;
+    if (isset($pdo)) {
+        try {
+            $stmt = $pdo->prepare("UPDATE system_telegram_templates SET group_override = ? WHERE template_key = ?");
+            $stmt->execute([$group, $key]);
+            $saved = $stmt->rowCount() > 0;
+        } catch (Exception $e) {
+            error_log("DB update error (group_override): " . $e->getMessage());
+        }
+    }
+
+    if (file_exists($templatesFile)) {
+        $jsonTemplates = json_decode(file_get_contents($templatesFile), true) ?: [];
+        if (isset($jsonTemplates[$key])) {
+            $jsonTemplates[$key]['group_override'] = $group;
+            file_put_contents($templatesFile, json_encode($jsonTemplates, JSON_PRETTY_PRINT));
+            $saved = true;
+        }
+    }
+
+    echo json_encode([
+        'success' => $saved,
+        'message' => $saved ? '✔ Template moved.' : 'Failed to move template.',
     ]);
     exit();
 }

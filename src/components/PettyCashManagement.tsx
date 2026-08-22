@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useMemo, useReducer } from 'react';
-import { Drawer, Card, TextInput as FlowbiteTextInput, Label, Checkbox, Dropdown, DropdownItem } from 'flowbite-react';
-import { X, Search, Pencil, Edit2, FileText, FileSpreadsheet, ImageIcon, Landmark, Loader2, Clock, User, Scale, Building2, FolderOpen, Camera, Plus, Trash2, Settings, Filter } from 'lucide-react';
-import DataTable from 'react-data-table-component';
-import { flowbiteTableCustomStyles } from '../utils/tableStyles';
+import { Drawer, Card, TextInput as FlowbiteTextInput, Label, Checkbox, Dropdown, DropdownItem, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell } from 'flowbite-react';
+import { X, Search, Pencil, Edit2, FileText, FileSpreadsheet, ImageIcon, Landmark, Loader2, Clock, User, Scale, Building2, FolderOpen, Camera, Plus, Trash2, Settings, Filter } from './icons/FlowbiteIcons';
+import { TablePagination } from './TablePagination';
 import { PettyCashEntry } from '../types';
 import { Button } from './Button';
 import { Badge } from './Badge';
@@ -433,6 +432,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [sourceFilter, setSourceFilter] = useState<'all' | 'property' | 'pocket' | 'split'>('all');
   const [mobilePage, setMobilePage] = useState<number>(1);
+  const [desktopPage, setDesktopPage] = useState<number>(1);
+  const DESKTOP_PAGE_SIZE = 15;
 
   // Fetch prices from DB on mount
   useEffect(() => {
@@ -1572,14 +1573,12 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
           </div>
         </div>
 
-        {/* Desktop DataTable (hidden md:block) */}
+        {/* Desktop Table (hidden md:block) */}
         <div className="hidden md:block overflow-x-auto">
-          <DataTable
-            columns={[
+          {(() => {
+            const costLogColumns = [
               {
                 name: 'ID',
-                selector: (entry: any) => entry.id,
-                minWidth: '130px',
                 cell: (entry: any) => (
                   <div className="py-1">
                     <span className="font-semibold text-gray-900 dark:text-white text-xs block">
@@ -1593,9 +1592,6 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               },
               {
                 name: t('category_column', 'Category'),
-                selector: (entry: any) => entry.category || entry.costCategory,
-                sortable: true,
-                minWidth: '140px',
                 cell: (entry: any) => {
                   const cat = entry.category || entry.costCategory || '';
                   const isAutoSalary = cat === 'Salary (Auto)' || entry.description?.startsWith('Salary (Auto):');
@@ -1610,10 +1606,6 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               },
               {
                 name: t('description_column', 'Description'),
-                selector: (entry: any) => entry.description,
-                sortable: true,
-                minWidth: '220px',
-                grow: 2,
                 cell: (entry: any) => {
                   const payer = entry.paidBy || entry.vendor;
                   return (
@@ -1631,9 +1623,6 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               },
               {
                 name: t('total_column', 'Total Amount'),
-                selector: (entry: any) => entry.amount,
-                sortable: true,
-                minWidth: '135px',
                 cell: (entry: any) => (
                   <span className="font-semibold text-gray-900 dark:text-white text-xs tabular-numbers">
                     ₹{Number(entry.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
@@ -1642,7 +1631,6 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               },
               {
                 name: 'Status / Method',
-                minWidth: '160px',
                 cell: (entry: any) => {
                   const anyEntry = entry as any;
                   const isOutofPocket = anyEntry.staffAmount && Number(anyEntry.staffAmount) > 0 && Number(anyEntry.staffAmount) === Number(anyEntry.amount);
@@ -1656,7 +1644,6 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               },
               ...(canManageExpense ? [{
                 name: t('actions_column', 'Actions'),
-                minWidth: '180px',
                 cell: (entry: any) => (
                   <div className="flex items-center gap-2 whitespace-nowrap">
                     <Button
@@ -1680,26 +1667,52 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                   </div>
                 ),
               }] : []),
-            ]}
-            data={filteredEntries}
-            persistTableHead
-            pagination
-            paginationPerPage={15}
-            paginationRowsPerPageOptions={[15, 30, 50, 100]}
-            highlightOnHover
-            customStyles={flowbiteTableCustomStyles}
-            progressPending={pettyCashLoading || kitchenPurchasesLoading}
-            progressComponent={
-              <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
-                <Loader2 className="w-4 h-4 animate-spin text-blue-600" /> Loading operational expenses...
-              </div>
+            ];
+
+            if (pettyCashLoading || kitchenPurchasesLoading) {
+              return (
+                <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
+                  <Loader2 className="w-4 h-4 animate-spin text-blue-600" /> Loading operational expenses...
+                </div>
+              );
             }
-            noDataComponent={
-              <div className="text-center p-8 text-slate-400 font-semibold text-xs">
-                No operational expenses found matching the current search & filters.
-              </div>
+            if (filteredEntries.length === 0) {
+              return (
+                <div className="text-center p-8 text-slate-400 font-semibold text-xs">
+                  No operational expenses found matching the current search & filters.
+                </div>
+              );
             }
-          />
+            return (
+              <>
+                <Table hoverable>
+                  <TableHead>
+                    <TableRow>
+                      {costLogColumns.map((col) => (
+                        <TableHeadCell key={col.name}>{col.name}</TableHeadCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {filteredEntries.slice((desktopPage - 1) * DESKTOP_PAGE_SIZE, desktopPage * DESKTOP_PAGE_SIZE).map((entry: any) => (
+                      <TableRow key={entry.id} className="bg-white dark:bg-gray-800">
+                        {costLogColumns.map((col) => (
+                          <TableCell key={col.name}>{col.cell(entry)}</TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <TablePagination
+                  page={desktopPage}
+                  totalItems={filteredEntries.length}
+                  pageSize={DESKTOP_PAGE_SIZE}
+                  onPageChange={setDesktopPage}
+                  itemLabel="entries"
+                />
+              </>
+            );
+          })()}
         </div>
 
         {/* Touch-First Mobile Cards View with 10-Item Pagination */}

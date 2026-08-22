@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Loader2, AlertCircle, Users, TrendingUp, BarChart3, DollarSign, ArrowLeft } from 'lucide-react';
+import { Loader2, AlertCircle, Users, TrendingUp, BarChart3, DollarSign, ArrowLeft } from './icons/FlowbiteIcons';
 import { apiFetch } from '../services/api';
 import { t } from '../i18n/en';
 import { KpiCard } from './KpiCard';

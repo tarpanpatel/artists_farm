@@ -15,7 +15,7 @@ import {
   Bot,
   Save,
   HelpCircle,
-} from 'lucide-react';
+} from './icons/FlowbiteIcons';
 import { Drawer } from 'flowbite-react';
 import { Button } from './Button';
 import { Input } from './Input';

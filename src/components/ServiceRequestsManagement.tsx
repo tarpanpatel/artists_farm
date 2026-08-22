@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, CheckCircle2, Clock, Home, ChevronLeft, ChevronRight, Pencil, Trash2, Settings, X } from 'lucide-react';
+import { Plus, CheckCircle2, Clock, Home, ChevronLeft, ChevronRight, Pencil, Trash2, Settings, X } from './icons/FlowbiteIcons';
 import { Tooltip } from './Tooltip';
 import {
   ServiceRequestType,

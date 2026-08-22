@@ -1,5 +1,5 @@
 import React, { forwardRef } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from './icons/FlowbiteIcons';
 import { TextInput as FlowbiteTextInput, Label as FlowbiteLabel } from 'flowbite-react';
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {

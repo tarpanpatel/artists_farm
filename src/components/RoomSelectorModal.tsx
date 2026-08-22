@@ -1,5 +1,5 @@
 import React from 'react';
-import { Building2, ArrowRight, Lightbulb } from 'lucide-react';
+import { Building2, ArrowRight, Lightbulb } from './icons/FlowbiteIcons';
 import { Drawer, Alert } from 'flowbite-react';
 import { X } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';

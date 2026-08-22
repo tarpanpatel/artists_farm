@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Check, ChevronDown, Search } from 'lucide-react';
+import { Check, ChevronDown, Search } from './icons/FlowbiteIcons';
 import { Dropdown, DropdownItem, DropdownHeader } from 'flowbite-react';
 import { t } from '../i18n/en';
 

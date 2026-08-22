@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Plus, Loader2, AlertCircle, AlertTriangle, BarChart3, ChevronDown, ChevronRight, Pencil, Eye, CheckCircle2, Share2, Copy, XCircle, ExternalLink, KeyRound, X, DoorOpen, RotateCcw, Mail, MessageCircle } from 'lucide-react';
+import { Building2, Plus, Loader2, AlertCircle, AlertTriangle, BarChart3, ChevronDown, ChevronRight, Pencil, Eye, CheckCircle2, Share2, Copy, XCircle, ExternalLink, KeyRound, X, DoorOpen, RotateCcw, Mail, MessageCircle } from './icons/FlowbiteIcons';
 import { Drawer, Alert, Checkbox } from 'flowbite-react';
 import { ToggleSwitch } from './ToggleSwitch';
 import { StyledSelect } from './StyledSelect';
@@ -1465,7 +1465,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                   />
                 </label>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  {t('telegram_customization_hint', "All templates are designed here at the root admin level. When off, this property's Super Admin can view templates and the live preview but can't edit the wording.")}
+                  {t('telegram_customization_hint', "All templates are designed here at the root admin level. When off, this property's Admin and Super Admin can view templates and the live preview but can't edit the wording. When on, both can edit.")}
                 </p>
               </div>
 

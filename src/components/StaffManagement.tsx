@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, ModalHeader, ModalBody, ModalFooter, Drawer as FlowbiteDrawer, DrawerItems, TextInput as FlowbiteTextInput, Checkbox } from 'flowbite-react';
+import { Drawer as FlowbiteDrawer, DrawerItems, TextInput as FlowbiteTextInput, Checkbox, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell } from 'flowbite-react';
 import { Button } from './Button';
 import { Input } from './Input';
 import { ToggleSwitch } from './ToggleSwitch';
 import { Tooltip } from './Tooltip';
-import DataTable from 'react-data-table-component';
-import { flowbiteTableCustomStyles } from '../utils/tableStyles';
+import { TablePagination } from './TablePagination';
 import {
   Plus,
   X,
@@ -26,7 +25,7 @@ import {
   Phone,
   Trash2,
   Search
-} from 'lucide-react';
+} from './icons/FlowbiteIcons';
 import { StaffMember, AttendanceRecord, UserAccount } from '../types';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
@@ -152,6 +151,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
 
   const [searchUsers, setSearchUsers] = useState('');
+  const [usersDesktopPage, setUsersDesktopPage] = useState(1);
+  const USERS_DESKTOP_PAGE_SIZE = 10;
 
   const [searchStaff, setSearchStaff] = useState('');
 
@@ -164,6 +165,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
   // Edit Staff Roster State
   const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
+  const [staffDesktopPage, setStaffDesktopPage] = useState(1);
+  const STAFF_DESKTOP_PAGE_SIZE = 15;
   const [editStaffRole, setEditStaffRole] = useState('');
   const [editStaffPhone, setEditStaffPhone] = useState('');
   const [editStaffSalary, setEditStaffSalary] = useState(0);
@@ -650,15 +653,12 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               </div>
             </div>
 
-            {/* Desktop View: Full DataTable */}
+            {/* Desktop View: Full Table */}
             <div className="hidden md:block overflow-x-auto">
-              <DataTable
-                columns={[
+              {(() => {
+                const usersColumns = [
                   {
                     name: 'NAME',
-                    selector: (row: any) => row.fullName,
-                    sortable: true,
-                    width: '260px',
                     cell: (row: any) => {
                       const phoneVal = (row.username || '').replace(/\D/g, '');
                       return (
@@ -685,9 +685,6 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   },
                   {
                     name: 'POSITION / ROLE',
-                    selector: (row: any) => row.role,
-                    sortable: true,
-                    width: '220px',
                     cell: (row: any) => (
                       <span className="text-sm font-medium text-gray-900 dark:text-white">
                         {row.role}
@@ -696,9 +693,6 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   },
                   {
                     name: 'STATUS',
-                    selector: (row: any) => row.status || 'Active',
-                    sortable: true,
-                    width: '200px',
                     cell: (row: any) => {
                       const isUserDisabled = row.status === 'Disabled' || row.status === 'Inactive';
                       return (
@@ -720,8 +714,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   },
                   {
                     name: 'UPI QR CODE',
-                    center: true,
-                    width: '200px',
+                    align: 'center' as const,
                     cell: (row: any) => row.qrCodeUrl ? (
                       <Button onClick={() => setLightboxUrl(row.qrCodeUrl!)} variant="link" size="sm" leftIcon={<QrCode className="w-3.5 h-3.5" />} className="text-emerald-600 hover:text-emerald-700 font-semibold text-xs gap-1 mx-auto">{t('view_qr_button', 'View QR')}</Button>
                     ) : (
@@ -730,8 +723,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   },
                   {
                     name: 'ACTIONS',
-                    right: true,
-                    width: '260px',
+                    align: 'right' as const,
                     cell: (row: any) => {
                       const isCurrentUser = currentUser?.id === row.id;
                       const canEdit = !isCurrentUser && canEditUser(currentUser?.role || 'Staff', row.role);
@@ -768,24 +760,54 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                       );
                     },
                   },
-                ]}
-                data={visibleUsers}
-                progressPending={staffLoading}
-                progressComponent={
-                  <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
-                    <Loader2 className="w-4 h-4 animate-spin" /> {t('loading_staff_message', 'Loading staff...')}
-                  </div>
+                ];
+
+                if (staffLoading) {
+                  return (
+                    <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
+                      <Loader2 className="w-4 h-4 animate-spin" /> {t('loading_staff_message', 'Loading staff...')}
+                    </div>
+                  );
                 }
-                pagination
-                paginationPerPage={10}
-                paginationRowsPerPageOptions={[10, 20, 50]}
-                highlightOnHover
-                persistTableHead
-                customStyles={flowbiteTableCustomStyles}
-                noDataComponent={
-                  <div className="p-8 text-center text-slate-400 font-semibold text-xs">{t('no_system_users_message', 'No system users registered.')}</div>
+                if (visibleUsers.length === 0) {
+                  return (
+                    <div className="p-8 text-center text-slate-400 font-semibold text-xs">{t('no_system_users_message', 'No system users registered.')}</div>
+                  );
                 }
-              />
+                return (
+                  <>
+                    <Table hoverable>
+                      <TableHead>
+                        <TableRow>
+                          {usersColumns.map((col) => (
+                            <TableHeadCell key={col.name} className={col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : ''}>
+                              {col.name}
+                            </TableHeadCell>
+                          ))}
+                        </TableRow>
+                      </TableHead>
+                      <TableBody className="divide-y divide-gray-200 dark:divide-gray-700">
+                        {visibleUsers.slice((usersDesktopPage - 1) * USERS_DESKTOP_PAGE_SIZE, usersDesktopPage * USERS_DESKTOP_PAGE_SIZE).map((row: any) => (
+                          <TableRow key={row.id} className="bg-white dark:bg-gray-800">
+                            {usersColumns.map((col) => (
+                              <TableCell key={col.name} className={col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : ''}>
+                                {col.cell(row)}
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    <TablePagination
+                      page={usersDesktopPage}
+                      totalItems={visibleUsers.length}
+                      pageSize={USERS_DESKTOP_PAGE_SIZE}
+                      onPageChange={setUsersDesktopPage}
+                      itemLabel="users"
+                    />
+                  </>
+                );
+              })()}
             </div>
 
             {/* Mobile View: Touch-First Mobile Cards with 10-Item Pagination */}
@@ -1424,28 +1446,20 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               ))}
             </div>
 
-            {/* Desktop DataTable (hidden md:block) */}
+            {/* Desktop Table (hidden md:block) */}
             <div className="hidden md:block overflow-x-auto">
-              <DataTable
-                columns={[
+              {(() => {
+                const staffColumns = [
                   {
                     name: 'Staff ID',
-                    selector: (row: any) => row.id,
-                    sortable: true,
-                    width: '100px',
                     cell: (row: any) => <span className="font-semibold text-slate-500 dark:text-slate-400 text-xs">#{row.id}</span>,
                   },
                   {
                     name: 'Full Name',
-                    selector: (row: any) => row.name,
-                    sortable: true,
                     cell: (row: any) => <span className="font-semibold text-slate-900 dark:text-white text-sm">{row.name}</span>,
                   },
                   {
                     name: 'Role',
-                    selector: (row: any) => row.role,
-                    sortable: true,
-                    width: '150px',
                     cell: (row: any) => editingStaffId === row.id ? (
                       <StyledSelect
                         value={editStaffRole}
@@ -1458,9 +1472,6 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   },
                   {
                     name: 'Phone',
-                    selector: (row: any) => row.phone,
-                    sortable: true,
-                    width: '140px',
                     cell: (row: any) => editingStaffId === row.id ? (
                       <Input
                         type="tel"
@@ -1475,10 +1486,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   },
                   {
                     name: 'Monthly Base',
-                    selector: (row: any) => row.monthlySalary,
-                    sortable: true,
-                    right: true,
-                    width: '130px',
+                    align: 'right' as const,
                     cell: (row: any) => editingStaffId === row.id ? (
                       <Input
                         type="number"
@@ -1493,10 +1501,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   },
                   {
                     name: 'Status',
-                    selector: (row: any) => row.status,
-                    sortable: true,
-                    width: '110px',
-                    center: true,
+                    align: 'center' as const,
                     cell: (row: any) => editingStaffId === row.id ? (
                       <StyledSelect
                         value={editStaffStatus}
@@ -1512,8 +1517,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   },
                   ...(updateStaff ? [{
                     name: 'Actions',
-                    right: true,
-                    width: '140px',
+                    align: 'right' as const,
                     cell: (row: any) => editingStaffId === row.id ? (
                       <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
                         <Button variant="primary" size="sm" onClick={() => { updateStaff!(row.id, { role: editStaffRole, phone: editStaffPhone, monthlySalary: editStaffSalary, status: editStaffStatus }); setEditingStaffId(null); if (onLogAudit) onLogAudit(`Updated staff ${row.name}: role=${editStaffRole}, phone=${editStaffPhone}, salary=₹${editStaffSalary}, status=${editStaffStatus}`); }}>
@@ -1529,24 +1533,54 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                       </Button>
                     ),
                   }] : []),
-                ]}
-                data={filteredStaff}
-                progressPending={staffLoading}
-                progressComponent={
-                  <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
-                    <Loader2 className="w-4 h-4 animate-spin" /> {t('loading_staff_message', 'Loading staff...')}
-                  </div>
+                ];
+
+                if (staffLoading) {
+                  return (
+                    <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
+                      <Loader2 className="w-4 h-4 animate-spin" /> {t('loading_staff_message', 'Loading staff...')}
+                    </div>
+                  );
                 }
-                pagination
-                paginationPerPage={15}
-                paginationRowsPerPageOptions={[10, 15, 25, 50]}
-                highlightOnHover
-                persistTableHead
-                customStyles={flowbiteTableCustomStyles}
-                noDataComponent={
-                  <div className="p-8 text-center text-slate-400 font-semibold text-xs">No staff members found.</div>
+                if (filteredStaff.length === 0) {
+                  return (
+                    <div className="p-8 text-center text-slate-400 font-semibold text-xs">No staff members found.</div>
+                  );
                 }
-              />
+                return (
+                  <>
+                    <Table hoverable>
+                      <TableHead>
+                        <TableRow>
+                          {staffColumns.map((col) => (
+                            <TableHeadCell key={col.name} className={col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : ''}>
+                              {col.name}
+                            </TableHeadCell>
+                          ))}
+                        </TableRow>
+                      </TableHead>
+                      <TableBody className="divide-y divide-gray-200 dark:divide-gray-700">
+                        {filteredStaff.slice((staffDesktopPage - 1) * STAFF_DESKTOP_PAGE_SIZE, staffDesktopPage * STAFF_DESKTOP_PAGE_SIZE).map((row: any) => (
+                          <TableRow key={row.id} className="bg-white dark:bg-gray-800">
+                            {staffColumns.map((col) => (
+                              <TableCell key={col.name} className={col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : ''}>
+                                {col.cell(row)}
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    <TablePagination
+                      page={staffDesktopPage}
+                      totalItems={filteredStaff.length}
+                      pageSize={STAFF_DESKTOP_PAGE_SIZE}
+                      onPageChange={setStaffDesktopPage}
+                      itemLabel="staff members"
+                    />
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>

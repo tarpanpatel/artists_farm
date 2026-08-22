@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Building2, Layers, Home, ExternalLink, LogOut, Loader2 } from 'lucide-react';
+import { Building2, Layers, Home, ExternalLink, LogOut, Loader2 } from './icons/FlowbiteIcons';
 import { API_ROOT_BASE } from '../services/api';
 import { StaffMember } from '../types';
 import { t } from '../i18n/en';

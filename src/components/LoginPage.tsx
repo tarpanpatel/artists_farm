@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Alert } from 'flowbite-react';
-import { AlertCircle, Lock, Phone, KeyRound, Building2, ShieldCheck, Mail, CheckCircle2, ArrowLeft, Loader2, Delete } from 'lucide-react';
+import { AlertCircle, Lock, Phone, KeyRound, Building2, ShieldCheck, Mail, CheckCircle2, ArrowLeft, Loader2, Delete } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';
 
 interface LoginPageProps {

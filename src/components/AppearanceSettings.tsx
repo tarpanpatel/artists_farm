@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tabs, TabItem } from 'flowbite-react';
-import { Palette, Code } from 'lucide-react';
+import { Palette, Code } from './icons/FlowbiteIcons';
 import { ThemeManagement } from './ThemeManagement';
 import { CustomCSSOverride } from './CustomCSSOverride';
 import { t } from '../i18n/en';

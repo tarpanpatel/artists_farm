@@ -1,5 +1,5 @@
 import React, { ReactNode, ErrorInfo } from 'react';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';
 import { recordTelescopeLog } from '../utils/telescopeLogger';
 

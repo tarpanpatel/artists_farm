@@ -16,7 +16,7 @@ import {
   ChevronUp,
   ChevronDown,
   Globe,
-} from 'lucide-react';
+} from './icons/FlowbiteIcons';
 import { Guest } from '../types';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
@@ -196,6 +196,28 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       cur.setDate(cur.getDate() + 1);
     }
     return days;
+  };
+
+  // Hoisted out of the calendar-grid IIFE below (it used to be computed
+  // fresh inside there) so the new "unconverted OTA block" alerts section
+  // can reuse the exact same list without duplicating the computation -
+  // both just need "every date already spoken for on this calendar",
+  // nothing calendar-grid-specific.
+  const allOccupiedDateStrings = [
+    ...guests.flatMap((g) => expandRangeToDayStrings(g.checkinDate, g.expectedCheckout || (g as any).checkoutDate || g.checkinDate)),
+    ...blockedDates.flatMap((bd) => expandRangeToDayStrings(bd.event_start, bd.event_end)),
+  ];
+
+  // Shared "Convert to Booking" trigger for an OTA-blocked date range -
+  // used by both the calendar's own OTA segment (below) and the new
+  // System Alerts "unconverted OTA booking" rows, so there's exactly one
+  // place building the otaConversionTarget payload.
+  const handleConvertOtaBlock = (block: (typeof blockedDates)[number]) => {
+    const ownDays = new Set(expandRangeToDayStrings(block.event_start, block.event_end));
+    setOtaConversionTarget({
+      block,
+      blockedDateStrings: allOccupiedDateStrings.filter((dstr) => !ownDays.has(dstr)),
+    });
   };
 
   // Fetch blocked dates from iCal sync. Also re-run after a successful
@@ -380,6 +402,12 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   // across sections.
   type AlertReason = { label: string; detail: string };
   type GuestAlert = { guest: Guest; severity: 'red' | 'amber'; reasons: AlertReason[] };
+  // Discriminated union so the System Alerts panel can list both
+  // guest-based alerts (overdue check-in/out, etc.) and OTA-block alerts
+  // (see otaAlerts below) in one merged, severity-sorted list.
+  type CombinedAlertItem =
+    | ({ kind: 'guest' } & GuestAlert)
+    | { kind: 'ota'; block: (typeof blockedDates)[number]; severity: 'red' | 'amber'; reasons: AlertReason[] };
   const guestAlertMap = new Map<string, GuestAlert>();
   const addAlertReason = (
     list: Guest[],
@@ -407,9 +435,43 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
     'amber',
     (g) => `Owes ₹${((g.totalAmount || 0) - (g.advanceAmount || 0)).toLocaleString('en-IN')}`
   );
-  const combinedAlerts = Array.from(guestAlertMap.values()).sort((a, b) =>
-    a.severity === b.severity ? 0 : a.severity === 'red' ? -1 : 1
-  );
+  // --- Unconverted OTA block alerts: any synced external-calendar hold
+  // (Airbnb/Booking.com/etc - see blockedDates above) whose date range has
+  // already started - present (a guest may be in-house right now with no
+  // booking record at all) or fully past (a guest already left, still
+  // never recorded) - but was never converted into a real booking.
+  // blockedDates only ever contains still-unclaimed blocks in the first
+  // place (getBlockedDates() on the PHP side excludes anything a guests
+  // row already claims via ical_external_event_id), so everything that
+  // passes the date filter below is, by definition, still unconverted -
+  // no separate "not converted" check needed. Deliberately excludes
+  // purely-future blocks (event_start > today): those don't need
+  // attention yet, there's still time before the guest arrives.
+  const otaAlerts: CombinedAlertItem[] = blockedDates
+    .filter((bd) => (bd.event_start || '').split(' ')[0].split('T')[0] <= todayStr)
+    .map((bd) => {
+      const endStr = (bd.event_end || '').split(' ')[0].split('T')[0];
+      const isOngoing = endStr >= todayStr;
+      const sourceLabel = bd.source_label || bd.source || 'OTA';
+      return {
+        kind: 'ota',
+        block: bd,
+        severity: isOngoing ? 'amber' : 'red',
+        reasons: [
+          {
+            label: 'OTA Not Converted',
+            detail: isOngoing
+              ? `${sourceLabel} · ongoing since ${formatAlertDate(bd.event_start)}`
+              : `${sourceLabel} · ended ${formatAlertDate(bd.event_end)}, still not converted`,
+          },
+        ],
+      };
+    });
+
+  const combinedAlerts: CombinedAlertItem[] = [
+    ...Array.from(guestAlertMap.values()).map((a): CombinedAlertItem => ({ kind: 'guest', ...a })),
+    ...otaAlerts,
+  ].sort((a, b) => (a.severity === b.severity ? 0 : a.severity === 'red' ? -1 : 1));
   const totalAlerts = combinedAlerts.length;
 
   // --- C-Form (FRRO) filing tracker: foreign guests must be filed within
@@ -655,41 +717,46 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               </div>
             ) : (
               <div className="divide-y divide-slate-100 dark:divide-slate-700/60">
-                {combinedAlerts.slice(0, 5).map(({ guest: g, severity, reasons }) => (
-                  <div
-                    key={g.id}
-                    className="py-2.5 px-1 flex items-center justify-between gap-3 hover:bg-slate-50/80 dark:hover:bg-slate-700/30 rounded-lg transition-colors"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center flex-wrap gap-1.5 font-bold text-xs text-slate-900 dark:text-slate-100">
-                        <span>{g.guestName}</span>
-                        <span className="text-2xs font-normal text-slate-400 shrink-0">• {g.roomNumber}</span>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-x-2 text-[11px] mt-0.5">
-                        {reasons.map((r, i) => (
-                          <span
-                            key={i}
-                            className={`font-semibold ${
-                              severity === 'red' ? 'text-red-700 dark:text-red-400' : 'text-amber-700 dark:text-amber-400'
-                            }`}
-                          >
-                            {r.label}{r.detail ? ` (${r.detail})` : ''}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setSelectedBooking(g)}
-                      className={`text-[10px] font-bold px-2.5 py-1 rounded-md text-white transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-md ${
-                        severity === 'red'
-                          ? 'bg-red-600 hover:bg-red-700 active:bg-red-800'
-                          : 'bg-amber-600 hover:bg-amber-700 active:bg-amber-800'
-                      }`}
+                {combinedAlerts.slice(0, 5).map((item) => {
+                  const key = item.kind === 'guest' ? item.guest.id : `ota-${item.block.external_event_id}`;
+                  const title = item.kind === 'guest' ? item.guest.guestName : (item.block.source_label || item.block.source || 'OTA Block');
+                  const subtitle = item.kind === 'guest' ? item.guest.roomNumber : roomName;
+                  return (
+                    <div
+                      key={key}
+                      className="py-2.5 px-1 flex items-center justify-between gap-3 hover:bg-slate-50/80 dark:hover:bg-slate-700/30 rounded-lg transition-colors"
                     >
-                      {t('view_resolve_button', 'Resolve')}
-                    </button>
-                  </div>
-                ))}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center flex-wrap gap-1.5 font-bold text-xs text-slate-900 dark:text-slate-100">
+                          <span>{title}</span>
+                          {subtitle && <span className="text-2xs font-normal text-slate-400 shrink-0">• {subtitle}</span>}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-2 text-[11px] mt-0.5">
+                          {item.reasons.map((r, i) => (
+                            <span
+                              key={i}
+                              className={`font-semibold ${
+                                item.severity === 'red' ? 'text-red-700 dark:text-red-400' : 'text-amber-700 dark:text-amber-400'
+                              }`}
+                            >
+                              {r.label}{r.detail ? ` (${r.detail})` : ''}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => (item.kind === 'guest' ? setSelectedBooking(item.guest) : handleConvertOtaBlock(item.block))}
+                        className={`text-[10px] font-bold px-2.5 py-1 rounded-md text-white transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-md ${
+                          item.severity === 'red'
+                            ? 'bg-red-600 hover:bg-red-700 active:bg-red-800'
+                            : 'bg-amber-600 hover:bg-amber-700 active:bg-amber-800'
+                        }`}
+                      >
+                        {item.kind === 'guest' ? t('view_resolve_button', 'Resolve') : t('convert_to_booking_button', 'Convert to Booking')}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
@@ -940,11 +1007,6 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             and wasn't what was asked for - only the already-shown "primary"
             booking becomes a true spanning bar instead of a chip. */}
         {(() => {
-          const allOccupiedDateStrings = [
-            ...guests.flatMap((g) => expandRangeToDayStrings(g.checkinDate, g.expectedCheckout || (g as any).checkoutDate || g.checkinDate)),
-            ...blockedDates.flatMap((bd) => expandRangeToDayStrings(bd.event_start, bd.event_end)),
-          ];
-
           const checkedOutColor = 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600';
           const otaBookingColor = 'bg-amber-600 dark:bg-amber-700 text-white border border-amber-700/30';
           const directBookingColor = 'bg-blue-600 dark:bg-blue-600 text-white border border-blue-700/30';
@@ -1254,11 +1316,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                         const otaBlock = seg.info.otaBlock!;
                         const otaPopoverKey = `${otaBlock.event_start}-${seg.info.dateStr}`;
                         const handleConvert = () => {
-                          const ownDays = new Set(expandRangeToDayStrings(otaBlock.event_start, otaBlock.event_end));
-                          setOtaConversionTarget({
-                            block: otaBlock,
-                            blockedDateStrings: allOccupiedDateStrings.filter((dstr) => !ownDays.has(dstr)),
-                          });
+                          handleConvertOtaBlock(otaBlock);
                           setOpenOtaPopoverId(null);
                         };
                         return (
@@ -1512,45 +1570,51 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 </TableRow>
               </TableHead>
               <TableBody className="divide-y divide-slate-100 dark:divide-slate-700/60 operational-dashboard__table-body">
-                {combinedAlerts.map(({ guest: g, severity, reasons }) => (
-                  <TableRow
-                    key={g.id}
-                    className={severity === 'red' ? 'bg-red-50/60 dark:bg-red-900/10' : 'bg-amber-50/60 dark:bg-amber-900/10'}
-                  >
-                    <TableCell className="operational-dashboard__cell align-top">
-                      <div className={`text-sm font-semibold ${severity === 'red' ? 'text-red-800 dark:text-red-300' : 'text-amber-800 dark:text-amber-300'}`}>
-                        {g.guestName}
-                      </div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">{g.roomNumber}</div>
-                    </TableCell>
-                    <TableCell className="operational-dashboard__cell align-top">
-                      <div className="space-y-1">
-                        {reasons.map((r, i) => (
-                          <div
-                            key={i}
-                            className={`text-xs font-medium ${severity === 'red' ? 'text-red-700 dark:text-red-400' : 'text-amber-700 dark:text-amber-400'}`}
-                          >
-                            <div>{r.label}</div>
-                            <div className="text-2xs opacity-80">{r.detail}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell className="operational-dashboard__cell align-top">
-                      <button
-                        onClick={() => {
-                          setShowAllAlertsModal(false);
-                          setSelectedBooking(g);
-                        }}
-                        className={`text-xs font-semibold px-3 py-1.5 rounded-lg text-white transition-colors cursor-pointer whitespace-nowrap ${
-                          severity === 'red' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'
-                        }`}
-                      >
-                        {t('view_resolve_button', 'View & Resolve')}
-                      </button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {combinedAlerts.map((item) => {
+                  const key = item.kind === 'guest' ? item.guest.id : `ota-${item.block.external_event_id}`;
+                  const title = item.kind === 'guest' ? item.guest.guestName : (item.block.source_label || item.block.source || 'OTA Block');
+                  const subtitle = item.kind === 'guest' ? item.guest.roomNumber : roomName;
+                  return (
+                    <TableRow
+                      key={key}
+                      className={item.severity === 'red' ? 'bg-red-50/60 dark:bg-red-900/10' : 'bg-amber-50/60 dark:bg-amber-900/10'}
+                    >
+                      <TableCell className="operational-dashboard__cell align-top">
+                        <div className={`text-sm font-semibold ${item.severity === 'red' ? 'text-red-800 dark:text-red-300' : 'text-amber-800 dark:text-amber-300'}`}>
+                          {title}
+                        </div>
+                        {subtitle && <div className="text-xs text-slate-500 dark:text-slate-400">{subtitle}</div>}
+                      </TableCell>
+                      <TableCell className="operational-dashboard__cell align-top">
+                        <div className="space-y-1">
+                          {item.reasons.map((r, i) => (
+                            <div
+                              key={i}
+                              className={`text-xs font-medium ${item.severity === 'red' ? 'text-red-700 dark:text-red-400' : 'text-amber-700 dark:text-amber-400'}`}
+                            >
+                              <div>{r.label}</div>
+                              <div className="text-2xs opacity-80">{r.detail}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell className="operational-dashboard__cell align-top">
+                        <button
+                          onClick={() => {
+                            setShowAllAlertsModal(false);
+                            if (item.kind === 'guest') setSelectedBooking(item.guest);
+                            else handleConvertOtaBlock(item.block);
+                          }}
+                          className={`text-xs font-semibold px-3 py-1.5 rounded-lg text-white transition-colors cursor-pointer whitespace-nowrap ${
+                            item.severity === 'red' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'
+                          }`}
+                        >
+                          {item.kind === 'guest' ? t('view_resolve_button', 'View & Resolve') : t('convert_to_booking_button', 'Convert to Booking')}
+                        </button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>

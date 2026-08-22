@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Card } from 'flowbite-react';
-import { Plus, Trash2, Save, CheckCircle2, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Save, CheckCircle2, Loader2 } from './icons/FlowbiteIcons';
 import { PropertyTelegramConfig, TelegramGroup } from '../types';
 import { t } from '../i18n/en';
 

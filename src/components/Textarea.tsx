@@ -1,5 +1,5 @@
 import React, { forwardRef } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from './icons/FlowbiteIcons';
 import { Textarea as FlowbiteTextarea, Label as FlowbiteLabel } from 'flowbite-react';
 
 export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {

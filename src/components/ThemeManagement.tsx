@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Alert, Card } from 'flowbite-react';
 import { Button } from './Button';
-import { Save, RotateCcw, Loader2, Palette, Moon, Type, Box, Sparkles } from 'lucide-react';
+import { Save, RotateCcw, Loader2, Palette, Moon, Type, Box, Sparkles } from './icons/FlowbiteIcons';
 import { fetchThemeSettings, saveThemeSettings, applyThemeSettings, getDefaultTheme, ThemeSettings } from '../services/themeService';
 import { useConfirm } from './ConfirmDialogContext';
 import { t } from '../i18n/en';

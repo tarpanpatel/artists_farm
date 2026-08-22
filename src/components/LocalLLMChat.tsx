@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Send, Bot, User, Settings2, Wifi, WifiOff, Loader2, AlertCircle } from 'lucide-react';
+import { Send, Bot, User, Settings2, Wifi, WifiOff, Loader2, AlertCircle } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';
 
 interface LocalLLMChatProps {

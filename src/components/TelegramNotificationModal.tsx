@@ -1,8 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Drawer } from 'flowbite-react';
+import { Drawer, Dropdown, DropdownItem } from 'flowbite-react';
 import {
   Send,
-  ShieldCheck,
   X,
   Sparkles,
   Bold,
@@ -24,17 +23,22 @@ import {
   Loader2,
   Rocket,
   Check,
+  ChevronDown,
   ToggleLeft,
   Bot,
-} from 'lucide-react';
+  Search,
+  Pencil,
+} from './icons/FlowbiteIcons';
 import { TelegramConfig, TelegramDispatchLog, PropertyTelegramConfig } from '../types';
-import { invalidateTemplateCache, getPropertySlug, fetchTelegramConfigDB, saveTelegramConfigDB, fetchTemplatesFromDB, DbTelegramTemplate } from '../services/api';
+import { invalidateTemplateCache, getPropertySlug, fetchTelegramConfigDB, saveTelegramConfigDB, fetchTemplatesFromDB, updateTemplateGroupInDB, DbTelegramTemplate } from '../services/api';
 import { TelegramSetupWizard } from './TelegramSetupWizard';
 import { StyledSelect } from './StyledSelect';
 import { Input } from './Input';
 import { Textarea } from './Textarea';
 import { Badge } from './Badge';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from './ToastContext';
+import { useConfirm } from './ConfirmDialogContext';
 import { t } from '../i18n/en';
 
 export interface TelegramInlineButton {
@@ -53,6 +57,8 @@ export interface TelegramTemplateExtended {
   variables: string[];
   template: string;
   buttons?: TelegramInlineButton[][];
+  // Manual "move to group" override - see getTemplateGroup() below.
+  groupOverride?: string | null;
 }
 
 interface TelegramNotificationModalProps {
@@ -425,11 +431,26 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
   hideRoutingControls = false,
 }) => {
   const { activeRole } = useAuth();
+  const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const normalizedRole = activeRole?.toLowerCase().trim() || '';
   const isRootAdmin = normalizedRole === 'root admin';
   const isSuperAdmin = normalizedRole === 'super admin';
-  // Super Admin and Root Admin can always edit templates, or if template customization is explicitly enabled
-  const canEditTemplates = isRootAdmin || isSuperAdmin || templateCustomizationEnabled;
+  const isAdmin = normalizedRole === 'admin';
+  // Root Admin can always edit (templates are designed at the root admin
+  // level by default). Admin and Super Admin can ONLY edit when this
+  // property's "Allow Telegram Template Customization" toggle is on
+  // (PlatformPropertyManagement's own copy for that toggle: "When off, this
+  // property's Super Admin can view templates and the live preview but
+  // can't edit the wording" - the previous `isSuperAdmin || ...` version
+  // ignored the toggle entirely and let every Super Admin edit regardless,
+  // contradicting that exact documented behavior). Staff-tier roles never
+  // get edit access from this toggle.
+  const canEditTemplates = isRootAdmin || ((isSuperAdmin || isAdmin) && templateCustomizationEnabled);
+  // Choosing which Telegram group a template's notifications deliver to is a
+  // separate, lighter permission than editing the template's own wording -
+  // Admin and above can manage it even without full template-edit rights.
+  const canManageRouting = isRootAdmin || isSuperAdmin || isAdmin;
   const getLoggedInUserName = () => {
     if (typeof window !== 'undefined') {
       const savedUser = localStorage.getItem(`artists_farm_user_${getPropertySlug()}`);
@@ -444,15 +465,26 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
   };
   const [templatesList, setTemplatesList] = useState<TelegramTemplateExtended[]>(FALLBACK_TEMPLATES);
   const [activeTemplateId, setActiveTemplateId] = useState<string>(FALLBACK_TEMPLATES[0].id);
+  // Clicking a template in the catalog opens its editor in a right-side
+  // Drawer instead of a permanently-visible inline column - keeps "browse
+  // templates" and "edit one template" as two distinct steps, matching this
+  // app's modals-open-as-a-drawer convention (see DESIGN.md).
+  const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [testSent, setTestSent] = useState(false);
   const [testSending, setTestSending] = useState(false);
   const [testError, setTestError] = useState<string | null>(null);
   const [showSetupWizard, setShowSetupWizard] = useState(false);
   const [editorMode, setEditorMode] = useState<'wysiwyg' | 'html'>('wysiwyg');
-  const [activeCategory, setActiveCategory] = useState<'All' | 'Kitchen' | 'Admin' | 'Finances'>('All');
+  const [activeCategory, setActiveCategory] = useState<'Kitchen' | 'Admin' | 'Finances'>('Kitchen');
 
   const getTemplateGroup = (tpl: TelegramTemplateExtended): 'Kitchen' | 'Admin' | 'Finances' => {
+    // A manual "move to group" override always wins over the automatic
+    // keyword classification below.
+    if (tpl.groupOverride === 'Kitchen' || tpl.groupOverride === 'Admin' || tpl.groupOverride === 'Finances') {
+      return tpl.groupOverride;
+    }
+
     const key = tpl.dbKey.toLowerCase();
     const cat = tpl.category.toLowerCase();
     
@@ -487,12 +519,71 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
     ) {
       return 'Finances';
     }
-    
+
     return 'Admin';
   };
 
+  // "Move to group" dropdown handler (Templates Catalog list) - updates
+  // local state immediately (so the row re-sorts into its new tab right
+  // away) and persists the override to the DB; reverts by refetching if the
+  // save fails, rather than leaving the UI showing a move that didn't stick.
+  const handleMoveTemplateGroup = async (tpl: TelegramTemplateExtended, newGroup: 'Kitchen' | 'Admin' | 'Finances') => {
+    const currentGroup = getTemplateGroup(tpl);
+    if (currentGroup === newGroup) return;
+
+    // Moving a template's group can silently change WHERE its Telegram
+    // notification is actually delivered, not just which catalog tab it's
+    // filed under - "Send to: Auto (...)" (see the routing dropdown below)
+    // resolves by category bucket (Kitchen/Admin/Finances -> the property's
+    // kitchen/admin/finance group) unless this specific template already has
+    // an explicit per-template pin in tgSettings.routing. Ask before
+    // applying it, and say plainly what changes either way.
+    const routingKeyMap = { Kitchen: 'kitchen', Admin: 'admin', Finances: 'finance' } as const;
+    const isExplicitlyPinned = !!tgSettings?.routing?.[tpl.dbKey];
+    const oldGroupName = tgSettings?.groups.find((g) => g.key === routingKeyMap[currentGroup] && g.chatId)?.name;
+    const newGroupName = tgSettings?.groups.find((g) => g.key === routingKeyMap[newGroup] && g.chatId)?.name;
+
+    const deliveryNote = hideRoutingControls
+      ? ''
+      : isExplicitlyPinned
+      ? '\n\nThis template already has a fixed delivery group pinned in "Send to", so the Telegram group it actually sends to will NOT change - only which catalog tab it is filed under.'
+      : `\n\nThis template is set to "Auto" delivery, so this WILL also change where it actually sends${oldGroupName && newGroupName ? ` - from "${oldGroupName}" to "${newGroupName}"` : ''}.`;
+
+    const ok = await confirm({
+      title: t('move_template_confirm_title', 'Move this template?'),
+      message: `"${tpl.eventName}" will move from ${currentGroup} to ${newGroup}. Afterward, you'll find it under the "${newGroup}" tab in the Templates Catalog.${deliveryNote}`,
+      confirmText: t('move_template_confirm_button', 'Move Template'),
+      variant: 'warning',
+    });
+    if (!ok) return;
+
+    setTemplatesList((prev) => prev.map((t) => (t.id === tpl.id ? { ...t, groupOverride: newGroup } : t)));
+    const saved = await updateTemplateGroupInDB(tpl.dbKey, newGroup);
+    if (saved) {
+      showToast(`Moved "${tpl.eventName}" to ${newGroup}`, { type: 'success' });
+    } else {
+      showToast('Could not move template - please try again.', { type: 'error' });
+      fetchTemplatesFromDB().then(setDbTemplates);
+    }
+  };
+
+  const [templateSearch, setTemplateSearch] = useState('');
+  // A non-empty search looks across every group at once (name, category,
+  // description, and the internal dbKey - e.g. searching "kitchen" also
+  // surfaces templates whose dbKey mentions it even if their display
+  // category doesn't) rather than being constrained to whichever tab is
+  // currently active - the point of "find by keyword" is not having to
+  // already know which of the 3 tabs a template lives under.
   const displayedTemplates = templatesList.filter((tpl) => {
-    if (activeCategory === 'All') return true;
+    const q = templateSearch.trim().toLowerCase();
+    if (q) {
+      return (
+        tpl.eventName.toLowerCase().includes(q) ||
+        tpl.category.toLowerCase().includes(q) ||
+        tpl.description.toLowerCase().includes(q) ||
+        tpl.dbKey.toLowerCase().includes(q)
+      );
+    }
     return getTemplateGroup(tpl) === activeCategory;
   });
 
@@ -545,6 +636,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
         description: db.description,
         template: restoreEmojis(db.content),
         variables: db.variables.length > 0 ? db.variables : tpl.variables,
+        groupOverride: db.groupOverride,
       };
     });
     for (const [key, db] of byKey) {
@@ -553,6 +645,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
         dbKey: key,
         eventName: db.title,
         category: db.category,
+        groupOverride: db.groupOverride,
         description: db.description,
         variables: db.variables,
         template: restoreEmojis(db.content),
@@ -1026,31 +1119,58 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
         </div>
       )}
 
-      {/* Main 2-Column Catalog Grid Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        {/* Left Column: Templates Catalog (4 Cols) */}
-        <div className="lg:col-span-4 bg-slate-50 dark:bg-slate-800/60 rounded-lg border border-slate-200 dark:border-slate-700/80 p-0 overflow-hidden">
-          <div className="p-3.5 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-            <h3 className="telegram-notification-modal__subtitle text-[10px] font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wider m-0 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" /> {t('templates_catalog_heading', 'Templates Catalog')}
+      {/* Templates Catalog - editing a template now opens in its own Drawer
+          (see the Right Column below) rather than a permanent inline split,
+          so this is just a plain full-width list. */}
+      <div className="grid grid-cols-1 gap-5 items-start">
+        <div className="bg-slate-50 dark:bg-slate-800/60 rounded-lg border border-slate-200 dark:border-slate-700/80 p-0 overflow-hidden">
+          {/* Title + keyword search share one row now. Search matches
+              template name/category/description/internal key across ALL
+              groups at once (not just the active tab), so finding a
+              template doesn't require already knowing which of the 3 tabs
+              it lives under. Item count badge removed to keep this row
+              uncrowded now that the search field lives here too. */}
+          <div className="p-3.5 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center gap-2.5">
+            <h3 className="telegram-notification-modal__subtitle text-[10px] font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wider m-0 flex items-center gap-1.5 shrink-0">
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" /> {t('templates_catalog_heading', 'Templates')}
             </h3>
-            <Badge variant="neutral" size="sm">
-              {displayedTemplates.length} items
-            </Badge>
+            <div className="relative flex-1 min-w-0">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={templateSearch}
+                onChange={(e) => setTemplateSearch(e.target.value)}
+                placeholder={t('search_templates_placeholder', 'Search by keyword...')}
+                className="w-full text-xs pl-8 pr-7 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+              />
+              {templateSearch && (
+                <button
+                  type="button"
+                  onClick={() => setTemplateSearch('')}
+                  title={t('clear_search_tooltip', 'Clear search')}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Catalog Categories Switcher */}
-          <div className="flex border-b border-slate-200 dark:border-slate-700 bg-slate-100/50 dark:bg-slate-800/40 text-xs">
-            {(['All', 'Kitchen', 'Admin', 'Finances'] as const).map((cat) => {
-              const count = cat === 'All' 
-                ? templatesList.length 
-                : templatesList.filter(t => getTemplateGroup(t) === cat).length;
-              const isActiveTab = activeCategory === cat;
+          {/* Catalog Categories Switcher - inert while a search is active
+              (search already looks across every group); clicking a tab
+              clears the search so it's still an easy way back to browsing. */}
+          <div className={`flex border-b border-slate-200 dark:border-slate-700 bg-slate-100/50 dark:bg-slate-800/40 text-xs ${templateSearch ? 'opacity-50' : ''}`}>
+            {(['Kitchen', 'Admin', 'Finances'] as const).map((cat) => {
+              const count = templatesList.filter(t => getTemplateGroup(t) === cat).length;
+              const isActiveTab = !templateSearch && activeCategory === cat;
               return (
                 <button
                   key={cat}
                   type="button"
-                  onClick={() => setActiveCategory(cat)}
+                  onClick={() => {
+                    setTemplateSearch('');
+                    setActiveCategory(cat);
+                  }}
                   className={`flex-1 py-2 font-semibold text-center cursor-pointer transition-colors border-b-2 text-[11px] ${
                     isActiveTab
                       ? 'category-tab-active border-sky-600 text-sky-700 dark:text-sky-400 bg-white dark:bg-slate-800'
@@ -1069,16 +1189,83 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
               return (
                 <div
                   key={tpl.id}
-                  onClick={() => setActiveTemplateId(tpl.id)}
-                  className={`p-3.5 cursor-pointer transition-all ${
+                  className={`p-3.5 transition-all flex items-center gap-2.5 ${
                     isActive
                       ? 'active-template-item bg-sky-600 text-white border-l-4 border-sky-400'
-                      : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-900 dark:text-white'
+                      : 'text-slate-900 dark:text-white'
                   }`}
                 >
-                  <div className="font-semibold text-xs">{tpl.eventName}</div>
-                  <div className={`text-[10px] font-medium mt-0.5 ${isActive ? 'template-category text-sky-100' : 'text-slate-500 dark:text-slate-400'}`}>
-                    {tpl.category}
+                  <div className="min-w-0 flex-1">
+                    <div className="font-semibold text-xs truncate">{tpl.eventName}</div>
+                    <div className={`text-[10px] font-medium mt-0.5 truncate ${isActive ? 'template-category text-sky-100' : 'text-slate-500 dark:text-slate-400'}`}>
+                      {tpl.category}
+                    </div>
+                  </div>
+
+                  {/* Edit (customization enabled) / View (read-only) button -
+                      a dedicated tap target instead of relying on "tap
+                      anywhere on this text". stopPropagation avoids double-
+                      firing through the row's own onClick underneath it. */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveTemplateId(tpl.id);
+                      setIsEditDrawerOpen(true);
+                    }}
+                    title={canEditTemplates ? t('edit_template_tooltip', 'Edit this template') : t('view_template_tooltip', 'View this template')}
+                    className={`shrink-0 flex items-center gap-1 text-[10px] font-semibold rounded-md border px-2 py-1 cursor-pointer transition-colors ${
+                      isActive
+                        ? 'bg-white/10 border-white/40 text-white hover:bg-white/20'
+                        : 'bg-sky-50 dark:bg-sky-950/50 border-sky-200 dark:border-sky-800 text-sky-700 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-900'
+                    }`}
+                  >
+                    {canEditTemplates ? <Pencil className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                    <span>{canEditTemplates ? t('edit_button', 'Edit') : t('view_button', 'View')}</span>
+                  </button>
+
+                  {/* Move to Group - reassigns which Templates Catalog tab this
+                      template shows under. stopPropagation on the trigger click
+                      so picking a group doesn't also fire the row's own click
+                      (which opens the editor drawer); the dropdown panel itself
+                      renders via a portal so its own item clicks never bubble
+                      into the row to begin with. */}
+                  <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                    <Dropdown
+                      placement="bottom-end"
+                      dismissOnClick
+                      label=""
+                      className="z-60 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg overflow-hidden text-xs p-1 min-w-28"
+                      renderTrigger={() => (
+                        <button
+                          type="button"
+                          title={t('move_template_group_tooltip', 'Move to a different group')}
+                          className={`flex items-center gap-1 text-[10px] font-semibold rounded-md border px-2 py-1 cursor-pointer transition-colors ${
+                            isActive
+                              ? 'bg-sky-700/60 border-sky-400 text-white hover:bg-sky-700'
+                              : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-sky-400 dark:hover:border-sky-500'
+                          }`}
+                        >
+                          <span>{t(`template_group_${getTemplateGroup(tpl).toLowerCase()}`, getTemplateGroup(tpl))}</span>
+                          <ChevronDown className="w-3 h-3 shrink-0" />
+                        </button>
+                      )}
+                    >
+                      {(['Kitchen', 'Admin', 'Finances'] as const).map((g) => (
+                        <DropdownItem
+                          key={g}
+                          onClick={() => handleMoveTemplateGroup(tpl, g)}
+                          className={`flex items-center justify-between gap-2 px-2.5 py-1.5 text-xs rounded-md ${
+                            getTemplateGroup(tpl) === g
+                              ? 'bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300 font-semibold'
+                              : 'text-slate-700 dark:text-slate-200'
+                          }`}
+                        >
+                          <span>{t(`template_group_${g.toLowerCase()}`, g)}</span>
+                          {getTemplateGroup(tpl) === g && <Check className="w-3.5 h-3.5" />}
+                        </DropdownItem>
+                      ))}
+                    </Dropdown>
                   </div>
                 </div>
               );
@@ -1086,22 +1273,30 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
           </div>
         </div>
 
-        {/* Right Column: Active Template Editor & Live Preview (8 Cols) */}
-        <div className="lg:col-span-8 bg-slate-50 dark:bg-slate-800/60 rounded-lg border border-slate-200 dark:border-slate-700/80 p-4 sm:p-6 space-y-4">
-          {!canEditTemplates && (
-            <div className="flex items-start gap-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 rounded-lg px-3.5 py-3">
-              <ShieldCheck className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-              <p className="text-xs text-amber-800 dark:text-amber-300 m-0">
-                {t('no_edit_permission_hint', "Templates are designed at the root admin level. Ask your root admin to enable customization for this property if you need to edit wording here.")}
-              </p>
-            </div>
-          )}
-          {canEditTemplates && (
-          <>
-          {/* Active Template Header & Save Button */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200 dark:border-slate-700">
-            <div>
-              <h3 className="telegram-notification-modal__subtitle text-base font-semibold text-slate-900 dark:text-white m-0">
+        {/* Active Template Editor & Live Preview - opens as its own Drawer
+            when a template is clicked above. z-60: a secondary drawer meant
+            to stack above an already-open page modal/drawer, per the
+            app-wide z-index scale documented in custom.css (this component
+            is itself rendered inside an outer Drawer when opened from the
+            Header's Telegram icon, isEmbedded=false - z-58 - so the editor
+            needs to sit visibly above that, not compete with it). */}
+        <Drawer
+          open={isEditDrawerOpen}
+          onClose={() => setIsEditDrawerOpen(false)}
+          position="right"
+          className="z-60 w-full sm:max-w-2xl lg:max-w-3xl p-0 bg-slate-50 dark:bg-slate-800/60 shadow-2xl flex flex-col"
+        >
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+          {/* Header: title/description + close are always shown (a view-only
+              user still needs to know what they're looking at and how to
+              close it) - only the Save button is edit-gated. Close stays
+              pinned top-right on every screen width (items-start, no
+              flex-col mobile stacking) to match every other drawer in this
+              app - it was dropping to its own row below the title on
+              narrow viewports before. */}
+          <div className="flex items-start justify-between gap-2 pb-2 border-b border-slate-200 dark:border-slate-700">
+            <div className="min-w-0">
+              <h3 className="telegram-notification-modal__subtitle text-base font-semibold text-slate-900 dark:text-white m-0 truncate">
                 {currentTpl.eventName}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 m-0 pt-0.5">
@@ -1109,28 +1304,43 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsEditDrawerOpen(false)}
+              title={t('close_editor_tooltip', 'Close editor')}
+              className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 flex items-center justify-center transition-colors shrink-0 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {canEditTemplates && (
+            <div className="flex items-center justify-end gap-2 -mt-2">
               {saveStatus && (
                 <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold animate-fade-in flex items-center gap-1">
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   {saveStatus}
                 </span>
               )}
-              <button
-                type="button"
-                onClick={handleSaveActiveTemplate}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs px-4 py-2 rounded-lg flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
-              >
-                <Save className="w-3.5 h-3.5" />
-                <span>{t('save_changes_button', 'Save Changes')}</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={handleSaveActiveTemplate}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs px-4 py-2 rounded-lg flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{t('save_changes_button', 'Save Changes')}</span>
+                </button>
             </div>
-          </div>
+          )}
 
           {/* Per-template Telegram routing: which group receives this specific
-              notification - inherently per-property, so not shown when
-              editing the shared template set with no real property context. */}
-          {!hideRoutingControls && (
+              notification. Gated on canManageRouting (Admin/Super Admin/Root
+              Admin), NOT canEditTemplates - choosing where notifications land
+              is a lighter, separate permission from editing the template's
+              own wording, but still role-restricted, not open to every
+              user. Also not shown at all when editing the shared template
+              set with no real property context (hideRoutingControls). */}
+          {!hideRoutingControls && canManageRouting && (
           <div className="flex items-center gap-2 bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-900 rounded-lg px-3 py-2">
             <Send className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
             <label className="text-xs font-semibold text-slate-700 dark:text-slate-200 shrink-0">{t('send_to_label', 'Send to:')}</label>
@@ -1168,18 +1378,15 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
               <span className="text-[11px] text-slate-400">Loading…</span>
             )}
             {tgRoutingSaving && <Loader2 className="w-3.5 h-3.5 animate-spin text-sky-500 shrink-0" />}
-            {tgSettings && tgSettings.groups.filter(g => g.chatId).length === 0 && (
-              <button
-                type="button"
-                onClick={() => setShowSetupWizard(true)}
-                className="text-[10px] font-semibold text-sky-600 dark:text-sky-400 hover:underline cursor-pointer bg-transparent border-0 p-0 shrink-0"
-              >
-                {t('configure_groups_button', 'Configure groups in Telegram Setup first')}
-              </button>
-            )}
           </div>
           )}
 
+          {/* Everything below (variables, WYSIWYG editor, inline buttons
+              config) is edit-only - a view-only user only sees the header,
+              the routing control above, and the read-only preview further
+              down. */}
+          {canEditTemplates && (
+          <>
           {/* Insert Available Variables */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-800 dark:text-slate-200 block">
@@ -1497,6 +1704,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
             </div>
           </div>
         </div>
+        </Drawer>
       </div>
     </div>
   );

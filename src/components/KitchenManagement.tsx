@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Drawer, Tabs, TabItem, type TabsRef } from 'flowbite-react';
+import { Drawer, Tabs, TabItem, type TabsRef, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell } from 'flowbite-react';
 import {
   UtensilsCrossed,
   Plus,
@@ -31,7 +31,7 @@ import {
   Filter,
   LayoutGrid,
   List
-} from 'lucide-react';
+} from './icons/FlowbiteIcons';
 import { Guest, Order, OrderItem, MenuItem, Requisition, InventoryItem, WalkInTab } from '../types';
 import { GUEST_STATUS_CHECKED_IN, GUEST_STATUS_ACTIVE_LEGACY } from '../constants/guestStatus';
 import { recordTelescopeLog } from '../utils/telescopeLogger';
@@ -40,8 +40,7 @@ import { StyledSelect } from './StyledSelect';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { WalkInTabBillModal } from './WalkInTabBillModal';
-import DataTable from 'react-data-table-component';
-import { flowbiteTableCustomStyles } from '../utils/tableStyles';
+import { TablePagination } from './TablePagination';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
 
 import { useKitchenContext } from '../contexts/KitchenContext';
@@ -749,6 +748,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   // === 0 before this fetch resolved. Defaults true.
   const [smLogsLoading, setSmLogsLoading] = useState(true);
   const [smPage, setSmPage] = useState(1);
+  const [smDesktopPage, setSmDesktopPage] = useState(1);
+  const SM_DESKTOP_PAGE_SIZE = 10;
   useEffect(() => {
     fetchStaffMealLogsFromDB().then((data) => {
       setSmLogs(data);
@@ -880,6 +881,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const [newIngCost, setNewIngCost] = useState(100);
   const [selectedStockItemId, setSelectedStockItemId] = useState('');
   const [recipeSearch, setRecipeSearch] = useState('');
+  const [recipeIngredientsDesktopPage, setRecipeIngredientsDesktopPage] = useState(1);
+  const RECIPE_INGREDIENTS_PAGE_SIZE = 10;
 
   // Load recipes from DB on mount
   useEffect(() => {
@@ -1126,6 +1129,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const [reqQty, setReqQty] = useState(10);
   const [reqUnit, setReqUnit] = useState('kg');
   const [reqSearch, setReqSearch] = useState('');
+  const [reqDesktopPage, setReqDesktopPage] = useState(1);
+  const REQ_DESKTOP_PAGE_SIZE = 15;
 
   // Add Item to Order Cart
   const handleAddToCart = (item: MenuItem) => {
@@ -1607,7 +1612,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               a ticket out of the active grid above) - it just isn't rendered
               as its own table too. */}
 
-          {/* Current Guest Served Dishes - DataTable */}
+          {/* Current Guest Served Dishes - Table */}
           <CurrentGuestServedDishes servedLogs={servedLogs} />
         </div>
         );
@@ -2376,46 +2381,37 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             </button>
           </div>
 
-          <DataTable
-            columns={[
-                {
-                  name: t('req_id_column'),
-                  selector: (row: Requisition) => row.id,
-                sortable: true,
-                width: '120px',
+          <Input
+            type="text"
+            value={reqSearch}
+            onChange={(e) => setReqSearch(e.target.value)}
+            placeholder={t('search_requisition_placeholder')}
+            className="w-full max-w-xs"
+          />
+          {(() => {
+            const requisitionColumns = [
+              {
+                name: t('req_id_column'),
                 cell: (row: Requisition) => <span className="font-semibold">{row.id}</span>,
               },
-                {
-                  name: t('material_name_column'),
-                  selector: (row: Requisition) => row.itemName,
-                sortable: true,
-                grow: 2,
+              {
+                name: t('material_name_column'),
                 cell: (row: Requisition) => <span className="font-semibold text-slate-900 dark:text-white">{row.itemName}</span>,
               },
-                {
-                  name: t('requested_qty_column'),
-                  selector: (row: Requisition) => `${row.requestedQty} ${row.unit}`,
-                sortable: true,
-                width: '130px',
+              {
+                name: t('requested_qty_column'),
+                cell: (row: Requisition) => <span>{row.requestedQty} {row.unit}</span>,
               },
-                {
-                  name: t('requested_at_column'),
-                  selector: (row: Requisition) => row.requestedAt,
-                sortable: true,
-                width: '160px',
+              {
+                name: t('requested_at_column'),
                 cell: (row: Requisition) => <span className="text-slate-500">{formatDateTimeDDMMYYYY(row.requestedAt)}</span>,
               },
-                {
-                  name: t('requested_by_column'),
-                  selector: (row: Requisition) => row.requestedBy,
-                sortable: true,
-                width: '150px',
+              {
+                name: t('requested_by_column'),
+                cell: (row: Requisition) => <span>{row.requestedBy}</span>,
               },
-                {
-                  name: t('status_column_header'),
-                  selector: (row: Requisition) => row.status,
-                sortable: true,
-                width: '110px',
+              {
+                name: t('status_column_header'),
                 cell: (row: Requisition) => (
                   <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
                     row.status === 'Approved'
@@ -2426,10 +2422,9 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   </span>
                 ),
               },
-                {
-                  name: t('action_column_header'),
-                  width: '150px',
-                center: true,
+              {
+                name: t('action_column_header'),
+                align: 'center' as const,
                 cell: (row: Requisition) => (
                   row.status === 'Pending' ? (
                     <button
@@ -2468,30 +2463,49 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   )
                 ),
               },
-            ]}
-            data={filteredRequisitions}
-            pagination
-            paginationPerPage={15}
-            paginationRowsPerPageOptions={[10, 15, 25, 50, 100]}
-            highlightOnHover
-            persistTableHead
-            customStyles={flowbiteTableCustomStyles}
-            responsive
-            subHeader={
-              <Input
-                type="text"
-                value={reqSearch}
-                onChange={(e) => setReqSearch(e.target.value)}
-                placeholder={t('search_requisition_placeholder')}
-                className="w-full max-w-xs"
-              />
+            ];
+
+            if (filteredRequisitions.length === 0) {
+              return (
+                <div className="py-10 text-center text-slate-400 font-semibold text-xs">
+                  {t('no_requisitions_found_text')}
+                </div>
+              );
             }
-            noDataComponent={
-              <div className="py-10 text-center text-slate-400 font-semibold text-xs">
-                {t('no_requisitions_found_text')}
+            return (
+              <div className="overflow-x-auto">
+                <Table hoverable>
+                  <TableHead>
+                    <TableRow>
+                      {requisitionColumns.map((col) => (
+                        <TableHeadCell key={col.name} className={col.align === 'center' ? 'text-center' : ''}>
+                          {col.name}
+                        </TableHeadCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {filteredRequisitions.slice((reqDesktopPage - 1) * REQ_DESKTOP_PAGE_SIZE, reqDesktopPage * REQ_DESKTOP_PAGE_SIZE).map((row: Requisition) => (
+                      <TableRow key={row.id} className="bg-white dark:bg-gray-800">
+                        {requisitionColumns.map((col) => (
+                          <TableCell key={col.name} className={col.align === 'center' ? 'text-center' : ''}>
+                            {col.cell(row)}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <TablePagination
+                  page={reqDesktopPage}
+                  totalItems={filteredRequisitions.length}
+                  pageSize={REQ_DESKTOP_PAGE_SIZE}
+                  onPageChange={setReqDesktopPage}
+                  itemLabel="requisitions"
+                />
               </div>
-            }
-          />
+            );
+          })()}
         </div>
       )}
 
@@ -2682,15 +2696,12 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 )}
               </div>
 
-              {/* Desktop DataTable (hidden md:block) */}
+              {/* Desktop Table (hidden md:block) */}
               <div className="hidden md:block overflow-x-auto">
-                <DataTable
-                  columns={[
+                {(() => {
+                  const smColumns = [
                     {
                       name: 'DATE & TIME',
-                      selector: (row: any) => row.date,
-                      sortable: true,
-                      grow: 1,
                       cell: (row: any) => (
                         <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
                           {row.date.split('\n').map((l: string, idx: number) => <div key={idx}>{l}</div>)}
@@ -2699,17 +2710,12 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     },
                     {
                       name: 'STAFF MEMBERS',
-                      selector: (row: any) => row.staff,
-                      sortable: true,
-                      grow: 2,
                       cell: (row: any) => (
                         <span className="text-xs font-semibold text-gray-900 dark:text-white leading-relaxed">{row.staff}</span>
                       ),
                     },
                     {
                       name: 'TOTAL FOOD CONSUMED',
-                      selector: (row: any) => row.food,
-                      grow: 2,
                       cell: (row: any) => (
                         <span className="text-xs font-medium text-gray-700 dark:text-gray-300 relative inline-flex items-center gap-1.5">
                           {row.food}
@@ -2724,25 +2730,41 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                         </span>
                       ),
                     },
-                  ]}
-                  data={smLogs}
-                  progressPending={smLogsLoading}
-                  progressComponent={
-                    <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
-                      <Loader2 className="w-4 h-4 animate-spin" /> Loading meal logs...
-                    </div>
+                  ];
+
+                  if (smLogsLoading) {
+                    return (
+                      <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
+                        <Loader2 className="w-4 h-4 animate-spin" /> Loading meal logs...
+                      </div>
+                    );
                   }
-                  pagination
-                  paginationPerPage={10}
-                  paginationRowsPerPageOptions={[10, 25, 50]}
-                  highlightOnHover
-                  persistTableHead
-                  noHeader
-                  customStyles={flowbiteTableCustomStyles}
-                  noDataComponent={
-                    <div className="py-8 text-center text-gray-400 font-medium text-xs">{t('no_meal_logs_text')}</div>
+                  if (smLogs.length === 0) {
+                    return <div className="py-8 text-center text-gray-400 font-medium text-xs">{t('no_meal_logs_text')}</div>;
                   }
-                />
+                  return (
+                    <>
+                      <Table hoverable>
+                        <TableBody className="divide-y divide-gray-200 dark:divide-gray-700">
+                          {smLogs.slice((smDesktopPage - 1) * SM_DESKTOP_PAGE_SIZE, smDesktopPage * SM_DESKTOP_PAGE_SIZE).map((row: any, idx: number) => (
+                            <TableRow key={idx} className="bg-white dark:bg-gray-800">
+                              {smColumns.map((col) => (
+                                <TableCell key={col.name}>{col.cell(row)}</TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                      <TablePagination
+                        page={smDesktopPage}
+                        totalItems={smLogs.length}
+                        pageSize={SM_DESKTOP_PAGE_SIZE}
+                        onPageChange={setSmDesktopPage}
+                        itemLabel="logs"
+                      />
+                    </>
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -3139,55 +3161,39 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     className="w-44"
                   />
                 </div>
-                <DataTable
-                  columns={[
+                {(() => {
+                  const ingredientColumns = [
                     {
                       name: t('ingredient_column'),
-                      selector: (row: RecipeIngredient) => row.name,
-                      sortable: true,
-                      grow: 2,
                       cell: (row: RecipeIngredient) => <span className="font-semibold text-slate-900 dark:text-white">{row.name}</span>,
                     },
                     {
                       name: t('qty_portion_column'),
-                      selector: (row: RecipeIngredient) => row.quantity,
-                      sortable: true,
-                      width: '110px',
-                      center: true,
+                      align: 'center' as const,
                       cell: (row: RecipeIngredient) => (
                         <span className="text-slate-700 dark:text-slate-300 font-medium text-xs">{row.quantity} {row.unit}</span>
                       ),
                     },
                     {
                       name: t('scaled_qty_column'),
-                      selector: (row: RecipeIngredient) => row.quantity * servings,
-                      sortable: true,
-                      width: '110px',
-                      center: true,
+                      align: 'center' as const,
                       cell: (row: RecipeIngredient) => (
                         <span className="text-blue-600 dark:text-blue-400 font-semibold text-xs">{(row.quantity * servings).toFixed(3)} {row.unit}</span>
                       ),
                     },
                     {
                       name: t('cost_unit_column'),
-                      selector: (row: RecipeIngredient) => row.costPerUnit,
-                      sortable: true,
-                      width: '100px',
-                      right: true,
+                      align: 'right' as const,
                       cell: (row: RecipeIngredient) => <span className="text-slate-600 dark:text-slate-400 font-medium text-xs">₹{row.costPerUnit}</span>,
                     },
                     {
                       name: t('total_column'),
-                      selector: (row: RecipeIngredient) => row.quantity * servings * row.costPerUnit,
-                      sortable: true,
-                      width: '100px',
-                      right: true,
+                      align: 'right' as const,
                       cell: (row: RecipeIngredient) => <span className="font-semibold text-emerald-700 dark:text-emerald-400 text-xs">₹{(row.quantity * servings * row.costPerUnit).toFixed(2)}</span>,
                     },
                     {
                       name: '',
-                      width: '60px',
-                      center: true,
+                      align: 'center' as const,
                       cell: (row: RecipeIngredient) => (
                         <button
                           onClick={() => setRecipeIngredients(recipeIngredients.filter((i) => i.id !== row.id))}
@@ -3198,24 +3204,42 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                         </button>
                       ),
                     },
-                  ]}
-                  data={filteredRecipeIngredients}
-                  pagination={recipeIngredients.length > 10}
-                  paginationPerPage={10}
-                  paginationRowsPerPageOptions={[10, 25, 50]}
-                  noHeader
-                  highlightOnHover
-                  persistTableHead
-                  responsive
-                  customStyles={flowbiteTableCustomStyles}
-                  noDataComponent={
-                    <div className="py-12 text-center">
-                      <Boxes className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
-                      <p className="text-sm text-slate-400 font-semibold">{t('no_ingredients_yet_text')}</p>
-                      <p className="text-[11px] text-slate-400 mt-1">{t('add_raw_ingredients_hint')}</p>
-                    </div>
+                  ];
+
+                  if (filteredRecipeIngredients.length === 0) {
+                    return (
+                      <div className="py-12 text-center">
+                        <Boxes className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+                        <p className="text-sm text-slate-400 font-semibold">{t('no_ingredients_yet_text')}</p>
+                        <p className="text-[11px] text-slate-400 mt-1">{t('add_raw_ingredients_hint')}</p>
+                      </div>
+                    );
                   }
-                />
+                  return (
+                    <div className="overflow-x-auto">
+                      <Table hoverable>
+                        <TableBody className="divide-y divide-gray-200 dark:divide-gray-700">
+                          {filteredRecipeIngredients.slice((recipeIngredientsDesktopPage - 1) * RECIPE_INGREDIENTS_PAGE_SIZE, recipeIngredientsDesktopPage * RECIPE_INGREDIENTS_PAGE_SIZE).map((row) => (
+                            <TableRow key={row.id} className="bg-white dark:bg-gray-800">
+                              {ingredientColumns.map((col) => (
+                                <TableCell key={col.name} className={col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : ''}>
+                                  {col.cell(row)}
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                      <TablePagination
+                        page={recipeIngredientsDesktopPage}
+                        totalItems={filteredRecipeIngredients.length}
+                        pageSize={RECIPE_INGREDIENTS_PAGE_SIZE}
+                        onPageChange={setRecipeIngredientsDesktopPage}
+                        itemLabel="ingredients"
+                      />
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 
@@ -3595,6 +3619,8 @@ const CurrentGuestServedDishes: React.FC<{ servedLogs: ServedLogEntry[] }> = ({ 
 
   const [currentPage, setCurrentPage] = React.useState(1);
   const itemsPerPage = 10;
+  const [servedLogsDesktopPage, setServedLogsDesktopPage] = React.useState(1);
+  const SERVED_LOGS_DESKTOP_PAGE_SIZE = 10;
 
   React.useEffect(() => {
     setCurrentPage(1);
@@ -3709,37 +3735,61 @@ const CurrentGuestServedDishes: React.FC<{ servedLogs: ServedLogEntry[] }> = ({ 
           )}
         </div>
 
-        {/* Desktop DataTable (hidden md:block) */}
+        {/* Desktop Table (hidden md:block) */}
         <div className="hidden md:block overflow-x-auto">
-          <DataTable
-            columns={[
-              { name: 'ID', selector: (row: ServedLogEntry) => row.id, omit: true },
-              { name: t('ticket_column'), selector: (row: ServedLogEntry) => row.orderId, width: '80px', cell: (row: ServedLogEntry) => <span className="font-semibold text-slate-900 dark:text-white text-xs">#{row.orderId}</span> },
-              { name: t('dish_column'), selector: (row: ServedLogEntry) => row.itemName, grow: 2, cell: (row: ServedLogEntry) => <span className="font-semibold text-emerald-700 dark:text-emerald-400 text-xs">{row.itemName}</span> },
-              { name: t('qty_column'), selector: (row: ServedLogEntry) => row.quantity, width: '60px', center: true },
-              { name: t('guest_column'), selector: (row: ServedLogEntry) => row.guestName, cell: (row: ServedLogEntry) => <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs">{row.guestName || '-'}</span> },
-              { name: t('room_column'), selector: (row: ServedLogEntry) => row.roomNumber, width: '70px', cell: (row: ServedLogEntry) => <span className="text-slate-600 dark:text-slate-400 text-xs">{row.roomNumber || '-'}</span> },
-              { name: t('served_by_column'), selector: (row: ServedLogEntry) => row.servedBy, cell: (row: ServedLogEntry) => <span className="text-slate-600 dark:text-slate-400 text-xs">{row.servedBy}</span> },
+          {(() => {
+            const servedLogColumns = [
+              { name: t('ticket_column'), cell: (row: ServedLogEntry) => <span className="font-semibold text-slate-900 dark:text-white text-xs">#{row.orderId}</span> },
+              { name: t('dish_column'), cell: (row: ServedLogEntry) => <span className="font-semibold text-emerald-700 dark:text-emerald-400 text-xs">{row.itemName}</span> },
+              { name: t('qty_column'), align: 'center' as const, cell: (row: ServedLogEntry) => <span>{row.quantity}</span> },
+              { name: t('guest_column'), cell: (row: ServedLogEntry) => <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs">{row.guestName || '-'}</span> },
+              { name: t('room_column'), cell: (row: ServedLogEntry) => <span className="text-slate-600 dark:text-slate-400 text-xs">{row.roomNumber || '-'}</span> },
+              { name: t('served_by_column'), cell: (row: ServedLogEntry) => <span className="text-slate-600 dark:text-slate-400 text-xs">{row.servedBy}</span> },
               {
                 name: t('serve_time_column', 'Serve Delay'),
-                selector: (row: ServedLogEntry) => row.readyAt,
-                width: '100px',
                 cell: (row: ServedLogEntry) => {
                   const diff = parseAndDiffMinutes(row.readyAt || '', row.servedAt || '');
                   return <span className="text-xs font-semibold text-amber-600 dark:text-amber-500 whitespace-nowrap">{diff}</span>;
                 }
               },
-              { name: t('ready_time_column', 'Ready At'), selector: (row: ServedLogEntry) => row.readyAt || '', width: '140px', cell: (row: ServedLogEntry) => <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">{row.readyAt ? formatDateTimeDDMMYYYY(row.readyAt) : '-'}</span> },
-              { name: t('served_time_column', 'Served At'), selector: (row: ServedLogEntry) => row.servedAt, width: '140px', cell: (row: ServedLogEntry) => <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">{formatDateTimeDDMMYYYY(row.servedAt)}</span> },
-            ]}
-            data={filteredLogs}
-            pagination
-            paginationPerPage={10}
-            paginationRowsPerPageOptions={[10, 15, 25, 50, 100]}
-            highlightOnHover
-            persistTableHead
-            customStyles={flowbiteTableCustomStyles}
-          />
+              { name: t('ready_time_column', 'Ready At'), cell: (row: ServedLogEntry) => <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">{row.readyAt ? formatDateTimeDDMMYYYY(row.readyAt) : '-'}</span> },
+              { name: t('served_time_column', 'Served At'), cell: (row: ServedLogEntry) => <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">{formatDateTimeDDMMYYYY(row.servedAt)}</span> },
+            ];
+
+            return (
+              <>
+                <Table hoverable>
+                  <TableHead>
+                    <TableRow>
+                      {servedLogColumns.map((col) => (
+                        <TableHeadCell key={col.name} className={col.align === 'center' ? 'text-center' : ''}>
+                          {col.name}
+                        </TableHeadCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {filteredLogs.slice((servedLogsDesktopPage - 1) * SERVED_LOGS_DESKTOP_PAGE_SIZE, servedLogsDesktopPage * SERVED_LOGS_DESKTOP_PAGE_SIZE).map((row) => (
+                      <TableRow key={row.id} className="bg-white dark:bg-gray-800">
+                        {servedLogColumns.map((col) => (
+                          <TableCell key={col.name} className={col.align === 'center' ? 'text-center' : ''}>
+                            {col.cell(row)}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <TablePagination
+                  page={servedLogsDesktopPage}
+                  totalItems={filteredLogs.length}
+                  pageSize={SERVED_LOGS_DESKTOP_PAGE_SIZE}
+                  onPageChange={setServedLogsDesktopPage}
+                  itemLabel="entries"
+                />
+              </>
+            );
+          })()}
         </div>
       </div>
     </div>

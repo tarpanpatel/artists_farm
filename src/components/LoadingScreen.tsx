@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, AlertCircle, Home } from 'lucide-react';
+import { Building2, AlertCircle, Home } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';
 
 interface LoadingScreenProps {

@@ -18,7 +18,7 @@ import {
   Zap,
   TrendingDown,
   Activity
-} from 'lucide-react';
+} from './icons/FlowbiteIcons';
 import ReactApexChart from 'react-apexcharts';
 import { BillingReceipt } from '../types';
 import { GUEST_STATUS_CHECKED_OUT, GUEST_STATUS_CHECKEDOUT_LEGACY } from '../constants/guestStatus';
@@ -38,6 +38,7 @@ import { Input } from './Input';
 import { PageHeader } from './PageHeader';
 import { t } from '../i18n/en';
 import { centeredTabsTheme } from '../utils/tabsTheme';
+import { getChartColors, CHART_QUALITATIVE_PALETTE, chartBase } from '../utils/chartTheme';
 
 interface AnalyticsRoom {
   id: number;
@@ -431,12 +432,12 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   }).sort((a, b) => b.revenue - a.revenue);
 
   const roomRevenueBarOptions: any = {
-    chart: { type: 'bar', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    chart: { type: 'bar', height: 320, ...chartBase.chart },
     plotOptions: { bar: { borderRadius: 8, columnWidth: '50%' } },
     colors: ['#2563eb'],
     xaxis: { categories: roomPerformance.map((r) => r.name) },
     yaxis: { labels: { formatter: (val: number) => `₹${Math.round(val).toLocaleString('en-IN')}` } },
-    grid: { strokeDashArray: 4 },
+    grid: chartBase.grid,
     dataLabels: { enabled: false },
     legend: { show: false },
   };
@@ -467,14 +468,10 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   const sortedExpenseItems = Object.entries(expenseItems)
     .sort((a, b) => b[1].totalCost - a[1].totalCost);
 
-  const brandColor = '#2563eb';
-  const brandSecondary = '#0ea5e9';
-  const successColor = '#10b981';
-  const dangerColor = '#ef4444';
-  const warningColor = '#f59e0b';
+  const { brand: brandColor, brandSecondary, success: successColor, danger: dangerColor, warning: warningColor } = getChartColors();
 
   const overviewPieOptions: any = {
-    chart: { type: 'donut', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    chart: { type: 'donut', height: 320, ...chartBase.chart },
     labels: kitchenModuleEnabled ? ['Room Revenue', 'Kitchen Revenue', 'Expenses'] : ['Room Revenue', 'Expenses'],
     colors: kitchenModuleEnabled ? [brandColor, brandSecondary, dangerColor] : [brandColor, dangerColor],
     plotOptions: { pie: { donut: { size: '70%', labels: { show: true, total: { show: true, label: 'Total' } } } } },
@@ -488,12 +485,12 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     : [roomRevenue || 0, totalOutflowExpenses || 0];
 
   const bookingsBarOptions: any = {
-    chart: { type: 'bar', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    chart: { type: 'bar', height: 320, ...chartBase.chart },
     plotOptions: { bar: { borderRadius: 8, columnWidth: '50%' } },
     colors: [brandColor, successColor],
     xaxis: { categories: sortedBookingsByMonth.map(([month]) => month) },
     yaxis: { labels: { formatter: (val: number) => `₹${Math.round(val).toLocaleString('en-IN')}` } },
-    grid: { strokeDashArray: 4 },
+    grid: chartBase.grid,
     dataLabels: { enabled: false },
     legend: { show: false },
   };
@@ -503,12 +500,12 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   ];
 
   const bookingsGuestOptions: any = {
-    chart: { type: 'line', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    chart: { type: 'line', height: 320, ...chartBase.chart },
     stroke: { width: 3, curve: 'smooth' },
     colors: [warningColor],
     xaxis: { categories: sortedBookingsByMonth.map(([month]) => month) },
     yaxis: { labels: { formatter: (val: number) => `${Math.round(val)}` } },
-    grid: { strokeDashArray: 4 },
+    grid: chartBase.grid,
     dataLabels: { enabled: false },
     legend: { show: false },
   };
@@ -518,12 +515,12 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   ];
 
   const laborRatioOptions: any = {
-    chart: { type: 'line', height: 300, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    chart: { type: 'line', height: 300, ...chartBase.chart },
     stroke: { width: 3, curve: 'smooth' },
     colors: [dangerColor],
     xaxis: { categories: laborCostRatioByMonth.map((m) => m.key) },
     yaxis: { labels: { formatter: (val: number) => `${val.toFixed(0)}%` } },
-    grid: { strokeDashArray: 4 },
+    grid: chartBase.grid,
     dataLabels: { enabled: false },
     legend: { show: false },
     tooltip: { y: { formatter: (val: number) => `${val.toFixed(1)}% of revenue` } },
@@ -534,12 +531,12 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   ];
 
   const billsTrendOptions: any = {
-    chart: { type: 'bar', height: 280, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    chart: { type: 'bar', height: 280, ...chartBase.chart },
     plotOptions: { bar: { borderRadius: 6, columnWidth: '50%' } },
     colors: [warningColor],
     xaxis: { categories: sortedBillsByMonth.map(([month]) => month) },
     yaxis: { labels: { formatter: (val: number) => `₹${Math.round(val).toLocaleString('en-IN')}` } },
-    grid: { strokeDashArray: 4 },
+    grid: chartBase.grid,
     dataLabels: { enabled: false },
     legend: { show: false },
   };
@@ -549,7 +546,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   ];
 
   const billsByTypeOptions: any = {
-    chart: { type: 'donut', height: 280, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    chart: { type: 'donut', height: 280, ...chartBase.chart },
     labels: sortedBillsByType.map(([label]) => label),
     colors: [brandColor, brandSecondary, successColor, warningColor, dangerColor, '#8b5cf6', '#ec4899'],
     plotOptions: { pie: { donut: { size: '65%' } } },
@@ -561,12 +558,12 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   const billsByTypeSeries = sortedBillsByType.map(([, total]) => total);
 
   const paceWeeklyOptions: any = {
-    chart: { type: 'bar', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    chart: { type: 'bar', height: 320, ...chartBase.chart },
     plotOptions: { bar: { borderRadius: 6, columnWidth: '55%' } },
     colors: [brandColor],
     xaxis: { categories: paceWeeks.map((w) => w.label), title: { text: t('pace_week_starting_axis', 'Week starting') } },
     yaxis: { labels: { formatter: (val: number) => `₹${Math.round(val).toLocaleString('en-IN')}` } },
-    grid: { strokeDashArray: 4 },
+    grid: chartBase.grid,
     dataLabels: { enabled: false },
     legend: { show: false },
     tooltip: { y: { formatter: (val: number) => `₹${val.toLocaleString('en-IN')}` } },
@@ -577,12 +574,12 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   ];
 
   const foodBarOptions: any = {
-    chart: { type: 'bar', height: 360, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    chart: { type: 'bar', height: 360, ...chartBase.chart },
     plotOptions: { bar: { borderRadius: 6, columnWidth: '60%' } },
     colors: [brandSecondary],
     xaxis: { categories: sortedMenuItems.slice(0, 10).map(([, data]) => data.name) },
     yaxis: { labels: { formatter: (val: number) => `₹${Math.round(val).toLocaleString('en-IN')}` } },
-    grid: { strokeDashArray: 4 },
+    grid: chartBase.grid,
     dataLabels: { enabled: false },
     legend: { show: false },
   };
@@ -599,22 +596,22 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   // profitable" dish still reads correctly rather than an all-positive bar.
   const dishProfitAbsMax = Math.max(1, ...costedDishes.map((d) => Math.abs(d.profit ?? 0)));
   const mostProfitableDishesBarOptions: any = {
-    chart: { type: 'bar', height: 220, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    chart: { type: 'bar', height: 220, ...chartBase.chart },
     plotOptions: { bar: { horizontal: true, barHeight: '55%', borderRadius: 4 } },
     colors: [successColor],
     dataLabels: { enabled: true, formatter: (val: number) => `₹${val.toLocaleString('en-IN')}` },
     xaxis: { categories: mostProfitableDishes.map((d) => d.name), min: -dishProfitAbsMax, max: dishProfitAbsMax },
-    grid: { strokeDashArray: 4 },
+    grid: chartBase.grid,
   };
   const mostProfitableDishesBarSeries = [{ name: 'Profit', data: mostProfitableDishes.map((d) => Number((d.profit ?? 0).toFixed(0))) }];
 
   const leastProfitableDishesBarOptions: any = {
-    chart: { type: 'bar', height: 220, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    chart: { type: 'bar', height: 220, ...chartBase.chart },
     plotOptions: { bar: { horizontal: true, barHeight: '55%', borderRadius: 4 } },
     colors: [dangerColor],
     dataLabels: { enabled: true, formatter: (val: number) => `₹${val.toLocaleString('en-IN')}` },
     xaxis: { categories: leastProfitableDishes.map((d) => d.name), min: -dishProfitAbsMax, max: dishProfitAbsMax },
-    grid: { strokeDashArray: 4 },
+    grid: chartBase.grid,
   };
   const leastProfitableDishesBarSeries = [{ name: 'Profit', data: leastProfitableDishes.map((d) => Number((d.profit ?? 0).toFixed(0))) }];
 
@@ -627,22 +624,22 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   const dishOrderCountMax = Math.max(1, ...dishPerformance.map((d) => d.count));
 
   const mostOrderedDishesBarOptions: any = {
-    chart: { type: 'bar', height: 220, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    chart: { type: 'bar', height: 220, ...chartBase.chart },
     plotOptions: { bar: { horizontal: true, barHeight: '55%', borderRadius: 4 } },
     colors: [successColor],
     dataLabels: { enabled: true, formatter: (val: number) => `${val}x` },
     xaxis: { categories: mostOrderedDishes.map((d) => d.name), max: dishOrderCountMax },
-    grid: { strokeDashArray: 4 },
+    grid: chartBase.grid,
   };
   const mostOrderedDishesBarSeries = [{ name: 'Orders', data: mostOrderedDishes.map((d) => d.count) }];
 
   const leastOrderedDishesBarOptions: any = {
-    chart: { type: 'bar', height: 220, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    chart: { type: 'bar', height: 220, ...chartBase.chart },
     plotOptions: { bar: { horizontal: true, barHeight: '55%', borderRadius: 4 } },
     colors: [dangerColor],
     dataLabels: { enabled: true, formatter: (val: number) => `${val}x` },
     xaxis: { categories: leastOrderedDishes.map((d) => d.name), max: dishOrderCountMax },
-    grid: { strokeDashArray: 4 },
+    grid: chartBase.grid,
   };
   const leastOrderedDishesBarSeries = [{ name: 'Orders', data: leastOrderedDishes.map((d) => d.count) }];
 
@@ -676,13 +673,13 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   })();
 
   const kitchenTrendOptions: any = {
-    chart: { type: 'line', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    chart: { type: 'line', height: 320, ...chartBase.chart },
     colors: [successColor, dangerColor],
     stroke: { curve: 'smooth', width: 2.5 },
     markers: { size: 3 },
     xaxis: { categories: kitchenTrendByDate.labels },
     yaxis: { labels: { formatter: (val: number) => `₹${Math.round(val).toLocaleString('en-IN')}` } },
-    grid: { strokeDashArray: 4 },
+    grid: chartBase.grid,
     dataLabels: { enabled: false },
     legend: { position: 'top' },
     tooltip: { y: { formatter: (val: number) => `₹${val.toLocaleString('en-IN')}` } },
@@ -753,13 +750,13 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   const selectedFluctuationStats = fluctuationStats.filter((s) => selectedFluctuationItems.includes(s.name));
 
   const fluctuationChartOptions: any = {
-    chart: { type: 'line', height: 340, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    chart: { type: 'line', height: 340, ...chartBase.chart },
     colors: fluctuationColors,
     stroke: { curve: 'smooth', width: 2.5 },
     markers: { size: 4 },
     xaxis: { type: 'datetime', title: { text: t('purchase_date_axis', 'Purchase Date') } },
     yaxis: { title: { text: t('unit_cost_axis', 'Unit Cost (₹)') }, labels: { formatter: (v: number) => `₹${v.toFixed(0)}` } },
-    grid: { strokeDashArray: 4 },
+    grid: chartBase.grid,
     dataLabels: { enabled: false },
     legend: { position: 'top' },
     tooltip: { x: { format: 'dd/MM/yyyy' }, y: { formatter: (val: number) => `₹${val.toLocaleString('en-IN')}` } },
@@ -771,12 +768,12 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   }));
 
   const expensesBarOptions: any = {
-    chart: { type: 'bar', height: 360, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    chart: { type: 'bar', height: 360, ...chartBase.chart },
     plotOptions: { bar: { borderRadius: 6, columnWidth: '60%' } },
     colors: [dangerColor],
     xaxis: { categories: sortedExpenseItems.slice(0, 15).map(([name]) => name) },
     yaxis: { labels: { formatter: (val: number) => `₹${Math.round(val).toLocaleString('en-IN')}` } },
-    grid: { strokeDashArray: 4 },
+    grid: chartBase.grid,
     dataLabels: { enabled: false },
     legend: { show: false },
   };
@@ -894,9 +891,9 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   const paymentMethodPieLabels: string[] = Object.keys(paymentMethodCounts) as string[];
 
   const paymentMethodPieOptions: any = {
-    chart: { type: 'donut', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    chart: { type: 'donut', height: 320, ...chartBase.chart },
     labels: paymentMethodPieLabels,
-    colors: ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#6b7280'],
+    colors: CHART_QUALITATIVE_PALETTE,
     legend: { position: 'bottom' },
     stroke: { show: false },
     dataLabels: { enabled: true, formatter: (val: number) => `${val.toFixed(1)}%` },
@@ -921,7 +918,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   const bookingSourcePieLabels: string[] = Object.keys(bookingSourceCounts) as string[];
 
   const bookingSourcePieOptions: any = {
-    chart: { type: 'donut', height: 280, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    chart: { type: 'donut', height: 280, ...chartBase.chart },
     labels: bookingSourcePieLabels,
     colors: ['#8b5cf6', '#10b981', '#f59e0b', '#3b82f6', '#ec4899', '#6b7280'],
     legend: { position: 'bottom' },
@@ -945,7 +942,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   const extraChargesSeries: number[] = extraChargesByCategory.map(([, amount]) => Number(amount));
   const extraChargesLabels: string[] = extraChargesByCategory.map(([cat]) => cat);
   const extraChargesChartOptions: any = {
-    chart: { type: 'donut', height: 280, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    chart: { type: 'donut', height: 280, ...chartBase.chart },
     labels: extraChargesLabels,
     colors: ['#f59e0b', '#ec4899', '#8b5cf6', '#3b82f6', '#10b981', '#6b7280'],
     legend: { position: 'bottom' },
@@ -1030,22 +1027,22 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   const dishPrepTimeMax = Math.max(1, ...dishPrepAverages.map((d) => d.avgMinutes));
 
   const fastestPreparedBarOptions: any = {
-    chart: { type: 'bar', height: 220, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    chart: { type: 'bar', height: 220, ...chartBase.chart },
     plotOptions: { bar: { horizontal: true, barHeight: '55%', borderRadius: 4 } },
     colors: [successColor],
     dataLabels: { enabled: true, formatter: (val: number) => `${val.toFixed(1)}m` },
     xaxis: { categories: fastestPreparedDishes.map((d) => d.name), max: dishPrepTimeMax },
-    grid: { strokeDashArray: 4 },
+    grid: chartBase.grid,
   };
   const fastestPreparedBarSeries = [{ name: 'Avg Prep Time', data: fastestPreparedDishes.map((d) => Number(d.avgMinutes.toFixed(1))) }];
 
   const slowestPreparedBarOptions: any = {
-    chart: { type: 'bar', height: 220, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    chart: { type: 'bar', height: 220, ...chartBase.chart },
     plotOptions: { bar: { horizontal: true, barHeight: '55%', borderRadius: 4 } },
     colors: [dangerColor],
     dataLabels: { enabled: true, formatter: (val: number) => `${val.toFixed(1)}m` },
     xaxis: { categories: slowestPreparedDishes.map((d) => d.name), max: dishPrepTimeMax },
-    grid: { strokeDashArray: 4 },
+    grid: chartBase.grid,
   };
   const slowestPreparedBarSeries = [{ name: 'Avg Prep Time', data: slowestPreparedDishes.map((d) => Number(d.avgMinutes.toFixed(1))) }];
 
@@ -1088,28 +1085,28 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     : ['Premium Saffron', 'Olive Oil Can', 'Basmati Rice Bag', 'Fresh Salmon Fish', 'Dairy Butter Pack'];
 
   const reqBarOptions: any = {
-    chart: { type: 'bar', height: 200, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    chart: { type: 'bar', height: 200, ...chartBase.chart },
     plotOptions: { bar: { horizontal: true, barHeight: '55%', borderRadius: 4 } },
     colors: ['#8b5cf6'],
     dataLabels: { enabled: true, formatter: (val: number) => `${val}x` },
     xaxis: { categories: reqChartLabels },
-    grid: { strokeDashArray: 4 }
+    grid: chartBase.grid,
   };
 
   const costBarOptions: any = {
-    chart: { type: 'bar', height: 200, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    chart: { type: 'bar', height: 200, ...chartBase.chart },
     plotOptions: { bar: { horizontal: true, barHeight: '55%', borderRadius: 4 } },
     colors: ['#ec4899'],
     dataLabels: { enabled: true, formatter: (val: number) => `₹${val}` },
     xaxis: { categories: costChartLabels },
-    grid: { strokeDashArray: 4 }
+    grid: chartBase.grid,
   };
 
   // P&L Income Chart
   const pLIncomeSeries: number[] = pLIncomeGroups.map(([_, amount]) => Number(amount));
   const pLIncomeLabels: string[] = pLIncomeGroups.map(([cat]) => cat);
   const pLIncomeChartOptions: any = {
-    chart: { type: 'donut', height: 280, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    chart: { type: 'donut', height: 280, ...chartBase.chart },
     labels: pLIncomeLabels,
     colors: ['#10b981', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6', '#6b7280'],
     legend: { position: 'bottom' },
@@ -1121,7 +1118,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   const pLExpenseSeries: number[] = pLExpenseGroups.map(([_, amount]) => Number(amount));
   const pLExpenseLabels: string[] = pLExpenseGroups.map(([cat]) => cat);
   const pLExpenseChartOptions: any = {
-    chart: { type: 'donut', height: 280, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    chart: { type: 'donut', height: 280, ...chartBase.chart },
     labels: pLExpenseLabels,
     colors: ['#ef4444', '#f59e0b', '#3b82f6', '#ec4899', '#8b5cf6', '#6b7280'],
     legend: { position: 'bottom' },

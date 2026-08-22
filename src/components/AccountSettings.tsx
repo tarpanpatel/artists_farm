@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from 'flowbite-react';
-import { UserCog, User, Phone, Mail, ShieldCheck, KeyRound, Loader2, Save } from 'lucide-react';
+import { UserCog, User, Phone, Mail, ShieldCheck, KeyRound, Loader2, Save } from './icons/FlowbiteIcons';
 import { Input } from './Input';
 import { Button } from './Button';
 import { useToast } from './ToastContext';

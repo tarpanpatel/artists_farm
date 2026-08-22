@@ -475,42 +475,139 @@ class ICalSyncManager {
             $stmt->execute($scopeIds);
             $events = $stmt->fetchAll();
 
-            // Parse event_data to extract booking info
+            // Parse event_data to extract booking info / resolve a real
+            // platform label - shared with getUnconvertedDueBlocks() below,
+            // see annotateEventSource().
             foreach ($events as &$event) {
-                $data = json_decode($event['event_data'], true);
-                $event['reservation_url'] = $data['reservation_url'] ?? null;
-                // Prefer the sync config's own service_type/service_name (set
-                // correctly when the feed was connected, see syncICalEvents()) over
-                // whatever's frozen into this row's event_data - the config is the
-                // live source of truth if it was ever corrected after the sync ran.
-                $event['source'] = $event['service_type'] ?: ($data['source'] ?? 'unknown');
-                $event['source_label'] = $event['service_name'] ?: ($data['source_label'] ?? ucfirst($event['source']));
-
-                // The service_type enum only distinguishes google/airbnb/ical/other -
-                // in real data, feeds pulled in as the generic 'ical'/'other' still
-                // need a real platform label, and the external UID is a strong,
-                // verifiable signal for that (confirmed live: a real synced feed here
-                // is saved as service_type='ical' with a non-descriptive service_name
-                // like "Property Calendar", even though every event's UID ends
-                // '@airbnb.com' - Airbnb's own export format, not user-editable).
-                // Only override the generic/unknown case, never a specific value
-                // someone deliberately set (e.g. 'google').
-                if (in_array($event['source'], ['unknown', 'ical', 'other'], true)
-                    && strpos($event['external_event_id'], '@airbnb.com') !== false) {
-                    $event['source'] = 'airbnb';
-                    // Only replace the label if it doesn't already say Airbnb - a
-                    // config named e.g. "Airbnb Calendar (Room 103)" is more useful
-                    // than flattening it down to the bare word "Airbnb".
-                    if (stripos($event['source_label'], 'airbnb') === false) {
-                        $event['source_label'] = 'Airbnb';
-                    }
-                }
+                $this->annotateEventSource($event);
             }
 
             return ['status' => 'success', 'data' => $events];
         } catch (Exception $e) {
             return ['status' => 'error', 'message' => $e->getMessage()];
         }
+    }
+
+    /**
+     * Resolves an ical_synced_events row's reservation_url/source/source_label
+     * in place. Split out of getBlockedDates() (22 Aug 2026) so
+     * getUnconvertedDueBlocks() below can share the exact same
+     * platform-label-resolution logic instead of drifting out of sync with
+     * its own copy.
+     */
+    private function annotateEventSource(array &$event): void {
+        $data = json_decode($event['event_data'] ?? '', true) ?: [];
+        $event['reservation_url'] = $data['reservation_url'] ?? null;
+        // Prefer the sync config's own service_type/service_name (set
+        // correctly when the feed was connected, see syncICalEvents()) over
+        // whatever's frozen into this row's event_data - the config is the
+        // live source of truth if it was ever corrected after the sync ran.
+        $event['source'] = $event['service_type'] ?: ($data['source'] ?? 'unknown');
+        $event['source_label'] = $event['service_name'] ?: ($data['source_label'] ?? ucfirst($event['source']));
+
+        // The service_type enum only distinguishes google/airbnb/ical/other -
+        // in real data, feeds pulled in as the generic 'ical'/'other' still
+        // need a real platform label, and the external UID is a strong,
+        // verifiable signal for that (confirmed live: a real synced feed here
+        // is saved as service_type='ical' with a non-descriptive service_name
+        // like "Property Calendar", even though every event's UID ends
+        // '@airbnb.com' - Airbnb's own export format, not user-editable).
+        // Only override the generic/unknown case, never a specific value
+        // someone deliberately set (e.g. 'google').
+        if (in_array($event['source'], ['unknown', 'ical', 'other'], true)
+            && strpos($event['external_event_id'], '@airbnb.com') !== false) {
+            $event['source'] = 'airbnb';
+            // Only replace the label if it doesn't already say Airbnb - a
+            // config named e.g. "Airbnb Calendar (Room 103)" is more useful
+            // than flattening it down to the bare word "Airbnb".
+            if (stripos($event['source_label'], 'airbnb') === false) {
+                $event['source_label'] = 'Airbnb';
+            }
+        }
+    }
+
+    /**
+     * Every unconverted OTA block, across every property/tenant, whose date
+     * range has already begun - present (guest may be in-house right now
+     * with zero booking record) or fully past (guest already left, still
+     * never recorded) - used by the dashboard's "System Alerts" panel
+     * (client-side, filtered from the same getBlockedDates() data a
+     * property already fetches) and by
+     * php/cron/check_unconverted_ota_bookings.php (which needs the
+     * cross-property view this gives, unlike getBlockedDates()'s
+     * single-property scope).
+     *
+     * Deliberately excludes purely-future blocks (event_start > now) - those
+     * don't need attention yet, there's still time before the guest arrives.
+     * Reuses the same "unclaimed" definition as getBlockedDates() (a guests
+     * row exists claiming the external_event_id) - nothing here needs its
+     * own separate "not converted" check.
+     */
+    public function getUnconvertedDueBlocks(): array {
+        try {
+            $query = "SELECT e.event_start, e.event_end, e.event_title, e.event_data, e.external_event_id,
+                             c.property_id as room_id, c.service_type, c.service_name,
+                             p.name as room_name, parent.name as parent_name
+                     FROM ical_synced_events e
+                     JOIN ical_sync_configs c ON e.sync_config_id = c.id
+                     JOIN properties p ON p.id = c.property_id
+                     LEFT JOIN properties parent ON parent.id = p.parent_property_id
+                     WHERE e.sync_status = 'synced'
+                     AND e.event_start <= NOW()
+                     AND NOT EXISTS (
+                         SELECT 1 FROM guests g
+                         WHERE g.ical_external_event_id = e.external_event_id
+                         AND (g.room_id = c.property_id OR g.property_id = c.property_id)
+                     )
+                     ORDER BY e.event_start ASC";
+
+            $stmt = $this->pdo->query($query);
+            $events = $stmt->fetchAll();
+
+            $today = date('Y-m-d');
+            foreach ($events as &$event) {
+                $this->annotateEventSource($event);
+                $endDate = substr($event['event_end'], 0, 10);
+                $event['is_ongoing'] = $endDate >= $today;
+                $event['days_overdue'] = $event['is_ongoing'] ? 0 : (int)floor((strtotime($today) - strtotime($endDate)) / 86400);
+            }
+
+            return ['status' => 'success', 'data' => $events];
+        } catch (Exception $e) {
+            return ['status' => 'error', 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Self-healing create of the dedupe table
+     * php/cron/check_unconverted_ota_bookings.php uses to avoid re-sending
+     * the same Telegram alert every run - see that file. Not needed by any
+     * HTTP action (the dashboard only reads getBlockedDates(), it never
+     * writes here), so this is called explicitly (constructor-side self-heal
+     * would add an extra isSchemaVerified() check to every single
+     * get_blocked_dates/get_ical_syncs request for a table those requests
+     * never touch) - once from the cron itself, and once from this file's
+     * own HTTP dispatch below so it also self-heals the moment anyone opens
+     * iCal Sync Manager, per CLAUDE.md's "Self-Healing DB Schema" rule,
+     * rather than depending solely on the cron having run at least once.
+     */
+    public function ensureNotificationSchema(): void {
+        require_once __DIR__ . '/../config/schema_cache.php';
+        if (isSchemaVerified('schema_ota_unconverted_notifications')) return;
+        try {
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS `ota_unconverted_notifications` (
+                    `id` INT AUTO_INCREMENT PRIMARY KEY,
+                    `external_event_id` VARCHAR(255) NOT NULL,
+                    `property_id` INT NOT NULL,
+                    `first_detected_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    `last_notified_at` TIMESTAMP NULL,
+                    `notify_count` INT NOT NULL DEFAULT 0,
+                    UNIQUE KEY `unique_block_property` (`external_event_id`, `property_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ");
+            markSchemaVerified('schema_ota_unconverted_notifications');
+        } catch (PDOException $e) {}
     }
 }
 
@@ -554,6 +651,10 @@ if (!isPropertyAccessAllowed($pdo, $currentPropertyId)) {
 }
 
 $manager = new ICalSyncManager($pdo);
+// Self-heals the unconverted-OTA-notification dedupe table even if
+// check_unconverted_ota_bookings.php's cron has never run on this
+// environment yet - see ensureNotificationSchema()'s own doc comment.
+$manager->ensureNotificationSchema();
 
 $response = ['status' => 'error', 'message' => 'Invalid action'];
 

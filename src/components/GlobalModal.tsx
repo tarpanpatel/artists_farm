@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, CheckCircle, Info } from 'lucide-react';
+import { Drawer } from 'flowbite-react';
+import { AlertTriangle, CheckCircle, Info, X } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';
-
 
 type ModalType = 'alert' | 'confirm' | 'success' | 'error';
 
@@ -13,6 +13,14 @@ interface ModalOptions {
   onCancel?: () => void;
 }
 
+// Rebuilt as a real Flowbite right-side Drawer (22 Aug 2026, part of "only
+// use Flowbite" sweep - this was a fully hand-rolled centered popup before,
+// the biggest single non-Flowbite surface in the app since window.alert/
+// showConfirm/showAlert route through this one component from everywhere).
+// Structure follows DESIGN.md's Flowbite Modals & Drawers Specification
+// exactly: icon+title header with an explicit X close, scrollable body,
+// fixed footer with Cancel/Action buttons, z-[58] (the app's own "every
+// real full-page modal" tier - see custom.css's z-index scale comment).
 export const GlobalModal = () => {
   const [modal, setModal] = useState<ModalOptions | null>(null);
   const modalRef = useRef(modal);
@@ -51,7 +59,7 @@ export const GlobalModal = () => {
     // Code relying on `if (confirm('...'))` will break if we just override it like this.
     // We MUST refactor native confirm calls to use a custom promise or callback.
     // For now, we will expose a global function `window.showConfirm`.
-    
+
     (window as any).showConfirm = (message: string, onConfirm: () => void, onCancel?: () => void) => {
       setModal({
         type: 'confirm',
@@ -87,53 +95,75 @@ export const GlobalModal = () => {
     setModal(null);
   };
 
+  const iconStyles: Record<ModalType, string> = {
+    error: 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400',
+    success: 'bg-emerald-50 dark:bg-emerald-950 border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400',
+    confirm: 'bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400',
+    alert: 'bg-cyan-50 dark:bg-cyan-950 border-cyan-200 dark:border-cyan-800 text-cyan-600 dark:text-cyan-400',
+  };
+
   const getIcon = () => {
     switch (modal.type) {
-      case 'error': return <AlertTriangle className="w-6 h-6 text-red-600" />;
-      case 'success': return <CheckCircle className="w-6 h-6 text-emerald-600" />;
-      case 'confirm': return <AlertTriangle className="w-6 h-6 text-amber-600" />;
-      default: return <Info className="w-6 h-6 text-cyan-600" />;
+      case 'error': return <AlertTriangle className="w-5 h-5" />;
+      case 'success': return <CheckCircle className="w-5 h-5" />;
+      case 'confirm': return <AlertTriangle className="w-5 h-5" />;
+      default: return <Info className="w-5 h-5" />;
     }
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 global-modal">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200 global-modal__dialog">
-        <div className="p-5 flex items-start gap-4 global-modal__header">
-          <div className="shrink-0 bg-slate-50 p-2 rounded-full border border-slate-100 global-modal__icon-wrapper">
+    <Drawer
+      open
+      onClose={handleClose}
+      position="right"
+      className="z-58 w-full sm:w-96 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between global-modal"
+    >
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 global-modal__header">
+        <div className="flex items-center gap-2.5">
+          <div className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 global-modal__icon-wrapper ${iconStyles[modal.type]}`}>
             {getIcon()}
           </div>
-          <div className="flex-1 pt-1 global-modal__content">
-            <h3 className="font-semibold text-slate-900 text-lg mb-1 global-modal__title">{modal.title}</h3>
-            <p className="text-slate-600 text-sm font-medium leading-relaxed global-modal__message">{modal.message}</p>
-          </div>
+          <h2 className="text-base font-semibold text-slate-900 dark:text-white m-0 global-modal__title">{modal.title}</h2>
         </div>
-        <div className="bg-slate-50 border-t border-slate-100 p-4 flex justify-end gap-3 global-modal__footer">
-          {modal.type === 'confirm' ? (
-            <>
-              <button
-                onClick={handleClose}
-                className="px-4 py-2 rounded-lg text-slate-600 font-semibold text-sm hover:bg-slate-200 transition-colors global-modal__btn global-modal__btn--cancel"
-              >
-                {t('cancel_button')}
-              </button>
-              <button
-                onClick={handleConfirm}
-                className="px-4 py-2 rounded-lg bg-cyan-600 text-white font-semibold text-sm shadow-md hover:bg-cyan-700 transition-colors global-modal__btn global-modal__btn--confirm"
-              >
-                {t('confirm_button')}
-              </button>
-            </>
-          ) : (
-              <button
-                onClick={handleClose}
-                className="px-5 py-2 rounded-lg bg-cyan-600 text-white font-semibold text-sm shadow-md hover:bg-cyan-700 transition-colors global-modal__btn global-modal__btn--ok"
-              >
-                {t('okay_button')}
-              </button>
-          )}
-        </div>
+        <button
+          type="button"
+          onClick={handleClose}
+          className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer global-modal__close"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
-    </div>
+      <div className="flex-1 overflow-y-auto p-4 global-modal__content">
+        <p className="text-slate-600 dark:text-slate-300 text-sm font-medium leading-relaxed whitespace-pre-line global-modal__message">{modal.message}</p>
+      </div>
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850 global-modal__footer">
+        {modal.type === 'confirm' ? (
+          <>
+            <button
+              type="button"
+              onClick={handleClose}
+              className="h-9 px-4 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer global-modal__btn global-modal__btn--cancel"
+            >
+              {t('cancel_button')}
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirm}
+              className="h-9 px-5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer global-modal__btn global-modal__btn--confirm"
+            >
+              {t('confirm_button')}
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={handleClose}
+            className="h-9 px-5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer global-modal__btn global-modal__btn--ok"
+          >
+            {t('okay_button')}
+          </button>
+        )}
+      </div>
+    </Drawer>
   );
 };

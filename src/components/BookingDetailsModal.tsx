@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2, Share2, LogOut, Upload, CreditCard, Globe, AlertTriangle, X, IndianRupee, Paperclip, ScanLine } from 'lucide-react';
+import { Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2, Share2, LogOut, Upload, CreditCard, Globe, AlertTriangle, X, IndianRupee, Paperclip, ScanLine } from './icons/FlowbiteIcons';
 import { Drawer as FlowbiteDrawer, DrawerItems, Checkbox } from 'flowbite-react';
 import { Badge } from './Badge';
 import { Guest } from '../types';
@@ -393,12 +393,14 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               <Badge
                 variant="warning"
                 size="sm"
-                className="booking-details-modal__ota-badge"
+                className="booking-details-modal__ota-badge whitespace-nowrap shrink-0"
                 title={t('ota_converted_badge_tooltip', 'Converted from an OTA calendar sync - editing this only changes this app, not the original platform')}
               >
-                <Globe className="w-3 h-3 shrink-0" />
-                {guest.otaSourceLabel || guest.otaSource}
-                {guest.roomNumber && <span className="opacity-70">&middot; {guest.roomNumber}</span>}
+                <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                  <Globe className="w-3 h-3 shrink-0" />
+                  <span>{guest.otaSourceLabel || guest.otaSource}</span>
+                  {guest.roomNumber && <span className="opacity-70">&middot; {guest.roomNumber}</span>}
+                </span>
               </Badge>
             )}
           </h2>
@@ -429,11 +431,19 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               className={`booking-details-modal__id-btn w-full mb-3 px-3.5 py-2.5 rounded-lg border flex items-center justify-between gap-2 transition-colors ${
                 guest.idVerificationStatus === 'Complete'
                   ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800'
-                  : 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800'
+                  : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800'
               }`}
             >
-              <span className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-100">
-                <IdCard className="w-4 h-4 text-slate-500 shrink-0" />
+              <span className={`flex items-center gap-2 text-xs font-semibold ${
+                guest.idVerificationStatus === 'Complete'
+                  ? 'text-slate-700 dark:text-slate-100'
+                  : 'text-rose-900 dark:text-rose-200'
+              }`}>
+                <IdCard className={`w-4 h-4 shrink-0 ${
+                  guest.idVerificationStatus === 'Complete'
+                    ? 'text-emerald-500'
+                    : 'text-rose-600 dark:text-rose-400'
+                }`} />
                 {t('checkin_id_verification_label', 'Check-in ID Verification')}
               </span>
               <button
@@ -442,7 +452,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs flex items-center gap-1.5 shrink-0 ${
                   guest.idVerificationStatus === 'Complete'
                     ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                    : 'bg-amber-500 hover:bg-amber-600 text-white animate-pulse hover:animate-none'
+                    : 'bg-rose-600 hover:bg-rose-700 text-white animate-pulse hover:animate-none'
                 }`}
               >
                 <Upload className="w-3.5 h-3.5" />

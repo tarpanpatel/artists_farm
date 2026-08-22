@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Drawer, TextInput as FlowbiteTextInput } from 'flowbite-react';
+import { Drawer, TextInput as FlowbiteTextInput, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell } from 'flowbite-react';
 import { X } from './icons/FlowbiteIcons';
-import { ArrowRightLeft, Loader2, Search, AlertTriangle, CheckCircle2, IndianRupee, Handshake, Sliders, ChevronUp, ChevronDown, Plus, Trash2, Check, ChevronLeft, ChevronRight, HelpCircle } from 'lucide-react';
+import { ArrowRightLeft, Loader2, Search, AlertTriangle, CheckCircle2, IndianRupee, Handshake, Sliders, ChevronUp, ChevronDown, Plus, Trash2, Check, ChevronLeft, ChevronRight, HelpCircle } from './icons/FlowbiteIcons';
 import { CashDrawerEntry, CashDrawerSummary, StaffAdvance, StaffMember } from '../types';
 import { PageHeader } from './PageHeader';
 import { Badge } from './Badge';
@@ -9,8 +9,7 @@ import { KpiCard } from './KpiCard';
 import { Popover } from './Popover';
 import { t } from '../i18n/en';
 import { fetchCashDrawerSummaryFromDB, addDrawerEntryToDB, fetchDrawerEntriesFromDB, resolveTelegramTemplate, fetchStaffAdvancesFromDB, addStaffAdvanceToDB, deleteStaffAdvanceFromDB, saveAttendanceToDB, generateSalaryEntry } from '../services/api';
-import DataTable from 'react-data-table-component';
-import { flowbiteTableCustomStyles } from '../utils/tableStyles';
+import { TablePagination } from './TablePagination';
 import { useStaff } from '../contexts/StaffContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { useToast } from './ToastContext';
@@ -62,7 +61,11 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
   const [paidStaff, setPaidStaff] = useState<Set<string>>(new Set());
   const [payingStaff, setPayingStaff] = useState<string | null>(null);
   const [drawerHistoryPage, setDrawerHistoryPage] = useState(1);
+  const [drawerHistoryDesktopPage, setDrawerHistoryDesktopPage] = useState(1);
+  const DRAWER_HISTORY_PAGE_SIZE = 10;
   const [payrollPage, setPayrollPage] = useState(1);
+  const [payoutDesktopPage, setPayoutDesktopPage] = useState(1);
+  const PAYOUT_DESKTOP_PAGE_SIZE = 15;
 
   const loadAll = async () => {
     setIsLoading(true);
@@ -647,29 +650,20 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
               )}
             </div>
 
-            {/* Desktop DataTable (hidden md:block) */}
+            {/* Desktop Table (hidden md:block) */}
             <div className="hidden md:block overflow-x-auto">
-              <DataTable
-                columns={[
+              {(() => {
+                const drawerColumns = [
                   {
                     name: t('date_time_column', 'Date & Time'),
-                    selector: (entry: CashDrawerEntry) => entry.created_at,
-                    sortable: true,
-                    width: '160px',
                     cell: (entry: CashDrawerEntry) => <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">{formatDateTimeDDMMYYYY(entry.created_at)}</span>,
                   },
                   {
                     name: t('staff_column', 'Staff'),
-                    selector: (entry: CashDrawerEntry) => entry.staff_name,
-                    sortable: true,
-                    width: '140px',
                     cell: (entry: CashDrawerEntry) => <span className="font-semibold">{entry.staff_name}</span>,
                   },
                   {
                     name: t('type_column', 'Type'),
-                    selector: (entry: CashDrawerEntry) => entry.type,
-                    sortable: true,
-                    width: '120px',
                     cell: (entry: CashDrawerEntry) => (
                       <Badge variant="info" size="sm">
                         {entry.type === 'handover' ? (
@@ -683,40 +677,60 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                   },
                   {
                     name: t('amount_column', 'Amount'),
-                    selector: (entry: CashDrawerEntry) => entry.amount,
-                    sortable: true,
-                    width: '120px',
-                    right: true,
+                    align: 'right' as const,
                     cell: (entry: CashDrawerEntry) => <span className="font-semibold text-sm tabular-numbers">₹{Number(entry.amount).toLocaleString('en-IN')}</span>,
                   },
                   {
                     name: t('handed_to_column', 'Handed To'),
-                    selector: (entry: CashDrawerEntry) => entry.handed_to || '-',
-                    sortable: true,
-                    width: '140px',
                     cell: (entry: CashDrawerEntry) => <span className="text-slate-500">{entry.handed_to || '-'}</span>,
                   },
                   {
                     name: t('notes_column', 'Notes'),
-                    selector: (entry: CashDrawerEntry) => entry.notes || '-',
-                    sortable: true,
-                    grow: 2,
                     cell: (entry: CashDrawerEntry) => <span className="text-slate-500 text-[10px] max-w-[200px] truncate block">{entry.notes || '-'}</span>,
                   },
-                ]}
-                data={filteredEntries}
-                progressPending={isLoading}
-                progressComponent={
-                  <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
-                    <Loader2 className="w-4 h-4 animate-spin" /> {t('loading_drawer_data_label', 'Loading drawer data...')}
-                  </div>
+                ];
+
+                if (isLoading) {
+                  return (
+                    <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
+                      <Loader2 className="w-4 h-4 animate-spin" /> {t('loading_drawer_data_label', 'Loading drawer data...')}
+                    </div>
+                  );
                 }
-                pagination
-                paginationPerPage={10}
-                highlightOnHover
-                persistTableHead
-                customStyles={flowbiteTableCustomStyles}
-              />
+                return (
+                  <>
+                    <Table hoverable>
+                      <TableHead>
+                        <TableRow>
+                          {drawerColumns.map((col) => (
+                            <TableHeadCell key={col.name} className={col.align === 'right' ? 'text-right' : ''}>
+                              {col.name}
+                            </TableHeadCell>
+                          ))}
+                        </TableRow>
+                      </TableHead>
+                      <TableBody className="divide-y divide-gray-200 dark:divide-gray-700">
+                        {filteredEntries.slice((drawerHistoryDesktopPage - 1) * DRAWER_HISTORY_PAGE_SIZE, drawerHistoryDesktopPage * DRAWER_HISTORY_PAGE_SIZE).map((entry: CashDrawerEntry, idx: number) => (
+                          <TableRow key={idx} className="bg-white dark:bg-gray-800">
+                            {drawerColumns.map((col) => (
+                              <TableCell key={col.name} className={col.align === 'right' ? 'text-right' : ''}>
+                                {col.cell(entry)}
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    <TablePagination
+                      page={drawerHistoryDesktopPage}
+                      totalItems={filteredEntries.length}
+                      pageSize={DRAWER_HISTORY_PAGE_SIZE}
+                      onPageChange={setDrawerHistoryDesktopPage}
+                      itemLabel="entries"
+                    />
+                  </>
+                );
+              })()}
             </div>
           </div>
         )}
@@ -856,79 +870,50 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
           )}
         </div>
 
-        {/* Desktop Payout DataTable (hidden md:block) */}
+        {/* Desktop Payout Table (hidden md:block) */}
         <div className="hidden md:block overflow-x-auto p-4">
-          <DataTable
-            columns={[
+          <div className="w-full flex items-center pb-3">
+            <Input type="text" value={searchPayout} onChange={e => setSearchPayout(e.target.value)} placeholder="Search by staff name..." className="w-full max-w-xs" />
+          </div>
+          {(() => {
+            const payoutColumns = [
               {
                 name: 'Staff Name',
-                selector: (row: any) => row.staff.name,
-                sortable: true,
-                grow: 2,
-                minWidth: '180px',
                 cell: (row: any) => <span className="font-semibold text-slate-900 dark:text-white text-sm whitespace-nowrap">{row.staff.name}</span>,
               },
               {
                 name: 'Daily Wage',
-                selector: (row: any) => row.dailyWage,
-                sortable: true,
-                right: true,
-                width: '145px',
-                minWidth: '145px',
+                align: 'right' as const,
                 cell: (row: any) => <span className="font-semibold text-slate-700 dark:text-slate-300 text-xs whitespace-nowrap">₹{row.dailyWage.toFixed(2)}</span>,
               },
               {
                 name: 'Present Days',
-                selector: (row: any) => row.presentDays,
-                sortable: true,
-                center: true,
-                width: '145px',
-                minWidth: '145px',
+                align: 'center' as const,
                 cell: (row: any) => <span className="whitespace-nowrap"><span className="font-semibold text-slate-800 dark:text-slate-200">{row.presentDays}</span><span className="text-slate-400 dark:text-slate-500"> days</span></span>,
               },
               {
                 name: 'Total Earned',
-                selector: (row: any) => row.totalEarned,
-                sortable: true,
-                right: true,
-                width: '150px',
-                minWidth: '150px',
+                align: 'right' as const,
                 cell: (row: any) => <span className="font-semibold text-emerald-700 dark:text-emerald-400 whitespace-nowrap">₹{row.totalEarned.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
               },
               {
                 name: 'Collected',
-                selector: (row: any) => row.cashCollected,
-                sortable: true,
-                right: true,
-                width: '140px',
-                minWidth: '140px',
+                align: 'right' as const,
                 cell: (row: any) => <span className="font-semibold text-amber-700 dark:text-amber-400 whitespace-nowrap">₹{row.cashCollected.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
               },
               {
                 name: 'Out of Pocket',
-                selector: (row: any) => row.outOfPocket,
-                sortable: true,
-                right: true,
-                width: '155px',
-                minWidth: '155px',
+                align: 'right' as const,
                 cell: (row: any) => <span className="font-semibold text-purple-600 dark:text-purple-400 whitespace-nowrap">₹{row.outOfPocket.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
               },
               {
                 name: 'Handovers',
-                selector: (row: any) => row.handovers,
-                sortable: true,
-                right: true,
-                width: '140px',
-                minWidth: '140px',
+                align: 'right' as const,
                 cell: (row: any) => <span className="font-semibold text-indigo-600 dark:text-indigo-400 whitespace-nowrap">₹{row.handovers.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
               },
               {
                 name: 'Advances',
-                selector: (row: any) => row.advances,
-                sortable: true,
-                right: true,
-                width: '140px',
-                minWidth: '140px',
+                align: 'right' as const,
                 cell: (row: any) => {
                   const isCredit = row.advances < 0;
                   return (
@@ -940,18 +925,12 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
               },
               {
                 name: 'Pending Payout',
-                selector: (row: any) => row.pendingPayout,
-                sortable: true,
-                right: true,
-                width: '210px',
-                minWidth: '210px',
+                align: 'right' as const,
                 cell: (row: any) => <span className="font-semibold text-blue-700 dark:text-blue-400 whitespace-nowrap">₹{row.pendingPayout.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
               },
               {
                 name: 'Actions',
-                center: true,
-                width: '210px',
-                minWidth: '210px',
+                align: 'center' as const,
                 cell: (row: any) => {
                   const isPaid = paidStaff.has(row.staff.id);
                   const isPaying = payingStaff === row.staff.id;
@@ -984,28 +963,54 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                   );
                 },
               },
-            ]}
-            data={filteredPayout}
-            progressPending={isLoading}
-            progressComponent={
-              <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
-                <Loader2 className="w-4 h-4 animate-spin" /> Loading staff...
-              </div>
+            ];
+
+            if (isLoading) {
+              return (
+                <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Loading staff...
+                </div>
+              );
             }
-            pagination
-            paginationPerPage={15}
-            highlightOnHover
-            persistTableHead
-            subHeader={
-              <div className="w-full flex items-center py-2">
-                <Input type="text" value={searchPayout} onChange={e => setSearchPayout(e.target.value)} placeholder="Search by staff name..." className="w-full max-w-xs" />
-              </div>
+            if (filteredPayout.length === 0) {
+              return (
+                <div className="p-8 text-center text-slate-400 font-semibold text-xs">No active staff members found</div>
+              );
             }
-            customStyles={flowbiteTableCustomStyles}
-            noDataComponent={
-              <div className="p-8 text-center text-slate-400 font-semibold text-xs">No active staff members found</div>
-            }
-          />
+            return (
+              <>
+                <Table hoverable>
+                  <TableHead>
+                    <TableRow>
+                      {payoutColumns.map((col) => (
+                        <TableHeadCell key={col.name} className={col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : ''}>
+                          {col.name}
+                        </TableHeadCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {filteredPayout.slice((payoutDesktopPage - 1) * PAYOUT_DESKTOP_PAGE_SIZE, payoutDesktopPage * PAYOUT_DESKTOP_PAGE_SIZE).map((row: any) => (
+                      <TableRow key={row.staff.id} className="bg-white dark:bg-gray-800">
+                        {payoutColumns.map((col) => (
+                          <TableCell key={col.name} className={col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : ''}>
+                            {col.cell(row)}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <TablePagination
+                  page={payoutDesktopPage}
+                  totalItems={filteredPayout.length}
+                  pageSize={PAYOUT_DESKTOP_PAGE_SIZE}
+                  onPageChange={setPayoutDesktopPage}
+                  itemLabel="staff"
+                />
+              </>
+            );
+          })()}
         </div>
 
         {/* Advances History for this month */}

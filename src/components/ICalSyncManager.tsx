@@ -10,7 +10,7 @@ import {
   CheckCircle2,
   ShieldCheck,
   Search,
-  Layers} from 'lucide-react';
+  Layers} from './icons/FlowbiteIcons';
 import { Drawer } from 'flowbite-react';
 import { X } from './icons/FlowbiteIcons';
 import { getPropertySlug, getPropertyAndRoomSlugs, API_ROOT_BASE } from '../services/api';

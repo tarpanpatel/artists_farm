@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send, Mail, Bell, UserCog, Pencil, DatabaseBackup, Loader2, RefreshCw, AlertTriangle, UserRound, Receipt, Package } from 'lucide-react';
+import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send, Mail, Bell, UserCog, Pencil, DatabaseBackup, Loader2, RefreshCw, AlertTriangle, UserRound, Receipt, Package } from './icons/FlowbiteIcons';
 import { Card } from 'flowbite-react';
 import { KpiCard } from './KpiCard';
 import { Button } from './Button';

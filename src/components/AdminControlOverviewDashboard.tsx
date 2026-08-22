@@ -11,7 +11,7 @@ import {
   ArrowRight,
   ScrollText,
   Package,
-} from 'lucide-react';
+} from './icons/FlowbiteIcons';
 import { Button } from './Button';
 import { PageHeader } from './PageHeader';
 import { t } from '../i18n/en';

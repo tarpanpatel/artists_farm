@@ -1,4 +1,4 @@
-import type { LucideIcon } from 'lucide-react';
+import type { FlowbiteIconComponent } from '../components/icons/FlowbiteIcons';
 import {
   Wind, Fan, Droplet, Droplets, Coffee, Flame, Zap, Microwave, Utensils, Refrigerator,
   Speaker, Tv, WashingMachine, Shirt, Megaphone, PenTool, Camera, Gift, Globe,
@@ -9,11 +9,11 @@ import {
   CreditCard, Laptop, HardDrive, Folder, Pen, FileText, Printer, Bath, ChefHat, Car, User,
   Users, Briefcase, Waves, Receipt, Calculator, Cloud, LockKeyhole, Server, Monitor,
   ParkingCircle, Fuel, Smartphone, Wifi, Building2,
-} from 'lucide-react';
+} from '../components/icons/FlowbiteIcons';
 
 // Ordered keyword -> icon rules, checked against the lowercased item label. First match wins,
 // so more specific multi-word keywords are listed before generic single-word ones.
-const ITEM_ICON_RULES: Array<{ keywords: string[]; icon: LucideIcon }> = [
+const ITEM_ICON_RULES: Array<{ keywords: string[]; icon: FlowbiteIconComponent }> = [
   { keywords: ['air condition', 'ac servicing'], icon: Wind },
   { keywords: ['ceiling fan'], icon: Fan },
   { keywords: ['dishwasher tablet', 'dishwashing liquid', 'dishwasher'], icon: Droplets },
@@ -145,7 +145,7 @@ const ITEM_ICON_RULES: Array<{ keywords: string[]; icon: LucideIcon }> = [
 ];
 
 // Category-level fallback, used when no item-level keyword matches.
-const CATEGORY_ICON_RULES: Array<{ keywords: string[]; icon: LucideIcon }> = [
+const CATEGORY_ICON_RULES: Array<{ keywords: string[]; icon: FlowbiteIconComponent }> = [
   { keywords: ['appliance'], icon: Plug },
   { keywords: ['booking', 'marketing'], icon: Megaphone },
   { keywords: ['capital asset'], icon: Building2 },
@@ -168,7 +168,7 @@ const CATEGORY_ICON_RULES: Array<{ keywords: string[]; icon: LucideIcon }> = [
   { keywords: ['utilit'], icon: Zap },
 ];
 
-export function getExpenseItemIcon(label: string, category?: string): LucideIcon {
+export function getExpenseItemIcon(label: string, category?: string): FlowbiteIconComponent {
   const lowerLabel = label.toLowerCase();
   for (const rule of ITEM_ICON_RULES) {
     if (rule.keywords.some((kw) => lowerLabel.includes(kw))) {

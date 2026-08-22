@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, AlertCircle, Loader2, Search, CheckCircle2, RefreshCw, Package } from 'lucide-react';
+import { Plus, Edit2, Trash2, AlertCircle, Loader2, Search, CheckCircle2, RefreshCw, Package } from './icons/FlowbiteIcons';
 import { Drawer, Alert } from 'flowbite-react';
 import { X } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';

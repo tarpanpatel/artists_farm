@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Phone, MessageSquare, Pencil, LogIn, LogOut, Users, Building, Search, IndianRupee, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Phone, MessageSquare, Pencil, LogIn, LogOut, Users, Building, Search, IndianRupee, CheckCircle2, AlertCircle } from './icons/FlowbiteIcons';
 import { Guest } from '../types';
 import { Badge } from './Badge';
 import { Button } from './Button';

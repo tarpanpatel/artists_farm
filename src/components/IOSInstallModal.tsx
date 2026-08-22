@@ -1,6 +1,6 @@
 import React from 'react';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from 'flowbite-react';
-import { Share, Plus, ArrowLeft, ArrowRight, BookOpen, Copy, Printer, Bookmark } from 'lucide-react';
+import { Share, Plus, ArrowLeft, ArrowRight, BookOpen, Copy, Printer, Bookmark } from './icons/FlowbiteIcons';
 import { Button } from './Button';
 
 interface IOSInstallModalProps {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Receipt, AlertCircle, Loader2, Search, CheckCircle2, FileText } from 'lucide-react';
+import { Plus, Edit2, Trash2, Receipt, AlertCircle, Loader2, Search, CheckCircle2, FileText } from './icons/FlowbiteIcons';
 import { Drawer, Alert } from 'flowbite-react';
 import { X } from './icons/FlowbiteIcons';
 import { useConfirm } from './ConfirmDialogContext';

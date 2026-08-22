@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, Alert } from 'flowbite-react';
-import { Bell, Plus, Trash2, Loader2, Pencil, Check, X, Globe } from 'lucide-react';
+import { Bell, Plus, Trash2, Loader2, Pencil, Check, X, Globe } from './icons/FlowbiteIcons';
 import {
   SystemServiceRequestCatalogItem,
   fetchSystemServiceRequestCatalogFromDB,

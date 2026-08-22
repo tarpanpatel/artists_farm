@@ -11,7 +11,7 @@ import {
   FileText,
   HardDriveDownload,
   CheckCircle2,
-} from 'lucide-react';
+} from './icons/FlowbiteIcons';
 import { Guest, BillingReceipt, AuditLog, MenuItem } from '../types';
 import { useStaff } from '../contexts/StaffContext';
 import { useFinance } from '../contexts/FinanceContext';

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
-import { CheckCircle2, XCircle, AlertTriangle, Info, X } from 'lucide-react';
+import { CheckCircle2, XCircle, AlertTriangle, Info, X } from './icons/FlowbiteIcons';
 import { Toast as FlowbiteToast, ToastToggle } from 'flowbite-react';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
