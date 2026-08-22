@@ -13,7 +13,6 @@ import {
   Download,
   ClipboardList,
   RefreshCw,
-  RotateCw,
   HelpCircle,
   ArrowRight,
   Home as RoomIcon
@@ -27,10 +26,8 @@ import { GUEST_STATUS_CHECKEDOUT_LEGACY, GUEST_STATUS_CHECKED_OUT } from '../con
 import { t } from '../i18n';
 import { TabType } from './Navigation';
 
-import { requestPushNotificationPermission, getPushPermissionState } from '../services/webPushService';
 import { getPropertyAndRoomSlugs, fetchIcalCalendarsFromDB, syncAllIcalCalendarsInDB, fulfillServiceRequestInDB } from '../services/api';
 import { useToast } from './ToastContext';
-import { checkForAppUpdate } from '../utils/serviceWorkerUpdate';
 
 interface HeaderProps {
   onLogout?: () => void;
@@ -97,30 +94,6 @@ export const Header: React.FC<HeaderProps> = ({
     }
   };
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
-
-  // Manual "check for updates" (21 Aug 2026) - the app already checks
-  // automatically every 5 min and on regaining focus (main.tsx), which
-  // covers a session left open all shift, but there was no way to force a
-  // check on demand right after a known deploy without fully closing and
-  // reopening the app. checkForAppUpdate() runs that exact same check via
-  // the shared registration handle - if it finds a new version,
-  // sw.js's skipWaiting()+clients.claim() take over within moments and
-  // UpdateAvailableBanner's Reload prompt appears on its own, so this
-  // button doesn't need to do anything else in that case.
-  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
-  const handleCheckForUpdate = async () => {
-    setIsCheckingUpdate(true);
-    const foundUpdate = await checkForAppUpdate();
-    // Give the new worker a moment to activate and fire the banner before
-    // declaring "no update" - update() resolving doesn't itself mean the
-    // takeover (and banner) has happened yet.
-    setTimeout(() => {
-      setIsCheckingUpdate(false);
-      if (!foundUpdate) {
-        showToast("You're already on the latest version", { type: 'info' });
-      }
-    }, foundUpdate ? 1500 : 400);
-  };
 
   useEffect(() => {
     let lastScrollY = window.scrollY;
@@ -315,24 +288,6 @@ export const Header: React.FC<HeaderProps> = ({
             </Tooltip>
           )}
 
-          {/* Check for App Update (21 Aug 2026) - a manual trigger for the
-              same check main.tsx already runs on a 5-min timer/on-focus, for
-              when someone wants to force it right after a known deploy
-              instead of closing and reopening the app. Distinct icon
-              (RotateCw, not the RefreshCw used above for calendar sync) so
-              the two aren't mistaken for the same action sitting side by
-              side. */}
-          <Tooltip content={isCheckingUpdate ? 'Checking for updates...' : 'Check for app update'}>
-            <button
-              onClick={handleCheckForUpdate}
-              disabled={isCheckingUpdate}
-              aria-label="Check for app update"
-              className="header__check-update relative p-2 text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <RotateCw className={`w-5 h-5 ${isCheckingUpdate ? 'animate-spin' : ''}`} />
-            </button>
-          </Tooltip>
-
           {/* Help Link Button */}
           <a
             href="#help"
@@ -354,7 +309,12 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={handleToggleNotifications}
               title={t('notifications_tooltip', 'Notifications')}
               aria-label={t('view_notifications_aria', 'View notifications')}
-              className="btn-notification-bell relative p-2 text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
+              aria-expanded={showNotificationDropdown}
+              className={`btn-notification-bell relative p-2 rounded-lg transition-colors cursor-pointer ${
+                showNotificationDropdown
+                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300'
+                  : 'text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+              }`}
             >
               <Bell className="w-5 h-5" />
               {hasUnread && (
@@ -381,34 +341,6 @@ export const Header: React.FC<HeaderProps> = ({
                   <span className="header__dropdown-count text-[10px] bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 font-semibold px-2 py-0.5 rounded-full">
                     {totalCount} updates
                   </span>
-                </div>
-
-                <div className="px-4 py-2 bg-blue-50/70 dark:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-                  <span className="text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center gap-1.5">
-                    <Smartphone className="w-3.5 h-3.5 text-blue-600" />
-                    Mobile Push Alerts
-                  </span>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const granted = await requestPushNotificationPermission();
-                      if (granted) {
-                        showToast('Mobile Push Alerts enabled!', { type: 'success' });
-                      } else {
-                        showToast('Please enable notification permissions in your phone browser settings.', { type: 'warning' });
-                      }
-                    }}
-                    className="px-2.5 py-1 text-xs font-semibold rounded-md bg-blue-600 hover:bg-blue-700 text-white cursor-pointer transition-colors shadow-sm flex items-center gap-1"
-                  >
-                    {getPushPermissionState() === 'granted' ? (
-                      <>
-                        <CheckCircle2 className="w-3 h-3" />
-                        <span>Enabled</span>
-                      </>
-                    ) : (
-                      <span>Enable Alerts</span>
-                    )}
-                  </button>
                 </div>
 
                 <div className="header__dropdown-body max-h-[calc(100vh-140px)] sm:max-h-[460px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700 text-xs">
