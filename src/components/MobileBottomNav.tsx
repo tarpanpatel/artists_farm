@@ -98,7 +98,6 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             </div>
             <div className="min-w-0">
               <span className="block font-bold text-slate-900 dark:text-white truncate">Add Expense</span>
-              <span className="block text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">Petty cash entry</span>
             </div>
           </button>
 
@@ -120,7 +119,6 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             </div>
             <div className="min-w-0">
               <span className="block font-bold text-slate-900 dark:text-white truncate">Add Booking</span>
-              <span className="block text-[11px] text-blue-700 dark:text-blue-400 font-medium">New reservation</span>
             </div>
           </button>
 
@@ -135,7 +133,6 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             </div>
             <div className="min-w-0">
               <span className="block font-bold text-slate-900 dark:text-white truncate">Add Food Order</span>
-              <span className="block text-[11px] text-amber-700 dark:text-amber-400 font-medium">POS menu ticket</span>
             </div>
           </button>
 
@@ -150,7 +147,6 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             </div>
             <div className="min-w-0">
               <span className="block font-bold text-slate-900 dark:text-white truncate">View Live Kitchen Order</span>
-              <span className="block text-[11px] text-purple-700 dark:text-purple-400 font-medium">KDS live tickets</span>
             </div>
           </button>
         </div>

@@ -17,7 +17,7 @@ import { useToast } from './ToastContext';
 import { StyledSelect } from './StyledSelect';
 import { Input } from './Input';
 import { Button } from './Button';
-import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../utils/dateUtils';
+import { formatDateTimeDDMMYYYY } from '../utils/dateUtils';
 
 interface CashDrawerManagerProps {
   onLogAudit?: (action: string, extra?: any) => void;
@@ -726,27 +726,31 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
             <IndianRupee className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             {t('monthly_payout_calculator_heading', 'Monthly Payout Calculator')}
           </h3>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
+              type="button"
               onClick={() => {
                 if (selectedMonth === 0) { setSelectedMonth(11); setSelectedYear(y => y - 1); }
                 else { setSelectedMonth(m => m - 1); }
               }}
-              className="bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-semibold text-xs p-1.5 rounded-lg cursor-pointer transition-colors shadow-md"
+              className="bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-semibold text-xs p-1.5 rounded-lg cursor-pointer transition-colors shadow-xs flex items-center justify-center"
+              aria-label="Previous Month"
             >
-              <ChevronLeft className="w-3.5 h-3.5" />
+              <ChevronLeft className="w-4 h-4" />
             </button>
-<Badge variant="info" size="md">
-                              {formatDateDDMMYYYY(`${selectedYear}-01-01`)}
-                            </Badge>
+            <span className="px-3 py-1 bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-bold text-xs rounded-lg border border-blue-200 dark:border-blue-800 whitespace-nowrap min-w-[120px] text-center">
+              {new Date(selectedYear, selectedMonth, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+            </span>
             <button
+              type="button"
               onClick={() => {
                 if (selectedMonth === 11) { setSelectedMonth(0); setSelectedYear(y => y + 1); }
                 else { setSelectedMonth(m => m + 1); }
               }}
-              className="bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-semibold text-xs p-1.5 rounded-lg cursor-pointer transition-colors shadow-md"
+              className="bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-semibold text-xs p-1.5 rounded-lg cursor-pointer transition-colors shadow-xs flex items-center justify-center"
+              aria-label="Next Month"
             >
-              <ChevronRight className="w-3.5 h-3.5" />
+              <ChevronRight className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -858,15 +862,16 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                 selector: (row: any) => row.staff.name,
                 sortable: true,
                 grow: 2,
-                minWidth: '170px',
+                minWidth: '180px',
                 cell: (row: any) => <span className="font-semibold text-slate-900 dark:text-white text-sm whitespace-nowrap">{row.staff.name}</span>,
               },
               {
-                name: 'Daily Wage (₹)',
+                name: 'Daily Wage',
                 selector: (row: any) => row.dailyWage,
                 sortable: true,
                 right: true,
-                minWidth: '135px',
+                width: '145px',
+                minWidth: '145px',
                 cell: (row: any) => <span className="font-semibold text-slate-700 dark:text-slate-300 text-xs whitespace-nowrap">₹{row.dailyWage.toFixed(2)}</span>,
               },
               {
@@ -874,47 +879,53 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                 selector: (row: any) => row.presentDays,
                 sortable: true,
                 center: true,
-                minWidth: '125px',
+                width: '145px',
+                minWidth: '145px',
                 cell: (row: any) => <span className="whitespace-nowrap"><span className="font-semibold text-slate-800 dark:text-slate-200">{row.presentDays}</span><span className="text-slate-400 dark:text-slate-500"> days</span></span>,
               },
               {
-                name: 'Total Earned (₹)',
+                name: 'Total Earned',
                 selector: (row: any) => row.totalEarned,
                 sortable: true,
                 right: true,
-                minWidth: '145px',
+                width: '150px',
+                minWidth: '150px',
                 cell: (row: any) => <span className="font-semibold text-emerald-700 dark:text-emerald-400 whitespace-nowrap">₹{row.totalEarned.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
               },
               {
-                name: 'Collected (₹)',
+                name: 'Collected',
                 selector: (row: any) => row.cashCollected,
                 sortable: true,
                 right: true,
-                minWidth: '135px',
+                width: '140px',
+                minWidth: '140px',
                 cell: (row: any) => <span className="font-semibold text-amber-700 dark:text-amber-400 whitespace-nowrap">₹{row.cashCollected.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
               },
               {
-                name: 'Out of Pocket (₹)',
+                name: 'Out of Pocket',
                 selector: (row: any) => row.outOfPocket,
                 sortable: true,
                 right: true,
-                minWidth: '145px',
+                width: '155px',
+                minWidth: '155px',
                 cell: (row: any) => <span className="font-semibold text-purple-600 dark:text-purple-400 whitespace-nowrap">₹{row.outOfPocket.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
               },
               {
-                name: 'Handovers (₹)',
+                name: 'Handovers',
                 selector: (row: any) => row.handovers,
                 sortable: true,
                 right: true,
-                minWidth: '135px',
+                width: '140px',
+                minWidth: '140px',
                 cell: (row: any) => <span className="font-semibold text-indigo-600 dark:text-indigo-400 whitespace-nowrap">₹{row.handovers.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
               },
               {
-                name: 'Advances (₹)',
+                name: 'Advances',
                 selector: (row: any) => row.advances,
                 sortable: true,
                 right: true,
-                minWidth: '135px',
+                width: '140px',
+                minWidth: '140px',
                 cell: (row: any) => {
                   const isCredit = row.advances < 0;
                   return (
@@ -925,17 +936,19 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                 },
               },
               {
-                name: 'Pending Payout (₹)',
+                name: 'Pending Payout',
                 selector: (row: any) => row.pendingPayout,
                 sortable: true,
                 right: true,
+                width: '160px',
                 minWidth: '160px',
                 cell: (row: any) => <span className="font-semibold text-blue-700 dark:text-blue-400 whitespace-nowrap">₹{row.pendingPayout.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
               },
               {
                 name: 'Actions',
                 center: true,
-                minWidth: '220px',
+                width: '210px',
+                minWidth: '210px',
                 cell: (row: any) => {
                   const isPaid = paidStaff.has(row.staff.id);
                   const isPaying = payingStaff === row.staff.id;

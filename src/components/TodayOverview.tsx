@@ -375,9 +375,6 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           <h1 className="today-overview__page-title text-base font-semibold text-slate-900 dark:text-white tracking-tight truncate">
             {t('dashboard_heading', 'Dashboard')}
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium line-clamp-1 sm:line-clamp-none">
-            {t('dashboard_subheading', "Who's arriving, what's ready, and what needs you now.")}
-          </p>
         </div>
         <div className="today-overview__header-actions flex items-center gap-2 shrink-0">
           {kitchenModuleEnabled && (

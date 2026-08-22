@@ -1107,9 +1107,9 @@ html.dark, .dark {
    instead of clipping - .rdt_TableHeadRow's min-height above is a minimum,
    not a fixed height. */
 .rdt_columnText {
-  overflow: hidden !important;
+  overflow: visible !important;
   white-space: nowrap !important;
-  text-overflow: ellipsis !important;
+  text-overflow: clip !important;
   line-height: 1.3 !important;
 }
 

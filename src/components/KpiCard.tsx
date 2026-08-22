@@ -9,6 +9,7 @@ export interface KpiCardProps {
   valueClassName?: string;
   icon?: React.ComponentType<{ className?: string }>;
   className?: string;
+  layout?: 'inline' | 'stacked';
 }
 
 export const KpiCard: React.FC<KpiCardProps> = ({
@@ -19,6 +20,7 @@ export const KpiCard: React.FC<KpiCardProps> = ({
   valueClassName = 'text-gray-900 dark:text-white',
   icon: Icon,
   className = '',
+  layout = 'inline',
 }) => {
   return (
     <div
@@ -31,12 +33,25 @@ export const KpiCard: React.FC<KpiCardProps> = ({
           </div>
         )}
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider leading-tight truncate">
-            {label}
-          </p>
-          <div className={`text-xl sm:text-2xl font-extrabold tracking-tight flex items-center leading-none mt-1 ${valueClassName}`}>
-            {value}
-          </div>
+          {layout === 'inline' ? (
+            <div className="flex items-center gap-2 min-w-0">
+              <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider leading-none truncate m-0">
+                {label}
+              </p>
+              <span className={`text-base sm:text-lg font-extrabold tracking-tight leading-none ${valueClassName}`}>
+                {value}
+              </span>
+            </div>
+          ) : (
+            <>
+              <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider leading-tight truncate m-0">
+                {label}
+              </p>
+              <div className={`text-xl sm:text-2xl font-extrabold tracking-tight flex items-center leading-none mt-1 ${valueClassName}`}>
+                {value}
+              </div>
+            </>
+          )}
           {subtext && (
             <p className="text-2xs text-gray-400 dark:text-gray-500 font-medium mt-0.5 truncate">
               {subtext}
@@ -53,3 +68,4 @@ export const KpiCard: React.FC<KpiCardProps> = ({
     </div>
   );
 };
+

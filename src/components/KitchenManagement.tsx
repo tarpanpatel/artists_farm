@@ -2121,7 +2121,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       cartItems.map((ci) => (
                         <div
                           key={ci.menuItem.id}
-                          className="py-1.5 px-1.5 first:pt-0 flex items-center justify-between gap-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-700/40 rounded-lg transition-colors"
+                          className="h-[35px] min-h-[35px] px-1.5 flex items-center justify-between gap-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-700/40 rounded-lg transition-colors"
                         >
                           <div className="flex-1 pr-1 truncate min-w-0">
                             <h4 className="kitchen-management__caption font-semibold text-gray-900 dark:text-white text-xs truncate m-0 p-0 leading-tight">
@@ -2242,7 +2242,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       // (24px) buttons + py-0 gets this row down to ~28px,
                       // about 30% shorter, without dropping the stepper
                       // buttons below a reasonable tap target.
-                      className="bg-white dark:bg-gray-700/60 min-h-[27px] py-0 px-2.5 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center justify-between gap-2 text-xs text-gray-900 dark:text-gray-100"
+                      className="bg-white dark:bg-gray-700/60 h-[35px] min-h-[35px] px-2.5 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center justify-between gap-2 text-xs text-gray-900 dark:text-gray-100"
                     >
                       <div className="flex-1 pr-1 truncate min-w-0">
                         <h4 className="kitchen-management__caption font-semibold text-gray-900 dark:text-white text-xs truncate m-0 p-0 leading-tight">
@@ -2255,9 +2255,9 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                           <button
                             type="button"
                             onClick={() => handleUpdateCartQuantity(ci.menuItem.id, -1)}
-                            className="w-6 h-6 rounded-md shrink-0 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90 border border-gray-200 dark:border-gray-600 shadow-xs"
+                            className="w-7 h-7 rounded-md shrink-0 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90 border border-gray-200 dark:border-gray-600 shadow-xs"
                           >
-                            <Minus className="w-3 h-3" />
+                            <Minus className="w-3.5 h-3.5" />
                           </button>
                         </Tooltip>
                         <span className="w-6 text-center font-bold text-gray-900 dark:text-white text-xs">
@@ -2267,9 +2267,9 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                           <button
                             type="button"
                             onClick={() => handleUpdateCartQuantity(ci.menuItem.id, 1)}
-                            className="w-6 h-6 rounded-md shrink-0 bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center transition-colors cursor-pointer active:scale-90 shadow-xs"
+                            className="w-7 h-7 rounded-md shrink-0 bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center transition-colors cursor-pointer active:scale-90 shadow-xs"
                           >
-                            <Plus className="w-3 h-3" />
+                            <Plus className="w-3.5 h-3.5" />
                           </button>
                         </Tooltip>
                       </div>

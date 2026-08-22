@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Badge, Tooltip } from 'flowbite-react';
+import { Badge } from 'flowbite-react';
+import { Popover } from './Popover';
 import {
   Building2,
   AlertTriangle,
@@ -259,7 +260,15 @@ export const Header: React.FC<HeaderProps> = ({
               overlaid in the corner - same layered-badge technique the
               notification dot next to it uses. */}
           {showInstallIcon && (
-            <Tooltip content={t('install_app_tooltip', 'Install App')}>
+            <Popover
+              trigger="hover"
+              placement="bottom"
+              content={
+                <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                  {t('install_app_tooltip', 'Install App')}
+                </div>
+              }
+            >
               <button
                 onClick={onInstallIconClick}
                 aria-label={t('install_app_aria', 'Install app on this device')}
@@ -272,11 +281,19 @@ export const Header: React.FC<HeaderProps> = ({
                   </span>
                 </span>
               </button>
-            </Tooltip>
+            </Popover>
           )}
 
           {icalCalendars.length > 0 && (
-            <Tooltip content={isSyncingIcal ? 'Syncing calendars...' : `Sync ${icalCalendars.length} calendar${icalCalendars.length !== 1 ? 's' : ''}`}>
+            <Popover
+              trigger="hover"
+              placement="bottom"
+              content={
+                <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                  {isSyncingIcal ? 'Syncing calendars...' : `Sync ${icalCalendars.length} calendar${icalCalendars.length !== 1 ? 's' : ''}`}
+                </div>
+              }
+            >
               <button
                 onClick={handleSyncAllCalendars}
                 disabled={isSyncingIcal}
@@ -285,7 +302,7 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <RefreshCw className={`w-5 h-5 ${isSyncingIcal ? 'animate-spin' : ''}`} />
               </button>
-            </Tooltip>
+            </Popover>
           )}
 
           {/* Help Link Button */}

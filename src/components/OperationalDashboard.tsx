@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Drawer, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, Checkbox } from 'flowbite-react';
-import { X } from './icons/FlowbiteIcons';
+import { X, ChevronLeft, ChevronRight } from './icons/FlowbiteIcons';
 import { Popover } from './Popover';
 import {
   AlertTriangle,
@@ -163,6 +163,9 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   // top of each other. Including the specific day cell's own date string
   // scopes "open" to the exact chip that was clicked.
   const [openBookingPopoverId, setOpenBookingPopoverId] = useState<string | null>(null);
+  // Same controlled-popover pattern, for the OTA-blocked chip (22 Aug 2026) -
+  // see the otaPopoverKey comment at its Popover usage below.
+  const [openOtaPopoverId, setOpenOtaPopoverId] = useState<string | null>(null);
   const [blockedDates, setBlockedDates] = useState<Array<{
     event_start: string;
     event_end: string;
@@ -225,16 +228,30 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   // Booking Matrix logic for current month
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const year = today.getFullYear();
-  const month = today.getMonth();
-  const monthName = today.toLocaleString('default', { month: 'long', year: 'numeric' });
+  // Month navigation (22 Aug 2026, explicit request - feature parity with
+  // the multi-property calendar in TodayOverview.tsx, which can already
+  // browse other months). `monthOffset` is months away from the REAL
+  // current month, not a mutated Date - `viewDate` below is what the grid
+  // actually renders, kept separate from `today` (which several other
+  // things in this component - alerts, in-stay checks, `todayStr` - need to
+  // stay pinned to the actual real-world date regardless of which month
+  // the calendar is currently displaying).
+  const [monthOffset, setMonthOffset] = useState(0);
+  const viewDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+  const monthName = viewDate.toLocaleString('default', { month: 'long', year: 'numeric' });
 
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
   const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
-  const todayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  // Pinned to the REAL today (today.getFullYear()/getMonth()), NOT the
+  // navigable `year`/`month` above - "Arrivals Today"/"Departures Today"
+  // must keep meaning the actual current day even while browsing a
+  // different month's grid.
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
   // --- Front-desk alerts: bookings needing attention, with no time cutoff so
   // stale/forgotten bookings from any point in the past still surface. ---
@@ -452,7 +469,6 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       ) : (
         <PageHeader
           title={t('dashboard_heading', 'Dashboard')}
-          subtitle={t('dashboard_subheading', "Who's arriving, what's ready, and what needs you now.")}
         >
           <PageHeaderButton onClick={handleShareFoodMenu} icon={Share2}>
             {t('share_food_menu_button', 'Share Menu')}
@@ -838,9 +854,27 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 {roomName ? `${roomName} Calendar` : t('booking_calendar_heading', 'Booking Calendar')}
               </h3>
             </div>
-            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2.5 py-1 rounded-md border border-gray-200 dark:border-gray-600">
-              {monthName}
-            </span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setMonthOffset((o) => o - 1)}
+                aria-label={t('previous_month_button', 'Previous month')}
+                className="p-1 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200 transition-colors cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2.5 py-1 rounded-md border border-gray-200 dark:border-gray-600 min-w-[7.5rem] text-center">
+                {monthName}
+              </span>
+              <button
+                type="button"
+                onClick={() => setMonthOffset((o) => o + 1)}
+                aria-label={t('next_month_button', 'Next month')}
+                className="p-1 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200 transition-colors cursor-pointer"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -938,7 +972,17 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             // grows into a negative margin the way `width:100%` cannot -
             // leave `w-full` off the button entirely (for every rounding
             // state, not just the merged one) and let stretch handle it.
-            const chipEdgeRounding = `${continuesFromPrevDay ? 'rounded-l-none -ml-1.5 sm:-ml-2' : 'rounded-l-md'} ${continuesToNextDay ? 'rounded-r-none -mr-1.5 sm:-mr-2' : 'rounded-r-md'}`;
+            // border-l-0/border-r-0 on merged sides (22 Aug 2026, added
+            // alongside the bold-color match with TodayOverview): its
+            // chip/bar colors all carry a real `border`, and a plain
+            // Tailwind `border` applies to all 4 sides - left un-suppressed,
+            // a merged run of same-booking day-chips would show a visible
+            // 1-2px seam at every shared edge (each neighbor's own border
+            // meeting the other's), undoing the seamless-capsule fix above.
+            // Only the outer edges of the whole run should show a border,
+            // same as a single spanning bar only has one border around its
+            // true perimeter.
+            const chipEdgeRounding = `${continuesFromPrevDay ? 'rounded-l-none border-l-0 -ml-1.5 sm:-ml-2' : 'rounded-l-md'} ${continuesToNextDay ? 'rounded-r-none border-r-0 -mr-1.5 sm:-mr-2' : 'rounded-r-md'}`;
             // OTA-synced block for this day, on this room's own feed (this
             // component already fetches get_blocked_dates scoped to whichever
             // room's page it's rendered on). Only relevant when there's no
@@ -989,22 +1033,33 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               && otaNextDayBlock.event_start === otaBlock.event_start
               && otaNextDayBlock.event_end === otaBlock.event_end
             );
-            const otaChipEdgeRounding = `${otaBlockContinuesFromPrevDay ? 'rounded-l-none -ml-1.5 sm:-ml-2' : 'rounded-l-md'} ${otaBlockContinuesToNextDay ? 'rounded-r-none -mr-1.5 sm:-mr-2' : 'rounded-r-md'}`;
-            const isToday = d === today.getDate();
+            // Same border-l-0/border-r-0 reasoning as chipEdgeRounding above.
+            const otaChipEdgeRounding = `${otaBlockContinuesFromPrevDay ? 'rounded-l-none border-l-0 -ml-1.5 sm:-ml-2' : 'rounded-l-md'} ${otaBlockContinuesToNextDay ? 'rounded-r-none border-r-0 -mr-1.5 sm:-mr-2' : 'rounded-r-md'}`;
+            // monthOffset === 0 is required too, not just the day number -
+            // once the calendar can navigate away from the real current
+            // month (added 22 Aug 2026), a day number matching today's could
+            // otherwise light up in whatever OTHER month is being viewed.
+            const isToday = monthOffset === 0 && d === today.getDate();
 
             const amount = (dayBooking as any)?.totalCharge || (dayBooking as any)?.totalAmount || (dayBooking as any)?.total_charge || 0;
             const nightlyRate = Math.round(amount / Math.max(1, 1));
 
-            // Flowbite semantic chip colors
-            const checkedOutColor = 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600';
+            // Colors matched exactly to TodayOverview.tsx's multi-property
+            // calendar (22 Aug 2026, explicit request for style parity
+            // between the two calendars) - see its `getGuestColor()` and the
+            // isOtaBooking ternary next to its own guest-chip render, plus
+            // its OTA-blocked chip and legend footer. Only the SHAPE stays
+            // different (per-day chip here vs a full spanning bar there) -
+            // that's structural, not a style choice.
+            const checkedOutColor = 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600';
             const isDayBookingCheckedOut = (() => {
               const s = String((dayBooking as any)?.status || '').trim().toLowerCase();
               return s === 'checkedout' || s === 'checked out';
             })();
 
             const isOtaBooking = !!(dayBooking as any)?.otaSource;
-            const otaBookingColor = 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800';
-            const directBookingColor = 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800';
+            const otaBookingColor = 'bg-amber-600 dark:bg-amber-700 text-white border border-amber-700/30';
+            const directBookingColor = 'bg-blue-600 dark:bg-blue-600 text-white border border-blue-700/30';
 
             return (
               <div
@@ -1158,41 +1213,68 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                     </button>
                   </Popover>
                 )}
-                {otaBlock && (
-                  <Popover
-                    trigger="hover"
-                    placement="top"
-                    title={
-                      <h4 className="font-semibold text-gray-900 dark:text-white text-xs truncate">
-                        {otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}
-                      </h4>
-                    }
-                    content={
-                      <div className="w-64 p-3 space-y-1 text-xs text-gray-600 dark:text-gray-300">
-                        <div>
-                          {t('ota_blocked_tooltip_convertible', '{{source}} - not yet a booking. Click to convert.').replace('{{source}}', otaBlock.source_label || otaBlock.source || 'external calendar')}
+                {otaBlock && (() => {
+                  // Same popover-first pattern as the guest-booking chip above
+                  // (22 Aug 2026, explicit request: "clicking any past or
+                  // future booking should show popover first ... a button to
+                  // view more"). This OTA-blocked chip previously used
+                  // trigger="hover" with the conversion action wired directly
+                  // to the chip's onClick - inconsistent with the
+                  // guest-booking chip's click-to-preview-then-"View More"
+                  // flow, and a hover trigger has the same stuck-open-on-
+                  // mobile-tap problem documented on Popover.tsx/CLAUDE.md
+                  // mistake #15 (no mouseleave on touch). Keyed by
+                  // `${event_start}-${dateStr}`, not just event_start, for
+                  // the same reason as openBookingPopoverId above: a block
+                  // spanning several days renders one chip per day sharing
+                  // the same event_start, so keying by event_start alone
+                  // would pop every day's chip open at once.
+                  const otaPopoverKey = `${otaBlock.event_start}-${dateStr}`;
+                  const handleConvert = () => {
+                    const ownDays = new Set(expandRangeToDayStrings(otaBlock.event_start, otaBlock.event_end));
+                    setOtaConversionTarget({
+                      block: otaBlock,
+                      blockedDateStrings: allOccupiedDateStrings.filter((dstr) => !ownDays.has(dstr)),
+                    });
+                    setOpenOtaPopoverId(null);
+                  };
+                  return (
+                    <Popover
+                      trigger="click"
+                      placement="top"
+                      open={openOtaPopoverId === otaPopoverKey}
+                      onOpenChange={(isOpen) => setOpenOtaPopoverId(isOpen ? otaPopoverKey : null)}
+                      title={
+                        <h4 className="font-semibold text-gray-900 dark:text-white text-xs truncate">
+                          {otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}
+                        </h4>
+                      }
+                      content={
+                        <div className="w-64 text-xs">
+                          <div className="p-3 space-y-1.5 text-gray-600 dark:text-gray-300">
+                            <div>
+                              {t('ota_blocked_tooltip_convertible', '{{source}} - not yet a booking.').replace('{{source}}', otaBlock.source_label || otaBlock.source || 'external calendar')}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleConvert}
+                            className="w-full text-center py-2 text-2xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 border-t border-gray-100 dark:border-gray-700/60 transition-colors"
+                          >
+                            {t('convert_to_booking_button', 'Convert to Booking')} →
+                          </button>
                         </div>
-                        <div className="text-2xs text-blue-600 dark:text-blue-400 font-semibold pt-1">
-                          Click to convert into booking
-                        </div>
-                      </div>
-                    }
-                  >
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const ownDays = new Set(expandRangeToDayStrings(otaBlock.event_start, otaBlock.event_end));
-                        setOtaConversionTarget({
-                          block: otaBlock,
-                          blockedDateStrings: allOccupiedDateStrings.filter((dstr) => !ownDays.has(dstr)),
-                        });
-                      }}
-                      className={`rounded-t-md rounded-b-md ${otaChipEdgeRounding} px-2 py-1 bg-slate-500 dark:bg-slate-600 hover:bg-slate-600 dark:hover:bg-slate-500 text-white text-xs font-medium flex flex-col justify-center shadow-2xs truncate text-left cursor-pointer transition-colors relative z-10`}
+                      }
                     >
-                      <div className="truncate font-semibold">{otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}</div>
-                    </button>
-                  </Popover>
-                )}
+                      <button
+                        type="button"
+                        className={`rounded-t-md rounded-b-md ${otaChipEdgeRounding} px-2 py-1 bg-slate-700 dark:bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white text-xs font-medium flex flex-col justify-center shadow-2xs truncate text-left cursor-pointer transition-colors relative z-10`}
+                      >
+                        <div className="truncate font-semibold">{otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}</div>
+                      </button>
+                    </Popover>
+                  );
+                })()}
               </div>
             );
           })}
@@ -1200,31 +1282,45 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           );
         })()}
 
-        {/* Calendar Legend */}
-        <div className="pt-3 p-4 border-t border-slate-100 dark:border-slate-700 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-500 dark:text-slate-400">
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded bg-blue-100 dark:bg-blue-900/50 border border-blue-400" />
-            <span>{t('legend_today', 'Today')}</span>
+        {/* Calendar Legend - wording/colors matched exactly to
+            TodayOverview.tsx's multi-property calendar footer legend (22
+            Aug 2026, explicit style-parity request), reusing its same i18n
+            keys so one translation entry drives both calendars' labels
+            instead of two separately-maintained near-duplicates. The
+            "Today" swatch is kept as an extra first item - a real thing
+            this calendar highlights that the other doesn't need to (it has
+            no month-grid to mark a day within), not a mismatch to fix. */}
+        <div className="pt-4 p-4 border-t border-slate-100 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3 text-xs font-medium text-gray-600 dark:text-gray-300">
+          <div className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-gray-200">
+            <span>{t('legend_heading', 'Legend:')}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded bg-slate-500 dark:bg-slate-600" />
-            <span>{t('legend_ota_blocked', 'OTA-Blocked (not yet a booking)')}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded bg-slate-300 dark:bg-slate-600" />
-            <span>{t('legend_checked_out', 'Checked Out (past stay)')}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded bg-blue-600" />
-            <span>{t('legend_active_resident', 'Confirmed Stay')}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded bg-purple-600" />
-            <span>{t('legend_ota_converted_booking', 'OTA-Converted Booking')}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="flex w-2.5 h-2.5 bg-yellow-400 dark:bg-yellow-300 rounded-full shadow-xs ring-1 ring-yellow-600/50" />
-            <span>{t('legend_pending_action', 'Action Pending (ID, C-Form, Check-in/out)')}</span>
+          <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+            <div className="flex items-center gap-2">
+              <span className="w-5 h-3.5 rounded-xs bg-blue-50 dark:bg-blue-900/50 border border-blue-400 inline-block shadow-md" />
+              <span>{t('legend_today', 'Today')}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-5 h-3.5 rounded-xs bg-blue-600 inline-block shadow-md" />
+              <span>{t('legend_direct_booking', 'Direct Booking')}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-5 h-3.5 rounded-xs bg-amber-600 inline-flex items-center justify-center text-white text-[9px] shadow-md">
+                <Globe className="w-2.5 h-2.5" />
+              </span>
+              <span>{t('legend_ota_converted', 'OTA Booking (Airbnb / Booking.com)')}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-5 h-3.5 rounded-xs bg-slate-700 dark:bg-slate-700 border border-slate-600 inline-block shadow-md" />
+              <span>{t('legend_ota_blocked', 'OTA Blocked Date')}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-5 h-3.5 rounded-xs bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 inline-block shadow-md" />
+              <span>{t('legend_checked_out', 'Checked Out Stay')}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="flex w-2.5 h-2.5 bg-yellow-400 dark:bg-yellow-300 rounded-full shadow-xs ring-1 ring-yellow-600/50" />
+              <span>{t('legend_pending_action', 'Action Pending (ID, C-Form, Check-in/out)')}</span>
+            </div>
           </div>
         </div>
       </div>
