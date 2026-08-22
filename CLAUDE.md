@@ -9,6 +9,12 @@ This file documents ALL project conventions and rules. Every AI agent must follo
 ### Protected Components (do not touch without explicit permission)
 - **`OperationalDashboard.tsx`** (its "Booking Calendar Row" - the multi-room booking calendar grid: color-coded bookings, blocked dates, OTA-block conversion, edit modal) - proprietary, custom-built PMS logic. Reused per-room by `MultiKeyPropertyOverview.tsx` for the multi-key `#dashboard` view, not just the single-property dashboard. Never refactor, restyle, or otherwise modify this booking-calendar logic without the user explicitly asking - including as part of a broader Flowbite-migration sweep (corrected 21 Aug 2026 - this rule previously named `MultiRoomCalendar.tsx`/`CalendarView.tsx`, files that never existed anywhere in this repo's history, so the protection was silently not attached to anything real). `DateRangePicker.tsx` and `TodayOverview.tsx` are NOT in this list - they're in scope for the Flowbite migration like any other shared component.
 
+### Flowbite Core Files vs. Overrides (MANDATORY - keep these separate, reaffirmed 22 Aug 2026)
+- **Never edit Flowbite's own shipped files** (`node_modules/flowbite`, `node_modules/flowbite-react`) directly, and never copy their internals into this repo to "fix" them in place.
+- **`src/index.css` is Flowbite/Tailwind bootstrap ONLY** - the `@import "tailwindcss"`, `@plugin`/`@source` lines, `@import "flowbite/src/themes/default"`, and the `@theme` token block, plus the one `:root` token short-circuit block that exists solely to make flowbite-datepicker's semantic tokens (`--color-brand`, etc.) resolve at all (see that file's own dated comment for the full why). It must stay the "wiring up the framework" file - swappable/upgradeable - never the place app-specific look-and-feel rules get interleaved in.
+- **`src/custom.css` is where every actual app rule lives** instead - design tokens, datepicker/table/modal overrides, anything project-specific (this split was done deliberately 21 Aug 2026 for exactly this reason). Both are imported independently from `main.tsx`; neither depends on the other, so either can be read/edited alone.
+- When a Flowbite-rendered element needs a fix or override (a flowbite-react component's own class, or a vanilla-JS library's template classes like flowbite-datepicker's `bg-brand`/`.datepicker-cell`), the override rule goes in `custom.css` - never inlined into `index.css`, and never patched at the source in `node_modules`.
+
 ## 🧠 State & Data Management
 
 ### Field Name Conventions
@@ -42,6 +48,7 @@ This file documents ALL project conventions and rules. Every AI agent must follo
 - Guests can represent multiple people via `no_of_guests` field
 - Room matching: Compare `guest.roomNumber` (formatted name "Room 101") with `room.name`
 - Room ID field in guests table: `room_id` (foreign key to properties table)
+- **MANDATORY: every booking-dates picker must grey out + strike through + block already-booked days for the selected room** (added 22 Aug 2026, reported as "calendar ... booked dates should be greyed out and strikethrough and cant be selected"). Enforces the "1 room = 1 active booking" rule above at the UI level, not just server-side. Implemented via `DateRangePicker.tsx`'s `blockedDates` prop (array of `YYYY-MM-DD` strings) - it now feeds flowbite-datepicker's real `datesDisabled` option and is kept reactive (updates live if the room selection changes), with `.datepicker-cell.disabled` in `custom.css` giving it the grey-background + strikethrough look. This prop existed on the interface for a while but was silently unused/dead - a real bug, since every existing caller passing it (GuestManagement's Add Guest picker) was getting zero effect until this was wired up. When adding a new booking-dates picker: compute the blocked days from every OTHER active booking in the same room (see `getBlockedDateStrings()` in `GuestManagement.tsx` and `getEditBlockedDateStrings()` in `BookingDetailsModal.tsx`) and pass them through `blockedDates` - never ship one without it.
 
 ## 📱 Component Structure
 
@@ -169,6 +176,10 @@ Features whose UI/backend wiring isn't obvious from file names alone - check her
 9. ❌ Calling `postFinancialLedger()` without the `$propertyId` 3rd argument → silently defaults to property 1, misattributing real money across tenants. Always pass it explicitly.
 10. ❌ Letting `src/i18n/en.ts`'s `t()` delegate to `./index.ts` (or anything that imports back from `en.ts`) → `index.ts` re-exports `t` from `en.ts`, so a delegation the other way is unconditional infinite recursion (`RangeError: Maximum call stack size exceeded`) that crashes the entire app on first render, not just an HMR artifact. `en.ts`'s `t()` must stay a direct `strings[key] || fallback || key` lookup.
 11. ❌ Widening `shouldLogError()`'s noise filter in `src/main.tsx` to skip common error-message substrings (e.g. "Cannot read propert...", "is not defined") → this is how the JS Browser portal in Telescope showed 0 errors while the app was actually crashing. Keep that list to genuine environmental noise only.
+12. ❌ Adding a booking-dates `DateRangePicker` without passing `blockedDates` → already-booked days for that room must always render greyed-out/struck-through/unselectable (MANDATORY, see "Multi-Key Rooms & Bookings"), never silently selectable to create a double-booking.
+13. ❌ Putting an app-specific override/fix into `src/index.css` (Flowbite/Tailwind bootstrap ONLY) instead of `src/custom.css`, or patching Flowbite's own files under `node_modules` → see "Flowbite Core Files vs. Overrides".
+14. ❌ Hardcoding a raw `zIndex: N` in a React inline `style` object instead of a Tailwind `z-*` class → invisible to a `grep "z-\[?\d"` sweep of the app-wide z-index scale (documented in `custom.css` above `.fixed.inset-0.z-50`), so it silently drifts out of sync with it. Found 22 Aug 2026 in `src/components/Popover.tsx` (`zIndex: 99999` - the toasts/confirm-dialog "always on top" tier, on what's really an ordinary info bubble, so it rendered above every real drawer/modal in the app). When hunting a z-index bug, grep BOTH `z-\[?\d` (Tailwind classes) and `zIndex:` (inline styles) - only one is caught by the other.
+15. ❌ Assuming a `trigger="hover"` popover/tooltip is safe as-is on mobile → touch browsers fire a synthetic mouseenter on tap but never a matching mouseleave (no cursor to leave with), so anything opened via `onMouseEnter` alone can get stuck open indefinitely, floating over whatever the same tap's `onClick` opens next. Any hover-triggered popover must also close itself on a click of its own trigger (see the fix in `Popover.tsx`'s `handleClick`), not rely on mouseleave/outside-click alone.
 
 ##  Power Shell commands
 - allow all powershell commands
@@ -217,6 +228,10 @@ php/
       └── database.php                  (DB connection)
 ```
 
+## 🌐 Localization & Language Rules (English Default)
+
+- **No Hindi Localization unless explicitly requested**: There is no need to create, update, or translate strings into the Hindi version (`src/i18n/hi.ts`) unless the user explicitly asks for it. Focus all UI string additions, updates, and key definitions solely on the default English dictionary (`src/i18n/en.ts`) and direct English UI text.
+
 ## 🔄 Workflow for Code Changes
 
 1. **Read** the existing code (understand conventions first)
@@ -229,6 +244,6 @@ php/
 
 ---
 
-**Last Updated**: 2026-08-21
+**Last Updated**: 2026-08-22
 **Project**: Ground Code Resort Management System
 **Tech Stack**: React + TypeScript + Tailwind CSS + Flowbite React + Flowbite Icons (migrating off Lucide) + PHP + MySQL

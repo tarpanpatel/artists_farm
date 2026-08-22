@@ -12,6 +12,7 @@
   - **Header Text Whitespace**: Header cells enforce `white-space: nowrap !important; overflow: hidden; text-overflow: ellipsis; line-height: 1.3 !important;`. Header labels must never wrap character-by-character into single vertical letters.
   - **Typography Consistency**: ID and data cells use `text-xs font-semibold text-gray-900 dark:text-white` (never `font-mono` or fake blue links unless clickable). Subtitles use `text-2xs text-gray-500`.
   - **Action Button Sizing**: Action cell buttons must use `<Button size="sm">` (`h-8`, `text-xs font-medium`, `whitespace-nowrap shrink-0`) to prevent multi-line button label wrapping.
+- **No Hindi Localization Rule**: No need to work on or update the Hindi version (`src/i18n/hi.ts`) unless explicitly asked for by the user. Focus exclusively on the default English implementation (`src/i18n/en.ts`) and direct English UI text.
 
 ---
 
