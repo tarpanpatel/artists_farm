@@ -985,11 +985,11 @@ html::-webkit-scrollbar {
 }
 
 html::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.05);
+  background: transparent;
 }
 
 html.dark::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
+  background: transparent;
 }
 
 html::-webkit-scrollbar-thumb {
@@ -1006,7 +1006,33 @@ html::-webkit-scrollbar-thumb:hover {
 
 html {
   scrollbar-width: thin;
-  scrollbar-color: rgba(99, 102, 241, 0.4) rgba(0, 0, 0, 0.05);
+  scrollbar-color: rgba(99, 102, 241, 0.4) transparent;
+}
+
+/* Closed flowbite-react Drawer shadow bleed (22 Aug 2026) - root-caused after
+   an extensive investigation (initially misread as the page scrollbar, then
+   ruled out as a GPU/compositor artifact by testing on desktop AND mobile
+   before the real cause was found via DevTools). Every `<Drawer>` in this
+   app (Add Guest, Add Expense, booking details, etc. - ~36 call sites) stays
+   mounted in the DOM at all times; flowbite-react's own Drawer.js only
+   swaps its POSITION class between "transform-none" (open) and an
+   off-screen translate class like `translate-x-full` (closed) based on
+   `isOpen` - see node_modules/flowbite-react/dist/components/Drawer/theme.js
+   and Drawer.js (read, not edited, per CLAUDE.md). The `shadow-2xl` class
+   each call site passes via `className` is merged in unconditionally every
+   render, open or closed. A CSS box-shadow isn't clipped by `transform`, so
+   shadow-2xl's large blur radius (`0 25px 50px -12px`) kept painting ~30-40px
+   into the visible viewport from the drawer's off-screen edge, full height,
+   on every page that mounts one of these drawers - looked exactly like an
+   unexplained page-edge shadow/gradient. Suppress the shadow only while one
+   of flowbite-react's own "off" translate classes is present (covers all 4
+   drawer positions); the "on"/open state is `transform-none` with none of
+   these classes, so this can't suppress the shadow while actually open. */
+[data-testid="flowbite-drawer"].translate-x-full,
+[data-testid="flowbite-drawer"].-translate-x-full,
+[data-testid="flowbite-drawer"].translate-y-full,
+[data-testid="flowbite-drawer"].-translate-y-full {
+  box-shadow: none !important;
 }
 
 /* ==========================================================================
