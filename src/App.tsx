@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback, Suspense } from 'react';
 import { Drawer as FlowbiteDrawer, DrawerItems } from 'flowbite-react';
 import { Header } from './components/Header';
 import { Navigation, TabType } from './components/Navigation';
@@ -19,6 +19,7 @@ import { InventoryProvider, useInventoryContext } from './contexts/InventoryCont
 import { KitchenProvider } from './contexts/KitchenContext';
 import { ServiceRequestProvider } from './contexts/ServiceRequestContext';
 import { recordTelescopeLog } from './utils/telescopeLogger';
+import { lazyWithRetry } from './utils/lazyWithRetry';
 import { formatDateDDMMYYYY } from './utils/dateUtils';
 import { detectClientInfo } from './utils/clientInfo';
 import { isKitchenModuleNavItem } from './data/appConfig';
@@ -39,27 +40,27 @@ import { getPropertyAndRoomSlugs } from './services/api';
 // dashboards, Platform property management). Keeping these out of the main
 // bundle is what lets the initial paint (login + default dashboard tab) ship
 // a much smaller slice of JS - see TabContentFallback/Suspense usage below.
-const KitchenManagement = lazy(() => import('./components/KitchenManagement').then(m => ({ default: m.KitchenManagement })));
-const InventoryManagement = lazy(() => import('./components/InventoryManagement').then(m => ({ default: m.InventoryManagement })));
-const PettyCashManagement = lazy(() => import('./components/PettyCashManagement').then(m => ({ default: m.PettyCashManagement })));
-const CashDrawerManager = lazy(() => import('./components/CashDrawerManager').then(m => ({ default: m.CashDrawerManager })));
-const ExpenseItemsManagement = lazy(() => import('./components/ExpenseItemsManagement').then(m => ({ default: m.ExpenseItemsManagement })));
-const StaffManagement = lazy(() => import('./components/StaffManagement').then(m => ({ default: m.StaffManagement })));
-const TeamOverviewDashboard = lazy(() => import('./components/TeamOverviewDashboard').then(m => ({ default: m.TeamOverviewDashboard })));
-const AdminControlOverviewDashboard = lazy(() => import('./components/AdminControlOverviewDashboard').then(m => ({ default: m.AdminControlOverviewDashboard })));
-const AnalyticsDashboard = lazy(() => import('./components/AnalyticsDashboard').then(m => ({ default: m.AnalyticsDashboard })));
-const AuditLogsView = lazy(() => import('./components/AuditLogsView').then(m => ({ default: m.AuditLogsView })));
-const DataExportCenter = lazy(() => import('./components/DataExportCenter').then(m => ({ default: m.DataExportCenter })));
-const MenuManager = lazy(() => import('./components/MenuManager').then(m => ({ default: m.MenuManager })));
-const MiscChargesManagement = lazy(() => import('./components/MiscChargesManagement').then(m => ({ default: m.MiscChargesManagement })));
-const ServiceRequestsManagement = lazy(() => import('./components/ServiceRequestsManagement').then(m => ({ default: m.ServiceRequestsManagement })));
-const LicenseManagement = lazy(() => import('./components/LicenseManagement').then(m => ({ default: m.LicenseManagement })));
-const TelegramNotificationModal = lazy(() => import('./components/TelegramNotificationModal').then(m => ({ default: m.TelegramNotificationModal })));
-const EditPropertyPage = lazy(() => import('./components/EditPropertyPage').then(m => ({ default: m.EditPropertyPage })));
-const WhatsAppTemplateSettings = lazy(() => import('./components/WhatsAppTemplateSettings').then(m => ({ default: m.WhatsAppTemplateSettings })));
-const PlatformPropertyManagement = lazy(() => import('./components/PlatformPropertyManagement').then(m => ({ default: m.PlatformPropertyManagement })));
-const TenantDashboard = lazy(() => import('./components/TenantDashboard').then(m => ({ default: m.TenantDashboard })));
-const RootAdminDashboard = lazy(() => import('./components/RootAdminDashboard').then(m => ({ default: m.RootAdminDashboard })));
+const KitchenManagement = lazyWithRetry(() => import('./components/KitchenManagement').then(m => ({ default: m.KitchenManagement })), 'KitchenManagement');
+const InventoryManagement = lazyWithRetry(() => import('./components/InventoryManagement').then(m => ({ default: m.InventoryManagement })), 'InventoryManagement');
+const PettyCashManagement = lazyWithRetry(() => import('./components/PettyCashManagement').then(m => ({ default: m.PettyCashManagement })), 'PettyCashManagement');
+const CashDrawerManager = lazyWithRetry(() => import('./components/CashDrawerManager').then(m => ({ default: m.CashDrawerManager })), 'CashDrawerManager');
+const ExpenseItemsManagement = lazyWithRetry(() => import('./components/ExpenseItemsManagement').then(m => ({ default: m.ExpenseItemsManagement })), 'ExpenseItemsManagement');
+const StaffManagement = lazyWithRetry(() => import('./components/StaffManagement').then(m => ({ default: m.StaffManagement })), 'StaffManagement');
+const TeamOverviewDashboard = lazyWithRetry(() => import('./components/TeamOverviewDashboard').then(m => ({ default: m.TeamOverviewDashboard })), 'TeamOverviewDashboard');
+const AdminControlOverviewDashboard = lazyWithRetry(() => import('./components/AdminControlOverviewDashboard').then(m => ({ default: m.AdminControlOverviewDashboard })), 'AdminControlOverviewDashboard');
+const AnalyticsDashboard = lazyWithRetry(() => import('./components/AnalyticsDashboard').then(m => ({ default: m.AnalyticsDashboard })), 'AnalyticsDashboard');
+const AuditLogsView = lazyWithRetry(() => import('./components/AuditLogsView').then(m => ({ default: m.AuditLogsView })), 'AuditLogsView');
+const DataExportCenter = lazyWithRetry(() => import('./components/DataExportCenter').then(m => ({ default: m.DataExportCenter })), 'DataExportCenter');
+const MenuManager = lazyWithRetry(() => import('./components/MenuManager').then(m => ({ default: m.MenuManager })), 'MenuManager');
+const MiscChargesManagement = lazyWithRetry(() => import('./components/MiscChargesManagement').then(m => ({ default: m.MiscChargesManagement })), 'MiscChargesManagement');
+const ServiceRequestsManagement = lazyWithRetry(() => import('./components/ServiceRequestsManagement').then(m => ({ default: m.ServiceRequestsManagement })), 'ServiceRequestsManagement');
+const LicenseManagement = lazyWithRetry(() => import('./components/LicenseManagement').then(m => ({ default: m.LicenseManagement })), 'LicenseManagement');
+const TelegramNotificationModal = lazyWithRetry(() => import('./components/TelegramNotificationModal').then(m => ({ default: m.TelegramNotificationModal })), 'TelegramNotificationModal');
+const EditPropertyPage = lazyWithRetry(() => import('./components/EditPropertyPage').then(m => ({ default: m.EditPropertyPage })), 'EditPropertyPage');
+const WhatsAppTemplateSettings = lazyWithRetry(() => import('./components/WhatsAppTemplateSettings').then(m => ({ default: m.WhatsAppTemplateSettings })), 'WhatsAppTemplateSettings');
+const PlatformPropertyManagement = lazyWithRetry(() => import('./components/PlatformPropertyManagement').then(m => ({ default: m.PlatformPropertyManagement })), 'PlatformPropertyManagement');
+const TenantDashboard = lazyWithRetry(() => import('./components/TenantDashboard').then(m => ({ default: m.TenantDashboard })), 'TenantDashboard');
+const RootAdminDashboard = lazyWithRetry(() => import('./components/RootAdminDashboard').then(m => ({ default: m.RootAdminDashboard })), 'RootAdminDashboard');
 
 // Small inline fallback for tab-content Suspense boundaries - deliberately
 // NOT LoadingScreen (that's a fixed-inset-0 full-page overlay meant for app

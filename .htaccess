@@ -30,14 +30,28 @@ DirectoryIndex index.php index.html
     # Handle tenant/property routing for multi-tenant SaaS
     # e.g., /tenant-slug/property-slug/anything -> /index.php?tenant_slug=tenant-slug&property_slug=property-slug
     # Only rewrites when the full path isn't a real file/directory, so
-    # /php/..., /dist/..., /assets/..., /api/... etc. are left untouched
+    # /php/..., /dist/..., /assets/..., /api/... etc. are left untouched -
+    # EXCEPT that comment was only half true (found 22 Aug 2026, reported as
+    # a "Kitchen Management Error" / "'text/html' is not a valid JavaScript
+    # MIME type" crash): !-f/!-d only bail out for a file that STILL exists.
+    # A hashed chunk from a deploy that has since shipped a new hash (dist/
+    # assets/KitchenManagement-<oldhash>.js, deleted by the new build) no
+    # longer exists on disk, so those conditions both pass and this rule
+    # rewrote it into index.php?tenant_slug=dist&property_slug=assets - a 200
+    # HTML response where the browser's dynamic import() expected JS. Any
+    # tab/PWA left open across a deploy would then throw exactly that MIME-
+    # type error the next time it lazy-loaded a route it hadn't visited yet
+    # in that session. The explicit REQUEST_URI exclusion below is what
+    # actually makes a missing /dist/ file 404 for real instead.
     RewriteCond %{REQUEST_URI} !clean_all_roberts\.php$
+    RewriteCond %{REQUEST_URI} !^/dist/
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^([a-z0-9-_]+)/([a-z0-9-_]+)/?(.*)$ index.php?tenant_slug=$1&property_slug=$2 [QSA,L]
 
     # Fallback for single segment (tenant dashboard)
     RewriteCond %{REQUEST_URI} !clean_all_roberts\.php$
+    RewriteCond %{REQUEST_URI} !^/dist/
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^([a-z0-9-_]+)/?(.*)$ index.php?property_slug=$1 [QSA,L]

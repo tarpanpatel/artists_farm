@@ -4,6 +4,7 @@ import { Button } from './Button';
 import DataTable from 'react-data-table-component';
 import { flowbiteTableCustomStyles } from '../utils/tableStyles';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
+import { lazyWithRetry } from '../utils/lazyWithRetry';
 import {
   Calendar,
   CheckCircle2,
@@ -66,8 +67,9 @@ interface GroupedRoomBooking {
   guests: Guest[];
 }
 
-const LazyGuestManagement = React.lazy(() =>
-  import('./GuestManagement').then(m => ({ default: m.GuestManagement }))
+const LazyGuestManagement = lazyWithRetry(
+  () => import('./GuestManagement').then(m => ({ default: m.GuestManagement })),
+  'GuestManagement'
 );
 
 export const BillingCheckout: React.FC<BillingCheckoutProps> = ({

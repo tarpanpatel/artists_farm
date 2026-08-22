@@ -1108,7 +1108,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                     </div>
                     <div className="flex justify-between items-center text-sm font-extrabold">
                       <span className="text-slate-900 dark:text-white">{t('grand_target_due_label', 'Grand Target Due (Pending Today):')}</span>
-                      <span className="summary-line summary-line--grand-target-due text-emerald-700 dark:text-emerald-400 text-lg">₹{grandTargetDue.toFixed(2)}</span>
+                      <span className="summary-line summary-line--grand-target-due text-emerald-700 dark:text-emerald-400">₹{grandTargetDue.toFixed(2)}</span>
                     </div>
                   </div>
 

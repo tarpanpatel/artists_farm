@@ -155,6 +155,13 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   // 2026). Fixed by making this popover click-triggered and controlled - the
   // chip only ever toggles it open/closed now; only its own "View More"
   // button opens the modal, closing the popover in that same click.
+  // Keyed as `${booking.id}-${dateStr}`, NOT just booking.id (found 22 Aug
+  // 2026): a multi-night booking renders one chip per day cell, all sharing
+  // the same booking id, so keying by id alone made clicking ANY one of its
+  // day cells satisfy `open === id` for every other day cell of that same
+  // booking too - all of them popped their popover open at once, stacked on
+  // top of each other. Including the specific day cell's own date string
+  // scopes "open" to the exact chip that was clicked.
   const [openBookingPopoverId, setOpenBookingPopoverId] = useState<string | null>(null);
   const [blockedDates, setBlockedDates] = useState<Array<{
     event_start: string;
@@ -917,6 +924,20 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             // px-2 on the chip button itself already keeps its inner text
             // spaced correctly regardless of where these margins shift the
             // box - no extra padding compensation needed here.
+            // IMPORTANT: the chip button below must NOT also carry `w-full`
+            // (width:100%) - found 22 Aug 2026, reproduced live with a real
+            // multi-day booking: percentage widths resolve against the
+            // day-cell's content-box regardless of the chip's own margins,
+            // so a negative margin here shifts the box but the box's WIDTH
+            // stayed locked at 100% of the un-merged content area, leaving a
+            // visible gap (equal to the cell's own padding, ~6-8px) on every
+            // "merged" edge instead of the two chips actually touching. The
+            // day cell is a plain `flex flex-col` with no `items-*` override,
+            // so its default `align-items: stretch` already sizes a
+            // width-less flex child to fill the cross-axis AND correctly
+            // grows into a negative margin the way `width:100%` cannot -
+            // leave `w-full` off the button entirely (for every rounding
+            // state, not just the merged one) and let stretch handle it.
             const chipEdgeRounding = `${continuesFromPrevDay ? 'rounded-l-none -ml-1.5 sm:-ml-2' : 'rounded-l-md'} ${continuesToNextDay ? 'rounded-r-none -mr-1.5 sm:-mr-2' : 'rounded-r-md'}`;
             // OTA-synced block for this day, on this room's own feed (this
             // component already fetches get_blocked_dates scoped to whichever
@@ -1012,8 +1033,8 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                     <Popover
                       trigger="click"
                       placement="top"
-                      open={openBookingPopoverId === String(dayBooking.id)}
-                      onOpenChange={(isOpen) => setOpenBookingPopoverId(isOpen ? String(dayBooking.id) : null)}
+                      open={openBookingPopoverId === `${dayBooking.id}-${dateStr}`}
+                      onOpenChange={(isOpen) => setOpenBookingPopoverId(isOpen ? `${dayBooking.id}-${dateStr}` : null)}
                       title={
                         <div className="flex items-center justify-between gap-2">
                           <h4 className="font-semibold text-gray-900 dark:text-white text-xs truncate">{dayBooking.guestName}</h4>
@@ -1063,7 +1084,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                     >
                       <button
                         type="button"
-                        className={`rounded-t-md rounded-b-md ${chipEdgeRounding} px-2 py-1 ${isDayBookingCheckedOut ? checkedOutColor : isOtaBooking ? otaBookingColor : directBookingColor} text-xs font-medium flex flex-col justify-center shadow-2xs hover:opacity-90 transition-opacity cursor-pointer truncate w-full text-left relative z-10`}
+                        className={`rounded-t-md rounded-b-md ${chipEdgeRounding} px-2 py-1 ${isDayBookingCheckedOut ? checkedOutColor : isOtaBooking ? otaBookingColor : directBookingColor} text-xs font-medium flex flex-col justify-center shadow-2xs hover:opacity-90 transition-opacity cursor-pointer truncate text-left relative z-10`}
                       >
                         <div className="truncate font-semibold flex items-center gap-1.5 min-w-0">
                           {hasDayPending && (
@@ -1166,7 +1187,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                           blockedDateStrings: allOccupiedDateStrings.filter((dstr) => !ownDays.has(dstr)),
                         });
                       }}
-                      className={`rounded-t-md rounded-b-md ${otaChipEdgeRounding} px-2 py-1 bg-slate-500 dark:bg-slate-600 hover:bg-slate-600 dark:hover:bg-slate-500 text-white text-xs font-medium flex flex-col justify-center shadow-2xs truncate w-full text-left cursor-pointer transition-colors relative z-10`}
+                      className={`rounded-t-md rounded-b-md ${otaChipEdgeRounding} px-2 py-1 bg-slate-500 dark:bg-slate-600 hover:bg-slate-600 dark:hover:bg-slate-500 text-white text-xs font-medium flex flex-col justify-center shadow-2xs truncate text-left cursor-pointer transition-colors relative z-10`}
                     >
                       <div className="truncate font-semibold">{otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}</div>
                     </button>
