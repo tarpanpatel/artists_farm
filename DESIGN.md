@@ -70,8 +70,8 @@ On screens with search and category filtering (e.g. `MenuManager.tsx`, `Inventor
 
 Canonical reference: https://github.com/themesberg/flowbite/blob/main/content/components/popover.md
 
-- **Never use generic OS/browser `title="..."` attributes** for UI information, tooltips, or hover alerts.
-- All hover tooltips and interactive micro-cards across the site must strictly use Flowbite Popover / Tooltip styling:
+- **Never use generic OS/browser `title="..."` attributes or basic `<Tooltip>` components** for UI information, tooltips, or hover alerts.
+- All hover tooltips and interactive micro-cards across the site must strictly use `<Popover>` (`src/components/Popover.tsx`) styling:
   - **Container**: `bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg text-xs`
   - **Header** (when titled): `px-3 py-2 bg-gray-50 dark:bg-gray-700/60 border-b border-gray-200 dark:border-gray-700 font-semibold text-gray-900 dark:text-white rounded-t-lg`
   - **Body**: `px-3 py-2 text-gray-600 dark:text-gray-300`

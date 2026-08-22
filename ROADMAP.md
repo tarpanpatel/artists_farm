@@ -10,6 +10,17 @@ This document tracks identified bugs, pending backend API integrations, and upco
 
 ---top priority ends--- 
 
+### Documentation: short file-purpose header comments
+
+Every source file in `src/` and `php/` should carry a short (1-3 line)
+comment at the top describing what it does - its role in the app, not a
+restatement of the filename and not a changelog. Files that already have a
+clear top-of-file summary comment should be left as is, not duplicated or
+rewritten. Match whatever comment style is already used in that part of the
+codebase (JSDoc-style `/** ... */` for `.tsx`/`.ts`, `/* ... */` for `.php`) -
+comment-only, no logic/formatting/import changes. Handed off to `ai2` (22 Aug
+2026) to run across the codebase; not yet verified done.
+
 ### Security: open follow-ups from the 11 Aug 2026 auth audit
 
 Fixed and shipped, see git history for details on each: cross-tenant
