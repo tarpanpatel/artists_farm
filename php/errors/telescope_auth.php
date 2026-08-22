@@ -54,7 +54,15 @@ if (!function_exists('getTelescopePassword')) {
         session_name('telescope_session');
         session_set_cookie_params([
             'lifetime' => 86400 * 30,
-            'path' => '/php/errors/',
+            // Deliberately '/' not '/php/errors/' - this app is served from
+            // the domain root in production but from a /artists_farm/
+            // subfolder on local XAMPP (see .htaccess's own RewriteBase
+            // comment for the same distinction elsewhere), so a path scoped
+            // to just "/php/errors/" would silently never match a request to
+            // "/artists_farm/php/errors/..." locally. A same-origin session
+            // cookie doesn't leak anything by being sent domain-wide - only
+            // this file ever reads $_SESSION['telescope_authed'].
+            'path' => '/',
             'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
             'httponly' => true,
             'samesite' => 'Lax',
