@@ -1341,8 +1341,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               </div>
 
               {/* ATTENDANCE LEGEND BAR */}
-              <div className="bg-slate-50 dark:bg-slate-900/60 p-3 border-t border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3 text-xs">
-                <span className="font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider text-[11px]">Attendance Legend:</span>
+              <div className="bg-slate-50 dark:bg-slate-900/60 p-3 border-t border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-start gap-3 text-xs">
                 <div className="flex flex-wrap items-center gap-4">
                   <div className="flex items-center gap-1.5">
                     <span className="w-5 h-5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-semibold flex items-center justify-center text-xs">P</span>

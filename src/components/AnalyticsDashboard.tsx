@@ -1132,8 +1132,8 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   return (
     <div className="analytics-dashboard-container space-y-6 text-slate-800 dark:text-slate-200">
       <PageHeader
-        title={t('bi_analytics_dashboard_heading', 'Business Intelligence (BI) Analytics Dashboard')}
-        subtitle={t('bi_analytics_dashboard_subtitle', 'Real-time multi-dimensional financial reports, revenue streams, operational expenses, and procurement price analytics.')}
+        title={t('bi_analytics_dashboard_heading', 'Business Reports & Analytics')}
+        subtitle={t('bi_analytics_dashboard_subtitle', 'Track your revenue, daily earnings, expenses, and financial trends in real time.')}
       >
         <Filter className="w-4 h-4 text-slate-500" />
         <StyledSelect
@@ -1209,7 +1209,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
               <div className="space-y-4">
                 <div>
                   <div className="flex justify-between font-semibold text-slate-800 dark:text-slate-200 mb-1">
-                    <span>{t('room_lodging_revenue_label', 'Room Lodging Revenue')}</span>
+                    <span>{t('room_lodging_revenue_label', 'Room Accommodation Revenue')}</span>
                     <span className="font-extrabold">₹{roomRevenue.toLocaleString('en-IN')}</span>
                   </div>
                   <div className="w-full h-3 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden">

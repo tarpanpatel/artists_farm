@@ -655,7 +655,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
                 <div>
                   <Input
-                    label={t('base_lodging_charges_label', 'Base Lodging Charges (₹)')}
+                    label={t('base_lodging_charges_label', 'Base Accommodation Charges (₹)')}
                     type="number"
                     value={roomCharges}
                     onChange={(e) => setRoomCharges(Math.max(0, parseFloat(e.target.value) || 0))}
@@ -691,7 +691,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
                 <div className="bg-amber-50 dark:bg-amber-950/40 rounded-lg p-3 space-y-2 text-xs border border-amber-200 dark:border-amber-800">
                   <div className="flex justify-between items-center font-semibold">
-                    <span className="text-slate-700 dark:text-slate-300">{t('pending_lodging_due_label', 'Pending Lodging Due:')}</span>
+                    <span className="text-slate-700 dark:text-slate-300">{t('pending_lodging_due_label', 'Pending Accommodation Due:')}</span>
                     <span className="summary-line summary-line--pending-lodging-due text-amber-700 dark:text-amber-400 text-sm font-semibold">₹{lodgingPendingDue.toFixed(2)}</span>
                   </div>
                   <div>
@@ -918,7 +918,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
                 <div className="space-y-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
                   <div className="flex justify-between">
-                    <span>{t('pending_lodging_due_label', 'Pending Lodging Due:')}</span>
+                    <span>{t('pending_lodging_due_label', 'Pending Accommodation Due:')}</span>
                     <span className="font-semibold">₹{lodgingPendingDue.toFixed(2)}</span>
                   </div>
 
@@ -1334,7 +1334,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                   Stay Logistics (Room {guest.roomNumber})
                 </div>
                 <div className="flex justify-between text-black">
-                  <span>{t('lodging_contract_charges_label', 'Lodging Contract Charges:')}</span>
+                  <span>{t('lodging_contract_charges_label', 'Accommodation Contract Charges:')}</span>
                   <span>₹{roomCharges.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-black font-semibold">
@@ -1342,7 +1342,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                   <span className="summary-line summary-line--advance-paid">₹{advancePaid.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-black font-semibold border-t border-dashed border-slate-200 pt-1">
-                  <span>{t('pending_lodging_settled_label', 'Pending Lodging Settled:')}</span>
+                  <span>{t('pending_lodging_settled_label', 'Pending Accommodation Settled:')}</span>
                   <span className="summary-line summary-line--pending-lodging-due">₹{lodgingPendingDue.toFixed(2)}</span>
                 </div>
               </div>

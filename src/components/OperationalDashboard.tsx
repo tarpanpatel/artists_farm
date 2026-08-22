@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Drawer, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, Checkbox } from 'flowbite-react';
+import { Drawer, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, Checkbox, Datepicker } from 'flowbite-react';
 import { X, ChevronLeft, ChevronRight } from './icons/FlowbiteIcons';
 import { Popover } from './Popover';
 import {
@@ -240,8 +240,21 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   const viewDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
-  const monthName = viewDate.toLocaleString('default', { month: 'long', year: 'numeric' });
 
+  // Month/year dropdown (22 Aug 2026) - the "August 2026" label used to be
+  // plain text, only movable one month at a time via the arrow buttons on
+  // either side. flowbite-react's own Datepicker already has a built-in
+  // Months/Years/Decades picker (click its header title to cycle views) -
+  // reused here as a fast "jump straight to November" path instead of
+  // building a custom month/year selector from scratch. It only ever
+  // DISPLAYS viewDate and reports a new one back via onChange - monthOffset
+  // (not the picker) stays the single source of truth for which month the
+  // grid below actually renders, same as the arrow buttons already do.
+  const handleMonthPickerChange = (date: Date | null) => {
+    if (!date) return;
+    const newOffset = (date.getFullYear() - today.getFullYear()) * 12 + (date.getMonth() - today.getMonth());
+    setMonthOffset(newOffset);
+  };
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
@@ -470,7 +483,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
         <PageHeader
           title={t('dashboard_heading', 'Dashboard')}
         >
-          <PageHeaderButton onClick={handleShareFoodMenu} icon={Share2}>
+          <PageHeaderButton onClick={handleShareFoodMenu} icon={Share2} variant="secondary">
             {t('share_food_menu_button', 'Share Menu')}
           </PageHeaderButton>
           <PageHeaderButton onClick={() => setShowAddGuestModal(true)} icon={Plus}>
@@ -847,7 +860,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden space-y-0">
         {/* Header Toolbar */}
         <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 order-2 sm:order-1">
             <div className="flex items-center gap-2">
               <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-500" />
               <h3 className="operational-dashboard__subtitle font-bold text-gray-900 dark:text-white text-base">
@@ -863,9 +876,17 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2.5 py-1 rounded-md border border-gray-200 dark:border-gray-600 min-w-[7.5rem] text-center">
-                {monthName}
-              </span>
+              <Datepicker
+                value={viewDate}
+                onChange={handleMonthPickerChange}
+                readOnly
+                language="en"
+                showClearButton={false}
+                showTodayButton={false}
+                sizing="sm"
+                className="w-[8.5rem] [&_input]:cursor-pointer [&_input]:text-center [&_input]:text-xs [&_input]:font-semibold"
+                title={t('jump_to_month_tooltip', 'Jump to any month/date')}
+              />
               <button
                 type="button"
                 onClick={() => setMonthOffset((o) => o + 1)}
@@ -876,7 +897,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               </button>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 order-1 sm:order-2">
             <button
               type="button"
               onClick={() => onNavigate('new_booking')}
@@ -1210,16 +1231,14 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                               >
                                 <button
                                   type="button"
-                                  className={`w-full rounded-md px-2 py-1 ${isDayBookingCheckedOut ? checkedOutColor : isOtaBooking ? otaBookingColor : directBookingColor} text-xs font-medium flex flex-col justify-center shadow-2xs hover:opacity-90 transition-opacity cursor-pointer truncate text-left`}
+                                  className={`w-full rounded-md px-2 py-1 ${isDayBookingCheckedOut ? checkedOutColor : isOtaBooking ? otaBookingColor : directBookingColor} text-xs font-medium flex items-center gap-1.5 shadow-2xs hover:opacity-90 transition-opacity cursor-pointer truncate text-left`}
                                 >
-                                  <div className="truncate font-semibold flex items-center gap-1.5 min-w-0">
-                                    {hasDayPending && (
-                                      <span className="flex w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/50" />
-                                    )}
-                                    {isOtaBooking && <Globe className="w-2.5 h-2.5 shrink-0" />}
-                                    <span className="truncate">{dayBooking.guestName.split(' ')[0]}</span>
-                                  </div>
-                                  {nightlyRate > 0 && <div className="text-2xs font-normal opacity-85">₹{nightlyRate}</div>}
+                                  {hasDayPending && (
+                                    <span className="flex w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/50" />
+                                  )}
+                                  {isOtaBooking && <Globe className="w-2.5 h-2.5 shrink-0" />}
+                                  <span className="truncate font-semibold min-w-0">{dayBooking.guestName.split(' ')[0]}</span>
+                                  {nightlyRate > 0 && <span className="text-2xs font-normal opacity-85 shrink-0 ml-auto">₹{nightlyRate}</span>}
                                 </button>
                               </Popover>
                             </div>
@@ -1297,10 +1316,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             "Today" swatch is kept as an extra first item - a real thing
             this calendar highlights that the other doesn't need to (it has
             no month-grid to mark a day within), not a mismatch to fix. */}
-        <div className="pt-4 p-4 border-t border-slate-100 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3 text-xs font-medium text-gray-600 dark:text-gray-300">
-          <div className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-gray-200">
-            <span>{t('legend_heading', 'Legend:')}</span>
-          </div>
+        <div className="pt-4 p-4 border-t border-slate-100 dark:border-slate-700 flex flex-wrap items-center justify-start gap-3 text-xs font-medium text-gray-600 dark:text-gray-300">
           <div className="flex flex-wrap items-center gap-4 sm:gap-6">
             <div className="flex items-center gap-2">
               <span className="w-5 h-3.5 rounded-xs bg-blue-50 dark:bg-blue-900/50 border border-blue-400 inline-block shadow-md" />
@@ -1371,7 +1387,21 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           onConvert={(guest) => {
             onAddGuest?.(guest);
             setOtaConversionTarget(null);
-            fetchBlockedDates();
+            // Optimistic removal of exactly the block just claimed, matched by
+            // its stable external_event_id - NOT a fetchBlockedDates() refetch
+            // (found 22 Aug 2026, reported as "converted a booking, now there
+            // are 2 capsules"). onAddGuest fires the add_guest write but isn't
+            // awaited (same fire-and-forget optimistic pattern this whole flow
+            // already uses - see ConvertOtaBookingModal's own comment), so a
+            // refetch here routinely raced ahead of that write actually landing:
+            // the server's getBlockedDates() only excludes a block once a guest
+            // row with a matching ical_external_event_id exists, so refetching
+            // too early got back the STILL-unclaimed block and overwrote local
+            // state with it - stuck showing next to the brand-new booking until
+            // a full reload. Removing it from local state directly can't race
+            // anything.
+            const convertedId = otaConversionTarget.block.external_event_id;
+            setBlockedDates((prev) => prev.filter((bd) => bd.external_event_id !== convertedId));
           }}
         />
       )}

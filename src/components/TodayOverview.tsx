@@ -784,10 +784,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
       </div>
 
       {/* Multi-Calendar Legend Footer */}
-      <div className="pt-4 border-t border-slate-100 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3 text-xs font-medium text-slate-600 dark:text-slate-300">
-        <div className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-200">
-          <span>{t('legend_heading', 'Legend:')}</span>
-        </div>
+      <div className="pt-4 border-t border-slate-100 dark:border-slate-700 flex flex-wrap items-center justify-start gap-3 text-xs font-medium text-slate-600 dark:text-slate-300">
         <div className="flex flex-wrap items-center gap-4 sm:gap-6">
           <div className="flex items-center gap-2">
             <span className="w-5 h-3.5 rounded-xs bg-blue-600 inline-block shadow-md" />
@@ -846,7 +843,12 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           onConvert={(guest) => {
             onAddGuest?.(guest);
             setOtaConversionTarget(null);
-            fetchBlockedDates();
+            // Optimistic removal, not a refetch - see the matching fix +
+            // comment in OperationalDashboard.tsx's own onConvert (22 Aug
+            // 2026, same race condition, same bug report: "converted a
+            // booking, now there are 2 capsules").
+            const convertedId = otaConversionTarget.block.external_event_id;
+            setBlockedDates((prev) => prev.filter((bd) => bd.external_event_id !== convertedId));
           }}
         />
       )}

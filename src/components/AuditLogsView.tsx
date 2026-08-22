@@ -494,7 +494,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                               <Input
-                                label={t('base_lodging_charges_contract_label', 'BASE LODGING CHARGES (CONTRACT)')}
+                                label={t('base_lodging_charges_contract_label', 'BASE ACCOMMODATION CHARGES (CONTRACT)')}
                                 type="number"
                                 value={editingReceipt.roomRent ?? editingReceipt.roomTotal ?? 0}
                                 onChange={(e) => {

@@ -1442,7 +1442,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
 
     let itemsStr = '';
     if (receipt.roomTotal > 0) {
-      itemsStr += `  • Lodging (${receipt.nightsCount || 1} nights): <b>₹${receipt.roomTotal}</b>\n`;
+      itemsStr += `  • Accommodation (${receipt.nightsCount || 1} nights): <b>₹${receipt.roomTotal}</b>\n`;
     }
     if (receipt.foodItems && receipt.foodItems.length > 0) {
       itemsStr += `  • Kitchen Orders:\n`;

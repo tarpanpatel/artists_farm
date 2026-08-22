@@ -17,6 +17,7 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { Drawer } from 'flowbite-react';
+import { Button } from './Button';
 import { Input } from './Input';
 import {
   fetchTelegramBotIdentity,
@@ -398,15 +399,15 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                       fullWidth
                     />
                   </div>
-                  <button
-                    type="button"
+                  <Button
+                    variant="primary"
+                    size="sm"
                     onClick={handleSaveToken}
                     disabled={savingToken}
-                    className="shrink-0 bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white font-semibold text-xs px-4 py-2.5 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                    leftIcon={savingToken ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                   >
-                    {savingToken ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                     {t('save_button', 'Save')}
-                  </button>
+                  </Button>
                 </div>
                 {saveSuccess && (
                   <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
