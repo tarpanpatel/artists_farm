@@ -236,4 +236,6 @@ All action modals, creation forms, and secondary management dialogs across the s
 - **Z-Index**: Modals and right drawers operate at `z-58` per application z-index layering scale.
 - **In-Drawer Management**: When a drawer presents a list of entities (such as custom service types, material categories, or payment accounts), users must be able to **add new items directly from inside the drawer** via an inline creation form at the top, alongside inline edit and delete actions.
 
+**Exception - short yes/no confirmation prompts**: `ConfirmDialogContext.tsx` (the app-wide `useConfirm()`/`confirm()`/`alertModal()` dialog - "Delete this booking?", "Remove this feed?", etc.) is deliberately a centered `flowbite-react` `<Modal size="md" popup>`, not a right-side drawer, even though it was briefly rebuilt as one on 22 Aug 2026 during the drawer sweep. Reverted 23 Aug 2026 (explicit user report + screenshot): a 1-2 line yes/no prompt in a full-height drawer left most of the drawer empty, with Cancel/Confirm stranded far below the message - a bad fit, unlike this rule's other drawers, which hold genuine multi-field forms or lists. Keep new short confirmation/alert prompts on this same shared component (don't hand-roll another one) rather than adding a drawer variant for them.
+
 
