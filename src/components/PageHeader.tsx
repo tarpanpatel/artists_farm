@@ -1,5 +1,6 @@
 import React from 'react';
 import { Button } from './Button';
+import { Popover } from './Popover';
 
 interface PageHeaderProps {
   title: React.ReactNode;
@@ -27,6 +28,18 @@ interface PageHeaderProps {
  * removed app-wide (21 Aug 2026, explicit request) rather than toggled per
  * page via `hideBorder`, since it read as a stray extra line on every page,
  * not just the ones that had already opted out with that prop.
+ *
+ * `subtitle` no longer renders as always-visible text under the title (23
+ * Aug 2026, explicit request - "subtext should appear when clicked on help
+ * icon"). It's now a "Help?" link next to the title that opens it in a
+ * click-triggered Popover, matching the pattern a few pages (CashDrawerManager,
+ * MiscChargesManagement) had already been hand-rolling inside their own
+ * `title` prop - baking it into PageHeader itself means every page using
+ * `subtitle` gets it for free and stays in sync, instead of each page
+ * re-implementing its own "Help?" popover. Those two pages' existing
+ * hand-rolled versions are untouched (they pass their description via
+ * `title`, not `subtitle`) - harmless duplication of the same pattern, not
+ * a conflict.
  */
 export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, children }) => (
   // flex-col on mobile, flex-row from sm: up (found 21 Aug 2026) - this was
@@ -37,14 +50,31 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, childre
   // two words per line instead of the buttons dropping to their own row.
   <div className="gen_page_head flex flex-row items-center justify-between gap-3 pb-3 mb-4 page-header">
     <div className="min-w-0 flex-1 page-header__left">
-      <h1 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight sm:text-2xl page-header__title">
-        {title}
-      </h1>
-      {subtitle && (
-        <p className="text-sm text-gray-500 dark:text-gray-400 font-normal mt-1 page-header__subtitle">
-          {subtitle}
-        </p>
-      )}
+      <div className="flex items-center flex-wrap gap-2 page-header__title-row">
+        <h1 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight sm:text-2xl page-header__title">
+          {title}
+        </h1>
+        {subtitle && (
+          <Popover
+            placement="bottom"
+            trigger="click"
+            title="About this page"
+            content={
+              <div className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-300 leading-relaxed max-w-xs">
+                {subtitle}
+              </div>
+            }
+          >
+            <button
+              type="button"
+              aria-label="About this page"
+              className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer shrink-0 page-header__help-toggle"
+            >
+              Help?
+            </button>
+          </Popover>
+        )}
+      </div>
     </div>
     {children && <div className="flex flex-wrap items-center gap-2.5 sm:shrink-0 page-header__actions">{children}</div>}
   </div>
