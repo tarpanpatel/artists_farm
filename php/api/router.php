@@ -133,7 +133,21 @@ if (file_exists($__configuration_php_path)) {
 unset($__configuration_php_path);
 
 require_once __DIR__ . '/multikey_properties.php';
-require_once __DIR__ . '/../service_requests/service_requests.php';
+// Guarded (23 Aug 2026) for the exact same reason as module_manager.php
+// above: telegram.php's chain on staging goes telegram.php -> pairing.php ->
+// webhook_handler.php -> require_once __DIR__.'/../service_requests/
+// service_requests.php' - and since that whole chain now loads from
+// PRODUCTION's path on staging, __DIR__ resolves to PRODUCTION's copy of
+// service_requests.php too, a different absolute path than staging's own
+// copy below. Found live via Telescope after the telegram.php fix first
+// shipped: "Cannot redeclare ensureSystemServiceRequestCatalogSchema()".
+// webhook_handler.php/pairing.php/module_manager.php's OWN declarations are
+// already function_exists()-guarded against exactly this - only
+// service_requests.php (like module_manager.php) wasn't, so this is guarded
+// at the call site instead, same pattern as module_manager.php above.
+if (!function_exists('ensureSystemServiceRequestCatalogSchema')) {
+    require_once __DIR__ . '/../service_requests/service_requests.php';
+}
 require_once __DIR__ . '/../security/rate_limiter.php';
 require_once __DIR__ . '/../security/csrf_handler.php';
 require_once __DIR__ . '/../utils/mailer.php';
