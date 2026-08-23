@@ -248,17 +248,33 @@ try {
     # proves PHP ran the request to completion and echoed real JSON. Only a
     # genuinely empty/unparseable body - the exact failure mode that broke
     # login for real users - fails the deploy.
+    #
+    # Uses curl.exe directly, NOT Invoke-WebRequest - found the hard way on
+    # the very next deploy after this check was added: Invoke-WebRequest
+    # throws a terminating exception on ANY non-2xx status by default in
+    # Windows PowerShell 5.1, so the 401 response above (confirmed by hand to
+    # be a perfectly valid JSON body) never even reached the "parse it" line
+    # - it landed straight in the catch block and reported a false "empty/
+    # unparseable" failure. curl.exe (bundled with Windows 10+) returns the
+    # body regardless of status code, so this can't repeat that false
+    # positive.
+    # --resolve pins the hostname straight to $SshHost's IP (91.238.163.173 -
+    # verified 23 Aug 2026 against all 4 of the domain's own authoritative
+    # nameservers, so this is the genuinely correct address, not a guess),
+    # bypassing this machine's own DNS resolution for just this one request.
+    # Found live, testing this very check: Windows' local resolver failed to
+    # resolve staging.artistic-sthan.com entirely (curl error 6) on one
+    # attempt and worked fine moments later - the same local-DNS flakiness
+    # this whole incident kept running into. A deploy machine with an
+    # unreliable resolver shouldn't be able to make this check cry wolf.
     Write-Step "Verifying Staging Backend API"
     $apiJson = $null
     for ($__attempt = 1; $__attempt -le 2 -and -not $apiJson; $__attempt++) {
-        try {
-            $apiCheck = Invoke-WebRequest -Uri "https://staging.artistic-sthan.com/php/api/router.php?action=get_nav_menu" -UseBasicParsing -ErrorAction Stop -TimeoutSec 20
-            if ($apiCheck.Content) {
-                $apiJson = $apiCheck.Content | ConvertFrom-Json -ErrorAction Stop
-            }
-        } catch {
-            if ($__attempt -eq 1) { Start-Sleep -Seconds 3 }
+        $__curlOut = & curl.exe -s -m 20 --resolve "staging.artistic-sthan.com:443:$SshHost" "https://staging.artistic-sthan.com/php/api/router.php?action=get_nav_menu" 2>$null
+        if ($__curlOut) {
+            try { $apiJson = $__curlOut | ConvertFrom-Json -ErrorAction Stop } catch {}
         }
+        if (-not $apiJson -and $__attempt -eq 1) { Start-Sleep -Seconds 3 }
     }
     if (-not $apiJson -or (-not $apiJson.status -and -not $apiJson.message)) {
         Write-Err "Staging backend API returned an empty or unparseable response after 2 attempts - the deploy likely broke the PHP backend (this is exactly the failure mode that silently broke login for real users on 23 Aug 2026). Check /php/errors/ on staging immediately."
