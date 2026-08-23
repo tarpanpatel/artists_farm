@@ -867,8 +867,8 @@ export const strings: Record<string, string> = {
   got_it_button: "Got it",
 
   // Petty Cash Management
-  petty_cash_ledger_heading: "Operational Expenses Ledger",
-  petty_cash_ledger_subtitle: "Track outgoing utility expenditures, daily kitchen purchases, salaries, and floats.",
+  petty_cash_ledger_heading: "Expenses",
+  petty_cash_ledger_subtitle: "Track outgoing cash paid for expenses, daily kitchen purchases, salaries etc.",
   add_expenses_heading: "ADD EXPENSES",
   expense_date_label: "Expense Date",
   cost_category_group_label: "Cost Category Group",

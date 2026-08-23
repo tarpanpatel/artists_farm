@@ -1464,8 +1464,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       </datalist>
 
       <PageHeader
-        title={t('petty_cash_ledger_heading', 'Operational Expenses Ledger')}
-        subtitle={t('petty_cash_ledger_subtitle', 'Track outgoing utility expenditures, daily kitchen purchases, salaries, and floats.')}
+        title={t('petty_cash_ledger_heading', 'Expenses')}
+        subtitle={t('petty_cash_ledger_subtitle', 'Track outgoing cash paid for expenses, daily kitchen purchases, salaries etc.')}
       />
 
       {/* Add Expenses form on top (Full Width Card) */}
