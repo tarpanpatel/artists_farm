@@ -209,7 +209,15 @@ if ($wantsJson) {
             #customDateRangePanel > :first-child, #customDateRangePanel button { grid-column: 1 / -1; }
             #customDateRangePanel input { min-height: 2.75rem; }
             .portal-label { margin-bottom: .5rem; }
-            .telescope-portals { display: flex; overflow-x: auto; gap: .5rem; padding: .125rem 0 .5rem; margin: 0 -1rem; padding-left: 1rem; padding-right: 1rem; scroll-snap-type: x proximity; scrollbar-width: none; }
+            /* Sticky mobile portal selector (roadmap item 1) - the scrollable
+               tab row itself sticks to the top of the viewport once you scroll
+               past it into the log list, so switching portals never needs a
+               scroll back up. Needs an opaque background (not the page's own
+               transparent default) since content now scrolls underneath it,
+               and a z-index above both the log rows and the sticky table
+               header inside .telescope-logs (which itself only sticks within
+               its own now-non-scrolling container on mobile, so no conflict). */
+            .telescope-portals { position: sticky; top: 0; z-index: 20; display: flex; overflow-x: auto; gap: .5rem; padding: .625rem 1rem .5rem; margin: 0 -1rem; scroll-snap-type: x proximity; scrollbar-width: none; background: #0b0f19; box-shadow: 0 4px 6px -2px rgba(0,0,0,.3); }
             .telescope-portals::-webkit-scrollbar { display: none; }
             .telescope-portals .nav-portal-item { flex: 0 0 auto; width: auto; min-width: max-content; min-height: 2.75rem; padding: .625rem .75rem; scroll-snap-align: start; }
             .telescope-portals .nav-portal-item.active { border-left: 0; border-bottom: 3px solid #06b6d4; }
@@ -231,8 +239,18 @@ if ($wantsJson) {
             .telescope-logs td:only-child { padding: 2rem 1rem; text-align: center; }
             .telescope-logs td:only-child::before { display: none; }
 
+            /* Bottom sheet (roadmap item 1's 4th sub-point) - real slide-up/
+               slide-down, not an instant show/hide. #detailModal itself keeps
+               display:none/flex via .hidden (openModal/closeModal below still
+               toggle that first, for real accessibility/focus semantics) -
+               the animation lives entirely on the inner sheet's transform, so
+               toggling .open a frame after removing .hidden is what actually
+               triggers the transition (a bare display change can't animate). */
             #detailModal { align-items: flex-end; padding: 0; }
-            #detailModal > div { max-height: 88dvh; border-radius: 1rem 1rem 0 0; padding: 1rem; }
+            #detailModal #detailModalSheet { max-height: 88dvh; border-radius: 1rem 1rem 0 0; padding: 1rem; transform: translateY(100%); transition: transform .28s cubic-bezier(.32,.72,0,1); }
+            #detailModal.open #detailModalSheet { transform: translateY(0); }
+            #detailModalGrip { display: block; }
+            #modalCopyRow button { min-height: 2.75rem; }
         }
     </style>
 </head>
@@ -306,42 +324,66 @@ if ($wantsJson) {
                 <nav class="telescope-portals space-y-1 font-sans text-xs">
                     <button onclick="switchPortal('requests', this)" class="nav-portal-item w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800/60 transition active">
                         <span class="flex items-center gap-2.5"><svg class="icon text-cyan-400 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/><path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/><path d="M12 2v2"/><path d="M12 22v-2"/><path d="m17 20.66-1-1.73"/><path d="M11 10.27 7 6.34"/><path d="m20.66 17-1.73-1"/><path d="m3.34 17 1.73-1"/><path d="m14 7-3.73-3.73"/><path d="m20.66 7-1.73 1"/><path d="m11 13.73-4.95-4.95"/><path d="m6.34 7 1.73 1"/><path d="m14 17 3.73 3.73"/><path d="m9.34 17 1.73 1"/></svg>Requests Trail</span>
-                        <span id="badge-requests" class="px-2 py-0.5 text-[10px] rounded-full bg-gray-800 text-gray-300 font-mono">0</span>
+                        <span class="flex items-center gap-1">
+                            <span id="badge-requests" class="px-2 py-0.5 text-[10px] rounded-full bg-gray-800 text-gray-300 font-mono">0</span>
+                            <span id="unseen-requests" class="hidden px-2 py-0.5 text-[10px] rounded-full bg-red-500/90 text-white font-mono">0</span>
+                        </span>
                     </button>
-                    
+
                     <button onclick="switchPortal('php', this)" class="nav-portal-item w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800/60 transition">
                         <span class="flex items-center gap-2.5"><svg class="icon text-red-400 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m8 2 1.88 1.88"/><path d="M14.12 3.88 16 2"/><path d="M9 7.13v-1a3.003 3.003 0 1 1 6 0v1"/><path d="M12 20c-3.3 0-6-2.7-6-6v-3a6 6 0 0 1 12 0v3c0 3.3-2.7 6-6 6"/><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>PHP Failures</span>
-                        <span id="badge-php" class="px-2 py-0.5 text-[10px] rounded-full bg-gray-800 text-gray-300 font-mono">0</span>
+                        <span class="flex items-center gap-1">
+                            <span id="badge-php" class="px-2 py-0.5 text-[10px] rounded-full bg-gray-800 text-gray-300 font-mono">0</span>
+                            <span id="unseen-php" class="hidden px-2 py-0.5 text-[10px] rounded-full bg-red-500/90 text-white font-mono">0</span>
+                        </span>
                     </button>
 
                     <button onclick="switchPortal('sql', this)" class="nav-portal-item w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800/60 transition">
                         <span class="flex items-center gap-2.5"><svg class="icon text-emerald-400 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><ellipse cx="12" cy="5" rx="9" ry="3"/></svg>SQL Profiler</span>
-                        <span id="badge-sql" class="px-2 py-0.5 text-[10px] rounded-full bg-gray-800 text-gray-300 font-mono">0</span>
+                        <span class="flex items-center gap-1">
+                            <span id="badge-sql" class="px-2 py-0.5 text-[10px] rounded-full bg-gray-800 text-gray-300 font-mono">0</span>
+                            <span id="unseen-sql" class="hidden px-2 py-0.5 text-[10px] rounded-full bg-red-500/90 text-white font-mono">0</span>
+                        </span>
                     </button>
 
                     <button onclick="switchPortal('js', this)" class="nav-portal-item w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800/60 transition">
                         <span class="flex items-center gap-2.5"><svg class="icon text-amber-400 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/></svg>JS Browser</span>
-                        <span id="badge-js" class="px-2 py-0.5 text-[10px] rounded-full bg-gray-800 text-gray-300 font-mono">0</span>
+                        <span class="flex items-center gap-1">
+                            <span id="badge-js" class="px-2 py-0.5 text-[10px] rounded-full bg-gray-800 text-gray-300 font-mono">0</span>
+                            <span id="unseen-js" class="hidden px-2 py-0.5 text-[10px] rounded-full bg-red-500/90 text-white font-mono">0</span>
+                        </span>
                     </button>
 
                     <button onclick="switchPortal('telegram', this)" class="nav-portal-item w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800/60 transition">
                         <span class="flex items-center gap-2.5"><svg class="icon text-sky-400 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4 20-7z"/></svg>Telegram API</span>
-                        <span id="badge-telegram" class="px-2 py-0.5 text-[10px] rounded-full bg-gray-800 text-gray-300 font-mono">0</span>
+                        <span class="flex items-center gap-1">
+                            <span id="badge-telegram" class="px-2 py-0.5 text-[10px] rounded-full bg-gray-800 text-gray-300 font-mono">0</span>
+                            <span id="unseen-telegram" class="hidden px-2 py-0.5 text-[10px] rounded-full bg-red-500/90 text-white font-mono">0</span>
+                        </span>
                     </button>
 
                     <button onclick="switchPortal('whatsapp', this)" class="nav-portal-item w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800/60 transition">
                         <span class="flex items-center gap-2.5"><svg class="icon text-green-400 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 3.11L3 21"/><path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1a5 5 0 0 0 5 5h1a.5.5 0 0 0 0-1h-1a.5.5 0 0 0 0 1"/></svg>WhatsApp API</span>
-                        <span id="badge-whatsapp" class="px-2 py-0.5 text-[10px] rounded-full bg-gray-800 text-gray-300 font-mono">0</span>
+                        <span class="flex items-center gap-1">
+                            <span id="badge-whatsapp" class="px-2 py-0.5 text-[10px] rounded-full bg-gray-800 text-gray-300 font-mono">0</span>
+                            <span id="unseen-whatsapp" class="hidden px-2 py-0.5 text-[10px] rounded-full bg-red-500/90 text-white font-mono">0</span>
+                        </span>
                     </button>
 
                     <button onclick="switchPortal('security', this)" class="nav-portal-item w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800/60 transition">
                         <span class="flex items-center gap-2.5"><svg class="icon text-purple-400 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>Security Audits</span>
-                        <span id="badge-security" class="px-2 py-0.5 text-[10px] rounded-full bg-gray-800 text-gray-300 font-mono">0</span>
+                        <span class="flex items-center gap-1">
+                            <span id="badge-security" class="px-2 py-0.5 text-[10px] rounded-full bg-gray-800 text-gray-300 font-mono">0</span>
+                            <span id="unseen-security" class="hidden px-2 py-0.5 text-[10px] rounded-full bg-red-500/90 text-white font-mono">0</span>
+                        </span>
                     </button>
 
                     <button onclick="switchPortal('404', this)" class="nav-portal-item w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800/60 transition">
                         <span class="flex items-center gap-2.5"><svg class="icon text-rose-400 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>404 Sentinel</span>
-                        <span id="badge-404" class="px-2 py-0.5 text-[10px] rounded-full bg-gray-800 text-gray-300 font-mono">0</span>
+                        <span class="flex items-center gap-1">
+                            <span id="badge-404" class="px-2 py-0.5 text-[10px] rounded-full bg-gray-800 text-gray-300 font-mono">0</span>
+                            <span id="unseen-404" class="hidden px-2 py-0.5 text-[10px] rounded-full bg-red-500/90 text-white font-mono">0</span>
+                        </span>
                     </button>
 
                     <button onclick="switchPortal('staff_activity', this)" class="nav-portal-item w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800/60 transition">
@@ -389,11 +431,13 @@ if ($wantsJson) {
     </div>
 
     <div id="detailModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-6 hidden" onclick="closeModal()">
-        <div class="bg-gray-900 border border-gray-800 rounded-xl max-w-2xl w-full max-h-[80vh] flex flex-col p-6 text-xs" onclick="event.stopPropagation()">
-            <div class="flex items-center justify-between border-b border-gray-800 pb-3 mb-4">
+        <div id="detailModalSheet" class="bg-gray-900 border border-gray-800 rounded-xl max-w-2xl w-full max-h-[80vh] flex flex-col p-6 text-xs" onclick="event.stopPropagation()">
+            <div id="detailModalGrip" class="hidden mx-auto mb-2 h-1 w-10 rounded-full bg-gray-700 shrink-0"></div>
+            <div class="flex items-center justify-between border-b border-gray-800 pb-3 mb-3">
                 <h3 class="font-bold text-white text-sm" id="modalTitle">Log Event Detail</h3>
-                <button onclick="closeModal()" class="text-gray-400 hover:text-white text-base">✕</button>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-white text-base leading-none p-1 -m-1">✕</button>
             </div>
+            <div id="modalCopyRow" class="flex items-center gap-2 mb-3 flex-wrap"></div>
             <div id="modalContent" class="overflow-y-auto font-mono text-gray-300 space-y-4 whitespace-pre-wrap break-all">
             </div>
         </div>
@@ -671,6 +715,47 @@ if ($wantsJson) {
         loadPortalLogs();
     }
 
+    // 1-tap copy buttons (roadmap item 1's bottom-sheet sub-point). "Stack
+    // Trace" only appears when this specific log entry actually has one
+    // (PHP fatals/exceptions carry `trace` - see logger.php's exception
+    // handler - most other log types don't, so the button would just copy
+    // nothing useful for them). "Copy Full Payload" always appears - the
+    // complete JSON of every field this entry has, which is the more useful
+    // "give me everything" action anyway when field names vary by log type.
+    async function copyToClipboard(text, btnEl) {
+        try {
+            await navigator.clipboard.writeText(text);
+        } catch (e) {
+            // Clipboard API needs a secure context/permission - fall back to
+            // a hidden textarea + execCommand so this still works on an
+            // older mobile browser or a plain-HTTP dev environment.
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand('copy'); } catch (e2) {}
+            document.body.removeChild(ta);
+        }
+        if (btnEl) {
+            const original = btnEl.textContent;
+            btnEl.textContent = 'Copied!';
+            btnEl.disabled = true;
+            setTimeout(() => { btnEl.textContent = original; btnEl.disabled = false; }, 1500);
+        }
+    }
+
+    function buildCopyButtonsHtml(logObj) {
+        const btnClass = 'flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition border border-gray-700 cursor-pointer text-[11px] font-sans font-semibold';
+        let html = '';
+        if (logObj.trace) {
+            html += `<button type="button" class="${btnClass}" data-copy-role="trace">📋 Copy Stack Trace</button>`;
+        }
+        html += `<button type="button" class="${btnClass}" data-copy-role="payload">📋 Copy Full Payload</button>`;
+        return html;
+    }
+
     function openModal(logObj) {
         document.getElementById('modalTitle').innerText = `Event ID #${logObj.id || logObj.request_id || ''}`;
         let html = '';
@@ -681,11 +766,34 @@ if ($wantsJson) {
             }
         }
         document.getElementById('modalContent').innerHTML = html;
-        document.getElementById('detailModal').classList.remove('hidden');
+
+        const copyRow = document.getElementById('modalCopyRow');
+        copyRow.innerHTML = buildCopyButtonsHtml(logObj);
+        copyRow.querySelectorAll('[data-copy-role]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const text = btn.dataset.copyRole === 'trace' ? String(logObj.trace) : JSON.stringify(logObj, null, 2);
+                copyToClipboard(text, btn);
+            });
+        });
+
+        const modal = document.getElementById('detailModal');
+        modal.classList.remove('hidden');
+        // Slide-up animation: the transition is on #detailModalSheet's
+        // transform (see the mobile CSS), triggered by adding .open - has to
+        // happen on the NEXT frame, not the same one .hidden was removed on,
+        // or the browser coalesces both style changes into one paint and the
+        // transition never fires (the sheet would just appear instantly).
+        requestAnimationFrame(() => requestAnimationFrame(() => modal.classList.add('open')));
     }
 
     function closeModal() {
-        document.getElementById('detailModal').classList.add('hidden');
+        const modal = document.getElementById('detailModal');
+        modal.classList.remove('open');
+        // Let the slide-down transition finish before actually hiding
+        // (display:none) - matches the CSS transition duration (280ms) with
+        // a little headroom. Only applies visually on mobile (the sheet
+        // transform); harmless no-op delay on desktop's centered modal.
+        setTimeout(() => modal.classList.add('hidden'), 300);
     }
 
     function escapeHtml(str) {

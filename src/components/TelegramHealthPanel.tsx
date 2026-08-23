@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Table, TableHead, TableBody, TableRow, TableCell } from 'flowbite-react';
-import { ShieldCheck, RefreshCw, Save, Loader2, CheckCircle2, XCircle, HelpCircle, FolderCog } from './icons/FlowbiteIcons';
+import { Card, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell } from 'flowbite-react';
+import { ShieldCheck, RefreshCw, Save, Loader2, CheckCircle2, XCircle, HelpCircle, FolderCog, AlertTriangle } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';
 import { Input } from './Input';
 
@@ -64,6 +64,14 @@ export const TelegramHealthPanel: React.FC = () => {
   const [health, setHealth] = useState<TelegramHealthData | null>(null);
   const [checking, setChecking] = useState(false);
   const [checkedAt, setCheckedAt] = useState('');
+  // 23 Aug 2026 (reported live: "Run health check doesn't give any output of
+  // the result") - runHealthCheck() used to silently do nothing on any
+  // failure (non-'success' response OR a thrown network error both fell
+  // through with no user-visible feedback at all, same swallowed-error
+  // anti-pattern as this project's other fetchXFromDB() functions) - the
+  // panel just stayed blank below the Save button, indistinguishable from
+  // "still loading" or "nothing to report". Surface the real reason instead.
+  const [healthCheckError, setHealthCheckError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -85,19 +93,26 @@ export const TelegramHealthPanel: React.FC = () => {
 
   const runHealthCheck = async () => {
     setChecking(true);
+    setHealthCheckError(null);
     try {
       const res = await fetch(`/php/api/router.php?action=check_telegram_health`, { credentials: 'include' });
-      const data = await res.json();
-      if (data.status === 'success') {
+      const data = await res.json().catch(() => null);
+      if (data && data.status === 'success') {
         setHealth(data.data);
         setCheckedAt(new Date().toLocaleTimeString());
         if (!fallbackPath && data.data.fallbackPathConfigured) {
           setFallbackPath(data.data.fallbackPathConfigured);
           setSavedFallbackPath(data.data.fallbackPathConfigured);
         }
+      } else {
+        const message = data?.message || `Health check failed (HTTP ${res.status}) - no data returned.`;
+        console.error('Telegram health check failed:', message);
+        setHealthCheckError(message);
       }
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Health check request failed - could not reach the server.';
       console.error('Telegram health check failed:', err);
+      setHealthCheckError(message);
     } finally {
       setChecking(false);
     }
@@ -200,6 +215,18 @@ export const TelegramHealthPanel: React.FC = () => {
           </p>
         </div>
 
+        {healthCheckError && !checking && (
+          <div className="flex items-start gap-2.5 p-3 rounded-lg border bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800">
+            <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-red-800 dark:text-red-200">
+                {t('telegram_health_check_failed_label', 'Health check failed')}
+              </p>
+              <p className="text-[11px] text-red-600 dark:text-red-400 mt-0.5 wrap-break-word">{healthCheckError}</p>
+            </div>
+          </div>
+        )}
+
         {health && (
           <div className="space-y-4 border-t border-gray-100 dark:border-gray-700 pt-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -243,16 +270,27 @@ export const TelegramHealthPanel: React.FC = () => {
 
             {health.properties.length > 0 && (
               <div>
-                <h4 className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                <h4 className="text-2xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
                   {t('telegram_bot_reachability_heading', 'Bot reachability by property')}
                 </h4>
                 <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
                   <Table className="w-full">
                     <TableHead>
                       <TableRow>
-                        <TableCell className="text-left font-semibold">{t('property_column_label', 'Property')}</TableCell>
-                        <TableCell className="text-left font-semibold">{t('status_column_label', 'Status')}</TableCell>
-                        <TableCell className="text-left font-semibold">{t('detail_column_label', 'Detail')}</TableCell>
+                        {/* TableHeadCell, not TableCell (23 Aug 2026, reported live
+                            as "Run health check doesn't give any output" - the real
+                            bug was worse than that: TableCell calls
+                            useTableBodyContext() internally, which only exists
+                            inside a real <TableBody>, so using it here inside
+                            <TableHead> threw "useTableBodyContext should be used
+                            within the TableBodyContext provider!" on every render
+                            once a health check actually succeeded with at least
+                            one Telegram-enabled property - with no error boundary
+                            at this level, that crash blanked the entire page, not
+                            just this table). */}
+                        <TableHeadCell className="text-left font-semibold">{t('property_column_label', 'Property')}</TableHeadCell>
+                        <TableHeadCell className="text-left font-semibold">{t('status_column_label', 'Status')}</TableHeadCell>
+                        <TableHeadCell className="text-left font-semibold">{t('detail_column_label', 'Detail')}</TableHeadCell>
                       </TableRow>
                     </TableHead>
                     <TableBody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -283,7 +321,7 @@ export const TelegramHealthPanel: React.FC = () => {
 
             {health.recentEvents.length > 0 && (
               <div>
-                <h4 className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                <h4 className="text-2xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
                   {t('telegram_recent_events_heading', 'Recent Telegram-related events')}
                 </h4>
                 <div className="space-y-1.5 max-h-48 overflow-y-auto">
@@ -298,7 +336,7 @@ export const TelegramHealthPanel: React.FC = () => {
             )}
 
             {checkedAt && (
-              <p className="text-[10px] text-gray-400">
+              <p className="text-2xs text-gray-400">
                 {t('checked_at_label', 'Checked at')} {checkedAt}
               </p>
             )}
@@ -307,7 +345,7 @@ export const TelegramHealthPanel: React.FC = () => {
       </div>
 
       {toast && (
-        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-lg shadow-2xl animate-toast-in">
+        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-9999 bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-lg shadow-2xl animate-toast-in">
           {toast}
         </div>
       )}
