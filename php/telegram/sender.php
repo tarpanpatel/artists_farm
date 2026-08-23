@@ -510,7 +510,17 @@ if (!function_exists('sendRawTelegramMessage')) {
         $data = [
             'chat_id' => $chatId,
             'text' => $message,
-            'parse_mode' => 'HTML'
+            'parse_mode' => 'HTML',
+            // Kitchen/operational alerts routinely link back to the app
+            // (Open Kitchen Board, Source Page, etc.) - without this,
+            // Telegram fetches that URL itself to build a big preview card,
+            // and on staging that URL sits behind a bot-check interstitial
+            // ("Security Check Required"), so the card showed THAT page's
+            // title instead of anything useful. Reported 23 Aug 2026 as
+            // "unnecessary pages" appearing under Kitchen Reminder messages.
+            // These are operational tickets, not link shares - the plain
+            // URL text is enough; no card is ever needed.
+            'disable_web_page_preview' => true,
         ];
 
         if ($replyMarkup !== null) {

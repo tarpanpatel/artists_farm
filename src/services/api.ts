@@ -2459,12 +2459,32 @@ export async function resolveTelegramTemplate(dbKey: string, variables: Record<s
       for (const [varName, varValue] of Object.entries(variables)) {
         msg = msg.replace(new RegExp(`\\{${varName}\\}`, 'g'), varValue);
       }
-      return msg;
+      return stripUnresolvedTemplatePlaceholders(msg);
     }
   } catch (err) {
     console.error('Failed to resolve Telegram template:', err);
   }
   return null;
+}
+
+// Safety net for a customized/stale DB template whose placeholder name no
+// longer matches what the calling code actually supplies (found 23 Aug 2026:
+// a Kitchen Reminder on staging was sending "... ({table_no})" verbatim to
+// Telegram, because that template's DB row referenced {table_no} while every
+// caller only ever supplies room_no - so the loop above never touches it and
+// it survives into the live notification). Rather than trusting every future
+// template edit to stay in sync with the variables its caller passes, drop
+// any placeholder still standing after substitution instead of showing it
+// literally - a parenthesized chunk built entirely around one (e.g. "(Table
+// {table_no})") is removed whole so no dangling label/empty parens are left
+// behind either.
+function stripUnresolvedTemplatePlaceholders(msg: string): string {
+  return msg
+    .replace(/\s*\([^()]*\{[a-zA-Z0-9_]+\}[^()]*\)/g, '')
+    .replace(/\{[a-zA-Z0-9_]+\}/g, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/[ \t]+\n/g, '\n')
+    .trim();
 }
 
 export function invalidateTemplateCache() {

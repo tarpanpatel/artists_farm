@@ -380,8 +380,13 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
   const getPlatformBadge = (serviceName: string) => {
     const lower = serviceName.toLowerCase();
     if (lower.includes('airbnb')) {
+      // NOT 'danger' (found 23 Aug 2026) - Badge's 'danger' variant renders
+      // red, which reads as an error/problem state on a perfectly healthy,
+      // connected feed. This is a real, connected platform badge, same as
+      // Booking.com/VRBO/Google below - it needs its own distinct color,
+      // just never the one semantically reserved for "something's wrong".
       return {
-        variant: 'danger' as const,
+        variant: 'warning' as const,
         name: t('platform_airbnb_label', 'Airbnb')
       };
     }

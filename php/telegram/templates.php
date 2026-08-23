@@ -13,13 +13,32 @@ if (!class_exists('TelegramTemplates')) {
          */
         public static function render($pdo, string $templateKey, array $replacements = []): string {
             $content = self::getTemplateContent($pdo, $templateKey);
-            
+
             foreach ($replacements as $var => $value) {
                 $placeholder = '{' . trim($var, '{}') . '}';
                 $content = str_replace($placeholder, (string)$value, $content);
             }
-            
-            return $content;
+
+            return self::stripUnresolvedPlaceholders($content);
+        }
+
+        /**
+         * Safety net for a customized/stale template whose placeholder name no
+         * longer matches what the caller actually supplies (found 23 Aug 2026 -
+         * see the matching JS-side stripUnresolvedTemplatePlaceholders() in
+         * services/api.ts, which resolveTelegramTemplate() uses for the client-
+         * triggered send path; this is the same fix for the server-rendered
+         * path). A leftover {placeholder} must never reach a real notification
+         * literally - drop it, and drop a parenthesized chunk built entirely
+         * around one (e.g. "(Table {table_no})") whole rather than leaving a
+         * dangling label/empty parens behind.
+         */
+        public static function stripUnresolvedPlaceholders(string $text): string {
+            $text = preg_replace('/\s*\([^()]*\{[a-zA-Z0-9_]+\}[^()]*\)/', '', $text);
+            $text = preg_replace('/\{[a-zA-Z0-9_]+\}/', '', $text);
+            $text = preg_replace('/[ \t]{2,}/', ' ', $text);
+            $text = preg_replace('/[ \t]+\n/', "\n", $text);
+            return trim($text);
         }
 
         /**
@@ -142,6 +161,15 @@ if (!class_exists('TelegramTemplates')) {
                 '/\?[^\x00-\x7F]*\s*(<b>)?Table \/ Guest:(<\/b>)?/i' => '👤 <b>Table / Guest:</b>',
                 '/\?[^\x00-\x7F]*\s*(<b>)?Items:(<\/b>)?/i' => '📝 <b>Items:</b>',
                 '/\?[^\x00-\x7F]*\s*(<b>)?Time:(<\/b>)?/i' => '⏰ <b>Time:</b>',
+                // 23 Aug 2026: found on staging - kitchen_order_reminder's closing
+                // line used the 3-codepoint ZWJ emoji 👨‍🍳, which isn't covered by
+                // any pattern above (every other 👨‍🍳/🏃‍♂️ usage was already mapped
+                // to a safe replacement after being found broken; this one just
+                // hadn't been reported yet). Reported showing as a bare "?" with no
+                // fallback. The template's own stored content was also changed to
+                // the safer single-codepoint 🔍 going forward (see manager.php's
+                // $defaultTemplates) - this pattern repairs rows saved before that.
+                '/\?[^\x00-\x7F]*\s*(<i>)?Please check on this order\.(<\/i>)?/i' => '🔍 <i>Please check on this order.</i>',
             ];
             
             foreach ($replacements as $pattern => $replacement) {

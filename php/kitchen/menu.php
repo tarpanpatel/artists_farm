@@ -210,7 +210,7 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
             // Gated behind isSchemaVerified() now, same pattern every other self-heal block
             // in this app already uses, instead of re-running the same no-op writes forever
             // (found 21 Aug 2026, reported as "Edit Main Menu takes ages to load").
-            if (!isSchemaVerified('nav_menu_self_heal_v1')) {
+            if (!isSchemaVerified('nav_menu_self_heal_v2')) {
             try {
 
 
@@ -224,7 +224,7 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                 $pdo->exec("INSERT IGNORE INTO nav_menu_items
                     (id, property_id, title, tab_key, unique_key, url_slug, category, icon_name, display_order, roles_json, is_visible, parent_id)
                     VALUES
-                    ('nav-kitchen-overview', 1, 'Kitchen', 'kitchen', 'kitchen_overview', 'kitchen_overview', 'Kitchen & Food', 'Utensils', 10, '[\"Super Admin\",\"Admin\",\"Staff Kitchen\",\"Staff Supervisor\",\"Staff\"]', 1, NULL),
+                    ('nav-kitchen-overview', 1, 'Kitchen', 'kitchen', 'kitchen_overview', 'kitchen_overview', 'Kitchen & Food', 'Utensils', 10, '[\"Super Admin\",\"Admin\",\"Staff Kitchen\",\"Staff Supervisor\"]', 1, NULL),
                     ('nav-staff-permissions', 1, 'Staff & Permissions', 'staff', 'staff_permissions', 'staff_permissions', 'Staff & HR', 'ShieldCheck', 30, '[\"Super Admin\",\"Admin\"]', 1, NULL),
                     ('nav-attendance-calendar', 1, 'Attendance Calendar', 'staff', 'attendance_calendar', 'attendance_calendar', 'Staff & HR', 'CalendarDays', 31, '[\"Super Admin\",\"Admin\",\"Staff Supervisor\"]', 1, NULL)");
                 try {
@@ -267,9 +267,26 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                     $pdo->exec("UPDATE nav_menu_items SET custom_url = NULL, open_in_new_tab = 0 WHERE custom_url IS NOT NULL AND (LOWER(title) = 'team' OR unique_key IN ('team', 'team_overview'))");
                     $pdo->exec("DELETE FROM nav_menu_items WHERE custom_url IS NOT NULL AND custom_url != '' AND LOWER(title) = 'team'");
                     $pdo->exec("UPDATE nav_menu_items SET url_slug = 'team' WHERE (LOWER(title) = 'team' OR unique_key IN ('team', 'team_overview')) AND (url_slug LIKE 'custom_nav%' OR url_slug = 'team_overview' OR url_slug IS NULL)");
+                    // Generic "Staff" role must NOT get Kitchen access (23 Aug 2026,
+                    // reported live as "staff level access is incorrect" - Staff on
+                    // staging could see Take Food Order/Kitchen Live Orders/Staff Meals).
+                    // This was previously "fixed" 22 Aug 2026 by hand-editing the live
+                    // nav_menu_items rows on local only (not a code change, and not this
+                    // seed's own INSERT literal above, which still planted "Staff" into
+                    // every fresh kitchen_overview row until this same edit) - local's
+                    // separate `artists_farm_resort` DB and staging/production's separate
+                    // `apartment_site` DB (see database.php) never shared that one-off row
+                    // edit, so staging kept the old grant. Same root cause explicitly
+                    // called out by the kitchen_purchases/stock_log DELETEs above ("only
+                    // done as a one-off manual DB edit on this environment"). Targeted
+                    // string removal (not a full roles_json overwrite) so any other
+                    // environment-specific role customization already on a row (e.g.
+                    // take_food_order locally also carries legacy "Manager"/"Chef" roles
+                    // not seeded anywhere in code) survives untouched.
+                    $pdo->exec("UPDATE nav_menu_items SET roles_json = REPLACE(REPLACE(roles_json, '\"Staff\",', ''), ',\"Staff\"', '') WHERE unique_key IN ('kitchen_overview', 'take_food_order', 'kitchen_orders', 'staff_meals')");
                 } catch (Exception $e) {}
             } catch (Exception $e) {}
-                markSchemaVerified('nav_menu_self_heal_v1');
+                markSchemaVerified('nav_menu_self_heal_v2');
             }
             try {
                 $stmt = $pdo->query("SELECT id, title, tab_key as tabKey, unique_key as uniqueKey, COALESCE(NULLIF(url_slug, ''), unique_key) as urlSlug, category, icon_name as iconName, display_order as `order`, roles_json, is_visible as isVisible, COALESCE(custom_url, '') as customUrl, IFNULL(open_in_new_tab, 0) as openInNewTab, parent_id as parentId FROM nav_menu_items ORDER BY display_order ASC");

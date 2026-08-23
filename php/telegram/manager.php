@@ -80,8 +80,13 @@ $defaultTemplates = [
         'title' => 'Item Served Alert',
         'category' => 'Kitchen Notifications',
         'description' => 'Sent when a chef or waiter marks an individual item as served.',
-        'available_variables' => '{item_name},{quantity},{guest_name},{table_no},{served_by},{remaining_items}',
-        'content' => "<b>✅ DISH SERVED</b>\n\n<b>Dish:</b> {item_name} x{quantity}\n<b>Guest:</b> {guest_name} (Table {table_no})\n<b>Served By:</b> {served_by}\n<i>Remaining items in ticket: {remaining_items}</i>"
+        // 23 Aug 2026: was {table_no}, but every real caller (KitchenManagement.tsx's
+        // servedVars) only ever supplies room_no - {table_no} could never resolve,
+        // so it was silently dropped (or shown literally before the placeholder-
+        // stripping safety net existed). Also split Guest/Room onto independent
+        // rows per explicit request, instead of "(Table ...)" inlined after the name.
+        'available_variables' => '{item_name},{quantity},{guest_name},{room_no},{served_by},{remaining_items}',
+        'content' => "<b>✅ DISH SERVED</b>\n\n<b>Dish:</b> {item_name} x{quantity}\n<b>Guest:</b> {guest_name}\n<b>Room:</b> {room_no}\n<b>Served By:</b> {served_by}\n<i>Remaining items in ticket: {remaining_items}</i>"
     ],
     'requisition_stock_fulfilled' => [
         'template_key' => 'requisition_stock_fulfilled',
@@ -112,8 +117,10 @@ $defaultTemplates = [
         'title' => 'Guest Checkout Bill',
         'category' => 'Billing & Financial',
         'description' => 'Itemized settlement bill sent to finance group upon guest checkout.',
+        // Resident/Room split onto independent rows 23 Aug 2026 (explicit
+        // request), was "Resident: {guest_name} (Room {room_number})" inline.
         'available_variables' => '{guest_name},{room_number},{receipt_id},{items_charges},{advance_paid},{balance_due},{total_bill},{payment_mode}',
-        'content' => "🧾 <b>FULLY ITEMIZED SETTLEMENT BILL</b>\n  Resident: <b>{guest_name}</b> (Room {room_number})\n  Receipt: #{receipt_id}\n\n<b>ITEMIZED CHARGES:</b>\n{items_charges}\n<b>SUMMARY:</b>\n  Advance Paid: <b>₹{advance_paid}</b>\n  Final Balance Due: <b>₹{balance_due}</b>\n  Total Bill: <b>₹{total_bill}</b>\n  Payment Mode: <b>{payment_mode}</b>"
+        'content' => "🧾 <b>FULLY ITEMIZED SETTLEMENT BILL</b>\n  Resident: <b>{guest_name}</b>\n  Room: <b>{room_number}</b>\n  Receipt: #{receipt_id}\n\n<b>ITEMIZED CHARGES:</b>\n{items_charges}\n<b>SUMMARY:</b>\n  Advance Paid: <b>₹{advance_paid}</b>\n  Final Balance Due: <b>₹{balance_due}</b>\n  Total Bill: <b>₹{total_bill}</b>\n  Payment Mode: <b>{payment_mode}</b>"
     ],
     'kitchen_order_status' => [
         'template_key' => 'kitchen_order_status',
@@ -176,16 +183,24 @@ $defaultTemplates = [
         'title' => 'Kitchen Order Reminder',
         'category' => 'Kitchen & Ordering',
         'description' => 'Manual nudge sent to the kitchen when an order item has been pending too long.',
+        // Room split onto its own row 23 Aug 2026 (was "{dish_name} ({room_no})"
+        // inline). Closing emoji also swapped from the 3-codepoint ZWJ sequence
+        // 👨‍🍳 to plain 🔍 - that ZWJ sequence has no restoreEmojis() coverage
+        // below (unlike every other 👨‍🍳/🏃‍♂️ usage, which was long ago swapped to
+        // a single-codepoint icon after being found broken) and was reported
+        // showing as a bare "?" on staging; a single-codepoint emoji can't
+        // partially mangle the way a multi-codepoint sequence can.
         'available_variables' => '{order_id},{qty},{dish_name},{room_no},{elapsed_minutes}',
-        'content' => "⏰ <b>KITCHEN REMINDER</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #{order_id}\n• <b>{qty}x</b> {dish_name} ({room_no})\n⏱️ <b>Pending for:</b> {elapsed_minutes} min\n━━━━━━━━━━━━━━━━━━\n👨‍🍳 <i>Please check on this order.</i>"
+        'content' => "⏰ <b>KITCHEN REMINDER</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #{order_id}\n• <b>{qty}x</b> {dish_name}\n🚪 <b>Room:</b> {room_no}\n⏱️ <b>Pending for:</b> {elapsed_minutes} min\n━━━━━━━━━━━━━━━━━━\n🔍 <i>Please check on this order.</i>"
     ],
     'kitchen_pickup_reminder' => [
         'template_key' => 'kitchen_pickup_reminder',
         'title' => 'Ready-for-Pickup Reminder',
         'category' => 'Kitchen & Ordering',
         'description' => 'Manual nudge sent to Admin when a ready dish has not been collected/served yet.',
+        // Room split onto its own row 23 Aug 2026, same as kitchen_order_reminder above.
         'available_variables' => '{order_id},{qty},{dish_name},{room_no},{ready_since}',
-        'content' => "⏰ <b>STILL WAITING FOR PICKUP</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #{order_id}\n• <b>{qty}x</b> {dish_name} ({room_no})\n⏱️ <b>Ready since:</b> {ready_since}\n━━━━━━━━━━━━━━━━━━\n🏃 <i>Please collect and tap below when served.</i>"
+        'content' => "⏰ <b>STILL WAITING FOR PICKUP</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #{order_id}\n• <b>{qty}x</b> {dish_name}\n🚪 <b>Room:</b> {room_no}\n⏱️ <b>Ready since:</b> {ready_since}\n━━━━━━━━━━━━━━━━━━\n🏃 <i>Please collect and tap below when served.</i>"
     ],
     'checkin_verification_complete' => [
         'template_key' => 'checkin_verification_complete',

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
-import { Drawer } from 'flowbite-react';
+import { Modal } from 'flowbite-react';
 import { AlertTriangle, Info, Trash2, X } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';
 
@@ -34,14 +34,24 @@ interface PendingDialog {
   isAlert?: boolean;
 }
 
-// Rebuilt as a real Flowbite right-side Drawer (22 Aug 2026, part of "only
-// use Flowbite" sweep - this was a fully hand-rolled centered popup before,
-// the second of the two app-wide non-Flowbite dialog surfaces (the other
-// being GlobalModal.tsx). Structure follows DESIGN.md's Flowbite Modals &
-// Drawers Specification exactly: icon+title header with an explicit X
-// close, scrollable body, fixed footer with Cancel/Action buttons, z-[58]
-// (the app's own "every real full-page modal" tier - see custom.css's
-// z-index scale comment).
+// Rebuilt as a real Flowbite right-side Drawer on 22 Aug 2026 (part of "only
+// use Flowbite" sweep), then rebuilt AGAIN as a real Flowbite centered Modal
+// on 23 Aug 2026 (explicit user request/screenshot: a 2-line yes/no prompt
+// rendered as a full-height right-side drawer left most of the drawer an
+// empty void, with Cancel/Delete pinned far away at the very bottom - bad
+// fit for a short confirmation, unlike the drawer's other users, which are
+// genuinely long forms/lists). DESIGN.md's Flowbite Modals & Drawers
+// Specification's "drawer, not centered popup" rule is deliberately NOT
+// followed here - see this file's own carve-out note added there the same
+// day. Kept in flowbite-react's own <Modal>, not hand-rolled, same as the
+// drawer version was - just a different Flowbite primitive.
+// z-[9999]: this is the one dialog custom.css's own z-index scale comment
+// already reserves an "always on top" tier for (toasts + confirm dialog),
+// specifically so it can stack above an already-open drawer/page-modal at
+// z-58 - e.g. confirming "Delete" from inside an open Booking Details
+// drawer, exactly the flow that surfaced this rebuild. The drawer version
+// was actually still sitting at z-58, one tier below where its own
+// documented spot has always been - fixed as part of this same change.
 export function ConfirmDialogProvider({ children }: { children: React.ReactNode }) {
   const [pendingDialog, setPendingDialog] = useState<PendingDialog | null>(null);
 
@@ -111,13 +121,15 @@ export function ConfirmDialogProvider({ children }: { children: React.ReactNode 
     <ConfirmContext.Provider value={{ confirm, alertModal }}>
       {children}
       {pendingDialog && (
-        <Drawer
-          open
+        <Modal
+          show
           onClose={handleCancel}
-          position="right"
-          className="z-58 w-full sm:w-96 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between confirm-dialog"
+          dismissible
+          size="md"
+          popup
+          className="z-9999 confirm-dialog"
         >
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 confirm-dialog__header">
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-t-lg confirm-dialog__header">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 confirm-dialog__icon-wrapper ${iconStyles[variant]}`}>
                 {variant === 'danger' ? (
@@ -148,7 +160,7 @@ export function ConfirmDialogProvider({ children }: { children: React.ReactNode 
             </p>
           </div>
 
-          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850 confirm-dialog__footer">
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850 rounded-b-lg confirm-dialog__footer">
             {!pendingDialog.isAlert && (
               <button
                 type="button"
@@ -171,7 +183,7 @@ export function ConfirmDialogProvider({ children }: { children: React.ReactNode 
                 (pendingDialog.isAlert ? t('okay_button') : t('confirm_button'))}
             </button>
           </div>
-        </Drawer>
+        </Modal>
       )}
     </ConfirmContext.Provider>
   );
