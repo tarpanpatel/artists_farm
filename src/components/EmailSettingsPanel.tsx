@@ -16,7 +16,11 @@ import { t } from '../i18n/en';
  * key/value store (php/api/configuration.php), same place Appearance/Custom
  * CSS already persist to.
  */
-export const EmailSettingsPanel: React.FC = () => {
+interface EmailSettingsPanelProps {
+  onLogout: () => void;
+}
+
+export const EmailSettingsPanel: React.FC<EmailSettingsPanelProps> = ({ onLogout }) => {
   const [host, setHost] = useState('');
   const [port, setPort] = useState('587');
   const [smtpUsername, setSmtpUsername] = useState('');
@@ -38,6 +42,14 @@ export const EmailSettingsPanel: React.FC = () => {
     (async () => {
       try {
         const res = await fetch('/php/api/router.php?action=get_system_settings', { credentials: 'include' });
+        if (res.status === 401 || res.status === 403) {
+          // Same fix as RootAdminDashboard.tsx's loadNavItems() (23 Aug 2026) -
+          // an expired session must not leave this form silently sitting on
+          // empty/default values that look like real (blank) settings, go
+          // straight back to login instead.
+          onLogout();
+          return;
+        }
         const json = await res.json();
         if (json.status === 'success' && json.data) {
           const d = json.data;

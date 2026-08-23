@@ -21,7 +21,11 @@ interface CategoryGroup {
   [key: string]: StockItem[];
 }
 
-export const SystemStockManager: React.FC = () => {
+interface SystemStockManagerProps {
+  onLogout: () => void;
+}
+
+export const SystemStockManager: React.FC<SystemStockManagerProps> = ({ onLogout }) => {
   const { confirm } = useConfirm();
   const [stocks, setStocks] = useState<CategoryGroup>({});
   const [loading, setLoading] = useState(true);
@@ -67,6 +71,14 @@ export const SystemStockManager: React.FC = () => {
       const response = await fetch('/php/api/router.php?action=get_system_stock_catalog', {
         credentials: 'include',
       });
+      if (response.status === 401 || response.status === 403) {
+        // Same fix as RootAdminDashboard.tsx's loadNavItems() / PlatformPropertyManagement.tsx's
+        // fetchData() (23 Aug 2026) - an expired session must not leave this
+        // page's fully-rendered-but-empty shell on screen, go straight back
+        // to login instead.
+        onLogout();
+        return;
+      }
       const data = await response.json();
       if ((data.success || data.status === 'success') && data.data) {
         setStocks(data.data);

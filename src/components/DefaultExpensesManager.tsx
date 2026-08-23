@@ -22,7 +22,11 @@ interface CategoryGroup {
   [key: string]: ExpenseItem[];
 }
 
-export const DefaultExpensesManager: React.FC = () => {
+interface DefaultExpensesManagerProps {
+  onLogout: () => void;
+}
+
+export const DefaultExpensesManager: React.FC<DefaultExpensesManagerProps> = ({ onLogout }) => {
   const { confirm } = useConfirm();
   const [expenses, setExpenses] = useState<CategoryGroup>({});
   const [loading, setLoading] = useState(true);
@@ -46,6 +50,13 @@ export const DefaultExpensesManager: React.FC = () => {
       const response = await fetch('/php/api/router.php?action=get_system_expense_catalog', {
         credentials: 'include',
       });
+      if (response.status === 401 || response.status === 403) {
+        // Same fix as RootAdminDashboard.tsx's loadNavItems() (23 Aug 2026) -
+        // an expired session must not leave this page's fully-rendered-but-
+        // empty shell on screen, go straight back to login instead.
+        onLogout();
+        return;
+      }
       const data = await response.json();
       if ((data.success || data.status === 'success') && data.data) {
         setExpenses(data.data);

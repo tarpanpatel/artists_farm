@@ -13,7 +13,11 @@ interface BillItem {
   description: string;
 }
 
-export const DefaultBillsManager: React.FC = () => {
+interface DefaultBillsManagerProps {
+  onLogout: () => void;
+}
+
+export const DefaultBillsManager: React.FC<DefaultBillsManagerProps> = ({ onLogout }) => {
   const { confirm } = useConfirm();
   const [bills, setBills] = useState<BillItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,6 +48,13 @@ export const DefaultBillsManager: React.FC = () => {
       const response = await fetch('/php/api/router.php?action=get_bills_catalog', {
         credentials: 'include',
       });
+      if (response.status === 401 || response.status === 403) {
+        // Same fix as RootAdminDashboard.tsx's loadNavItems() (23 Aug 2026) -
+        // an expired session must not leave this page's fully-rendered-but-
+        // empty shell on screen, go straight back to login instead.
+        onLogout();
+        return;
+      }
       const data = await response.json();
       if ((data.success || data.status === 'success') && Array.isArray(data.data)) {
         setBills(data.data);

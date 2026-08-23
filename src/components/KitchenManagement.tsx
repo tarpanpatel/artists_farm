@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Drawer, Tabs, TabItem, type TabsRef, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell } from 'flowbite-react';
+import { Drawer, Tabs, TabItem, type TabsRef, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, Checkbox } from 'flowbite-react';
 import {
   UtensilsCrossed,
   Plus,
@@ -30,7 +30,8 @@ import {
   User,
   Filter,
   LayoutGrid,
-  List
+  List,
+  ClipboardEdit
 } from './icons/FlowbiteIcons';
 import { Guest, Order, OrderItem, MenuItem, Requisition, InventoryItem, WalkInTab } from '../types';
 import { GUEST_STATUS_CHECKED_IN, GUEST_STATUS_ACTIVE_LEGACY } from '../constants/guestStatus';
@@ -49,7 +50,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { useStaff } from '../contexts/StaffContext';
 import { Input } from './Input';
 import { Button } from './Button';
-import { Tooltip } from './Tooltip';
 import { t } from '../i18n/en';
 import { formatDateTimeDDMMYYYY, toDatetimeLocalValue } from '../utils/dateUtils';
 import { TextInput as FlowbiteTextInput } from 'flowbite-react';
@@ -1062,6 +1062,23 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       return { ...prev, [cartKey]: nextCart };
     });
   };
+  // Order-level "Instructions" note (23 Aug 2026) - free text the order-taker
+  // can attach at submit time (e.g. "less spicy", "serve at 8pm"). Same
+  // per-cartKey scoping + localStorage persistence as cartsByKey above, so
+  // switching between guests' in-progress carts doesn't leak one guest's
+  // note into another's, and an accidental refresh mid-order doesn't lose it.
+  const [instructionsByKey, setInstructionsByKey] = useState<Record<string, string>>(() => {
+    try {
+      const stored = localStorage.getItem('kitchen_cart_instructions_by_key');
+      if (stored) return JSON.parse(stored);
+    } catch { /* ignore - starts empty */ }
+    return {};
+  });
+  const cartInstructions = instructionsByKey[cartKey] || '';
+  const setCartInstructions = (value: string) => {
+    setInstructionsByKey((prev) => ({ ...prev, [cartKey]: value }));
+  };
+  const [isInstructionsDrawerOpen, setIsInstructionsDrawerOpen] = useState(false);
   const [posSearch, setPosSearch] = useState('');
   const [selectedPosCategory, setSelectedPosCategory] = useState<string>('all');
   const [showCategoryFilters, setShowCategoryFilters] = useState(false);
@@ -1115,6 +1132,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   }, [activeTab]);
 
   useEffect(() => { localStorage.setItem('kitchen_carts_by_key', JSON.stringify(cartsByKey)); }, [cartsByKey]);
+  useEffect(() => { localStorage.setItem('kitchen_cart_instructions_by_key', JSON.stringify(instructionsByKey)); }, [instructionsByKey]);
 
   // Menu Modal State
   const [isNewMenuModalOpen, setIsNewMenuModalOpen] = useState(false);
@@ -1199,6 +1217,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       guestId: guest?.id ?? null,
       walkInTabId: targetTabId,
       items: cartItems.map((ci) => ({ menuItemId: ci.menuItem.id, quantity: ci.quantity })),
+      specialInstructions: cartInstructions,
     });
     setIsSubmittingOrder(false);
 
@@ -1218,10 +1237,12 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       items: orderItems,
       totalAmount,
       walkInTabId: targetTabId,
+      specialInstructions: cartInstructions,
     };
 
     addOrder(newOrder);
     setCartItems([]);
+    setCartInstructions('');
     setNewTabLabel('');
     // Deliberately NOT resetting selectedWalkInTabId here (20 Aug 2026) - a
     // walk-in table usually gets more than one order sent to it over the
@@ -1481,6 +1502,21 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     </div>
                   )}
 
+                  {/* Order Instructions note (23 Aug 2026) - kitchen-only,
+                      order-level free text set at submit time. Deliberately
+                      loud (amber callout, not just italic text) so it can't
+                      be missed mid-rush the way a subtler treatment could be -
+                      this is the one place staff actually preparing/serving
+                      the order will see it. */}
+                  {!!ord.specialInstructions?.trim() && (
+                    <div className="mb-2.5 -mt-1 flex items-start gap-1.5 rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1.5">
+                      <ClipboardEdit className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                      <p className="text-[11px] font-semibold text-amber-800 dark:text-amber-300 leading-snug">
+                        {ord.specialInstructions.trim()}
+                      </p>
+                    </div>
+                  )}
+
                   {/* Items List */}
                   <div className="kds-ticket-items-list space-y-2 text-xs">
                     {ord.items
@@ -1685,25 +1721,24 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               {/* Flowbite Touch Stepper - Symmetrical Buttons */}
               <div className="pt-1 border-t border-gray-100 dark:border-gray-700/60">
                 <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-700/60 rounded-lg p-0.5 w-full border border-gray-200 dark:border-gray-600">
-                  <Tooltip content="Decrease quantity">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (inCartQty > 0) {
-                          handleUpdateCartQuantity(item.id, -1);
-                        }
-                      }}
-                      disabled={inCartQty === 0}
-                      className={`w-7 h-7 rounded-md shrink-0 flex items-center justify-center transition-all ${
-                        inCartQty === 0
-                          ? 'bg-transparent text-gray-300 dark:text-gray-600 cursor-not-allowed opacity-40'
-                          : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 active:scale-90 cursor-pointer shadow-xs'
-                      }`}
-                    >
-                      <Minus className="w-3.5 h-3.5" />
-                    </button>
-                  </Tooltip>
+                  <button
+                    type="button"
+                    aria-label="Decrease quantity"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (inCartQty > 0) {
+                        handleUpdateCartQuantity(item.id, -1);
+                      }
+                    }}
+                    disabled={inCartQty === 0}
+                    className={`w-7 h-7 rounded-md shrink-0 flex items-center justify-center transition-all ${
+                      inCartQty === 0
+                        ? 'bg-transparent text-gray-300 dark:text-gray-600 cursor-not-allowed opacity-40'
+                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 active:scale-90 cursor-pointer shadow-xs'
+                    }`}
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
                   <span className={`font-bold text-xs px-1 ${
                     inCartQty > 0
                       ? 'text-gray-900 dark:text-white'
@@ -1711,22 +1746,21 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   }`}>
                     {inCartQty}
                   </span>
-                  <Tooltip content="Increase quantity">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleAddToCartWithFeedback(item);
-                      }}
-                      className={`w-7 h-7 rounded-md shrink-0 flex items-center justify-center active:scale-90 transition-all cursor-pointer shadow-xs ${
-                        isRecentlyAdded
-                          ? 'bg-blue-600 text-white scale-95 animate-pulse'
-                          : 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600'
-                      }`}
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                  </Tooltip>
+                  <button
+                    type="button"
+                    aria-label="Increase quantity"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAddToCartWithFeedback(item);
+                    }}
+                    className={`w-7 h-7 rounded-md shrink-0 flex items-center justify-center active:scale-90 transition-all cursor-pointer shadow-xs ${
+                      isRecentlyAdded
+                        ? 'bg-blue-600 text-white scale-95 animate-pulse'
+                        : 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600'
+                    }`}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
             </div>
@@ -1821,13 +1855,25 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         // Walk-in mode never needs a checked-in guest - that's the whole point of it.
         const isWalkInNameMissing = orderMode === 'walkin' && selectedWalkInTabId === null && newTabLabel.trim() === '';
         const isOrderSubmitDisabled = cartItems.length === 0 || isSubmittingOrder || (orderMode === 'guest' && (!selectedGuest || checkedInGuests.length === 0)) || isWalkInNameMissing;
-        const orderSubmitTitle = orderMode === 'guest' && checkedInGuests.length === 0
-          ? t('no_active_resident_tooltip')
-          : cartItems.length === 0
-          ? t('order_cart_empty_tooltip')
-          : isWalkInNameMissing
-          ? t('walk_in_name_required_tooltip', 'Enter a table or customer name to start a new tab')
-          : t('send_order_to_kitchen_button');
+        // 23 Aug 2026: the "why is Send Order to Kitchen disabled" hint used to
+        // be a hover-only Tooltip (removed site-page-wide per request, plus
+        // native disabled buttons never fire onClick in the first place, so a
+        // tap on mobile got no explanation at all). For the specific "no
+        // checked-in guest" reason, the button below stays visually disabled
+        // but isn't actually given the `disabled` attribute, so a click can
+        // show this toast (with a real link to Bookings) instead of silently
+        // doing nothing.
+        const noCheckedInGuestBlocking = orderMode === 'guest' && checkedInGuests.length === 0;
+        const handleOrderSubmitClick = () => {
+          if (noCheckedInGuestBlocking) {
+            showToast(
+              <>No checked-in house guest. <a href="#bookings" className="underline font-semibold cursor-pointer">Go to bookings page</a> to check in a guest.</>,
+              { type: 'warning', duration: 6000 }
+            );
+            return;
+          }
+          handleOrderSubmit();
+        };
 
         const openTabs = walkInTabs.filter((tab) => tab.status === 'open');
 
@@ -1886,7 +1932,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     />
                   ) : (
                     <span className="text-gray-500 dark:text-gray-400 text-xs">
-                      {t('no_active_resident_tooltip', 'No active resident selected')}
+                      No checked-in house guest. <a href="#bookings" className="text-blue-600 dark:text-blue-400 font-semibold underline cursor-pointer">Help?</a>
                     </span>
                   )}
                 </div>
@@ -2000,34 +2046,30 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
                     {/* Thumbnail / List Layout Toggle */}
                     <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 p-0.5 shrink-0">
-                      <Tooltip content="Thumbnail View">
-                        <button
-                          type="button"
-                          onClick={() => setPosLayoutMode('thumbnail')}
-                          className={`p-2 rounded-md transition-all cursor-pointer ${
-                            posLayoutMode === 'thumbnail'
-                              ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-xs'
-                              : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                          }`}
-                          aria-label="Thumbnail View"
-                        >
-                          <LayoutGrid className="w-4 h-4" />
-                        </button>
-                      </Tooltip>
-                      <Tooltip content="List View">
-                        <button
-                          type="button"
-                          onClick={() => setPosLayoutMode('list')}
-                          className={`p-2 rounded-md transition-all cursor-pointer ${
-                            posLayoutMode === 'list'
-                              ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-xs'
-                              : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                          }`}
-                          aria-label="List View"
-                        >
-                          <List className="w-4 h-4" />
-                        </button>
-                      </Tooltip>
+                      <button
+                        type="button"
+                        onClick={() => setPosLayoutMode('thumbnail')}
+                        className={`p-2 rounded-md transition-all cursor-pointer ${
+                          posLayoutMode === 'thumbnail'
+                            ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-xs'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                        }`}
+                        aria-label="Thumbnail View"
+                      >
+                        <LayoutGrid className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPosLayoutMode('list')}
+                        className={`p-2 rounded-md transition-all cursor-pointer ${
+                          posLayoutMode === 'list'
+                            ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-xs'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                        }`}
+                        aria-label="List View"
+                      >
+                        <List className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
 
@@ -2167,6 +2209,42 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
                 {/* Cart Total & Submit Button */}
                 <div className="space-y-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                  {/* Order Instructions checkbox (23 Aug 2026) - kitchen-only free
+                      text note, e.g. "less spicy", "serve at 8pm". Checking it
+                      when empty opens the drawer to write one; unchecking clears
+                      it directly. Clicking the label text while already checked
+                      reopens the drawer to edit instead of unchecking (see the
+                      label's own onClick below). */}
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="order-instructions-checkbox-desktop"
+                      checked={!!cartInstructions.trim()}
+                      onChange={() => {
+                        if (cartInstructions.trim()) {
+                          setCartInstructions('');
+                        } else {
+                          setIsInstructionsDrawerOpen(true);
+                        }
+                      }}
+                    />
+                    <label
+                      htmlFor="order-instructions-checkbox-desktop"
+                      onClick={(e) => {
+                        if (cartInstructions.trim()) {
+                          e.preventDefault();
+                          setIsInstructionsDrawerOpen(true);
+                        }
+                      }}
+                      className="text-xs font-medium text-gray-600 dark:text-gray-300 cursor-pointer select-none flex items-center gap-1.5"
+                    >
+                      <ClipboardEdit className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+                      {t('order_instructions_checkbox_label', 'Instructions')}
+                      {!!cartInstructions.trim() && (
+                        <span className="text-2xs text-blue-600 dark:text-blue-400 font-normal">({t('tap_to_edit_label', 'tap to edit')})</span>
+                      )}
+                    </label>
+                  </div>
+
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide text-2xs">{t('total_label')}</span>
                     <span className="font-bold text-gray-900 dark:text-white text-base">
@@ -2174,11 +2252,15 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     </span>
                   </div>
 
-                  <Tooltip content={orderSubmitTitle}>
-                    <Button variant="primary" size="lg" onClick={handleOrderSubmit} disabled={isOrderSubmitDisabled}>
-                      <span>{isSubmittingOrder ? t('sending_order_button', 'Sending...') : t('send_order_to_kitchen_button')}</span>
-                    </Button>
-                  </Tooltip>
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    onClick={handleOrderSubmitClick}
+                    disabled={isOrderSubmitDisabled && !noCheckedInGuestBlocking}
+                    className={noCheckedInGuestBlocking ? 'opacity-50' : undefined}
+                  >
+                    <span>{isSubmittingOrder ? t('sending_order_button', 'Sending...') : t('send_order_to_kitchen_button')}</span>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -2198,8 +2280,14 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 // content directly above the drawer's top edge instead), a
                 // slightly-tinted surface instead of matching white, and a bolder
                 // accent top border so the boundary itself reads clearly too.
-                className={`fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-[55] lg:hidden bg-slate-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-t-2xl shadow-[0_-8px_30px_-6px_rgba(0,0,0,0.25)] dark:shadow-[0_-8px_30px_-6px_rgba(0,0,0,0.6)] border-t-2 border-blue-200 dark:border-blue-900/60 transition-all duration-300 flex flex-col ${
-                  isCartDrawerExpanded ? 'h-[50vh]' : 'max-h-[260px]'
+                className={`fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-[55] lg:hidden bg-slate-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-t-2xl shadow-[0_-8px_30px_-6px_rgba(0,0,0,0.25)] dark:shadow-[0_-8px_30px_-6px_rgba(0,0,0,0.6)] border-t-2 border-blue-200 dark:border-blue-900/60 transition-all duration-300 flex flex-col overflow-hidden ${
+                  // Collapsed = fully closed (0 height, just the pull-tab
+                  // showing above it), not a ~260px peek of items (23 Aug
+                  // 2026, on request - "drawer should close completely").
+                  // overflow-hidden (added above) is what makes 0-height
+                  // actually hide the item list's own padding/content
+                  // instead of letting it spill out past a 0px box.
+                  isCartDrawerExpanded ? 'h-[50vh]' : 'h-0 border-t-0'
                 }`}
               >
                 {/* Right-Aligned White Pull-Tab Attached to Top Edge of Cart */}
@@ -2283,36 +2371,72 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     wrapping it in a flex/justify-end container is what
                     actually constrains it to its own content width instead
                     of needing a one-off width override on the button itself. */}
-                <div className="p-3 pb-3.5 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shrink-0 flex justify-end">
-                  <Tooltip content={orderSubmitTitle}>
-                    <Button variant="primary" size="lg" onClick={handleOrderSubmit} disabled={isOrderSubmitDisabled}>
+                <div className="p-3 pb-3.5 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shrink-0 flex flex-col gap-2.5">
+                  {/* Order Instructions checkbox (23 Aug 2026) - same behavior as
+                      the desktop cart panel's own copy above. */}
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="order-instructions-checkbox-mobile"
+                      checked={!!cartInstructions.trim()}
+                      onChange={() => {
+                        if (cartInstructions.trim()) {
+                          setCartInstructions('');
+                        } else {
+                          setIsInstructionsDrawerOpen(true);
+                        }
+                      }}
+                    />
+                    <label
+                      htmlFor="order-instructions-checkbox-mobile"
+                      onClick={(e) => {
+                        if (cartInstructions.trim()) {
+                          e.preventDefault();
+                          setIsInstructionsDrawerOpen(true);
+                        }
+                      }}
+                      className="text-xs font-medium text-gray-600 dark:text-gray-300 cursor-pointer select-none flex items-center gap-1.5"
+                    >
+                      <ClipboardEdit className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+                      {t('order_instructions_checkbox_label', 'Instructions')}
+                      {!!cartInstructions.trim() && (
+                        <span className="text-2xs text-blue-600 dark:text-blue-400 font-normal">({t('tap_to_edit_label', 'tap to edit')})</span>
+                      )}
+                    </label>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      variant="primary"
+                      size="lg"
+                      onClick={handleOrderSubmitClick}
+                      disabled={isOrderSubmitDisabled && !noCheckedInGuestBlocking}
+                      className={noCheckedInGuestBlocking ? 'opacity-50' : undefined}
+                    >
                       <span>{isSubmittingOrder ? t('sending_order_button', 'Sending...') : t('send_order_to_kitchen_button')}</span>
                     </Button>
-                  </Tooltip>
+                  </div>
                 </div>
               </div>
             )}
 
             {/* Mobile Scroll-to-Top Button */}
             {showScrollTop && (
-              <Tooltip content="Scroll to top" position="left">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const c = document.querySelector('.take-food-order-container');
-                    if (c) c.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className={`fixed right-4 z-50 lg:hidden w-11 h-11 bg-slate-900/90 dark:bg-slate-100/90 text-white dark:text-slate-900 rounded-full shadow-xl flex items-center justify-center cursor-pointer transition-all duration-300 active:scale-90 border border-slate-700 dark:border-slate-200 ${
-                    cartItems.length > 0
-                      ? isCartDrawerExpanded
-                        ? 'bottom-[calc(50vh+16px)]'
-                        : 'bottom-48 sm:bottom-52'
-                      : 'bottom-6'
-                  }`}
-                >
-                  <ArrowUp className="w-5 h-5 stroke-[2.5]" />
-                </button>
-              </Tooltip>
+              <button
+                type="button"
+                aria-label="Scroll to top"
+                onClick={() => {
+                  const c = document.querySelector('.take-food-order-container');
+                  if (c) c.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className={`fixed right-4 z-50 lg:hidden w-11 h-11 bg-slate-900/90 dark:bg-slate-100/90 text-white dark:text-slate-900 rounded-full shadow-xl flex items-center justify-center cursor-pointer transition-all duration-300 active:scale-90 border border-slate-700 dark:border-slate-200 ${
+                  cartItems.length > 0
+                    ? isCartDrawerExpanded
+                      ? 'bottom-[calc(50vh+16px)]'
+                      : 'bottom-48 sm:bottom-52'
+                    : 'bottom-6'
+                }`}
+              >
+                <ArrowUp className="w-5 h-5 stroke-[2.5]" />
+              </button>
             )}
           </div>
           );
@@ -2842,6 +2966,60 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               disabled={!newTabLabel.trim() || isStartingNewTab}
             >
               {isStartingNewTab ? t('starting_order_button', 'Starting…') : t('start_order_button', 'Start Order')}
+            </Button>
+          </div>
+        </Drawer>
+
+        {/* ORDER INSTRUCTIONS DRAWER (23 Aug 2026) - kitchen-only free-text
+            note attached to the whole order at submit time (e.g. "less
+            spicy", "serve at 8pm"), triggered by the "Instructions" checkbox
+            in both the desktop cart panel and mobile cart drawer above. */}
+        <Drawer
+          open={isInstructionsDrawerOpen}
+          onClose={() => setIsInstructionsDrawerOpen(false)}
+          position="right"
+          className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+        >
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                <ClipboardEdit className="w-4 h-4" />
+              </div>
+              <h2 className="kitchen-management__subtitle font-semibold text-slate-800 dark:text-slate-200 text-sm m-0">
+                {t('order_instructions_drawer_heading', 'Order Instructions')}
+              </h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsInstructionsDrawerOpen(false)}
+              className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {t('order_instructions_drawer_hint', 'Visible to kitchen staff only, not the guest - e.g. "less spicy", "serve at 8pm", "this order is for dinner at 8pm".')}
+            </p>
+            <textarea
+              value={cartInstructions}
+              onChange={(e) => setCartInstructions(e.target.value)}
+              rows={7}
+              placeholder={t('order_instructions_placeholder', 'e.g. Less spicy, serve in 40 mins...')}
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm p-3 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 resize-none"
+              autoFocus
+            />
+          </div>
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+            {/* Was "Done" (23 Aug 2026, on request) - this button commits the
+                typed instructions text, so "Save" reads more accurately than a
+                plain dismiss action. Reuses the existing save_button key
+                rather than done_button, which two other components
+                (PlatformPropertyManagement.tsx, WalkInTabBillModal.tsx) also
+                use for genuinely different "Done" actions that shouldn't
+                change. */}
+            <Button variant="primary" size="sm" onClick={() => setIsInstructionsDrawerOpen(false)}>
+              {t('save_button', 'Save')}
             </Button>
           </div>
         </Drawer>

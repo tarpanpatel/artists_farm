@@ -288,6 +288,34 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
             } catch (Exception $e) {}
                 markSchemaVerified('nav_menu_self_heal_v2');
             }
+
+            // v3 (23 Aug 2026, reported live via ROLES.md review): three more environment-drift
+            // fixes, same "v2 already ran on some environments so a new version is needed to
+            // re-fire" reasoning as above.
+            //   1. "Past Guests" - a nav item pointing at a REMOVED feature (the old
+            //      GuestHistory/"Past Guests" archive view - see GuestManagement.tsx's own comment
+            //      on its now-unused focusGuestId/onClearFocusGuest props). Someone added a nav
+            //      entry for it via the Nav Menu Editor at some point; the page behind it no longer
+            //      exists in App.tsx's routeMap, so it was a dead link for every role that had it,
+            //      "Staff" included. Doesn't exist in local's nav_menu_items at all (confirmed) -
+            //      staging-only drift. Matched by title/unique_key/tab_key rather than a single
+            //      known id, since its exact id is unknown from local.
+            //   2. Telegram Alerts - policy is Super Admin + Admin ONLY, no exceptions. Full
+            //      roles_json overwrite (not the targeted-string-removal technique the kitchen
+            //      fix above uses) because the end state here is fully and unambiguously known,
+            //      unlike kitchen_overview/take_food_order which deliberately preserve unrelated
+            //      legacy roles (Manager/Chef) already sitting on those rows.
+            //   3. Dish Recipes (Auto-Stock) - policy is Super Admin + Admin only; Staff Kitchen
+            //      was incorrectly still granted this (confirmed in local's own nav_menu_items,
+            //      not just staging - this one was never environment-specific).
+            if (!isSchemaVerified('nav_menu_self_heal_v3')) {
+                try {
+                    $pdo->exec("DELETE FROM nav_menu_items WHERE LOWER(title) = 'past guests' OR unique_key LIKE '%past_guest%' OR tab_key LIKE '%past_guest%'");
+                    $pdo->exec("UPDATE nav_menu_items SET roles_json = '[\"Super Admin\",\"Admin\"]' WHERE unique_key = 'telegram'");
+                    $pdo->exec("UPDATE nav_menu_items SET roles_json = '[\"Super Admin\",\"Admin\"]' WHERE unique_key = 'beta_recipe_builder'");
+                } catch (Exception $e) {}
+                markSchemaVerified('nav_menu_self_heal_v3');
+            }
             try {
                 $stmt = $pdo->query("SELECT id, title, tab_key as tabKey, unique_key as uniqueKey, COALESCE(NULLIF(url_slug, ''), unique_key) as urlSlug, category, icon_name as iconName, display_order as `order`, roles_json, is_visible as isVisible, COALESCE(custom_url, '') as customUrl, IFNULL(open_in_new_tab, 0) as openInNewTab, parent_id as parentId FROM nav_menu_items ORDER BY display_order ASC");
                 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);

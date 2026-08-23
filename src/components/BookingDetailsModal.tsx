@@ -6,6 +6,7 @@ import { Guest } from '../types';
 import { markCFormFiled, checkinGuestInDB, uploadDocumentDB } from '../services/api';
 import { scanApplicantIdFromFile } from '../utils/cFormBarcodeScanner';
 import { useStaff } from '../contexts/StaffContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
@@ -84,6 +85,17 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const { staff } = useStaff();
   const { showToast } = useToast();
   const { confirm } = useConfirm();
+  const { activeRole } = useAuth();
+  // ROLES.md (23 Aug 2026): Staff Kitchen is view-only on bookings - no
+  // upload ID, C-Form, check-in, checkout, edit, or delete. Plain Staff keeps
+  // all of those except checkout specifically. Read directly from AuthContext
+  // (like Navigation.tsx already does for its own role-based nav filtering)
+  // rather than threading a new prop through every BookingDetailsModal call
+  // site - App.tsx alone renders this component from several places.
+  const normalizedActiveRole = (activeRole || '').toLowerCase().trim();
+  const isStaffKitchenRole = normalizedActiveRole === 'staff kitchen';
+  const canActOnBooking = !isStaffKitchenRole;
+  const canCheckoutBooking = !isStaffKitchenRole && normalizedActiveRole !== 'staff';
 
   const [propDetails, setPropDetails] = useState<{
     name?: string;
@@ -450,23 +462,25 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 }`} />
                 {t('checkin_id_verification_label', 'Check-in ID Verification')}
               </span>
-              <button
-                type="button"
-                onClick={handleOpenId}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs flex items-center gap-1.5 shrink-0 ${
-                  guest.idVerificationStatus === 'Complete'
-                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                    : 'bg-rose-600 hover:bg-rose-700 text-white animate-pulse hover:animate-none'
-                }`}
-              >
-                <Upload className="w-3.5 h-3.5" />
-                {guest.idVerificationStatus === 'Complete' ? 'View / Re-upload ID' : 'Upload Guest ID'}
-              </button>
+              {canActOnBooking && (
+                <button
+                  type="button"
+                  onClick={handleOpenId}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs flex items-center gap-1.5 shrink-0 ${
+                    guest.idVerificationStatus === 'Complete'
+                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                      : 'bg-rose-600 hover:bg-rose-700 text-white animate-pulse hover:animate-none'
+                  }`}
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  {guest.idVerificationStatus === 'Complete' ? 'View / Re-upload ID' : 'Upload Guest ID'}
+                </button>
+              )}
             </div>
           )}
 
           {/* Action Banner 1.5: Foreign Guest C-Form Warning */}
-          {guest.isForeignGuest && !isCFormFiled && !isEditing && (
+          {guest.isForeignGuest && !isCFormFiled && !isEditing && canActOnBooking && (
             <div className="w-full mb-3 px-3.5 py-2.5 rounded-lg border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 flex items-center justify-between gap-2 shadow-2xs">
               <div className="flex items-center gap-2 text-xs font-semibold text-rose-900 dark:text-rose-200">
                 <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
@@ -740,10 +754,12 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             {(editIsForeignGuest || guest.isForeignGuest) && (
               <div id="c-form-checkbox-container" className="pt-1 border-t border-slate-100 dark:border-slate-700">
                 <div className="flex items-center justify-between gap-2">
-                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-800 dark:text-slate-100 select-none">
+                  <label className={`flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-100 select-none ${canActOnBooking ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}>
                     <Checkbox
                       checked={cFormFiledState}
+                      disabled={!canActOnBooking}
                       onChange={async (e) => {
+                        if (!canActOnBooking) return;
                         const isChecked = e.target.checked;
                         if (!isChecked) {
                           const ok = await markCFormFiled(guest.id, false, '');
@@ -767,7 +783,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   </span>
                 </div>
 
-                {cFormFiledState && (
+                {cFormFiledState && canActOnBooking && (
                   <div className="mt-2.5 space-y-2">
                     {/* Upload control comes first, above the number field it
                         fills - reads clearer than the reverse order (fill
@@ -882,7 +898,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             {!isEditing ? (
               <div className="space-y-3 w-full">
                 {/* Mark Checked In (Full-width action if status is Booked) */}
-                {(guest.status === GUEST_STATUS_BOOKED || (guest.status as string) === GUEST_STATUS_CONFIRMED_LEGACY) && (
+                {canActOnBooking && (guest.status === GUEST_STATUS_BOOKED || (guest.status as string) === GUEST_STATUS_CONFIRMED_LEGACY) && (
                   <button
                     type="button"
                     onClick={async () => {
@@ -902,8 +918,10 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   </button>
                 )}
 
-                {/* Checkout & Settle Bill (Full-width action if status is Checked In) */}
-                {onCheckout && (guest.status === GUEST_STATUS_CHECKED_IN || (guest.status as string) === GUEST_STATUS_ACTIVE_LEGACY) && (
+                {/* Checkout & Settle Bill (Full-width action if status is Checked In).
+                    canCheckoutBooking (23 Aug 2026, ROLES.md): Staff and Staff Kitchen
+                    both lose this action - see this file's top-of-component comment. */}
+                {onCheckout && canCheckoutBooking && (guest.status === GUEST_STATUS_CHECKED_IN || (guest.status as string) === GUEST_STATUS_ACTIVE_LEGACY) && (
                   <button
                     type="button"
                     onClick={onCheckout}
@@ -918,8 +936,10 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                     available, otherwise a real 2-column grid so Share/Edit
                     split the full width evenly instead of an invisible
                     placeholder div eating a third column (found 21 Aug 2026). */}
-                <div className={`grid gap-2.5 w-full ${onDelete ? 'grid-cols-3' : 'grid-cols-2'}`}>
-                  {onDelete && (
+                <div className={`grid gap-2.5 w-full ${
+                  onDelete && canActOnBooking ? 'grid-cols-3' : canActOnBooking ? 'grid-cols-2' : 'grid-cols-1'
+                }`}>
+                  {onDelete && canActOnBooking && (
                     <button
                       type="button"
                       onClick={handleDelete}
@@ -942,15 +962,17 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                     <span className="truncate">{t('share_with_guest_button', 'Share')}</span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => startEditing()}
-                    className="w-full h-10 px-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-300 dark:border-gray-600 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-                    title={t('edit_button', 'Edit')}
-                  >
-                    <Pencil className="w-4 h-4 text-gray-600 dark:text-gray-400 shrink-0" />
-                    <span className="truncate">{t('edit_button', 'Edit')}</span>
-                  </button>
+                  {canActOnBooking && (
+                    <button
+                      type="button"
+                      onClick={() => startEditing()}
+                      className="w-full h-10 px-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-300 dark:border-gray-600 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                      title={t('edit_button', 'Edit')}
+                    >
+                      <Pencil className="w-4 h-4 text-gray-600 dark:text-gray-400 shrink-0" />
+                      <span className="truncate">{t('edit_button', 'Edit')}</span>
+                    </button>
+                  )}
                 </div>
               </div>
             ) : (

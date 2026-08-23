@@ -226,7 +226,7 @@ function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
                             $tStmt->execute([$walkInTabId]);
                             $guestName = $tStmt->fetchColumn() ?: 'Walk-in';
                         }
-                        $msg = TelegramTemplates::newKitchenTicket($order_id, $guestName, $itemsPayload);
+                        $msg = TelegramTemplates::newKitchenTicket($order_id, $guestName, $itemsPayload, $specialInstructions);
                         sendPropertyTelegramMessage($pdo, $propertyId, 'kitchen', $msg, null, 'kitchen_new_order');
                     } catch (Exception $e) {
                         error_log("kitchen_new_order telegram dispatch failed: " . $e->getMessage());

@@ -204,6 +204,21 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
           const data = await response.json().catch(() => null);
           if (response.ok && data?.status === 'success' && Array.isArray(data.data)) {
             setNavItems(data.data);
+          } else if (response.status === 401 || response.status === 403) {
+            // Same fix as PlatformPropertyManagement.tsx's fetchData() (23 Aug
+            // 2026, reported live via a screenshot of exactly this - a red
+            // "Authentication required." banner sitting above a fully-rendered
+            // but non-functional NavMenuEditor shell, "0 items", "Menu is
+            // empty"). An error banner alone still leaves a page that LOOKS
+            // interactive but silently does nothing on every click, which
+            // reads as broken/buggy rather than "please log in again" - once
+            // the session is confirmed truly invalid there's nothing useful
+            // left to show here, so go straight back to the login screen.
+            // handleLogout() (not the raw onLogout prop) - same call the
+            // sidebar's own Sign Out button uses, since it also clears
+            // artists_farm_user_session and hard-redirects to /login/.
+            handleLogout();
+            return;
           } else {
             setNavItemsError(data?.message || `Failed to load menu items (HTTP ${response.status}).`);
           }
@@ -471,17 +486,17 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
 
           {/* Default Expenses */}
           {activeSection === 'default_expenses' && (
-            <DefaultExpensesManager />
+            <DefaultExpensesManager onLogout={handleLogout} />
           )}
 
           {/* Default Bills */}
           {activeSection === 'default_bills' && (
-            <DefaultBillsManager />
+            <DefaultBillsManager onLogout={handleLogout} />
           )}
 
           {/* System Stock */}
           {activeSection === 'system_stock' && (
-            <SystemStockManager />
+            <SystemStockManager onLogout={handleLogout} />
           )}
 
           {/* Service Request Types */}
@@ -543,11 +558,11 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
           )}
 
           {/* Email Settings */}
-          {activeSection === 'email_settings' && <EmailSettingsPanel />}
+          {activeSection === 'email_settings' && <EmailSettingsPanel onLogout={handleLogout} />}
 
           {/* Account Settings */}
           {activeSection === 'account_settings' && (
-            <AccountSettings username={displayUsername} onUsernameChange={handleUsernameChange} />
+            <AccountSettings username={displayUsername} onUsernameChange={handleUsernameChange} onLogout={handleLogout} />
           )}
 
           {/* DB Sync */}

@@ -6,13 +6,20 @@ export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
 export interface Toast {
   id: string;
-  message: string;
+  message: React.ReactNode;
   type: ToastType;
   duration: number;
 }
 
+// message widened from string to React.ReactNode (23 Aug 2026) so a toast can
+// carry an inline actionable link (e.g. "No checked-in house guest. <a
+// href="#bookings">Go to bookings page</a> to check one in.") instead of only
+// ever being plain text - see KitchenManagement.tsx's disabled "Send Order to
+// Kitchen" click handler for the first real use. Every existing plain-string
+// call site keeps working unchanged since a string is already a valid
+// ReactNode.
 interface ToastContextValue {
-  showToast: (message: string, options?: { type?: ToastType; duration?: number }) => string;
+  showToast: (message: React.ReactNode, options?: { type?: ToastType; duration?: number }) => string;
   removeToast: (id: string) => void;
 }
 
@@ -39,7 +46,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const showToast = useCallback((message: string, options?: { type?: ToastType; duration?: number }) => {
+  const showToast = useCallback((message: React.ReactNode, options?: { type?: ToastType; duration?: number }) => {
     const id = `toast-${++counter}`;
     const toast: Toast = {
       id,

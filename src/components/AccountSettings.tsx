@@ -17,6 +17,7 @@ interface PlatformAdminProfile {
 interface AccountSettingsProps {
   username: string;
   onUsernameChange: (username: string) => void;
+  onLogout: () => void;
 }
 
 /**
@@ -24,7 +25,7 @@ interface AccountSettingsProps {
  * and passcode. Persists to the `users` table via the root-admin-only
  * get/update_platform_admin_profile router actions.
  */
-export const AccountSettings: React.FC<AccountSettingsProps> = ({ username, onUsernameChange }) => {
+export const AccountSettings: React.FC<AccountSettingsProps> = ({ username, onUsernameChange, onLogout }) => {
   const { showToast } = useToast();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -43,6 +44,13 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ username, onUs
     (async () => {
       try {
         const res = await fetch('/php/api/router.php?action=get_platform_admin_profile', { credentials: 'include' });
+        if (res.status === 401 || res.status === 403) {
+          // Same fix as RootAdminDashboard.tsx's loadNavItems() (23 Aug 2026) -
+          // an expired session must not leave this form silently sitting on
+          // empty/default values, go straight back to login instead.
+          onLogout();
+          return;
+        }
         const json = await res.json();
         if (json.success && json.data) {
           const p: PlatformAdminProfile = json.data;

@@ -50,7 +50,11 @@ interface NavigationProps {
   kitchenModuleEnabled?: boolean;
 }
 
-type TreeNode = NavMenuItem & { children: TreeNode[] };
+// groupOnly (23 Aug 2026): marks a synthetic parent shell created purely so a
+// role-visible child keeps its visual grouping when the role can't see the
+// real parent item itself - see buildTree()'s comment below. Not a real,
+// independently-visitable nav destination for that role.
+type TreeNode = NavMenuItem & { children: TreeNode[]; groupOnly?: boolean };
 
 interface FlatNavItem {
   id: string;
@@ -237,6 +241,33 @@ export const Navigation: React.FC<NavigationProps> = ({
       map.set(item.id, { ...item, children: [] });
     });
 
+    // (23 Aug 2026, reported live: "Attendance Calendar comes out of Team page
+    // and becomes a root item" for Staff Supervisor) A child can be visible to
+    // a role whose PARENT isn't - Attendance Calendar is visible to Staff
+    // Supervisor, but its parent "Team & Access" is Admin/Super-Admin-only.
+    // `map` above only contains role-visible items, so the attach loop below
+    // used to find `map.has(effectiveParentId)` false and silently promote the
+    // orphaned child to root level instead of keeping it grouped. Fix: for any
+    // visible child whose real parent isn't in `map`, pull that parent's bare
+    // metadata from the FULL, unfiltered `flat` list (deliberately not run
+    // through isVisible() for this one lookup - it's not being granted as a
+    // destination, just borrowed for its title/icon/category) and add a
+    // `groupOnly` shell node so the child still nests visually under "Team &
+    // Access" etc. `renderNode()` checks `groupOnly` to make the header
+    // expand/collapse only, not navigate - clicking through to the real page
+    // would just bounce right back anyway via App.tsx's route guard, but
+    // there's no reason to make it look navigable in the first place.
+    const groupOnlyIds = new Set<string>();
+    visible.forEach(item => {
+      if (item.parentId && !map.has(item.parentId)) {
+        const parentRaw = flat.find(f => f.id === item.parentId);
+        if (parentRaw && !map.has(parentRaw.id)) {
+          map.set(parentRaw.id, { ...parentRaw, children: [], groupOnly: true });
+          groupOnlyIds.add(parentRaw.id);
+        }
+      }
+    });
+
     const kitchenChildKeys = new Set([
       'take_food_order', 'kitchen_orders', 'staff_meals', 'stock_requests',
       'deficit_shortfalls_log', 'edit_food_menu', 'edit_kitchen_stock'
@@ -250,6 +281,20 @@ export const Navigation: React.FC<NavigationProps> = ({
       }
       if (effectiveParentId && map.has(effectiveParentId)) {
         map.get(effectiveParentId)!.children.push(node);
+      } else {
+        roots.push(node);
+      }
+    });
+
+    // groupOnly shells were never part of `visible`, so the attach loop above
+    // never placed them anywhere - thread each one into its own parent (if
+    // any, and if that parent happens to be visible/already in `map`) or
+    // straight into `roots`, same fallback the real-item loop uses.
+    groupOnlyIds.forEach(id => {
+      const parentRaw = flat.find(f => f.id === id)!;
+      const node = map.get(id)!;
+      if (parentRaw.parentId && map.has(parentRaw.parentId)) {
+        map.get(parentRaw.parentId)!.children.push(node);
       } else {
         roots.push(node);
       }
@@ -404,7 +449,11 @@ export const Navigation: React.FC<NavigationProps> = ({
           }
           return next;
         });
-        handleTabClick({ tabKey: node.tabKey, uniqueKey: itemKey, customUrl: node.customUrl, openInNewTab: node.openInNewTab }, { keepSidebarOpen: true });
+        // groupOnly shells (see buildTree()) aren't a real destination for the
+        // current role - expand/collapse only, no navigation.
+        if (!node.groupOnly) {
+          handleTabClick({ tabKey: node.tabKey, uniqueKey: itemKey, customUrl: node.customUrl, openInNewTab: node.openInNewTab }, { keepSidebarOpen: true });
+        }
       };
 
       return (

@@ -1386,6 +1386,7 @@ export async function fetchOrdersFromDB(): Promise<any[]> {
           status: o.status || 'Pending',
           orderTime: o.order_time || '',
           totalAmount: Math.max(0, Number(o.total_amount) || 0),
+          specialInstructions: (o.special_instructions || '').trim(),
         }))
         .filter((o) => o.items.length > 0 || o.totalAmount > 0);
     }
@@ -1403,6 +1404,7 @@ export async function addOrderToDB(order: {
   guestId?: string | null;
   walkInTabId?: number | null;
   items: { menuItemId: number; quantity: number }[];
+  specialInstructions?: string;
 }): Promise<number | null> {
   try {
     const res = await apiFetch(`${API_BASE}?action=create_order`, {
@@ -1412,6 +1414,7 @@ export async function addOrderToDB(order: {
         guest_id: order.guestId || null,
         walk_in_tab_id: order.walkInTabId || null,
         items: order.items.map((it) => ({ menu_item_id: it.menuItemId, quantity: it.quantity })),
+        special_instructions: order.specialInstructions?.trim() || null,
       }),
     });
     const json = await res.json();

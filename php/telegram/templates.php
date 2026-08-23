@@ -185,7 +185,7 @@ if (!class_exists('TelegramTemplates')) {
         // HELPER CONVENIENCE METHODS
         // =========================================================================
 
-        public static function newKitchenTicket($orderId, $guestName, $items = []) {
+        public static function newKitchenTicket($orderId, $guestName, $items = [], $specialInstructions = null) {
             global $pdo;
             $items_formatted = [];
             foreach ($items as $itm) {
@@ -193,12 +193,21 @@ if (!class_exists('TelegramTemplates')) {
                 $name = $itm['name'] ?? 'Dish';
                 $items_formatted[] = "• <b>{$qty}x</b> {$name}";
             }
-            return self::render($pdo, 'kitchen_new_order', [
+            $message = self::render($pdo, 'kitchen_new_order', [
                 'order_id' => $orderId,
                 'guest_name' => $guestName,
                 'order_time' => date('h:i A'),
                 'order_items' => implode("\n", $items_formatted)
             ]);
+            // Order-level "Instructions" note from the Take Food Order cart (23
+            // Aug 2026) - kitchen-only, appended directly rather than as a
+            // template placeholder so it shows up regardless of whether a given
+            // tenant has customized their kitchen_new_order template text, and
+            // simply doesn't appear at all when there's no note (most orders).
+            if (!empty(trim((string)$specialInstructions))) {
+                $message .= "\n📝 <b>Note:</b> " . htmlspecialchars(trim($specialInstructions), ENT_QUOTES, 'UTF-8');
+            }
+            return $message;
         }
 
     }
