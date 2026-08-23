@@ -224,6 +224,32 @@ try {
             }
             Write-Ok "Staging site verified serving the new bundle: $($liveBundle -join ', ')"
         }
+
+        # Backend API smoke test (added 23 Aug 2026, after a real incident: a
+        # backend-breaking bug shipped a deploy that reported "Complete" -
+        # this bundle-hash check above only proves the FRONTEND shell landed,
+        # never that the PHP backend behind it still works. router.php had
+        # been silently returning HTTP 200 with an EMPTY body for every single
+        # action for over an hour - login, nav menu, everything - discovered
+        # only because a real user couldn't log in, not by this pipeline.
+        # get_nav_menu is a good canary: unauthenticated, platform-wide
+        # (never legitimately empty - see CLAUDE.md), and already the
+        # backend's own front-line handler that most other actions share
+        # requires. A failure here means the whole API is down; catch it
+        # HERE, loudly, not an hour later from a confused user report.
+        Write-Step "Verifying Staging Backend API"
+        try {
+            $apiCheck = Invoke-WebRequest -Uri "https://staging.artistic-sthan.com/php/api/router.php?action=get_nav_menu" -UseBasicParsing -ErrorAction Stop -TimeoutSec 20
+            $apiJson = $apiCheck.Content | ConvertFrom-Json -ErrorAction Stop
+            if ($apiJson.status -ne 'success' -or -not $apiJson.data -or @($apiJson.data).Count -eq 0) {
+                Write-Err "Staging backend API responded but with no usable data (get_nav_menu) - the deploy may have broken the PHP backend. Check /php/errors/ on staging immediately."
+                exit 1
+            }
+            Write-Ok "Staging backend API verified - get_nav_menu returned $(@($apiJson.data).Count) items."
+        } catch {
+            Write-Err "Staging backend API check failed: $($_.Exception.Message) - the deploy may have broken the PHP backend (or it returned an empty/non-JSON body, the exact failure mode this check exists to catch). Check /php/errors/ on staging immediately."
+            exit 1
+        }
     } else {
         Write-Ok "Build package and backend files deployed successfully. HTTP verification skipped - staging URL didn't respond twice in a row."
     }

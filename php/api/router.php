@@ -99,7 +99,34 @@ require_once __DIR__ . '/../modules/module_manager.php';
 require_once __DIR__ . '/db_export.php';
 require_once __DIR__ . '/../licenses/licenses.php';
 require_once __DIR__ . '/../theme/theme_settings.php';
-require_once __DIR__ . '/configuration.php';
+
+// Conditional (23 Aug 2026, found live on staging): this was an unconditional
+// require - same failure mode as telegram.php above (a "Failed opening
+// required" error here is fatal before $action is even read), except this
+// one had NO guard at all, so a single missing file took down literally
+// every action router.php handles - login included - for over an hour on
+// staging before being caught. configuration.php is an ordinary git-tracked
+// file (confirmed via git log/git ls-files - NOT a gitignored secrets file
+// like db_pass.php), so this wasn't a "forgot to deploy a secret" gap; the
+// far more likely cause, given CPGuard is already a confirmed, recurring
+// threat on this exact server (see the telegram.php block above), is the
+// same malware scanner quarantining this file too. Self-heals the same way.
+$__configuration_php_path = __DIR__ . '/configuration.php';
+if (!file_exists($__configuration_php_path) && defined('APP_IS_STAGING_ENV') && APP_IS_STAGING_ENV) {
+    $__prod_configuration_php_path = '/home/apartment/public_html/php/api/configuration.php';
+    if (file_exists($__prod_configuration_php_path)) {
+        @copy($__prod_configuration_php_path, $__configuration_php_path);
+        if (class_exists('TelescopeLogger')) {
+            TelescopeLogger::log('php', 'Warning', 'php/api/configuration.php was missing on staging - restored from production\'s copy', 'router.php:configuration self-heal');
+        }
+    }
+    unset($__prod_configuration_php_path);
+}
+if (file_exists($__configuration_php_path)) {
+    require_once $__configuration_php_path;
+}
+unset($__configuration_php_path);
+
 require_once __DIR__ . '/multikey_properties.php';
 require_once __DIR__ . '/../service_requests/service_requests.php';
 require_once __DIR__ . '/../security/rate_limiter.php';
@@ -2958,7 +2985,12 @@ switch ($action) {
     case 'get_system_settings':
     case 'save_system_settings':
     case 'check_telegram_health':
-        handleConfigurationRequests($pdo, $request_method, $action, $propertyId);
+        if (function_exists('handleConfigurationRequests')) {
+            handleConfigurationRequests($pdo, $request_method, $action, $propertyId);
+        } else {
+            http_response_code(503);
+            echo json_encode(['status' => 'error', 'message' => 'Configuration module unavailable']);
+        }
         break;
 
     // --- THEME SETTINGS ---
