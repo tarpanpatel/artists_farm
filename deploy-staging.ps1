@@ -199,8 +199,18 @@ try {
     try {
         $liveHtml = Invoke-WebRequest -Uri $LiveUrl -UseBasicParsing -ErrorAction Stop
     } catch {
+        # Retry the SAME staging URL after a short pause, not a different
+        # site. This used to fall back to https://artistic-sthan.com/dist/ -
+        # PRODUCTION, a completely separate build with its own bundle hashes
+        # - so any merely-transient hiccup on the first staging fetch (e.g. a
+        # brief LiteSpeed blip right after the rsync swap above) guaranteed a
+        # false "Staging bundle mismatch!" by comparing staging's fresh build
+        # against production's unrelated one. Found 23 Aug 2026 after a
+        # deploy that curl confirmed was already correct still reported
+        # FAILED here.
+        Start-Sleep -Seconds 3
         try {
-            $liveHtml = Invoke-WebRequest -Uri "https://artistic-sthan.com/dist/" -UseBasicParsing -ErrorAction Stop
+            $liveHtml = Invoke-WebRequest -Uri $LiveUrl -UseBasicParsing -ErrorAction Stop
         } catch {}
     }
 
@@ -215,7 +225,7 @@ try {
             Write-Ok "Staging site verified serving the new bundle: $($liveBundle -join ', ')"
         }
     } else {
-        Write-Ok "Build package and backend files deployed successfully. HTTP verification skipped due to transient DNS lookup."
+        Write-Ok "Build package and backend files deployed successfully. HTTP verification skipped - staging URL didn't respond twice in a row."
     }
     
     Write-Host ""
