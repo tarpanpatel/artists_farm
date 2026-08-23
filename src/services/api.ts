@@ -1256,19 +1256,31 @@ export async function markCFormFiled(guestId: string, filed: boolean = true, cFo
   }
 }
 
+// Throws (rather than silently returning false) so the real backend reason - "Access denied for
+// this property.", "Booking not found", a raw SQL error, etc. - reaches the UI instead of being
+// swallowed into one generic "Failed to delete booking" message everywhere (see BookingDetailsModal
+// .tsx's handleDelete / App.tsx's handleDeleteGuest, the only caller). Found 23 Aug 2026 while
+// chasing a reported "unable to delete booking" that this exact swallowing made undiagnosable from
+// the reporter's screenshot alone - the toast looked identical whether the real cause was a 403
+// property-scope mismatch, a 404 (already deleted / wrong property_id), or a 500 SQL error.
 export async function deleteGuestFromDB(guestId: string): Promise<boolean> {
+  const res = await apiFetch(`${API_BASE}?action=delete_guest`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: guestId }),
+  });
+  let json: any = null;
   try {
-    const res = await apiFetch(`${API_BASE}?action=delete_guest`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: guestId }),
-    });
-    const json = await res.json();
-    return json.status === 'success';
-  } catch (err) {
-    console.error('Failed to delete guest/booking in DB:', err);
-    return false;
+    json = await res.json();
+  } catch {
+    // fall through - json stays null, message below falls back to the HTTP status
   }
+  if (!json || json.status !== 'success') {
+    const message = json?.message || `Failed to delete booking (HTTP ${res.status})`;
+    console.error('Failed to delete guest/booking in DB:', message);
+    throw new Error(message);
+  }
+  return true;
 }
 
 export interface GuestIdDocument {

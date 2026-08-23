@@ -1510,8 +1510,9 @@ function AppBody({ preloadedData }: AppBodyProps) {
 
   const handleDeleteGuest = async (guestId: string) => {
     const target = guests.find((g) => g.id === guestId);
-    const ok = await deleteGuestFromDB(guestId);
-    if (!ok) throw new Error('Failed to delete booking');
+    // deleteGuestFromDB throws with the real backend reason on failure now (23 Aug 2026) -
+    // let it propagate instead of masking it with a fresh generic error here.
+    await deleteGuestFromDB(guestId);
     setGuests((prev) => prev.filter((g) => g.id !== guestId));
     logAudit(`Deleted booking: ${target?.guestName || guestId} (${target?.roomNumber || 'unknown room'})`);
   };
