@@ -12,6 +12,15 @@ export interface PopoverProps {
   onOpenChange?: (open: boolean) => void;
   offset?: number;
   arrow?: boolean;
+  // Default 50 matches the app-wide z-index scale's "ordinary in-page
+  // popover" tier (see custom.css's documented scale) - fine for a trigger
+  // living in normal page content, but this portals straight to
+  // document.body, so a trigger placed INSIDE an already-open z-60/z-70/z-100
+  // secondary modal (date pickers, mobile cart drawers, etc. per that same
+  // scale) needs an explicit higher value here or its content renders
+  // behind that modal's own panel - found 23 Aug 2026 wiring a "Help?"
+  // popover into ConvertOtaBookingModal (a z-70 Drawer).
+  zIndex?: number;
 }
 
 export const Popover: React.FC<PopoverProps> = ({
@@ -25,6 +34,7 @@ export const Popover: React.FC<PopoverProps> = ({
   onOpenChange,
   offset = 8,
   arrow = true,
+  zIndex = 50,
 }) => {
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
@@ -264,7 +274,7 @@ export const Popover: React.FC<PopoverProps> = ({
               position: 'fixed',
               top: `${coords.top}px`,
               left: `${coords.left}px`,
-              zIndex: 50,
+              zIndex,
               opacity: isMeasured ? 1 : 0,
               visibility: isMeasured ? 'visible' : 'hidden',
             }}

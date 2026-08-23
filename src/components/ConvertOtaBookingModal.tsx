@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Globe, Loader2, CheckCircle2, Hash } from './icons/FlowbiteIcons';
+import { Globe, Loader2, CheckCircle2, Hash, ExternalLink } from './icons/FlowbiteIcons';
 import { Drawer } from 'flowbite-react';
 import { X } from './icons/FlowbiteIcons';
 import { Guest } from '../types';
 import { Input } from './Input';
 import { DateRangePicker } from './DateRangePicker';
+import { Popover } from './Popover';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import { t } from '../i18n/en';
 
@@ -15,6 +16,14 @@ interface OtaBlockInfo {
   source?: string;
   source_label?: string;
   external_event_id: string;
+  // The OTA's own hosting-reservation URL, parsed server-side out of the
+  // iCal DESCRIPTION field (see ical_sync.php's extractReservationUrl()) -
+  // present for Airbnb feeds, which always include a "Reservation URL:"
+  // line; may be absent for other/generic iCal sources that don't. 23 Aug
+  // 2026: shown as a real clickable link here so staff can jump straight to
+  // the reservation on the OTA's own dashboard to cross-check it, instead of
+  // only seeing the opaque SUMMARY/title text.
+  reservation_url?: string;
 }
 
 interface ConvertOtaBookingModalProps {
@@ -128,14 +137,32 @@ export const ConvertOtaBookingModal: React.FC<ConvertOtaBookingModalProps> = ({
         </button>
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {otaBlock.event_title && (() => {
-          const cleanTitle = otaBlock.event_title.replace(/\s*-\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*/gi, '').trim();
+        {(otaBlock.event_title || otaBlock.reservation_url) && (() => {
+          const cleanTitle = otaBlock.event_title
+            ? otaBlock.event_title.replace(/\s*-\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*/gi, '').trim()
+            : '';
           return (
-            <div className="px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 flex items-center gap-2">
-              <Hash className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <div className="min-w-0">
+            <div className="px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 flex items-start gap-2">
+              <Hash className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+              <div className="min-w-0 flex-1">
                 <div className="text-2xs font-semibold text-slate-400 uppercase">{t('ota_reference_label', 'OTA Reference (not a guest name)')}</div>
-                <div className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">{cleanTitle || otaBlock.event_title}</div>
+                {(cleanTitle || otaBlock.event_title) && (
+                  <div className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">{cleanTitle || otaBlock.event_title}</div>
+                )}
+                {/* Always shown when the feed provided one (23 Aug 2026,
+                    explicit request) - lets staff jump straight to this
+                    reservation on the OTA's own dashboard to cross-check it. */}
+                {otaBlock.reservation_url && (
+                  <a
+                    href={otaBlock.reservation_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 inline-flex items-center gap-1 text-2xs font-semibold text-blue-600 dark:text-blue-400 hover:underline truncate"
+                  >
+                    <ExternalLink className="w-3 h-3 shrink-0" />
+                    {t('ota_reservation_link_label', 'View reservation on {{source}}').replace('{{source}}', sourceLabel)}
+                  </a>
+                )}
               </div>
             </div>
           );
@@ -181,7 +208,26 @@ export const ConvertOtaBookingModal: React.FC<ConvertOtaBookingModalProps> = ({
             </div>
           </div>
           <div>
-            <label className={fieldLabelClass}>{t('room_rent', 'Room Rent / Price (₹)')}</label>
+            <label className={`${fieldLabelClass} flex items-center gap-1.5`}>
+              <span>{t('room_rent', 'Room Rent')}</span>
+              <Popover
+                trigger="click"
+                placement="top"
+                zIndex={80}
+                content={
+                  <div className="w-56 p-2.5 text-xs normal-case font-normal text-gray-600 dark:text-gray-300">
+                    {t('room_rent_help_content', 'Net amount you will get excluding taxes and fees.')}
+                  </div>
+                }
+              >
+                <button
+                  type="button"
+                  className="normal-case font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                >
+                  {t('room_rent_help_label', 'Help?')}
+                </button>
+              </Popover>
+            </label>
             <div className="mt-1">
               <Input type="number" min={0} value={roomRate} onChange={(e) => setRoomRate(e.target.value)} />
             </div>
