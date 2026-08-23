@@ -177,23 +177,80 @@ if ($wantsJson) {
         ::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
         .nav-portal-item.active { background-color: #1f2937; border-left: 3px solid #06b6d4; color: #38bdf8; }
         .icon { width: 1em; height: 1em; display: inline-block; flex-shrink: 0; }
+
+        /* Mobile-first Telescope console. The desktop layout resumes at 768px. */
+        @media (max-width: 767px) {
+            html { -webkit-text-size-adjust: 100%; }
+            body { min-width: 0; }
+            button, input, select, a { -webkit-tap-highlight-color: transparent; }
+
+            .telescope-header { padding: 1rem; align-items: stretch; flex-direction: column; gap: .875rem; }
+            .telescope-brand { width: 100%; min-width: 0; align-items: flex-start; }
+            .telescope-title { font-size: .875rem; line-height: 1.25rem; letter-spacing: .08em; }
+            .telescope-subtitle { max-width: 230px; line-height: 1.2; }
+            #liveClock { margin-left: auto; padding-top: .25rem; font-size: 1rem; }
+            .telescope-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; width: 100%; }
+            .telescope-actions > *, .telescope-actions > div { min-width: 0; }
+            .telescope-actions button, .telescope-actions a, .telescope-actions label {
+                min-height: 2.75rem; justify-content: center; padding: .5rem .625rem; text-align: center;
+            }
+            .telescope-actions label { gap: .375rem; font-size: .6875rem; }
+            .telescope-actions .push-control { display: contents; }
+            #pushToggleBtn { grid-column: span 2; }
+            #pushTestBtn { grid-column: span 2; min-height: 2.25rem; padding: .5rem; }
+
+            .telescope-shell { display: block; overflow: visible; }
+            .telescope-sidebar { width: 100%; padding: 1rem; gap: 1rem; border-right: 0; border-bottom: 1px solid #1f2937; }
+            .telescope-sidebar > div:first-child { display: grid; grid-template-columns: 7.25rem minmax(0, 1fr); align-items: center; gap: .5rem; }
+            .telescope-sidebar > div:first-child label { margin: 0; }
+            .telescope-sidebar > div:first-child select { min-height: 2.75rem; }
+            #customDateRangePanel { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+            #customDateRangePanel.hidden { display: none; }
+            #customDateRangePanel > :first-child, #customDateRangePanel button { grid-column: 1 / -1; }
+            #customDateRangePanel input { min-height: 2.75rem; }
+            .portal-label { margin-bottom: .5rem; }
+            .telescope-portals { display: flex; overflow-x: auto; gap: .5rem; padding: .125rem 0 .5rem; margin: 0 -1rem; padding-left: 1rem; padding-right: 1rem; scroll-snap-type: x proximity; scrollbar-width: none; }
+            .telescope-portals::-webkit-scrollbar { display: none; }
+            .telescope-portals .nav-portal-item { flex: 0 0 auto; width: auto; min-width: max-content; min-height: 2.75rem; padding: .625rem .75rem; scroll-snap-align: start; }
+            .telescope-portals .nav-portal-item.active { border-left: 0; border-bottom: 3px solid #06b6d4; }
+
+            .telescope-main { min-width: 0; padding: 1rem; overflow: visible; }
+            .telescope-search { margin-bottom: 1rem; }
+            #searchInput { min-height: 2.75rem; font-size: .8125rem; }
+            .telescope-logs { overflow: visible; border-radius: .75rem; }
+            .telescope-logs table, .telescope-logs tbody, .telescope-logs tr, .telescope-logs td { display: block; width: 100%; }
+            .telescope-logs thead { display: none; }
+            .telescope-logs tbody { divide: none; }
+            .telescope-logs tr { padding: .875rem 1rem; border-bottom: 1px solid rgba(31, 41, 55, .8); }
+            .telescope-logs tr:last-child { border-bottom: 0; }
+            .telescope-logs td { max-width: none; padding: .25rem 0; overflow-wrap: anywhere; white-space: normal; }
+            .telescope-logs td::before { content: attr(data-label); display: block; margin-bottom: .125rem; color: #6b7280; font: 700 .625rem/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase; }
+            .telescope-logs td:nth-child(2)::before { display: none; }
+            .telescope-logs td:nth-child(2) { padding-top: .5rem; }
+            .telescope-logs td:nth-child(3) { color: #e5e7eb; font-size: .8125rem; line-height: 1.35; }
+            .telescope-logs td:only-child { padding: 2rem 1rem; text-align: center; }
+            .telescope-logs td:only-child::before { display: none; }
+
+            #detailModal { align-items: flex-end; padding: 0; }
+            #detailModal > div { max-height: 88dvh; border-radius: 1rem 1rem 0 0; padding: 1rem; }
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
 
-    <header class="border-b border-gray-800 bg-[#0f172a] px-6 py-4 flex items-center justify-between">
-        <div class="flex items-center gap-3">
+    <header class="telescope-header border-b border-gray-800 bg-[#0f172a] px-6 py-4 flex items-center justify-between">
+        <div class="telescope-brand flex items-center gap-3">
             <div class="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
                 <svg class="icon text-base animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/><path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/><path d="M12 2v2"/><path d="M12 22v-2"/><path d="m17 20.66-1-1.73"/><path d="M11 10.27 7 6.34"/><path d="m20.66 17-1.73-1"/><path d="m3.34 17 1.73-1"/><path d="m14 7-3.73-3.73"/><path d="m20.66 7-1.73 1"/><path d="m11 13.73-4.95-4.95"/><path d="m6.34 7 1.73 1"/><path d="m14 17 3.73 3.73"/><path d="m9.34 17 1.73 1"/></svg>
             </div>
             <div>
-                <h1 class="text-base font-bold text-white tracking-wider uppercase">Telescope Error Center</h1>
-                <p class="text-[10px] text-gray-400 font-sans tracking-widest uppercase">Database-Independent Development Console</p>
+                <h1 class="telescope-title text-base font-bold text-white tracking-wider uppercase">Telescope Error Center</h1>
+                <p class="telescope-subtitle text-[10px] text-gray-400 font-sans tracking-widest uppercase">Database-Independent Development Console</p>
             </div>
             <div id="liveClock" class="text-red-500 font-mono font-bold text-lg tracking-wider ml-4"></div>
         </div>
-        <div class="flex items-center gap-4 text-xs font-sans">
-            <div class="flex items-center gap-1.5">
+        <div class="telescope-actions flex items-center gap-4 text-xs font-sans">
+            <div class="push-control flex items-center gap-1.5">
                 <button id="pushToggleBtn" onclick="togglePushSubscription()" class="flex items-center gap-1 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition border border-gray-700 cursor-pointer" title="Get a real push notification on this device whenever a real error happens - no need to keep this page open">
                     <svg class="icon text-[11px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
                     <span id="pushBtnLabel">Enable Alerts</span>
@@ -219,8 +276,8 @@ if ($wantsJson) {
         </div>
     </header>
 
-    <div class="flex-1 flex overflow-hidden">
-        <aside class="w-64 border-r border-gray-800 bg-[#0f172a]/50 p-4 flex flex-col gap-6 flex-shrink-0">
+    <div class="telescope-shell flex-1 flex overflow-hidden">
+        <aside class="telescope-sidebar w-64 border-r border-gray-800 bg-[#0f172a]/50 p-4 flex flex-col gap-6 flex-shrink-0">
             <div>
                 <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-2 font-sans">Timeframe Filter</label>
                 <select id="timeframeSelect" onchange="onTimeframeChange()" class="w-full bg-gray-900 border border-gray-800 text-gray-300 text-xs rounded-lg p-2 outline-none font-sans">
@@ -245,8 +302,8 @@ if ($wantsJson) {
             </div>
 
             <div>
-                <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-2 font-sans">Category Portals</label>
-                <nav class="space-y-1 font-sans text-xs">
+                <label class="portal-label text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-2 font-sans">Category Portals</label>
+                <nav class="telescope-portals space-y-1 font-sans text-xs">
                     <button onclick="switchPortal('requests', this)" class="nav-portal-item w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800/60 transition active">
                         <span class="flex items-center gap-2.5"><svg class="icon text-cyan-400 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/><path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/><path d="M12 2v2"/><path d="M12 22v-2"/><path d="m17 20.66-1-1.73"/><path d="M11 10.27 7 6.34"/><path d="m20.66 17-1.73-1"/><path d="m3.34 17 1.73-1"/><path d="m14 7-3.73-3.73"/><path d="m20.66 7-1.73 1"/><path d="m11 13.73-4.95-4.95"/><path d="m6.34 7 1.73 1"/><path d="m14 17 3.73 3.73"/><path d="m9.34 17 1.73 1"/></svg>Requests Trail</span>
                         <span id="badge-requests" class="px-2 py-0.5 text-[10px] rounded-full bg-gray-800 text-gray-300 font-mono">0</span>
@@ -306,15 +363,15 @@ if ($wantsJson) {
             </div>
         </aside>
 
-        <main class="flex-1 flex flex-col p-6 overflow-hidden">
-            <div class="mb-4 flex items-center gap-4">
+        <main class="telescope-main flex-1 flex flex-col p-6 overflow-hidden">
+            <div class="telescope-search mb-4 flex items-center gap-4">
                 <div class="relative flex-1">
                     <svg class="icon absolute left-3.5 top-3 text-gray-500 text-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
                     <input type="text" id="searchInput" oninput="loadPortalLogs()" placeholder="Search system logs by route, severity, keywords, trace parameters or IP..." class="w-full bg-gray-900 border border-gray-800 text-gray-200 text-xs rounded-xl pl-9 pr-4 py-2.5 outline-none focus:border-cyan-500 transition font-sans">
                 </div>
             </div>
 
-            <div class="flex-1 bg-gray-900/60 border border-gray-800 rounded-xl overflow-y-auto">
+            <div class="telescope-logs flex-1 bg-gray-900/60 border border-gray-800 rounded-xl overflow-y-auto">
                 <table class="w-full text-xs text-left">
                     <thead class="bg-gray-800/60 text-gray-400 font-sans border-b border-gray-800 sticky top-0 uppercase text-[10px] tracking-wider">
                         <tr>

@@ -1,4 +1,4 @@
-﻿# ðŸ—ºï¸ Ground Code â€” Project Roadmap & TODO List
+# ðŸ—ºï¸ Ground Code â€” Project Roadmap & TODO List
 
 This document tracks identified bugs, pending backend API integrations, and upcoming feature enhancements across the **Ground Code** SaaS Resort Management System. Completed items are removed once shipped â€” see git history (`git log -p ROADMAP.md`) for what's already been done and how.
 
@@ -7,6 +7,31 @@ This document tracks identified bugs, pending backend API integrations, and upco
 ## ðŸŸ¢ Open Items
 ---top priority starts---
 :All buttons should be same tyled everywhere. For exampke edit button styling is different on different pages.
+
+### 🔭 Mobile-First Telescope Error Center & Diagnostic Console
+
+Complete mobile-first overhaul of the **Telescope Error Center** standalone PWA dashboard (`php/errors/index.php`), login screen (`php/errors/telescope_auth.php`), and push notification system (`php/errors/sw-telescope.js`) to provide an instant, smartphone-optimized debugging and error inspection console for resort developers and admins:
+
+1. **Mobile-First Telescope Dashboard Layout (`php/errors/index.php`)**:
+   - **Sticky Mobile Navigation & Portal Selector**: Implement a horizontal swipeable portal tab bar (`JS Browser`, `PHP`, `SQL`, `Requests`, `Security`, `404`, `Email`, `Telegram`) with unread error counters and smooth scroll snapping on mobile viewports (< 768px).
+   - **Compact Header & Touch Actions**: Streamline the top header with touch-optimized 44px buttons for Live Polling toggle, Push Notifications, Reset Logs, and Back to App navigation.
+   - **Mobile Card-Based Log Feed**: Replace multi-column desktop tables on mobile with high-density log cards displaying severity pills (`CRITICAL`, `ERROR`, `WARNING`, `INFO`), timestamp, origin tag, and expandable stack trace previews.
+   - **Mobile Bottom Sheet for Log Details**: Replace modal dialogs on smartphone screens with a smooth slide-up bottom sheet (`detailModal`), featuring 1-tap "Copy Stack Trace" and "Copy Request Payload" buttons.
+
+2. **Mobile Search & Date Filter Bar**:
+   - Touch-friendly search bar with instant clear icon (`x`) and auto-focus for mobile keyboards.
+   - Quick date timeframe chips (`Today`, `Yesterday`, `Last 7 Days`, `Custom`) with single-tap switching on mobile devices.
+
+3. **Touch-Optimized Telescope Auth Gate (`php/errors/telescope_auth.php`)**:
+   - Mobile-first login screen layout with responsive card scaling, auto-focused password input, show/hide password toggle, and clear touch targets.
+
+4. **PWA Mobile Push & Offline Reliability (`sw-telescope.js` & `manifest.json`)**:
+   - Mobile PWA installability with dark theme styling (`#0b0f19`), responsive viewport meta tags (`viewport-fit=cover`), and touch app icons.
+   - Mobile lock-screen formatted Web Push notifications with 1-tap deep link to open the exact error entry in Telescope.
+
+5. **Design System & Performance Compliance**:
+   - Lightweight, dependency-free Tailwind styling matching Flowbite dark mode tokens (`#0f172a`, `#1f2937`, `rounded-lg`).
+   - Touch-first hit areas (minimum 44px x 44px) across all buttons, selects, and inputs.
 
 ---top priority ends--- 
 

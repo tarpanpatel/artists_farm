@@ -49,28 +49,26 @@ require_once __DIR__ . '/../audit/audit.php';
 // since a failed require_once here is fatal before $action is even read.
 // Now only Telegram-specific actions (see handleTelegramRequests below) are
 // affected if this file is ever missing again.
+//
+// STAGING always requires telegram.php straight from PRODUCTION's whitelisted
+// path (23 Aug 2026, explicit decision) - never from a local copy on staging
+// at all. Confirmed live via CPGuard's own Background Scanner Logs
+// (cp163173.hpdns.net:2083) that staging's separate physical copy was being
+// re-quarantined every few minutes ({HEX}Malware.Expert.php.json.decode.
+// file.getcontents.api.telegram - the outbound curl-to-api.telegram.org-with-
+// a-bot-token shape genuinely does look like malware phoning home to static
+// analysis) - self-healing by COPYING bytes onto staging's disk (the 17 Aug
+// 2026 version of this fix) just handed the scanner a fresh target every
+// single time, an unwinnable cycle against a scanner that re-scans that
+// fast. Only production's copy is actually whitelisted (support ticket
+// BRX-3227572) - so staging now never creates a local copy for CPGuard to
+// catch in the first place.
+// Path is root-admin-configurable (Root Dashboard > Telegram Templates >
+// Telegram Platform Health, saved as system_settings key
+// 'telegram_fallback_source_path') - falls back to the confirmed-whitelisted
+// path if nothing has been saved yet.
 $__telegram_php_path = __DIR__ . '/../telegram/telegram.php';
-if (!file_exists($__telegram_php_path) && defined('APP_IS_STAGING_ENV') && APP_IS_STAGING_ENV) {
-    // STAGING-ONLY SELF-HEAL (17 Aug 2026): CPGuard's malware scanner on this
-    // cPanel account only has telegram.php whitelisted under the PRODUCTION
-    // docroot (~/public_html/php/telegram/telegram.php, confirmed via hosting
-    // support ticket) - it keeps re-quarantining staging's own separate copy
-    // under ~/staging.artistic-sthan.com, since that's a different physical
-    // file the whitelist entry doesn't cover.
-    // Deliberately COPIES production's bytes onto the local path rather than
-    // require()-ing the production path directly: telegram.php itself does
-    // require_once __DIR__.'/../modules/module_manager.php' internally, and
-    // require_once dedups by resolved absolute path, not by function names -
-    // requiring it from a foreign __DIR__ would pull in production's copy of
-    // module_manager.php, which then collides with THIS file's own later
-    // require_once of staging's module_manager.php ("Cannot redeclare
-    // function"). Copying first keeps every require in this request on
-    // staging's own path tree, so no cross-environment collision is possible.
-    // Path is root-admin-configurable (Root Dashboard > Telegram Templates >
-    // Telegram Platform Health, saved as system_settings key
-    // 'telegram_fallback_source_path') - falls back to the path the hosting
-    // provider actually confirmed whitelisted (support ticket BRX-3227572)
-    // if nothing has been saved yet.
+if (defined('APP_IS_STAGING_ENV') && APP_IS_STAGING_ENV) {
     $__prod_telegram_php_path = null;
     try {
         $__fallback_stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'telegram_fallback_source_path' LIMIT 1");
@@ -83,19 +81,26 @@ if (!file_exists($__telegram_php_path) && defined('APP_IS_STAGING_ENV') && APP_I
     if (!$__prod_telegram_php_path) {
         $__prod_telegram_php_path = '/home/apartment/public_html/php/telegram/telegram.php';
     }
-    if (file_exists($__prod_telegram_php_path)) {
-        @copy($__prod_telegram_php_path, $__telegram_php_path);
-        if (class_exists('TelescopeLogger')) {
-            TelescopeLogger::log('php', 'Warning', 'php/telegram/telegram.php was missing on staging - restored from production\'s whitelisted copy', 'router.php:telegram self-heal');
-        }
-    }
+    $__telegram_php_path = $__prod_telegram_php_path;
     unset($__fallback_stmt, $__prod_telegram_php_path);
 }
 if (file_exists($__telegram_php_path)) {
     require_once $__telegram_php_path;
 }
 unset($__telegram_php_path);
-require_once __DIR__ . '/../modules/module_manager.php';
+// Guarded (23 Aug 2026): when staging just required telegram.php from its
+// PRODUCTION path above, telegram.php's own internal
+// require_once __DIR__.'/../modules/module_manager.php' resolves to
+// PRODUCTION's copy of this file too (__DIR__ reflects where a file
+// physically lives, not who required it) - a DIFFERENT absolute path than
+// staging's own copy below, so require_once's per-path dedup can't tell
+// they're the same functions. Without this guard that's a fatal "Cannot
+// redeclare function" on every staging request. function_exists() makes
+// staging's own require a safe no-op whenever production's copy already won
+// the race; both files are the same git-tracked content anyway.
+if (!function_exists('isModuleAvailable')) {
+    require_once __DIR__ . '/../modules/module_manager.php';
+}
 require_once __DIR__ . '/db_export.php';
 require_once __DIR__ . '/../licenses/licenses.php';
 require_once __DIR__ . '/../theme/theme_settings.php';

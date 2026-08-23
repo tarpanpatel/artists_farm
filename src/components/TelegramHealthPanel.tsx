@@ -165,7 +165,7 @@ export const TelegramHealthPanel: React.FC = () => {
         <div>
           <label className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
             <FolderCog className="w-3.5 h-3.5" />
-            {t('telegram_fallback_path_label', 'Whitelisted fallback file path (staging self-heal)')}
+            {t('telegram_fallback_path_label', 'Whitelisted source path (staging loads telegram.php from here directly)')}
           </label>
           {loadingSettings ? (
             <p className="text-xs text-gray-400">{t('loading_message', 'Loading...')}</p>
@@ -195,7 +195,7 @@ export const TelegramHealthPanel: React.FC = () => {
           <p className="text-[11px] text-gray-400 mt-1.5">
             {t(
               'telegram_fallback_path_hint',
-              "When staging's own copy of telegram.php goes missing (the scanner only ever spares the exact path above), the server automatically copies it back from here before the next request that needs it."
+              "Staging always loads telegram.php directly from this whitelisted path - it deliberately never keeps its own local copy any more (the malware scanner was re-quarantining that copy every few minutes; the fix was to stop giving it a target)."
             )}
           </p>
         </div>
@@ -212,24 +212,30 @@ export const TelegramHealthPanel: React.FC = () => {
                     : t('telegram_module_loaded_fail', 'telegram.php failed to load - every Telegram action is currently returning an error.')
                 }
               />
-              <StatusRow
-                ok={health.localFileExists}
-                label={t('telegram_local_file_label', 'Local telegram.php present on disk')}
-                detail={
-                  health.localFileExists
-                    ? t('telegram_local_file_ok', 'Found on this server.')
-                    : t('telegram_local_file_fail', 'Missing - likely quarantined by the malware scanner again.')
-                }
-              />
+              {/* Staging deliberately never has a local copy any more (23 Aug
+                  2026 - see the hint above), so "missing" here is the expected,
+                  correct state on staging, not a failure - only shown where a
+                  local copy is actually supposed to exist. */}
+              {!health.isStagingEnv && (
+                <StatusRow
+                  ok={health.localFileExists}
+                  label={t('telegram_local_file_label', 'Local telegram.php present on disk')}
+                  detail={
+                    health.localFileExists
+                      ? t('telegram_local_file_ok', 'Found on this server.')
+                      : t('telegram_local_file_fail', 'Missing - likely quarantined by the malware scanner again.')
+                  }
+                />
+              )}
               {health.isStagingEnv && (
                 <StatusRow
                   ok={health.fallbackFileExists}
-                  label={t('telegram_fallback_file_label', 'Whitelisted fallback copy present')}
+                  label={t('telegram_fallback_file_label', 'Whitelisted source copy present')}
                   detail={
                     health.fallbackFileExists
-                      ? t('telegram_fallback_file_ok', 'Found - self-heal can recover from a deleted local copy.') +
+                      ? t('telegram_fallback_file_ok', 'Found - this is where staging loads telegram.php from directly.') +
                         (health.fallbackPathIsDefault ? ' ' + t('telegram_fallback_using_default', '(using built-in default path - nothing saved above yet.)') : '')
-                      : t('telegram_fallback_file_fail', 'Missing at the configured path too - self-heal cannot recover right now.')
+                      : t('telegram_fallback_file_fail', 'Missing at the configured path - every Telegram action on staging is currently broken.')
                   }
                 />
               )}

@@ -332,12 +332,20 @@ function saveSystemSettings($pdo) {
 function checkTelegramHealth($pdo) {
     try {
         $moduleLoaded = function_exists('handleTelegramRequests');
+        $isStagingEnv = defined('APP_IS_STAGING_ENV') && APP_IS_STAGING_ENV;
+        // On staging this is now EXPECTED to always be false, not a failure
+        // signal (23 Aug 2026 architecture change - see router.php's own
+        // comment) - staging deliberately never keeps a local copy of
+        // telegram.php on disk any more (CPGuard was re-quarantining it every
+        // few minutes; the fix was to stop giving it a target, not to keep
+        // fighting it). Left in the response as a plain fact for the panel to
+        // label correctly, not treated as a health signal on staging.
         $localPath = __DIR__ . '/../telegram/telegram.php';
         $localFileExists = file_exists($localPath);
 
         // Root-admin-configurable fallback source (see saveSystemSettings 'telegram_fallback_source_path'
-        // and the matching self-heal block in router.php). Falls back to the path the hosting
-        // provider actually confirmed whitelisted (support ticket BRX-3227572, 17 Aug 2026) if
+        // and the matching require-from-production logic in router.php). Falls back to the path the
+        // hosting provider actually confirmed whitelisted (support ticket BRX-3227572, 17 Aug 2026) if
         // nothing has been saved yet, so this never reports an empty/unusable path out of the box.
         $stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'telegram_fallback_source_path' LIMIT 1");
         $stmt->execute();
@@ -347,7 +355,6 @@ function checkTelegramHealth($pdo) {
             $fallbackPath = '/home/apartment/public_html/php/telegram/telegram.php';
             $usingDefaultPath = true;
         }
-        $isStagingEnv = defined('APP_IS_STAGING_ENV') && APP_IS_STAGING_ENV;
         $fallbackFileExists = $isStagingEnv ? file_exists($fallbackPath) : null;
 
         // Recent telegram.php availability events (self-heal / missing-module alerts) from Telescope.
