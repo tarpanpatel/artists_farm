@@ -5,6 +5,17 @@
  */
 
 session_start();
+// This file never reads or writes $_SESSION - session_start() only exists so
+// the session cookie stays alive for whatever the page loads next. PHP's
+// default file-based session handler holds an EXCLUSIVE lock on the session
+// file for the whole request otherwise (same issue router.php's own
+// session_write_close() comment documents, 21 Aug 2026) - meaning every other
+// concurrent request on the same login (e.g. router.php?action=get_all_tenants
+// firing right after this page loads) queues up behind this one until it
+// fully finishes, even though this file does nothing that needs the lock.
+// Found 23 Aug 2026: root_dashboard/ taking ~19s to respond was blocking
+// get_all_tenants for the same ~19s, well past its own actual work.
+session_write_close();
 require_once __DIR__ . '/php/config/database.php';
 
 // Set correct content type for HTML (database.php sets application/json by default)
