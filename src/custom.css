@@ -1427,3 +1427,118 @@ th,
 td {
   font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+/* Mobile-first NavMenuEditor / "Edit Main Menu" (23 Aug 2026, explicit
+   request). Each tree row crams ~12 interactive controls (drag handle,
+   select checkbox, expand/collapse, icon picker, title, page-target badge,
+   visibility toggle, roles badge, parent picker, outdent, indent, delete)
+   onto one horizontal line sized for a mouse (Button's xs size is a 28px
+   h-7 - see Button.tsx's buttonTheme.size.xs) - unusable to accurately tap
+   on a real phone, and several dropdown pickers (icon/tab/parent) render at
+   a fixed ml-12 offset + fixed max-width that doesn't fit a narrow
+   viewport. NavMenuEditor.tsx already gives every element a stable BEM-style
+   class (nav-menu-editor__*) and marks every Button with a size class
+   (app-btn-xs, from Button.tsx's own markerClasses) - both are used as
+   selector hooks here instead of touching that component's own Tailwind
+   classes, so this stays a pure visual/touch-target layer on top of
+   unchanged tree/drag-and-drop logic. min-height/min-width on a class
+   (rather than fighting the h-7 utility class's specificity) reliably wins
+   over a smaller explicit height per the CSS box model - no !important
+   needed. The row itself was already given flex-wrap in the TSX so these
+   larger targets can wrap onto multiple lines instead of overflowing. */
+@media (max-width: 767px) {
+  .nav-menu-editor__tree-row {
+    row-gap: .375rem;
+    padding: .5rem;
+  }
+  /* Title always starts its own line when the row wraps - the one piece of
+     information that matters most gets full width and stays readable,
+     instead of getting squeezed between a run of icon buttons. */
+  .nav-menu-editor__title-wrap {
+    order: -1;
+    flex-basis: 100%;
+    min-width: 100%;
+  }
+  .nav-menu-editor__drag-handle {
+    padding: .625rem;
+  }
+  .nav-menu-editor__tree-row .app-btn-xs {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+  }
+  .nav-menu-editor__page-badge {
+    max-width: none;
+    min-height: 2.75rem;
+    display: inline-flex;
+    align-items: center;
+  }
+  .nav-menu-editor__row-actions {
+    gap: .375rem;
+  }
+
+  /* Dropdown pickers (icon/roles/tab/parent) - drop the fixed ml-12 desktop
+     alignment offset (there's no longer one consistent icon column position
+     once the row wraps) and let them use the full available width instead
+     of a fixed max-width that could overflow a narrow phone screen. */
+  .nav-menu-editor__picker {
+    margin-left: 0;
+    max-width: none;
+    width: 100%;
+  }
+  .nav-menu-editor__icon-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  .nav-menu-editor__icon-option {
+    min-height: 2.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .nav-menu-editor__role-chip {
+    min-height: 2.75rem;
+    padding: .5rem .875rem;
+    display: inline-flex;
+    align-items: center;
+  }
+  .nav-menu-editor__page-option,
+  .nav-menu-editor__parent-option {
+    min-height: 2.75rem;
+    display: flex;
+    align-items: center;
+  }
+
+  /* Legend row is pure instructional hint text ("click title to rename",
+     "drag to reorder", etc.) that doesn't fit on mobile without wrapping
+     into several lines of clutter above the tree - the larger touch targets
+     below already make these actions discoverable directly, so it's hidden
+     here rather than trying to cram it in. */
+  .nav-menu-editor__legend {
+    display: none;
+  }
+
+  .nav-menu-editor__header-actions .app-btn-sm {
+    min-height: 2.75rem;
+  }
+  .nav-menu-editor__toolbar {
+    row-gap: .5rem;
+  }
+  .nav-menu-editor__toolbar-btn {
+    min-height: 2.75rem;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 .625rem;
+  }
+  .nav-menu-editor__select-all {
+    min-height: 2.75rem;
+  }
+
+  .nav-menu-editor__add-form-grid {
+    gap: .625rem;
+  }
+  .nav-menu-editor__add-form-roles .nav-menu-editor__role-chip {
+    min-height: 2.5rem;
+  }
+  .nav-menu-editor__add-form-actions .app-btn-sm {
+    min-height: 2.75rem;
+  }
+}

@@ -507,7 +507,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
 
     return (
       <li key={item.id} data-id={item.id} className="nav-menu-item nav-menu-editor__tree-item" style={{ paddingLeft: depth > 0 ? `${depth * 24}px` : '0px' }}>
-        <div className={`nav-menu-editor__tree-row flex items-center gap-1 px-2 py-1.5 rounded-lg border border-l-[3px] transition-all text-xs group my-0.5 ${
+        <div className={`nav-menu-editor__tree-row flex flex-wrap items-center gap-1 px-2 py-1.5 rounded-lg border border-l-[3px] transition-all text-xs group my-0.5 ${
           item.isVisible ? 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm' :
           'bg-slate-50 border-slate-200 opacity-60'
         } ${depthColors[Math.min(depth, 2)]} ${depthBg[Math.min(depth, 2)] || ''}`}>
@@ -750,8 +750,8 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
     <div className="nav-menu-editor bg-white rounded-lg border border-slate-200 shadow-md overflow-hidden flex flex-col min-h-[600px]">
       {/* Header */}
       <div className="nav-menu-editor__header p-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
-        <div className="nav-menu-editor__header-row flex items-center justify-between mb-2">
-          <div className="nav-menu-editor__title-block flex items-center gap-2">
+        <div className="nav-menu-editor__header-row flex flex-wrap items-center justify-between gap-2 mb-2">
+          <div className="nav-menu-editor__title-block flex flex-wrap items-center gap-2">
             <Layers className="w-5 h-5 text-blue-600" />
             <h3 className="nav-menu-editor__heading font-semibold text-slate-900 text-sm">{t('nav_menu_structure_title', 'Menu Structure')}</h3>
             <span className="nav-menu-editor__count-badge text-[10px] font-semibold bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full">{visibleItems.length} items</span>
@@ -878,7 +878,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
       )}
 
       {/* Toolbar */}
-      <div className="nav-menu-editor__toolbar px-4 py-2 border-b border-slate-100 flex items-center gap-2 bg-slate-50">
+      <div className="nav-menu-editor__toolbar px-4 py-2 border-b border-slate-100 flex flex-wrap items-center gap-2 bg-slate-50">
         {selectedIds.size > 0 ? (
           <>
             <span className="nav-menu-editor__toolbar-count text-[11px] font-semibold text-blue-700">{selectedIds.size} selected</span>
