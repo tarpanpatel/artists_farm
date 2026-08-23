@@ -314,7 +314,11 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
       onClose();
       showToast('Booking deleted', { type: 'success' });
     } catch (err) {
-      showToast('Failed to delete booking. Please try again.', { type: 'error' });
+      // Surface the real backend reason (e.g. "Access denied for this property.", "Booking not
+      // found") instead of masking every cause behind one generic message - see api.ts's
+      // deleteGuestFromDB comment (23 Aug 2026) for why this used to be undiagnosable.
+      const message = err instanceof Error && err.message ? err.message : 'Failed to delete booking. Please try again.';
+      showToast(message, { type: 'error' });
     } finally {
       setIsDeleting(false);
     }
