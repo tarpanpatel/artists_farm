@@ -140,6 +140,10 @@ export interface Order {
   // order - is what gets billed, since a table can order more than once
   // before it's ready to close out (see WalkInTab below).
   walkInTabId?: number | null;
+  // Free-text note the order-taker attached at submit time (e.g. "less
+  // spicy", "serve at 8pm") - kitchen-only, deliberately never shown on the
+  // guest's bill/receipt (23 Aug 2026). Order-level, not per-dish.
+  specialInstructions?: string;
 }
 
 export interface WalkInTabItem {

@@ -83,6 +83,26 @@ if (!function_exists('ensureWalkInOrderColumns')) {
     }
 }
 
+// Backs the order-level "Instructions" note added to the Take Food Order
+// cart (23 Aug 2026) - a free-text field the order-taker can attach at
+// submit time (e.g. "less spicy", "serve at 8pm"). Order-level, not
+// per-dish, and deliberately kitchen-only (never selected/shown by the
+// receipt/billing endpoints) - see KitchenManagement.tsx's cart UI.
+if (!function_exists('ensureOrderSpecialInstructionsColumn')) {
+    function ensureOrderSpecialInstructionsColumn($pdo) {
+        if (isSchemaVerified('schema_order_special_instructions')) return;
+        try {
+            $cols = $pdo->query("SHOW COLUMNS FROM orders")->fetchAll(PDO::FETCH_COLUMN);
+            if (!in_array('special_instructions', $cols)) {
+                $pdo->exec("ALTER TABLE orders ADD COLUMN special_instructions TEXT NULL DEFAULT NULL");
+            }
+            markSchemaVerified('schema_order_special_instructions');
+        } catch (Exception $e) {
+            error_log("orders special_instructions column migration error: " . $e->getMessage());
+        }
+    }
+}
+
 function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
     switch ($action) {
         case 'get_orders':
@@ -90,6 +110,7 @@ function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
                 ensureOrderItemReminderColumns($pdo);
                 ensureWalkInOrderColumns($pdo);
                 ensureWalkInTabSchema($pdo);
+                ensureOrderSpecialInstructionsColumn($pdo);
                 // Try orders + order_items first. room_number was never
                 // selected here at all (found 17 Aug 2026) - every order's
                 // roomNumber came back blank the moment anything refetched
@@ -97,7 +118,7 @@ function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
                 // client's own just-placed optimistic copy briefly did),
                 // which is why a room guest's own served dishes showed no
                 // room even though the guest genuinely has one.
-                $sql = "SELECT o.id, o.guest_id, o.order_time, o.status, o.walk_in_tab_id,
+                $sql = "SELECT o.id, o.guest_id, o.order_time, o.status, o.walk_in_tab_id, o.special_instructions,
                                COALESCE(g.guest_name, wt.label, o.walk_in_name, 'Walk-in') as guest_name,
                                p.name as room_number
                         FROM orders o
@@ -150,15 +171,17 @@ function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
             if ($request_method === 'POST') {
                 ensureWalkInOrderColumns($pdo);
                 ensureWalkInTabSchema($pdo);
+                ensureOrderSpecialInstructionsColumn($pdo);
                 $input = json_decode(file_get_contents('php://input'), true);
                 $guest_id = $input['guest_id'] ?? null;
                 // A tab only means anything when there's no guest_id - a
                 // guest-attached order is always room service, never a walk-in,
                 // regardless of what the client sent.
                 $walkInTabId = empty($guest_id) ? (int)($input['walk_in_tab_id'] ?? 0) ?: null : null;
+                $specialInstructions = trim((string)($input['special_instructions'] ?? '')) ?: null;
                 try {
-                    $stmt = $pdo->prepare("INSERT INTO orders (property_id, guest_id, walk_in_tab_id, order_time, status) VALUES (?, ?, ?, NOW(), 'Pending')");
-                    $stmt->execute([$propertyId, $guest_id, $walkInTabId]);
+                    $stmt = $pdo->prepare("INSERT INTO orders (property_id, guest_id, walk_in_tab_id, order_time, status, special_instructions) VALUES (?, ?, ?, NOW(), 'Pending', ?)");
+                    $stmt->execute([$propertyId, $guest_id, $walkInTabId, $specialInstructions]);
                     $order_id = $pdo->lastInsertId();
 
                     $itemsPayload = [];
