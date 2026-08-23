@@ -556,8 +556,10 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   label={t('contact_phone_label', 'Contact Phone Number *')}
                   type="tel"
                   value={editPhone}
+                  // No maxLength - see GuestManagement.tsx's onChange comment (23 Aug 2026): a
+                  // native maxLength truncates raw typed characters before this digit-stripping
+                  // runs, silently dropping trailing digits from any formatted phone number.
                   onChange={(e) => setEditPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                  maxLength={10}
                   placeholder="10-digit mobile number"
                   disabled={!isEditing}
                   required

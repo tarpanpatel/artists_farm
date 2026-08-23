@@ -1436,42 +1436,64 @@ function AppBody({ preloadedData }: AppBodyProps) {
   };
 
   // Handlers
-  const handleAddGuest = (newGuest: Guest) => {
+  // Async + throws on failure (23 Aug 2026, ROADMAP.md verification pass - see
+  // addGuestToDB's own comment for the full story). The optimistic setGuests
+  // add below still happens immediately (keeps the form feeling instant), but
+  // now rolls back if the DB call actually rejects, instead of leaving a
+  // phantom booking (fake id, "success" toast already shown, fully visible in
+  // Dashboard Alerts/calendar/Arrivals) that never really existed once
+  // addGuestToDB's real validation failure surfaces. Callers must await this
+  // and handle the throw - see GuestManagement.tsx's onSubmit.
+  const handleAddGuest = async (newGuest: Guest) => {
     setGuests((prev) => [newGuest, ...prev]);
-    addGuestToDB({
-      guest_name: newGuest.guestName,
-      phone_number: newGuest.phoneNumber,
-      checkin_date: newGuest.checkinDate,
-      expected_checkout: newGuest.expectedCheckout,
-      room_number: newGuest.roomNumber,
-      status: newGuest.status || 'Active',
-      notes: newGuest.notes || '',
-      booking_source: newGuest.bookingSource || '',
-      no_of_guests: newGuest.numberOfGuests || 0,
-      base_room_rent: newGuest.roomRate || 0,
-      // total_charge was never sent here despite the column existing - it stayed 0 for
-      // every new booking, which silently zeroed the TodayOverview calendar chip's
-      // nightly-rate label (it derives from totalCharge, not roomRate/base_room_rent).
-      total_charge: newGuest.roomRate || newGuest.totalAmount || 0,
-      advance_paid: newGuest.advanceAmount || 0,
-      advance_received_by: newGuest.advanceReceivedBy || '',
-      pending_amount: newGuest.pendingAmount || 0,
-      pending_received_by: newGuest.pendingReceivedBy || '',
-      is_foreign_guest: newGuest.isForeignGuest || false,
-      ota_source: newGuest.otaSource || undefined,
-      ota_source_label: newGuest.otaSourceLabel || undefined,
-      ical_external_event_id: newGuest.icalExternalEventId || undefined,
-      extra_charges: newGuest.extraCharges || undefined,
-    }).then(({ id: dbId, overlapWarning }) => {
-      if (dbId) {
-        setGuests((prev) => prev.map((g) => g.id === newGuest.id ? { ...g, id: dbId } : g));
-      }
-      if (overlapWarning) {
-        const startLabel = formatDateDDMMYYYY(overlapWarning.event_start);
-        const endLabel = formatDateDDMMYYYY(overlapWarning.event_end);
-        showToast(`Heads up: this room has an unconverted ${overlapWarning.source_label} reservation from ${startLabel} to ${endLabel} - please verify with the guest.`, { type: 'warning', duration: 8000 });
-      }
-    });
+    let dbId: string | null = null;
+    let overlapWarning: { source_label: string; event_start: string; event_end: string } | undefined;
+    try {
+      const result = await addGuestToDB({
+        guest_name: newGuest.guestName,
+        phone_number: newGuest.phoneNumber,
+        checkin_date: newGuest.checkinDate,
+        expected_checkout: newGuest.expectedCheckout,
+        room_number: newGuest.roomNumber,
+        status: newGuest.status || 'Active',
+        notes: newGuest.notes || '',
+        booking_source: newGuest.bookingSource || '',
+        no_of_guests: newGuest.numberOfGuests || 0,
+        base_room_rent: newGuest.roomRate || 0,
+        // total_charge was never sent here despite the column existing - it stayed 0 for
+        // every new booking, which silently zeroed the TodayOverview calendar chip's
+        // nightly-rate label (it derives from totalCharge, not roomRate/base_room_rent).
+        total_charge: newGuest.roomRate || newGuest.totalAmount || 0,
+        advance_paid: newGuest.advanceAmount || 0,
+        advance_received_by: newGuest.advanceReceivedBy || '',
+        pending_amount: newGuest.pendingAmount || 0,
+        pending_received_by: newGuest.pendingReceivedBy || '',
+        is_foreign_guest: newGuest.isForeignGuest || false,
+        ota_source: newGuest.otaSource || undefined,
+        ota_source_label: newGuest.otaSourceLabel || undefined,
+        ical_external_event_id: newGuest.icalExternalEventId || undefined,
+        extra_charges: newGuest.extraCharges || undefined,
+      });
+      dbId = result.id;
+      overlapWarning = result.overlapWarning;
+    } catch (err) {
+      // Roll back the optimistic add above - addGuestToDB throws now (23 Aug
+      // 2026), so a real validation failure no longer leaves a phantom
+      // booking (fake id, already-shown "success" toast, fully visible in
+      // Dashboard Alerts/calendar/Arrivals) that never actually existed in
+      // the database. Re-throw so GuestManagement.tsx's onSubmit can show
+      // the real reason instead of its own hardcoded success toast.
+      setGuests((prev) => prev.filter((g) => g.id !== newGuest.id));
+      throw err;
+    }
+    if (dbId) {
+      setGuests((prev) => prev.map((g) => g.id === newGuest.id ? { ...g, id: dbId! } : g));
+    }
+    if (overlapWarning) {
+      const startLabel = formatDateDDMMYYYY(overlapWarning.event_start);
+      const endLabel = formatDateDDMMYYYY(overlapWarning.event_end);
+      showToast(`Heads up: this room has an unconverted ${overlapWarning.source_label} reservation from ${startLabel} to ${endLabel} - please verify with the guest.`, { type: 'warning', duration: 8000 });
+    }
     logAudit(`Registered new resident check-in: ${newGuest.guestName} (${newGuest.roomNumber})`);
     recordTelescopeLog({
       portal: 'requests',

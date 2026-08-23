@@ -1657,8 +1657,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 label={t('phone_login_username_required_label', 'Phone Number (Login Username) *')}
                 type="tel"
                 required
-                maxLength={10}
                 value={phone}
+                // No maxLength - see GuestManagement.tsx's onChange comment (23 Aug 2026): it
+                // truncates raw typed characters before digit-stripping runs, silently dropping
+                // trailing digits from any formatted phone number.
                 onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                 placeholder="10-digit mobile number"
               />
@@ -1754,8 +1756,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   <Input
                     type="tel"
                     required
-                    maxLength={10}
                     value={newUsername}
+                    // No maxLength - see GuestManagement.tsx's onChange comment (23 Aug 2026): it
+                    // truncates raw typed characters before digit-stripping runs, silently
+                    // dropping trailing digits from any formatted phone number.
                     onChange={(e) => setNewUsername(e.target.value.replace(/\D/g, '').slice(0, 10))}
                     placeholder="10-digit mobile number"
                     className="text-slate-900 dark:text-white"
@@ -1895,9 +1899,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('phone_login_username_label', 'Phone Number (Login Username)')}</label>
                   <Input
                     type="tel"
-                    maxLength={10}
                     value={updateUsername}
                     disabled={isEditingSuperAdmin}
+                    // No maxLength - see GuestManagement.tsx's onChange comment (23 Aug 2026): it
+                    // truncates raw typed characters before digit-stripping runs, silently
+                    // dropping trailing digits from any formatted phone number.
                     onChange={(e) => setUpdateUsername(e.target.value.replace(/\D/g, '').slice(0, 10))}
                     placeholder="10-digit mobile number"
                     className="text-slate-900 dark:text-white"

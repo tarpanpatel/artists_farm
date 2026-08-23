@@ -1157,20 +1157,34 @@ export async function addGuestToDB(guest: {
   // guest_extra_charges in guests.php's add_guest.
   extra_charges?: { category: string; amount: number; note?: string }[];
 }): Promise<{ id: string | null; overlapWarning?: { source_label: string; event_start: string; event_end: string } }> {
+  // Throws on failure (23 Aug 2026, ROADMAP.md verification pass) - this used to swallow ANY
+  // failure (a thrown network error, or a perfectly well-formed {status:'error', message:...}
+  // rejection like a real validation failure) into a bare {id: null}, with no way for the caller
+  // to tell "rejected" apart from "succeeded with no id". App.tsx's handleAddGuest already
+  // optimistically adds the guest to local state before this call resolves - with no exception to
+  // catch, that phantom guest was never rolled back on a genuine rejection (e.g. an invalid phone
+  // number failing InputValidator's checks), so it stayed fully visible in the UI (Dashboard
+  // Alerts, calendar, Arrivals count) - a "success" toast even fired - despite never actually
+  // existing in the database. Reproduced live: a too-short phone number correctly got a 400 from
+  // the backend, but the guest still showed up as a real booking until the next page reload
+  // silently dropped it.
+  const res = await apiFetch(`${API_BASE}?action=add_guest`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(guest),
+  });
+  let json: any = null;
   try {
-    const res = await apiFetch(`${API_BASE}?action=add_guest`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(guest),
-    });
-    const json = await res.json();
-    if (json.status === 'success') {
-      return { id: json.id || null, overlapWarning: json.overlap_warning || undefined };
-    }
-  } catch (err) {
-    console.error('Failed to add guest to DB:', err);
+    json = await res.json();
+  } catch {
+    // json stays null - message below falls back to the HTTP status
   }
-  return { id: null };
+  if (!json || json.status !== 'success') {
+    const message = json?.message || `Failed to save booking (HTTP ${res.status})`;
+    console.error('Failed to add guest to DB:', message);
+    throw new Error(message);
+  }
+  return { id: json.id || null, overlapWarning: json.overlap_warning || undefined };
 }
 
 export async function updateGuestInDB(guest: {

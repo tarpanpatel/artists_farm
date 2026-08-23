@@ -51,7 +51,7 @@ interface OperationalDashboardProps {
   rooms?: any[];
   onNavigate: (tab: any, menuItemKey?: string) => void;
   onOpenCheckin: () => void;
-  onAddGuest?: (guest: Guest) => void;
+  onAddGuest?: (guest: Guest) => Promise<void>;
   onCheckoutGuest?: (receipt: any) => void;
   onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin', replyMarkup?: any, templateKey?: string) => void;
   onUpdateRoomName?: (newName: string) => void;
@@ -1459,7 +1459,14 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           blockedDates={otaConversionTarget.blockedDateStrings}
           onClose={() => setOtaConversionTarget(null)}
           onConvert={(guest) => {
-            onAddGuest?.(guest);
+            // .catch, not await (23 Aug 2026) - onAddGuest now throws on a real backend
+            // rejection (see App.tsx's handleAddGuest), but this call site deliberately stays
+            // fire-and-forget (see the comment below on why an await-then-refetch would race);
+            // .catch just makes sure a genuine failure still reaches the user as a toast instead
+            // of vanishing silently, without blocking the optimistic local-state update.
+            onAddGuest?.(guest)?.catch((err) => {
+              showToast(err instanceof Error ? err.message : 'Failed to save the converted booking.', { type: 'error' });
+            });
             setOtaConversionTarget(null);
             // Optimistic removal of exactly the block just claimed, matched by
             // its stable external_event_id - NOT a fetchBlockedDates() refetch
@@ -1530,8 +1537,11 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             receipts={receipts}
             menu={menu}
             rooms={rooms}
-            onAddGuest={(guest) => {
-              onAddGuest?.(guest);
+            onAddGuest={async (guest) => {
+              // await + only close on success (23 Aug 2026, ROADMAP.md verification pass) -
+              // onAddGuest now throws on a real backend rejection; closing unconditionally would
+              // hide that error instead of leaving the form open to see and correct it.
+              await onAddGuest?.(guest);
               setShowAddGuestModal(false);
             }}
             onCheckoutGuest={onCheckoutGuest || (() => {})}

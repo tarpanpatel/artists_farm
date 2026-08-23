@@ -160,8 +160,10 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ username, onUs
             <Input
               label="Phone Number (Login Username)"
               type="tel"
-              maxLength={10}
               value={profileUsername}
+              // No maxLength - see GuestManagement.tsx's onChange comment (23 Aug 2026): it
+              // truncates raw typed characters before digit-stripping runs, silently dropping
+              // trailing digits from any formatted phone number.
               onChange={(e) => setProfileUsername(e.target.value.replace(/\D/g, '').slice(0, 10))}
               placeholder="10-digit mobile number"
               inputMode="numeric"

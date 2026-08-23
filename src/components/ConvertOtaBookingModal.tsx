@@ -186,8 +186,10 @@ export const ConvertOtaBookingModal: React.FC<ConvertOtaBookingModalProps> = ({
             <Input
               type="tel"
               value={phoneNumber}
+              // No maxLength - see GuestManagement.tsx's onChange comment (23 Aug 2026): it
+              // truncates raw typed characters before digit-stripping runs, silently dropping
+              // trailing digits from any formatted phone number.
               onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
-              maxLength={10}
               placeholder={t('phone_ota_placeholder', 'Not provided by OTA - add if known')}
             />
           </div>

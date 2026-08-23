@@ -211,9 +211,11 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
               type="tel"
               label={t('tenant_contact_phone_label', 'Contact Phone')}
               value={phone}
+              // No maxLength - see GuestManagement.tsx's onChange comment (23 Aug 2026): it
+              // truncates raw typed characters before digit-stripping runs, silently dropping
+              // trailing digits from any formatted phone number.
               onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
               placeholder={t('contact_phone_placeholder', 'Enter 10-digit mobile number')}
-              maxLength={10}
             />
           </div>
           <div className="property-edit-form__field">

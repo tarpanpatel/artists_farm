@@ -39,7 +39,7 @@ interface BillingCheckoutProps {
   receipts: BillingReceipt[];
   onCheckoutGuest: (receipt: BillingReceipt) => void;
   onUpdateGuest?: (updatedGuest: Guest) => void;
-  onAddGuest?: (guest: Guest) => void;
+  onAddGuest?: (guest: Guest) => Promise<void>;
   isMultiKeyProperty?: boolean;
   rooms?: Array<{ id: number; name: string; slug: string }>;
   onCheckoutClick?: (guestId: string) => void;
@@ -994,8 +994,12 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
               receipts={receipts}
               menu={[]}
               rooms={rooms}
-              onAddGuest={(guest) => {
-                onAddGuest?.(guest);
+              onAddGuest={async (guest) => {
+                // await + only close on success (23 Aug 2026, ROADMAP.md verification pass) -
+                // onAddGuest now throws on a real backend rejection (see App.tsx's
+                // handleAddGuest); closing the modal unconditionally here would hide that error
+                // from the user instead of leaving the form open to see and correct it.
+                await onAddGuest?.(guest);
                 setShowAddBookingModal(false);
               }}
               onCheckoutGuest={onCheckoutGuest}

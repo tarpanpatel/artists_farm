@@ -43,7 +43,10 @@ interface GuestManagementProps {
   guests: Guest[];
   receipts: BillingReceipt[];
   menu: MenuItem[];
-  onAddGuest: (guest: Guest) => void;
+  // Promise<void>, not void (23 Aug 2026, ROADMAP.md verification pass) - the submit handler
+  // below needs to await this and catch a real rejection (App.tsx's handleAddGuest now throws on
+  // a genuine backend validation failure) instead of always showing a hardcoded success toast.
+  onAddGuest: (guest: Guest) => Promise<void>;
   onCheckoutGuest: (receipt: BillingReceipt) => void;
   onUpdateGuest?: (updatedGuest: Guest) => void;
   onDeleteGuest?: (guestId: string) => Promise<void>;
@@ -470,7 +473,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             </div>
           )}
           
-          <form noValidate className="app-form app-form--add-guest space-y-4" onSubmit={(e) => {
+          <form noValidate className="app-form app-form--add-guest space-y-4" onSubmit={async (e) => {
             e.preventDefault();
             const newCheckinStr = checkinTime ? `${checkinDate} ${checkinTime}:00` : checkinDate;
             const newCheckoutStr = checkoutTime ? `${expectedCheckout} ${checkoutTime}:00` : expectedCheckout;
@@ -568,9 +571,22 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               extraCharges,
             };
 
-            onAddGuest(guestObj);
-            resetBookingForm();
-            showToast('Guest booked successfully!', { type: 'success' });
+            // await + try/catch (23 Aug 2026, ROADMAP.md verification pass) - this used to fire
+            // onAddGuest without awaiting it at all, then unconditionally reset the form and show
+            // a hardcoded success toast regardless of whether the booking actually saved.
+            // Reproduced live: an invalid phone number got a real 400 from the backend, but the
+            // guest still showed up everywhere (Dashboard Alerts, calendar, Arrivals count) as a
+            // real booking, indistinguishable from one that actually saved, until the next reload
+            // silently dropped it. onAddGuest now throws with the real reason on failure (see
+            // App.tsx's handleAddGuest / api.ts's addGuestToDB) instead of masking it.
+            try {
+              await onAddGuest(guestObj);
+              resetBookingForm();
+              showToast('Guest booked successfully!', { type: 'success' });
+            } catch (err) {
+              const message = err instanceof Error && err.message ? err.message : 'Failed to save booking. Please try again.';
+              showToast(message, { type: 'error' });
+            }
           }}>
             {/* Row 0: Guest Name (Full width) */}
             <div>
@@ -589,13 +605,21 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               <>
                 <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   <div>
+                    {/* No maxLength attribute (23 Aug 2026, ROADMAP.md verification pass) - a
+                        native maxLength counts RAW typed characters BEFORE this onChange's own
+                        digit-stripping ever runs, so a formatted number with any separator
+                        ("98765-43210", 11 chars) got truncated to 10 raw chars first ("98765-4321")
+                        and THEN stripped to digits, silently losing the trailing digit
+                        ("987654321", 9 digits) - reproduced live. The .slice(0, 10) below already
+                        caps to 10 real digits correctly on its own; maxLength was redundant on the
+                        happy path and actively wrong on this one. Same fix applied to every other
+                        "10-digit mobile number" input site-wide (grep this exact onChange pattern). */}
                     <Input
                       label={t('contact_phone_label', 'Contact Phone Number *')}
                       type="tel"
                       value={phoneNumber}
                       onChange={e => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
                       placeholder="Enter 10-digit mobile number"
-                      maxLength={10}
                       required
                     />
                   </div>
@@ -637,13 +661,21 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               <>
                 <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   <div>
+                    {/* No maxLength attribute (23 Aug 2026, ROADMAP.md verification pass) - a
+                        native maxLength counts RAW typed characters BEFORE this onChange's own
+                        digit-stripping ever runs, so a formatted number with any separator
+                        ("98765-43210", 11 chars) got truncated to 10 raw chars first ("98765-4321")
+                        and THEN stripped to digits, silently losing the trailing digit
+                        ("987654321", 9 digits) - reproduced live. The .slice(0, 10) below already
+                        caps to 10 real digits correctly on its own; maxLength was redundant on the
+                        happy path and actively wrong on this one. Same fix applied to every other
+                        "10-digit mobile number" input site-wide (grep this exact onChange pattern). */}
                     <Input
                       label={t('contact_phone_label', 'Contact Phone Number *')}
                       type="tel"
                       value={phoneNumber}
                       onChange={e => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
                       placeholder="Enter 10-digit mobile number"
-                      maxLength={10}
                       required
                     />
                   </div>

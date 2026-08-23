@@ -1891,10 +1891,12 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                 <Input
                   type="tel"
                   value={newTenant.phone}
+                  // No maxLength - see GuestManagement.tsx's onChange comment (23 Aug 2026): it
+                  // truncates raw typed characters before digit-stripping runs, silently dropping
+                  // trailing digits from any formatted phone number.
                   onChange={(e) =>
                     setNewTenant({ ...newTenant, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })
                   }
-                  maxLength={10}
                   className="font-mono"
                   placeholder={t('phone_placeholder', '10-digit mobile number')}
                 />

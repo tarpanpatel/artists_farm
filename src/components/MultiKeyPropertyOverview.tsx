@@ -69,7 +69,7 @@ interface MultiKeyPropertyOverviewProps {
   guests?: any[];
   menu?: any[];
   receipts?: any[];
-  onAddGuest?: (guest: any) => void;
+  onAddGuest?: (guest: any) => Promise<void>;
   onCheckoutGuest?: (guest: any) => void;
   onUpdateBooking?: (guest: any) => Promise<void>;
   onDeleteBooking?: (guestId: string) => Promise<void>;
