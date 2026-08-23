@@ -61,7 +61,22 @@ DirectoryIndex index.php index.html
 <IfModule mod_expires.c>
     ExpiresActive On
     ExpiresDefault "access plus 1 month"
-    
+
+    # index.html (and any other root HTML entry point) must NEVER inherit the
+    # 1-month ExpiresDefault above - found 23 Aug 2026 while chasing a
+    # deploy-panel "Staging bundle mismatch!" false failure: mod_expires was
+    # setting Cache-Control: public, max-age=2592000 on index.html itself
+    # (confirmed via curl on staging) purely because nothing overrode the
+    # default for text/html. index.html is the ONE file whose entire job is
+    # to always point at the CURRENT content-hashed bundle filenames
+    # (index-XXXX.js/css) - caching it for a month means a returning
+    # visitor's browser (or a deploy-verification request, same mechanism)
+    # can silently keep serving a stale build pointing at bundle files that
+    # may no longer even exist on the server, for up to a month after every
+    # single deploy, real production visitors included, not just this
+    # verification script.
+    ExpiresByType text/html "access plus 0 seconds"
+
     # Hashed JS and CSS bundles - Cache 1 year immutable
     ExpiresByType text/css "access plus 1 year"
     ExpiresByType application/javascript "access plus 1 year"
@@ -90,9 +105,15 @@ DirectoryIndex index.php index.html
         Header set Cache-Control "public, max-age=31536000, immutable"
     </FilesMatch>
 
-    # Never cache service worker or dynamic API responses
+    # Never cache service worker, dynamic API responses, or the SPA's own
+    # entry HTML - see the ExpiresByType text/html note above, same root
+    # cause. no-cache (not no-store) so a byte-identical unchanged fetch can
+    # still 304 cheaply; the point is "always revalidate", not "never cache".
     <FilesMatch "^(sw\.js|router\.php)$">
         Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+    </FilesMatch>
+    <FilesMatch "\.html$">
+        Header set Cache-Control "no-cache, must-revalidate"
     </FilesMatch>
 </IfModule>
 

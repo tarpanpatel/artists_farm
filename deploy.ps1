@@ -85,7 +85,14 @@ function Write-Err($msg) {
 }
 
 function Invoke-Ssh([string]$Command) {
-    & ssh -p $SshPort -i $SshKey "$SshUser@$SshHost" $Command
+    # StrictHostKeyChecking/BatchMode/ConnectTimeout added 23 Aug 2026 after
+    # deploy-staging.ps1's equivalent scp call (which also lacked these) hung
+    # for 3+ hours on a real deploy - this whole script runs from a
+    # web-triggered background process with no attached terminal, so any
+    # interactive prompt (host key confirmation, a passphrase request, etc.)
+    # just blocks forever with nobody able to answer it. BatchMode=yes makes
+    # ssh/scp fail fast with a real error instead of ever prompting.
+    & ssh -p $SshPort -i $SshKey -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=20 "$SshUser@$SshHost" $Command
     if ($LASTEXITCODE -ne 0) {
         throw "SSH command failed (exit $LASTEXITCODE): $Command"
     }
@@ -221,7 +228,7 @@ try {
     Write-Ok "Packaged to $tarPath"
 
     Write-Step "Uploading to server"
-    & scp -P $SshPort -i $SshKey $tarPath "${SshUser}@${SshHost}:~/deploy_dist.tar.gz"
+    & scp -P $SshPort -i $SshKey -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=20 $tarPath "${SshUser}@${SshHost}:~/deploy_dist.tar.gz"
     if ($LASTEXITCODE -ne 0) { throw "scp upload failed" }
     Write-Ok "Uploaded."
 

@@ -66,7 +66,14 @@ function Write-Err($msg) {
 }
 
 function Invoke-Ssh([string]$Command) {
-    & ssh -p $SshPort -i $SshKey -o StrictHostKeyChecking=no "$SshUser@$SshHost" $Command
+    # BatchMode=yes + ConnectTimeout added 23 Aug 2026 after a real deploy hung
+    # for 3+ hours at the scp upload step below (StrictHostKeyChecking=no alone
+    # doesn't cover every possible interactive prompt - e.g. a passphrase
+    # request - and this whole script runs from a web-triggered background
+    # process with no attached terminal, so any prompt just blocks forever
+    # with nobody able to answer it). BatchMode=yes makes ssh/scp fail fast
+    # with a real error instead of ever prompting for anything.
+    & ssh -p $SshPort -i $SshKey -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=20 "$SshUser@$SshHost" $Command
     if ($LASTEXITCODE -ne 0) {
         throw "SSH command failed (exit $LASTEXITCODE): $Command"
     }
@@ -167,7 +174,14 @@ try {
     Write-Ok "Packaged to $tarPath"
 
     Write-Step "Uploading to staging environment"
-    & scp -P $SshPort -i $SshKey $tarPath "${SshUser}@${SshHost}:~/staging_dist_deploy.tar.gz"
+    # This one call was the actual cause of the 3+ hour hang found 23 Aug
+    # 2026 - it's the only ssh/scp call site in this file that was missing
+    # -o StrictHostKeyChecking=no (Invoke-Ssh above already had it), so it
+    # was the first remote call in the whole run capable of hitting a real
+    # interactive host-key prompt - with no terminal attached to answer it,
+    # scp just sat there forever. See Invoke-Ssh's own comment for why
+    # BatchMode/ConnectTimeout are added here too, not just this flag.
+    & scp -P $SshPort -i $SshKey -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=20 $tarPath "${SshUser}@${SshHost}:~/staging_dist_deploy.tar.gz"
     if ($LASTEXITCODE -ne 0) { throw "scp upload failed" }
     Write-Ok "Uploaded."
 
