@@ -62,6 +62,12 @@ interface OperationalDashboardProps {
   onGuestCheckedIn?: (guestId: string) => void;
   activeMenuItemKey?: string;
   kitchenModuleEnabled?: boolean;
+  // Per-role Kitchen permission (23 Aug 2026), distinct from
+  // kitchenModuleEnabled above which is a property-wide feature toggle - see
+  // App.tsx's kitchenAccessAllowed for the umbrella-permission check this
+  // comes from. Defaults true so this stays harmless if a call site ever
+  // forgets to pass it, matching kitchenModuleEnabled's own default below.
+  kitchenAccessAllowed?: boolean;
   propertyName?: string;
   propertyMapsLink?: string;
   propertyPhone?: string;
@@ -107,6 +113,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   onGuestCheckedIn,
   activeMenuItemKey: _activeMenuItemKey,
   kitchenModuleEnabled = true,
+  kitchenAccessAllowed = true,
   propertyName = '',
   propertyMapsLink = '',
   propertyPhone = '',
@@ -814,8 +821,13 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           </button>
         </div>
 
-        {/* Column 2: Kitchen KDS Card */}
-        {kitchenModuleEnabled ? (
+        {/* Column 2: Kitchen KDS Card - gated on BOTH the property-wide
+            kitchenModuleEnabled toggle AND the viewer's own per-role
+            kitchenAccessAllowed permission (23 Aug 2026 fix - this card used
+            to show real live order data and an "Open Kitchen Orders" button
+            to every role regardless of Kitchen permission, since it only
+            ever checked the module toggle). */}
+        {kitchenModuleEnabled && kitchenAccessAllowed ? (
           <div className="operational-dashboard__col-kitchen bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 flex flex-col justify-between">
             <div className="operational-dashboard__col-kitchen-inner">
               <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
@@ -874,7 +886,11 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
         ) : (
           <div className="operational-dashboard__col-kitchen-disabled bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 flex flex-col justify-center items-center text-center text-slate-400 text-xs">
             <Utensils className="w-8 h-8 text-slate-300 dark:text-slate-600 mb-2" />
-            <p>{t('kitchen_module_disabled', 'Kitchen Module Disabled')}</p>
+            <p>
+              {kitchenModuleEnabled
+                ? t('kitchen_access_restricted', 'Kitchen access not available for your role')
+                : t('kitchen_module_disabled', 'Kitchen Module Disabled')}
+            </p>
           </div>
         )}
 

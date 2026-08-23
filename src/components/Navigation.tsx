@@ -181,7 +181,22 @@ export const Navigation: React.FC<NavigationProps> = ({
 
     // Ensure root 'nav-kitchen-overview' node exists in tree even if DB hasn't seeded it yet
     let kitchenRoot = visible.find(i => i.id === 'nav-kitchen-overview' || i.uniqueKey === 'kitchen_overview');
-    if (!kitchenRoot && kitchenModuleEnabled) {
+    // IMPORTANT (23 Aug 2026, found live via "staff level access is
+    // incorrect" report): `!kitchenRoot` alone can't tell "the real row
+    // hasn't loaded from the DB yet" (the actual cold-start race this
+    // fallback exists for) apart from "the real row loaded fine but
+    // correctly excludes the CURRENT role" - `visible` has already been
+    // role-filtered above, so a role denied Kitchen access always makes
+    // kitchenRoot undefined too. The old code treated both cases the same
+    // and unconditionally force-pushed this synthetic node into `visible`
+    // regardless of role, silently re-granting Kitchen to every role NavMenuEditor
+    // had just correctly denied it to - it never actually reached
+    // isVisible() at all. Checking the RAW pre-filter `flat` array (not
+    // `visible`) distinguishes the two: if a real kitchen_overview row
+    // exists in `flat` at all, the DB has loaded and this fallback must stay
+    // out of the way entirely, no matter which role is active.
+    const kitchenRootLoadedFromDb = flat.some(i => i.id === 'nav-kitchen-overview' || i.uniqueKey === 'kitchen_overview');
+    if (!kitchenRoot && !kitchenRootLoadedFromDb && kitchenModuleEnabled) {
       const syntheticKitchen: NavMenuItem = {
         id: 'nav-kitchen-overview',
         title: 'Kitchen',
@@ -199,8 +214,13 @@ export const Navigation: React.FC<NavigationProps> = ({
         isVisible: true,
         parentId: null,
       };
-      visible.push(syntheticKitchen);
-      kitchenRoot = syntheticKitchen;
+      // Still route this synthetic guess through the real role check below -
+      // it's a best-effort placeholder for a still-loading row, not a free
+      // pass, so a role this array excludes shouldn't see it either.
+      if (isVisible(syntheticKitchen.roles, syntheticKitchen.tabKey, syntheticKitchen.uniqueKey)) {
+        visible.push(syntheticKitchen);
+        kitchenRoot = syntheticKitchen;
+      }
     }
 
     visible.forEach(item => {

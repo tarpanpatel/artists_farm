@@ -245,7 +245,7 @@ const FALLBACK_TEMPLATES: TelegramTemplateExtended[] = [
     category: 'Kitchen & Ordering',
     description: 'Sent to kitchen staff when a new food order ticket is placed.',
     variables: ['{order_id}', '{guest_name}', '{room_no}', '{waiter_name}', '{order_time}', '{order_items}'],
-    template: `<b>🔔 NEW ORDER #{order_id}</b>\n<b>Room / Guest:</b> {guest_name} ({room_no})\n<b>Waiter:</b> {waiter_name}\n<b>Items:</b>\n{order_items}\n\n<i>Time: {order_time}</i>`,
+    template: `<b>🔔 NEW ORDER #{order_id}</b>\n<b>Guest:</b> {guest_name}\n<b>Room:</b> {room_no}\n<b>Waiter:</b> {waiter_name}\n<b>Items:</b>\n{order_items}\n\n<i>Time: {order_time}</i>`,
     buttons: [
       [{ id: 'b7', text: '👨‍🍳 View Kitchen KDS Queue', callback_data: 'open_kds' }]
     ]
@@ -257,7 +257,7 @@ const FALLBACK_TEMPLATES: TelegramTemplateExtended[] = [
     category: 'Kitchen Notifications',
     description: 'Sent when a chef or waiter marks an individual item as served.',
     variables: ['{item_name}', '{quantity}', '{guest_name}', '{room_no}', '{served_by}', '{remaining_items}'],
-    template: `<b>✅ DISH SERVED</b>\n\n<b>Dish:</b> {item_name} x{quantity}\n<b>Guest:</b> {guest_name} (Room {room_no})\n<b>Served By:</b> {served_by}\n<i>Remaining items in ticket: {remaining_items}</i>`,
+    template: `<b>✅ DISH SERVED</b>\n\n<b>Dish:</b> {item_name} x{quantity}\n<b>Guest:</b> {guest_name}\n<b>Room:</b> {room_no}\n<b>Served By:</b> {served_by}\n<i>Remaining items in ticket: {remaining_items}</i>`,
   },
   {
     id: 'tpl-9',
@@ -296,7 +296,11 @@ const FALLBACK_TEMPLATES: TelegramTemplateExtended[] = [
     category: 'Billing & Financial',
     description: 'Itemized settlement bill sent to finance group upon guest checkout.',
     variables: ['{guest_name}', '{room_number}', '{receipt_id}', '{items_charges}', '{advance_paid}', '{balance_due}', '{total_bill}', '{payment_mode}'],
-    template: `📶 <b>FULLY ITEMIZED SETTLEMENT BILL</b>\n  Resident: <b>{guest_name}</b> (Room {room_number})\n  Receipt: #{receipt_id}\n\n<b>ITEMIZED CHARGES:</b>\n{items_charges}\n<b>SUMMARY:</b>\n  Advance Paid: <b>₹{advance_paid}</b>\n  Final Balance Due: <b>₹{balance_due}</b>\n  Total Bill: <b>₹{total_bill}</b>\n  Payment Mode: <b>{payment_mode}</b>`,
+    // 🧾 (was 📶 - a wifi-bars glyph makes no sense for a settlement bill; this
+    // looks like the same class of mojibake corruption found elsewhere in this
+    // session, just baked into source instead of DB content). Resident/Room
+    // split onto independent rows 23 Aug 2026, matching the DB default.
+    template: `🧾 <b>FULLY ITEMIZED SETTLEMENT BILL</b>\n  Resident: <b>{guest_name}</b>\n  Room: <b>{room_number}</b>\n  Receipt: #{receipt_id}\n\n<b>ITEMIZED CHARGES:</b>\n{items_charges}\n<b>SUMMARY:</b>\n  Advance Paid: <b>₹{advance_paid}</b>\n  Final Balance Due: <b>₹{balance_due}</b>\n  Total Bill: <b>₹{total_bill}</b>\n  Payment Mode: <b>{payment_mode}</b>`,
   },
   {
     id: 'tpl-14',

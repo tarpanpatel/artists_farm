@@ -1002,7 +1002,28 @@ function AppBody({ preloadedData }: AppBodyProps) {
     // without the bypass, any role not individually granted this specific
     // item (even if granted Kitchen access generally) would get silently
     // bounced back to Dashboard on every "Kitchen" click.
-    if (key === 'admin_control_group' || key === 'edit_items_group' || key === 'edit_main_menu' || key === 'team_overview' || key === 'admin_control_overview' || key === 'kitchen_orders' || key === 'take_food_order') return true;
+    // IMPORTANT (23 Aug 2026, found live via "staff level access is
+    // incorrect" report): this used to `return true` unconditionally for
+    // BOTH of these keys, for every role with no check at all - meaning a
+    // role with ZERO Kitchen permission (e.g. generic Staff) could still
+    // successfully load the Kitchen page via any link/button that targets
+    // these two exact keys (OperationalDashboard's "Open Kitchen Orders"
+    // button, the mobile Quick Actions sheet), completely bypassing whatever
+    // NavMenuEditor had configured. Fixed to still skip the unreliable
+    // items.find() lookup below (parent/child role grants can drift, see
+    // above) but gate on whether the role has Kitchen access AT ALL, via the
+    // kitchen_overview grouping item's own roles - same umbrella-permission
+    // check canSeeNavKey()/mobileNavPermissions.kitchen/kitchenAccessAllowed
+    // already use elsewhere, so all these gates agree.
+    if (key === 'kitchen_orders' || key === 'take_food_order') {
+      const kitchenGroupItem = items.find((i) => (i.uniqueKey || i.tabKey) === 'kitchen_overview');
+      if (!kitchenGroupItem) return true; // not loaded yet - fail open, same as other synthetic-key bypasses
+      if (!kitchenGroupItem.isVisible) return true; // superseded/hidden group row, not access-restricted
+      const normalizedRole = role.toLowerCase().trim();
+      if (normalizedRole === 'root admin' || normalizedRole === 'super admin') return true;
+      return kitchenGroupItem.roles.some((r) => r.toLowerCase().trim() === normalizedRole);
+    }
+    if (key === 'admin_control_group' || key === 'edit_items_group' || key === 'edit_main_menu' || key === 'team_overview' || key === 'admin_control_overview') return true;
     // Preserve old bookmarked Attendance & Salaries links while the navigation uses
     // the canonical attendance calendar route.
     const routeKey = key === 'attendance_salaries' ? 'attendance_calendar' : key;
@@ -1065,6 +1086,17 @@ function AppBody({ preloadedData }: AppBodyProps) {
     addFoodOrder: canSeeNavKey('take_food_order'),
     viewLiveKitchenOrder: canSeeNavKey('take_food_order'),
   }), [activeRole, visibleNavItems]);
+
+  // Same umbrella Kitchen permission as mobileNavPermissions.kitchen above,
+  // reused for OperationalDashboard's own "Live Kitchen Tickets" card (23 Aug
+  // 2026 - found live-reported: a role denied Kitchen in NavMenuEditor could
+  // still see real live order data and an "Open Kitchen Orders" button on
+  // the Dashboard itself, since that card was gated only by kitchenModuleEnabled
+  // - a property-wide feature toggle, not a per-role check. Threaded down
+  // through both OperationalDashboard's direct call site and
+  // MultiKeyPropertyOverview's two internal ones, same pattern as
+  // kitchenModuleEnabled already uses (see "Props Threading" in CLAUDE.md).
+  const kitchenAccessAllowed = useMemo(() => canSeeNavKey('take_food_order'), [activeRole, visibleNavItems]);
 
   // Guard Effect 1: Trigger whenever activeRole, activeMenuItemKey, or visibleNavItems update
   useEffect(() => {
@@ -1941,6 +1973,7 @@ ${itemsStr}
                   activeMenuItemKey={activeMenuItemKey}
                   onSetActiveMenuItemKey={setActiveMenuItemKey}
                   kitchenModuleEnabled={isModuleEnabled('kitchen')}
+                  kitchenAccessAllowed={kitchenAccessAllowed}
                   onUpdateBooking={handleUpdateGuest}
                   onDeleteBooking={handleDeleteGuest}
                   onGuestVerificationUpdated={handleGuestVerificationUpdated}
@@ -2012,6 +2045,7 @@ ${itemsStr}
                       activeMenuItemKey={activeMenuItemKey}
                       onSetActiveMenuItemKey={setActiveMenuItemKey}
                       kitchenModuleEnabled={isModuleEnabled('kitchen')}
+                      kitchenAccessAllowed={kitchenAccessAllowed}
                       hideHeader={true}
                       onUpdateBooking={handleUpdateGuest}
                       onDeleteBooking={handleDeleteGuest}
@@ -2035,6 +2069,7 @@ ${itemsStr}
                         onOpenCheckin={() => handleNavigateTab('guests', 'guest_registration')}
                         onAddGuest={handleAddGuest}
                         kitchenModuleEnabled={isModuleEnabled('kitchen')}
+                        kitchenAccessAllowed={kitchenAccessAllowed}
                         onUpdateBooking={handleUpdateGuest}
                         onDeleteBooking={handleDeleteGuest}
                         onGuestVerificationUpdated={handleGuestVerificationUpdated}

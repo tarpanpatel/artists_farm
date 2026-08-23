@@ -86,6 +86,11 @@ interface MultiKeyPropertyOverviewProps {
   activeMenuItemKey?: string;
   onSetActiveMenuItemKey?: (key: string) => void;
   kitchenModuleEnabled?: boolean;
+  // Per-role Kitchen permission (23 Aug 2026) - see App.tsx's
+  // kitchenAccessAllowed / OperationalDashboard's own prop of the same name
+  // for the full explanation. Passed straight through to both of this
+  // component's internal OperationalDashboard renders below.
+  kitchenAccessAllowed?: boolean;
   hideHeader?: boolean;
   serviceRequests?: any[];
 }
@@ -117,6 +122,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
   activeMenuItemKey = '',
   onSetActiveMenuItemKey: _onSetActiveMenuItemKey,
   kitchenModuleEnabled = false,
+  kitchenAccessAllowed = true,
   hideHeader = false,
   serviceRequests = [],
 }) => {
@@ -280,6 +286,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                     }
                   }}
                   kitchenModuleEnabled={kitchenModuleEnabled}
+                  kitchenAccessAllowed={kitchenAccessAllowed}
                   serviceRequests={serviceRequests}
                 />
               )}
@@ -380,6 +387,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                         propertyCheckinTime={property.checkin_time || ''}
                         propertyCheckoutTime={property.checkout_time || ''}
                         kitchenModuleEnabled={kitchenModuleEnabled}
+                        kitchenAccessAllowed={kitchenAccessAllowed}
                         serviceRequests={serviceRequests}
                         minimalMode
                       />

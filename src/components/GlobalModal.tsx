@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Drawer } from 'flowbite-react';
+import { Modal } from 'flowbite-react';
 import { AlertTriangle, CheckCircle, Info, X } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';
 
@@ -13,14 +13,21 @@ interface ModalOptions {
   onCancel?: () => void;
 }
 
-// Rebuilt as a real Flowbite right-side Drawer (22 Aug 2026, part of "only
-// use Flowbite" sweep - this was a fully hand-rolled centered popup before,
-// the biggest single non-Flowbite surface in the app since window.alert/
-// showConfirm/showAlert route through this one component from everywhere).
-// Structure follows DESIGN.md's Flowbite Modals & Drawers Specification
-// exactly: icon+title header with an explicit X close, scrollable body,
-// fixed footer with Cancel/Action buttons, z-[58] (the app's own "every
-// real full-page modal" tier - see custom.css's z-index scale comment).
+// Rebuilt as a real Flowbite right-side Drawer on 22 Aug 2026 (part of "only
+// use Flowbite" sweep), then rebuilt AGAIN as a real Flowbite centered Modal
+// on 23 Aug 2026 - same reason and same day as ConfirmDialogContext.tsx's
+// identical rebuild (see that file's own comment): a short 1-2 line
+// alert/confirm prompt in a full-height right-side drawer left most of the
+// drawer an empty void, a bad fit unlike this app's other, genuinely-long-
+// form drawers. This is the biggest single non-Flowbite surface in the app
+// since window.alert/showConfirm/showAlert route through this one component
+// from everywhere - see DESIGN.md's carve-out note for the "modal, not
+// drawer" exception this and ConfirmDialogContext.tsx both fall under.
+// z-9999: this app's own z-index scale (custom.css) already reserves an
+// "always on top" tier for toasts + the confirm dialog specifically, so it
+// stacks above an already-open drawer/page-modal (z-58) - e.g. an
+// InventoryManagement.tsx "Delete category?" showConfirm() fired from
+// inside an already-open management drawer.
 export const GlobalModal = () => {
   const [modal, setModal] = useState<ModalOptions | null>(null);
   const modalRef = useRef(modal);
@@ -112,13 +119,15 @@ export const GlobalModal = () => {
   };
 
   return (
-    <Drawer
-      open
+    <Modal
+      show
       onClose={handleClose}
-      position="right"
-      className="z-58 w-full sm:w-96 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between global-modal"
+      dismissible
+      size="md"
+      popup
+      className="z-9999 global-modal"
     >
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 global-modal__header">
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-t-lg global-modal__header">
         <div className="flex items-center gap-2.5">
           <div className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 global-modal__icon-wrapper ${iconStyles[modal.type]}`}>
             {getIcon()}
@@ -136,7 +145,7 @@ export const GlobalModal = () => {
       <div className="flex-1 overflow-y-auto p-4 global-modal__content">
         <p className="text-slate-600 dark:text-slate-300 text-sm font-medium leading-relaxed whitespace-pre-line global-modal__message">{modal.message}</p>
       </div>
-      <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850 global-modal__footer">
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850 rounded-b-lg global-modal__footer">
         {modal.type === 'confirm' ? (
           <>
             <button
@@ -164,6 +173,6 @@ export const GlobalModal = () => {
           </button>
         )}
       </div>
-    </Drawer>
+    </Modal>
   );
 };

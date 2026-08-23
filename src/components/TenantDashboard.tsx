@@ -10,7 +10,7 @@ import { Textarea } from './Textarea';
 import { StyledSelect } from './StyledSelect';
 import { API_ROOT_BASE, apiFetch, getPropertySlug } from '../services/api';
 import { Button } from './Button';
-import { Alert as FlowbiteAlert, Drawer, Checkbox } from 'flowbite-react';
+import { Alert as FlowbiteAlert, Drawer, Modal, Checkbox } from 'flowbite-react';
 import { X } from './icons/FlowbiteIcons';
 import { KpiCard } from './KpiCard';
 import { t } from '../i18n/en';
@@ -784,14 +784,23 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
         </div>
       </Drawer>
 
-      {/* Delete Confirmation Drawer */}
-      <Drawer
-        open={modal.type === 'delete'}
+      {/* Delete Confirmation Modal - a centered flowbite-react <Modal>, not a
+          right-side Drawer (23 Aug 2026: this is a confirmation prompt, not a
+          creation/edit form - same "modal, not drawer" rule as
+          ConfirmDialogContext.tsx, applied here too since this one has rich
+          custom content - a bulleted consequences list, conditional sub-room
+          note - that doesn't reduce to that shared component's plain-string
+          message prop). Add/Edit Property directly above/below stay Drawers
+          - those are genuine multi-field forms. */}
+      <Modal
+        show={modal.type === 'delete'}
         onClose={() => { setModal({ type: 'none' }); setError(null); }}
-        position="right"
-        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+        dismissible
+        size="lg"
+        popup
+        className="z-9999"
       >
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-850">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-850 rounded-t-lg">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 flex items-center justify-center text-red-600 dark:text-red-400">
               <Trash2 className="w-4 h-4" />
@@ -842,7 +851,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 </div>
               )}
             </div>
-            <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850 rounded-b-lg">
               <Button variant="secondary" size="sm" onClick={() => { setModal({ type: 'none' }); setError(null); }} className="tenant-dashboard__modal-cancel-btn">
                 {t('cancel_button', 'Cancel')}
               </Button>
@@ -858,16 +867,19 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
             </div>
           </>
         )}
-      </Drawer>
+      </Modal>
 
-      {/* Slots Exceeded Drawer */}
-      <Drawer
-        open={modal.type === 'slots_exceeded'}
+      {/* Slots Exceeded Modal - confirmation/alert prompt, not a form; same
+          "modal, not drawer" rule as above. */}
+      <Modal
+        show={modal.type === 'slots_exceeded'}
         onClose={() => setModal({ type: 'none' })}
-        position="right"
-        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+        dismissible
+        size="lg"
+        popup
+        className="z-9999"
       >
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-t-lg">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 flex items-center justify-center text-amber-600 dark:text-amber-400">
               <Zap className="w-4 h-4" />
@@ -895,7 +907,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 {t('contact_root_admin_upgrade_message', 'Please contact your Root Admin to upgrade your subscription package.')}
               </p>
             </div>
-            <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850 rounded-b-lg">
               <Button variant="secondary" size="sm" onClick={() => setModal({ type: 'add' })} className="tenant-dashboard__modal-back-btn">
                 {t('back_button', 'Back')}
               </Button>
@@ -905,16 +917,19 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
             </div>
           </>
         )}
-      </Drawer>
+      </Modal>
 
-      {/* Upgrade Drawer (Roadmap Placeholder) */}
-      <Drawer
-        open={modal.type === 'upgrade'}
+      {/* Upgrade Modal (Roadmap Placeholder) - alert/informational prompt,
+          not a form; same "modal, not drawer" rule as above. */}
+      <Modal
+        show={modal.type === 'upgrade'}
         onClose={() => setModal({ type: 'none' })}
-        position="right"
-        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+        dismissible
+        size="lg"
+        popup
+        className="z-9999"
       >
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-t-lg">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
               <Zap className="w-4 h-4" />
@@ -944,7 +959,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
             {t('upgrade_portal_coming_soon_message', 'Self-service upgrade portal — coming soon')}
           </div>
         </div>
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850 tenant-dashboard__modal-footer">
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850 rounded-b-lg tenant-dashboard__modal-footer">
           <Button
             variant="primary"
             size="sm"
@@ -955,7 +970,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
             {t('got_it_button', 'Got it')}
           </Button>
         </div>
-      </Drawer>
+      </Modal>
     </div>
   );
 };
