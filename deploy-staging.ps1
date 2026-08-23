@@ -224,35 +224,48 @@ try {
             }
             Write-Ok "Staging site verified serving the new bundle: $($liveBundle -join ', ')"
         }
-
-        # Backend API smoke test (added 23 Aug 2026, after a real incident: a
-        # backend-breaking bug shipped a deploy that reported "Complete" -
-        # this bundle-hash check above only proves the FRONTEND shell landed,
-        # never that the PHP backend behind it still works. router.php had
-        # been silently returning HTTP 200 with an EMPTY body for every single
-        # action for over an hour - login, nav menu, everything - discovered
-        # only because a real user couldn't log in, not by this pipeline.
-        # get_nav_menu is a good canary: unauthenticated, platform-wide
-        # (never legitimately empty - see CLAUDE.md), and already the
-        # backend's own front-line handler that most other actions share
-        # requires. A failure here means the whole API is down; catch it
-        # HERE, loudly, not an hour later from a confused user report.
-        Write-Step "Verifying Staging Backend API"
-        try {
-            $apiCheck = Invoke-WebRequest -Uri "https://staging.artistic-sthan.com/php/api/router.php?action=get_nav_menu" -UseBasicParsing -ErrorAction Stop -TimeoutSec 20
-            $apiJson = $apiCheck.Content | ConvertFrom-Json -ErrorAction Stop
-            if ($apiJson.status -ne 'success' -or -not $apiJson.data -or @($apiJson.data).Count -eq 0) {
-                Write-Err "Staging backend API responded but with no usable data (get_nav_menu) - the deploy may have broken the PHP backend. Check /php/errors/ on staging immediately."
-                exit 1
-            }
-            Write-Ok "Staging backend API verified - get_nav_menu returned $(@($apiJson.data).Count) items."
-        } catch {
-            Write-Err "Staging backend API check failed: $($_.Exception.Message) - the deploy may have broken the PHP backend (or it returned an empty/non-JSON body, the exact failure mode this check exists to catch). Check /php/errors/ on staging immediately."
-            exit 1
-        }
     } else {
         Write-Ok "Build package and backend files deployed successfully. HTTP verification skipped - staging URL didn't respond twice in a row."
     }
+
+    # Backend API smoke test (added 23 Aug 2026, after a real incident: a
+    # backend-breaking bug shipped a deploy that reported "Complete" - the
+    # bundle-hash check above only proves the FRONTEND shell landed, never
+    # that the PHP backend behind it still works. router.php had been
+    # silently returning HTTP 200 with an EMPTY body for every single action
+    # for over an hour - login, nav menu, everything - discovered only
+    # because a real user couldn't log in, not by this pipeline.
+    # Deliberately its OWN top-level try/retry, NOT nested inside the bundle
+    # check above - the first version of this fix lived inside that block and
+    # silently never ran on the very next deploy, because Invoke-WebRequest's
+    # own flakiness (the same "didn't respond twice in a row" this file
+    # already works around elsewhere) skipped it before it got a chance to
+    # check anything. This has to run independently to be trustworthy.
+    # get_nav_menu requires a real login (confirmed 23 Aug 2026 - it isn't
+    # actually the unauthenticated canary it looked like), so success here
+    # isn't "returns data", it's "returns ANY well-formed API response at
+    # all" - a real {status:..., message:...} envelope, even a 401 rejection,
+    # proves PHP ran the request to completion and echoed real JSON. Only a
+    # genuinely empty/unparseable body - the exact failure mode that broke
+    # login for real users - fails the deploy.
+    Write-Step "Verifying Staging Backend API"
+    $apiJson = $null
+    for ($__attempt = 1; $__attempt -le 2 -and -not $apiJson; $__attempt++) {
+        try {
+            $apiCheck = Invoke-WebRequest -Uri "https://staging.artistic-sthan.com/php/api/router.php?action=get_nav_menu" -UseBasicParsing -ErrorAction Stop -TimeoutSec 20
+            if ($apiCheck.Content) {
+                $apiJson = $apiCheck.Content | ConvertFrom-Json -ErrorAction Stop
+            }
+        } catch {
+            if ($__attempt -eq 1) { Start-Sleep -Seconds 3 }
+        }
+    }
+    if (-not $apiJson -or (-not $apiJson.status -and -not $apiJson.message)) {
+        Write-Err "Staging backend API returned an empty or unparseable response after 2 attempts - the deploy likely broke the PHP backend (this is exactly the failure mode that silently broke login for real users on 23 Aug 2026). Check /php/errors/ on staging immediately."
+        exit 1
+    }
+    $__apiSummary = if ($apiJson.status) { $apiJson.status } else { $apiJson.message }
+    Write-Ok "Staging backend API verified alive (get_nav_menu responded with a real API envelope: $__apiSummary)."
     
     Write-Host ""
     Write-Host "Staging Deploy Complete: https://staging.artistic-sthan.com/dist/" -ForegroundColor Green
