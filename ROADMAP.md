@@ -91,26 +91,6 @@ What's still open:
 
 ### Needs Manual Verification
 
-- **Guest PII input validation, real browser session.** Re-tested 21 Aug
-  2026 via curl against the live `add_guest` endpoint (not just the CLI
-  harness): confirmed invalid input is correctly rejected (bad phone, bad
-  date, out-of-range guest count, negative money, overlong name) and
-  legitimate input isn't wrongly blocked (apostrophes, formatted phone
-  numbers with spaces/dashes/+, accented names, datetime-string check-in
-  values). Found and fixed a real bug in the process:
-  `InputValidator::validateString()` measured length with `strlen()`
-  (bytes), not characters, so any multi-byte name - Hindi, French accents,
-  anything outside plain ASCII - could get wrongly rejected as "too long"
-  well under its actual character count (a 63-character Devanagari name is
-  169 UTF-8 bytes, over the 120 limit meant for 120 *characters*). Fixed to
-  `mb_strlen`; verified via clean file-based UTF-8 payloads after an early
-  false alarm turned out to be the test's own shell mangling the input, not
-  the app. Still not exercised through the React app in a browser (no
-  Playwright this session). Add a guest (all fields), edit a guest, and
-  complete a check-in in a live session; watch the Network tab for
-  unexpected 400s. Most likely to surface: the phone-normalisation (digits
-  only) if any page sends an already-normal phone with dashes/spaces and the
-  UI compares raw input to stored output.
 - **Property-access gate, real browser session.** Re-verified via curl again
   21 Aug 2026 (cross-tenant read+write denial for a real tenant-scoped
   account, plus the staff-with-no-property/no-tenant edge case both against
@@ -121,15 +101,14 @@ What's still open:
   through the real app: `apiFetch()` always sets `property_slug` to
   something (a real slug, or a reserved sentinel like `tenant_dashboard`
   that resolves to `$propertyId = 0` on purpose), so the fallback path only
-  fires for a raw/manual API call, never the actual frontend. Still not
-  exercised through the actual React app in a browser (no Playwright this
-  session either, per standing instruction) - the below is unchanged:  Do
-  one full normal session end-to-end: log in as each role you actually use
-  day-to-day and click through a few pages, watching the Network tab for any
-  unexpected 401/403 on an action that used to work. Most likely-to-surface
-  issue: a page that calls an action with a `property_slug` the logged-in
-  session doesn't own (shouldn't happen in normal use, but worth confirming
-  nothing in the frontend does this today).
+  fires for a raw/manual API call, never the actual frontend. Partially
+  exercised through the real browser app 23 Aug 2026 (Playwright, permitted
+  this session): logged in as Root Admin, Staff Kitchen, and Staff
+  Supervisor across two different properties, clicked through Dashboard/
+  Bookings/Kitchen/Team pages for each - no unexpected 401/403 on any action
+  that should have worked for that role. Not yet an exhaustive dedicated
+  pass through every page/action combination, so leaving this open rather
+  than marking it fully done.
 - **Telegram delivery on booking edits.** `update_guest` now diffs the
   pre-update row and pings the property's Admin Telegram channel with the
   changed fields (see `php/guests/guests.php`) - verified the diff logic
@@ -153,36 +132,66 @@ What's still open:
   lands in that property's dashboard already logged in (no second login
   prompt), then navigate directly to a different property in the same
   tenant's URL and confirm that also just works without re-authenticating.
-- **Room default tariff, real browser session.** Re-tested 21 Aug 2026, this
-  time through the actual `action=update_room_tariff` HTTP endpoint (not
-  just matching the underlying SQL against the DB directly, which is what
-  the earlier "verified" pass above actually did) - and that distinction
-  mattered: found `update_room_tariff` was fully implemented in
-  `multikey_properties.php` and called by `RoomsManagement.tsx`'s inline
-  editor, but **missing from `router.php`'s dispatch switch entirely**, so
-  every real save silently fell through to a generic status response and
-  did nothing. A DB-level check that only replicates the target SQL can
-  never catch a dispatch-layer bug like this - it never goes near the actual
-  routing. Fixed (case added) and verified live (set → confirmed in DB →
-  reverted). Also found and fixed a second, real bug while tracing the Add
-  Booking pre-fill: `GuestManagement.tsx`'s `handleRoomChange()` only
-  auto-filled the Room Rent field from a room's `default_tariff` when the
-  field was still exactly `0`, so it worked for whichever room got picked
-  *first* but never updated again when switching to a different room
-  (stale previous room's rate stayed). Fixed by tracking whether the staff
-  member actually typed a value, instead of inferring it from the field
-  being non-zero. Single-property tariff (`update_property`) and the
-  field being hidden on a MULTI_KEY parent's own Edit Property form both
-  reconfirmed working correctly. **Still not clicked through in the UI**
-  (no Playwright this session) - the pre-fill fix in particular was fixed
-  by code tracing only, not empirically re-run in a browser. For a
-  multi-key property: open Rooms management, set a tariff on a room via
-  the inline edit (pencil icon), confirm it saves and displays; open Add
-  Booking, select that room, confirm the Room Rent field pre-fills with
-  that tariff and is still editable; select a different room and confirm
-  the rate updates to *that* room's tariff, not the first one picked.
+
+## ✅ Verified 23 Aug 2026 (real browser session, Playwright, permitted this session)
+
+Removed from the open list below per this file's own convention (shipped items are removed, see
+git history) - kept here as a short record of what was actually exercised and what was found:
+
+- **Room default tariff** - fully confirmed live on a real multi-key property (`luxe-stays`):
+  selected Room 102 (tariff ₹5300) in Add Booking, Room Rent correctly pre-filled; switched to
+  Room 105 (tariff ₹5100), Room Rent correctly updated to the new room's rate (not stuck on the
+  first pick, confirming the earlier code-only fix holds up live).
+- **Guest PII input validation** - confirmed both directions live on `jaipur`: a name with an
+  apostrophe + accented character ("D'Souza Müller") plus a dash-formatted phone
+  ("98765-43210") saved successfully end-to-end (`add_guest` → 200, guest visible correctly); a
+  too-short phone ("12345") correctly got rejected with a clear 400 ("Phone number must be 7 to
+  15 digits").
+- **Two new real bugs found and fixed in the process** (not on the original checklist - surfaced
+  only by actually driving the browser):
+  1. **Phone input truncation with any separator character.** Every "10-digit mobile number"
+     field site-wide (`GuestManagement.tsx` x2, `BookingDetailsModal.tsx`, `AccountSettings.tsx`,
+     `ConvertOtaBookingModal.tsx`, `PropertyEditForm.tsx`, `PlatformPropertyManagement.tsx`,
+     `StaffManagement.tsx` x3) paired a `maxLength={10}` HTML attribute with an onChange that
+     strips non-digits then slices to 10 - but `maxLength` counts *raw* typed characters before
+     that stripping runs, so a formatted number like "98765-43210" (11 raw chars) got truncated to
+     10 raw chars first ("98765-4321") and only then digit-stripped, silently dropping the
+     trailing digit ("987654321", 9 digits saved instead of 10). Reproduced live, fixed by
+     removing the redundant/harmful `maxLength` at all 9 sites (the `.slice(0, 10)` in the
+     onChange already caps to 10 real digits correctly on its own).
+  2. **Phantom booking on a rejected Add Guest.** `handleAddGuest` (`App.tsx`) optimistically added
+     the new guest to local state, then called `addGuestToDB()` - which silently swallowed ANY
+     failure (thrown error or a real `{status:'error'}` rejection) into a bare `{id: null}`, no
+     exception, no rollback. `GuestManagement.tsx`'s submit handler compounded this by calling
+     `onAddGuest()` without awaiting it at all, then unconditionally showing "Guest booked
+     successfully!" and resetting the form. Net effect, reproduced live: a booking that the
+     backend genuinely rejected (invalid phone) still appeared as a fully real booking everywhere
+     (Dashboard Alerts, calendar, Arrivals count) with a success toast, indistinguishable from one
+     that actually saved - until the next page reload silently dropped it. Fixed the whole chain:
+     `addGuestToDB()` now throws with the real backend message; `handleAddGuest()` is `async`,
+     awaits it, and rolls back the optimistic state add on failure; `GuestManagement.tsx`'s submit
+     now `await`s + shows the real error instead of a hardcoded success toast. Three other call
+     sites that wrap `onAddGuest` in a modal-closing callback (`BillingCheckout.tsx`,
+     `OperationalDashboard.tsx` x2) updated to match - two now `await` and only close on success,
+     one (OTA-block conversion, which deliberately stays fire-and-forget to avoid an unrelated
+     refetch race - see its own comment) got a `.catch()` so a real failure still reaches the user
+     as a toast instead of vanishing silently. Re-tested live after the fix: the same rejected
+     booking no longer appears anywhere, confirmed empty in the DB too.
 
 ---
 
-*Last Updated: 2026-08-12 (morning)*
+## Still open (not covered above)
+
+- **Staff "Access All Properties," real browser session.** Verified at the
+  API/curl level (see Security section above) but not clicked through in a
+  browser. Check the toggle on the Create/Update Staff forms, log in as a
+  flagged staff account, confirm the property picker shows every property
+  under the tenant and none from other tenants, pick one and confirm it
+  lands in that property's dashboard already logged in (no second login
+  prompt), then navigate directly to a different property in the same
+  tenant's URL and confirm that also just works without re-authenticating.
+
+---
+
+*Last Updated: 2026-08-23*
 
