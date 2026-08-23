@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, CheckCircle2, Clock, Home, ChevronLeft, ChevronRight, Pencil, Trash2, Settings, X } from './icons/FlowbiteIcons';
 import { Tooltip } from './Tooltip';
+import { Popover } from './Popover';
 import {
   ServiceRequestType,
   createServiceRequestInDB,
@@ -358,8 +359,28 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
   return (
     <div className="space-y-6 service-requests-management__container">
       <PageHeader
-        title={t('guest_service_requests_heading', 'Guest Service Requests')}
-        subtitle={t('service_requests_description', 'Housekeeping, maintenance, and other ad-hoc requests — logged by any staff member, nudged to Admin on Telegram.')}
+        title={
+          <span className="inline-flex items-center gap-2">
+            {t('service_requests_heading', 'Service Requests')}
+            <Popover
+              placement="bottom"
+              trigger="click"
+              title="About this page"
+              content={
+                <div className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-300 leading-relaxed max-w-xs">
+                  {t('service_requests_description', 'Housekeeping, maintenance, and other ad-hoc requests — logged by any staff member, nudged to Admin on Telegram.')}
+                </div>
+              }
+            >
+              <button
+                type="button"
+                className="btn-compact-stepper text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer shrink-0"
+              >
+                Help?
+              </button>
+            </Popover>
+          </span>
+        }
       >
         <div className="flex items-center gap-2 flex-wrap">
           <PageHeaderButton variant="secondary" onClick={() => setIsManageModalOpen(true)} icon={Settings}>
@@ -370,7 +391,6 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
           </PageHeaderButton>
         </div>
       </PageHeader>
-
       <Card className="shadow-md border-gray-200 dark:border-gray-700 service-requests-management__list-card">
         {loading ? (
           <div className="text-center py-6 text-slate-500 dark:text-slate-400 text-sm service-requests-management__loading">{t('loading_spinner_default_message', 'Loading...')}</div>

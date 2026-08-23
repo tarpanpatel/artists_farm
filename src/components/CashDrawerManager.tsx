@@ -328,8 +328,28 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
   return (
     <div className="cash-drawer space-y-6 text-slate-800 dark:text-slate-200">
       <PageHeader
-        title={t('finances_portal_title', 'Finances & Payroll')}
-        subtitle={t('finances_description', 'Track staff cash responsibilities, adjust drawer balances, and calculate monthly payroll payouts.')}
+        title={
+          <span className="inline-flex items-center gap-2">
+            {t('finances_portal_title', 'Finances & Payroll')}
+            <Popover
+              placement="bottom"
+              trigger="click"
+              title="About this page"
+              content={
+                <div className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-300 leading-relaxed max-w-xs">
+                  {t('finances_description', 'Track staff cash responsibilities, adjust drawer balances, and calculate monthly payroll payouts.')}
+                </div>
+              }
+            >
+              <button
+                type="button"
+                className="btn-compact-stepper text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer shrink-0"
+              >
+                Help?
+              </button>
+            </Popover>
+          </span>
+        }
       />
 
       {/* System Totals Bar */}

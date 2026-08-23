@@ -10,6 +10,7 @@ import { Input } from './Input';
 import { Button } from './Button';
 import { Badge } from './Badge';
 import { StyledSelect } from './StyledSelect';
+import { Popover } from './Popover';
 import { t } from '../i18n/en';
 
 // Category has no separate table/entity of its own - it's just a free-text
@@ -335,14 +336,33 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
   return (
     <div className="misc-charges-management space-y-6">
       <PageHeader
-        title={t('misc_charges_heading', 'Expense Categories & Items')}
-        subtitle={t('misc_charges_description', 'Edit or delete any item, including system defaults (marked) - defaults are only ever changed for this property, never for others. Add custom items within any category as needed.')}
+        title={
+          <span className="inline-flex items-center gap-2">
+            {t('misc_charges_heading', 'Expense Categories & Items')}
+            <Popover
+              placement="bottom"
+              trigger="click"
+              title="About this page"
+              content={
+                <div className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-300 leading-relaxed max-w-xs">
+                  {t('misc_charges_description', 'Edit or delete any item, including system defaults (marked) — defaults are only ever changed for this property, never for others. Add custom items within any category as needed.')}
+                </div>
+              }
+            >
+              <button
+                type="button"
+                className="btn-compact-stepper text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer shrink-0"
+              >
+                Help?
+              </button>
+            </Popover>
+          </span>
+        }
       >
         <PageHeaderButton onClick={() => { setIsCreatingCategoryModal(false); setIsAddModalOpen(true); }} icon={Plus}>
           {t('add_new_service_button', 'Add New Service')}
         </PageHeaderButton>
       </PageHeader>
-
       <div className="misc-charges-management__table-card bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md overflow-hidden">
         {/* Flowbite Datatable Toolbar */}
         <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-800">

@@ -24,6 +24,29 @@
 @plugin "flowbite/plugin";
 @source "../node_modules/flowbite";
 
+/* flowbite-react's own component internals (e.g. Table.tsx's decorative
+   backing div: "absolute left-0 top-0 -z-10 h-full w-full rounded-lg
+   bg-white drop-shadow-md dark:bg-black") bake real Tailwind utility
+   classnames directly into their compiled dist/*.js, same as
+   flowbite-datepicker below - and were missing their own @source the same
+   way (found 23 Aug 2026). The plugin line above only supplies flowbite-
+   react's theme tokens; it does not make Tailwind scan flowbite-react's own
+   files for class usage. Without this, any utility flowbite-react uses that
+   ISN'T also typed verbatim somewhere in this app's own source never gets
+   compiled - most silently (missing shadow, wrong color), but "-z-10"
+   specifically produced a real, user-visible bug: with no compiled z-index,
+   <Table>'s absolutely-positioned backing div (position:absolute) out-
+   ranks the actual <table> (position:static) in CSS paint order - positioned
+   elements always paint above static in-flow ones regardless of DOM order -
+   so the backing div's opaque bg-white/dark:bg-black rendered ON TOP of and
+   completely hid the real table underneath, except for whatever column(s)
+   legitimately overflowed past the backing div's own w-full width into the
+   table's horizontal-scroll region. Confirmed live via Playwright: forcing
+   z-index:-10 on the backing div (simulating this fix) made the fully-
+   hidden Monthly Payout Calculator table (CashDrawerManager.tsx) render
+   correctly end-to-end. */
+@source "../node_modules/flowbite-react";
+
 /* flowbite-datepicker (the vanilla-JS lib flowbite's own docs site uses for
    its "Date Range Picker" demo - flowbite-react ships no range-picker
    component at all) bakes real Flowbite utility classnames directly into its

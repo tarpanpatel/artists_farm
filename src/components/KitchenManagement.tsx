@@ -1773,44 +1773,42 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
                 {/* Symmetrical Flowbite Stepper */}
                 <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-700/60 rounded-lg p-0.5 border border-gray-200 dark:border-gray-600">
-                  <Tooltip content="Decrease quantity">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (inCartQty > 0) handleUpdateCartQuantity(item.id, -1);
-                      }}
-                      disabled={inCartQty === 0}
-                      className={`w-7 h-7 rounded-md shrink-0 flex items-center justify-center transition-all ${
-                        inCartQty === 0
-                          ? 'bg-transparent text-gray-300 dark:text-gray-600 cursor-not-allowed opacity-40'
-                          : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 active:scale-90 cursor-pointer shadow-xs'
-                      }`}
-                    >
-                      <Minus className="w-3.5 h-3.5" />
-                    </button>
-                  </Tooltip>
+                  <button
+                    type="button"
+                    aria-label="Decrease quantity"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (inCartQty > 0) handleUpdateCartQuantity(item.id, -1);
+                    }}
+                    disabled={inCartQty === 0}
+                    className={`btn-compact-stepper w-7 h-7 rounded-md shrink-0 flex items-center justify-center transition-all ${
+                      inCartQty === 0
+                        ? 'bg-transparent text-gray-300 dark:text-gray-600 cursor-not-allowed opacity-40'
+                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 active:scale-90 cursor-pointer shadow-xs'
+                    }`}
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
                   <span className={`font-bold text-xs w-6 text-center ${
                     inCartQty > 0 ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'
                   }`}>
                     {inCartQty}
                   </span>
-                  <Tooltip content="Increase quantity">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleAddToCartWithFeedback(item);
-                      }}
-                      className={`w-7 h-7 rounded-md shrink-0 text-white flex items-center justify-center active:scale-90 transition-all cursor-pointer shadow-xs ${
-                        isRecentlyAdded
-                          ? 'bg-blue-600 scale-95 animate-pulse'
-                          : 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600'
-                      }`}
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                  </Tooltip>
+                  <button
+                    type="button"
+                    aria-label="Increase quantity"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAddToCartWithFeedback(item);
+                    }}
+                    className={`btn-compact-stepper w-7 h-7 rounded-md shrink-0 text-white flex items-center justify-center active:scale-90 transition-all cursor-pointer shadow-xs ${
+                      isRecentlyAdded
+                        ? 'bg-blue-600 scale-95 animate-pulse'
+                        : 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600'
+                    }`}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
             </div>
@@ -2135,27 +2133,25 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                           </div>
 
                           <div className="flex items-center gap-1 rounded-md bg-gray-50 dark:bg-gray-700/60 p-0.5 border border-gray-200 dark:border-gray-600 shrink-0">
-                            <Tooltip content="Decrease quantity">
-                              <button
-                                type="button"
-                                onClick={() => handleUpdateCartQuantity(ci.menuItem.id, -1)}
-                                className="w-7 h-7 rounded-md shrink-0 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90 border border-gray-200 dark:border-gray-600 shadow-xs"
-                              >
-                                <Minus className="w-3.5 h-3.5" />
-                              </button>
-                            </Tooltip>
+                            <button
+                              type="button"
+                              aria-label="Decrease quantity"
+                              onClick={() => handleUpdateCartQuantity(ci.menuItem.id, -1)}
+                              className="btn-compact-stepper w-6 h-6 rounded-md shrink-0 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90 border border-gray-200 dark:border-gray-600 shadow-xs"
+                            >
+                              <Minus className="w-3.5 h-3.5" />
+                            </button>
                             <span className="w-6 text-center font-bold text-gray-900 dark:text-white text-xs">
                               {ci.quantity}
                             </span>
-                            <Tooltip content="Increase quantity">
-                              <button
-                                type="button"
-                                onClick={() => handleUpdateCartQuantity(ci.menuItem.id, 1)}
-                                className="w-7 h-7 rounded-md shrink-0 bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center transition-colors cursor-pointer active:scale-90 shadow-xs"
-                              >
-                                <Plus className="w-3.5 h-3.5" />
-                              </button>
-                            </Tooltip>
+                            <button
+                              type="button"
+                              aria-label="Increase quantity"
+                              onClick={() => handleUpdateCartQuantity(ci.menuItem.id, 1)}
+                              className="btn-compact-stepper w-6 h-6 rounded-md shrink-0 bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center transition-colors cursor-pointer active:scale-90 shadow-xs"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </div>
                       ))
@@ -2256,27 +2252,25 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       </div>
 
                       <div className="flex items-center gap-1 rounded-md bg-white dark:bg-gray-800 p-0.5 border border-gray-200 dark:border-gray-600 shrink-0">
-                        <Tooltip content="Decrease quantity">
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateCartQuantity(ci.menuItem.id, -1)}
-                            className="w-7 h-7 rounded-md shrink-0 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90 border border-gray-200 dark:border-gray-600 shadow-xs"
-                          >
-                            <Minus className="w-3.5 h-3.5" />
-                          </button>
-                        </Tooltip>
+                        <button
+                          type="button"
+                          aria-label="Decrease quantity"
+                          onClick={() => handleUpdateCartQuantity(ci.menuItem.id, -1)}
+                          className="btn-compact-stepper w-6 h-6 rounded-md shrink-0 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90 border border-gray-200 dark:border-gray-600 shadow-xs"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
                         <span className="w-6 text-center font-bold text-gray-900 dark:text-white text-xs">
                           {ci.quantity}
                         </span>
-                        <Tooltip content="Increase quantity">
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateCartQuantity(ci.menuItem.id, 1)}
-                            className="w-7 h-7 rounded-md shrink-0 bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center transition-colors cursor-pointer active:scale-90 shadow-xs"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                          </button>
-                        </Tooltip>
+                        <button
+                          type="button"
+                          aria-label="Increase quantity"
+                          onClick={() => handleUpdateCartQuantity(ci.menuItem.id, 1)}
+                          className="btn-compact-stepper w-6 h-6 rounded-md shrink-0 bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center transition-colors cursor-pointer active:scale-90 shadow-xs"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
                   ))}

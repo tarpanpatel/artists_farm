@@ -1016,6 +1016,56 @@ function AppBody({ preloadedData }: AppBodyProps) {
     return item.roles.some(r => r.toLowerCase().trim() === normalizedRole);
   };
 
+  // Strict "should this control even be SHOWN to this role" check (23 Aug
+  // 2026 - "if something is not accessible to a particular role, it should
+  // also not be visible"). Deliberately separate from isRouteAllowed() above:
+  // that one exists to tolerate synthetic/legacy keys so an in-app click
+  // never gets silently bounced back to Dashboard (hence its
+  // always-return-true bypass list for keys like 'take_food_order'), which
+  // is the right behaviour for a route guard but the wrong one for deciding
+  // whether to render a button in the first place - it would make every role
+  // see a "Kitchen" button/quick-actions regardless of actual permission.
+  // This one does the plain, unbypassed role check against the item's own
+  // DB-declared `roles` (same source NavMenuEditor writes to, same check
+  // Navigation.tsx's sidebar already applies), so it stays correct
+  // automatically as an admin edits role grants - no separate config to
+  // keep in sync. Was missing entirely for MobileBottomNav.tsx (found 23 Aug
+  // 2026): every one of its 5 tab buttons plus all 4 Quick Actions sheet
+  // buttons rendered unconditionally for every role, with the sidebar being
+  // the only actually-gated nav surface on mobile.
+  // Fails OPEN (returns true) when the key isn't found in visibleNavItems -
+  // this also covers the case where nav items haven't loaded yet (the
+  // documented cold-start race, see CLAUDE.md's "Sidebar Shows Only
+  // Kitchen" note) so the bottom nav doesn't blank out entirely while data
+  // is still in flight; once real data loads, real gating applies.
+  const canSeeNavKey = (key: string): boolean => {
+    const normalizedRole = activeRole.toLowerCase().trim();
+    if (normalizedRole === 'root admin' || normalizedRole === 'super admin') return true;
+    const item = visibleNavItems.find((i) => (i.uniqueKey || i.tabKey) === key);
+    if (!item) return true;
+    if (!item.isVisible) return false;
+    return item.roles.some((r) => r.toLowerCase().trim() === normalizedRole);
+  };
+
+  // Mobile bottom nav / quick-actions visibility, recomputed whenever role or
+  // nav items change. 'kitchen_orders' deliberately is NOT used to gate
+  // "View Live Kitchen Order" - that key is marked isVisible:false in
+  // NavMenuEditor as a superseded route (folded into take_food_order's own
+  // Live Tickets tab), not access-restricted, so gating on it directly would
+  // hide the button for every role. 'take_food_order' (the umbrella Kitchen
+  // permission) is the correct key, same as the sidebar's own Kitchen
+  // section grouping uses.
+  const mobileNavPermissions = useMemo(() => ({
+    home: canSeeNavKey('dashboard'),
+    guests: canSeeNavKey('all_bookings'),
+    kitchen: canSeeNavKey('take_food_order'),
+    finances: canSeeNavKey('finances'),
+    addExpense: canSeeNavKey('expenses'),
+    addBooking: canSeeNavKey('all_bookings'),
+    addFoodOrder: canSeeNavKey('take_food_order'),
+    viewLiveKitchenOrder: canSeeNavKey('take_food_order'),
+  }), [activeRole, visibleNavItems]);
+
   // Guard Effect 1: Trigger whenever activeRole, activeMenuItemKey, or visibleNavItems update
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -1815,6 +1865,7 @@ ${itemsStr}
             kitchenModuleEnabled={kitchenEnabled}
             onOpenAddBooking={() => setIsAddBookingModalOpen(true)}
             onOpenAddExpense={() => setIsAddExpenseModalOpen(true)}
+            permissions={mobileNavPermissions}
           />
         )}
 

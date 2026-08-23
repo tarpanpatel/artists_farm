@@ -1,16 +1,19 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
+import {
   Copy,
   Check,
   Trash2,
   Plus,
-  RefreshCw, 
+  RefreshCw,
   Globe,
   Clock,
   CheckCircle2,
   ShieldCheck,
   Search,
-  Layers} from './icons/FlowbiteIcons';
+  Layers,
+  Pencil,
+  Download,
+  Upload} from './icons/FlowbiteIcons';
 import { Drawer } from 'flowbite-react';
 import { X } from './icons/FlowbiteIcons';
 import { getPropertySlug, getPropertyAndRoomSlugs, API_ROOT_BASE } from '../services/api';
@@ -94,6 +97,17 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
   const [newImportUrl, setNewImportUrl] = useState('');
   const [selectedRoomForImport, setSelectedRoomForImport] = useState<string>('all');
   const [isAdding, setIsAdding] = useState(false);
+
+  // Drawer state for editing an already-connected feed's IMPORT url (the
+  // .ics link this property/room pulls availability FROM). Kept entirely
+  // separate from ownExportUrl above/below - that's server-generated from
+  // the property/room slug, not stored anywhere, so there's nothing to edit
+  // on it, only copy. This drawer exists specifically so that's never
+  // ambiguous once an edit affordance exists (23 Aug 2026).
+  const [editingCalendar, setEditingCalendar] = useState<Calendar | null>(null);
+  const [editServiceName, setEditServiceName] = useState('');
+  const [editUrl, setEditUrl] = useState('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   // Per-room import form inputs
   const [roomImportPlatforms, setRoomImportPlatforms] = useState<{ [roomId: number]: string }>({});
@@ -207,6 +221,60 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
       showToast('Network error: ' + (err?.message || 'Could not connect'), { type: 'error' });
     } finally {
       setIsAdding(false);
+    }
+  };
+
+  const openEditModal = (cal: Calendar) => {
+    setEditingCalendar(cal);
+    setEditServiceName(cal.service_name);
+    setEditUrl(cal.ical_url);
+  };
+
+  const handleUpdateCalendar = async () => {
+    if (!editingCalendar) return;
+    if (!editUrl.trim()) {
+      showToast('Please enter a valid iCal URL', { type: 'error' });
+      return;
+    }
+
+    try {
+      setIsSavingEdit(true);
+      const payload = {
+        id: editingCalendar.id,
+        service_type: editingCalendar.service_type || 'ical',
+        service_name: editServiceName.trim() || editingCalendar.service_name,
+        ical_url: editUrl.trim(),
+        api_key: null,
+        sync_enabled: true,
+        sync_direction: 'bidirectional',
+      };
+
+      const response = await fetch('/php/api/ical_sync.php?action=update_ical_sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Property-Slug': effectivePropertySlug,
+        },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+      if (data.status === 'success') {
+        let msg = `Import feed "${payload.service_name}" updated`;
+        if (data.sync_status === 'success') {
+          msg += ` — ${data.sync_message || 'resynced'}`;
+        }
+        showToast(msg, { type: 'success', duration: 5000 });
+        setEditingCalendar(null);
+        loadCalendars();
+      } else {
+        showToast(data.message || 'Failed to update iCal feed', { type: 'error' });
+      }
+    } catch (err: any) {
+      showToast('Network error: ' + (err?.message || 'Could not connect'), { type: 'error' });
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -497,7 +565,12 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
             <thead className="bg-slate-100/70 dark:bg-slate-900/80 uppercase text-[10px] font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 tracking-wider ical-sync-manager__table-header">
               <tr className="ical-sync-manager__table-header-row">
                 <th className="p-4 ical-sync-manager__table-header-cell">{t('channel_platform_column', 'Channel / Platform')}</th>
-                <th className="p-4 ical-sync-manager__table-header-cell">{t('endpoint_url_column', 'Endpoint URL (.ics)')}</th>
+                <th className="p-4 ical-sync-manager__table-header-cell">
+                  <span className="flex items-center gap-1.5">
+                    <Download className="w-3 h-3" />
+                    {t('endpoint_url_column', 'Import Feed URL (.ics)')}
+                  </span>
+                </th>
                 <th className="p-4 text-center ical-sync-manager__table-header-cell">{t('sync_mode_column', 'Sync Mode')}</th>
                 <th className="p-4 ical-sync-manager__table-header-cell">{t('last_synchronization_column', 'Last Synchronization')}</th>
                 <th className="p-4 text-center ical-sync-manager__table-header-cell">{t('status_column', 'Status')}</th>
@@ -574,6 +647,14 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
                     {/* Actions */}
                     <td className="ical-sync-manager__cell p-4 text-right">
                       <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => openEditModal(cal)}
+                          leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
+                          title={t('edit_import_feed_tooltip', "Edit this import feed's URL")}
+                        />
+
                         <Button
                           variant="secondary"
                           size="sm"
@@ -673,6 +754,14 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
                     <Button
                       variant="secondary"
                       size="sm"
+                      onClick={() => openEditModal(cal)}
+                      leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
+                      title={t('edit_import_feed_tooltip', "Edit this import feed's URL")}
+                    />
+
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       onClick={() => handleManualSync(cal.id, cal.service_name)}
                       disabled={isSyncing}
                       leftIcon={<RefreshCw className={`w-3.5 h-3.5 shrink-0 ${isSyncing ? 'animate-spin' : ''}`} />}
@@ -741,7 +830,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
           URL. Kept simple: one URL, for one property/room, always visible. */}
       <div className="space-y-2 pt-4 border-t border-slate-200 dark:border-slate-700">
         <h3 className="ical-sync-manager__subtitle text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-          <Layers className="w-5 h-5 text-blue-600" />
+          <Upload className="w-5 h-5 text-blue-600" />
           <span>{t('export_ical_feed_label', 'Export iCal Feed')}</span>
         </h3>
         <p className="text-[11px] text-slate-500 dark:text-slate-400">
@@ -803,7 +892,10 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
                   {/* Connected Feeds for this Room */}
                   {roomCalendars.length > 0 && (
                     <div className="space-y-1.5">
-                      <span className="text-[10px] font-semibold text-slate-500 uppercase">{t('connected_feeds_label', 'Connected Feeds')} ({roomCalendars.length})</span>
+                      <span className="text-[10px] font-semibold text-slate-500 uppercase flex items-center gap-1">
+                        <Download className="w-3 h-3" />
+                        {t('imported_feeds_label', 'Imported Feeds')} ({roomCalendars.length})
+                      </span>
                       <div className="space-y-1.5">
                         {roomCalendars.map((cal) => {
                           const badge = getPlatformBadge(cal.service_name);
@@ -824,6 +916,13 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
                                   title={t('copy_feed_url_tooltip', 'Copy feed URL')}
                                 >
                                   {isCopiedUrl ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                                </button>
+                                <button
+                                  onClick={() => openEditModal(cal)}
+                                  className="p-1 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition cursor-pointer"
+                                  title={t('edit_import_feed_tooltip', "Edit this import feed's URL")}
+                                >
+                                  <Pencil className="w-3 h-3" />
                                 </button>
                                 <button
                                   onClick={() => handleManualSync(cal.id, cal.service_name)}
@@ -1004,6 +1103,94 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
             leftIcon={isAdding ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
           >
             {isAdding ? t('connecting_button', 'Connecting...') : t('connect_feed_button', 'Connect Feed')}
+          </Button>
+        </div>
+      </Drawer>
+
+      {/* Drawer for Editing an existing IMPORT feed's URL (23 Aug 2026,
+          explicit request: there was previously no way to edit a connected
+          feed's URL at all, only delete-and-recreate it). Deliberately
+          labeled unambiguously as the import side (a Download icon + an
+          explicit banner) - ownExportUrl above is server-generated from the
+          property/room slug and never editable, so this drawer is the only
+          "editing" surface on this whole screen and must never be mistaken
+          for touching the export link instead. */}
+      <Drawer
+        open={!!editingCalendar}
+        onClose={() => !isSavingEdit && setEditingCalendar(null)}
+        position="right"
+        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between ical-sync-manager__edit-modal"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-950 border border-sky-200 dark:border-sky-800 flex items-center justify-center text-sky-600 dark:text-sky-400">
+              <Pencil className="w-4 h-4" />
+            </div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white m-0">
+              {t('edit_import_feed_heading', 'Edit Import Feed')}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => !isSavingEdit && setEditingCalendar(null)}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
+          <div className="flex items-start gap-2 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-[11px] text-blue-700 dark:text-blue-300">
+            <Download className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>
+              {t(
+                'edit_import_feed_disambiguation_note',
+                "You're editing an import feed - the .ics link this property/room pulls availability FROM (e.g. your Airbnb calendar). This is separate from your export link, which sends availability OUT to OTAs, is generated automatically, and can't be edited, only copied."
+              )}
+            </span>
+          </div>
+
+          <div>
+            <Input
+              label={t('feed_name_label', 'Feed Name')}
+              type="text"
+              value={editServiceName}
+              onChange={(e) => setEditServiceName(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <Input
+              label={t('edit_ical_feed_url_label', 'Import iCal Feed URL')}
+              type="url"
+              value={editUrl}
+              onChange={(e) => setEditUrl(e.target.value)}
+              placeholder={t('ical_url_example_placeholder', 'https://www.airbnb.com/calendar/ical/...')}
+              className="font-mono"
+            />
+            <p className="text-[10px] text-slate-400 mt-1">
+              {t('edit_ical_feed_url_helper_text', 'Saving re-syncs this feed immediately using the new URL.')}
+            </p>
+          </div>
+        </div>
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => setEditingCalendar(null)}
+            disabled={isSavingEdit}
+          >
+            {t('cancel', 'Cancel')}
+          </Button>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            onClick={handleUpdateCalendar}
+            disabled={isSavingEdit || !editUrl.trim()}
+            leftIcon={isSavingEdit ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+          >
+            {isSavingEdit ? t('saving_button', 'Saving...') : t('save_changes_button', 'Save Changes')}
           </Button>
         </div>
       </Drawer>

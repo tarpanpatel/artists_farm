@@ -951,7 +951,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 showClearButton={false}
                 showTodayButton={false}
                 sizing="sm"
-                className="w-[8.5rem] [&_input]:cursor-pointer [&_input]:text-center [&_input]:text-xs [&_input]:font-semibold"
+                className="w-48 [&_input]:cursor-pointer [&_input]:text-center [&_input]:text-xs [&_input]:font-semibold"
                 title={t('jump_to_month_tooltip', 'Jump to any month/date')}
               />
               <button
@@ -964,7 +964,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               </button>
             </div>
           </div>
-          <div className="flex items-center gap-2 order-1 sm:order-2">
+          <div className="flex items-center gap-2 ml-auto">
             <button
               type="button"
               onClick={() => onNavigate('new_booking')}

@@ -550,7 +550,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   return (
     <div className="space-y-6">
       <PageHeader
-        title={t('payroll_control_center_heading', 'Property Payroll & Payee Control Center')}
+        title={t('payroll_control_center_heading', 'Team Login and Management')}
         subtitle={
           isAttendancePage
             ? t('attendance_page_subtitle', 'Track staff attendance and manage salary details.')

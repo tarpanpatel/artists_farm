@@ -997,6 +997,29 @@ html {
   box-shadow: none !important;
 }
 
+/* Flowbite <Table>'s decorative shadow layer painting OVER the table instead
+   of behind it (found 22 Aug 2026, Team & Access staff table - the whole
+   table rendered as a blank white/black rectangle, no row content visible).
+   Root cause: flowbite-react's own Table.js (node_modules, read not edited -
+   see "Flowbite Core Files vs. Overrides" above) wraps every table in
+   `<div data-testid="table-element" class="relative">`, then renders TWO
+   children - a `absolute -z-10 h-full w-full ... bg-white dark:bg-black`
+   decorative shadow div, THEN the real `<table>`. `-z-10` only reliably
+   stacks "behind its sibling" if this wrapper establishes its OWN stacking
+   context - but `position: relative` alone, with no z-index, does NOT
+   create one per the CSS spec. Without one, the negative z-index can escape
+   to whatever ANCESTOR stacking context is actually in effect (this app has
+   several - see the z-index scale comment below), and its final paint order
+   relative to the table's own row content stops being guaranteed "behind".
+   Forcing a real stacking context right at flowbite's own wrapper (via its
+   stable data-testid, not a class) keeps the shadow div correctly pinned
+   behind the table regardless of what stacking is happening further up the
+   tree - this is the standard fix for this exact "absolutely-positioned
+   negative-z-index decorative layer" pattern, not specific to this app. */
+[data-testid="table-element"] {
+  isolation: isolate;
+}
+
 /* Hide scrollbars cleanly on tab navigation bars while preserving touch/trackpad swipe */
 .no-scrollbar::-webkit-scrollbar {
   display: none !important;
