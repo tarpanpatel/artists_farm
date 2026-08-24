@@ -299,6 +299,8 @@ function AppBody({ preloadedData }: AppBodyProps) {
   const [initialEditStaffName, setInitialEditStaffName] = useState<string | null>(null);
   const [initialReqData, setInitialReqData] = useState<{ itemName?: string; qty?: number; unit?: string } | null>(null);
   const [initialServiceRequestData, setInitialServiceRequestData] = useState<{ roomNumber?: string; item?: string } | null>(null);
+  const [initialAddStaffData, setInitialAddStaffData] = useState<{ name?: string; phone?: string; role?: string; salary?: number } | null>(null);
+  const [initialNewMenuItemData, setInitialNewMenuItemData] = useState<{ name?: string; price?: number; category?: string } | null>(null);
   const [propertyName] = useState<string>(
     preloadedData.currentProperty?.name || getPropertySlug().charAt(0).toUpperCase() + getPropertySlug().slice(1).replace(/-/g, ' ') || 'Property'
   );
@@ -2190,6 +2192,9 @@ ${itemsStr}
                     initialReqItemName={initialReqData?.itemName}
                     initialReqQty={initialReqData?.qty}
                     initialReqUnit={initialReqData?.unit}
+                    initialNewMenuItemName={initialNewMenuItemData?.name}
+                    initialNewMenuItemPrice={initialNewMenuItemData?.price}
+                    initialNewMenuItemCategory={initialNewMenuItemData?.category}
                     propertyName={preloadedData.currentProperty?.name || ''}
                     propertyGstin={preloadedData.currentProperty?.gstin || ''}
                     propertyUpiId={preloadedData.currentProperty?.upi_id || ''}
@@ -2256,6 +2261,10 @@ ${itemsStr}
                     autoOpenAddModal={autoOpenAddStaffModal}
                     onClearAutoOpenAddModal={() => setAutoOpenAddStaffModal(false)}
                     initialEditStaffName={initialEditStaffName || undefined}
+                    initialAddStaffName={initialAddStaffData?.name}
+                    initialAddStaffPhone={initialAddStaffData?.phone}
+                    initialAddStaffRole={initialAddStaffData?.role}
+                    initialAddStaffSalary={initialAddStaffData?.salary}
                   />
                 </ErrorBoundary>
               )}
@@ -2587,6 +2596,12 @@ ${itemsStr}
             }
             if (extraData?.reqItemName || extraData?.reqQty) {
               setInitialReqData({ itemName: extraData.reqItemName, qty: extraData.reqQty, unit: extraData.reqUnit });
+            }
+            if (extraData?.addStaffName || extraData?.addStaffPhone || extraData?.addStaffRole || extraData?.addStaffSalary) {
+              setInitialAddStaffData({ name: extraData.addStaffName, phone: extraData.addStaffPhone, role: extraData.addStaffRole, salary: extraData.addStaffSalary });
+            }
+            if (extraData?.newMenuItemName || extraData?.newMenuItemPrice || extraData?.newMenuItemCategory) {
+              setInitialNewMenuItemData({ name: extraData.newMenuItemName, price: extraData.newMenuItemPrice, category: extraData.newMenuItemCategory });
             }
           }}
           onOpenAddBooking={() => {

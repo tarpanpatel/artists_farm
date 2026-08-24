@@ -114,6 +114,106 @@ function extractStaffNameFromQuery(string $q): ?string {
     return null;
 }
 
+/**
+ * Name/phone/role/salary extraction for the add-staff-member intent (onboarding a brand NEW
+ * employee via StaffManagement.tsx's "Add New Staff Member" drawer, isModalOpen - a different
+ * drawer from the one edit_staff deep-links to, which edits an EXISTING roster row by name).
+ * Added 24 Aug 2026 as part of the proactive action-surface audit (not a live bug report) - see
+ * the "systematic audit" note above getIntentTable(). Deliberately never fills the 6-digit
+ * passcode field - that's a credential the admin should type deliberately, not something safe
+ * to guess or leave blank from a chat message.
+ */
+function extractAddStaffDetails(string $q, string $lower): array {
+    $phone = null;
+    if (preg_match('/\b(\d{10})\b/', $q, $m)) {
+        $phone = $m[1];
+    }
+
+    // Matches StaffManagement.tsx's roleOptions exactly - only overridden when a specific role
+    // word is present; otherwise left null so the form's own default selection stands.
+    $role = null;
+    if (str_contains($lower, 'kitchen')) {
+        $role = 'Staff Kitchen';
+    } elseif (str_contains($lower, 'supervisor')) {
+        $role = 'Staff Supervisor';
+    } elseif (str_contains($lower, 'admin')) {
+        $role = 'Admin';
+    }
+
+    $salary = null;
+    if (preg_match('/salary\D{0,12}(\d{3,7})/i', $q, $m)) {
+        $salary = (float)$m[1];
+    }
+
+    $stopWords = ['add', 'new', 'staff', 'team', 'member', 'as', 'a', 'an', 'the', 'phone', 'number',
+        'salary', 'role', 'onboard', 'hire', 'register', 'create', 'account', 'for', 'with', 'kitchen',
+        'supervisor', 'admin'];
+    $name = null;
+    if (preg_match_all('/\b([A-Z][a-z]+)\b/', $q, $capMatches)) {
+        foreach ($capMatches[1] as $candidate) {
+            if (!in_array(strtolower($candidate), $stopWords, true)) {
+                $name = $candidate;
+                break;
+            }
+        }
+    }
+    if ($name === null && preg_match('/(?:member|staff)\s+([A-Za-z]+)/i', $q, $m)) {
+        $candidate = ucfirst(strtolower(trim($m[1])));
+        if (!in_array(strtolower($candidate), $stopWords, true)) {
+            $name = $candidate;
+        }
+    }
+
+    return [$name, $phone, $role, $salary];
+}
+
+/**
+ * Name/price/category extraction for the add-menu-item intent (KitchenManagement.tsx's "Add New
+ * Food Menu Item" drawer, isNewMenuModalOpen - Kitchen ➔ Edit Food Menu tab). Added 24 Aug 2026,
+ * same proactive audit as extractAddStaffDetails() above.
+ */
+function extractAddMenuItemDetails(string $q, string $lower): array {
+    $price = null;
+    if (preg_match('/(?:rs\.?|rupees|inr|₹)\s*(\d+(?:\.\d{1,2})?)|(\d+(?:\.\d{1,2})?)\s*(?:rs|rupees|inr|₹)/i', $q, $m)) {
+        $price = (float)(!empty($m[1]) ? $m[1] : $m[2]);
+    } elseif (preg_match('/\b(?:for|at|price)\s+(\d+(?:\.\d{1,2})?)\b/i', $q, $m)) {
+        $price = (float)$m[1];
+    }
+
+    // Matches KitchenManagement.tsx's newItemCategory dropdown options exactly.
+    $category = null;
+    if (str_contains($lower, 'starter')) {
+        $category = 'Starters';
+    } elseif (str_contains($lower, 'main course') || str_contains($lower, 'main dish')) {
+        $category = 'Main Course';
+    } elseif (str_contains($lower, 'beverage') || str_contains($lower, 'drink')) {
+        $category = 'Beverages';
+    } elseif (str_contains($lower, 'farm special')) {
+        $category = 'Farm Specials';
+    } elseif (str_contains($lower, 'dessert') || str_contains($lower, 'sweet')) {
+        $category = 'Desserts';
+    }
+
+    // 'recipe'/'recipes' added 24 Aug 2026 alongside the 'add recipe'/'new recipe' trigger
+    // phrases - without it, "add a new recipe for X" left "recipe" stuck in the extracted name.
+    $stopWords = ['add', 'new', 'menu', 'item', 'food', 'dish', 'create', 'for', 'at', 'price',
+        'rs', 'rupees', 'inr', 'the', 'a', 'an', 'to', 'starter', 'starters', 'main', 'course',
+        'beverage', 'beverages', 'drink', 'farm', 'special', 'specials', 'dessert', 'desserts', 'sweet', 'category', 'in',
+        'recipe', 'recipes'];
+    $words = preg_split('/[\s,]+/', $q);
+    $filteredWords = [];
+    foreach ($words as $w) {
+        $wClean = strtolower(trim(preg_replace('/[^a-zA-Z0-9]/', '', $w)));
+        if (empty($wClean) || in_array($wClean, $stopWords, true) || is_numeric($wClean)) {
+            continue;
+        }
+        $filteredWords[] = $w;
+    }
+    $name = !empty($filteredWords) ? implode(' ', $filteredWords) : null;
+
+    return [$name, $price, $category];
+}
+
 /** Amount/category/description extraction for the add-expense intent (unchanged from before). */
 function extractExpenseAction(string $q, string $lower): array {
     $extractedAmount = null;
@@ -214,7 +314,13 @@ function extractMaterialRequestDetails(string $q): array {
     // ends up misread as part of the item name (e.g. "100gm" itself isn't purely numeric, so a
     // plain is_numeric() stopword check alone wouldn't have caught it).
     $remaining = $matchedText !== '' ? str_replace($matchedText, ' ', $q) : $q;
-    $stopWords = ['request', 'need', 'order', 'get', 'raw', 'material', 'stock', 'the', 'a', 'an', 'of', 'for', 'me', 'please', 'more'];
+    // 'we'/'are'/'is'/'running'/'low'/'out'/'on'/'restock' added 24 Aug 2026 alongside the
+    // 'running low'/'restock'/'out of stock' trigger phrases above - those phrasings have no
+    // quantity/unit word to anchor extraction on, so without these the filler words would leak
+    // straight into the extracted item text (e.g. "we are running low on rice" -> item "we are
+    // running low on rice" instead of "rice").
+    $stopWords = ['request', 'need', 'order', 'get', 'raw', 'material', 'stock', 'the', 'a', 'an', 'of', 'for', 'me', 'please', 'more',
+        'we', 'are', 'is', 'running', 'low', 'out', 'on', 'restock'];
     $words = preg_split('/[\s,]+/', $remaining);
     $filteredWords = [];
     foreach ($words as $w) {
@@ -238,7 +344,16 @@ function getIntentTable(): array {
                 'technology', 'tech stack', 'what code', 'source code', 'framework',
                 'programming language', 'database used', 'what language', 'react', 'tailwind',
                 'laravel', 'php version', 'backend code', 'frontend code', 'architecture',
-                'mysql', 'how is this built', 'coded in', 'built with', 'which language'
+                'mysql', 'how is this built', 'coded in', 'built with', 'which language',
+                // Broadened 24 Aug 2026 (proactive coverage pass, not a live report) - more
+                // language/stack names plus credential-probing phrases, since "what's the API
+                // key" is the same class of internal-info request this intent already refuses.
+                'node', 'nodejs', 'node.js', 'javascript', 'typescript', 'python', 'github',
+                'repository', 'repo', 'open source', 'server code', 'view source', 'show me the code',
+                'hosting provider', 'where is this hosted', 'sql injection', 'vulnerability',
+                'admin password', 'root password', 'database password', 'database credentials',
+                'db password', 'env file', '.env', 'secret key', 'api key',
+                ['show', 'code'], ['your', 'code'], ['app', 'architecture'], ['which', 'database'],
             ],
             'handler' => fn(string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array => [
                 'reply' => "🔒 Security Refusal: I am trained exclusively to assist with Ground Code PMS & KDS hotel management operations and user workflows. Internal software architecture, code details, and technology stack information are private and strictly confidential.",
@@ -251,7 +366,11 @@ function getIntentTable(): array {
             'type' => 'how_to_export_csv',
             'phrases' => [
                 'export csv', 'download csv', 'download excel', 'export finances', 'export data',
-                ['how', 'export'], ['how', 'csv'], ['how', 'excel'], ['how', 'download']
+                ['how', 'export'], ['how', 'csv'], ['how', 'excel'], ['how', 'download'],
+                // Broadened 24 Aug 2026 (proactive coverage pass).
+                'download report', 'export report', 'get csv', 'get excel', 'excel sheet',
+                'export bookings', 'download spreadsheet', 'export sheet',
+                ['how', 'spreadsheet'], ['how', 'report'],
             ],
             'handler' => fn(string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array => [
                 'reply' => "📊 How to Export CSV & Financial Data:\n\n1. Go to the left sidebar menu and click 'Download Data & Excel' (or go to Finances / Reports).\n2. Click the 'Export CSV' button on top of any table.\n3. Choose your desired date range and click 'Download CSV File'.",
@@ -267,7 +386,11 @@ function getIntentTable(): array {
             // TO ..." vs "how many ..." is exactly the distinction 'to' captures.
             'phrases' => [
                 'how to check in', 'how to book', 'check in guest', 'register guest',
-                ['how', 'to', 'checkin'], ['how', 'to', 'booking'], ['how', 'to', 'guest']
+                ['how', 'to', 'checkin'], ['how', 'to', 'booking'], ['how', 'to', 'guest'],
+                // Broadened 24 Aug 2026 (proactive coverage pass) - kept the 'to' requirement in
+                // every AND-group, same reason the original ones needed it (see comment above).
+                'how to add guest', 'checkin process', 'checkin steps', 'guest registration process',
+                ['how', 'to', 'register'], ['how', 'to', 'add', 'guest'], ['steps', 'to', 'checkin'],
             ],
             'handler' => fn(string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array => [
                 'reply' => "🏨 How to Register & Check In a Guest:\n\n1. Click the '+ Add Booking' button in the top header bar or on the Bookings page.\n2. Fill in the guest's name, mobile number, room number, check-in date, and expected checkout.\n3. Upload ID document verification if required and click 'Save Booking'.",
@@ -278,7 +401,10 @@ function getIntentTable(): array {
             'type' => 'how_to_log_expense',
             'phrases' => [
                 'how to log expense', 'how to add expense', 'how to record expense',
-                ['how', 'expense'], ['how', 'petty']
+                ['how', 'expense'], ['how', 'petty'],
+                // Broadened 24 Aug 2026 (proactive coverage pass).
+                'how to track expense', 'how to add petty cash', 'petty cash guide', 'expense guide',
+                ['guide', 'expense'], ['how', 'record', 'expense'],
             ],
             'handler' => fn(string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array => [
                 'reply' => "💸 How to Log a Petty Cash Expense:\n\n1. Go to Expenses on the left sidebar and click '+ Add Expense' (or ask me: 'log 150 rs for wifi').\n2. Select the Category (Bills, Staff Advance, Kitchen, or Other).\n3. Enter the amount, item details, payment source (Property Funds vs Out-of-Pocket), and click 'Add Expense'.",
@@ -289,7 +415,10 @@ function getIntentTable(): array {
             'type' => 'how_to_use_kds',
             'phrases' => [
                 'how to use kds', 'how kitchen works', 'how to take food order',
-                ['how', 'kot'], ['how', 'kitchen']
+                ['how', 'kot'], ['how', 'kitchen'],
+                // Broadened 24 Aug 2026 (proactive coverage pass).
+                'how to place order', 'how to take order', 'kds guide', 'kitchen display guide',
+                'how to send kot', ['how', 'ticket'], ['how', 'dish', 'status'],
             ],
             'handler' => fn(string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array => [
                 'reply' => "🍳 How to Use Kitchen KDS & Food Orders:\n\n1. Click 'Kitchen ➔ Food Orders' on the sidebar.\n2. Use the 'Take Order' tab to place resident room orders or walk-in table orders.\n3. The Kitchen Display System (KDS) streams live orders to kitchen screens with active ticket timers and dish status buttons (Ready / Served).",
@@ -300,7 +429,13 @@ function getIntentTable(): array {
         // --- ROOT-ADMIN-ONLY ACTIONS ---
         [
             'type' => 'open_telescope',
-            'phrases' => ['telescope', 'system error', 'error log', 'error monitor'],
+            'phrases' => [
+                'telescope', 'system error', 'error log', 'error monitor',
+                // Broadened 24 Aug 2026 (proactive coverage pass).
+                'telescope dashboard', 'error dashboard', 'error console', 'crash log', 'crash report',
+                'js errors', 'php errors', 'sql errors', 'debug log', 'application errors',
+                ['show', 'errors'], ['view', 'errors'], ['check', 'errors'],
+            ],
             'handler' => function (string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array {
                 if (!$roleFlags['isRootAdmin']) {
                     return ['reply' => "🔒 Access Denied: The Telescope Error Monitor is restricted to Root Admin users. Your current logged-in role is '$userRole'.", 'action' => null];
@@ -322,6 +457,15 @@ function getIntentTable(): array {
                 'account settings', 'my account', 'my profile',
                 ['change', 'passcode'], ['update', 'passcode'], ['reset', 'passcode'], ['my', 'passcode'],
                 ['change', 'pin'], ['update', 'pin'], ['my', 'pin'],
+                // Broadened 24 Aug 2026 (proactive coverage pass) - passcode/PIN/password are all
+                // the same "my own login credential" concept to a real user, phrased differently.
+                'change password', 'update password', 'reset password', 'forgot password', 'my login',
+                'login settings', ['change', 'login'], ['update', 'login'], ['my', 'password'],
+                // AND-group forms too, not just the contiguous literals above - "I forgot MY
+                // password" is more natural than the bare literal "forgot password" and wouldn't
+                // match a contiguous-only phrase (same reasoning the original passcode/pin
+                // AND-groups above were built on).
+                ['change', 'password'], ['update', 'password'], ['reset', 'password'], ['forgot', 'password'],
             ],
             'handler' => function (string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array {
                 if ($roleFlags['isRootAdmin']) {
@@ -344,7 +488,13 @@ function getIntentTable(): array {
         ],
         [
             'type' => 'configure_ai',
-            'phrases' => ['configure ai', 'ai setting', 'set api key'],
+            'phrases' => [
+                'configure ai', 'ai setting', 'set api key',
+                // Broadened 24 Aug 2026 (proactive coverage pass).
+                'ai configuration', 'ai provider', 'gemini setting', 'openai setting', 'chatbot setting',
+                'setup ai', 'configure chatbot', ['ai', 'provider'], ['ai', 'key'], ['gemini', 'key'],
+                ['openai', 'key'],
+            ],
             'handler' => function (string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array {
                 if (!$roleFlags['isRootAdmin']) {
                     return ['reply' => "🔒 Access Denied: AI Provider & API Key configurations are restricted to Root Admin users. Your current logged-in role is '$userRole'.", 'action' => null];
@@ -356,7 +506,13 @@ function getIntentTable(): array {
         // --- ADMIN / ROOT-ADMIN ACTIONS ---
         [
             'type' => 'open_telegram_modal',
-            'phrases' => ['telegram modal', 'telegram setting', 'open telegram', 'telegram alert'],
+            'phrases' => [
+                'telegram modal', 'telegram setting', 'open telegram', 'telegram alert',
+                // Broadened 24 Aug 2026 (proactive coverage pass).
+                'telegram bot', 'telegram group', 'telegram channel', 'telegram config',
+                'telegram notification', ['telegram', 'group'], ['telegram', 'channel'],
+                ['telegram', 'bot'], ['configure', 'telegram'], ['setup', 'telegram'],
+            ],
             'handler' => function (string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array {
                 if (!$roleFlags['isAdmin']) {
                     return ['reply' => "🔒 Access Denied: Telegram bot configuration is restricted to Admin users. Your current logged-in role is '$userRole'.", 'action' => null];
@@ -375,6 +531,13 @@ function getIntentTable(): array {
                 ['property', 'phone'], ['property', 'gstin'], ['property', 'address'],
                 ['property', 'upi'], ['property', 'whatsapp'], ['property', 'maps'],
                 ['add', 'property'], ['update', 'property'], ['change', 'property'],
+                // Broadened 24 Aug 2026 (proactive coverage pass) - more property-settings fields,
+                // plus 'resort'/'hotel' as synonyms for 'property' since staff naturally use
+                // whichever word matches their own property type.
+                'property settings', 'resort details', 'hotel settings', 'hotel detail', 'update resort',
+                'change resort', ['property', 'name'], ['property', 'logo'], ['property', 'checkin'],
+                ['property', 'checkout'], ['property', 'wifi'], ['resort', 'phone'], ['resort', 'address'],
+                ['hotel', 'phone'], ['hotel', 'address'],
             ],
             'handler' => function (string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array {
                 if (!$roleFlags['isAdmin']) {
@@ -395,6 +558,13 @@ function getIntentTable(): array {
                 ['change', 'number'], ['update', 'number'], ['edit', 'number'],
                 ['staff', 'phone'], ['staff', 'salary'], ['staff', 'role'], ['staff', 'status'],
                 ['update', 'staff'], ['change', 'staff'], ['staff', 'details'],
+                // Broadened 24 Aug 2026 (proactive coverage pass) - 'employee' as a synonym for an
+                // EXISTING staff record (edit-verbs only, so 'add employee' still correctly routes
+                // to add_staff_member below instead of colliding here).
+                'staff information', 'staff record', 'staff profile', 'update employee', 'change employee',
+                'edit employee', ['employee', 'phone'], ['employee', 'salary'], ['edit', 'role'],
+                ['update', 'role'], ['change', 'role'], ['edit', 'salary'], ['update', 'salary'],
+                ['edit', 'status'], ['update', 'status'],
             ],
             'handler' => function (string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array {
                 if (!$roleFlags['isAdmin']) {
@@ -408,8 +578,81 @@ function getIntentTable(): array {
             },
         ],
         [
+            'type' => 'add_staff_member',
+            // Added 24 Aug 2026 - NOT a live bug report, found via the proactive action-surface
+            // audit (grepping every isXModalOpen across src/components) after the user asked
+            // "how do we make the AI know all actions in advance" a second time. Deliberately a
+            // DIFFERENT intent from edit_staff above: that one deep-links into an EXISTING
+            // roster row by name (isTeamMemberModalOpen's update flow); this one opens the
+            // blank "Add New Staff Member" drawer (isModalOpen) for onboarding someone new.
+            'phrases' => [
+                'add staff member', 'add new staff', 'new staff member', 'add team member', 'new team member',
+                'onboard staff', 'hire staff', 'register new staff',
+                ['add', 'staff', 'member'], ['new', 'staff', 'member'], ['add', 'new', 'staff'],
+                ['add', 'team', 'member'], ['new', 'team', 'member'], ['create', 'staff'], ['onboard', 'staff'],
+                ['hire', 'staff'],
+                // Broadened 24 Aug 2026 (proactive coverage pass) - 'employee'/'worker' as
+                // synonyms, add-verbs only (edit_staff above owns the update/change/edit verbs on
+                // the same nouns, so there's no overlap).
+                'add new employee', 'new employee', 'add employee', 'hire employee', 'onboard employee',
+                'recruit staff', 'add new worker', 'new worker',
+                ['add', 'new', 'employee'], ['hire', 'employee'], ['onboard', 'employee'],
+                ['recruit', 'staff'], ['add', 'worker'], ['new', 'worker'],
+            ],
+            'handler' => function (string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array {
+                if (!$roleFlags['isAdmin']) {
+                    return ['reply' => "🔒 Access Denied: Adding a new staff member is restricted to Admin users. Your current logged-in role is '$userRole'.", 'action' => null];
+                }
+                [$name, $phone, $role, $salary] = extractAddStaffDetails($q, $lower);
+                $bits = [];
+                if ($name) $bits[] = "'$name'";
+                if ($phone) $bits[] = "phone $phone";
+                if ($role) $bits[] = "role $role";
+                if ($salary) $bits[] = "₹$salary salary";
+                $replyMsg = "Opening 'Add New Staff Member' form" . (!empty($bits) ? " pre-filled with " . implode(', ', $bits) : " for you") . "...";
+                return [
+                    'reply' => $replyMsg,
+                    'action' => ['type' => 'navigate', 'tab' => 'staff', 'itemKey' => 'staff_directory_salaries', 'addStaffName' => $name, 'addStaffPhone' => $phone, 'addStaffRole' => $role, 'addStaffSalary' => $salary],
+                ];
+            },
+        ],
+        [
+            'type' => 'add_menu_item',
+            // Added 24 Aug 2026, same proactive audit as add_staff_member above.
+            'phrases' => [
+                'add menu item', 'new menu item', 'add food item', 'new food item', 'add new dish', 'create new dish',
+                ['add', 'menu', 'item'], ['new', 'menu', 'item'], ['add', 'food', 'item'], ['add', 'new', 'dish'],
+                ['create', 'new', 'dish'], ['add', 'dish'], ['new', 'dish'],
+                // Broadened 24 Aug 2026 (proactive coverage pass).
+                'add new food', 'new food', 'add recipe', 'new recipe', 'create menu item', 'add starter',
+                'add main course', 'add beverage', 'add dessert',
+                ['add', 'new', 'food'], ['create', 'menu'], ['add', 'recipe'], ['new', 'recipe'],
+            ],
+            'handler' => function (string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array {
+                if (!$roleFlags['isAdmin']) {
+                    return ['reply' => "🔒 Access Denied: Adding a new menu item is restricted to Admin users. Your current logged-in role is '$userRole'.", 'action' => null];
+                }
+                [$name, $price, $category] = extractAddMenuItemDetails($q, $lower);
+                $bits = [];
+                if ($name) $bits[] = "'$name'";
+                if ($price) $bits[] = "₹$price";
+                if ($category) $bits[] = "category $category";
+                $replyMsg = "Opening 'Add New Menu Item' form" . (!empty($bits) ? " pre-filled with " . implode(', ', $bits) : " for you") . "...";
+                return [
+                    'reply' => $replyMsg,
+                    'action' => ['type' => 'navigate', 'tab' => 'kitchen', 'itemKey' => 'edit_food_menu', 'newMenuItemName' => $name, 'newMenuItemPrice' => $price, 'newMenuItemCategory' => $category],
+                ];
+            },
+        ],
+        [
             'type' => 'license_management',
-            'phrases' => ['license', 'subscription', 'billing setting'],
+            'phrases' => [
+                'license', 'subscription', 'billing setting',
+                // Broadened 24 Aug 2026 (proactive coverage pass).
+                'my license', 'license expiry', 'license renewal', 'homestay license', 'fssai license',
+                'fire safety license', 'gst license', 'expiring license',
+                ['license', 'expiry'], ['license', 'renewal'], ['renew', 'license'], ['upload', 'license'],
+            ],
             'handler' => function (string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array {
                 if (!$roleFlags['isAdmin']) {
                     return ['reply' => "🔒 Access Denied: License & Subscription management is restricted to Admin users. Your current logged-in role is '$userRole'.", 'action' => null];
@@ -434,6 +677,11 @@ function getIntentTable(): array {
                 ['request', 'kg'], ['request', 'gm'], ['request', 'gram'], ['request', 'liter'], ['request', 'litre'], ['request', 'packet'], ['request', 'pcs'], ['request', 'piece'],
                 ['need', 'kg'], ['need', 'gm'], ['need', 'gram'], ['need', 'liter'], ['need', 'litre'], ['need', 'packet'], ['need', 'pcs'], ['need', 'piece'],
                 ['order', 'kg'], ['order', 'gm'], ['order', 'gram'], ['order', 'liter'], ['order', 'litre'], ['order', 'packet'], ['order', 'pcs'], ['order', 'piece'],
+                // Broadened 24 Aug 2026 (proactive coverage pass) - stockout phrasing that has no
+                // quantity/unit word at all ("we're running low on rice"); extractMaterialRequestDetails()'s
+                // stopword list was extended to match so these don't leak filler words into the item text.
+                'running low', 'restock', 'out of stock', 'need ingredients', 'need supplies', 'stock shortage',
+                ['low', 'on'], ['need', 'more', 'stock'],
             ],
             'handler' => function (string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array {
                 [$item, $qty, $unit] = extractMaterialRequestDetails($q);
@@ -451,7 +699,12 @@ function getIntentTable(): array {
         ],
         [
             'type' => 'open_add_booking',
-            'phrases' => ['add booking', 'new booking', 'create booking', 'book room', 'add guest', 'new guest', 'register guest'],
+            'phrases' => [
+                'add booking', 'new booking', 'create booking', 'book room', 'add guest', 'new guest', 'register guest',
+                // Broadened 24 Aug 2026 (proactive coverage pass).
+                'new reservation', 'add reservation', 'walk in guest', 'walkin guest', 'check in new guest',
+                ['add', 'reservation'], ['new', 'reservation'], ['book', 'a', 'room'], ['reserve', 'room'],
+            ],
             'handler' => fn(string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array => [
                 'reply' => "Opening the 'Add Guest Booking' drawer form for you...",
                 'action' => ['type' => 'open_add_booking'],
@@ -470,6 +723,12 @@ function getIntentTable(): array {
                 ['meal', 'for'], ['food', 'for'], ['thali', 'for'], ['lunch', 'for'], ['dinner', 'for'], ['chai', 'for'], ['tea', 'for'],
                 ['meal', 'to'], ['food', 'to'], ['chai', 'to'], ['tea', 'to'],
                 ['add', 'meal'], ['log', 'meal'], ['add', 'chai'], ['log', 'chai'], ['add', 'tea'], ['log', 'tea'],
+                // Broadened 24 Aug 2026 (proactive coverage pass) - snack/breakfast/tiffin work
+                // the same way as the existing meal/food/chai/tea words.
+                'staff snack', 'staff breakfast', 'staff tiffin',
+                ['snack', 'for'], ['snack', 'to'], ['add', 'snack'], ['log', 'snack'],
+                ['breakfast', 'for'], ['breakfast', 'to'], ['add', 'breakfast'], ['log', 'breakfast'],
+                ['tiffin', 'for'], ['add', 'tiffin'], ['log', 'tiffin'],
             ],
             'handler' => function (string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array {
                 $staffName = extractStaffNameFromQuery($q);
@@ -490,6 +749,13 @@ function getIntentTable(): array {
             'phrases' => [
                 ['send', 'room'], ['bring', 'room'], ['need', 'room'], ['request', 'room'], ['deliver', 'room'], ['give', 'room'],
                 ['towel', 'room'], ['pillow', 'room'], ['blanket', 'room'], ['soap', 'room'], ['water', 'room'], ['toiletries', 'room'],
+                // Broadened 24 Aug 2026 (proactive coverage pass) - more common in-room request
+                // items, plus maintenance-complaint verbs ("AC not working room 105" is the same
+                // "open a pre-filled service request" action as a supply request).
+                ['bedsheet', 'room'], ['bucket', 'room'], ['hanger', 'room'], ['iron', 'room'],
+                ['charger', 'room'], ['slipper', 'room'], ['tissue', 'room'], ['ac', 'room'],
+                ['fan', 'room'], ['light', 'room'], ['wifi', 'room'], ['key', 'room'], ['clean', 'room'],
+                ['fix', 'room'], ['repair', 'room'], ['broken', 'room'],
             ],
             'handler' => function (string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array {
                 [$roomNumber, $item] = extractServiceRequestDetails($q);
@@ -511,6 +777,9 @@ function getIntentTable(): array {
                 'expense', 'petty cash', 'spent', 'bought',
                 ['add', 'bill'], ['add', 'cost'], ['add', 'salary'], ['add', 'advance'],
                 ['log', 'rs'], ['log', 'rupee'], ['log', '₹'], ['log', 'cost'], ['log', 'bill'], ['log', 'amount'],
+                // Broadened 24 Aug 2026 (proactive coverage pass).
+                'record expense', 'new expense', 'petty cash entry', 'add cash expense',
+                ['spent', 'on'], ['paid', 'for'], ['bought', 'for'], ['record', 'spent'], ['out', 'of', 'pocket'],
             ],
             'handler' => function (string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array {
                 [$extractedAmount, $extractedDesc, $targetCategory] = extractExpenseAction($q, $lower);
@@ -530,7 +799,12 @@ function getIntentTable(): array {
         ],
         [
             'type' => 'kitchen_kds',
-            'phrases' => ['kitchen', 'kds', 'food order', 'go to kitchen'],
+            'phrases' => [
+                'kitchen', 'kds', 'food order', 'go to kitchen',
+                // Broadened 24 Aug 2026 (proactive coverage pass).
+                'live orders', 'live tickets', 'order screen', 'kitchen screen', 'take order', 'new order',
+                ['live', 'order'], ['order', 'screen'], ['take', 'order'],
+            ],
             'handler' => fn(string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array => [
                 'reply' => "Navigating to Kitchen KDS & Food Orders...",
                 'action' => ['type' => 'navigate', 'tab' => 'kitchen', 'itemKey' => 'take_food_order'],
@@ -538,7 +812,12 @@ function getIntentTable(): array {
         ],
         [
             'type' => 'all_bookings',
-            'phrases' => ['all booking', 'guest list', 'show booking', 'go to booking'],
+            'phrases' => [
+                'all booking', 'guest list', 'show booking', 'go to booking',
+                // Broadened 24 Aug 2026 (proactive coverage pass).
+                'guest directory', 'bookings list', 'view bookings', 'reservation list',
+                ['view', 'booking'], ['see', 'booking'],
+            ],
             'handler' => fn(string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array => [
                 'reply' => "Navigating to Bookings & Guest Management...",
                 'action' => ['type' => 'navigate', 'tab' => 'guests', 'itemKey' => 'all_bookings'],
@@ -549,7 +828,9 @@ function getIntentTable(): array {
         [
             'type' => 'visitor_product_info',
             'phrases' => [
-                'ground code', 'what is', 'features', 'pricing', 'price', 'cost', 'about', 'how does', 'tell me', 'demo', 'sales', 'license'
+                'ground code', 'what is', 'features', 'pricing', 'price', 'cost', 'about', 'how does', 'tell me', 'demo', 'sales', 'license',
+                // Broadened 24 Aug 2026 (proactive coverage pass).
+                'contact', 'contact us', 'signup', 'sign up', 'trial', 'free trial', 'get started',
             ],
             'handler' => function (string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array {
                 if (str_contains($lower, 'price') || str_contains($lower, 'cost') || str_contains($lower, 'license') || str_contains($lower, 'plan')) {
@@ -580,7 +861,7 @@ function getIntentTable(): array {
         // --- LIVE DATA CONTEXT QUERIES (info-only, no action) ---
         [
             'type' => 'info_upcoming',
-            'phrases' => ['upcoming'],
+            'phrases' => ['upcoming', 'future booking', 'future reservation', ['upcoming', 'guest']],
             'handler' => function (string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array {
                 if ($ctx['upcomingCount'] === 0) {
                     return ['reply' => "You currently have 0 upcoming bookings. All current bookings are active today or in the past. To create a new upcoming booking, click '+ Add Booking' on the Bookings tab.", 'action' => null];
@@ -590,7 +871,10 @@ function getIntentTable(): array {
         ],
         [
             'type' => 'info_today',
-            'phrases' => ['today', 'active booking', 'checked in'],
+            'phrases' => [
+                'today', 'active booking', 'checked in',
+                'in house', 'in-house guest', 'staying today', 'current guest', ['in', 'house'],
+            ],
             'handler' => function (string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array {
                 $guestStr = !empty($ctx['activeGuests']) ? " (Guests: " . implode(', ', $ctx['activeGuests']) . ")" : "";
                 if ($ctx['todayCount'] === 0) {
@@ -601,7 +885,10 @@ function getIntentTable(): array {
         ],
         [
             'type' => 'info_summary',
-            'phrases' => ['how many', 'summary', 'total booking'],
+            'phrases' => [
+                'how many', 'summary', 'total booking',
+                'occupancy summary', 'booking count', 'statistics', 'dashboard summary',
+            ],
             'handler' => function (string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array {
                 $guestStr = !empty($ctx['activeGuests']) ? " (Guests: " . implode(', ', $ctx['activeGuests']) . ")" : "";
                 return ['reply' => "Current Booking Summary:\n• Today's Active: {$ctx['todayCount']}$guestStr\n• Upcoming: {$ctx['upcomingCount']}\n• Past: {$ctx['pastCount']}", 'action' => null];
@@ -611,7 +898,10 @@ function getIntentTable(): array {
         // --- GENERAL INFORMATION ANSWERS (info-only, no action) ---
         [
             'type' => 'info_receipt',
-            'phrases' => ['receipt', 'bill', 'checkout', 'check out'],
+            'phrases' => [
+                'receipt', 'bill', 'checkout', 'check out',
+                'invoice', 'gst bill', 'print bill', 'generate receipt', ['print', 'receipt'], ['generate', 'bill'],
+            ],
             'handler' => fn(string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array => [
                 'reply' => "To generate a receipt or checkout a guest, click 'Checkout' on their booking card in the Bookings or Today tab. Review room charges, advance payments, and food bills, then print the GST receipt or send it directly on WhatsApp.",
                 'action' => null,
@@ -619,7 +909,10 @@ function getIntentTable(): array {
         ],
         [
             'type' => 'info_tariff',
-            'phrases' => ['tariff', 'price', 'rate', 'room rent'],
+            'phrases' => [
+                'tariff', 'price', 'rate', 'room rent',
+                'room price', 'room charge', 'nightly rate', ['room', 'price'], ['nightly', 'rate'],
+            ],
             'handler' => fn(string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array => [
                 'reply' => "Default room rates can be configured under Room Management. When adding a new booking, selecting a room auto-fills the room rent field, which can still be edited manually if custom discounts apply.",
                 'action' => null,
@@ -627,7 +920,10 @@ function getIntentTable(): array {
         ],
         [
             'type' => 'info_cform',
-            'phrases' => ['c-form', 'foreign', 'passport'],
+            'phrases' => [
+                'c-form', 'foreign', 'passport',
+                'foreigner', 'foreign guest', 'c form status', ['foreign', 'guest'],
+            ],
             'handler' => fn(string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array => [
                 'reply' => "Foreign guests require a C-Form filing. You can mark C-Form status as 'Pending' or 'Filed' directly from the guest details modal or guest list.",
                 'action' => null,

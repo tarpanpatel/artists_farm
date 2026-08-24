@@ -103,6 +103,13 @@ interface KitchenManagementProps {
   initialReqItemName?: string;
   initialReqQty?: number;
   initialReqUnit?: string;
+  // AI Assistant deep-link (24 Aug 2026, proactive action-surface audit, not a live bug report) -
+  // lands on the Edit Food Menu tab with the "Add New Food Menu Item" drawer already open,
+  // name/price/category pre-filled. Never submits itself - same "user reviews and clicks Save"
+  // rule every other AI-prefilled form in this app follows.
+  initialNewMenuItemName?: string;
+  initialNewMenuItemPrice?: number;
+  initialNewMenuItemCategory?: string;
 }
 
 // Sentinel dropdown value for the "New Customer" row in the walk-in tab
@@ -126,6 +133,9 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   initialReqItemName,
   initialReqQty,
   initialReqUnit,
+  initialNewMenuItemName,
+  initialNewMenuItemPrice,
+  initialNewMenuItemCategory,
 }) => {
   const { showToast, removeToast } = useToast();
   const { confirm } = useConfirm();
@@ -1219,6 +1229,23 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     setIsReqModalOpen(true);
     setAppliedReqPrefill(prefillKey);
   }, [activeTab, initialReqItemName, initialReqQty, initialReqUnit, appliedReqPrefill]);
+
+  // AI Assistant deep-link (24 Aug 2026, proactive action-surface audit) - opens the blank "Add
+  // New Food Menu Item" drawer pre-filled once the Edit Food Menu tab is active. Same guarded
+  // once-per-value pattern as the requisition prefill effect above.
+  const [appliedNewMenuItemPrefill, setAppliedNewMenuItemPrefill] = useState<string | null>(null);
+  useEffect(() => {
+    if (activeTab !== 'menu_catalog') return;
+    if (!initialNewMenuItemName && !initialNewMenuItemPrice && !initialNewMenuItemCategory) return;
+    const prefillKey = `${initialNewMenuItemName || ''}|${initialNewMenuItemPrice || ''}|${initialNewMenuItemCategory || ''}`;
+    if (appliedNewMenuItemPrefill === prefillKey) return;
+
+    if (initialNewMenuItemName) setNewItemName(initialNewMenuItemName);
+    if (initialNewMenuItemPrice) setNewItemPrice(initialNewMenuItemPrice);
+    if (initialNewMenuItemCategory) setNewItemCategory(initialNewMenuItemCategory as MenuItem['category']);
+    setIsNewMenuModalOpen(true);
+    setAppliedNewMenuItemPrefill(prefillKey);
+  }, [activeTab, initialNewMenuItemName, initialNewMenuItemPrice, initialNewMenuItemCategory, appliedNewMenuItemPrefill]);
 
   // Add Item to Order Cart
   const handleAddToCart = (item: MenuItem) => {

@@ -50,6 +50,17 @@ interface StaffManagementProps {
   // staff meals) - lets "change phone number for staff Kamlesh" land straight on that person's
   // roster row already in edit mode, instead of just the Team page in general.
   initialEditStaffName?: string;
+  // AI Assistant deep-link (24 Aug 2026, proactive action-surface audit, not a live bug report) -
+  // pre-fills the blank "Add New Staff Member" roster drawer (isModalOpen, name/role/phone/
+  // monthlySalary) for onboarding someone new. Deliberately NOT the same drawer as
+  // autoOpenAddModal above (isTeamMemberModalOpen) - that one creates a system LOGIN account
+  // (username/passcode/permissions), a more sensitive action this intentionally leaves untouched;
+  // this one is the roster/attendance/payroll record, whose fields (name, phone, salary) are what
+  // a natural "add staff member X, phone Y, salary Z" message actually maps to.
+  initialAddStaffName?: string;
+  initialAddStaffPhone?: string;
+  initialAddStaffRole?: string;
+  initialAddStaffSalary?: number;
 }
 
 export const StaffManagement: React.FC<StaffManagementProps> = ({
@@ -61,6 +72,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   autoOpenAddModal,
   onClearAutoOpenAddModal,
   initialEditStaffName,
+  initialAddStaffName,
+  initialAddStaffPhone,
+  initialAddStaffRole,
+  initialAddStaffSalary,
 }) => {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
@@ -197,6 +212,24 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     }
     setAppliedEditStaffName(initialEditStaffName);
   }, [initialEditStaffName, activeSubTab, staff, appliedEditStaffName]);
+
+  // AI Assistant deep-link: opens the blank "Add New Staff Member" roster drawer pre-filled with
+  // whatever the chat message extracted. Guarded to run once per distinct value, same pattern as
+  // the edit-staff effect above and KitchenManagement.tsx's requisition prefill.
+  const [appliedAddStaffPrefill, setAppliedAddStaffPrefill] = useState<string | null>(null);
+  useEffect(() => {
+    if (activeSubTab !== 'roster') return;
+    if (!initialAddStaffName && !initialAddStaffPhone && !initialAddStaffRole && !initialAddStaffSalary) return;
+    const prefillKey = `${initialAddStaffName || ''}|${initialAddStaffPhone || ''}|${initialAddStaffRole || ''}|${initialAddStaffSalary || ''}`;
+    if (appliedAddStaffPrefill === prefillKey) return;
+
+    if (initialAddStaffName) setName(initialAddStaffName);
+    if (initialAddStaffPhone) setPhone(initialAddStaffPhone);
+    if (initialAddStaffRole) setRole(initialAddStaffRole as StaffMember['role']);
+    if (initialAddStaffSalary) setMonthlySalary(initialAddStaffSalary);
+    setIsModalOpen(true);
+    setAppliedAddStaffPrefill(prefillKey);
+  }, [activeSubTab, initialAddStaffName, initialAddStaffPhone, initialAddStaffRole, initialAddStaffSalary, appliedAddStaffPrefill]);
 
   // Mobile UI State
   const [mobileAttMode, setMobileAttMode] = useState<'daily' | 'summary'>('daily');
@@ -707,23 +740,26 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   {
                     name: 'NAME',
                     cell: (row: any) => {
-                      const phoneVal = (row.username || '').replace(/\D/g, '');
+                      const rawPhone = row.phone || row.phone_number || row.username || '';
+                      const phoneVal = rawPhone.replace(/\D/g, '');
                       return (
                         <div className="py-3 min-w-0">
                           <div className="text-sm font-semibold text-gray-900 dark:text-white truncate">
                             {row.fullName}
                           </div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                          <div className="text-xs truncate mt-0.5">
                             {phoneVal ? (
                               <a
                                 href={`tel:${phoneVal}`}
                                 onClick={(e) => e.stopPropagation()}
-                                className="hover:underline hover:text-blue-600 dark:hover:text-blue-400 font-medium"
+                                className="inline-flex items-center gap-1 font-mono font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline cursor-pointer"
+                                title={`Call ${phoneVal}`}
                               >
-                                {row.username}
+                                <Phone className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                                <span>{rawPhone || phoneVal}</span>
                               </a>
                             ) : (
-                              row.username
+                              <span className="font-mono text-gray-500 dark:text-gray-400">{row.username || '—'}</span>
                             )}
                           </div>
                         </div>
@@ -873,7 +909,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   const isCurrentUser = currentUser?.id === row.id;
                   const canEdit = !isCurrentUser && canEditUser(currentUser?.role || 'Staff', row.role);
                   const canDelete = !isCurrentUser && canEdit;
-                  const phoneVal = (row.username || '').replace(/\D/g, '');
+                  const rawPhone = row.phone || row.phone_number || row.username || '';
+                  const phoneVal = rawPhone.replace(/\D/g, '');
 
                   return (
                     <div key={row.id} className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-3 space-y-2.5">
@@ -884,14 +921,14 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                             <a
                               href={`tel:${phoneVal}`}
                               onClick={(e) => e.stopPropagation()}
-                              className="inline-flex items-center gap-1 font-mono text-xs text-blue-600 dark:text-blue-400 hover:underline font-semibold"
+                              className="inline-flex items-center gap-1 font-mono text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline font-semibold cursor-pointer"
                               title={`Call ${phoneVal}`}
                             >
-                              <Phone className="w-3 h-3 text-blue-500" />
-                              <span>{phoneVal}</span>
+                              <Phone className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                              <span>{rawPhone || phoneVal}</span>
                             </a>
                           ) : (
-                            <span className="font-mono text-xs text-slate-500 dark:text-slate-400">{row.username}</span>
+                            <span className="font-mono text-xs text-slate-500 dark:text-slate-400">{row.username || '—'}</span>
                           )}
                         </div>
 

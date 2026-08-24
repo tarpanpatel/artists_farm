@@ -19,7 +19,11 @@ interface AIChatWidgetProps {
   isOpen?: boolean;
   onClose?: () => void;
   guests?: Guest[];
-  onNavigate?: (tab: string, itemKey?: string, extraData?: { staffName?: string; reqItemName?: string; reqQty?: number; reqUnit?: string }) => void;
+  onNavigate?: (tab: string, itemKey?: string, extraData?: {
+    staffName?: string; reqItemName?: string; reqQty?: number; reqUnit?: string;
+    addStaffName?: string; addStaffPhone?: string; addStaffRole?: string; addStaffSalary?: number;
+    newMenuItemName?: string; newMenuItemPrice?: number; newMenuItemCategory?: string;
+  }) => void;
   onOpenAddBooking?: () => void;
   onOpenAddExpense?: (data?: { amount?: number; description?: string; category?: string }) => void;
   onOpenTelegramModal?: () => void;
@@ -203,6 +207,13 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({
             reqItemName: res.action.reqItemName,
             reqQty: res.action.reqQty,
             reqUnit: res.action.reqUnit,
+            addStaffName: res.action.addStaffName,
+            addStaffPhone: res.action.addStaffPhone,
+            addStaffRole: res.action.addStaffRole,
+            addStaffSalary: res.action.addStaffSalary,
+            newMenuItemName: res.action.newMenuItemName,
+            newMenuItemPrice: res.action.newMenuItemPrice,
+            newMenuItemCategory: res.action.newMenuItemCategory,
           });
           actionNotice = `⚡ Executed: Navigated to ${res.action.tab}`;
         }
