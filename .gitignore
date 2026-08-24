@@ -15,6 +15,7 @@ tests/e2e/.auth/
 !manifest.json
 !php/errors/manifest.json
 test_*.php
+!php/tests/test_ai_intents.php
 fix_*.php
 temp_*.sql
 temp_*.js

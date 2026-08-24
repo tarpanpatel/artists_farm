@@ -232,7 +232,7 @@ function extractExpenseAction(string $q, string $lower): array {
         $targetCategory = 'Kitchen';
     }
 
-    $stopWords = ['log', 'add', 'new', 'expense', 'petty', 'cash', 'spent', 'bought', 'rs', 'rupees', 'inr', '₹', 'of', 'the', 'a', 'an', 'cost', 'bill', 'amount'];
+    $stopWords = ['log', 'add', 'new', 'expense', 'petty', 'cash', 'spent', 'bought', 'buy', 'buying', 'purchase', 'purchased', 'rs', 'rupees', 'inr', '₹', 'of', 'the', 'a', 'an', 'cost', 'bill', 'amount'];
     $words = preg_split('/[\s,]+/', $q);
     $filteredWords = [];
     foreach ($words as $w) {
@@ -780,6 +780,11 @@ function getIntentTable(): array {
                 // Broadened 24 Aug 2026 (proactive coverage pass).
                 'record expense', 'new expense', 'petty cash entry', 'add cash expense',
                 ['spent', 'on'], ['paid', 'for'], ['bought', 'for'], ['record', 'spent'], ['out', 'of', 'pocket'],
+                // Live bug fix (24 Aug 2026): only the past tense 'bought' was covered, so a
+                // present-tense purchase request ("Buy 2 air freshers") fell all the way through
+                // to the generic fallback reply instead of opening Add Expense. 'order'/'ordered'
+                // deliberately excluded - too ambiguous with the kitchen_kds food-order phrases below.
+                'buy', 'buying', 'purchase', 'purchased',
             ],
             'handler' => function (string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array {
                 [$extractedAmount, $extractedDesc, $targetCategory] = extractExpenseAction($q, $lower);
