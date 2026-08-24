@@ -1475,6 +1475,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   );
                 })}
               </div>
+            )}
           </div>
 
           {/* DESKTOP ATTENDANCE MATRIX TABLE (hidden md:block) */}
