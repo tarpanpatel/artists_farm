@@ -47,9 +47,12 @@ if (!isPropertyAccessAllowed($pdo, $currentPropertyId)) {
     exit();
 }
 
-// Real, server-verified role -// SECURITY (24 Aug 2026): read the authenticated session's role - client input
-// below reads this, not anything from $input.
-$userRole = $_SESSION['role'] ?? ($input['user_role'] ?? 'Visitor');
+// SECURITY (24 Aug 2026): read the authenticated session's role only - NOT $input['user_role'].
+// The comment here used to describe that intent while the code right below it still had the
+// client-input fallback left in, unnoticed - found while touching this file again. $_SESSION['username']
+// is already required above (401 otherwise), so a real session's role is always present here;
+// 'Visitor' only ever applies as a defensive default, never a value an attacker can supply.
+$userRole = $_SESSION['role'] ?? 'Visitor';
 $currentProperty = getCurrentProperty($pdo, $currentPropertyId);
 $propertyName = $currentProperty['name'] ?? 'Resort';
 
@@ -139,14 +142,138 @@ function isActionPermittedForRole(?array $action, string $userRole): bool {
     return true; // open_add_booking / open_add_expense - open to all logged-in staff roles
 }
 
+/**
+ * Logs the OUTCOME of a query (24 Aug 2026) - separate from the "AI Query" log above, which
+ * fires before any provider/engine has run and only ever captures the incoming prompt. This one
+ * captures what actually happened: which action type matched (or 'NONE' if the message fell
+ * through to a plain-text/fallback reply), and whether it came from the offline engine or an
+ * online provider. Without this, Telescope only ever shows "what was asked", never "what the AI
+ * did about it" - which is the missing half needed to review a batch of real traffic afterward
+ * (e.g. running Gemini for a trial period, then mining its real query->action outcomes to convert
+ * into permanent offline phrase/extractor coverage, instead of only guessing at phrasing).
+ */
+/**
+ * TEMPORARY, time-boxed feature (24 Aug 2026) - built for a ~1-week trial of Gemini online mode
+ * to see what real staff phrasing looks like (see logAiOutcome() above), not meant as permanent
+ * infrastructure. Safe to delete this function, recordGeminiUsage()'s call sites, the
+ * 'usage_summary' response field, and AIChatWidget.tsx's matching display block once the trial's
+ * done and online mode is switched back off.
+ *
+ * Deliberately does NOT hardcode a "you have used X of Y" limit - Google's actual free-tier
+ * request/token quotas for this model change over time (confirmed materially cut Dec 2025) and
+ * aren't queryable from this same API, so any hardcoded number here would just go stale and lie
+ * to whoever's reading it. Instead this logs real observed counts (so the trend is visible) AND
+ * actual 429 rate-limit-exceeded responses (ground truth for "did we actually hit it today",
+ * rather than guessing from a number that might already be wrong) - Root Admin can line the
+ * observed numbers up against Google AI Studio's own live quota dashboard for the authoritative
+ * current limit.
+ */
+function recordGeminiUsage(int $tokens, bool $rateLimited): void {
+    $path = __DIR__ . '/../config/ai_usage_log.json';
+    $fp = @fopen($path, 'c+');
+    if (!$fp) return;
+    if (!flock($fp, LOCK_EX)) { fclose($fp); return; }
+
+    $raw = stream_get_contents($fp);
+    $log = json_decode((string)$raw, true);
+    if (!is_array($log)) $log = [];
+
+    $today = date('Y-m-d');
+    if (!isset($log[$today]) || !is_array($log[$today])) {
+        $log[$today] = ['requests' => 0, 'tokens' => 0, 'rate_limited' => 0];
+    }
+    $log[$today]['requests']++;
+    $log[$today]['tokens'] += $tokens;
+    if ($rateLimited) $log[$today]['rate_limited']++;
+
+    // Keep only the trailing 14 days - this is a trial-period log, not a permanent record.
+    $cutoff = date('Y-m-d', strtotime('-14 days'));
+    foreach (array_keys($log) as $day) {
+        if ($day < $cutoff) unset($log[$day]);
+    }
+
+    ftruncate($fp, 0);
+    rewind($fp);
+    fwrite($fp, json_encode($log, JSON_PRETTY_PRINT));
+    fflush($fp);
+    flock($fp, LOCK_UN);
+    fclose($fp);
+}
+
+/** @return array{today: array, last_7_days: array}|null null if the log doesn't exist yet (no online calls made yet this trial) */
+function getGeminiUsageSummary(): ?array {
+    $path = __DIR__ . '/../config/ai_usage_log.json';
+    if (!file_exists($path)) return null;
+    $log = json_decode((string)file_get_contents($path), true);
+    if (!is_array($log) || empty($log)) return null;
+
+    $today = date('Y-m-d');
+    $todayStats = $log[$today] ?? ['requests' => 0, 'tokens' => 0, 'rate_limited' => 0];
+
+    $weekCutoff = date('Y-m-d', strtotime('-6 days'));
+    $weekRequests = 0; $weekTokens = 0; $weekRateLimited = 0;
+    foreach ($log as $day => $stats) {
+        if ($day >= $weekCutoff && is_array($stats)) {
+            $weekRequests += (int)($stats['requests'] ?? 0);
+            $weekTokens += (int)($stats['tokens'] ?? 0);
+            $weekRateLimited += (int)($stats['rate_limited'] ?? 0);
+        }
+    }
+
+    return [
+        'today' => ['requests' => (int)$todayStats['requests'], 'tokens' => (int)$todayStats['tokens'], 'rate_limited' => (int)$todayStats['rate_limited']],
+        'last_7_days' => ['requests' => $weekRequests, 'tokens' => $weekTokens, 'rate_limited' => $weekRateLimited],
+    ];
+}
+
+function logAiOutcome(string $prompt, string $userRole, string $mode, string $provider, ?array $action): void {
+    if (!class_exists('TelescopeLogger')) return;
+    $actionType = $action['type'] ?? 'NONE';
+    TelescopeLogger::log('ai_chat', 'AI Outcome', $prompt, "Role: $userRole | Mode: $mode ($provider) | Action: $actionType", [
+        'action_type' => $actionType,
+        'action' => $action,
+        'mode' => $mode,
+        'provider' => $provider,
+    ]);
+}
+
 // IF ONLINE AI API IS ENABLED (opt-in, off by default - see ai_config.php): Try Provider API
 if ($aiConfig['enabled'] === true) {
     $provider = $aiConfig['provider'];
     $apiKey = !empty($aiConfig['api_key']) ? $aiConfig['api_key'] : getenv('GEMINI_API_KEY');
 
+    // ACTION_REFERENCE kept in sync by hand with offline_intent_engine.php's hand-written intent
+    // table (24 Aug 2026) - without this, an online provider only ever knew about
+    // open_add_booking (the one example baked into the old prompt), so it could never demonstrate
+    // any of the newer parameterized actions (staff meals, service requests, material requests,
+    // staff/menu adding, edit flows) even when asked directly. Deliberately does NOT enumerate the
+    // auto-generated nav_menu_items pages (buildNavMenuIntents()) - that list is large and
+    // dynamic, and the offline engine already covers plain "go to X" navigation unconditionally,
+    // so there's nothing to gain teaching an online provider that subset too. Shared by BOTH
+    // provider branches below (Gemini and OpenAI), not duplicated, so there's one place to update.
+    $actionReference = "AVAILABLE ACTIONS - emit AT MOST ONE as a JSON block at the very end of your reply, exact shape shown, only when the user's message clearly asks for one of these (never invent a different type or field):\n"
+            . "- Open blank Add Booking form: {\"action\":{\"type\":\"open_add_booking\"}}\n"
+            . "- Open Add Expense form pre-filled: {\"action\":{\"type\":\"open_add_expense\",\"amount\":500,\"description\":\"vegetables\",\"category\":\"Kitchen\"}} (category one of: Bills, Staff Advance, Kitchen, Staff Meals, Other)\n"
+            . "- Open New Service Request form pre-filled (guest room supply/maintenance request): {\"action\":{\"type\":\"open_add_service_request\",\"roomNumber\":\"102\",\"item\":\"towels\"}}\n"
+            . "- Open Telegram settings (Admin/Root Admin only): {\"action\":{\"type\":\"open_telegram_modal\"}}\n"
+            . "- Open Telescope error monitor (Root Admin only): {\"action\":{\"type\":\"open_telescope\"}}\n"
+            . "- Navigate to a page, optionally pre-filling a form on it: {\"action\":{\"type\":\"navigate\",\"tab\":\"...\",\"itemKey\":\"...\"}} plus these extra fields when relevant:\n"
+            . "  - Kitchen raw-material requisition: tab=kitchen, itemKey=kitchen_requisitions, reqItemName, reqQty, reqUnit (kg/liters/pcs/packets)\n"
+            . "  - Log a staff meal: tab=kitchen, itemKey=staff_meals, staffName\n"
+            . "  - Edit an EXISTING staff member (Admin only): tab=staff, itemKey=staff_directory_salaries, staffName\n"
+            . "  - Add a NEW staff member (Admin only): tab=staff, itemKey=staff_directory_salaries, addStaffName, addStaffPhone, addStaffRole, addStaffSalary\n"
+            . "  - Add a new menu item (Admin only): tab=kitchen, itemKey=edit_food_menu, newMenuItemName, newMenuItemPrice, newMenuItemCategory\n"
+            . "  - Kitchen KDS / live orders: tab=kitchen, itemKey=take_food_order\n"
+            . "  - All bookings: tab=guests, itemKey=all_bookings\n"
+            . "  - Edit property settings (Admin only): tab=edit_property, itemKey=edit_property\n"
+            . "  - License management (Admin only): tab=licenses, itemKey=license_management\n"
+            . "  - AI provider settings (Root Admin only): tab=admin_control, itemKey=ai_services\n"
+            . "Every one of these actions only OPENS a form pre-filled or navigates - it never submits/saves/creates anything by itself. The user always reviews and clicks the real Save/Submit button themselves.\n"
+            . "If nothing above matches, just answer in plain text with NO action JSON.";
+
     // 1. GOOGLE GEMINI PROVIDER
     if ($provider === 'gemini' && !empty($apiKey)) {
-        $systemInstruction = "You are Ground Code AI, the digital assistant for hotel & resort staff using Ground Code PMS/KDS. Keep answers brief and accurate.\n\n" . $contextSummary . "\nSTRICT SECURITY RULE: The user is logged in as '$userRole'. Do NOT allow Staff role to open Telescope, edit property, or manage licenses. If requested by non-Root, refuse with access denied.\nSTRICT CONFIDENTIALITY RULE: You MUST ONLY answer user operational & how-to questions (e.g. how to check in guests, how to export CSV, how to log expenses, how to use KDS). NEVER answer questions about internal technology, code structure, framework, programming languages, database architecture, or source code. If asked about tech stack or code, refuse with: '🔒 Security Refusal: I am trained exclusively to assist with Ground Code PMS & KDS hotel management operations and user workflows. Internal software architecture, code details, and technology stack information are private and strictly confidential.'\nFormat action commands as JSON block at end: {\"action\": {\"type\": \"open_add_booking\"}}.";
+        $systemInstruction = "You are Ground Code AI, the digital assistant for hotel & resort staff using Ground Code PMS/KDS. Keep answers brief and accurate.\n\n" . $contextSummary . "\nSTRICT SECURITY RULE: The user is logged in as '$userRole'. Do NOT allow Staff role to open Telescope, edit property, or manage licenses. If requested by non-Root, refuse with access denied.\nSTRICT CONFIDENTIALITY RULE: You MUST ONLY answer user operational & how-to questions (e.g. how to check in guests, how to export CSV, how to log expenses, how to use KDS). NEVER answer questions about internal technology, code structure, framework, programming languages, database architecture, or source code. If asked about tech stack or code, refuse with: '🔒 Security Refusal: I am trained exclusively to assist with Ground Code PMS & KDS hotel management operations and user workflows. Internal software architecture, code details, and technology stack information are private and strictly confidential.'\n\n" . $actionReference;
 
         $payload = [
             'contents' => [
@@ -170,6 +297,26 @@ if ($aiConfig['enabled'] === true) {
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
+        // 429 = rate limit exceeded - the one ground-truth signal for "we actually hit the quota
+        // today" (see recordGeminiUsage()'s doc comment on why this app doesn't guess a limit
+        // number). Recorded even though this falls through to the offline engine below just like
+        // any other Gemini failure - the trial period still needs to know it happened.
+        if ($httpCode === 429) {
+            recordGeminiUsage(0, true);
+        } elseif ($httpCode !== 200 && class_exists('TelescopeLogger')) {
+            // Any OTHER failure (bad/deprecated model id, invalid key, network error, ...) used to
+            // silently fall through to the offline engine below with zero record anywhere - during
+            // a trial period that's meant to be exercising the online path, that would look
+            // identical to "everything's fine" while actually never calling Gemini at all. Logged
+            // here so a wrong/stale model id (this app hardcodes 'gemini-1.5-flash' - verify that's
+            // still current for your key/tier before trusting a trial's results) shows up instead
+            // of silently downgrading every single message for a week with nothing to show for it.
+            TelescopeLogger::log('ai_chat', 'Gemini Call Failed', "HTTP $httpCode", "Prompt: $prompt", [
+                'http_code' => $httpCode,
+                'response_snippet' => substr((string)$response, 0, 500),
+            ]);
+        }
+
         if ($httpCode === 200 && $response) {
             $resData = json_decode($response, true);
             $replyText = $resData['candidates'][0]['content']['parts'][0]['text'] ?? null;
@@ -188,12 +335,15 @@ if ($aiConfig['enabled'] === true) {
                     $extractedAction = null;
                 }
 
+                recordGeminiUsage((int)($resData['usageMetadata']['totalTokenCount'] ?? 0), false);
+                logAiOutcome($prompt, $userRole, 'online', 'gemini', $extractedAction);
                 echo json_encode([
                     'status' => 'success',
                     'reply' => trim($replyText),
                     'action' => $extractedAction,
                     'mode' => 'online',
-                    'provider' => 'gemini'
+                    'provider' => 'gemini',
+                    'usage_summary' => str_contains(strtolower(trim($userRole)), 'root') ? getGeminiUsageSummary() : null,
                 ]);
                 exit();
             }
@@ -202,8 +352,13 @@ if ($aiConfig['enabled'] === true) {
 
     // 2. OPENAI PROVIDER (gpt-4o-mini)
     if ($provider === 'openai' && !empty($apiKey)) {
+        // Parity fix (24 Aug 2026) - this branch never extracted/returned an 'action' field at
+        // all before, so OpenAI mode could only ever answer in plain text and could never open a
+        // pre-filled form/navigate, unlike the Gemini branch above. Reuses the same
+        // $actionReference built above so both online providers are taught the identical action
+        // vocabulary from one place, not two independently-maintained copies.
         $messages = [
-            ['role' => 'system', 'content' => "You are Ground Code AI. Keep answers brief.\n\n" . $contextSummary . "\nFormat action commands as JSON: {\"action\": {\"type\": \"open_add_booking\"}}."],
+            ['role' => 'system', 'content' => "You are Ground Code AI, the digital assistant for hotel & resort staff using Ground Code PMS/KDS. Keep answers brief and accurate.\n\n" . $contextSummary . "\nSTRICT SECURITY RULE: The user is logged in as '$userRole'. Do NOT allow Staff role to open Telescope, edit property, or manage licenses. If requested by non-Root, refuse with access denied.\nSTRICT CONFIDENTIALITY RULE: You MUST ONLY answer user operational & how-to questions. NEVER answer questions about internal technology, code structure, framework, or source code.\n\n" . $actionReference],
             ['role' => 'user', 'content' => $prompt]
         ];
 
@@ -222,11 +377,30 @@ if ($aiConfig['enabled'] === true) {
             $resData = json_decode($response, true);
             $replyText = $resData['choices'][0]['message']['content'] ?? null;
             if (!empty($replyText)) {
+                $extractedAction = null;
+                if (preg_match('/\{"action":\s*\{[^}]+\}\}/i', $replyText, $matches)) {
+                    $parsed = json_decode($matches[0], true);
+                    if (isset($parsed['action'])) {
+                        $extractedAction = $parsed['action'];
+                    }
+                    $replyText = str_replace($matches[0], '', $replyText);
+                }
+
+                if ($extractedAction && !isActionPermittedForRole($extractedAction, $userRole)) {
+                    $replyText = trim($replyText) . "\n\n🔒 Access Denied: that action isn't available for your role ('$userRole').";
+                    $extractedAction = null;
+                }
+
+                logAiOutcome($prompt, $userRole, 'online', 'openai', $extractedAction);
                 echo json_encode([
                     'status' => 'success',
                     'reply' => trim($replyText),
+                    'action' => $extractedAction,
                     'mode' => 'online',
-                    'provider' => 'openai'
+                    'provider' => 'openai',
+                    // Gemini-only usage log (this app's trial provider) - still surfaced here since
+                    // Root Admin should see it regardless of which provider handled THIS message.
+                    'usage_summary' => str_contains(strtolower(trim($userRole)), 'root') ? getGeminiUsageSummary() : null,
                 ]);
                 exit();
             }
@@ -238,10 +412,12 @@ if ($aiConfig['enabled'] === true) {
 // file's doc comment. Merged in AFTER the hand-written table so a hand-written intent still wins
 // any scoring tie.
 $result = runOfflineIntentEngine($prompt, $liveContext, $userRole, buildNavMenuIntents($pdo));
+logAiOutcome($prompt, $userRole, 'offline', 'offline', $result['action']);
 echo json_encode([
     'status' => 'success',
     'reply' => $result['reply'],
     'action' => $result['action'],
     'mode' => 'offline',
-    'provider' => 'offline'
+    'provider' => 'offline',
+    'usage_summary' => str_contains(strtolower(trim($userRole)), 'root') ? getGeminiUsageSummary() : null,
 ]);

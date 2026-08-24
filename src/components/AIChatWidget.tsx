@@ -48,6 +48,14 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [currentModeBadge, setCurrentModeBadge] = useState<string>('Offline Engine Active');
+  // TEMPORARY, time-boxed (24 Aug 2026) - visibility into the Gemini trial period's real usage,
+  // Root-Admin-only (the server only ever sends a non-null 'usage_summary' for that role - this
+  // state just stays null for anyone else). Safe to remove alongside ai_assistant.php's matching
+  // fields once the trial's done - see that file's recordGeminiUsage() doc comment.
+  const [geminiUsage, setGeminiUsage] = useState<{
+    today: { requests: number; tokens: number; rate_limited: number };
+    last_7_days: { requests: number; tokens: number; rate_limited: number };
+  } | null>(null);
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -170,6 +178,7 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({
       } else {
         setCurrentModeBadge('Offline Engine Active');
       }
+      if (res.usage_summary) setGeminiUsage(res.usage_summary);
 
       // Execute Action Command if authorized by backend RBAC
       if (res.action) {
@@ -274,6 +283,15 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Gemini trial usage (TEMPORARY, Root Admin only - see geminiUsage state comment) */}
+        {geminiUsage && (
+          <div className="px-4 py-1.5 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800 text-2xs text-amber-800 dark:text-amber-300 shrink-0">
+            Gemini trial usage — Today: {geminiUsage.today.requests} req / {geminiUsage.today.tokens.toLocaleString()} tokens
+            {geminiUsage.today.rate_limited > 0 && <span className="font-bold"> ({geminiUsage.today.rate_limited}x rate-limited)</span>}
+            {' · '}7d: {geminiUsage.last_7_days.requests} req / {geminiUsage.last_7_days.tokens.toLocaleString()} tokens
+          </div>
+        )}
 
         {/* Messages Feed */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3.5 text-xs bg-slate-50/50 dark:bg-gray-900/50">
