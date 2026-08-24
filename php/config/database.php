@@ -21,16 +21,15 @@ require_once __DIR__ . '/../errors/logger.php';
 $allowed_origins = [
     'http://localhost', 'http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:8080',
     'http://127.0.0.1', 'http://127.0.0.1:3000', 'http://127.0.0.1:5173', 'http://127.0.0.1:5174', 'http://127.0.0.1:8080',
-    // Production still lives on artistic-sthan.com (ground-code.com migration, started 24 Aug
-    // 2026, is staging-only so far - production moves in a later step once staging is verified).
-    'https://artistic-sthan.com', 'https://www.artistic-sthan.com',
-    // Staging cut over to ground-code.com 24 Aug 2026 - staging.artistic-sthan.com is
-    // deliberately NOT in this list any more so a stray request from that old frontend gets a
+    // Domain migration (24 Aug 2026): production cut over from artistic-sthan.com to
+    // ground-code.com, same hard-cutover treatment staging got - artistic-sthan.com is
+    // deliberately NOT in this list any more so a stray request from the old frontend gets a
     // real CORS 403 instead of silently still being treated as a trusted origin.
+    'https://ground-code.com', 'https://www.ground-code.com',
     'https://staging.ground-code.com',
 ];
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-header('Access-Control-Allow-Origin: ' . (in_array($origin, $allowed_origins) ? $origin : 'https://artistic-sthan.com'));
+header('Access-Control-Allow-Origin: ' . (in_array($origin, $allowed_origins) ? $origin : 'https://ground-code.com'));
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-Testing-Mode');
 header('Content-Type: application/json; charset=UTF-8');
@@ -94,6 +93,19 @@ $__is_local_env = $server_name === 'localhost' || $server_name === '127.0.0.1' |
 // incident this whole check exists to prevent. Safe to remove once the old subdomain is
 // actually retired/redirected server-side.
 $__is_staging_env = in_array($server_name, ['staging.ground-code.com', 'staging.artistic-sthan.com'], true);
+// The ONE host CPGuard has actually whitelisted (support ticket BRX-3227572) for
+// php/telegram/telegram.php's own local copy - see router.php's require logic right below the
+// kitchen/inventory/etc. requires. Production moving to ground-code.com (24 Aug 2026) means the
+// NEW production checkout's own local telegram.php copy is just as unwhitelisted as staging's
+// always was, so router.php now redirects it to require remotely from this original host too,
+// same as staging - until hosting whitelists ground-code.com's own path (new path:
+// /home/apartment/ground-code.com/php/telegram/telegram.php, requested but not yet confirmed),
+// at which point this constant's in_array() list gets that hostname added and production goes
+// back to using its own local copy like it always did on the old domain.
+$__is_original_telegram_whitelisted_host = in_array($server_name, ['artistic-sthan.com', 'www.artistic-sthan.com'], true);
+if (!defined('APP_IS_ORIGINAL_TELEGRAM_WHITELISTED_HOST')) {
+    define('APP_IS_ORIGINAL_TELEGRAM_WHITELISTED_HOST', $__is_original_telegram_whitelisted_host);
+}
 // Shared local/live flag for anything outside DB credentials that needs the same distinction
 // (e.g. cookie 'secure' flag - must be false on local plain-HTTP or the session cookie never
 // gets set/sent and login silently fails). database.php is require_once'd by every endpoint

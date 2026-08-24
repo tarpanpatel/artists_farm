@@ -23,7 +23,7 @@
 
 $ErrorActionPreference = "Stop"
 $sshKey = "$env:USERPROFILE\Documents\Downloads\github_cpanel"   # passphrase-protected - ssh will prompt you
-$sshTarget = "apartment@artistic-sthan.com"
+$sshTarget = "apartment@91.238.163.173"   # raw IP, not the domain - SSH connects to the server, not a vhost
 $sshPort = 88
 $dumpPath = Join-Path $env:TEMP "live_dump.sql"
 
@@ -31,7 +31,7 @@ Write-Host "==> Dumping production database (groundcode) on the server..." -Fore
 # Password is read from php/config/db_pass.php server-side via a tiny inline
 # PHP snippet, so it's never typed here or shown in shell history.
 ssh -i $sshKey -p $sshPort $sshTarget @'
-DB_PASS=$(php -r "echo file_exists('/home/apartment/public_html/php/config/db_pass.php') ? require('/home/apartment/public_html/php/config/db_pass.php') : '';")
+DB_PASS=$(php -r "echo file_exists('/home/apartment/ground-code.com/php/config/db_pass.php') ? require('/home/apartment/ground-code.com/php/config/db_pass.php') : '';")
 mysqldump -u groundcode -p"$DB_PASS" --routines --triggers groundcode > /tmp/live_dump.sql
 echo "Dump size:"
 ls -la /tmp/live_dump.sql

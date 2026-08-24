@@ -13,11 +13,21 @@
        the same safety net used throughout this engagement).
     4. `npm run build` from that clean, committed state.
     5. Restore the stash (nothing is ever lost).
-    6. Tar the fresh dist/, scp it up, swap it into public_html/dist/ on
+    6. Tar the fresh dist/, scp it up, swap it into ground-code.com/dist/ on
        the server, clean up temp files.
     7. Verify: confirm the live site is serving the bundle that was just
        built (compares the JS/CSS hashes in dist/index.html locally vs.
-       what artistic-sthan.com actually returns).
+       what ground-code.com actually returns).
+
+.DOMAIN MIGRATION (24 Aug 2026)
+  Production moved from artistic-sthan.com to ground-code.com - same hosting account/server
+  (91.238.163.173), new cPanel document root ~/ground-code.com (its own independent git
+  checkout, not a rename of ~/public_html). ~/public_html is deliberately left in place, NOT
+  deleted or retired - it hosts the one CPGuard-whitelisted copy of php/telegram/telegram.php
+  (support ticket BRX-3227572) that both staging AND this new production checkout require
+  remotely until ground-code.com's own path gets its own whitelist entry (see
+  APP_IS_ORIGINAL_TELEGRAM_WHITELISTED_HOST in database.php and the require logic in
+  router.php).
 
   IMPORTANT: this script only ships what's already COMMITTED. If you (or
   an AI session) made changes and haven't run `git add` + `git commit`
@@ -61,13 +71,16 @@ param(
 # pass -ErrorAction Stop individually instead.
 $ErrorActionPreference = 'Continue'
 
-# ---- Configuration (matches what's been used by hand all session) ----
+# ---- Configuration ----
 $SshKey    = "C:\Users\Tarpan Patel\Documents\Downloads\github_cpanel"
-$SshHost   = "artistic-sthan.com"
+# Raw IP, not the domain name - same reasoning as deploy-staging.ps1's own switch to this
+# (23 Aug 2026): SSH connects to the SERVER, not to a domain-specific vhost, so this stays
+# correct regardless of any future DNS change to whichever domain is "production" at the time.
+$SshHost   = "91.238.163.173"
 $SshPort   = 88
 $SshUser   = "apartment"
-$RemoteDir = "~/public_html"
-$LiveUrl   = "https://artistic-sthan.com/dist/"
+$RemoteDir = "~/ground-code.com"
+$LiveUrl   = "https://ground-code.com/dist/"
 $ProjectRoot = $PSScriptRoot
 
 function Write-Step($msg) {

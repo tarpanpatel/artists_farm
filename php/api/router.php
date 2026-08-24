@@ -50,25 +50,27 @@ require_once __DIR__ . '/../audit/audit.php';
 // Now only Telegram-specific actions (see handleTelegramRequests below) are
 // affected if this file is ever missing again.
 //
-// STAGING always requires telegram.php straight from PRODUCTION's whitelisted
-// path (23 Aug 2026, explicit decision) - never from a local copy on staging
-// at all. Confirmed live via CPGuard's own Background Scanner Logs
-// (cp163173.hpdns.net:2083) that staging's separate physical copy was being
-// re-quarantined every few minutes ({HEX}Malware.Expert.php.json.decode.
-// file.getcontents.api.telegram - the outbound curl-to-api.telegram.org-with-
-// a-bot-token shape genuinely does look like malware phoning home to static
-// analysis) - self-healing by COPYING bytes onto staging's disk (the 17 Aug
-// 2026 version of this fix) just handed the scanner a fresh target every
-// single time, an unwinnable cycle against a scanner that re-scans that
-// fast. Only production's copy is actually whitelisted (support ticket
-// BRX-3227572) - so staging now never creates a local copy for CPGuard to
-// catch in the first place.
-// Path is root-admin-configurable (Root Dashboard > Telegram Templates >
-// Telegram Platform Health, saved as system_settings key
-// 'telegram_fallback_source_path') - falls back to the confirmed-whitelisted
-// path if nothing has been saved yet.
+// Any environment other than the ONE host CPGuard has actually whitelisted (support ticket
+// BRX-3227572, see database.php's APP_IS_ORIGINAL_TELEGRAM_WHITELISTED_HOST) always requires
+// telegram.php straight from that whitelisted path instead of its own local copy (23 Aug 2026,
+// explicit decision for staging; generalized 24 Aug 2026 when production itself started moving
+// to ground-code.com, whose own fresh checkout is just as unwhitelisted as staging's always
+// was). Confirmed live via CPGuard's own Background Scanner Logs (cp163173.hpdns.net:2083) that
+// an unwhitelisted physical copy gets re-quarantined every few minutes ({HEX}Malware.Expert.php.
+// json.decode.file.getcontents.api.telegram - the outbound curl-to-api.telegram.org-with-a-bot-
+// token shape genuinely does look like malware phoning home to static analysis) - self-healing
+// by COPYING bytes onto the unwhitelisted host's own disk (the 17 Aug 2026 version of this fix)
+// just handed the scanner a fresh target every single time, an unwinnable cycle against a
+// scanner that re-scans that fast. So every non-whitelisted host now never creates/uses a local
+// copy for CPGuard to catch in the first place - local dev is exempt from this whole redirect
+// (CPGuard doesn't scan XAMPP, and the remote path isn't even reachable from a local machine).
+// Path is root-admin-configurable (Root Dashboard > Telegram Templates > Telegram Platform
+// Health, saved as system_settings key 'telegram_fallback_source_path') - falls back to the
+// confirmed-whitelisted path if nothing has been saved yet.
 $__telegram_php_path = __DIR__ . '/../telegram/telegram.php';
-if (defined('APP_IS_STAGING_ENV') && APP_IS_STAGING_ENV) {
+$__needs_remote_telegram_source = !(defined('APP_IS_LOCAL_ENV') && APP_IS_LOCAL_ENV)
+    && !(defined('APP_IS_ORIGINAL_TELEGRAM_WHITELISTED_HOST') && APP_IS_ORIGINAL_TELEGRAM_WHITELISTED_HOST);
+if ($__needs_remote_telegram_source) {
     $__prod_telegram_php_path = null;
     try {
         $__fallback_stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'telegram_fallback_source_path' LIMIT 1");
@@ -84,6 +86,7 @@ if (defined('APP_IS_STAGING_ENV') && APP_IS_STAGING_ENV) {
     $__telegram_php_path = $__prod_telegram_php_path;
     unset($__fallback_stmt, $__prod_telegram_php_path);
 }
+unset($__needs_remote_telegram_source);
 if (file_exists($__telegram_php_path)) {
     require_once $__telegram_php_path;
 }

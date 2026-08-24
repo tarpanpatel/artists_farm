@@ -319,7 +319,7 @@ if (!function_exists('wp_base64url_encode')) {
                 return ['ok' => false, 'status' => 0, 'error' => 'Invalid endpoint URL'];
             }
             $audience = $urlParts['scheme'] . '://' . $urlParts['host'];
-            $jwt = wp_build_vapid_jwt($audience, 'mailto:root-admin@artistic-sthan.com', $vapidKeys);
+            $jwt = wp_build_vapid_jwt($audience, 'mailto:root-admin@ground-code.com', $vapidKeys);
             $body = wp_encrypt_payload((string) json_encode($payload), $p256dh, $auth);
         } catch (\Throwable $e) {
             return ['ok' => false, 'status' => 0, 'error' => $e->getMessage()];

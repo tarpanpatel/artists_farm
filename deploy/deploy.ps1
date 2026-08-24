@@ -1,6 +1,8 @@
 <#
 .SYNOPSIS
-  Push local code changes to the live production site (artistic-sthan.com).
+  Push local code changes to the live production site (ground-code.com).
+  NOTE: superseded by the root-level deploy.ps1 (used by deploy-panel/) - this standalone
+  script is kept for manual one-off use, e.g. when deploy-panel isn't available.
 
 .DESCRIPTION
   1. Builds the React app locally (npm run build).
@@ -28,9 +30,9 @@ param(
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $sshKey = "$env:USERPROFILE\Documents\Downloads\github_cpanel"   # passphrase-protected - ssh will prompt you
-$sshTarget = "apartment@artistic-sthan.com"
+$sshTarget = "apartment@91.238.163.173"   # raw IP, not the domain - SSH connects to the server, not a vhost
 $sshPort = 88
-$remotePath = "/home/apartment/public_html"
+$remotePath = "/home/apartment/ground-code.com"
 
 Set-Location $repoRoot
 
@@ -83,4 +85,4 @@ rm -f /tmp/dist.zip
     Remove-Item $zipPath -Force
 }
 
-Write-Host "==> Done. Check https://artistic-sthan.com" -ForegroundColor Green
+Write-Host "==> Done. Check https://ground-code.com" -ForegroundColor Green

@@ -94,7 +94,7 @@ export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({ isOpen, onClos
                 <div className="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs font-semibold shrink-0">AF</div>
                 <div className="min-w-0">
                   <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">Ground Code App</p>
-                  <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">artistic-sthan.com</p>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">ground-code.com</p>
                 </div>
               </div>
             </div>

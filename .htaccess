@@ -8,7 +8,8 @@ DirectoryIndex index.php index.html
 <IfModule mod_rewrite.c>
     RewriteEngine On
     # Was "/artists_farm/" - a subfolder this site has never actually been
-    # deployed under (served from the domain root on artistic-sthan.com).
+    # deployed under (served from the domain root on ground-code.com; was
+    # artistic-sthan.com before the 24 Aug 2026 domain migration).
     RewriteBase /
 
     # Short, shareable URL for the public sales demo - plain redirect (URL bar
