@@ -164,10 +164,25 @@ if ($wantsJson) {
 <html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- viewport-fit=cover (24 Aug 2026, fixing a live overlap bug reported
+         via mobile screenshot: the phone's own status-bar clock/icons were
+         rendering directly on top of the header title/subtitle text) - without
+         this, iOS ignores env(safe-area-inset-*) entirely and always resolves
+         it to 0, so the safe-area padding below silently did nothing. Needed
+         together with the two apple-mobile-web-app-* tags right below: those
+         are what actually put an installed/"Add to Home Screen" iOS session
+         into the edge-to-edge mode where the status bar overlays page content
+         in the first place (this manifest already declares "display":
+         "standalone" for Android's install prompt, but iOS ignores that key
+         and needs its own legacy meta tags to behave the same way) - without
+         them iOS reserves its own opaque status-bar strip and none of this
+         would ever have been visible as a bug to begin with. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Telescope Error Center</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0b0f19">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -207,7 +222,7 @@ if ($wantsJson) {
             body { min-width: 0 !important; }
             button, input, select, a { -webkit-tap-highlight-color: transparent !important; }
 
-            .telescope-header { padding: 1rem !important; align-items: stretch !important; flex-direction: column !important; gap: .875rem !important; }
+            .telescope-header { padding: max(1rem, env(safe-area-inset-top)) 1rem 1rem 1rem !important; align-items: stretch !important; flex-direction: column !important; gap: .875rem !important; }
             .telescope-brand { width: 100% !important; min-width: 0 !important; align-items: flex-start !important; }
             .telescope-title { font-size: .875rem !important; line-height: 1.25rem !important; letter-spacing: .08em !important; }
             .telescope-subtitle { max-width: 230px !important; line-height: 1.2 !important; }
@@ -253,7 +268,7 @@ if ($wantsJson) {
             .telescope-logs table, .telescope-logs tbody, .telescope-logs tr, .telescope-logs td { display: block !important; width: 100% !important; }
             .telescope-logs thead { display: none !important; }
             .telescope-logs tbody { divide: none !important; }
-            .telescope-logs tr { padding: .875rem 1rem !important; border-bottom: 1px solid rgba(31, 41, 55, .8) !important; }
+            .telescope-logs tr { position: relative !important; padding: .875rem 3.25rem .875rem 1rem !important; border-bottom: 1px solid rgba(31, 41, 55, .8) !important; }
             .telescope-logs tr:last-child { border-bottom: 0 !important; }
             .telescope-logs td { max-width: none !important; padding: .25rem 0 !important; overflow-wrap: anywhere !important; white-space: normal !important; }
             .telescope-logs td::before { content: attr(data-label); display: block !important; margin-bottom: .125rem !important; color: #6b7280 !important; font: 700 .625rem/1 ui-sans-serif, system-ui, sans-serif !important; letter-spacing: .06em !important; text-transform: uppercase !important; }
@@ -262,6 +277,16 @@ if ($wantsJson) {
             .telescope-logs td:nth-child(3) { color: #e5e7eb !important; font-size: .8125rem !important; line-height: 1.35 !important; }
             .telescope-logs td:only-child { padding: 2rem 1rem !important; text-align: center !important; }
             .telescope-logs td:only-child::before { display: none !important; }
+            /* Per-row "Copy this error" button (24 Aug 2026, requested - a
+               1-tap copy without needing to open the detail modal first, on
+               top of the modal's own Copy Stack Trace/Full Payload buttons
+               which still exist for once you're already in there). Pinned to
+               the card's top-right corner instead of stacking as its own
+               full-width row like the other fields - it's an action, not
+               data, and pinning avoids a redundant empty "COPY" label. The
+               row's own right padding above makes room for it. */
+            .telescope-logs td.telescope-row-copy-cell { position: absolute !important; top: .875rem !important; right: 1rem !important; padding: 0 !important; width: auto !important; }
+            .telescope-logs td.telescope-row-copy-cell::before { display: none !important; }
 
             /* Bottom sheet (roadmap item 1's 4th sub-point) - real slide-up/
                slide-down, not an instant show/hide. #detailModal itself keeps
@@ -453,6 +478,7 @@ if ($wantsJson) {
                             <th class="px-4 py-3 w-28">Severity</th>
                             <th class="px-4 py-3">Log Message</th>
                             <th class="px-4 py-3 w-72">User / Origin Location</th>
+                            <th class="px-4 py-3 w-14"></th>
                         </tr>
                     </thead>
                     <tbody id="logsTableBody" class="divide-y divide-gray-800/50">
@@ -560,6 +586,24 @@ if ($wantsJson) {
         loadPortalLogs();
     }
 
+    // 24 Aug 2026, fixing a live bug reported as "No data under [a portal]"
+    // despite its sidebar badge showing a real nonzero count: this function
+    // used to define "today"/"yesterday" as a ROLLING 24-48h window relative
+    // to the current moment (e.g. "yesterday" = exactly 24-48 hours ago),
+    // while the badge counts come from logger.php's getLogs() on the server,
+    // which defines them as CALENDAR days (date('Y-m-d', $logTime) matching
+    // literal today's/yesterday's date). Those two definitions only agree
+    // when "now" happens to be near midnight - at any other time of day (e.g.
+    // 2pm) they disagree on a large chunk of yesterday's actual entries, so
+    // the server-computed badge (298) and this function's client-side
+    // re-filter of the same entries (0) can legitimately show completely
+    // different numbers for the exact same portal/timeframe. Rewritten to
+    // match logger.php's calendar-day semantics exactly (see its
+    // getLogs()) - '7days' stays a rolling window since PHP's own '7days'
+    // check ($logTime < $now - 7*86400) already is one too, so no mismatch
+    // there. Assumes the browser's local timezone matches the server's -
+    // true for this app's real deployments, not a general-purpose fix for a
+    // browser in a different timezone than the server.
     function matchesTimeframe(log, timeframe, dateFrom, dateTo) {
         if (!log || !log.timestamp) return true;
         if (timeframe === 'custom') {
@@ -572,10 +616,17 @@ if ($wantsJson) {
         const formattedTs = log.timestamp.includes('T') ? log.timestamp : log.timestamp.replace(' ', 'T');
         const t = new Date(formattedTs).getTime();
         if (isNaN(t)) return true;
-        const h = (Date.now() - t) / 3600000;
-        if (timeframe === 'today') return h >= -24 && h <= 24;
-        if (timeframe === 'yesterday') return h > 24 && h <= 48;
-        if (timeframe === '7days') return h >= -24 && h <= 168;
+        if (timeframe === '7days') return t >= (Date.now() - 7 * 86400000);
+        const toYMD = (ms) => {
+            const d = new Date(ms);
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        };
+        const logYMD = toYMD(t);
+        if (timeframe === 'today') return logYMD === toYMD(Date.now());
+        if (timeframe === 'yesterday') return logYMD === toYMD(Date.now() - 86400000);
         return true;
     }
 
@@ -700,7 +751,7 @@ if ($wantsJson) {
         if (countSpan) countSpan.innerText = filtered.length;
 
         if (filtered.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-8 text-center text-gray-500 italic">No events recorded for this selection.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500 italic">No events recorded for this selection.</td></tr>`;
             return;
         }
 
@@ -729,6 +780,11 @@ if ($wantsJson) {
                     </td>
                     <td class="px-4 py-2.5 text-gray-200 truncate max-w-md">${escapeHtml(r.msg || '')}</td>
                     <td class="px-4 py-2.5 text-gray-400 truncate">${escapeHtml(r.origin || '')}</td>
+                    <td class="telescope-row-copy-cell px-4 py-2.5 whitespace-nowrap" data-label="">
+                        <button type="button" onclick='event.stopPropagation(); copyToClipboard(JSON.stringify(${rowJson}, null, 2), this)' class="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-800 hover:bg-cyan-900/60 text-gray-400 hover:text-cyan-300 border border-gray-700 hover:border-cyan-800/80 transition cursor-pointer" title="Copy this error to clipboard" aria-label="Copy this error">
+                            <svg class="icon w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        </button>
+                    </td>
                 </tr>
             `;
         }).join('');
