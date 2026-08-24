@@ -12,6 +12,18 @@ currently matches it yet.
 (`Manager`, `Chef`) still appear in some nav items' role lists from before the role system was
 consolidated, but neither is offered when creating/editing a staff account anymore.
 
+> 📌 **Standing rule (stated explicitly 24 Aug 2026): the nav tree's shape must never change per
+> role, only which existing nodes within that one fixed tree are visible.** When a role needs
+> access to one page inside an existing group (e.g. "Food Orders" inside "Kitchen"), grant that
+> role the existing child node (and its parent, if a route guard needs the parent's own roles too -
+> see `App.tsx`'s `isRouteAllowed()` special-case for `take_food_order`/`kitchen_orders`) - never
+> invent a parallel/standalone nav item that duplicates part of the tree just to avoid touching the
+> real hierarchy. The reasoning: a role's permissions grow over time as product needs change, and if
+> that growth ever changes the *shape* of their menu (a shortcut item today, nested under a real
+> group tomorrow), the role's users have to relearn their own navigation - whereas visibility-only
+> changes just make more of an already-familiar tree light up. Got this wrong once already (see the
+> "Kitchen Order Status" changelog entries below, corrected same day) - don't repeat it.
+
 > ⚠️ **Enforcement caveat**: everything below (except where noted) is enforced by **hiding the nav
 > tab / UI control**, not by a backend permission check. `router.php` only verifies which *property*
 > a session may touch, not which *role-gated feature within it*. A restricted role's account could
@@ -120,14 +132,42 @@ Most restricted role — front-desk/booking duties plus a slice of kitchen visib
 - Dashboard
 - Bookings — view bookings, upload guest ID docs, file/manage C-Form, check guests in
 - Kitchen — **limited, order-status visibility only**: see which orders are currently live/in
-  progress, see which have been served, and mark an order as served.
-  ⚠️ *Not yet enforced/available in code* — Staff currently has **no** kitchen tab or dashboard
-  widget access at all (`kitchenAccessAllowed` in `App.tsx` requires visibility on the `Food Orders`
-  nav item, which `Staff` isn't in — same reason the Dashboard's "Live Kitchen Tickets" panel shows
-  "Kitchen access not available for your role" instead of tickets). Documented as intended policy per
-  you; this needs a new, narrower view/permission built (live + served orders and a "mark served"
-  action only — not full kitchen management), not just flipping an existing flag. Flag when ready to
-  build it.
+  progress, see which have been served, and mark a dish as served.
+  ✅ *Built and live-verified 24 Aug 2026, corrected same day* — **standing product rule (stated
+  explicitly 24 Aug 2026): the nav tree's shape must never change for a role, only which existing
+  nodes are visible.** A role with access to Food Orders only reaches it via **Kitchen > Food
+  Orders**, same path every other kitchen-enabled role already uses - never a standalone/parallel
+  nav item - specifically so that if that role is later granted more kitchen access, its sidebar
+  just gains siblings under the same already-familiar "Kitchen" parent instead of the whole menu
+  shape changing out from under them. (An earlier same-day version of this got that wrong - built a
+  standalone "Kitchen Order Status" top-level item - caught in review and reverted before it shipped
+  anywhere beyond local dev; see the changelog entry below for the correction.)
+  - `php/kitchen/menu.php`'s `nav_menu_self_heal_v5` grants `Staff` the real `take_food_order`
+    (child, "Food Orders") and `kitchen_overview` (parent, "Kitchen") rows directly - both are
+    needed: `canSeeNavKey()`/`kitchenAccessAllowed`/the sidebar's own filtering all key off the
+    child's roles, but `App.tsx`'s `isRouteAllowed()` has a special-case bypass for exactly these
+    two keys that deliberately checks the *parent's* roles instead (its own 23 Aug comment explains
+    why) - granting only one of the two either hides the link or shows it but bounces the click back
+    to Dashboard.
+  - `KitchenManagement.tsx`'s `isRestrictedStaffKitchenView` flag (`activeRole === 'Staff'`) does
+    the actual UI restriction once inside: forces the "Live Tickets" tab regardless of entry key
+    (every other role's "Food Orders" click defaults to the "Take Order"/POS tab instead - Staff
+    never sees a tab switcher at all, so that default had to be overridden), hides the Cancel-order
+    button, hides "Mark Ready"/reminder/delete on not-ready items (shown as a plain "Preparing"
+    badge instead), and shows only "Mark Served" on an already-ready item - reusing the exact same
+    `handleMarkDishServed()` the full Kitchen view already uses. The served-dishes table
+    (`CurrentGuestServedDishes`) below the ticket grid renders unchanged, satisfying "see which have
+    been served" for free.
+  - Live-verified via the header's "View site as a specific role" preview (Staff): sidebar showed
+    exactly Dashboard/Bookings/Service Requests/**Kitchen → Food Orders** (badge count included, no
+    standalone item, no Stock Requests/Staff Meals/etc. siblings); a seeded test order rendered with
+    the not-ready item action-less and the ready item showing only "Mark Served"; clicking it wrote
+    a real `Served` status + timestamp to `order_items` in the DB - not just a build check.
+  - **Side effect, expected and correct**: the Dashboard's "Live Kitchen Tickets" widget
+    (`kitchenAccessAllowed`, keyed off the same `take_food_order` row) now also shows real tickets
+    for Staff instead of "Kitchen access not available for your role" - this naturally follows from
+    Staff having real (if restricted) access to that nav node now, rather than being a separate gap
+    to track.
 - Service Requests
 
 **Cannot do:**
@@ -239,11 +279,25 @@ wiring needed there.
     whether the checkout-button hiding actually renders correctly for a real Staff/Staff Kitchen
     login rather than just being correct by code inspection. Flag for a Playwright pass against
     staging next time that's authorized.
+- **24 Aug 2026 — built the "Staff kitchen order-status view" open follow-up, v1** (see the Staff
+  role's Kitchen bullet above for the full writeup): new `staff_kitchen_status` nav item
+  (`nav_menu_self_heal_v4`, `php/kitchen/menu.php`) + `isRestrictedStaffKitchenView` gating inside
+  `KitchenManagement.tsx`'s existing KDS view, rather than a second UI built from scratch. Live
+  browser-verified (Playwright, local, via "View site as a specific role" → Staff): sidebar,
+  restricted ticket actions, and the untouched full/Admin KDS view (regression-checked side by
+  side) all matched expectations from a real seeded test order, not just a code read-through.
+- **24 Aug 2026 — corrected the above, same day**: the standalone top-level `staff_kitchen_status`
+  item violated a standing rule stated explicitly by you - nav tree *shape* must never change per
+  role, only node *visibility* within the one fixed tree, so a role gaining more access later gains
+  siblings under an already-familiar parent instead of a suddenly-different menu shape. Fixed via
+  `nav_menu_self_heal_v5` (deletes the v4 row, grants `Staff` the real `take_food_order` +
+  `kitchen_overview` rows instead) and a `KitchenManagement.tsx` change so "Food Orders" defaults to
+  the Live Tickets tab (not Take Order) specifically for the restricted role. Also updated
+  `Navigation.tsx`'s synthetic cold-start-race placeholder for the "Kitchen" root node to include
+  `Staff`, matching the real DB row, so the sidebar doesn't flicker "Kitchen" in/out for that role
+  during the brief window before real nav data loads. Re-verified live the same way as v1 above,
+  this time confirming the sidebar renders as **Kitchen → Food Orders** (nested, badge-counted, no
+  standalone item) and that "Mark Served" writes a real `Served` status + timestamp to `order_items`
+  through that path.
 
-## Open follow-ups (not yet built — real feature work)
-
-1. **Staff kitchen order-status view** — live orders, served orders, and a "mark served" action
-   only (not the full Kitchen module). Doesn't exist as a scoped-down view today; needs a new nav
-   entry + a restricted rendering path, most likely inside `KitchenManagement.tsx` gated on
-   `activeRole === 'Staff'`, reusing its existing order/served-log data and `handleMarkDishServed`
-   rather than building fetch logic from scratch.
+*(none currently — see the 24 Aug 2026 changelog entry below for the item that used to be here)*
