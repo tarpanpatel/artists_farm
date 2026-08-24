@@ -696,6 +696,18 @@ if ($wantsJson) {
                 if (Array.isArray(data.logs)) {
                     const existingIds = new Set(allLogs.map(l => l.id));
                     for (const sLog of data.logs) {
+                        // FIXED 25 Aug 2026 (live report: "the log details don't show that I
+                        // logged in root dashboard" - the real login WAS logged, but appeared
+                        // as two separate confusing-looking rows for the same event). The
+                        // "login" portal is deliberately meant to be synthesized ENTIRELY from
+                        // get_audit_logs below (loginMapped) - that's the authoritative,
+                        // role-labelled, property-labelled source. router.php's own raw
+                        // TelescopeLogger::log('login', ...) calls ALSO tag themselves with
+                        // portal 'login' though, so without this skip they'd merge into this
+                        // same list as a second, differently-worded row for the exact same
+                        // login event, every single time. Every other portal still comes from
+                        // this raw file-log fetch as normal - only 'login' is excluded here.
+                        if ((sLog.portal || '').toLowerCase() === 'login') continue;
                         if (!existingIds.has(sLog.id)) allLogs.push(sLog);
                     }
                 }

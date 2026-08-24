@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Globe, Loader2, CheckCircle2, Hash, ExternalLink } from './icons/FlowbiteIcons';
-import { Drawer } from 'flowbite-react';
+import { Globe, Loader2, CheckCircle2, Hash, AlertTriangle } from './icons/FlowbiteIcons';
+import { Drawer, Alert } from 'flowbite-react';
 import { X } from './icons/FlowbiteIcons';
 import { Guest } from '../types';
 import { Input } from './Input';
@@ -121,7 +121,7 @@ export const ConvertOtaBookingModal: React.FC<ConvertOtaBookingModalProps> = ({
               {t('convert_ota_booking_heading', 'Convert to Booking')}
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 m-0 font-normal">
-              {t('convert_ota_booking_subtitle', '{{source}} reservation, {{start}} - {{end}}. Editing this only changes this app - it never writes back to {{source}}.')
+              {t('convert_ota_booking_subtitle', '{{source}} reservation, {{start}} - {{end}}.')
                 .replace(/\{\{source\}\}/g, sourceLabel)
                 .replace('{{start}}', formatDateDDMMYYYY(otaBlock.event_start))
                 .replace('{{end}}', formatDateDDMMYYYY(otaBlock.event_end))}
@@ -137,32 +137,45 @@ export const ConvertOtaBookingModal: React.FC<ConvertOtaBookingModalProps> = ({
         </button>
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Moved out of the header subtitle and given real warning treatment (25 Aug 2026,
+            explicit request) - it used to be tacked onto the end of the factual "{{source}}
+            reservation, {{start}} - {{end}}" line in plain gray subtitle text, easy to miss
+            since it reads as routine metadata rather than a caveat. */}
+        <Alert
+          color="warning"
+          icon={AlertTriangle}
+          className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300"
+        >
+          <p className="text-xs">
+            {t('convert_ota_booking_warning', 'Editing this only changes it in this app - it never writes back to {{source}}.').replace(/\{\{source\}\}/g, sourceLabel)}
+          </p>
+        </Alert>
+
         {(otaBlock.event_title || otaBlock.reservation_url) && (() => {
           const cleanTitle = otaBlock.event_title
             ? otaBlock.event_title.replace(/\s*-\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*/gi, '').trim()
             : '';
+          // The reservation_url's own trailing path segment IS the real
+          // human-facing booking reference/confirmation code (e.g.
+          // ".../reservations/details/HMXXXXXXX" -> "HMXXXXXXX") - far more
+          // useful here than event_title, which for Airbnb is frequently
+          // just the literal privacy placeholder "Reserved" with no
+          // reference info at all. Falls back to the (cleaned) title for
+          // feeds that don't provide a reservation_url. The separate
+          // clickable "View reservation on {{source}}" link was removed (25
+          // Aug 2026, explicit request) - this reference text is enough for
+          // staff to cross-check on the OTA's own dashboard themselves.
+          const bookingReference = otaBlock.reservation_url
+            ? otaBlock.reservation_url.split('?')[0].replace(/\/+$/, '').split('/').pop()
+            : '';
+          const referenceText = bookingReference || cleanTitle || otaBlock.event_title;
+          if (!referenceText) return null;
           return (
             <div className="px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 flex items-start gap-2">
               <Hash className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
               <div className="min-w-0 flex-1">
                 <div className="text-2xs font-semibold text-slate-400 uppercase">{t('ota_reference_label', 'OTA Reference (not a guest name)')}</div>
-                {(cleanTitle || otaBlock.event_title) && (
-                  <div className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">{cleanTitle || otaBlock.event_title}</div>
-                )}
-                {/* Always shown when the feed provided one (23 Aug 2026,
-                    explicit request) - lets staff jump straight to this
-                    reservation on the OTA's own dashboard to cross-check it. */}
-                {otaBlock.reservation_url && (
-                  <a
-                    href={otaBlock.reservation_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-1 inline-flex items-center gap-1 text-2xs font-semibold text-blue-600 dark:text-blue-400 hover:underline truncate"
-                  >
-                    <ExternalLink className="w-3 h-3 shrink-0" />
-                    {t('ota_reservation_link_label', 'View reservation on {{source}}').replace('{{source}}', sourceLabel)}
-                  </a>
-                )}
+                <div className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">{referenceText}</div>
               </div>
             </div>
           );
@@ -224,7 +237,7 @@ export const ConvertOtaBookingModal: React.FC<ConvertOtaBookingModalProps> = ({
               >
                 <button
                   type="button"
-                  className="normal-case font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                  className="appearance-none border-0 p-0 m-0 leading-none normal-case font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
                 >
                   {t('room_rent_help_label', 'Help?')}
                 </button>
@@ -241,7 +254,18 @@ export const ConvertOtaBookingModal: React.FC<ConvertOtaBookingModalProps> = ({
           type="button"
           onClick={onClose}
           disabled={isSaving}
-          className="h-9 px-4 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+          // FIXED 25 Aug 2026 (live report: "barely visible... should be exactly like rest of
+          // the cancel buttons in the site") - this was `bg-gray-100` with NO border, sitting on
+          // this same footer's own `bg-gray-50` background - two shades of gray a couple of
+          // points apart, so the button had almost no visible edge. The site's actual canonical
+          // secondary/cancel style is `src/components/Button.tsx`'s `secondary` variant
+          // (bg-white + a real border) - see DESIGN.md's Buttons section, which says any
+          // hand-rolled action button should match that when touched. Copied those exact color
+          // tokens here (keeping this footer's own h-9/px-4 sizing so it still lines up pixel-
+          // for-pixel with the Convert button beside it) rather than swapping to the <Button>
+          // component itself, since that component's own size steps (h-8/h-10) don't have a
+          // matching h-9 and could reintroduce a height mismatch with Convert next to it.
+          className="h-9 px-4 bg-white hover:bg-gray-50 active:bg-gray-100 text-gray-700 border border-gray-200 dark:bg-gray-800 dark:border-gray-600 dark:hover:bg-gray-700 dark:text-gray-300 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
         >
           {t('cancel_button', 'Cancel')}
         </button>
@@ -249,7 +273,9 @@ export const ConvertOtaBookingModal: React.FC<ConvertOtaBookingModalProps> = ({
           type="button"
           onClick={handleConvert}
           disabled={isSaving}
-          className="h-9 px-5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs disabled:opacity-60 disabled:cursor-not-allowed"
+          // shadow-xs dropped (25 Aug 2026) - DESIGN.md's Buttons section: "No button ever has a
+          // box-shadow, in any state" - flat fill + border only, site-wide.
+          className="h-9 px-5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
           <span>{t('convert_to_booking_button', 'Convert to Booking')}</span>

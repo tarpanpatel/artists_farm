@@ -954,7 +954,16 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
             >
               <button
                 type="button"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300 self-end sm:self-center mb-1.5 sm:mb-0 shrink-0 cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-950/50 transition-colors"
+                // FIXED 25 Aug 2026 (live report: "1 requiring attention today" and "Checked In
+                // Today" can't be of same color badge) - this was emerald/green, the exact same
+                // color family as the Badge component's "success" variant used for "Checked In
+                // Today" right next to it on the same card, so a card needing action and a card
+                // that's simply, positively checked-in read as the same signal at a glance.
+                // Recolored to amber to match: (a) the amber "pending" labels already used
+                // inside this pill's own popover for each listed guest, and (b) the individual
+                // C-Form Pending/ID Pending badges below that this count is literally summing up
+                // - this pill was the one piece of that picture still colored like good news.
+                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300 self-end sm:self-center mb-1.5 sm:mb-0 shrink-0 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors"
               >
                 <CreditCard className="h-3.5 w-3.5" />
                 <span>{todaysAttentionGuests.length} requiring attention today</span>

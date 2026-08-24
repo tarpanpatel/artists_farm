@@ -853,7 +853,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                           <button
                             type="button"
                             onClick={(e) => e.stopPropagation()}
-                            className="inline-flex items-center text-2xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline cursor-pointer"
+                            className="appearance-none border-0 p-0 m-0 inline-flex items-center text-2xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline cursor-pointer"
                           >
                             <span>Help?</span>
                           </button>
@@ -2057,7 +2057,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     >
                       <button
                         type="button"
-                        className="inline-flex items-center text-2xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline cursor-pointer"
+                        className="appearance-none border-0 p-0 m-0 inline-flex items-center text-2xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline cursor-pointer"
                       >
                         <span>Help?</span>
                       </button>
@@ -2263,7 +2263,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                       >
                         <button
                           type="button"
-                          className="inline-flex items-center text-2xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline cursor-pointer"
+                          className="appearance-none border-0 p-0 m-0 inline-flex items-center text-2xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline cursor-pointer"
                         >
                           <span>Help?</span>
                         </button>

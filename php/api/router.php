@@ -646,10 +646,24 @@ function deletePropertyChildData(PDO $pdo, $property_id): void {
 $request_origin = "{$request_method} /{$action}";
 $auth_status = $is_authenticated_user ? 'Authenticated' : 'Unauthenticated';
 
-// Track login attempts specifically
+// Track login attempts specifically. This is the ONLY place a rate-limited/blocked attempt
+// ever gets logged - RateLimiter::checkAndBlock() (inside the login_user case body, further
+// down) exits before that case's own success/failure logging runs, so without this pre-check
+// a blocked attempt would leave zero trace anywhere.
+//
+// BUG FIXED (25 Aug 2026, live report: "the log details don't show that I logged in root
+// dashboard"): this used to read $_POST['username']/$_POST['password'], but the real
+// login_user request body is JSON (see $input = json_decode(...) in the case body below) -
+// $_POST is never populated for a JSON content-type, so this ALWAYS logged
+// "Login attempt for user: unknown" / "[No Password Provided]" regardless of what was
+// actually submitted or whether it succeeded. That bogus row (not the real login) is what
+// showed up confusingly alongside the real success rows. Now reads the same JSON body the
+// case handler does, so it reflects the real identifier and whether a passcode was sent.
 if ($action === 'login_user') {
-    $login_username = $_POST['username'] ?? 'unknown';
-    $login_status = isset($_POST['password']) && !empty($_POST['password']) ? 'Attempting' : 'No Password Provided';
+    $loginPreCheckInput = json_decode(file_get_contents('php://input'), true) ?: [];
+    $login_username = trim($loginPreCheckInput['mobile_number'] ?? $loginPreCheckInput['username'] ?? $loginPreCheckInput['phone_number'] ?? ($_POST['username'] ?? '')) ?: 'unknown';
+    $login_hasPasscode = !empty($loginPreCheckInput['passcode']) || !empty($loginPreCheckInput['password']) || !empty($_POST['password']);
+    $login_status = $login_hasPasscode ? 'Attempting' : 'No Password Provided';
     TelescopeLogger::log(
         'login',
         'INFO',
@@ -970,10 +984,18 @@ switch ($action) {
                     appSetSessionCookie(session_id());
                     $rateLimiter->resetAttempts($rateLimitClientId, 'login_user');
 
+                    // Role-aware message (fixed 25 Aug 2026, same live report as the pre-check
+                    // fix above): this used to hardcode "Staff User {username}" even when the
+                    // account logging in was Root Admin/Super Admin - a real Root Dashboard
+                    // login was recorded, just mislabeled in a way that made it easy to miss/
+                    // dismiss as a routine staff row instead of recognizing it as "me, logging
+                    // into the Root Dashboard".
+                    $loginRoleLabel = $role === 'root_admin' ? 'Root Admin' : ($role === 'super_admin' ? 'Super Admin' : ($role ?: 'User'));
+                    $loginSuccessMsg = "{$loginRoleLabel} {$user['username']} logged into system";
                     TelescopeLogger::log(
                         'login',
                         'SUCCESS',
-                        "Staff User {$user['username']} logged into system",
+                        $loginSuccessMsg,
                         "Login Controller [Success]",
                         ['username' => $user['username'], 'role' => $role, 'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1', 'status' => 'Success']
                     );
@@ -981,7 +1003,7 @@ switch ($action) {
                         $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
                         $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
                         $stmtAudit = $pdo->prepare("INSERT INTO audit_logs (property_id, action, timestamp, user, ip_address, user_agent, status, module) VALUES (?, ?, NOW(), ?, ?, ?, 'Success', 'login')");
-                        $stmtAudit->execute([1, "Staff User {$user['username']} logged into system", $user['username'], $ip, $ua]);
+                        $stmtAudit->execute([1, $loginSuccessMsg, $user['username'], $ip, $ua]);
                     } catch (Exception $ea) {
                         // SECURITY/DIAGNOSTICS (24 Aug 2026, live report: "I logged in twice
                         // recently but it's not showing" in Telescope's Login Portal) - this catch
@@ -1074,6 +1096,21 @@ switch ($action) {
                         appSetSessionCookie(session_id());
                         $rateLimiter->resetAttempts($rateLimitClientId, 'login_user');
 
+                        // GAP FIXED (25 Aug 2026, same live report as the two fixes above): unlike
+                        // the users-table (admin) branch, this staff_users branch never wrote a
+                        // success row to audit_logs/TelescopeLogger at all - ordinary staff logins
+                        // were completely invisible in the Login Portal, not just mislabeled.
+                        try {
+                            $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+                            $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+                            $stmtAudit = $pdo->prepare("INSERT INTO audit_logs (property_id, action, timestamp, user, ip_address, user_agent, status, module) VALUES (?, ?, NOW(), ?, ?, ?, 'Success', 'login')");
+                            $stmtAudit->execute([$staff['property_id'], "Staff User {$staff['username']} logged into system", $staff['username'], $ip, $ua]);
+                        } catch (Exception $ea) {
+                            if (class_exists('TelescopeLogger')) {
+                                TelescopeLogger::log('sql', 'SQL Error', $ea->getMessage(), "Login audit_logs INSERT failed for staff {$staff['username']}", ['username' => $staff['username']]);
+                            }
+                        }
+
                         echo json_encode([
                             'success' => true,
                             'message' => 'Login successful',
@@ -1101,6 +1138,19 @@ switch ($action) {
 
                     appSetSessionCookie(session_id());
                     $rateLimiter->resetAttempts($rateLimitClientId, 'login_user');
+
+                    // GAP FIXED (25 Aug 2026) - see identical comment on the access_all_properties
+                    // branch above; this is the same fix for the regular (single-property) staff path.
+                    try {
+                        $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+                        $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+                        $stmtAudit = $pdo->prepare("INSERT INTO audit_logs (property_id, action, timestamp, user, ip_address, user_agent, status, module) VALUES (?, ?, NOW(), ?, ?, ?, 'Success', 'login')");
+                        $stmtAudit->execute([$staff['property_id'], "Staff User {$staff['username']} logged into system", $staff['username'], $ip, $ua]);
+                    } catch (Exception $ea) {
+                        if (class_exists('TelescopeLogger')) {
+                            TelescopeLogger::log('sql', 'SQL Error', $ea->getMessage(), "Login audit_logs INSERT failed for staff {$staff['username']}", ['username' => $staff['username']]);
+                        }
+                    }
 
                     echo json_encode([
                         'success' => true,
@@ -1130,6 +1180,27 @@ switch ($action) {
 
                 appSetSessionCookie(session_id());
                 $rateLimiter->resetAttempts($rateLimitClientId, 'login_user');
+
+                // This path is a full root-admin bypass of every real credential check, so it
+                // always gets an audit row - a security-sensitive login must never be the
+                // ONE kind of login with no trail at all (added 25 Aug 2026).
+                try {
+                    $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+                    $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+                    $stmtAudit = $pdo->prepare("INSERT INTO audit_logs (property_id, action, timestamp, user, ip_address, user_agent, status, module) VALUES (?, ?, NOW(), ?, ?, ?, 'Success', 'login')");
+                    $stmtAudit->execute([1, 'Emergency Admin ' . ($rawIdentifier ?: 'admin') . ' logged into system', $rawIdentifier ?: 'admin', $ip, $ua]);
+                } catch (Exception $ea) {
+                    if (class_exists('TelescopeLogger')) {
+                        TelescopeLogger::log('sql', 'SQL Error', $ea->getMessage(), 'Login audit_logs INSERT failed for emergency admin login', []);
+                    }
+                }
+                TelescopeLogger::log(
+                    'login',
+                    'SUCCESS',
+                    'Emergency Admin ' . ($rawIdentifier ?: 'admin') . ' logged into system',
+                    'Login Controller [Emergency Fallback]',
+                    ['username' => $rawIdentifier ?: 'admin', 'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1', 'status' => 'Success']
+                );
 
                 echo json_encode([
                     'success' => true,

@@ -367,7 +367,7 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => onToggleAIChat?.()}
             title={t('help_tooltip', 'Help & AI Assistant')}
             aria-label={t('help_aria', 'Help & AI Assistant')}
-            className="btn-header-help relative px-2.5 py-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer inline-flex items-center text-xs font-semibold"
+            className="btn-header-help appearance-none border-0 relative px-2.5 py-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer inline-flex items-center text-xs font-semibold"
           >
             <span>Help?</span>
           </button>

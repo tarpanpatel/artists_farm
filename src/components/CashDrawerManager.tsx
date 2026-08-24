@@ -505,7 +505,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
             >
               <button
                 type="button"
-                className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline cursor-pointer transition-colors"
+                className="appearance-none border-0 p-0 m-0 inline-flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline cursor-pointer transition-colors"
               >
                 <HelpCircle className="w-3.5 h-3.5" />
                 <span>Help?</span>
