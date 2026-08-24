@@ -23,6 +23,9 @@ interface PettyCashManagementProps {
   onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin', replyMarkup?: any, templateKey?: string, mediaUrls?: string[]) => void;
   onlyForm?: boolean;
   onClose?: () => void;
+  initialAmount?: number | '';
+  initialDescription?: string;
+  kitchenModuleEnabled?: boolean;
 }
 
 interface FormState {
@@ -109,6 +112,9 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   onDispatchTelegram,
   onlyForm,
   onClose,
+  initialAmount,
+  initialDescription,
+  kitchenModuleEnabled = true,
 }) => {
   const { staff } = useStaff();
   const { pettyCash, pettyCashLoading, addPettyCash, updatePettyCash, deletePettyCash } = useFinance();
@@ -123,9 +129,9 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     expenseDate: new Date().toISOString().split('T')[0],
     expenseTime: new Date().toTimeString().slice(0, 5),
     category: 'Other',
-    description: '',
+    description: initialDescription || '',
     moreInfoNotes: '',
-    amount: '',
+    amount: initialAmount !== undefined && initialAmount !== null ? initialAmount : '',
     paymentMode: 'UPI / QR',
     paidBy: currentUserName,
     paymentSource: 'property',
@@ -139,6 +145,15 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     isStaffAdvanceChecked: true,
     payToRegisteredVendor: false,
   }));
+
+  useEffect(() => {
+    if (initialAmount !== undefined && initialAmount !== null && initialAmount !== '') {
+      dispatch({ type: 'SET_FIELD', field: 'amount', value: initialAmount });
+    }
+    if (initialDescription) {
+      dispatch({ type: 'SET_FIELD', field: 'description', value: initialDescription });
+    }
+  }, [initialAmount, initialDescription]);
   const [financialHandlers, setFinancialHandlers] = useState<any[]>(staff.filter(u => u.isFinancialHandler));
   const { inventory } = useInventoryContext();
 
@@ -982,6 +997,23 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     window.alert(reportSummary);
   };
 
+  const categoryOptions = useMemo(() => {
+    const opts = [
+      { value: 'Other', label: t('category_other_label', 'Other') },
+      { value: 'Bills', label: t('category_bills_label', 'Bills & Utilities') },
+    ];
+    // Staff Meals is managed inside Kitchen module when Kitchen is ON;
+    // it only appears in Petty Cash Expenses when Kitchen module is OFF.
+    if (!kitchenModuleEnabled) {
+      opts.push({ value: 'Staff Meals', label: 'Staff Meals & Food' });
+    }
+    opts.push(
+      { value: 'Staff Advance', label: t('category_staff_salaries_adv_label', 'Staff Salaries & Adv.') },
+      { value: 'Kitchen', label: t('category_kitchen_label', 'Kitchen & Supplies') }
+    );
+    return opts;
+  }, [kitchenModuleEnabled]);
+
   // Render Add Expense Form
   const renderAddExpenseForm = () => (
     <form onSubmit={handleSubmit} className="add-expense-form app-form app-form--add-expense space-y-4">
@@ -990,12 +1022,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
           label={t('category_label', 'Category')}
           value={formState.category}
           onChange={val => dispatch({ type: 'SET_FIELD', field: 'category', value: val })}
-          options={[
-            { value: 'Other', label: t('category_other_label', 'Other') },
-            { value: 'Bills', label: t('category_bills_label', 'Bills & Utilities') },
-            { value: 'Staff Advance', label: t('category_staff_salaries_adv_label', 'Staff Salaries & Adv.') },
-            { value: 'Kitchen', label: t('category_kitchen_label', 'Kitchen & Supplies') },
-          ]}
+          options={categoryOptions}
         />
       </div>
 

@@ -203,13 +203,15 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
             break;
 
         case 'get_nav_menu':
-            // Self-heal block below (seed rows + ~15 idempotent renames/deletes) used to
-            // run on every single get_nav_menu call, unconditionally - this is a global,
-            // unscoped nav structure the sidebar/every editor screen fetches on basically
-            // every page load, so that's 15+ synchronous write queries per load, not once.
-            // Gated behind isSchemaVerified() now, same pattern every other self-heal block
-            // in this app already uses, instead of re-running the same no-op writes forever
-            // (found 21 Aug 2026, reported as "Edit Main Menu takes ages to load").
+            if (!isSchemaVerified('nav_menu_self_heal_v6')) {
+                try {
+                    $pdo->exec("UPDATE property_modules SET is_enabled = 1 WHERE module_slug = 'kitchen'");
+                    $pdo->exec("DELETE FROM nav_menu_items WHERE unique_key = 'staff_meals' AND id != 'nav-8'");
+                    $pdo->exec("UPDATE nav_menu_items SET is_visible = 1, parent_id = 'nav-kitchen-overview', roles_json = '[\"Super Admin\",\"Root Admin\",\"Admin\",\"Staff Kitchen\",\"Staff Supervisor\",\"Staff\"]' WHERE unique_key IN ('kitchen_overview', 'take_food_order', 'kitchen_orders', 'staff_meals')");
+                    $pdo->exec("UPDATE nav_menu_items SET parent_id = 'nav-kitchen-overview' WHERE unique_key IN ('take_food_order', 'kitchen_orders', 'staff_meals', 'edit_food_menu', 'edit_kitchen_stock')");
+                    markSchemaVerified('nav_menu_self_heal_v6');
+                } catch (Exception $e) {}
+            }
             if (!isSchemaVerified('nav_menu_self_heal_v2')) {
             try {
 

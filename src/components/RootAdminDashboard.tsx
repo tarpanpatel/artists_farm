@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send, Mail, Bell, UserCog, Pencil, DatabaseBackup, Loader2, RefreshCw, AlertTriangle, UserRound, Receipt, Package } from './icons/FlowbiteIcons';
+import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send, Mail, Bell, UserCog, Pencil, DatabaseBackup, Loader2, RefreshCw, AlertTriangle, UserRound, Receipt, Package, Bot } from './icons/FlowbiteIcons';
 import { Card } from 'flowbite-react';
 import { KpiCard } from './KpiCard';
 import { Button } from './Button';
+import { ToggleSwitch } from './ToggleSwitch';
 import { t } from '../i18n/en';
 import { AppearanceSettings } from './AppearanceSettings';
 import { PlatformPropertyManagement } from './PlatformPropertyManagement';
@@ -43,9 +44,9 @@ interface RootAdminDashboardProps {
   activeRole: string;
 }
 
-type SectionType = 'dashboard' | 'tenants_properties' | 'appearance' | 'edit_main_menu' | 'default_expenses' | 'default_bills' | 'service_request_types' | 'system_stock' | 'telegram_templates' | 'email_settings' | 'account_settings' | 'db_sync' | 'demo_data';
+type SectionType = 'dashboard' | 'tenants_properties' | 'appearance' | 'edit_main_menu' | 'default_expenses' | 'default_bills' | 'service_request_types' | 'system_stock' | 'telegram_templates' | 'email_settings' | 'account_settings' | 'db_sync' | 'demo_data' | 'ai_services';
 
-const VALID_SECTIONS: SectionType[] = ['dashboard', 'tenants_properties', 'appearance', 'edit_main_menu', 'default_expenses', 'default_bills', 'service_request_types', 'system_stock', 'telegram_templates', 'email_settings', 'account_settings', 'db_sync', 'demo_data'];
+const VALID_SECTIONS: SectionType[] = ['dashboard', 'tenants_properties', 'appearance', 'edit_main_menu', 'default_expenses', 'default_bills', 'service_request_types', 'system_stock', 'telegram_templates', 'email_settings', 'account_settings', 'db_sync', 'demo_data', 'ai_services'];
 
 export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
   username,
@@ -95,6 +96,73 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
   const [isLoadingDemoProperty, setIsLoadingDemoProperty] = useState(false);
   const [demoPropertyError, setDemoPropertyError] = useState('');
   const [isResettingDemo, setIsResettingDemo] = useState(false);
+
+  const [aiConfig, setAiConfig] = useState({
+    enabled: false,
+    provider: 'gemini',
+    api_key: '',
+    custom_endpoint: 'http://localhost:11434/v1',
+  });
+  // SECURITY (24 Aug 2026): the server never sends the real api_key back any more (see
+  // ai_config.php's GET handler) - only whether one is already on file. The password input below
+  // stays blank until the admin types a NEW key; leaving it blank on save intentionally keeps
+  // whatever key is already stored (server-side no-op on an empty api_key field).
+  const [hasApiKey, setHasApiKey] = useState(false);
+  const [isSavingAiConfig, setIsSavingAiConfig] = useState(false);
+
+  useEffect(() => {
+    fetch('/php/api/ai_config.php')
+      .then((res) => res.json())
+      .then((resData) => {
+        if (resData && resData.data) {
+          setAiConfig((prev) => ({ ...prev, ...resData.data, api_key: '' }));
+          setHasApiKey(!!resData.data.has_api_key);
+        }
+      })
+      .catch((err) => console.error('Failed to load AI config:', err));
+  }, []);
+
+  const handleToggleAiModeHeader = async (enabled: boolean) => {
+    setAiConfig((prev) => ({ ...prev, enabled }));
+    try {
+      await fetch('/php/api/ai_config.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled }),
+      });
+      showToast(`Online AI API turned ${enabled ? 'ON' : 'OFF (Offline Engine Active)'}`, {
+        type: enabled ? 'info' : 'warning',
+      });
+    } catch (err) {
+      showToast('Failed to update AI Mode', { type: 'error' });
+    }
+  };
+
+  const handleSaveAiConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingAiConfig(true);
+    try {
+      const res = await fetch('/php/api/ai_config.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(aiConfig),
+      });
+      const resData = await res.json();
+      if (resData?.status === 'success') {
+        // Clear the typed key back out of local state and re-derive hasApiKey from the server's
+        // response - never keep holding a just-typed real key in memory longer than the request.
+        setAiConfig((prev) => ({ ...prev, ...resData.data, api_key: '' }));
+        setHasApiKey(!!resData.data?.has_api_key);
+        showToast('AI Provider Settings saved successfully!', { type: 'success' });
+      } else {
+        showToast(resData?.message || 'Failed to save AI Settings', { type: 'error' });
+      }
+    } catch (err) {
+      showToast('Failed to save AI Settings', { type: 'error' });
+    } finally {
+      setIsSavingAiConfig(false);
+    }
+  };
 
   useEffect(() => {
     if (activeSection !== 'demo_data' || demoProperty || isLoadingDemoProperty) return;
@@ -310,6 +378,12 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
       icon: RefreshCw,
       section: 'demo_data' as SectionType,
     },
+    {
+      id: 'ai_services',
+      label: 'AI Services Config',
+      icon: Bot,
+      section: 'ai_services' as SectionType,
+    },
   ];
 
   const handleTelescopeOpen = () => {
@@ -443,7 +517,21 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                 {activeSection === 'db_sync' && t('root_db_sync_label', 'Sync to Local')}
                 {activeSection === 'demo_data' && t('root_demo_data_label', 'Reset Demo Data')}
                 {activeSection === 'system_stock' && t('root_system_stock_label', 'System Stock Catalog')}
+                {activeSection === 'ai_services' && 'AI Services & Provider Config'}
               </h2>
+            </div>
+
+            {/* Header Online AI API Toggle Switch */}
+            <div className="ms-auto flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-700/60 rounded-xl border border-slate-200 dark:border-slate-700 shrink-0">
+              <Bot className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 hidden sm:inline">Online AI API:</span>
+              <ToggleSwitch
+                enabled={aiConfig.enabled}
+                onChange={(val) => handleToggleAiModeHeader(val)}
+              />
+              <span className={`text-2xs font-bold px-2 py-0.5 rounded-full ${aiConfig.enabled ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'}`}>
+                {aiConfig.enabled ? 'ONLINE' : 'OFFLINE'}
+              </span>
             </div>
           </div>
         </header>
@@ -639,6 +727,110 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                 </>
               )}
             </Card>
+          )}
+
+          {/* AI Services Configuration Section */}
+          {activeSection === 'ai_services' && (
+            <div className="space-y-6">
+              <Card className="shadow-md">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 rounded-xl">
+                      <Bot className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-gray-900 dark:text-white">AI Services & Provider Configuration</h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Choose between Offline Engine & Online AI APIs (Gemini, OpenAI, Claude, Ollama)</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Online AI API:</span>
+                    <ToggleSwitch
+                      enabled={aiConfig.enabled}
+                      onChange={(val) => handleToggleAiModeHeader(val)}
+                    />
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${aiConfig.enabled ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'}`}>
+                      {aiConfig.enabled ? 'ONLINE' : 'OFFLINE MODE'}
+                    </span>
+                  </div>
+                </div>
+
+                <form onSubmit={handleSaveAiConfig} className="mt-6 space-y-5">
+                  {/* Provider Selector */}
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                      Online AI Service Provider
+                    </label>
+                    <select
+                      value={aiConfig.provider}
+                      onChange={(e) => setAiConfig({ ...aiConfig, provider: e.target.value })}
+                      className="w-full bg-slate-50 dark:bg-gray-900 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-700 text-xs rounded-lg p-2.5 outline-none focus:border-blue-500 font-semibold"
+                    >
+                      <option value="gemini">Google Gemini (gemini-1.5-flash) - Default</option>
+                      <option value="openai">OpenAI (gpt-4o-mini / gpt-4o)</option>
+                      <option value="claude">Anthropic Claude (claude-3-5-sonnet)</option>
+                      <option value="custom_ollama">Custom Local LLM / Ollama (http://localhost:11434/v1)</option>
+                    </select>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                      {aiConfig.provider === 'gemini' && 'Google Gemini 1.5 Flash offers high-speed responses and broad language understanding.'}
+                      {aiConfig.provider === 'openai' && 'OpenAI GPT-4o-mini provides robust reasoning and structured JSON output.'}
+                      {aiConfig.provider === 'claude' && 'Anthropic Claude 3.5 Sonnet delivers detailed, high-accuracy responses.'}
+                      {aiConfig.provider === 'custom_ollama' && 'Connect to a local Ollama server running on your network.'}
+                    </p>
+                  </div>
+
+                  {/* API Key Input */}
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-2">
+                      API Key ({aiConfig.provider.toUpperCase()})
+                      {hasApiKey && (
+                        <span className="text-2xs font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                          Key on file
+                        </span>
+                      )}
+                    </label>
+                    <input
+                      type="password"
+                      value={aiConfig.api_key}
+                      onChange={(e) => setAiConfig({ ...aiConfig, api_key: e.target.value })}
+                      placeholder={hasApiKey ? '•••••••••••••• (leave blank to keep current key)' : (aiConfig.provider === 'gemini' ? 'AIzaSy...' : 'sk-...')}
+                      className="w-full bg-slate-50 dark:bg-gray-900 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-700 text-xs rounded-lg p-2.5 outline-none focus:border-blue-500 font-mono"
+                    />
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                      The saved key is never sent back to this page - only Root Admins can view or change it, and it's never shown in plaintext once saved.
+                    </p>
+                  </div>
+
+                  {/* Custom Endpoint URL (if Custom Ollama selected) */}
+                  {aiConfig.provider === 'custom_ollama' && (
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                        Custom Base URL / Endpoint
+                      </label>
+                      <input
+                        type="text"
+                        value={aiConfig.custom_endpoint}
+                        onChange={(e) => setAiConfig({ ...aiConfig, custom_endpoint: e.target.value })}
+                        placeholder="http://localhost:11434/v1"
+                        className="w-full bg-slate-50 dark:bg-gray-900 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-700 text-xs rounded-lg p-2.5 outline-none focus:border-blue-500 font-mono"
+                      />
+                    </div>
+                  )}
+
+                  {/* Save Button */}
+                  <div className="pt-2">
+                    <Button
+                      type="submit"
+                      disabled={isSavingAiConfig}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-5 py-2.5 rounded-lg flex items-center gap-2 cursor-pointer"
+                    >
+                      {isSavingAiConfig && <Loader2 className="w-4 h-4 animate-spin" />}
+                      <span>Save AI Provider Settings</span>
+                    </Button>
+                  </div>
+                </form>
+              </Card>
+            </div>
           )}
         </div>
       </main>

@@ -265,6 +265,16 @@ export interface StaffMember {
   // tenant instead of being locked to a single one - see php/security/access_control.php
   // and StaffPropertyPicker.tsx. Never spans tenants.
   accessAllProperties?: boolean;
+  // Flat day-rate for staff paid daily rather than a monthly salary -
+  // independent figure, not derived from monthlySalary (see the identical
+  // field on UserAccount below). Added 24 Aug 2026 - this type never carried
+  // it at all, even though the backend (`get_users`) always returned it, so
+  // it silently vanished on the StaffMember round-trip: a save could write a
+  // real dailyWage to the DB correctly, but re-fetching it back into this
+  // shape had nowhere to put it, and the Edit form (which derives from this
+  // type) always rendered the field blank regardless of what was actually
+  // saved - found live, reported as "updated details but it didn't save".
+  dailyWage?: number;
 }
 
 export interface AttendanceRecord {

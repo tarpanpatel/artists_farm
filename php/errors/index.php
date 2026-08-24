@@ -697,7 +697,22 @@ if ($wantsJson) {
             // the opt-in `scope=all` branch this relies on (default/unscoped
             // behavior for every OTHER caller, e.g. the real app's own
             // single-property Audit Logs page, is unchanged).
-            const aRes = await fetch(`../api/router.php?action=get_audit_logs&scope=all`);
+            //
+            // timeframe/date_from/date_to (24 Aug 2026, found live: an entry that
+            // briefly appeared here "disappeared after sometime") - scope=all
+            // means this response is now shared across every property's combined
+            // activity instead of one property's, so a flat row LIMIT alone can
+            // get exhausted by unrelated properties' traffic well before "Today"
+            // is actually over. Passing the SAME timeframe this page has
+            // selected lets audit.php apply a real SQL date filter server-side
+            // (mirroring TelescopeLogger::getLogs()'s own today/yesterday/7days/
+            // custom semantics) so the response window tracks the selected
+            // timeframe instead of a raw row count - see that handler for the
+            // full writeup and its own, much higher, backstop LIMIT.
+            const auditParams = new URLSearchParams({ action: 'get_audit_logs', scope: 'all', timeframe });
+            if (dateFrom) auditParams.set('date_from', dateFrom);
+            if (dateTo) auditParams.set('date_to', dateTo);
+            const aRes = await fetch(`../api/router.php?${auditParams.toString()}`);
             const aData = await aRes.json();
             if (Array.isArray(aData.data)) {
                 const existingIds = new Set(allLogs.map(l => l.id));

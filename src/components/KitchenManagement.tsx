@@ -95,6 +95,7 @@ interface KitchenManagementProps {
   // tenant with e.g. 20 tables would otherwise have no way to name half of
   // them (found 20 Aug 2026).
   propertyWalkInTableCount?: number;
+  initialStaffName?: string;
 }
 
 // Sentinel dropdown value for the "New Customer" row in the walk-in tab
@@ -114,6 +115,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   propertyUpiId = '',
   propertyUpiQrCodeUrl = '',
   propertyWalkInTableCount = 10,
+  initialStaffName,
 }) => {
   const { showToast, removeToast } = useToast();
   const { confirm } = useConfirm();
@@ -758,7 +760,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   // see toDatetimeLocalValue()'s doc comment in utils/dateUtils.ts).
   const [smDateRecord, setSmDateRecord] = useState<string>(() => toDatetimeLocalValue(new Date()));
   const [smSelectedStaff, setSmSelectedStaff] = useState<string[]>([]);
-  const [smConsumptionType, setSmConsumptionType] = useState('Freshly Prepared (New Stock)');
   const [smCustomMeal, setSmCustomMeal] = useState('');
   const [smEstCost, setSmEstCost] = useState('');
   const [smQuantity, setSmQuantity] = useState(1);
@@ -788,6 +789,16 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const { staff } = useStaff();
 
   const smStaffList = useMemo(() => staff.filter(s => s.status === 'Active').map(s => s.name), [staff]);
+
+  useEffect(() => {
+    if (initialStaffName && smStaffList.length > 0) {
+      const target = initialStaffName.toLowerCase().trim();
+      const matched = smStaffList.find((s) => s.toLowerCase().trim() === target || s.toLowerCase().trim().includes(target));
+      if (matched) {
+        setSmSelectedStaff([matched]);
+      }
+    }
+  }, [initialStaffName, smStaffList]);
 
 
   const handleSaveCustomMeal = () => {
@@ -832,9 +843,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     // needs to be right, not just self-correcting later.
     const formattedDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}, ${now.toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'})}`;
 
-    const foodStr = smCustomMeal ? `${smQuantity}x ${smCustomMeal}` : `${smQuantity}x ${smConsumptionType}`;
-
-    const isLeftover = smConsumptionType === 'Leftover Buffer items';
+    const foodStr = smCustomMeal ? `${smQuantity}x ${smCustomMeal}` : `${smQuantity}x Staff Meal`;
+    const isLeftover = false;
     const newLog = {
       date: formattedDate,
       staff: smSelectedStaff.join(', '),
@@ -2768,19 +2778,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     </label>
                   ))}
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">{t('consumption_type_label')}</label>
-                <StyledSelect
-                  value={smConsumptionType}
-                  onChange={setSmConsumptionType}
-                  options={[
-                    { value: 'Freshly Prepared (New Stock)', label: 'Freshly Prepared (New Stock)' },
-                    { value: 'Leftover Buffer items', label: 'Leftover Buffer items' },
-                    { value: 'Evening Chai', label: 'Evening Chai' },
-                  ]}
-                />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

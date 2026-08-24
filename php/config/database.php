@@ -93,16 +93,14 @@ $__is_local_env = $server_name === 'localhost' || $server_name === '127.0.0.1' |
 // incident this whole check exists to prevent. Safe to remove once the old subdomain is
 // actually retired/redirected server-side.
 $__is_staging_env = in_array($server_name, ['staging.ground-code.com', 'staging.artistic-sthan.com'], true);
-// The ONE host CPGuard has actually whitelisted (support ticket BRX-3227572) for
-// php/telegram/telegram.php's own local copy - see router.php's require logic right below the
-// kitchen/inventory/etc. requires. Production moving to ground-code.com (24 Aug 2026) means the
-// NEW production checkout's own local telegram.php copy is just as unwhitelisted as staging's
-// always was, so router.php now redirects it to require remotely from this original host too,
-// same as staging - until hosting whitelists ground-code.com's own path (new path:
-// /home/apartment/ground-code.com/php/telegram/telegram.php, requested but not yet confirmed),
-// at which point this constant's in_array() list gets that hostname added and production goes
-// back to using its own local copy like it always did on the old domain.
-$__is_original_telegram_whitelisted_host = in_array($server_name, ['artistic-sthan.com', 'www.artistic-sthan.com'], true);
+// Hosts CPGuard has actually whitelisted for php/telegram/telegram.php's own local copy - see
+// router.php's require logic right below the kitchen/inventory/etc. requires. artistic-sthan.com
+// was the original whitelist (support ticket BRX-3227572); ground-code.com/www.ground-code.com
+// (the new production domain, /home/apartment/ground-code.com/php/telegram/telegram.php) was
+// confirmed whitelisted too on 24 Aug 2026, so production goes back to using its own local copy
+// there once that checkout is actually live - staging (any staging.* hostname) is NOT in this
+// list and keeps redirecting remotely, since only production's path has ever been whitelisted.
+$__is_original_telegram_whitelisted_host = in_array($server_name, ['artistic-sthan.com', 'www.artistic-sthan.com', 'ground-code.com', 'www.ground-code.com'], true);
 if (!defined('APP_IS_ORIGINAL_TELEGRAM_WHITELISTED_HOST')) {
     define('APP_IS_ORIGINAL_TELEGRAM_WHITELISTED_HOST', $__is_original_telegram_whitelisted_host);
 }

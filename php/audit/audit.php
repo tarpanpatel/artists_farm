@@ -75,7 +75,48 @@ function handleAuditRequests($pdo, $request_method, $action, $propertyId) {
             // stay scoped to whichever property the logged-in user is actually
             // in) keeps its exact current behavior unchanged.
             $wantsAllProperties = isset($_GET['scope']) && $_GET['scope'] === 'all';
+
+            // Server-side timeframe filter (24 Aug 2026, found live: a real staff
+            // edit briefly showed up in Telescope right after the scope=all fix
+            // above, then "disappeared after sometime"). Root cause: scope=all
+            // dropped the WHERE property_id filter but kept the same flat
+            // LIMIT 300, so that cap - previously "last 300 events for ONE
+            // property", plenty of runway - became "last 300 events across EVERY
+            // property combined", which a busy multi-tenant environment can
+            // exhaust in minutes; Telescope's own timeframe filter (Today/
+            // Yesterday/Last 7 Days/Custom) only ever ran client-side against
+            // whatever this endpoint happened to return, so it could never
+            // recover a row this LIMIT had already excluded from the response
+            // entirely. Mirrors TelescopeLogger::getLogs()'s exact same
+            // today/yesterday/7days/custom semantics (php/errors/logger.php) so
+            // both data sources agree, and raises the safety-cap LIMIT well
+            // above what these params alone should ever need to matter.
+            $timeframe = $_GET['timeframe'] ?? '';
+            $dateFromParam = $_GET['date_from'] ?? '';
+            $dateToParam = $_GET['date_to'] ?? '';
+            $timeWhere = [];
+            $timeParams = [];
+            if ($timeframe === 'today') {
+                $timeWhere[] = 'DATE(a.timestamp) = CURDATE()';
+            } elseif ($timeframe === 'yesterday') {
+                $timeWhere[] = 'DATE(a.timestamp) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)';
+            } elseif ($timeframe === '7days') {
+                $timeWhere[] = 'a.timestamp >= DATE_SUB(NOW(), INTERVAL 7 DAY)';
+            }
+            if ($dateFromParam !== '') {
+                $timeWhere[] = 'DATE(a.timestamp) >= ?';
+                $timeParams[] = $dateFromParam;
+            }
+            if ($dateToParam !== '') {
+                $timeWhere[] = 'DATE(a.timestamp) <= ?';
+                $timeParams[] = $dateToParam;
+            }
+            $auditLogsLimit = $wantsAllProperties ? 3000 : 300;
+
             try {
+                $whereClauses = $wantsAllProperties ? [] : ['a.property_id = ?'];
+                $whereClauses = array_merge($whereClauses, $timeWhere);
+                $whereSql = $whereClauses ? (' WHERE ' . implode(' AND ', $whereClauses)) : '';
                 $sql = "SELECT a.id, a.timestamp, COALESCE(a.user, u.username, 'System') as user, a.action,
                         COALESCE(a.ip_address, '') as ip_address,
                         COALESCE(a.browser, '') as browser,
@@ -90,13 +131,17 @@ function handleAuditRequests($pdo, $request_method, $action, $propertyId) {
                         FROM audit_logs a
                         LEFT JOIN staff_users u ON a.user_id = u.id
                         LEFT JOIN properties p ON a.property_id = p.id"
-                        . ($wantsAllProperties ? "" : " WHERE a.property_id = ?") .
-                        " ORDER BY a.timestamp DESC LIMIT 300";
+                        . $whereSql .
+                        " ORDER BY a.timestamp DESC LIMIT {$auditLogsLimit}";
                 $stmt = $pdo->prepare($sql);
-                $stmt->execute($wantsAllProperties ? [] : [$propertyId]);
+                $stmt->execute($wantsAllProperties ? $timeParams : array_merge([$propertyId], $timeParams));
                 echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
             } catch (PDOException $e) {
                 try {
+                    $whereClausesFallback = $wantsAllProperties ? [] : ['property_id = ?'];
+                    $timeWhereFallback = array_map(fn($c) => str_replace('a.timestamp', 'timestamp', $c), $timeWhere);
+                    $whereClausesFallback = array_merge($whereClausesFallback, $timeWhereFallback);
+                    $whereSqlFallback = $whereClausesFallback ? (' WHERE ' . implode(' AND ', $whereClausesFallback)) : '';
                     $sql = "SELECT id, timestamp, user, action,
                             COALESCE(ip_address, '') as ip_address,
                             COALESCE(browser, '') as browser,
@@ -107,10 +152,10 @@ function handleAuditRequests($pdo, $request_method, $action, $propertyId) {
                             COALESCE(user_agent, '') as user_agent,
                             property_id
                             FROM audit_logs"
-                            . ($wantsAllProperties ? "" : " WHERE property_id = ?") .
-                            " ORDER BY timestamp DESC LIMIT 300";
+                            . $whereSqlFallback .
+                            " ORDER BY timestamp DESC LIMIT {$auditLogsLimit}";
                     $stmt = $pdo->prepare($sql);
-                    $stmt->execute($wantsAllProperties ? [] : [$propertyId]);
+                    $stmt->execute($wantsAllProperties ? $timeParams : array_merge([$propertyId], $timeParams));
                     echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
                 } catch (PDOException $e2) {
                     echo json_encode(['status' => 'success', 'data' => []]);

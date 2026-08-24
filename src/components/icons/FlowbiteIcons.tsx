@@ -83,6 +83,7 @@ export const Bell = wrap(getOutline('Bell') || getOutline('BellActive'));
 export const Send = wrap(getOutline('PaperPlane') || getOutline('ShareAll'));
 export const Mail = wrap(getOutline('Envelope'));
 export const MessageCircle = wrap(getOutline('Messages') || getOutline('MessageCaption'));
+export const QuestionCircle = wrap(getAny('QuestionCircle') || getAny('InfoCircle'));
 export const ShieldCheck = wrap(getOutline('ShieldCheck') || getOutline('Shield'));
 export const ShieldAlert = wrap(getOutline('ShieldCheck'));
 export const Lock = wrap(getOutline('Lock'));

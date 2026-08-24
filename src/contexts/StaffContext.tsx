@@ -13,7 +13,7 @@ interface StaffContextValue {
   attendance: AttendanceRecord[];
   staffLoading: boolean;
   refreshAttendance: () => void;
-  refreshStaff: () => void;
+  refreshStaff: () => Promise<void>;
   addStaff: (member: StaffMember) => Promise<boolean>;
   updateStaff: (id: string, updated: Partial<StaffMember>) => void;
   recordAttendance: (record: AttendanceRecord) => void;
@@ -57,6 +57,15 @@ export const StaffProvider: React.FC<StaffProviderProps> = ({
     // previously dropped here entirely, leaving every `.username`
     // read on a StaffMember silently undefined.
     username: u.username || u.phone || '',
+    // dailyWage/accessAllProperties (24 Aug 2026, found live: "updated
+    // details but it didn't save" - the DB write was always correct, but
+    // both fields were silently dropped right here even though get_users
+    // always returns them, so every consumer of `staff` - including
+    // StaffManagement.tsx's own Edit form - could never see them again
+    // regardless of what was actually saved). See StaffMember's own comment
+    // in types.ts for the fuller writeup.
+    dailyWage: u.dailyWage,
+    accessAllProperties: u.accessAllProperties,
   });
 
   // BUG (found 13 Aug 2026, alongside the DataLoader nav-menu fix): the very
@@ -92,37 +101,55 @@ export const StaffProvider: React.FC<StaffProviderProps> = ({
   // a new load always invalidates any still-pending earlier one.
   const loadTokenRef = useRef(0);
 
-  const loadStaff = useCallback(() => {
+  // Returns a Promise that resolves once this load has landed (success,
+  // exhausted-retries-accept-empty, or superseded-by-a-newer-load) - added
+  // 24 Aug 2026, found live: a staff edit that saved correctly in the DB
+  // still showed stale data (blank Daily Wage, unchecked Access All
+  // Properties) when the Edit drawer was reopened right after saving,
+  // because refreshStaff()'s caller (StaffManagement.tsx) closed the modal
+  // and let the user interact again immediately, with no way to know
+  // whether the fresh fetch this kicked off had actually landed yet - it's
+  // fire-and-forget from the caller's side, and the retry-with-backoff
+  // logic below can legitimately take a few seconds. Wrapping this in a
+  // Promise lets a save handler `await refreshStaff()` before reopening
+  // anything, without changing behavior for the many existing callers that
+  // still just call it as a bare statement (ignoring a returned Promise is
+  // always legal - only actual `await`ers change behavior).
+  const loadStaff = useCallback((): Promise<void> => {
     loadTokenRef.current += 1;
     const myToken = loadTokenRef.current;
     const isStale = () => loadTokenRef.current !== myToken;
 
-    const attempt = (retriesLeft: number, delayMs: number) => {
-      fetchStaffUsersFromDB().then((data) => {
-        if (isStale()) return;
-        if (data && data.length > 0) {
-          setStaff(data.map(mapStaffRow));
-          setStaffLoading(false);
-        } else if (retriesLeft > 0) {
-          setTimeout(() => {
-            if (isStale()) return;
-            attempt(retriesLeft - 1, delayMs);
-          }, delayMs);
-        } else {
-          // Every attempt came back empty - accept it as genuinely no staff
-          // rather than retrying forever.
-          setStaffLoading(false);
-        }
-      });
-    };
+    return new Promise<void>((resolve) => {
+      const attempt = (retriesLeft: number, delayMs: number) => {
+        fetchStaffUsersFromDB().then((data) => {
+          if (isStale()) { resolve(); return; }
+          if (data && data.length > 0) {
+            setStaff(data.map(mapStaffRow));
+            setStaffLoading(false);
+            resolve();
+          } else if (retriesLeft > 0) {
+            setTimeout(() => {
+              if (isStale()) { resolve(); return; }
+              attempt(retriesLeft - 1, delayMs);
+            }, delayMs);
+          } else {
+            // Every attempt came back empty - accept it as genuinely no staff
+            // rather than retrying forever.
+            setStaffLoading(false);
+            resolve();
+          }
+        });
+      };
 
-    attempt(2, 1500); // initial fetch + up to 2 retries, 1.5s apart
+      attempt(2, 1500); // initial fetch + up to 2 retries, 1.5s apart
+    });
   }, []);
 
   // Public refresh callback (App.tsx calls this on mount and again whenever
   // the active property changes) - just triggers the same guarded loader.
-  const refreshStaff = useCallback(() => {
-    loadStaff();
+  const refreshStaff = useCallback((): Promise<void> => {
+    return loadStaff();
   }, [loadStaff]);
 
   useEffect(() => {

@@ -52,6 +52,7 @@ interface HeaderProps {
   showInstallIcon?: boolean;
   onInstallIconClick?: () => void;
   onNavigate?: (tab: TabType, itemKey?: string) => void;
+  onToggleAIChat?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -70,6 +71,7 @@ export const Header: React.FC<HeaderProps> = ({
   showInstallIcon = false,
   onInstallIconClick,
   onNavigate,
+  onToggleAIChat,
 }) => {
   const { currentUser, activeRole, setActiveRole } = useAuth();
   // "View site as" (Root Admin only) - a pure frontend preview: it only
@@ -357,20 +359,17 @@ export const Header: React.FC<HeaderProps> = ({
             </Popover>
           )}
 
-          {/* Help Link Button */}
-          <a
-            href="#help"
-            onClick={(e) => {
-              e.preventDefault();
-              // Placeholder help action — target destination/modal to be configured
-            }}
-            title={t('help_tooltip', 'Help & Support')}
-            aria-label={t('help_aria', 'Help & Support')}
+          {/* Help & AI Chatbot Button */}
+          <button
+            type="button"
+            onClick={() => onToggleAIChat?.()}
+            title={t('help_tooltip', 'Help & AI Assistant')}
+            aria-label={t('help_aria', 'Help & AI Assistant')}
             className="btn-header-help relative px-2.5 py-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer inline-flex items-center gap-1.5 text-xs font-semibold"
           >
             <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             <span>Help?</span>
-          </a>
+          </button>
 
           {/* Notification Bell Button */}
           <div className="header__notification relative">

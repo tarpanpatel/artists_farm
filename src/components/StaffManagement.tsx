@@ -188,6 +188,12 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       accessAllProperties: Boolean(member.accessAllProperties),
       qrCodeUrl: member.qrCodeUrl,
       status: member.status,
+      // dailyWage (24 Aug 2026, found live: "updated details but it didn't
+      // save" - was missing from this object literal entirely, so even
+      // after StaffMember itself started carrying it (StaffContext.tsx's
+      // mapStaffRow fix, same date) it still never reached the UserAccount
+      // shape the Edit form's pre-fill (handleEditUser) actually reads from.
+      dailyWage: member.dailyWage,
     })));
   }, [staff]);
 
@@ -290,7 +296,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       showToast('Unable to save the staff member to the database.', { type: 'error' });
       return;
     }
-    refreshStaff?.();
+    // Awaited (24 Aug 2026, see refreshStaff's own comment in StaffContext.tsx)
+    // so the local `users` list is guaranteed fresh before the modal closes -
+    // reopening Edit on this same person right after creating them should
+    // never show stale/blank data.
+    await refreshStaff?.();
     showToast('Staff login account created successfully!', { type: 'success' });
     setNewFullName('');
     setNewUsername('');
@@ -311,7 +321,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
        variant: 'danger',
      });
      if (confirmed) {
-       if (await deleteStaffUserDB(id)) refreshStaff?.();
+       if (await deleteStaffUserDB(id)) await refreshStaff?.();
        else showToast('Unable to delete the staff member from the database.', { type: 'error' });
      }
    };
@@ -411,7 +421,18 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       showToast('Unable to update the user in the database.', { type: 'error' });
       return;
     }
-    refreshStaff?.();
+    // Awaited (24 Aug 2026, found live: "updated Abhijeet's details but it
+    // didn't save" - the DB write and its audit_logs entry both confirmed
+    // correct, but reopening Edit right after saving showed stale
+    // pre-fill values - Daily Wage blank, Access All Properties unchecked -
+    // because the local `users` list (derived from StaffContext's `staff`
+    // array) hadn't actually finished refetching yet when the drawer closed
+    // and the user was free to reopen it. refreshStaff() kicks off a
+    // fetch-with-retry chain that can legitimately take a couple seconds;
+    // without awaiting it there was no guarantee the fresh data had landed
+    // before the next interaction. See refreshStaff's own comment in
+    // StaffContext.tsx for the Promise plumbing this relies on.
+    await refreshStaff?.();
     setSelectedUpdateUserId('');
     setUpdateFullName('');
     setUpdateUsername('');

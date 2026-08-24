@@ -32,6 +32,7 @@ import { Smartphone, Download, X as CloseIcon, Share, PlusSquare, MoreVertical, 
 import { LoadingScreen } from './components/LoadingScreen';
 import { LoginPage } from './components/LoginPage';
 import { MultiKeyPropertyOverview } from './components/MultiKeyPropertyOverview';
+import { AIChatWidget } from './components/AIChatWidget';
 import { getPropertyAndRoomSlugs } from './services/api';
 
 // Code-split: everything below is either a secondary/admin tab that most
@@ -293,6 +294,8 @@ function AppBody({ preloadedData }: AppBodyProps) {
   const [activeTab, setActiveTab] = useState<TabType>(initialActive.tab);
   const [activeMenuItemKey, setActiveMenuItemKey] = useState<string>(initialActive.key);
   const [autoOpenAddStaffModal, setAutoOpenAddStaffModal] = useState<boolean>(false);
+  const [initialExpenseData, setInitialExpenseData] = useState<{ amount?: number; description?: string } | null>(null);
+  const [initialStaffMealName, setInitialStaffMealName] = useState<string | null>(null);
   const [propertyName] = useState<string>(
     preloadedData.currentProperty?.name || getPropertySlug().charAt(0).toUpperCase() + getPropertySlug().slice(1).replace(/-/g, ' ') || 'Property'
   );
@@ -652,6 +655,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
   const [isIconOnly, setIsIconOnly] = useState(false);
   const [isAddBookingModalOpen, setIsAddBookingModalOpen] = useState(false);
   const [isAddExpenseModalOpen, setIsAddExpenseModalOpen] = useState(false);
+  const [isAIChatOpen, setIsAIChatOpen] = useState(false);
 
   const [guests, setGuests] = useState<Guest[]>(() => preloadedData.initialGuests || []);
   const [receipts, setReceipts] = useState<BillingReceipt[]>(() => preloadedData.initialReceipts || []);
@@ -1880,6 +1884,7 @@ ${itemsStr}
             showInstallIcon={canShowInstallIcon}
             onInstallIconClick={handleHeaderInstallClick}
             onNavigate={(tab, itemKey) => handleNavigateTab(tab, itemKey)}
+            onToggleAIChat={() => setIsAIChatOpen((prev) => !prev)}
           />
         )}
 
@@ -2178,6 +2183,7 @@ ${itemsStr}
                     onRequestMaterial={handleRequestMaterial}
                     onDispatchTelegram={dispatchTelegramAlert}
                     activeMenuItemKey={activeMenuItemKey}
+                    initialStaffName={initialStaffMealName || undefined}
                     propertyName={preloadedData.currentProperty?.name || ''}
                     propertyGstin={preloadedData.currentProperty?.gstin || ''}
                     propertyUpiId={preloadedData.currentProperty?.upi_id || ''}
@@ -2456,6 +2462,9 @@ ${itemsStr}
                 onDispatchTelegram={dispatchTelegramAlert}
                 onlyForm={true}
                 onClose={() => setIsAddExpenseModalOpen(false)}
+                initialAmount={initialExpenseData?.amount}
+                initialDescription={initialExpenseData?.description}
+                kitchenModuleEnabled={isModuleEnabled('kitchen')}
               />
             </Suspense>
           </div>
@@ -2550,6 +2559,34 @@ ${itemsStr}
         )}
 
         <GlobalModal />
+        <AIChatWidget
+          isOpen={isAIChatOpen}
+          onClose={() => setIsAIChatOpen(false)}
+          userRole={activeRole}
+          propertyName={preloadedData.currentProperty?.name}
+          guests={guests}
+          onNavigate={(tab, itemKey, extraData) => {
+            setIsAIChatOpen(false);
+            setActiveTab(tab as any);
+            if (itemKey) setActiveMenuItemKey(itemKey);
+            if (extraData?.staffName) {
+              setInitialStaffMealName(extraData.staffName);
+            }
+          }}
+          onOpenAddBooking={() => {
+            setIsAIChatOpen(false);
+            setIsAddBookingModalOpen(true);
+          }}
+          onOpenAddExpense={(data) => {
+            setInitialExpenseData(data || null);
+            setIsAIChatOpen(false);
+            setIsAddExpenseModalOpen(true);
+          }}
+          onOpenTelegramModal={() => {
+            setIsAIChatOpen(false);
+            setIsTelegramModalOpen(true);
+          }}
+        />
     </div>
   );
 }
