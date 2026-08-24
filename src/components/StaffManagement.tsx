@@ -46,6 +46,10 @@ interface StaffManagementProps {
   propertyId?: number | string;
   autoOpenAddModal?: boolean;
   onClearAutoOpenAddModal?: () => void;
+  // AI Assistant deep-link (24 Aug 2026, mirrors KitchenManagement.tsx's initialStaffName for
+  // staff meals) - lets "change phone number for staff Kamlesh" land straight on that person's
+  // roster row already in edit mode, instead of just the Team page in general.
+  initialEditStaffName?: string;
 }
 
 export const StaffManagement: React.FC<StaffManagementProps> = ({
@@ -56,6 +60,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   propertyId,
   autoOpenAddModal,
   onClearAutoOpenAddModal,
+  initialEditStaffName,
 }) => {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
@@ -171,6 +176,27 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const [editStaffPhone, setEditStaffPhone] = useState('');
   const [editStaffSalary, setEditStaffSalary] = useState(0);
   const [editStaffStatus, setEditStaffStatus] = useState('Active');
+
+  // AI Assistant deep-link: once the roster sub-tab is active and staff have loaded, find the
+  // named person and open their row in edit mode the same way the "Edit Details" button does.
+  // Case-insensitive partial match (same rule as KitchenManagement's staff-meal auto-select) -
+  // "Kamlesh" matches "Kamlesh Verma". Only runs once per name (guarded below) so it doesn't
+  // keep re-opening the row if the admin closes it again after editing.
+  const [appliedEditStaffName, setAppliedEditStaffName] = useState<string | null>(null);
+  useEffect(() => {
+    if (!initialEditStaffName || activeSubTab !== 'roster' || staff.length === 0) return;
+    if (appliedEditStaffName === initialEditStaffName) return;
+    const target = initialEditStaffName.toLowerCase().trim();
+    const matched = staff.find((s) => s.name.toLowerCase().trim() === target || s.name.toLowerCase().trim().includes(target));
+    if (matched) {
+      setEditingStaffId(matched.id);
+      setEditStaffRole(matched.role);
+      setEditStaffPhone(matched.phone);
+      setEditStaffSalary(matched.monthlySalary);
+      setEditStaffStatus(matched.status);
+    }
+    setAppliedEditStaffName(initialEditStaffName);
+  }, [initialEditStaffName, activeSubTab, staff, appliedEditStaffName]);
 
   // Mobile UI State
   const [mobileAttMode, setMobileAttMode] = useState<'daily' | 'summary'>('daily');

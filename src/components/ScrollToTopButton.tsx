@@ -70,7 +70,20 @@ export const ScrollToTopButton: React.FC<ScrollToTopButtonProps> = ({ threshold 
         type="button"
         onClick={handleClick}
         aria-label="Scroll to top"
-        className="fixed bottom-24 right-4 z-40 w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-700 active:scale-95 text-white shadow-lg flex items-center justify-center cursor-pointer transition-transform"
+        // w-11/h-11 (44px, the min. accepted touch-target size) rather than
+        // the old w-12/h-12 (48px), plus a white/dark ring - found 24 Aug
+        // 2026: on any full-width edge-to-edge grid scrolled near its end
+        // (e.g. OperationalDashboard's booking calendar - see its own
+        // protected-component note, not touched here), "bottom-right
+        // corner of the screen" and "last row/column of real content" are
+        // the same pixels, so this button was sitting directly on top of a
+        // calendar cell, hiding it and eating its taps. The ring doesn't
+        // remove the overlap (inherent to any right-anchored FAB over
+        // edge-to-edge content) but makes it unmistakably read as a
+        // floating control rather than corrupted page content, and the
+        // smaller footprint shrinks how much of the cell underneath it
+        // stays covered.
+        className="fixed bottom-24 right-4 z-40 w-11 h-11 rounded-full bg-blue-600 hover:bg-blue-700 active:scale-95 text-white shadow-lg ring-2 ring-white dark:ring-slate-900 flex items-center justify-center cursor-pointer transition-transform"
       >
         <ArrowUp className="w-5 h-5 shrink-0" />
       </button>

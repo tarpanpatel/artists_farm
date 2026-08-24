@@ -19,10 +19,11 @@ interface AIChatWidgetProps {
   isOpen?: boolean;
   onClose?: () => void;
   guests?: Guest[];
-  onNavigate?: (tab: string, itemKey?: string, extraData?: { staffName?: string }) => void;
+  onNavigate?: (tab: string, itemKey?: string, extraData?: { staffName?: string; reqItemName?: string; reqQty?: number; reqUnit?: string }) => void;
   onOpenAddBooking?: () => void;
   onOpenAddExpense?: (data?: { amount?: number; description?: string; category?: string }) => void;
   onOpenTelegramModal?: () => void;
+  onOpenAddServiceRequest?: (data?: { roomNumber?: string; item?: string }) => void;
 }
 
 export const AIChatWidget: React.FC<AIChatWidgetProps> = ({
@@ -35,6 +36,7 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({
   onOpenAddBooking,
   onOpenAddExpense,
   onOpenTelegramModal,
+  onOpenAddServiceRequest,
 }) => {
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   const isChatOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
@@ -172,6 +174,13 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({
           window.open('/php/errors/', '_blank');
           actionNotice = '⚡ Executed: Opened Telescope Error Monitor';
           handleClose();
+        } else if (type === 'open_root_dashboard_route') {
+          // Same-tab, not a new tab (unlike Telescope above) - this is the SAME logged-in
+          // session just switching to the separate Root Admin dashboard shell, not an
+          // independent tool with its own login.
+          window.location.href = '/root_dashboard/' + (res.action.route || '');
+          actionNotice = '⚡ Executed: Opened Account Settings';
+          handleClose();
         } else if (type === 'open_add_booking' && onOpenAddBooking) {
           onOpenAddBooking();
           actionNotice = '⚡ Executed: Add Booking form opened';
@@ -180,12 +189,21 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({
           onOpenAddExpense({ amount: res.action.amount, description: res.action.description, category: res.action.category });
           actionNotice = '⚡ Executed: Add Expense form opened';
           handleClose();
+        } else if (type === 'open_add_service_request' && onOpenAddServiceRequest) {
+          onOpenAddServiceRequest({ roomNumber: res.action.roomNumber, item: res.action.item });
+          actionNotice = '⚡ Executed: New Service Request form opened';
+          handleClose();
         } else if (type === 'open_telegram_modal' && onOpenTelegramModal) {
           onOpenTelegramModal();
           actionNotice = '⚡ Executed: Telegram Settings modal opened';
           handleClose();
         } else if (type === 'navigate' && onNavigate && res.action.tab) {
-          onNavigate(res.action.tab, res.action.itemKey, { staffName: res.action.staffName });
+          onNavigate(res.action.tab, res.action.itemKey, {
+            staffName: res.action.staffName,
+            reqItemName: res.action.reqItemName,
+            reqQty: res.action.reqQty,
+            reqUnit: res.action.reqUnit,
+          });
           actionNotice = `⚡ Executed: Navigated to ${res.action.tab}`;
         }
       }

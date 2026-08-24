@@ -296,6 +296,9 @@ function AppBody({ preloadedData }: AppBodyProps) {
   const [autoOpenAddStaffModal, setAutoOpenAddStaffModal] = useState<boolean>(false);
   const [initialExpenseData, setInitialExpenseData] = useState<{ amount?: number; description?: string } | null>(null);
   const [initialStaffMealName, setInitialStaffMealName] = useState<string | null>(null);
+  const [initialEditStaffName, setInitialEditStaffName] = useState<string | null>(null);
+  const [initialReqData, setInitialReqData] = useState<{ itemName?: string; qty?: number; unit?: string } | null>(null);
+  const [initialServiceRequestData, setInitialServiceRequestData] = useState<{ roomNumber?: string; item?: string } | null>(null);
   const [propertyName] = useState<string>(
     preloadedData.currentProperty?.name || getPropertySlug().charAt(0).toUpperCase() + getPropertySlug().slice(1).replace(/-/g, ' ') || 'Property'
   );
@@ -2184,6 +2187,9 @@ ${itemsStr}
                     onDispatchTelegram={dispatchTelegramAlert}
                     activeMenuItemKey={activeMenuItemKey}
                     initialStaffName={initialStaffMealName || undefined}
+                    initialReqItemName={initialReqData?.itemName}
+                    initialReqQty={initialReqData?.qty}
+                    initialReqUnit={initialReqData?.unit}
                     propertyName={preloadedData.currentProperty?.name || ''}
                     propertyGstin={preloadedData.currentProperty?.gstin || ''}
                     propertyUpiId={preloadedData.currentProperty?.upi_id || ''}
@@ -2249,6 +2255,7 @@ ${itemsStr}
                     propertyId={preloadedData.currentProperty?.id}
                     autoOpenAddModal={autoOpenAddStaffModal}
                     onClearAutoOpenAddModal={() => setAutoOpenAddStaffModal(false)}
+                    initialEditStaffName={initialEditStaffName || undefined}
                   />
                 </ErrorBoundary>
               )}
@@ -2299,6 +2306,8 @@ ${itemsStr}
                     rooms={preloadedData.currentProperty?.rooms || []}
                     isMultiKeyProperty={preloadedData.isMultiKeyProperty}
                     onDispatchTelegram={dispatchTelegramAlert}
+                    initialRoomNumber={initialServiceRequestData?.roomNumber}
+                    initialRequestItem={initialServiceRequestData?.item}
                   />
                 </ErrorBoundary>
               )}
@@ -2570,7 +2579,14 @@ ${itemsStr}
             setActiveTab(tab as any);
             if (itemKey) setActiveMenuItemKey(itemKey);
             if (extraData?.staffName) {
-              setInitialStaffMealName(extraData.staffName);
+              if (itemKey === 'staff_directory_salaries') {
+                setInitialEditStaffName(extraData.staffName);
+              } else {
+                setInitialStaffMealName(extraData.staffName);
+              }
+            }
+            if (extraData?.reqItemName || extraData?.reqQty) {
+              setInitialReqData({ itemName: extraData.reqItemName, qty: extraData.reqQty, unit: extraData.reqUnit });
             }
           }}
           onOpenAddBooking={() => {
@@ -2585,6 +2601,16 @@ ${itemsStr}
           onOpenTelegramModal={() => {
             setIsAIChatOpen(false);
             setIsTelegramModalOpen(true);
+          }}
+          onOpenAddServiceRequest={(data) => {
+            // Unlike Add Booking/Expense (globally-mounted modals), the New Service Request
+            // drawer lives inside ServiceRequestsManagement itself, only mounted when that tab
+            // is active - so this has to switch tabs too, same as the staff_meals/edit_staff
+            // navigate flow, not just set data and expect a hidden component to react to it.
+            setInitialServiceRequestData(data || null);
+            setIsAIChatOpen(false);
+            setActiveTab('service_requests' as any);
+            setActiveMenuItemKey('service_requests');
           }}
         />
     </div>
