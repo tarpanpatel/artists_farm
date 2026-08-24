@@ -14,7 +14,6 @@ import {
   Download,
   ClipboardList,
   RefreshCw,
-  HelpCircle,
   ArrowRight,
   Eye,
   Check,
@@ -84,7 +83,7 @@ export const Header: React.FC<HeaderProps> = ({
   const isRealRootAdmin = (currentUser?.role || '').toLowerCase().replace(/_/g, ' ').trim() === 'root admin';
   const VIEW_AS_ROLES = ['Root Admin', 'Super Admin', 'Admin', 'Staff Supervisor', 'Staff Kitchen', 'Staff'];
   const { showToast } = useToast();
-  const { lowStockCount } = useInventoryContext();
+  const { lowStockCount, pendingStockRequestsCount } = useInventoryContext();
   const { orders } = useKitchenContext();
   const { pendingRequests, refreshRequests } = useServiceRequestContext();
   const recentServiceRequests = pendingRequests.slice(0, 5);
@@ -195,6 +194,7 @@ export const Header: React.FC<HeaderProps> = ({
     today: todayGuests.map((g) => `${g.id}-${g.status}`),
     tomorrow: tomorrowGuests.map((g) => g.id),
     lowStock: lowStockCount,
+    pendingStockRequests: pendingStockRequestsCount,
     serviceRequests: recentServiceRequests.map((r) => r.id),
   });
 
@@ -202,6 +202,7 @@ export const Header: React.FC<HeaderProps> = ({
     (kitchenModuleEnabled && kitchenDisplayOrders.length > 0) ||
     (isMultiKeyProperty && (todayGuests.length > 0 || tomorrowGuests.length > 0)) ||
     lowStockCount > 0 ||
+    pendingStockRequestsCount > 0 ||
     recentServiceRequests.length > 0
   );
 
@@ -217,6 +218,7 @@ export const Header: React.FC<HeaderProps> = ({
     (kitchenModuleEnabled ? kitchenDisplayOrders.length : 0) +
     (isMultiKeyProperty ? todayGuests.length + tomorrowGuests.length : 0) +
     lowStockCount +
+    pendingStockRequestsCount +
     recentServiceRequests.length;
 
   return (
@@ -365,9 +367,8 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => onToggleAIChat?.()}
             title={t('help_tooltip', 'Help & AI Assistant')}
             aria-label={t('help_aria', 'Help & AI Assistant')}
-            className="btn-header-help relative px-2.5 py-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer inline-flex items-center gap-1.5 text-xs font-semibold"
+            className="btn-header-help relative px-2.5 py-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer inline-flex items-center text-xs font-semibold"
           >
-            <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             <span>Help?</span>
           </button>
 
@@ -592,6 +593,32 @@ export const Header: React.FC<HeaderProps> = ({
                             </button>
                           </div>
                         ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Pending Stock Requests */}
+                  {pendingStockRequestsCount > 0 && (
+                    <div className="header__stock-requests p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 flex items-start gap-2.5">
+                      <div className="header__stock-requests-icon p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 mt-0.5">
+                        <ClipboardList className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1 flex items-center justify-between gap-2">
+                        <div>
+                          <p className="header__stock-requests-title text-xs font-semibold text-slate-900 dark:text-white">
+                            {pendingStockRequestsCount} Pending Stock Request{pendingStockRequestsCount > 1 ? 's' : ''}
+                          </p>
+                          <p className="header__stock-requests-desc text-[11px] text-slate-500 dark:text-slate-400">
+                            Staff requested material requisitions for kitchen/inventory
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleNavigateAndClose('kitchen', 'stock_requests')}
+                          className="text-[9px] font-bold px-2 py-1 rounded bg-amber-600 hover:bg-amber-700 text-white cursor-pointer transition-colors shrink-0 inline-flex items-center gap-1"
+                        >
+                          <span>{t('view_button', 'View')}</span>
+                          <ArrowRight className="w-2.5 h-2.5" />
+                        </button>
                       </div>
                     </div>
                   )}

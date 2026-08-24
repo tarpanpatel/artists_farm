@@ -47,6 +47,21 @@ interface BookingDetailsModalProps {
   // Guest can be checked out and billed anytime during the stay, not just on
   // the original expected checkout date.
   onCheckout?: () => void;
+  // Lets a caller that opened this modal FROM somewhere other than the
+  // guest's own "Edit"/banner click - a Dashboard System Alert row, a
+  // BillingCheckout warning-badge Popover's "Go to X" button, a future
+  // notification - carry the user straight to the same spot a click on the
+  // matching in-modal banner would (24 Aug 2026, "if someone clicks such
+  // button from dashboard or notification or bookings page this whole
+  // process should happen"). 'c_form'/'checkin' scroll to + highlight the
+  // relevant section within THIS modal (see the useEffect below); those two
+  // still require the user's own explicit Save/Mark-Checked-In click once
+  // they're looking at it - this only does the navigating, never the actual
+  // save, so a single external click never silently mutates a booking with
+  // no modal in front of the user. 'id_verification' opens the (separate)
+  // ID upload flow directly, since that one's just opening a place to
+  // upload - not a mutation - so there's no equivalent safety concern.
+  initialFocusSection?: 'c_form' | 'checkin' | 'id_verification' | null;
 }
 
 const formatDate = (dateStr: string) => {
@@ -82,6 +97,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   onOpenIdVerification,
   onCheckedIn,
   onCheckout,
+  initialFocusSection = null,
 }) => {
   const { staff } = useStaff();
   const { showToast } = useToast();
@@ -135,6 +151,22 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     }
   };
 
+  // Extracted 24 Aug 2026 so the new top "Check-in Pending" warning banner
+  // (see Action Banner 0.5 below - added same day, reported as "Check in
+  // still pending but it's not showing the warning on top") and the
+  // pre-existing footer "Mark Checked In" button share one implementation
+  // instead of two copies drifting apart over time.
+  const handleMarkCheckedIn = async () => {
+    const ok = await checkinGuestInDB(guest.id);
+    if (ok) {
+      guest.status = GUEST_STATUS_CHECKED_IN as any;
+      onCheckedIn?.(guest.id);
+      showToast(`${guest.guestName} marked as Checked In!`, { type: 'success' });
+    } else {
+      showToast('Failed to check in guest', { type: 'error' });
+    }
+  };
+
   const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editRoomId, setEditRoomId] = useState('');
@@ -165,6 +197,25 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   // <input type="file"> element itself.
   const cFormFileInputRef = useRef<HTMLInputElement>(null);
 
+  // Whether the number-input/upload fields are expanded - deliberately a
+  // SEPARATE flag from cFormFiledState (24 Aug 2026 fix). Before this, the
+  // "Mark C-Form Filed" banner button and the "Mark C-Form as filed"
+  // checkbox both flipped cFormFiledState itself just to reveal these
+  // fields, which had two real bugs: (1) the top warning banner (gated on
+  // `!isCFormFiled`) vanished the instant you clicked, before anything was
+  // actually saved - reported as "banner should stay there"; (2)
+  // cFormLocked (added earlier this same session) is `isCFormFiled &&
+  // !isEditing` - with the old single-flag design, revealing the fields
+  // this way while not in Edit mode *also* immediately locked them right as
+  // they appeared, since both conditions flipped true together. Now
+  // cFormFiledState/isCFormFiled means ONLY "genuinely saved" (flips true
+  // only inside Save C-Form's success handler, or on load from
+  // guest.cFormFiledAt), so cFormLocked stays false while this is open but
+  // unsaved, and the top banner correctly stays visible the whole time too.
+  const [cFormSectionOpen, setCFormSectionOpen] = useState<boolean>(false);
+  const cFormSectionRef = useRef<HTMLDivElement>(null);
+  const checkinBannerRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (guest) {
       const g = guest as any;
@@ -190,8 +241,53 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
       const isFiled = !!(guest.cFormFiledAt || g.c_form_filed_at || g.c_form_filed || g.cFormFiled);
       setCFormFiledState(isFiled);
       setCFormNumberState(g.c_form_number || g.cFormNumber || '');
+      // Section starts open if already genuinely filed (so a returning look
+      // at an already-filed guest still shows the saved number/document
+      // without an extra click) - otherwise closed until the banner/
+      // checkbox/initialFocusSection opens it.
+      setCFormSectionOpen(isFiled);
     }
   }, [guest]);
+
+  // External "take me to X" entry point (24 Aug 2026) - see initialFocusSection's
+  // own doc comment above. Runs once per guest/target combo; deliberately
+  // does NOT depend on cFormSectionOpen/isEditing etc. so it doesn't re-fire
+  // and re-scroll every time those flip from the user's own later clicks.
+  useEffect(() => {
+    if (!guest || !initialFocusSection) return;
+    if (initialFocusSection === 'c_form') {
+      setCFormSectionOpen(true);
+    } else if (initialFocusSection === 'id_verification') {
+      handleOpenId();
+    }
+    // 'checkin' needs no state change here - Action Banner 0.5 is already
+    // visible whenever the guest is still Booked, purely from guest.status;
+    // the scroll-to-it below is all that's left to do.
+    // Scroll happens in the next effect, once the target section's ref is
+    // actually mounted for this render pass.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guest?.id, initialFocusSection]);
+
+  // Scrolls to + (via cFormHighlightActive below) highlights whichever
+  // section initialFocusSection - or the user's own banner click - just
+  // opened. Runs after cFormSectionOpen/initialFocusSection changes, once
+  // the target section has actually rendered.
+  useEffect(() => {
+    if (initialFocusSection === 'checkin' && checkinBannerRef.current) {
+      checkinBannerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else if (cFormSectionOpen && cFormSectionRef.current) {
+      cFormSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Focus the number field once the scroll has had a moment to start -
+      // same UX the old inline .focus() call gave, just reachable now from
+      // every trigger (banner click, checkbox, or an external
+      // initialFocusSection), not only the banner's own onClick.
+      const focusTimer = setTimeout(() => {
+        document.getElementById('c-form-number-input')?.focus();
+      }, 300);
+      return () => clearTimeout(focusTimer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cFormSectionOpen, initialFocusSection]);
 
   if (!guest) return null;
 
@@ -479,6 +575,39 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             </div>
           )}
 
+          {/* Action Banner 0.5: Check-in Pending (added 24 Aug 2026 - reported
+              as "Check in still pending but it's not showing the warning on
+              top". The action itself already existed as a full-width footer
+              button ("Mark Checked In"), but nothing up here where the other
+              warnings live said so - easy to miss on a guest who's still just
+              "Booked", especially scrolled past the ID/C-Form banners below
+              which show regardless of check-in status. Shares
+              handleMarkCheckedIn with that same footer button now, not a
+              second copy of the same logic. */}
+          {canActOnBooking && !isEditing && (guest.status === GUEST_STATUS_BOOKED || (guest.status as string) === GUEST_STATUS_CONFIRMED_LEGACY) && (
+            <div
+              ref={checkinBannerRef}
+              className={`w-full mb-3 px-3.5 py-2.5 rounded-lg border flex items-center justify-between gap-2 shadow-2xs transition-shadow ${
+                initialFocusSection === 'checkin'
+                  ? 'border-red-400 dark:border-red-600 bg-red-50 dark:bg-red-950/40 ring-2 ring-red-400 dark:ring-red-600'
+                  : 'border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40'
+              }`}
+            >
+              <div className="flex items-center gap-2 text-xs font-semibold text-amber-900 dark:text-amber-200">
+                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                <span>{t('checkin_pending_banner_label', 'Check-in Pending')}</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleMarkCheckedIn}
+                className="px-3 py-1 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white transition-all cursor-pointer shadow-2xs shrink-0 flex items-center gap-1.5"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                {t('mark_checked_in_button', 'Mark Checked In')}
+              </button>
+            </div>
+          )}
+
           {/* Action Banner 1: Check-in ID Verification */}
           {!isEditing && (
             <div
@@ -507,7 +636,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs flex items-center gap-1.5 shrink-0 ${
                     guest.idVerificationStatus === 'Complete'
                       ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                      : 'bg-rose-600 hover:bg-rose-700 text-white animate-pulse hover:animate-none'
+                      : 'bg-rose-600 hover:bg-rose-700 text-white'
                   }`}
                 >
                   <Upload className="w-3.5 h-3.5" />
@@ -526,11 +655,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  setCFormFiledState(true);
-                  const el = document.getElementById('c-form-number-input');
-                  if (el) el.focus();
-                }}
+                onClick={() => setCFormSectionOpen(true)}
                 className="px-3 py-1 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition-all cursor-pointer shadow-2xs shrink-0"
               >
                 Mark C-Form Filed
@@ -796,7 +921,19 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 <div className="flex items-center justify-between gap-2">
                   <label className={`flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-100 select-none ${canActOnBooking ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}>
                     <Checkbox
-                      checked={cFormFiledState}
+                      // Bound to cFormSectionOpen, not cFormFiledState (24 Aug
+                      // 2026 fix) - checking this box only REVEALS the fields
+                      // below to fill in, it doesn't itself save anything
+                      // (that's still "Save C-Form"). It used to flip
+                      // cFormFiledState straight away, which prematurely
+                      // marked this "Filed" (and, via cFormLocked, immediately
+                      // DISABLED the very fields it had just revealed) before
+                      // any save actually happened. Unchecking is the one
+                      // real exception - that DOES save immediately (an
+                      // explicit "actually mark as not filed" action), so it
+                      // still flips cFormFiledState itself, and closes the
+                      // section back up along with it.
+                      checked={cFormSectionOpen}
                       disabled={!canActOnBooking}
                       onChange={async (e) => {
                         if (!canActOnBooking) return;
@@ -805,6 +942,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                           const ok = await markCFormFiled(guest.id, false, '');
                           if (ok) {
                             setCFormFiledState(false);
+                            setCFormSectionOpen(false);
                             setCFormNumberState('');
                             showToast('C-Form marked as pending', { type: 'success' });
                             await onSave({ ...guest, cFormFiledAt: null, cFormFiled: false, c_form_filed: false, cFormNumber: '', c_form_number: '' } as any);
@@ -812,7 +950,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                             showToast('Failed to update C-Form status', { type: 'error' });
                           }
                         } else {
-                          setCFormFiledState(true);
+                          setCFormSectionOpen(true);
                         }
                       }}
                     />
@@ -823,8 +961,19 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   </span>
                 </div>
 
-                {cFormFiledState && canActOnBooking && (
-                  <div className="mt-2.5 space-y-2">
+                {cFormSectionOpen && canActOnBooking && (
+                  <div
+                    ref={cFormSectionRef}
+                    className={`mt-2.5 space-y-2 p-2.5 rounded-lg border transition-colors ${
+                      // Red highlight box (24 Aug 2026 - "highlight that in a
+                      // box with red") while this is genuinely still
+                      // unresolved - clears itself the moment isCFormFiled
+                      // actually flips true (a real save), not on a timer.
+                      !isCFormFiled
+                        ? 'border-red-400 dark:border-red-600 bg-red-50/60 dark:bg-red-950/20 ring-2 ring-red-400/60 dark:ring-red-600/60'
+                        : 'border-transparent'
+                    }`}
+                  >
                     {/* Upload control comes first, above the number field it
                         fills - reads clearer than the reverse order (fill
                         THIS, or upload to fill it automatically). File is
@@ -965,16 +1114,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 {canActOnBooking && (guest.status === GUEST_STATUS_BOOKED || (guest.status as string) === GUEST_STATUS_CONFIRMED_LEGACY) && (
                   <button
                     type="button"
-                    onClick={async () => {
-                      const ok = await checkinGuestInDB(guest.id);
-                      if (ok) {
-                        guest.status = GUEST_STATUS_CHECKED_IN as any;
-                        onCheckedIn?.(guest.id);
-                        showToast(`${guest.guestName} marked as Checked In!`, { type: 'success' });
-                      } else {
-                        showToast('Failed to check in guest', { type: 'error' });
-                      }
-                    }}
+                    onClick={handleMarkCheckedIn}
                     className="w-full h-10 px-4 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 active:scale-98"
                   >
                     <CheckCircle2 className="w-4 h-4 shrink-0" />

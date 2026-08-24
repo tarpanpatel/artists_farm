@@ -135,8 +135,14 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   const { orders } = useKitchenContext();
   const pendingOrders = orders.filter((o) => o.status === 'Pending' || o.status === 'Preparing');
   const recentOrders = orders.slice(0, 5);
-  const { inventory } = useInventoryContext();
+  const { inventory, pendingStockRequestsCount } = useInventoryContext();
   const [selectedBooking, setSelectedBooking] = useState<Guest | null>(null);
+  // Which section a System Alerts row click should land BookingDetailsModal
+  // on (24 Aug 2026 - "if someone clicks such button from dashboard ... this
+  // whole process should happen"), same mechanism BillingCheckout.tsx's
+  // warning-badge popovers now use. null for every other way this modal
+  // gets opened (calendar cell click, "Guests Currently Staying" row, etc).
+  const [selectedBookingFocusSection, setSelectedBookingFocusSection] = useState<'c_form' | 'checkin' | 'id_verification' | null>(null);
   const [showCheckinVerification, setShowCheckinVerification] = useState(false);
   const [isEditingRoomName, setIsEditingRoomName] = useState(false);
   const [editingRoomName, setEditingRoomName] = useState(roomName || '');
@@ -415,6 +421,20 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   type CombinedAlertItem =
     | ({ kind: 'guest' } & GuestAlert)
     | { kind: 'ota'; block: (typeof blockedDates)[number]; severity: 'red' | 'amber'; reasons: AlertReason[] };
+  // Which BookingDetailsModal section a guest alert row's "Resolve" click
+  // should land on (24 Aug 2026 - "if someone clicks such button from
+  // dashboard ... this whole process should happen"), derived from the
+  // SAME reason labels this panel already assigns below - not a new
+  // classification, just routing the click. Overdue Checkout/Unsettled Bill
+  // have no dedicated scroll target of their own (Action Banner 2 already
+  // covers unsettled-bill visibly near the top without one), so they fall
+  // through to null - opens the modal same as any plain row click always has.
+  const focusSectionForReasons = (reasons: AlertReason[]): 'checkin' | 'id_verification' | null => {
+    const labels = reasons.map((r) => r.label);
+    if (labels.includes('Check-in Pending') || labels.includes('Overdue Check-in')) return 'checkin';
+    if (labels.includes('ID Missing')) return 'id_verification';
+    return null;
+  };
   const guestAlertMap = new Map<string, GuestAlert>();
   const addAlertReason = (
     list: Guest[],
@@ -676,7 +696,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                   }`}
                 >
                   <button
-                    onClick={() => setSelectedBooking(g)}
+                    onClick={() => { setSelectedBookingFocusSection(null); setSelectedBooking(g); }}
                     className="text-left cursor-pointer hover:opacity-80 transition-opacity"
                   >
                     <p className="text-sm font-semibold text-slate-900 dark:text-white">{g.guestName}</p>
@@ -752,7 +772,11 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                         </div>
                       </div>
                       <button
-                        onClick={() => (item.kind === 'guest' ? setSelectedBooking(item.guest) : handleConvertOtaBlock(item.block))}
+                        onClick={() => {
+                          if (item.kind !== 'guest') { handleConvertOtaBlock(item.block); return; }
+                          setSelectedBookingFocusSection(focusSectionForReasons(item.reasons));
+                          setSelectedBooking(item.guest);
+                        }}
                         className={`text-[10px] font-bold px-2.5 py-1 rounded-md text-white transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-md ${
                           item.severity === 'red'
                             ? 'bg-red-600 hover:bg-red-700 active:bg-red-800'
@@ -794,7 +818,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                     {clearedGuests.map((g) => (
                       <li key={g.id}>
                         <button
-                          onClick={() => setSelectedBooking(g)}
+                          onClick={() => { setSelectedBookingFocusSection(null); setSelectedBooking(g); }}
                           className="w-full flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-2.5 text-left cursor-pointer hover:opacity-80 transition-opacity"
                         >
                           <span className="text-xs font-semibold text-emerald-900">
@@ -929,10 +953,10 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           </div>
 
           <button
-            onClick={() => onNavigate('stock_requests')}
+            onClick={() => onNavigate('kitchen', 'stock_requests')}
             className="mt-4 w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-semibold text-xs py-2 rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer"
           >
-            <span>{t('view_stock_requests_button', 'View Stock Requests')} ({stockAlerts.length})</span>
+            <span>{t('view_stock_requests_button', 'View Stock Requests')} ({pendingStockRequestsCount})</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -951,6 +975,13 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               </h3>
             </div>
             <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setMonthOffset(0)}
+                className="px-2.5 py-1 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800/80 rounded-lg transition-colors cursor-pointer mr-1"
+              >
+                {t('today_button', 'Today')}
+              </button>
               <button
                 type="button"
                 onClick={() => setMonthOffset((o) => o - 1)}
@@ -1194,6 +1225,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                                           key={g.id}
                                           type="button"
                                           onClick={() => {
+                                            setSelectedBookingFocusSection(null);
                                             setSelectedBooking(g);
                                             setOpenOverflowDateStr(null);
                                           }}
@@ -1282,7 +1314,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                                       <div className="flex items-center justify-between text-2xs">
                                         <span className="text-gray-500 dark:text-gray-400">Dates:</span>
                                         <span className="font-medium text-gray-700 dark:text-gray-200">
-                                          {dayBooking.checkinDate} → {dayBooking.expectedCheckout || (dayBooking as any).checkoutDate}
+                                          {(dayBooking.checkinDate || '').split(' ')[0].split('T')[0]} → {(dayBooking.expectedCheckout || (dayBooking as any).checkoutDate || '').split(' ')[0].split('T')[0]}
                                         </span>
                                       </div>
                                       {hasDayPending && (
@@ -1296,6 +1328,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                                       <button
                                         type="button"
                                         onClick={() => {
+                                          setSelectedBookingFocusSection(null);
                                           setSelectedBooking(dayBooking);
                                           setOpenBookingPopoverId(null);
                                         }}
@@ -1426,13 +1459,14 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       {selectedBooking && !showCheckinVerification && (
         <BookingDetailsModal
           guest={selectedBooking}
-          onClose={() => setSelectedBooking(null)}
+          initialFocusSection={selectedBookingFocusSection}
+          onClose={() => { setSelectedBooking(null); setSelectedBookingFocusSection(null); }}
           onSave={async (updated) => {
             if (!onUpdateBooking) return;
             await onUpdateBooking(updated);
             setSelectedBooking(updated);
           }}
-          onDelete={onDeleteBooking ? async (id) => { await onDeleteBooking(id); setSelectedBooking(null); } : undefined}
+          onDelete={onDeleteBooking ? async (id) => { await onDeleteBooking(id); setSelectedBooking(null); setSelectedBookingFocusSection(null); } : undefined}
           rooms={rooms}
           checkedInGuests={guests}
           propertyName={propertyName}
@@ -1447,7 +1481,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           propertyCheckoutTime={propertyCheckoutTime}
           onOpenIdVerification={() => setShowCheckinVerification(true)}
           onCheckedIn={onGuestCheckedIn}
-          onCheckout={onCheckout ? () => { onCheckout(selectedBooking.id); setSelectedBooking(null); } : undefined}
+          onCheckout={onCheckout ? () => { onCheckout(selectedBooking.id); setSelectedBooking(null); setSelectedBookingFocusSection(null); } : undefined}
         />
       )}
 
@@ -1628,8 +1662,12 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                         <button
                           onClick={() => {
                             setShowAllAlertsModal(false);
-                            if (item.kind === 'guest') setSelectedBooking(item.guest);
-                            else handleConvertOtaBlock(item.block);
+                            if (item.kind === 'guest') {
+                              setSelectedBookingFocusSection(focusSectionForReasons(item.reasons));
+                              setSelectedBooking(item.guest);
+                            } else {
+                              handleConvertOtaBlock(item.block);
+                            }
                           }}
                           className={`text-xs font-semibold px-3 py-1.5 rounded-lg text-white transition-colors cursor-pointer whitespace-nowrap ${
                             item.severity === 'red' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'

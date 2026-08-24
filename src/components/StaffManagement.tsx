@@ -24,7 +24,8 @@ import {
   CreditCard,
   Phone,
   Trash2,
-  Search
+  Search,
+  Building2
 } from './icons/FlowbiteIcons';
 import { StaffMember, AttendanceRecord, UserAccount } from '../types';
 import { useToast } from './ToastContext';
@@ -93,6 +94,21 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
   // Property Payroll & Payee State
   const [users, setUsers] = useState<UserAccount[]>([]);
+  const [tenantPropertyCount, setTenantPropertyCount] = useState<number>(1);
+
+  useEffect(() => {
+    if (!tenantId) return;
+    fetch(`/php/api/router.php?action=get_tenant_properties&tenant_id=${tenantId}`, { credentials: 'include' })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.data)) {
+          setTenantPropertyCount(data.data.length);
+        }
+      })
+      .catch(() => {});
+  }, [tenantId]);
+
+  const hasMultipleProperties = tenantPropertyCount > 1 || users.some((u) => u.accessAllProperties);
 
   // Available roles from site architecture (independent of staff members).
   // "Super Admin" deliberately excluded (13 Aug 2026): that role is not an
@@ -142,6 +158,65 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
   // Modals / Lightboxes
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+
+  const roleHelpPopoverContent = (
+    <div className="w-80 sm:w-96 p-3.5 text-xs space-y-3.5 max-h-[460px] overflow-y-auto">
+      <div className="border-b border-slate-200 dark:border-slate-700 pb-2">
+        <h4 className="font-bold text-slate-900 dark:text-white text-xs">
+          System Role Access Matrix
+        </h4>
+        <p className="text-2xs text-slate-500 dark:text-slate-400 mt-0.5">Summary of capabilities per assignable role level</p>
+      </div>
+
+      <div className="space-y-3 text-2xs leading-relaxed">
+        <div>
+          <span className="font-bold text-slate-900 dark:text-white text-xs block mb-1">Admin</span>
+          <ul className="list-disc list-inside space-y-0.5 text-slate-600 dark:text-slate-300">
+            <li>Dashboard & Property Settings</li>
+            <li>Bookings: View, Add, Edit, Guest ID Uploads, C-Form, Check-in, Checkout & Settle Bills</li>
+            <li>Service Requests: Full management & assignment</li>
+            <li>Kitchen: Food Orders POS, Staff Meals, Stock Requests, Wastage Log, Edit Kitchen Stock, Edit Food Menu & Served Dish Tracking</li>
+            <li>Dish Recipes / Auto-Stock Builder</li>
+            <li>Finances & Expenses: Cash Drawers, Petty Cash Logs, Settlements & Expenses</li>
+            <li>Team & Access: Create & edit Staff, Staff Supervisor & Staff Kitchen accounts</li>
+            <li>Attendance Calendar & Telegram Alerts</li>
+          </ul>
+        </div>
+
+        <div className="border-t border-slate-200 dark:border-slate-700 pt-2.5">
+          <span className="font-bold text-slate-900 dark:text-white text-xs block mb-1">Staff Supervisor</span>
+          <ul className="list-disc list-inside space-y-0.5 text-slate-600 dark:text-slate-300">
+            <li>Dashboard & Attendance Calendar</li>
+            <li>Service Requests: Full management, assignment & fulfillment</li>
+            <li>Kitchen: Kitchen Overview & Staff Meals</li>
+            <li>Expenses & Finances: Cash Drawers, Petty Cash & Settlements</li>
+            <li>Cash Handling: Collect payments & reconcile cash drawers *(if enabled)*</li>
+          </ul>
+        </div>
+
+        <div className="border-t border-slate-200 dark:border-slate-700 pt-2.5">
+          <span className="font-bold text-slate-900 dark:text-white text-xs block mb-1">Staff Kitchen</span>
+          <ul className="list-disc list-inside space-y-0.5 text-slate-600 dark:text-slate-300">
+            <li>Dashboard</li>
+            <li>Bookings: Read-only booking & room status view</li>
+            <li>Kitchen: Full Kitchen module — Food Orders POS, Staff Meals, Stock Requests, Kitchen Wastage, Edit Kitchen Stock, Edit Food Menu & Mark Dishes Served</li>
+            <li>Cash Handling: Collect cash payments for food orders *(if enabled)*</li>
+          </ul>
+        </div>
+
+        <div className="border-t border-slate-200 dark:border-slate-700 pt-2.5">
+          <span className="font-bold text-slate-900 dark:text-white text-xs block mb-1">Staff</span>
+          <ul className="list-disc list-inside space-y-0.5 text-slate-600 dark:text-slate-300">
+            <li>Dashboard</li>
+            <li>Bookings: View bookings, Upload Guest ID docs, File/Manage C-Form, Check-in guests</li>
+            <li>Service Requests: Create, manage & fulfill guest service requests</li>
+            <li>Kitchen: Live KOT order status view, view served dishes & mark dishes served</li>
+            <li>Cash Handling: Collect guest payments & record settlements *(if enabled)*</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
 
   const [userFormTab, setUserFormTab] = useState<'create' | 'update'>('create');
   const [isTeamMemberModalOpen, setIsTeamMemberModalOpen] = useState(false);
@@ -752,14 +827,14 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                               <a
                                 href={`tel:${phoneVal}`}
                                 onClick={(e) => e.stopPropagation()}
-                                className="inline-flex items-center gap-1 font-mono font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline cursor-pointer"
+                                className="inline-flex items-center gap-1 font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline cursor-pointer"
                                 title={`Call ${phoneVal}`}
                               >
                                 <Phone className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                                 <span>{rawPhone || phoneVal}</span>
                               </a>
                             ) : (
-                              <span className="font-mono text-gray-500 dark:text-gray-400">{row.username || '—'}</span>
+                              <span className="text-gray-500 dark:text-gray-400">{row.username || '—'}</span>
                             )}
                           </div>
                         </div>
@@ -767,7 +842,24 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     },
                   },
                   {
-                    name: 'POSITION / ROLE',
+                    id: 'position_role',
+                    name: (
+                      <div className="flex items-center gap-1.5">
+                        <span>Role</span>
+                        <Popover
+                          trigger="hover"
+                          content={roleHelpPopoverContent}
+                        >
+                          <button
+                            type="button"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center text-2xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline cursor-pointer"
+                          >
+                            <span>Help?</span>
+                          </button>
+                        </Popover>
+                      </div>
+                    ),
                     cell: (row: any) => (
                       <span className="text-sm font-medium text-gray-900 dark:text-white">
                         {row.role}
@@ -775,26 +867,51 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     ),
                   },
                   {
-                    name: 'STATUS',
+                    id: 'status',
+                    name: 'Status',
                     cell: (row: any) => {
                       const isUserDisabled = row.status === 'Disabled' || row.status === 'Inactive';
                       return (
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <div className="flex items-center gap-1.5">
-                            <div className={`h-2.5 w-2.5 rounded-full ${isUserDisabled ? 'bg-red-500' : 'bg-green-500'} shrink-0`} />
-                            <span className={`text-xs font-medium ${isUserDisabled ? 'text-red-700 dark:text-red-400 font-semibold' : 'text-gray-700 dark:text-gray-300'}`}>
-                              {isUserDisabled ? 'Disabled' : 'Active'}
-                            </span>
-                          </div>
-                          {row.isFinancialHandler && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800">
-                              <CreditCard className="w-3 h-3" /> Cash Handler
-                            </span>
-                          )}
+                        <div className="flex items-center gap-1.5">
+                          <div className={`h-2.5 w-2.5 rounded-full ${isUserDisabled ? 'bg-red-500' : 'bg-green-500'} shrink-0`} />
+                          <span className={`text-xs font-semibold ${isUserDisabled ? 'text-red-700 dark:text-red-400' : 'text-gray-700 dark:text-gray-300'}`}>
+                            {isUserDisabled ? 'Disabled' : 'Active'}
+                          </span>
                         </div>
                       );
                     },
                   },
+                  {
+                    id: 'salary',
+                    name: 'Salary',
+                    cell: (row: any) => (
+                      <span className="text-xs font-semibold text-gray-900 dark:text-white">
+                        {row.dailyWage && Number(row.dailyWage) > 0 ? `₹${row.dailyWage}/day` : '—'}
+                      </span>
+                    ),
+                  },
+                  {
+                    id: 'cash_handling',
+                    name: 'Cash Handling',
+                    cell: (row: any) => row.isFinancialHandler ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800 whitespace-nowrap">
+                        <CreditCard className="w-3 h-3 text-emerald-600" /> Cash Handler
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 italic text-xs">No</span>
+                    ),
+                  },
+                  ...(hasMultipleProperties ? [{
+                    id: 'access_all_properties',
+                    name: 'Access All Properties',
+                    cell: (row: any) => row.accessAllProperties ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800 whitespace-nowrap">
+                        <Building2 className="w-3 h-3 text-blue-600" /> All Properties
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 italic text-xs">Current Only</span>
+                    ),
+                  }] : []),
                   {
                     name: 'UPI QR CODE',
                     align: 'center' as const,
@@ -814,14 +931,25 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                       return (
                         <div className="flex items-center gap-2 justify-end">
                           {canShareLogins && !!row.username && (
-                            <button
-                              type="button"
-                              onClick={() => handleShareLogin(row)}
-                              className="p-1.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 rounded-lg transition-colors cursor-pointer"
-                              title={t('share_login_tooltip', 'Share login details')}
+                            <Popover
+                              trigger="hover"
+                              content={
+                                <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                                  Share login details
+                                </div>
+                              }
                             >
-                              <Share2 className="w-4 h-4" />
-                            </button>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => handleShareLogin(row)}
+                                leftIcon={<Share2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />}
+                                className="text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/50 hover:bg-emerald-100/60 dark:bg-emerald-950/30 font-semibold text-xs h-8 cursor-pointer shrink-0"
+                              >
+                                <span className="whitespace-nowrap">Share</span>
+                              </Button>
+                            </Popover>
                           )}
                           {isCurrentUser ? (
                             <span className="text-gray-400 italic text-xs">Active Session</span>
@@ -862,8 +990,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     <Table hoverable>
                       <TableHead>
                         <TableRow>
-                          {usersColumns.map((col) => (
-                            <TableHeadCell key={col.name} className={col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : ''}>
+                          {usersColumns.map((col: any, idx: number) => (
+                            <TableHeadCell key={col.id || (typeof col.name === 'string' ? col.name : idx)} className={col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : ''}>
                               {col.name}
                             </TableHeadCell>
                           ))}
@@ -872,8 +1000,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                       <TableBody className="divide-y divide-gray-200 dark:divide-gray-700">
                         {visibleUsers.slice((usersDesktopPage - 1) * USERS_DESKTOP_PAGE_SIZE, usersDesktopPage * USERS_DESKTOP_PAGE_SIZE).map((row: any) => (
                           <TableRow key={row.id} className="bg-white dark:bg-gray-800">
-                            {usersColumns.map((col) => (
-                              <TableCell key={col.name} className={col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : ''}>
+                            {usersColumns.map((col: any, idx: number) => (
+                              <TableCell key={col.id || (typeof col.name === 'string' ? col.name : idx)} className={col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : ''}>
                                 {col.cell(row)}
                               </TableCell>
                             ))}
@@ -895,17 +1023,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
             {/* Mobile View: Touch-First Mobile Cards with 10-Item Pagination */}
             <div className="md:hidden p-3 space-y-3">
-              <FlowbiteTextInput
-                type="text"
-                icon={Search}
-                value={searchUsers}
-                onChange={e => setSearchUsers(e.target.value)}
-                placeholder="Search for users..."
-                className="w-full"
-              />
-
-              <div className="space-y-3">
-                {visibleUsers.slice((staffPermissionsPage - 1) * 10, staffPermissionsPage * 10).map((row: any) => {
+              {visibleUsers.length === 0 ? (
+                <div className="p-8 text-center text-slate-400 font-semibold text-xs">{t('no_system_users_message', 'No system users registered.')}</div>
+              ) : (
+                <div className="space-y-3">
+                  {visibleUsers.slice((staffPermissionsPage - 1) * 10, staffPermissionsPage * 10).map((row: any) => {
                   const isCurrentUser = currentUser?.id === row.id;
                   const canEdit = !isCurrentUser && canEditUser(currentUser?.role || 'Staff', row.role);
                   const canDelete = !isCurrentUser && canEdit;
@@ -921,14 +1043,14 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                             <a
                               href={`tel:${phoneVal}`}
                               onClick={(e) => e.stopPropagation()}
-                              className="inline-flex items-center gap-1 font-mono text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline font-semibold cursor-pointer"
+                              className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline font-semibold cursor-pointer"
                               title={`Call ${phoneVal}`}
                             >
                               <Phone className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                               <span>{rawPhone || phoneVal}</span>
                             </a>
                           ) : (
-                            <span className="font-mono text-xs text-slate-500 dark:text-slate-400">{row.username || '—'}</span>
+                            <span className="text-xs text-slate-500 dark:text-slate-400">{row.username || '—'}</span>
                           )}
                         </div>
 
@@ -961,7 +1083,19 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between text-xs bg-slate-50 dark:bg-slate-900/60 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700">
+                      <div className="flex items-center justify-between text-xs bg-slate-50 dark:bg-slate-900/60 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700 flex-wrap gap-2">
+                        <div>
+                          <span className="text-[10px] text-slate-400 uppercase font-semibold block">Status</span>
+                          <span className={`font-semibold ${row.status === 'Disabled' || row.status === 'Inactive' ? 'text-red-600' : 'text-emerald-600'}`}>
+                            {row.status === 'Disabled' || row.status === 'Inactive' ? 'Disabled' : 'Active'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-400 uppercase font-semibold block">Daily Wage</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">
+                            {row.dailyWage && Number(row.dailyWage) > 0 ? `₹${row.dailyWage}/day` : '—'}
+                          </span>
+                        </div>
                         <div>
                           <span className="text-[10px] text-slate-400 uppercase font-semibold block">Cash Handling</span>
                           {row.isFinancialHandler ? (
@@ -970,7 +1104,18 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                               <span>Cash Handler</span>
                             </span>
                           ) : (
-                            <span className="text-slate-400 font-medium">No Finances</span>
+                            <span className="text-slate-400 font-medium">No</span>
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-400 uppercase font-semibold block">Access</span>
+                          {row.accessAllProperties ? (
+                            <span className="text-blue-600 dark:text-blue-400 font-semibold inline-flex items-center gap-1">
+                              <Building2 className="w-3.5 h-3.5 text-blue-600" />
+                              <span>All Properties</span>
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 font-medium">Current Only</span>
                           )}
                         </div>
                         <div className="text-right">
@@ -985,11 +1130,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     </div>
                   );
                 })}
-
-                {visibleUsers.length === 0 && (
-                  <div className="text-center p-6 text-slate-400 font-semibold text-xs">{t('no_system_users_message', 'No system users registered.')}</div>
-                )}
-              </div>
+                </div>
+              )}
 
               {/* Mobile 10-Item Pagination Controls */}
               {visibleUsers.length > 10 && (
@@ -1333,7 +1475,6 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   );
                 })}
               </div>
-            )}
           </div>
 
           {/* DESKTOP ATTENDANCE MATRIX TABLE (hidden md:block) */}
@@ -1906,7 +2047,22 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('team_role', 'System Role')}</label>
+                  <div className="h-5 flex items-center justify-between mb-1.5">
+                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 m-0">{t('team_role', 'System Role')}</label>
+                    <Popover
+                      trigger="hover"
+                      placement="top"
+                      zIndex={9999}
+                      content={roleHelpPopoverContent}
+                    >
+                      <button
+                        type="button"
+                        className="inline-flex items-center text-2xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline cursor-pointer"
+                      >
+                        <span>Help?</span>
+                      </button>
+                    </Popover>
+                  </div>
                   <StyledSelect
                     value={newRole}
                     onChange={(val) => setNewRole(val as any)}
@@ -1914,7 +2070,9 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('daily_wage_label', 'Daily Wage (₹)')}</label>
+                  <div className="h-5 flex items-center mb-1.5">
+                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 m-0">{t('daily_wage_label', 'Daily Wage (₹)')}</label>
+                  </div>
                   <Input
                     type="number"
                     min="0"
@@ -1926,17 +2084,19 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+              <div className={`grid ${hasMultipleProperties ? 'grid-cols-2' : 'grid-cols-1'} gap-3 pt-1`}>
                 <div className="flex items-center gap-2">
                   <Checkbox
                     id="isFinancialHandlerCheck"
                     checked={newIsFinancialHandler}
                     onChange={e => setNewIsFinancialHandler(e.target.checked)}
                   />
-                  <label htmlFor="isFinancialHandlerCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1.5 min-w-0">
+                  <label htmlFor="isFinancialHandlerCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1 min-w-0">
                     <span className="truncate">{t('cash_handling_user_label', 'Cash Handling User')}</span>
                     <Popover
                       trigger="hover"
+                      placement="top"
+                      zIndex={9999}
                       content={
                         <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 max-w-xs">
                           Allows this team member to collect cash payments, open/reconcile cash drawers, and record checkout settlements.
@@ -1950,28 +2110,32 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   </label>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="newAccessAllPropertiesCheck"
-                    checked={newAccessAllProperties}
-                    onChange={e => setNewAccessAllProperties(e.target.checked)}
-                  />
-                  <label htmlFor="newAccessAllPropertiesCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1.5 min-w-0">
-                    <span className="truncate">{t('access_all_properties_label', 'Access All Properties')}</span>
-                    <Popover
-                      trigger="hover"
-                      content={
-                        <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 max-w-xs">
-                          Grants this team member full multi-property access across all properties under this tenant workspace.
-                        </div>
-                      }
-                    >
-                      <button type="button" aria-label="What does Access All Properties do?" className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors shrink-0">
-                        <HelpCircle className="w-3.5 h-3.5" />
-                      </button>
-                    </Popover>
-                  </label>
-                </div>
+                {hasMultipleProperties && (
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="newAccessAllPropertiesCheck"
+                      checked={newAccessAllProperties}
+                      onChange={e => setNewAccessAllProperties(e.target.checked)}
+                    />
+                    <label htmlFor="newAccessAllPropertiesCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1 min-w-0">
+                      <span className="truncate">{t('access_all_properties_label', 'Access All Properties')}</span>
+                      <Popover
+                        trigger="hover"
+                        placement="top"
+                        zIndex={9999}
+                        content={
+                          <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 max-w-xs">
+                            Grants this team member full multi-property access across all properties under this tenant workspace.
+                          </div>
+                        }
+                      >
+                        <button type="button" aria-label="What does Access All Properties do?" className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors shrink-0">
+                          <HelpCircle className="w-3.5 h-3.5" />
+                        </button>
+                      </Popover>
+                    </label>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -2087,8 +2251,36 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               </div>
 
               <div className="grid grid-cols-2 gap-3">
+                {!isEditingSuperAdmin ? (
+                  <div>
+                    <div className="h-5 flex items-center justify-between mb-1.5">
+                      <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 m-0">{t('new_system_role_label', 'New System Role')}</label>
+                      <Popover
+                        trigger="hover"
+                        placement="top"
+                        zIndex={9999}
+                        content={roleHelpPopoverContent}
+                      >
+                        <button
+                          type="button"
+                          className="inline-flex items-center text-2xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline cursor-pointer"
+                        >
+                          <span>Help?</span>
+                        </button>
+                      </Popover>
+                    </div>
+                    <StyledSelect
+                      value={updateRole}
+                      onChange={(val) => setUpdateRole(val as any)}
+                      placeholder="-- Keep Role --"
+                      options={roleOptions.map((roleName) => ({ value: roleName, label: roleName }))}
+                    />
+                  </div>
+                ) : null}
                 <div>
-                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('daily_wage_label', 'Daily Wage (₹)')}</label>
+                  <div className="h-5 flex items-center mb-1.5">
+                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 m-0">{t('daily_wage_label', 'Daily Wage (₹)')}</label>
+                  </div>
                   <Input
                     type="number"
                     min="0"
@@ -2098,17 +2290,6 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     className="text-slate-900 dark:text-white"
                   />
                 </div>
-                {!isEditingSuperAdmin && (
-                  <div>
-                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('new_system_role_label', 'New System Role')}</label>
-                    <StyledSelect
-                      value={updateRole}
-                      onChange={(val) => setUpdateRole(val as any)}
-                      placeholder="-- Keep Role --"
-                      options={roleOptions.map((roleName) => ({ value: roleName, label: roleName }))}
-                    />
-                  </div>
-                )}
               </div>
 
               {!isEditingSuperAdmin && (
@@ -2125,11 +2306,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         {updateStatus === 'Active' ? 'Active' : 'Disabled'}
                       </span>
                     </p>
-                    <p className="text-2xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      {updateStatus === 'Active'
-                        ? 'User can log in and access assigned modules'
-                        : 'User is disabled and blocked from logging into the platform'}
-                    </p>
+                    {updateStatus !== 'Active' && (
+                      <p className="text-2xs text-red-600 dark:text-red-400 mt-0.5">
+                        User is disabled and blocked from logging into the platform
+                      </p>
+                    )}
                   </div>
                   <ToggleSwitch
                     enabled={updateStatus === 'Active'}
@@ -2145,17 +2326,19 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               )}
 
               {!isEditingSuperAdmin && (
-                <div className="space-y-3">
+                <div className={`grid ${hasMultipleProperties ? 'grid-cols-2' : 'grid-cols-1'} gap-3 pt-1`}>
                   <div className="flex items-center gap-2">
                     <Checkbox
                       id="updateIsFinancialHandlerCheck"
                       checked={updateIsFinancialHandler}
                       onChange={e => setUpdateIsFinancialHandler(e.target.checked)}
                     />
-                    <label htmlFor="updateIsFinancialHandlerCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1.5 min-w-0">
+                    <label htmlFor="updateIsFinancialHandlerCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1 min-w-0">
                       <span className="truncate">{t('cash_handling_user_label', 'Cash Handling User')}</span>
                       <Popover
                         trigger="hover"
+                        placement="top"
+                        zIndex={9999}
                         content={
                           <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 max-w-xs">
                             Allows this team member to collect cash payments, open/reconcile cash drawers, and record checkout settlements.
@@ -2169,28 +2352,32 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     </label>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="updateAccessAllPropertiesCheck"
-                      checked={updateAccessAllProperties}
-                      onChange={e => setUpdateAccessAllProperties(e.target.checked)}
-                    />
-                    <label htmlFor="updateAccessAllPropertiesCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1.5 min-w-0">
-                      <span className="truncate">{t('access_all_properties_label', 'Access All Properties')}</span>
-                      <Popover
-                        trigger="hover"
-                        content={
-                          <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 max-w-xs">
-                            Grants this team member full multi-property access across all properties under this tenant workspace.
-                          </div>
-                        }
-                      >
-                        <button type="button" aria-label="What does Access All Properties do?" className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors shrink-0">
-                          <HelpCircle className="w-3.5 h-3.5" />
-                        </button>
-                      </Popover>
-                    </label>
-                  </div>
+                  {hasMultipleProperties && (
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="updateAccessAllPropertiesCheck"
+                        checked={updateAccessAllProperties}
+                        onChange={e => setUpdateAccessAllProperties(e.target.checked)}
+                      />
+                      <label htmlFor="updateAccessAllPropertiesCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1 min-w-0">
+                        <span className="truncate">{t('access_all_properties_label', 'Access All Properties')}</span>
+                        <Popover
+                          trigger="hover"
+                          placement="top"
+                          zIndex={9999}
+                          content={
+                            <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 max-w-xs">
+                              Grants this team member full multi-property access across all properties under this tenant workspace.
+                            </div>
+                          }
+                        >
+                          <button type="button" aria-label="What does Access All Properties do?" className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors shrink-0">
+                            <HelpCircle className="w-3.5 h-3.5" />
+                          </button>
+                        </Popover>
+                      </label>
+                    </div>
+                  )}
                 </div>
               )}
 

@@ -85,22 +85,24 @@ $__is_local_env = $server_name === 'localhost' || $server_name === '127.0.0.1' |
 // 15 Aug 2026.
 // Domain migration (24 Aug 2026): staging cut over from staging.artistic-sthan.com to
 // staging.ground-code.com - deploy-staging.ps1, CORS allow-list, etc. now all point at the new
-// domain exclusively. The OLD hostname is kept recognized here too, on purpose, purely as a
-// safety net: its DNS/vhost still exists and nothing deletes it as part of this migration, so
-// if it's ever hit again (a bookmark, a stale QR code, a search-engine cache) it must keep
-// landing on the (harmless) staging DB, never silently fall through to this same "anything
-// that isn't local" branch and start writing to live production data - which is the exact
-// incident this whole check exists to prevent. Safe to remove once the old subdomain is
-// actually retired/redirected server-side.
-$__is_staging_env = in_array($server_name, ['staging.ground-code.com', 'staging.artistic-sthan.com'], true);
+// domain exclusively. The old staging.artistic-sthan.com hostname was recognized here too for a
+// while as a migration safety net (its vhost/files were left in place so a stale bookmark/QR
+// code/search-cache hit would still land on the harmless staging DB, never silently fall through
+// to production). Removed 25 Aug 2026 - the old subdomain's files were deleted from the server
+// entirely (explicit user request: "remove all traces and files so that our ground-code app is
+// bug free and clean"), so there's nothing left at that hostname to safety-net for any more.
+$__is_staging_env = in_array($server_name, ['staging.ground-code.com'], true);
 // Hosts CPGuard has actually whitelisted for php/telegram/telegram.php's own local copy - see
-// router.php's require logic right below the kitchen/inventory/etc. requires. artistic-sthan.com
-// was the original whitelist (support ticket BRX-3227572); ground-code.com/www.ground-code.com
-// (the new production domain, /home/apartment/ground-code.com/php/telegram/telegram.php) was
-// confirmed whitelisted too on 24 Aug 2026, so production goes back to using its own local copy
-// there once that checkout is actually live - staging (any staging.* hostname) is NOT in this
+// router.php's require logic right below the kitchen/inventory/etc. requires.
+// ground-code.com/www.ground-code.com (the production domain,
+// /home/apartment/ground-code.com/php/telegram/telegram.php) was confirmed whitelisted 24 Aug
+// 2026, so production uses its own local copy - staging (any staging.* hostname) is NOT in this
 // list and keeps redirecting remotely, since only production's path has ever been whitelisted.
-$__is_original_telegram_whitelisted_host = in_array($server_name, ['artistic-sthan.com', 'www.artistic-sthan.com', 'ground-code.com', 'www.ground-code.com'], true);
+// artistic-sthan.com/www.artistic-sthan.com removed 25 Aug 2026 alongside the old staging
+// subdomain's files above - that whitelist ticket (BRX-3227572) was for the OLD production
+// domain, retired by the same ground-code.com migration; no live hostname should ever match it
+// again.
+$__is_original_telegram_whitelisted_host = in_array($server_name, ['ground-code.com', 'www.ground-code.com'], true);
 if (!defined('APP_IS_ORIGINAL_TELEGRAM_WHITELISTED_HOST')) {
     define('APP_IS_ORIGINAL_TELEGRAM_WHITELISTED_HOST', $__is_original_telegram_whitelisted_host);
 }

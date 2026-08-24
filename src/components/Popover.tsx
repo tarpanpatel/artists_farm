@@ -34,7 +34,7 @@ export const Popover: React.FC<PopoverProps> = ({
   onOpenChange,
   offset = 8,
   arrow = true,
-  zIndex = 50,
+  zIndex = 9999,
 }) => {
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
@@ -227,15 +227,11 @@ export const Popover: React.FC<PopoverProps> = ({
     if (children.props.onClick) {
       children.props.onClick(e);
     }
-    if (trigger === 'click') {
-      setIsOpen(!isOpen);
-    } else if (trigger === 'hover') {
-      if (hideTimeoutRef.current) {
-        window.clearTimeout(hideTimeoutRef.current);
-        hideTimeoutRef.current = null;
-      }
-      setIsOpen(false);
+    if (hideTimeoutRef.current) {
+      window.clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
     }
+    setIsOpen(!isOpen);
   };
 
   const clonedChild = React.cloneElement(children, {

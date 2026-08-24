@@ -602,9 +602,9 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
         </button>
 
         {showHistory && (
-          <div className="border-t border-slate-100 dark:border-slate-700 p-4 space-y-4">
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-2 border-b border-slate-100 dark:border-slate-700">
-              <span className="text-slate-400 font-semibold text-xs">{isLoading ? '…' : drawerEntries.length} entries</span>
+          <div className="border-t border-slate-100 dark:border-slate-700">
+            <div className="p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/40">
+              <span className="text-slate-500 dark:text-slate-400 font-semibold text-xs">{isLoading ? '…' : `${drawerEntries.length} entries`}</span>
               <div className="w-full sm:w-auto">
                 <FlowbiteTextInput
                   type="text"
@@ -618,7 +618,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
             </div>
 
             {/* Drawer Entry Mobile Cards (md:hidden) */}
-            <div className="md:hidden space-y-2.5">
+            <div className="md:hidden p-4 space-y-2.5">
               {filteredEntries.slice((drawerHistoryPage - 1) * 10, drawerHistoryPage * 10).map((entry: CashDrawerEntry, idx: number) => (
                 <div key={entry.id || idx} className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-lg border border-slate-200/80 dark:border-slate-700/80 space-y-2 text-xs">
                   <div className="flex items-center justify-between gap-2 border-b border-slate-200/60 dark:border-slate-800 pb-2">
@@ -891,10 +891,11 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
         </div>
 
         {/* Desktop Payout Table (hidden md:block) */}
-        <div className="hidden md:block overflow-x-auto p-4">
-          <div className="w-full flex items-center pb-3">
+        <div className="hidden md:block">
+          <div className="p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/40">
             <Input type="text" value={searchPayout} onChange={e => setSearchPayout(e.target.value)} placeholder="Search by staff name..." className="w-full max-w-xs" />
           </div>
+          <div className="overflow-x-auto">
           {(() => {
             const payoutColumns = [
               {
@@ -1031,6 +1032,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
               </>
             );
           })()}
+          </div>
         </div>
 
         {/* Advances History for this month */}

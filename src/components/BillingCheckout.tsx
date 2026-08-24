@@ -121,6 +121,12 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   const [guestForReceipt, setGuestForReceipt] = useState<Guest | null>(null);
   const [modalMode, setModalMode] = useState<'edit-only' | 'edit-and-checkout'>('edit-only');
   const [selectedGuestForDetails, setSelectedGuestForDetails] = useState<Guest | null>(null);
+  // Carries "which section to jump straight to" into BookingDetailsModal
+  // when it's opened from a warning badge/popover here rather than a plain
+  // Edit click (24 Aug 2026 - "if someone clicks such button from
+  // dashboard or notification or bookings page this whole process should
+  // happen"). null for the ordinary Edit/View Booking path.
+  const [detailsModalFocusSection, setDetailsModalFocusSection] = useState<'c_form' | 'checkin' | 'id_verification' | null>(null);
   const [savingCFormId, setSavingCFormId] = useState<string | null>(null);
 
   const todayStr = useMemo(() => {
@@ -366,8 +372,10 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     return roomCharges - advancePaid + foodBill;
   };
 
-  // Handle edit only
-  const handleEditGuest = (guest: Guest) => {
+  // Handle edit only. focusSection is optional (see detailsModalFocusSection
+  // above) - the plain Edit/View Booking buttons call this with none.
+  const handleEditGuest = (guest: Guest, focusSection: 'c_form' | 'checkin' | 'id_verification' | null = null) => {
+    setDetailsModalFocusSection(focusSection);
     setSelectedGuestForDetails(guest);
   };
 
@@ -552,7 +560,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                                     <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
                                       {t('c_form_pending_popover_text', 'This foreign guest still needs a C-Form filed.')}
                                     </p>
-                                    <Button variant="warning" size="xs" block onClick={() => handleEditGuest(guest)}>
+                                    <Button variant="warning" size="xs" block onClick={() => handleEditGuest(guest, 'c_form')}>
                                       {t('resolve_c_form_button', 'Go to C-Form')}
                                     </Button>
                                   </div>
@@ -578,7 +586,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                                   <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
                                     {t('id_pending_popover_text', 'This guest\'s ID verification is still incomplete.')}
                                   </p>
-                                  <Button variant="warning" size="xs" block onClick={() => handleEditGuest(guest)}>
+                                  <Button variant="warning" size="xs" block onClick={() => handleEditGuest(guest, 'id_verification')}>
                                     {t('resolve_id_button', 'Go to ID Upload')}
                                   </Button>
                                 </div>
@@ -928,7 +936,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                       <button
                         key={g.id}
                         type="button"
-                        onClick={() => handleEditGuest(g)}
+                        onClick={() => handleEditGuest(g, cFormPending ? 'c_form' : 'id_verification')}
                         className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg text-left hover:bg-slate-100 dark:hover:bg-slate-700/60 cursor-pointer"
                       >
                         <span className="min-w-0">
@@ -1099,7 +1107,8 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       {selectedGuestForDetails && (
         <BookingDetailsModal
           guest={selectedGuestForDetails}
-          onClose={() => setSelectedGuestForDetails(null)}
+          initialFocusSection={detailsModalFocusSection}
+          onClose={() => { setSelectedGuestForDetails(null); setDetailsModalFocusSection(null); }}
           onSave={async (updatedGuest) => {
             onUpdateGuest?.(updatedGuest);
             setSelectedGuestForDetails(null);

@@ -176,7 +176,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
   useEffect(() => {
     if (!activeMenuItemKey) return;
-    if (activeMenuItemKey === 'stock_requests') setActiveTab('requisitions');
+    if (activeMenuItemKey === 'stock_requests') setActiveTab('fulfill');
     else if (activeMenuItemKey === 'deficit_shortfalls_log') setActiveTab('deficit');
     else if (activeMenuItemKey === 'stock_log') setActiveTab('stock_log');
     else if (activeMenuItemKey === 'edit_kitchen_stock') setActiveTab('catalog');
@@ -832,7 +832,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     if (activeMenuItemKey === 'deficit_shortfalls_log') {
       setActiveTab('deficit');
     } else if (activeMenuItemKey === 'stock_requests') {
-      setActiveTab('requisitions');
+      setActiveTab('fulfill');
     } else if (activeMenuItemKey === 'edit_kitchen_stock' || activeMenuItemKey === 'stock_log') {
       setActiveTab('catalog');
     } else {
@@ -2168,7 +2168,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                       {t('cancel_button', 'Cancel')}
                     </Button>
                     <Button onClick={handleSaveFulfillQuantities} variant="primary">
-                      {t('save_commit_updates_button', 'Save & Commit Updates')}
+                      {t('save_commit_updates_button', 'Save & Update Requests')}
                     </Button>
                   </div>
                 </>

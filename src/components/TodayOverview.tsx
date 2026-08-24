@@ -432,19 +432,33 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
         <div className="flex justify-between items-center">
           <h2 className="today-overview__title text-base font-semibold text-slate-900 dark:text-white">{visibleMonthLabel}</h2>
           <div className="flex items-center gap-2">
-          <button
-            onClick={() => navigateWindow(-1)}
-            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => navigateWindow(1)}
-            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={() => {
+                const newStart = new Date(today);
+                newStart.setDate(newStart.getDate() - PAST_BUFFER_DAYS);
+                setWindowStart(newStart);
+                setTimeout(() => {
+                  scrollTargetRef.current?.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+                }, 50);
+              }}
+              className="px-2.5 py-1 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800/80 rounded-lg transition-colors cursor-pointer"
+            >
+              {t('today_button', 'Today')}
+            </button>
+            <button
+              onClick={() => navigateWindow(-1)}
+              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition cursor-pointer"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => navigateWindow(1)}
+              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition cursor-pointer"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
       </div>
 
       <div
@@ -735,7 +749,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                                 <div className="flex items-center justify-between text-2xs">
                                   <span className="text-gray-500 dark:text-gray-400">Dates:</span>
                                   <span className="font-medium text-gray-700 dark:text-gray-200">
-                                    {guest.checkinDate} → {guest.expectedCheckout || (guest as any).checkoutDate}
+                                    {(guest.checkinDate || '').split(' ')[0].split('T')[0]} — {(guest.expectedCheckout || (guest as any).checkoutDate || '').split(' ')[0].split('T')[0]}
                                   </span>
                                 </div>
                                 {hasPending && (

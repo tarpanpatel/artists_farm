@@ -92,34 +92,45 @@ const ICONS: Record<ToastType, React.ReactNode> = {
   ),
 };
 
-// Flowbite's own toast docs (flowbite.com/docs/components/toast) style every
-// variant the same way: a neutral card (bg-neutral-primary-soft) with a
-// small colored icon "chip" - never a solid-colored toast body. Only the
-// chip's soft/fg token pair changes per situation.
-const BADGE_CLASSES: Record<ToastType, string> = {
-  success: 'text-fg-success bg-success-soft',
-  error: 'text-fg-danger bg-danger-soft',
-  warning: 'text-fg-warning bg-warning-soft',
-  info: 'text-fg-brand bg-brand-soft',
+// Flowbite Toast contextual styling (flowbite.com/docs/components/toast):
+// Distinct colored icon chips, left accent borders, and prominent elevation shadows
+const TOAST_CLASSES: Record<ToastType, { chip: string; border: string }> = {
+  success: {
+    chip: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-950/80 dark:text-emerald-400',
+    border: 'border-l-4 border-l-emerald-500 border-r border-t border-b border-slate-200 dark:border-slate-700/80',
+  },
+  error: {
+    chip: 'text-rose-600 bg-rose-100 dark:bg-rose-950/80 dark:text-rose-400',
+    border: 'border-l-4 border-l-rose-500 border-r border-t border-b border-slate-200 dark:border-slate-700/80',
+  },
+  warning: {
+    chip: 'text-amber-600 bg-amber-100 dark:bg-amber-950/80 dark:text-amber-400',
+    border: 'border-l-4 border-l-amber-500 border-r border-t border-b border-slate-200 dark:border-slate-700/80',
+  },
+  info: {
+    chip: 'text-blue-600 bg-blue-100 dark:bg-blue-950/80 dark:text-blue-400',
+    border: 'border-l-4 border-l-blue-500 border-r border-t border-b border-slate-200 dark:border-slate-700/80',
+  },
 };
 
 const toastTheme = {
   root: {
-    base: 'flex w-full max-w-sm items-center rounded-base border border-default bg-neutral-primary-soft p-4 text-body shadow-xs animate-toast-in',
+    base: 'flex w-full max-w-sm items-center rounded-lg bg-white dark:bg-slate-800 p-3.5 text-slate-800 dark:text-slate-100 shadow-2xl shadow-slate-900/25 dark:shadow-black/70 animate-toast-in',
   },
   toggle: {
-    base: 'ms-auto flex h-8 w-8 shrink-0 items-center justify-center rounded text-body hover:bg-neutral-secondary-medium hover:text-heading focus:outline-none focus:ring-4 focus:ring-neutral-tertiary',
-    icon: 'h-4 w-4',
+    base: 'ms-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-700 dark:hover:text-white focus:outline-none transition-colors',
+    icon: 'h-3.5 w-3.5',
   },
 };
 
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string) => void }) {
+  const styles = TOAST_CLASSES[toast.type] || TOAST_CLASSES.info;
   return (
-    <FlowbiteToast theme={toastTheme} className="pointer-events-auto">
-      <div className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded ${BADGE_CLASSES[toast.type]}`}>
+    <FlowbiteToast theme={toastTheme} className={`pointer-events-auto ${styles.border}`}>
+      <div className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${styles.chip}`}>
         {ICONS[toast.type]}
       </div>
-      <div className="ms-3 text-sm font-medium break-words">{toast.message}</div>
+      <div className="ms-3 text-xs font-semibold break-words text-slate-800 dark:text-slate-100">{toast.message}</div>
       <ToastToggle xIcon={X} onDismiss={() => onDismiss(toast.id)} />
     </FlowbiteToast>
   );

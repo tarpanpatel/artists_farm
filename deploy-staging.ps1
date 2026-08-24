@@ -19,12 +19,13 @@
   6. Packages dist/, uploads, and swaps into place at ~/staging.ground-code.com/dist/.
   7. Verifies live staging bundle response.
 
-.DOMAIN MIGRATION (24 Aug 2026)
+.DOMAIN MIGRATION (24 Aug 2026, old subdomain fully retired 25 Aug 2026)
   Staging moved from staging.artistic-sthan.com to staging.ground-code.com - same hosting
   account/server (91.238.163.173), new cPanel subdomain. The old subdomain's git checkout at
-  ~/staging.artistic-sthan.com is left in place (not deleted) but is no longer touched by this
-  script; php/config/database.php still recognizes its hostname as staging too, purely as a
-  safety net (see that file's comment) in case it's ever hit directly.
+  ~/staging.artistic-sthan.com was initially left in place as a migration safety net, then
+  actually deleted from the server 25 Aug 2026 (explicit user request - "remove all traces and
+  files so that our ground-code app is bug free and clean"); php/config/database.php no longer
+  recognizes that hostname as staging either, since there's nothing left there to hit.
 
 .ONE-TIME SERVER SETUP REQUIRED
   ~/staging.ground-code.com must be its own git checkout of this repo (branch multi-tenant)
