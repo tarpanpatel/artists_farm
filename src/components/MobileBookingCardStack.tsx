@@ -3,6 +3,7 @@ import { Phone, MessageSquare, Pencil, Eye, LogIn, LogOut, Users, Building, Sear
 import { Guest } from '../types';
 import { Badge } from './Badge';
 import { Button } from './Button';
+import { isCFormGenuinelyFiled } from '../utils/cFormStatus';
 
 interface MobileBookingCardStackProps {
   guests: Guest[];
@@ -263,7 +264,9 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                 {guest.isForeignGuest && (
                   <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900/40 p-2 rounded-lg border border-slate-100 dark:border-slate-800 text-xs">
                     <span className="text-[10px] text-slate-400 uppercase font-semibold">C-Form Filing:</span>
-                    {guest.cFormFiledAt ? (
+                    {/* isCFormGenuinelyFiled(), not a bare cFormFiledAt check (25 Aug 2026) -
+                        see that helper's own comment. */}
+                    {isCFormGenuinelyFiled(guest) ? (
                       <span className="text-emerald-600 dark:text-emerald-400 font-semibold text-[11px] inline-flex items-center gap-1">
                         <CheckCircle2 className="w-3 h-3 text-emerald-500" />
                         <span>Filed ({guest.cFormFiledAt})</span>

@@ -1955,6 +1955,471 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
           </>
         )}
       </Drawer>
+
+      {/* PAYEE MANAGER DRAWER
+          RESTORED 25 Aug 2026 - this whole drawer (and the Custom Items one below it) was
+          silently deleted from the JSX on 20 Aug 2026 (commit 32325b3, an unrelated refactor
+          that turned this component into an embeddable "onlyForm" add-expense form) while every
+          bit of state and every handler it depends on (isPayeeManagerOpen, editingPayee,
+          handleSavePayee, handleDeletePayee, payeeLightboxUrl, etc.) was left fully intact and
+          still wired up - including the "Manage Payees" button below the vendor picker, which
+          kept calling setIsPayeeManagerOpen(true) the whole time. Confirmed via
+          `git log -S "show={isPayeeManagerOpen}"` and `npx tsc --noEmit` (it flagged every one
+          of these as "declared but its value is never read" - the actual signal that led here).
+          Net effect for 5 days: clicking "Manage Payees" (or "Register ... to Custom Items
+          list"/"Edit existing items" below) did nothing at all, silently - no error, no
+          feedback, just a dead button. Restored verbatim from the pre-deletion version (git show
+          32325b3^), converted from that version's centered <Modal> to this app's now-mandatory
+          right-side <Drawer> pattern (DESIGN.md's Flowbite Modals & Drawers spec, adopted after
+          this content was deleted) - everything else (handlers, DB calls, table markup) is
+          unchanged. */}
+      <Drawer
+        open={isPayeeManagerOpen}
+        onClose={() => setIsPayeeManagerOpen(false)}
+        position="right"
+        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400">
+              <Landmark className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-base font-semibold text-slate-900 dark:text-white m-0">Registered Payees (Vendors & Third Parties)</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 m-0 font-normal">Manage operational suppliers, business vendors, and pass-through entities.</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsPayeeManagerOpen(false)}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-6 text-xs">
+          {/* Add / Edit Payee Form Area */}
+          {isAddingNewPayee || editingPayee ? (
+            <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4 space-y-4">
+              <h4 className="font-bold text-slate-850 dark:text-slate-200 text-sm flex items-center gap-1.5">
+                {editingPayee ? <Pencil className="w-4 h-4 text-blue-600" /> : <Plus className="w-4 h-4 text-blue-600" />}
+                {editingPayee ? 'Edit Payee Settings' : 'Register New Account Payee'}
+              </h4>
+              <form onSubmit={handleSavePayee} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Payee Account Name *</label>
+                    <Input
+                      type="text"
+                      required
+                      value={editingPayee ? editingPayee.name : newPayeeForm.name}
+                      onChange={e => {
+                        if (editingPayee) {
+                          setEditingPayee({ ...editingPayee, name: e.target.value });
+                        } else {
+                          setNewPayeeForm({ ...newPayeeForm, name: e.target.value });
+                        }
+                      }}
+                      placeholder="e.g. Raju Grocery, Pool Supplier"
+                    />
+                  </div>
+                  <div>
+                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">UPI ID (Optional)</label>
+                    <Input
+                      type="text"
+                      value={editingPayee ? (editingPayee.upiId || '') : newPayeeForm.upiId}
+                      onChange={e => {
+                        if (editingPayee) {
+                          setEditingPayee({ ...editingPayee, upiId: e.target.value });
+                        } else {
+                          setNewPayeeForm({ ...newPayeeForm, upiId: e.target.value });
+                        }
+                      }}
+                      placeholder="e.g. raju@upi"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">UPI QR Code Graphic (Optional)</label>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          if (editingPayee) {
+                            setEditingPayee({ ...editingPayee, qrCodeUrl: reader.result as string });
+                          } else {
+                            setNewPayeeForm({ ...newPayeeForm, qrCodeUrl: reader.result as string });
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                  {(editingPayee?.qrCodeUrl || newPayeeForm.qrCodeUrl) && (
+                    <div className="mt-2 flex items-center gap-3">
+                      <img
+                        src={editingPayee ? editingPayee.qrCodeUrl : newPayeeForm.qrCodeUrl}
+                        alt="UPI QR Code preview"
+                        className="h-16 w-16 object-contain border rounded p-1 bg-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (editingPayee) {
+                            setEditingPayee({ ...editingPayee, qrCodeUrl: '' });
+                          } else {
+                            setNewPayeeForm({ ...newPayeeForm, qrCodeUrl: '' });
+                          }
+                        }}
+                        className="text-xs text-red-500 font-semibold hover:underline"
+                      >
+                        Remove QR
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 pt-2 justify-end border-t border-slate-200 dark:border-slate-800">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      setEditingPayee(null);
+                      setIsAddingNewPayee(false);
+                      setNewPayeeForm({ name: '', upiId: '', qrCodeUrl: '' });
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    disabled={isSavingPayee}
+                  >
+                    {isSavingPayee ? 'Saving...' : editingPayee ? 'Save Updates' : 'Register Payee'}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-200 dark:border-slate-850">
+              <div className="flex-1 max-w-xs">
+                <FlowbiteTextInput
+                  icon={Search}
+                  value={searchPayeeQuery}
+                  onChange={e => setSearchPayeeQuery(e.target.value)}
+                  placeholder="Search by name..."
+                />
+              </div>
+              <Button
+                variant="primary"
+                onClick={() => setIsAddingNewPayee(true)}
+              >
+                <Plus className="w-4 h-4 mr-1 inline-block" />
+                Register Account Payee
+              </Button>
+            </div>
+          )}
+
+          {/* Payees Table / List Grid */}
+          {!isAddingNewPayee && !editingPayee && (
+            <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden bg-white dark:bg-slate-900">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-800 text-[10px] text-slate-500 font-bold uppercase border-b border-slate-200 dark:border-slate-700">
+                      <th className="px-4 py-3">Payee Name</th>
+                      <th className="px-4 py-3 text-center">UPI QR Code</th>
+                      <th className="px-4 py-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                    {dbVendors.filter(p => !searchPayeeQuery || p.name.toLowerCase().includes(searchPayeeQuery.toLowerCase())).length === 0 ? (
+                      <tr>
+                        <td colSpan={3} className="text-center py-8 text-slate-400 font-semibold italic">No registered payees found.</td>
+                      </tr>
+                    ) : (
+                      dbVendors.filter(p => !searchPayeeQuery || p.name.toLowerCase().includes(searchPayeeQuery.toLowerCase())).map(p => (
+                        <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className="px-4 py-3">
+                            <div className="flex flex-col">
+                              <span className="font-semibold text-slate-900 dark:text-white">{p.name}</span>
+                              {p.upiId && <span className="text-[10px] text-slate-400 font-mono select-all mt-0.5">UPI: {p.upiId}</span>}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {p.qrCodeUrl ? (
+                              <button
+                                onClick={() => setPayeeLightboxUrl(p.qrCodeUrl!)}
+                                className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 font-semibold flex items-center justify-center gap-1 mx-auto cursor-pointer"
+                              >
+                                <Camera className="w-3.5 h-3.5" /> View QR
+                              </button>
+                            ) : (
+                              <span className="text-slate-400 italic">None</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => setEditingPayee(p)}
+                                className="bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors border border-sky-100 dark:border-sky-900/60"
+                              >
+                                <Pencil className="w-3 h-3" /> Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeletePayee(p.id, p.name)}
+                                disabled={isSavingPayee}
+                                className="bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors border border-red-100 dark:border-red-900/60"
+                              >
+                                <Trash2 className="w-3 h-3" /> Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      </Drawer>
+
+      {/* CUSTOM ITEMS DRAWER - see the PAYEE MANAGER DRAWER comment above for the full 25 Aug
+          2026 restoration writeup; same root cause, same fix, applies here identically. */}
+      <Drawer
+        open={isCustomItemsOpen}
+        onClose={() => setIsCustomItemsOpen(false)}
+        position="right"
+        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400">
+              <Settings className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-base font-semibold text-slate-900 dark:text-white m-0">Custom Expense Items Catalog</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 m-0 font-normal">Manage recurring items and quick-fill suggestions for your property.</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsCustomItemsOpen(false)}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-6 text-xs">
+          {isAddingCustomItem || editingCustomItem ? (
+            <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4 space-y-4">
+              <h4 className="font-bold text-slate-850 dark:text-slate-200 text-sm flex items-center gap-1.5">
+                {editingCustomItem ? <Pencil className="w-4 h-4 text-blue-600" /> : <Plus className="w-4 h-4 text-blue-600" />}
+                {editingCustomItem ? 'Edit Custom Item' : 'Register Custom Expense Item'}
+              </h4>
+              <form onSubmit={handleSaveCustomItem} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Item Name *</label>
+                    <Input
+                      type="text"
+                      required
+                      value={editingCustomItem ? editingCustomItem.label : newCustomItemForm.label}
+                      onChange={e => {
+                        if (editingCustomItem) {
+                          setEditingCustomItem({ ...editingCustomItem, label: e.target.value });
+                        } else {
+                          setNewCustomItemForm({ ...newCustomItemForm, label: e.target.value });
+                        }
+                      }}
+                      placeholder="e.g. Pool Chlorine, Diesel Can"
+                    />
+                  </div>
+                  <div>
+                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Category</label>
+                    <StyledSelect
+                      value={editingCustomItem ? editingCustomItem.category : newCustomItemForm.category}
+                      onChange={val => {
+                        if (editingCustomItem) {
+                          setEditingCustomItem({ ...editingCustomItem, category: val });
+                        } else {
+                          setNewCustomItemForm({ ...newCustomItemForm, category: val });
+                        }
+                      }}
+                      options={[
+                        { value: 'Other', label: 'Other' },
+                        { value: 'Bills', label: 'Bills & Utilities' },
+                        { value: 'Kitchen', label: 'Kitchen & Supplies' },
+                        { value: 'Staff Advance', label: 'Staff Salaries & Adv.' },
+                      ]}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Default Amount (₹)</label>
+                    <Input
+                      type="number"
+                      step="any"
+                      value={editingCustomItem ? editingCustomItem.defaultAmount : newCustomItemForm.defaultAmount}
+                      onChange={e => {
+                        if (editingCustomItem) {
+                          setEditingCustomItem({ ...editingCustomItem, defaultAmount: e.target.value });
+                        } else {
+                          setNewCustomItemForm({ ...newCustomItemForm, defaultAmount: e.target.value });
+                        }
+                      }}
+                      placeholder="e.g. 150.00"
+                    />
+                  </div>
+                  <div>
+                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Short Notes / Description (Optional)</label>
+                    <Input
+                      type="text"
+                      value={editingCustomItem ? (editingCustomItem.description || '') : newCustomItemForm.description}
+                      onChange={e => {
+                        if (editingCustomItem) {
+                          setEditingCustomItem({ ...editingCustomItem, description: e.target.value });
+                        } else {
+                          setNewCustomItemForm({ ...newCustomItemForm, description: e.target.value });
+                        }
+                      }}
+                      placeholder="e.g. Daily transport fare"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2 justify-end border-t border-slate-200 dark:border-slate-800">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      setEditingCustomItem(null);
+                      setIsAddingCustomItem(false);
+                      setNewCustomItemForm({ label: '', category: 'Other', defaultAmount: '0.00', description: '' });
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    disabled={isSavingCustomItem}
+                  >
+                    {isSavingCustomItem ? 'Saving...' : editingCustomItem ? 'Save Updates' : 'Create Item'}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-200 dark:border-slate-850">
+              <div className="flex-1 max-w-xs">
+                <FlowbiteTextInput
+                  icon={Search}
+                  value={searchCustomQuery}
+                  onChange={e => setSearchCustomQuery(e.target.value)}
+                  placeholder="Search items by name..."
+                />
+              </div>
+              <Button
+                variant="primary"
+                onClick={() => setIsAddingCustomItem(true)}
+              >
+                <Plus className="w-4 h-4 mr-1 inline-block" />
+                Create Custom Item
+              </Button>
+            </div>
+          )}
+
+          {/* Custom Items Table / List Grid */}
+          {!isAddingCustomItem && !editingCustomItem && (
+            <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden bg-white dark:bg-slate-900">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-800 text-[10px] text-slate-500 font-bold uppercase border-b border-slate-200 dark:border-slate-700">
+                      <th className="px-4 py-3">Item Name</th>
+                      <th className="px-4 py-3">Category</th>
+                      <th className="px-4 py-3 text-right">Default Amount</th>
+                      <th className="px-4 py-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                    {customExpenses.filter(p => !searchCustomQuery || p.label.toLowerCase().includes(searchCustomQuery.toLowerCase())).length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="text-center py-8 text-slate-400 font-semibold italic">No custom items found.</td>
+                      </tr>
+                    ) : (
+                      customExpenses.filter(p => !searchCustomQuery || p.label.toLowerCase().includes(searchCustomQuery.toLowerCase())).map(p => (
+                        <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className="px-4 py-3">
+                            <div className="flex flex-col">
+                              <span className="font-semibold text-slate-900 dark:text-white">{p.label}</span>
+                              {p.description && <span className="text-[10px] text-slate-400">{p.description}</span>}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 px-2 py-0.5 rounded font-semibold text-[10px]">{p.category}</span>
+                          </td>
+                          <td className="px-4 py-3 text-right font-mono font-medium text-slate-700 dark:text-slate-300">
+                            ₹{p.default_amount}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => setEditingCustomItem({ id: p.id, label: p.label, category: p.category, defaultAmount: p.default_amount.toString(), description: p.description || '' })}
+                                className="bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors border border-sky-100 dark:border-sky-900/60"
+                              >
+                                <Pencil className="w-3 h-3" /> Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteCustomItem(p.id, p.label)}
+                                disabled={isSavingCustomItem}
+                                className="bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors border border-red-100 dark:border-red-900/60"
+                              >
+                                <Trash2 className="w-3 h-3" /> Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      </Drawer>
+
+      {/* LIGHTBOX FOR UPI QR CODE */}
+      {payeeLightboxUrl && (
+        <div
+          onClick={() => setPayeeLightboxUrl(null)}
+          className="fixed inset-0 bg-slate-950/90 backdrop-blur-xs flex items-center justify-center p-4 z-100 animate-in fade-in cursor-zoom-out"
+        >
+          <div className="relative max-w-sm w-full bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xl">
+            <button
+              onClick={() => setPayeeLightboxUrl(null)}
+              className="absolute top-2 right-2 p-1 bg-slate-100 dark:bg-slate-700 rounded-full text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-650 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <div className="rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 p-2 bg-slate-50">
+              <img src={payeeLightboxUrl} alt="UPI QR Code" className="w-full h-auto rounded-lg" />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

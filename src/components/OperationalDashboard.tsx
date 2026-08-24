@@ -28,7 +28,7 @@ import {
   GUEST_STATUS_ACTIVE_LEGACY,
   GUEST_STATUS_CHECKEDOUT_LEGACY,
 } from '../constants/guestStatus';
-import { getPropertySlug, markCFormFiled } from '../services/api';
+import { getPropertySlug } from '../services/api';
 import { GuestManagement } from './GuestManagement';
 import { CheckinVerificationModal } from './CheckinVerificationModal';
 import { BookingDetailsModal } from './BookingDetailsModal';
@@ -38,6 +38,7 @@ import { KpiCard } from './KpiCard';
 import { Input } from './Input';
 import { t } from '../i18n/en';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
+import { isCFormGenuinelyFiled } from '../utils/cFormStatus';
 import { shareTextContent } from '../utils/shareText';
 import { Share2 } from './icons/FlowbiteIcons';
 
@@ -109,7 +110,12 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   onUpdateBooking,
   onDeleteBooking,
   onGuestVerificationUpdated,
-  onCFormFiledUpdated,
+  // No longer read directly (25 Aug 2026) - the "Mark filed" control below now opens the
+  // real C-Form section instead of saving inline, so the guest-update flows through the
+  // modal's own onSave the same way every other field edit here does. Left in the props
+  // interface (optional, so no call site needs to change) in case a future direct-toggle
+  // path wants it back once it can collect a confirmation number too.
+  onCFormFiledUpdated: _onCFormFiledUpdated,
   onGuestCheckedIn,
   activeMenuItemKey: _activeMenuItemKey,
   kitchenModuleEnabled = true,
@@ -369,8 +375,13 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       }
     }
 
-    // 4. C-Form Pending (Foreign guest without filed C-Form arriving today or currently checked in)
-    if (g.isForeignGuest && !g.cFormFiledAt && !g.cFormNumber && !(g as any).c_form_number) {
+    // 4. C-Form Pending (Foreign guest without filed C-Form arriving today or currently
+    // checked in). isCFormGenuinelyFiled(), not a bare cFormFiledAt/cFormNumber check (25
+    // Aug 2026) - see that helper's own comment. This condition used to require ALL of
+    // cFormFiledAt/cFormNumber/c_form_number to be falsy to count as pending, which had the
+    // same gap in the opposite direction: cFormFiledAt alone being SET (with no number) made
+    // the whole AND false, so it was never flagged pending either.
+    if (g.isForeignGuest && !isCFormGenuinelyFiled(g)) {
       reasons.push('C-Form Pending');
     }
 
@@ -509,9 +520,10 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
     const interval = setInterval(() => setCFormNow(Date.now()), 60000);
     return () => clearInterval(interval);
   }, []);
-  const [cFormSavingId, setCFormSavingId] = useState<string | null>(null);
+  // isCFormGenuinelyFiled(), not a bare cFormFiledAt check (25 Aug 2026) - see that helper's
+  // own comment.
   const cFormPending = guests.filter(
-    (g) => g.isForeignGuest && (g.status === GUEST_STATUS_ACTIVE_LEGACY || (g.status as string) === GUEST_STATUS_CHECKED_IN) && !g.cFormFiledAt
+    (g) => g.isForeignGuest && (g.status === GUEST_STATUS_ACTIVE_LEGACY || (g.status as string) === GUEST_STATUS_CHECKED_IN) && !isCFormGenuinelyFiled(g)
   );
   const formatCFormDue = (checkinDate: string): { label: string; overdue: boolean } => {
     const checkin = new Date((checkinDate || '').replace(' ', 'T'));
@@ -525,18 +537,6 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
     const span = `${hours}h ${minutes}m`;
     return { label: overdue ? `Overdue by ${span}` : `Due in ${span}`, overdue };
   };
-  const handleMarkCFormFiled = async (guestId: string) => {
-    setCFormSavingId(guestId);
-    const ok = await markCFormFiled(guestId, true);
-    if (ok) {
-      onCFormFiledUpdated?.(guestId, new Date().toISOString());
-      showToast('C-Form marked as filed', { type: 'success' });
-    } else {
-      showToast('Failed to update C-Form status', { type: 'error' });
-    }
-    setCFormSavingId(null);
-  };
-
   // Public "Share Menu" link (food_menu.php via the /food_menu/{slug}/
   // rewrite in .htaccess) - same pattern as TodayOverview.tsx's (the
   // multi-key dashboard) and MenuManager.tsx's Share Menu buttons, added
@@ -705,8 +705,13 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                     </p>
                   </button>
                   <Checkbox
-                      disabled={cFormSavingId === g.id}
-                      onChange={() => handleMarkCFormFiled(g.id)}
+                      // FIXED 25 Aug 2026 (live report: a booking showed "Filed" with an
+                      // empty confirmation number) - this called markCFormFiled(id, true)
+                      // directly with no way to ever attach a number, the same shortcut
+                      // BillingCheckout.tsx's Past Bookings checkbox had. Opens the real
+                      // C-Form section (which now requires a number/document before it will
+                      // save) instead of toggling filed=true with nothing behind it.
+                      onChange={() => { setSelectedBookingFocusSection('c_form'); setSelectedBooking(g); }}
                     />{t('mark_filed_label', 'Mark filed')}
                 </li>
               );

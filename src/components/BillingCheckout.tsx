@@ -35,6 +35,7 @@ import { ReceiptEditModal } from './ReceiptEditModal';
 import { BookingDetailsModal } from './BookingDetailsModal';
 import { PageHeader, PageHeaderButton } from './PageHeader';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
+import { isCFormGenuinelyFiled } from '../utils/cFormStatus';
 import { markCFormFiled } from '../services/api';
 
 interface BillingCheckoutProps {
@@ -268,7 +269,9 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   const todaysAttentionGuests = useMemo(() => {
     return uniqueGuests.filter((g) => {
       if (getGuestTabCategory(g) !== 'today') return false;
-      const cFormPending = g.isForeignGuest && !g.cFormFiledAt;
+      // isCFormGenuinelyFiled(), not a bare cFormFiledAt check (25 Aug 2026) - see that
+      // helper's own comment for why cFormFiledAt alone isn't proof of anything.
+      const cFormPending = g.isForeignGuest && !isCFormGenuinelyFiled(g);
       const idPending = g.idVerificationStatus !== 'Complete';
       return cFormPending || idPending;
     });
@@ -539,7 +542,9 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                           </Badge>
 
                           {guest.isForeignGuest && (
-                            guest.cFormFiledAt ? (
+                            // isCFormGenuinelyFiled(), not a bare cFormFiledAt check (25 Aug
+                            // 2026) - see that helper's own comment.
+                            isCFormGenuinelyFiled(guest) ? (
                               <Badge variant="success" size="sm" className="whitespace-nowrap">
                                 <span className="inline-flex items-center gap-1 whitespace-nowrap">
                                   <CheckCircle2 className="w-3 h-3 shrink-0" />
@@ -799,17 +804,37 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
         if (!row.isForeignGuest) {
           return <span className="text-gray-400 dark:text-gray-500 text-xs">{t('na_indian_national_label', 'N/A (Indian National)')}</span>;
         }
-        const isFiled = !!row.cFormFiledAt;
+        // isCFormGenuinelyFiled(), not a bare cFormFiledAt check (25 Aug 2026) - see that
+        // helper's own comment. cFormMissingProof covers the case this very checkbox used to
+        // CAUSE: it toggled filed=true with no way to enter a confirmation number at all, so
+        // every "Filed" it produced was exactly the unproven state the helper now excludes.
+        const isFiled = isCFormGenuinelyFiled(row);
+        const cFormMissingProof = !!row.cFormFiledAt && !isFiled;
         const isSaving = savingCFormId === row.id;
         return (
 <label className="flex items-center gap-2 cursor-pointer py-1 text-xs select-none">
                   <Checkbox
                     checked={isFiled}
                     disabled={isSaving}
-                    onChange={e => handleToggleCForm(row, e.target.checked)}
+                    onChange={e => {
+                      if (e.target.checked) {
+                        // FIXED 25 Aug 2026 (live report: a booking showed "Filed" with an
+                        // empty confirmation number, traced back to exactly this checkbox -
+                        // it had no field to ever collect one) - checking this now opens the
+                        // real C-Form section (which requires a number/document before it
+                        // will save) instead of blindly toggling filed=true with nothing
+                        // behind it. Unchecking still toggles directly - clearing "filed"
+                        // never needed a number either, on this checkbox or in the modal.
+                        handleEditGuest(row, 'c_form');
+                      } else {
+                        handleToggleCForm(row, false);
+                      }
+                    }}
                   />{" "}
-                  <span className={`font-semibold ${isFiled ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
-              {isFiled ? (
+                  <span className={`font-semibold ${cFormMissingProof ? 'text-amber-600 dark:text-amber-400' : isFiled ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
+              {cFormMissingProof ? (
+                <span>{t('filed_no_reference_badge', 'Filed (no reference)')}</span>
+              ) : isFiled ? (
                 <span className="flex items-center gap-1">
                   <span>{t('filed_badge', 'Filed')}</span>
                   <span className="text-2xs text-gray-400 font-normal">({formatDateDDMMYYYY(row.cFormFiledAt)})</span>
@@ -930,7 +955,9 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                     Needs attention today
                   </p>
                   {todaysAttentionGuests.map((g) => {
-                    const cFormPending = g.isForeignGuest && !g.cFormFiledAt;
+                    // isCFormGenuinelyFiled(), not a bare cFormFiledAt check (25 Aug 2026) -
+                    // see that helper's own comment.
+                    const cFormPending = g.isForeignGuest && !isCFormGenuinelyFiled(g);
                     const idPending = g.idVerificationStatus !== 'Complete';
                     return (
                       <button

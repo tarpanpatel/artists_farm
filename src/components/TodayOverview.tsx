@@ -8,6 +8,7 @@ import { KpiCard } from './KpiCard';
 import { getPropertySlug } from '../services/api';
 import { useToast } from './ToastContext';
 import { shareTextContent } from '../utils/shareText';
+import { isCFormGenuinelyFiled } from '../utils/cFormStatus';
 import { t } from '../i18n/en';
 
 interface TodayOverviewProps {
@@ -301,8 +302,12 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
       }
     }
 
-    // 4. C-Form Pending (Foreign guest without filed C-Form arriving today or currently checked in)
-    if (guest.isForeignGuest && !guest.cFormFiledAt && !guest.cFormNumber && !(guest as any).c_form_number) {
+    // 4. C-Form Pending (Foreign guest without filed C-Form arriving today or currently
+    // checked in). isCFormGenuinelyFiled(), not a bare AND of cFormFiledAt/cFormNumber (25
+    // Aug 2026) - see that helper's own comment; the old condition required ALL of them
+    // falsy to count as pending, so cFormFiledAt alone being set (no number) was never
+    // flagged either.
+    if (guest.isForeignGuest && !isCFormGenuinelyFiled(guest)) {
       reasons.push('C-Form Pending');
     }
 

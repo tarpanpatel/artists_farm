@@ -2188,6 +2188,7 @@ ${itemsStr}
                     onRequestMaterial={handleRequestMaterial}
                     onDispatchTelegram={dispatchTelegramAlert}
                     activeMenuItemKey={activeMenuItemKey}
+                    isMultiKeyProperty={preloadedData.isMultiKeyProperty}
                     initialStaffName={initialStaffMealName || undefined}
                     initialReqItemName={initialReqData?.itemName}
                     initialReqQty={initialReqData?.qty}

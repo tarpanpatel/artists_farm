@@ -302,6 +302,14 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   // (see the checkbox/upload/Save button below), this only adds the extra
   // "already filed" lock on top once there's something saved to protect.
   const cFormLocked = isCFormFiled && !isEditing;
+  // FOUND 25 Aug 2026 (live report: a past booking showed "Filed" in green with a fully
+  // checked box, but the C-Form Confirmation No. field was empty) - "Save C-Form" never
+  // required a confirmation number or an uploaded document before marking filed=true, so
+  // this state was reachable (and evidently reached) with zero proof of an actual filing
+  // behind it. Used below both to block a NEW save with nothing entered (see the Save
+  // button's `disabled`) and to keep flagging an ALREADY-saved record like this one instead
+  // of quietly showing a clean green "Filed" with nothing to back it up.
+  const cFormMissingProof = isCFormFiled && !cFormNumberState.trim() && !cFormFile;
   const noOfGuests = g.no_of_guests ?? g.numberOfGuests ?? 1;
   const roomRent = g.base_room_rent ?? g.roomRate ?? 0;
   const advancePaid = g.advance_paid ?? g.advanceAmount ?? 0;
@@ -956,10 +964,17 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                     />
                     <span>Mark C-Form as filed</span>
                   </label>
-                  <span className={`text-xs font-semibold ${isCFormFiled ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                    {isCFormFiled ? 'Filed' : 'Filing Pending'}
+                  <span className={`text-xs font-semibold ${cFormMissingProof ? 'text-amber-600 dark:text-amber-400' : isCFormFiled ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                    {cFormMissingProof ? 'Filed (no reference on record)' : isCFormFiled ? 'Filed' : 'Filing Pending'}
                   </span>
                 </div>
+
+                {cFormMissingProof && (
+                  <p className="mt-1.5 text-2xs font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3 shrink-0" />
+                    Marked filed but no confirmation number or document was ever saved - verify with the guest and fill it in below.
+                  </p>
+                )}
 
                 {cFormSectionOpen && canActOnBooking && (
                   <div
@@ -969,7 +984,10 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                       // box with red") while this is genuinely still
                       // unresolved - clears itself the moment isCFormFiled
                       // actually flips true (a real save), not on a timer.
-                      !isCFormFiled
+                      // Also stays up for cFormMissingProof (25 Aug 2026) -
+                      // "filed" with nothing behind it is still unresolved,
+                      // not a timer-driven state either.
+                      !isCFormFiled || cFormMissingProof
                         ? 'border-red-400 dark:border-red-600 bg-red-50/60 dark:bg-red-950/20 ring-2 ring-red-400/60 dark:ring-red-600/60'
                         : 'border-transparent'
                     }`}
@@ -1062,7 +1080,13 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                       />
                       <button
                         type="button"
-                        disabled={isSavingCForm || cFormLocked}
+                        // FIXED 25 Aug 2026 (live report: a past booking was marked "Filed"
+                        // with an empty Confirmation No. field, no warning anywhere) - this
+                        // had no guard at all against saving filed=true with nothing entered.
+                        // Require SOME evidence - a typed confirmation number or an attached
+                        // document - before this is clickable at all, not just after the fact.
+                        disabled={isSavingCForm || cFormLocked || (!cFormNumberState.trim() && !cFormFile)}
+                        title={!cFormNumberState.trim() && !cFormFile ? 'Enter a confirmation number or attach the filed document first' : undefined}
                         onClick={async () => {
                           setIsSavingCForm(true);
                           // Upload (if a file was picked) BEFORE marking filed, so the

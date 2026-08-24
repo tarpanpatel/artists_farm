@@ -13,6 +13,7 @@ import {
   CheckCircle2,
 } from './icons/FlowbiteIcons';
 import { Guest, BillingReceipt, AuditLog, MenuItem } from '../types';
+import { isCFormGenuinelyFiled } from '../utils/cFormStatus';
 import { useStaff } from '../contexts/StaffContext';
 import { useFinance } from '../contexts/FinanceContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
@@ -156,7 +157,9 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
       g.foodBill || 0,
       g.totalAmount || 0,
       `"${g.paymentStatus || 'Pending'}"`,
-      g.isForeignGuest ? (g.cFormFiledAt ? 'Filed' : 'Pending Filing') : 'N/A',
+      // isCFormGenuinelyFiled(), not a bare cFormFiledAt check (25 Aug 2026) - see that
+      // helper's own comment.
+      g.isForeignGuest ? (isCFormGenuinelyFiled(g) ? 'Filed' : 'Pending Filing') : 'N/A',
       `"${g.cFormFiledAt || ''}"`,
     ]);
 

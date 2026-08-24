@@ -36,7 +36,7 @@ import {
 import { Guest, Order, OrderItem, MenuItem, Requisition, InventoryItem, WalkInTab } from '../types';
 import { GUEST_STATUS_CHECKED_IN, GUEST_STATUS_ACTIVE_LEGACY } from '../constants/guestStatus';
 import { recordTelescopeLog } from '../utils/telescopeLogger';
-import { resolveTelegramTemplate, fetchServedLogsFromDB, addServedLogToDB, fetchMaterialCategoriesFromDB, fetchRecipesFromDB, saveRecipeToDB, deleteRecipeFromDB, depleteStockForDish, getPropertySlug, updateOrderItemStatus, updateOrderStatusDB, updateItemReminderTimestamp, checkStaleReminders, StaleReminderItem, fetchTelegramConfigDB, fetchStaffMealOptionsFromDB, addStaffMealOptionToDB, fetchStaffMealLogsFromDB, addStaffMealLogToDB, addOrderToDB, fetchWalkInTabsFromDB, openWalkInTabDB } from '../services/api';
+import { resolveTelegramTemplate, fetchServedLogsFromDB, addServedLogToDB, fetchRecipesFromDB, saveRecipeToDB, deleteRecipeFromDB, depleteStockForDish, getPropertySlug, updateOrderItemStatus, updateOrderStatusDB, updateItemReminderTimestamp, checkStaleReminders, StaleReminderItem, fetchTelegramConfigDB, fetchStaffMealOptionsFromDB, addStaffMealOptionToDB, fetchStaffMealLogsFromDB, addStaffMealLogToDB, addOrderToDB, fetchWalkInTabsFromDB, openWalkInTabDB } from '../services/api';
 import { StyledSelect } from './StyledSelect';
 import { Popover } from './Popover';
 import { useToast } from './ToastContext';
@@ -85,6 +85,19 @@ interface KitchenManagementProps {
   onRequestMaterial: (req: Requisition) => void;
   onDispatchTelegram?: (eventType: string, message: string, category?: 'kitchen' | 'admin' | 'finance' | 'all', replyMarkup?: any, templateKey?: string) => void;
   activeMenuItemKey?: string;
+  // Gates the Target Guest Picker below (24 Aug 2026 report: "no need to
+  // have dropdown of property name ... don't have the whole dropdown thing
+  // in single property page"). A SINGLE property is structurally capped at
+  // one active booking at a time (see CLAUDE.md's "1 room = 1 active
+  // booking maximum"), so checkedInGuests here can only ever be 0 or 1 long
+  // - a searchable picker for choosing among "at most one option" is pure
+  // overhead, and the room-number suffix it showed was actually just
+  // echoing the property's own name back (single properties have no real
+  // per-room identity), reading as a confusing property-name dropdown
+  // rather than a room disambiguator. Defaults true (show the picker) so
+  // this stays harmless if a future call site forgets to pass it - the
+  // multi-key case is the one that actually needs it.
+  isMultiKeyProperty?: boolean;
   propertyName?: string;
   propertyGstin?: string;
   propertyUpiId?: string;
@@ -124,6 +137,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   onRequestMaterial,
   onDispatchTelegram,
   activeMenuItemKey = 'kitchen_orders',
+  isMultiKeyProperty = true,
   propertyName = '',
   propertyGstin = '',
   propertyUpiId = '',
@@ -2055,18 +2069,31 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               {orderMode === 'guest' && (
                 <div className="flex items-center gap-2 text-xs">
                   {checkedInGuests.length > 0 ? (
-                    <StyledSelect
-                      value={selectedGuestId}
-                      onChange={(val) => setManuallyPickedGuestId(val)}
-                      searchable
-                      options={checkedInGuests.map((g) => ({
-                        value: g.id,
-                        label: `${g.guestName}${g.roomNumber ? ` (${g.roomNumber})` : ''}`,
-                        searchText: `${g.guestName} ${g.roomNumber || ''}`,
-                      }))}
-                      buttonClassName="!h-8 !px-3 !py-1.5 !rounded-lg !bg-blue-50 dark:!bg-blue-900/30 !text-blue-700 dark:!text-blue-300 !font-semibold !border-blue-200 dark:!border-blue-800 !text-xs"
-                      className="min-w-[190px]"
-                    />
+                    isMultiKeyProperty ? (
+                      <StyledSelect
+                        value={selectedGuestId}
+                        onChange={(val) => setManuallyPickedGuestId(val)}
+                        searchable
+                        options={checkedInGuests.map((g) => ({
+                          value: g.id,
+                          label: `${g.guestName}${g.roomNumber ? ` (${g.roomNumber})` : ''}`,
+                          searchText: `${g.guestName} ${g.roomNumber || ''}`,
+                        }))}
+                        buttonClassName="!h-8 !px-3 !py-1.5 !rounded-lg !bg-blue-50 dark:!bg-blue-900/30 !text-blue-700 dark:!text-blue-300 !font-semibold !border-blue-200 dark:!border-blue-800 !text-xs"
+                        className="min-w-[190px]"
+                      />
+                    ) : (
+                      // Single property: at most one checked-in guest can ever
+                      // exist here (see isMultiKeyProperty's own doc comment
+                      // above), so a picker has nothing to actually pick among -
+                      // just name who this order targets, no dropdown/room
+                      // suffix at all. selectedGuestId already falls back to
+                      // checkedInGuests[0] with no picker needed for that to work.
+                      <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold border border-blue-200 dark:border-blue-800">
+                        <User className="w-3.5 h-3.5 shrink-0" />
+                        {checkedInGuests[0]?.guestName}
+                      </span>
+                    )
                   ) : (
                     <span className="text-gray-500 dark:text-gray-400 text-xs flex items-center gap-1">
                       No checked-in house guest.
@@ -2450,23 +2477,45 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 // a descendant of it) is never clipped by it.
                 className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-[55] lg:hidden"
               >
-                {/* Right-Aligned White Pull-Tab Attached to Top Edge of Cart */}
+                {/* Left-Aligned Pull-Tab Attached to Top Edge of Cart (24 Aug
+                    2026, reworked from the 20/22 Aug version - reported live
+                    as "no way to know items have been added to cart", "button
+                    to pull the drawer is barely viable", "should have a
+                    shadow", and "go to top button is overlapped by drawer
+                    button":
+                    - Moved right-4 -> left-4. ScrollToTopButton (global,
+                      src/components/ScrollToTopButton.tsx) also floats at
+                      right-4, and its vertical range overlaps this button's -
+                      the two were stacking directly on top of each other
+                      whenever a cart existed AND the page was scrolled past
+                      ScrollToTopButton's threshold. Moved this one (page-
+                      specific) rather than the global button (used on every
+                      page, higher blast radius to touch again).
+                    - bg-slate-50 -> solid bg-blue-600: this used to
+                      deliberately have NO shadow/border-b so it would "read as
+                      one continuous surface with the drawer below it, not a
+                      separate floating chip" - correct in isolation, but in
+                      practice that made a light-on-light button genuinely
+                      hard to spot against the page background, which is a
+                      bigger cost than the seam it was avoiding. Reversing
+                      that call given real evidence it wasn't working.
+                    - Added the item count + total text so the collapsed
+                      state itself IS the "you have items in cart" indicator -
+                      before this, a collapsed cart with real items in it and
+                      an empty one looked identical from the outside (just an
+                      unlabeled chevron), the only difference was the (near-
+                      invisible) presence of this button at all. */}
                 <button
                   onClick={() => setIsCartDrawerExpanded(!isCartDrawerExpanded)}
-                  // No shadow and no bottom border - it's meant to read as
-                  // one continuous surface with the drawer below it, not a
-                  // separate floating chip (found 20 Aug 2026: shadow-sm
-                  // still cast a visible line along the bottom edge even
-                  // with border-b-0, since box-shadow isn't clipped by the
-                  // missing border). bg-slate-50 (not white) to match the
-                  // drawer body's surface tone after the 22 Aug 2026 fix.
-                  className="absolute top-0 right-4 -translate-y-full bg-slate-50 dark:bg-gray-800 hover:bg-slate-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-bold px-4 py-1.5 rounded-t-xl border-t-2 border-x border-b-0 border-blue-200 dark:border-blue-900/60 flex items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 z-20"
+                  className="absolute top-0 left-4 -translate-y-full bg-blue-600 hover:bg-blue-700 text-white font-bold pl-3 pr-4 py-2 rounded-t-xl shadow-[0_-4px_12px_-2px_rgba(0,0,0,0.25)] flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 z-20"
                   aria-label="Toggle Cart Drawer"
                 >
+                  <ShoppingCart className="w-4 h-4 shrink-0" />
+                  <span className="text-xs whitespace-nowrap">{totalCartCount} {totalCartCount === 1 ? 'Item' : 'Items'} · ₹{totalCartSum.toFixed(0)}</span>
                   {isCartDrawerExpanded ? (
-                    <ChevronDown className="w-4 h-4 text-gray-700 dark:text-gray-300 stroke-[2.5]" />
+                    <ChevronDown className="w-4 h-4 shrink-0 stroke-[2.5]" />
                   ) : (
-                    <ChevronUp className="w-4 h-4 text-gray-700 dark:text-gray-300 stroke-[2.5]" />
+                    <ChevronUp className="w-4 h-4 shrink-0 stroke-[2.5]" />
                   )}
                 </button>
 
@@ -3589,8 +3638,19 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       value={selectedStockItemId}
                       onChange={(val) => handleStockItemSelect(val)}
                       placeholder={t('choose_ingredient_placeholder')}
+                      // FIXED 25 Aug 2026: this crashed every render with "Cannot find name
+                      // 'ingredientCategoryNames'" - a ReferenceError at runtime, not just a
+                      // type-checker nit, so the Add Ingredient dropdown (and likely this whole
+                      // recipe section, depending on error-boundary placement) was broken for
+                      // any property with inventory items. Traced via `git log -S` to a 21 Aug
+                      // 2026 commit that deleted the state/effect which populated this variable
+                      // but left this one usage behind. Didn't restore that state/effect: it
+                      // filtered categories by an `is_ingredient` flag the backend
+                      // (`get_material_categories` in inventory.php) never actually SELECTs, so
+                      // it always resolved to an empty list - meaning even before the deletion,
+                      // `!ingredientCategoryNames.length` was always true and this filter was
+                      // already a no-op showing every item, same as omitting it entirely below.
                       options={inventory
-                        .filter((item) => !ingredientCategoryNames.length || ingredientCategoryNames.includes(item.category))
                         .map(item => ({
                           value: item.id,
                           label: `${item.name} (${item.category}) — ${item.currentStock} ${item.unit}`,

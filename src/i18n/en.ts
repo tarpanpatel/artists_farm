@@ -1635,6 +1635,7 @@ export const strings: Record<string, string> = {
   error_boundary_component_section_fallback: "Component",
   error_boundary_generic_heading: "Something went wrong",
   error_boundary_generic_message: "An unexpected error occurred. Please refresh the page.",
+  error_boundary_reload_button: "Reload Page",
   appearance_settings_theme_tab: "Theme Colors",
   appearance_settings_css_tab: "Custom CSS",
   invalid_property_heading: "Access Denied",
