@@ -10,6 +10,7 @@ dist/
 !vite.config.*
 !tailwind.config.*
 test_*.php
+!php/tests/test_ai_intents.php
 fix_*.php
 temp_*.sql
 temp_*.js

@@ -17,6 +17,7 @@ import { MiscChargesManagement } from './components/MiscChargesManagement';
 import { TelegramNotificationModal } from './components/TelegramNotificationModal';
 import { CustomCSSOverride } from './components/CustomCSSOverride';
 import { GlobalModal } from './components/GlobalModal';
+import { AIChatWidget } from './components/AIChatWidget';
 import { LoginModal } from './components/LoginModal';
 import { recordTelescopeLog } from './utils/telescopeLogger';
 import { detectClientInfo } from './utils/clientInfo';
@@ -1460,6 +1461,17 @@ ${itemsStr}
       )}
 
       <GlobalModal />
+
+      {isAuthenticated && (
+        <AIChatWidget
+          activeRole={activeRole}
+          propertyName="Artists Farm Jaipur"
+          onNavigate={(tabKey, uniqueKey) => {
+            setActiveTab(tabKey);
+            if (uniqueKey) setActiveMenuItemKey(uniqueKey);
+          }}
+        />
+      )}
     </div>
   );
 }
