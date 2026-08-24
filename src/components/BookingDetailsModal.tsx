@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2, Share2, LogOut, Upload, CreditCard, Globe, AlertTriangle, X, IndianRupee, Paperclip, ScanLine } from './icons/FlowbiteIcons';
 import { Drawer as FlowbiteDrawer, DrawerItems, Checkbox } from 'flowbite-react';
 import { Badge } from './Badge';
+import { Popover } from './Popover';
 import { Guest } from '../types';
 import { markCFormFiled, checkinGuestInDB, uploadDocumentDB } from '../services/api';
 import { scanApplicantIdFromFile } from '../utils/cFormBarcodeScanner';
@@ -406,18 +407,42 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           <h2 className="booking-details-modal__title text-base sm:text-lg font-semibold text-slate-900 dark:text-white flex flex-wrap items-center gap-2 pr-2">
             <span>{isEditing ? t('edit_booking_header', 'Edit Booking') : t('today_booking_details_heading', 'Booking Details')}</span>
             {guest.otaSource && (
-              <Badge
-                variant="warning"
-                size="sm"
-                className="booking-details-modal__ota-badge whitespace-nowrap shrink-0"
-                title={t('ota_converted_badge_tooltip', 'Converted from an OTA calendar sync - editing this only changes this app, not the original platform')}
+              // Click-triggered Popover (24 Aug 2026) - see BillingCheckout.tsx's
+              // matching room-card badge for why (was a hover-only Badge `title`,
+              // couldn't hold a link, mobile-tap-stuck-open risk). zIndex=70
+              // because this Drawer itself is z-60 (Popover.tsx's own comment on
+              // needing an explicit higher value for triggers inside a secondary
+              // modal, same fix ConvertOtaBookingModal already needed for its Help?
+              // popover). Room number already dropped from this badge above (24 Aug
+              // 2026) - redundant with "Assigned Room / Villa" a few fields down.
+              <Popover
+                trigger="click"
+                placement="bottom"
+                zIndex={70}
+                content={
+                  <div className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-300 leading-relaxed max-w-xs space-y-1.5">
+                    <p>{t('ota_converted_badge_tooltip', 'Converted from an OTA calendar sync - editing this only changes this app, not the original platform.')}</p>
+                    <p>
+                      <a href="#ical_sync" className="text-blue-600 dark:text-blue-400 font-semibold underline cursor-pointer">
+                        {t('manage_calendar_sync_link', 'Manage Calendar Sync Settings')}
+                      </a>
+                    </p>
+                  </div>
+                }
               >
-                <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                  <Globe className="w-3 h-3 shrink-0" />
-                  <span>{guest.otaSourceLabel || guest.otaSource}</span>
-                  {guest.roomNumber && <span className="opacity-70">&middot; {guest.roomNumber}</span>}
+                <span className="inline-flex cursor-pointer">
+                  <Badge
+                    variant="warning"
+                    size="sm"
+                    className="booking-details-modal__ota-badge whitespace-nowrap shrink-0"
+                  >
+                    <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                      <Globe className="w-3 h-3 shrink-0" />
+                      <span>{guest.otaSourceLabel || guest.otaSource}</span>
+                    </span>
+                  </Badge>
                 </span>
-              </Badge>
+              </Popover>
             )}
           </h2>
           <button

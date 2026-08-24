@@ -1084,6 +1084,9 @@ export const strings: Record<string, string> = {
   amount_due_label: "Amount Due:",
   checkout_button: "Checkout",
   edit_booking_button: "Edit Booking",
+  view_booking_button: "View Booking",
+  ota_converted_badge_tooltip: "Converted from an OTA calendar sync - editing this only changes this app, not the original platform.",
+  manage_calendar_sync_link: "Manage Calendar Sync Settings",
   notes_prefix: "Notes:",
 
   // Multi-Key Property Overview

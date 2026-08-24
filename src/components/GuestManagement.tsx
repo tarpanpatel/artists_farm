@@ -5,7 +5,7 @@ import {
   Plus,
 } from './icons/FlowbiteIcons';
 import { Guest, BillingReceipt, MiscChargeTemplate, MenuItem } from '../types';
-import { Tooltip } from './Tooltip';
+import { Popover } from './Popover';
 import { useToast } from './ToastContext';
 import { useStaff } from '../contexts/StaffContext';
 import { useConfigurationData } from '../contexts/ConfigurationDataContext';
@@ -866,15 +866,23 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                           />
                         </div>
 
-                        <Tooltip content="Delete Charge Line">
+                        <Popover
+                          trigger="hover"
+                          content={
+                            <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                              Delete Charge Line
+                            </div>
+                          }
+                        >
                           <button
                             type="button"
+                            aria-label="Delete Charge Line"
                             onClick={() => handleRemoveBookingExtraChargeLine(line.id)}
                             className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer shrink-0"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
-                        </Tooltip>
+                        </Popover>
                       </div>
 
                       {line.category === 'Misc' && (

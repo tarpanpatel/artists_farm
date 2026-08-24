@@ -3,7 +3,7 @@ import { Drawer as FlowbiteDrawer, DrawerItems, TextInput as FlowbiteTextInput, 
 import { Button } from './Button';
 import { Input } from './Input';
 import { ToggleSwitch } from './ToggleSwitch';
-import { Tooltip } from './Tooltip';
+import { Popover } from './Popover';
 import { TablePagination } from './TablePagination';
 import {
   Plus,
@@ -851,11 +851,18 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         <div className="flex items-center gap-1.5 shrink-0">
                           <span className="bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 px-2 py-0.5 rounded font-semibold text-[10px] shrink-0">{row.role}</span>
                           {canShareLogins && !!row.username && (
-                            <Tooltip content="Share login details">
-                              <Button onClick={() => handleShareLogin(row)} variant="secondary" size="xs" className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 cursor-pointer px-2 shrink-0">
+                            <Popover
+                              trigger="hover"
+                              content={
+                                <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                                  Share login details
+                                </div>
+                              }
+                            >
+                              <Button onClick={() => handleShareLogin(row)} variant="secondary" size="xs" aria-label="Share login details" className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 cursor-pointer px-2 shrink-0">
                                 <Share2 className="w-3.5 h-3.5" />
                               </Button>
-                            </Tooltip>
+                            </Popover>
                           )}
                           {!isCurrentUser && (
                             <>
@@ -932,6 +939,20 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       {/* SUB-TAB 2: ATTENDANCE CALENDAR MATRIX */}
       {activeSubTab === 'calendar' && (
         <div className="space-y-4">
+          {/* 24 Aug 2026, reported live: table headers/legend rendered
+              immediately with zero staff rows in between whenever this tab
+              mounted before StaffContext's initial fetch resolved - `staff`
+              is genuinely empty for that brief window, same shape as
+              "no staff yet", so nothing below could tell the two apart. The
+              Staff Directory sub-tab already guards on staffLoading (see its
+              own "Loading staff..." below) - this sub-tab just never got the
+              same guard. */}
+          {staffLoading ? (
+            <div className="flex items-center justify-center gap-2 text-gray-500 dark:text-gray-400 text-sm py-16 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md">
+              <Loader2 className="w-4 h-4 animate-spin" /> {t('loading_staff_message', 'Loading staff...')}
+            </div>
+          ) : (
+          <>
           {/* Bulk Marking Action Buttons */}
           {(isBulkSelectEnabled || selectedCells.size > 0) && (
             <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md space-y-3">
@@ -1389,6 +1410,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               </div>
             </div>
           </div>
+          </>
+          )}
         </div>
       )}
 
@@ -1828,11 +1851,18 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   />
                   <label htmlFor="isFinancialHandlerCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1.5 min-w-0">
                     <span className="truncate">{t('cash_handling_user_label', 'Cash Handling User')}</span>
-                    <Tooltip content="Allows this team member to collect cash payments, open/reconcile cash drawers, and record checkout settlements.">
-                      <button type="button" className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors shrink-0">
+                    <Popover
+                      trigger="hover"
+                      content={
+                        <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 max-w-xs">
+                          Allows this team member to collect cash payments, open/reconcile cash drawers, and record checkout settlements.
+                        </div>
+                      }
+                    >
+                      <button type="button" aria-label="What does Cash Handling User do?" className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors shrink-0">
                         <HelpCircle className="w-3.5 h-3.5" />
                       </button>
-                    </Tooltip>
+                    </Popover>
                   </label>
                 </div>
 
@@ -1844,11 +1874,18 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   />
                   <label htmlFor="newAccessAllPropertiesCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1.5 min-w-0">
                     <span className="truncate">{t('access_all_properties_label', 'Access All Properties')}</span>
-                    <Tooltip content="Grants this team member full multi-property access across all properties under this tenant workspace.">
-                      <button type="button" className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors shrink-0">
+                    <Popover
+                      trigger="hover"
+                      content={
+                        <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 max-w-xs">
+                          Grants this team member full multi-property access across all properties under this tenant workspace.
+                        </div>
+                      }
+                    >
+                      <button type="button" aria-label="What does Access All Properties do?" className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors shrink-0">
                         <HelpCircle className="w-3.5 h-3.5" />
                       </button>
-                    </Tooltip>
+                    </Popover>
                   </label>
                 </div>
               </div>
@@ -2012,11 +2049,18 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     />
                     <label htmlFor="updateIsFinancialHandlerCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1.5 min-w-0">
                       <span className="truncate">{t('cash_handling_user_label', 'Cash Handling User')}</span>
-                      <Tooltip content="Allows this team member to collect cash payments, open/reconcile cash drawers, and record checkout settlements.">
-                        <button type="button" className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors shrink-0">
+                      <Popover
+                        trigger="hover"
+                        content={
+                          <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 max-w-xs">
+                            Allows this team member to collect cash payments, open/reconcile cash drawers, and record checkout settlements.
+                          </div>
+                        }
+                      >
+                        <button type="button" aria-label="What does Cash Handling User do?" className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors shrink-0">
                           <HelpCircle className="w-3.5 h-3.5" />
                         </button>
-                      </Tooltip>
+                      </Popover>
                     </label>
                   </div>
 
@@ -2028,11 +2072,18 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     />
                     <label htmlFor="updateAccessAllPropertiesCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1.5 min-w-0">
                       <span className="truncate">{t('access_all_properties_label', 'Access All Properties')}</span>
-                      <Tooltip content="Grants this team member full multi-property access across all properties under this tenant workspace.">
-                        <button type="button" className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors shrink-0">
+                      <Popover
+                        trigger="hover"
+                        content={
+                          <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 max-w-xs">
+                            Grants this team member full multi-property access across all properties under this tenant workspace.
+                          </div>
+                        }
+                      >
+                        <button type="button" aria-label="What does Access All Properties do?" className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors shrink-0">
                           <HelpCircle className="w-3.5 h-3.5" />
                         </button>
-                      </Tooltip>
+                      </Popover>
                     </label>
                   </div>
                 </div>

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowUp } from './icons/FlowbiteIcons';
-import { Tooltip } from './Tooltip';
+import { Popover } from './Popover';
 
 interface ScrollToTopButtonProps {
   threshold?: number;
@@ -57,7 +57,15 @@ export const ScrollToTopButton: React.FC<ScrollToTopButtonProps> = ({ threshold 
   if (!isVisible) return null;
 
   return (
-    <Tooltip content="Scroll to top" position="left">
+    <Popover
+      trigger="hover"
+      placement="left"
+      content={
+        <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+          Scroll to top
+        </div>
+      }
+    >
       <button
         type="button"
         onClick={handleClick}
@@ -66,6 +74,6 @@ export const ScrollToTopButton: React.FC<ScrollToTopButtonProps> = ({ threshold 
       >
         <ArrowUp className="w-5 h-5 shrink-0" />
       </button>
-    </Tooltip>
+    </Popover>
   );
 };

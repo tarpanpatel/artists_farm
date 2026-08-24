@@ -39,9 +39,11 @@ one - it gives every future change a plausible-looking but wrong thing to match 
 - **Component library**: `flowbite-react` (+ the `flowbite` Tailwind plugin and the official markup
   patterns linked above) is the standard for all new, rebuilt, or updated components, modals, forms,
   and tables. The **existing** hand-built shared components (`src/components/Input.tsx`,
-  `StyledSelect.tsx`, `Button.tsx`, `Tooltip.tsx`, etc.) are still in active use across most of the
+  `StyledSelect.tsx`, `Button.tsx`, etc.) are still in active use across most of the
   app and are **not** dead code - don't delete or bypass them ad hoc. They get replaced
-  screen-by-screen as part of the migration, same as icons.
+  screen-by-screen as part of the migration, same as icons. (`Tooltip.tsx` was this list's one
+  exception - deleted 24 Aug 2026 once the "no `<Tooltip>` components" rule below was finally
+  enforced everywhere, leaving it with zero real usages left to bypass.)
 - **Dark mode**: every color utility needs a `dark:` variant - no exceptions.
 - **Z-index**: governed by the scale documented directly in `src/index.css` - never adjust
   header/sidebar/modal z-index in isolation.

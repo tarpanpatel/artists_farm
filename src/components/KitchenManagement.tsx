@@ -38,6 +38,7 @@ import { GUEST_STATUS_CHECKED_IN, GUEST_STATUS_ACTIVE_LEGACY } from '../constant
 import { recordTelescopeLog } from '../utils/telescopeLogger';
 import { resolveTelegramTemplate, fetchServedLogsFromDB, addServedLogToDB, fetchMaterialCategoriesFromDB, fetchRecipesFromDB, saveRecipeToDB, deleteRecipeFromDB, depleteStockForDish, getPropertySlug, updateOrderItemStatus, updateOrderStatusDB, updateItemReminderTimestamp, checkStaleReminders, StaleReminderItem, fetchTelegramConfigDB, fetchStaffMealOptionsFromDB, addStaffMealOptionToDB, fetchStaffMealLogsFromDB, addStaffMealLogToDB, addOrderToDB, fetchWalkInTabsFromDB, openWalkInTabDB } from '../services/api';
 import { StyledSelect } from './StyledSelect';
+import { Popover } from './Popover';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { WalkInTabBillModal } from './WalkInTabBillModal';
@@ -114,7 +115,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   propertyUpiQrCodeUrl = '',
   propertyWalkInTableCount = 10,
 }) => {
-  const { showToast } = useToast();
+  const { showToast, removeToast } = useToast();
   const { confirm } = useConfirm();
   const { orders, addOrder, refreshOrders, updateOrderStatus, pendingOrdersCount } = useKitchenContext();
   const { inventory, requisitions } = useInventoryContext();
@@ -1866,8 +1867,15 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         const noCheckedInGuestBlocking = orderMode === 'guest' && checkedInGuests.length === 0;
         const handleOrderSubmitClick = () => {
           if (noCheckedInGuestBlocking) {
-            showToast(
-              <>No checked-in house guest. <a href="#bookings" className="underline font-semibold cursor-pointer">Go to bookings page</a> to check in a guest.</>,
+            const noGuestToastId = showToast(
+              <>No checked-in house guest. <a href="#bookings" className="underline font-semibold cursor-pointer">Go to bookings page</a> to check in a guest, or{' '}
+              <button
+                type="button"
+                onClick={() => { setOrderMode('walkin'); removeToast(noGuestToastId); }}
+                className="underline font-semibold cursor-pointer"
+              >
+                choose Walk-in Guest
+              </button>.</>,
               { type: 'warning', duration: 6000 }
             );
             return;
@@ -1931,8 +1939,34 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       className="min-w-[190px]"
                     />
                   ) : (
-                    <span className="text-gray-500 dark:text-gray-400 text-xs">
-                      No checked-in house guest. <a href="#bookings" className="text-blue-600 dark:text-blue-400 font-semibold underline cursor-pointer">Help?</a>
+                    <span className="text-gray-500 dark:text-gray-400 text-xs flex items-center gap-1">
+                      No checked-in house guest.
+                      <Popover
+                        placement="bottom"
+                        trigger="click"
+                        content={
+                          <div className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-300 leading-relaxed max-w-xs space-y-1.5">
+                            <p><a href="#bookings" className="text-blue-600 dark:text-blue-400 font-semibold underline cursor-pointer">Go to bookings page</a> to check in a guest,</p>
+                            <p>or{' '}
+                              <button
+                                type="button"
+                                onClick={() => setOrderMode('walkin')}
+                                className="text-blue-600 dark:text-blue-400 font-semibold underline cursor-pointer"
+                              >
+                                choose Walk-in Guest
+                              </button> instead.
+                            </p>
+                          </div>
+                        }
+                      >
+                        <button
+                          type="button"
+                          aria-label="No checked-in house guest - help"
+                          className="text-blue-600 dark:text-blue-400 font-semibold underline cursor-pointer"
+                        >
+                          Help?
+                        </button>
+                      </Popover>
                     </span>
                   )}
                 </div>
@@ -2268,27 +2302,24 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             {/* MOBILE ONLY Light-Theme Bottom Cart Drawer (lg:hidden, Collapsible & 50vh Expandable, Floats Above MobileBottomNav) */}
             {cartItems.length > 0 && (
               <div
-                // Was `bg-white ... shadow-lg border-t border-gray-200` - identical
-                // white to the page container behind it (take-food-order-container
-                // is also bg-white), with `shadow-lg` doing nothing useful: that's a
-                // downward-cast shadow, and this drawer sits at the very bottom of
-                // the viewport - there's nothing below it to shadow onto, so it
-                // rendered essentially invisibly. Found 22 Aug 2026 (reported as
-                // "cart drawer is very difficult to differentiate from rest of the
-                // site"). Fixed with an upward-cast shadow (negative Y offset, the
-                // correct direction for a bottom sheet - it falls onto the menu
-                // content directly above the drawer's top edge instead), a
-                // slightly-tinted surface instead of matching white, and a bolder
-                // accent top border so the boundary itself reads clearly too.
-                className={`fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-[55] lg:hidden bg-slate-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-t-2xl shadow-[0_-8px_30px_-6px_rgba(0,0,0,0.25)] dark:shadow-[0_-8px_30px_-6px_rgba(0,0,0,0.6)] border-t-2 border-blue-200 dark:border-blue-900/60 transition-all duration-300 flex flex-col overflow-hidden ${
-                  // Collapsed = fully closed (0 height, just the pull-tab
-                  // showing above it), not a ~260px peek of items (23 Aug
-                  // 2026, on request - "drawer should close completely").
-                  // overflow-hidden (added above) is what makes 0-height
-                  // actually hide the item list's own padding/content
-                  // instead of letting it spill out past a 0px box.
-                  isCartDrawerExpanded ? 'h-[50vh]' : 'h-0 border-t-0'
-                }`}
+                // OUTER wrapper: positioning only - no fixed height and no
+                // overflow-hidden of its own (24 Aug 2026, reported live as
+                // "can't see cart ... on mobile screen"). Both used to live
+                // on THIS div, the same one whose height collapses to h-0
+                // when the cart is closed. The pull-tab button below is
+                // `position: absolute; top: 0; -translate-y-full` specifically
+                // so it pokes out ABOVE this box while collapsed - but
+                // overflow-hidden clips a child to its OWN parent's box, and a
+                // 0-height box clips everything inside it, including a child
+                // transformed to visually sit outside it. Net effect: the
+                // pull-tab (and the whole drawer) rendered with zero visible
+                // pixels whenever collapsed - which is the drawer's default,
+                // out-of-the-box state on every page load - so there was
+                // nothing on screen to even tap to open it. overflow-hidden
+                // and the height animation now live on the INNER wrapper
+                // below instead, so the pull-tab (a sibling of that box, not
+                // a descendant of it) is never clipped by it.
+                className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-[55] lg:hidden"
               >
                 {/* Right-Aligned White Pull-Tab Attached to Top Edge of Cart */}
                 <button
@@ -2310,6 +2341,20 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   )}
                 </button>
 
+                {/* INNER animated body - was the outer div's own className
+                    (shape/surface classes + overflow-hidden + the h-0/h-[50vh]
+                    collapse) - moved here, one level in, so the pull-tab above
+                    (now a sibling of this box instead of living inside it)
+                    never gets clipped along with it. See the outer div's
+                    comment above for the full why. */}
+                <div
+                  className={`bg-slate-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-t-2xl shadow-[0_-8px_30px_-6px_rgba(0,0,0,0.25)] dark:shadow-[0_-8px_30px_-6px_rgba(0,0,0,0.6)] border-t-2 border-blue-200 dark:border-blue-900/60 transition-all duration-300 flex flex-col overflow-hidden ${
+                    // Collapsed = fully closed (0 height), not a ~260px peek
+                    // of items (23 Aug 2026, on request - "drawer should
+                    // close completely").
+                    isCartDrawerExpanded ? 'h-[50vh]' : 'h-0 border-t-0'
+                  }`}
+                >
                 {/* Items List (Displays Last 3 items in Collapsed mode, All items in 50vh Expanded mode) */}
                 <div className="pos-cart-items-list p-2.5 pt-3 flex-1 overflow-y-auto space-y-1.5">
                   {!isCartDrawerExpanded && cartItems.length > 3 && (
@@ -2414,6 +2459,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       <span>{isSubmittingOrder ? t('sending_order_button', 'Sending...') : t('send_order_to_kitchen_button')}</span>
                     </Button>
                   </div>
+                </div>
                 </div>
               </div>
             )}

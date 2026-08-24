@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Phone, MessageSquare, Pencil, LogIn, LogOut, Users, Building, Search, IndianRupee, CheckCircle2, AlertCircle } from './icons/FlowbiteIcons';
+import { Phone, MessageSquare, Pencil, Eye, LogIn, LogOut, Users, Building, Search, IndianRupee, CheckCircle2, AlertCircle } from './icons/FlowbiteIcons';
 import { Guest } from '../types';
 import { Badge } from './Badge';
 import { Button } from './Button';
@@ -23,6 +23,15 @@ interface MobileBookingCardStackProps {
   // filtering. GuestManagement's usage has no such outer UI, so it leaves
   // this false (default) and keeps this bar as its only filter.
   hideSearchAndFilter?: boolean;
+  // ROLES.md (24 Aug 2026): Staff Kitchen is view-only on bookings, and Staff
+  // can edit but never checkout - both default true so BillingCheckout's
+  // other (desktop) callers and GuestManagement's usage stay unaffected
+  // unless they opt in to the gate. When canEdit is false the Edit button
+  // becomes a "View" button (still opens the same modal, which is itself
+  // read-only for that role) instead of disappearing outright, since the
+  // policy is "can view, can't edit" - not "can't see this booking at all".
+  canEdit?: boolean;
+  canCheckout?: boolean;
 }
 
 export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
@@ -34,6 +43,8 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
   onAddBooking,
   selectedGuestId,
   hideSearchAndFilter = false,
+  canEdit = true,
+  canCheckout = true,
 }) => {
   const [filterStatus, setFilterStatus] = useState<'all' | 'checked_in' | 'upcoming' | 'checked_out'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -317,11 +328,11 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                     }}
                     className="min-h-[44px] flex-1 px-3 py-2 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap"
                   >
-                    <Pencil className="w-4 h-4 text-blue-600 shrink-0" />
-                    <span>Edit</span>
+                    {canEdit ? <Pencil className="w-4 h-4 text-blue-600 shrink-0" /> : <Eye className="w-4 h-4 text-blue-600 shrink-0" />}
+                    <span>{canEdit ? 'Edit' : 'View'}</span>
                   </button>
 
-                  {isCheckedIn && onCheckoutGuest && (
+                  {canCheckout && isCheckedIn && onCheckoutGuest && (
                     <button
                       type="button"
                       onClick={(e) => {

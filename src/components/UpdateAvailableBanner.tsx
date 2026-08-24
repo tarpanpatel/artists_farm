@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { RefreshCw, X } from './icons/FlowbiteIcons';
 import { Button } from './Button';
-import { Tooltip } from './Tooltip';
+import { Popover } from './Popover';
 
 // Listens for the 'sw-update-available' event dispatched by main.tsx when a
 // new service worker has taken control of an already-running session (see
@@ -29,14 +29,22 @@ export const UpdateAvailableBanner: React.FC = () => {
         <Button variant="primary" size="sm" onClick={() => window.location.reload()}>
                 Reload
               </Button>
-        <Tooltip content="Dismiss">
-        <button
-          onClick={() => setDismissed(true)}
-          className="shrink-0 p-1 rounded hover:bg-white/10 transition-colors cursor-pointer"
+        <Popover
+          trigger="hover"
+          content={
+            <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+              Dismiss
+            </div>
+          }
         >
-          <X className="w-3.5 h-3.5" />
-        </button>
-        </Tooltip>
+          <button
+            aria-label="Dismiss"
+            onClick={() => setDismissed(true)}
+            className="shrink-0 p-1 rounded hover:bg-white/10 transition-colors cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </Popover>
       </div>
     </div>
   );

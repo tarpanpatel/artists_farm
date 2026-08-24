@@ -178,37 +178,60 @@ if ($wantsJson) {
         .nav-portal-item.active { background-color: #1f2937; border-left: 3px solid #06b6d4; color: #38bdf8; }
         .icon { width: 1em; height: 1em; display: inline-block; flex-shrink: 0; }
 
-        /* Mobile-first Telescope console. The desktop layout resumes at 768px. */
+        /* Mobile-first Telescope console. The desktop layout resumes at 768px.
+           Every declaration below carries `!important` (24 Aug 2026, fixing a
+           bug reported live via mobile screenshot: this whole block already
+           existed and looked correct, but visibly did nothing - header
+           buttons still overflowed off-screen, sidebar/main still sat
+           side-by-side, log cells still wrapped character-by-character).
+           Root cause: this page loads Tailwind via the CDN Play script
+           (`<script src="https://cdn.tailwindcss.com">` above), which scans
+           the DOM and injects ITS OWN <style> element at runtime, appended to
+           <head> - i.e. always AFTER this static block in the rendered DOM,
+           regardless of where the <script> tag sits in the raw HTML source.
+           Every element these rules target also carries Tailwind utility
+           classes directly in its markup (e.g. `.telescope-shell` is also
+           `class="... flex ..."`, `.telescope-actions` is also `class="flex
+           items-center gap-4 ..."`). A single custom class selector and a
+           single Tailwind utility class selector are equal specificity, so
+           the tiebreak is pure source order - and Tailwind's runtime-injected
+           sheet always loses that race in its own favor, silently overriding
+           every rule here. `!important` is the standard, expected way to
+           guarantee a scoped override wins against a CDN utility framework
+           whose injection point you don't control - safe here specifically
+           because this entire block is already gated behind `max-width:
+           767px` and exists purely to override the desktop-oriented classes
+           baked into the HTML. */
         @media (max-width: 767px) {
-            html { -webkit-text-size-adjust: 100%; }
-            body { min-width: 0; }
-            button, input, select, a { -webkit-tap-highlight-color: transparent; }
+            html { -webkit-text-size-adjust: 100% !important; }
+            body { min-width: 0 !important; }
+            button, input, select, a { -webkit-tap-highlight-color: transparent !important; }
 
-            .telescope-header { padding: 1rem; align-items: stretch; flex-direction: column; gap: .875rem; }
-            .telescope-brand { width: 100%; min-width: 0; align-items: flex-start; }
-            .telescope-title { font-size: .875rem; line-height: 1.25rem; letter-spacing: .08em; }
-            .telescope-subtitle { max-width: 230px; line-height: 1.2; }
-            #liveClock { margin-left: auto; padding-top: .25rem; font-size: 1rem; }
-            .telescope-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; width: 100%; }
-            .telescope-actions > *, .telescope-actions > div { min-width: 0; }
+            .telescope-header { padding: 1rem !important; align-items: stretch !important; flex-direction: column !important; gap: .875rem !important; }
+            .telescope-brand { width: 100% !important; min-width: 0 !important; align-items: flex-start !important; }
+            .telescope-title { font-size: .875rem !important; line-height: 1.25rem !important; letter-spacing: .08em !important; }
+            .telescope-subtitle { max-width: 230px !important; line-height: 1.2 !important; }
+            #liveClock { margin-left: auto !important; padding-top: .25rem !important; font-size: 1rem !important; }
+            .telescope-actions { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: .5rem !important; width: 100% !important; }
+            .telescope-actions > *, .telescope-actions > div { min-width: 0 !important; }
             .telescope-actions button, .telescope-actions a, .telescope-actions label {
-                min-height: 2.75rem; justify-content: center; padding: .5rem .625rem; text-align: center;
+                min-height: 2.75rem !important; justify-content: center !important; padding: .5rem .625rem !important; text-align: center !important;
             }
-            .telescope-actions label { gap: .375rem; font-size: .6875rem; }
-            .telescope-actions .push-control { display: contents; }
-            #pushToggleBtn { grid-column: span 2; }
-            #pushTestBtn { grid-column: span 2; min-height: 2.25rem; padding: .5rem; }
+            .telescope-actions label { gap: .375rem !important; font-size: .6875rem !important; }
+            .telescope-actions .push-control { display: contents !important; }
+            #pushToggleBtn { grid-column: span 2 !important; }
+            #pushTestBtn { grid-column: span 2 !important; min-height: 2.25rem !important; padding: .5rem !important; }
 
-            .telescope-shell { display: block; overflow: visible; }
-            .telescope-sidebar { width: 100%; padding: 1rem; gap: 1rem; border-right: 0; border-bottom: 1px solid #1f2937; }
-            .telescope-sidebar > div:first-child { display: grid; grid-template-columns: 7.25rem minmax(0, 1fr); align-items: center; gap: .5rem; }
-            .telescope-sidebar > div:first-child label { margin: 0; }
-            .telescope-sidebar > div:first-child select { min-height: 2.75rem; }
-            #customDateRangePanel { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
-            #customDateRangePanel.hidden { display: none; }
-            #customDateRangePanel > :first-child, #customDateRangePanel button { grid-column: 1 / -1; }
-            #customDateRangePanel input { min-height: 2.75rem; }
-            .portal-label { margin-bottom: .5rem; }
+            .telescope-shell { display: block !important; overflow: visible !important; }
+            .telescope-sidebar { width: 100% !important; padding: 1rem !important; gap: 1rem !important; border-right: 0 !important; border-bottom: 1px solid #1f2937 !important; }
+            .telescope-sidebar > div:first-child { display: grid !important; grid-template-columns: 7.25rem minmax(0, 1fr) !important; align-items: center !important; gap: .5rem !important; }
+            .telescope-sidebar > div:first-child label { margin: 0 !important; }
+            .telescope-sidebar > div:first-child select { min-height: 2.75rem !important; }
+            #customDateRangePanel { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: .75rem !important; }
+            #customDateRangePanel.hidden { display: none !important; }
+            #customDateRangePanel > :first-child, #customDateRangePanel button { grid-column: 1 / -1 !important; }
+            #customDateRangePanel input { min-height: 2.75rem !important; }
+            .portal-label { margin-bottom: .5rem !important; }
             /* Sticky mobile portal selector (roadmap item 1) - the scrollable
                tab row itself sticks to the top of the viewport once you scroll
                past it into the log list, so switching portals never needs a
@@ -217,27 +240,28 @@ if ($wantsJson) {
                and a z-index above both the log rows and the sticky table
                header inside .telescope-logs (which itself only sticks within
                its own now-non-scrolling container on mobile, so no conflict). */
-            .telescope-portals { position: sticky; top: 0; z-index: 20; display: flex; overflow-x: auto; gap: .5rem; padding: .625rem 1rem .5rem; margin: 0 -1rem; scroll-snap-type: x proximity; scrollbar-width: none; background: #0b0f19; box-shadow: 0 4px 6px -2px rgba(0,0,0,.3); }
-            .telescope-portals::-webkit-scrollbar { display: none; }
-            .telescope-portals .nav-portal-item { flex: 0 0 auto; width: auto; min-width: max-content; min-height: 2.75rem; padding: .625rem .75rem; scroll-snap-align: start; }
-            .telescope-portals .nav-portal-item.active { border-left: 0; border-bottom: 3px solid #06b6d4; }
+            .telescope-portals { position: sticky !important; top: 0 !important; z-index: 20 !important; display: flex !important; overflow-x: auto !important; gap: .5rem !important; padding: .625rem 1rem .5rem !important; margin: 0 -1rem !important; scroll-snap-type: x proximity !important; scrollbar-width: none !important; background: #0b0f19 !important; box-shadow: 0 4px 6px -2px rgba(0,0,0,.3) !important; }
+            .telescope-portals::-webkit-scrollbar { display: none !important; }
+            .telescope-portals > * { margin: 0 !important; }
+            .telescope-portals .nav-portal-item { flex: 0 0 auto !important; width: auto !important; min-width: max-content !important; min-height: 2.75rem !important; padding: .625rem .75rem !important; scroll-snap-align: start !important; }
+            .telescope-portals .nav-portal-item.active { border-left: 0 !important; border-bottom: 3px solid #06b6d4 !important; }
 
-            .telescope-main { min-width: 0; padding: 1rem; overflow: visible; }
-            .telescope-search { margin-bottom: 1rem; }
-            #searchInput { min-height: 2.75rem; font-size: .8125rem; }
-            .telescope-logs { overflow: visible; border-radius: .75rem; }
-            .telescope-logs table, .telescope-logs tbody, .telescope-logs tr, .telescope-logs td { display: block; width: 100%; }
-            .telescope-logs thead { display: none; }
-            .telescope-logs tbody { divide: none; }
-            .telescope-logs tr { padding: .875rem 1rem; border-bottom: 1px solid rgba(31, 41, 55, .8); }
-            .telescope-logs tr:last-child { border-bottom: 0; }
-            .telescope-logs td { max-width: none; padding: .25rem 0; overflow-wrap: anywhere; white-space: normal; }
-            .telescope-logs td::before { content: attr(data-label); display: block; margin-bottom: .125rem; color: #6b7280; font: 700 .625rem/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase; }
-            .telescope-logs td:nth-child(2)::before { display: none; }
-            .telescope-logs td:nth-child(2) { padding-top: .5rem; }
-            .telescope-logs td:nth-child(3) { color: #e5e7eb; font-size: .8125rem; line-height: 1.35; }
-            .telescope-logs td:only-child { padding: 2rem 1rem; text-align: center; }
-            .telescope-logs td:only-child::before { display: none; }
+            .telescope-main { min-width: 0 !important; padding: 1rem !important; overflow: visible !important; }
+            .telescope-search { margin-bottom: 1rem !important; }
+            #searchInput { min-height: 2.75rem !important; font-size: .8125rem !important; }
+            .telescope-logs { overflow: visible !important; border-radius: .75rem !important; }
+            .telescope-logs table, .telescope-logs tbody, .telescope-logs tr, .telescope-logs td { display: block !important; width: 100% !important; }
+            .telescope-logs thead { display: none !important; }
+            .telescope-logs tbody { divide: none !important; }
+            .telescope-logs tr { padding: .875rem 1rem !important; border-bottom: 1px solid rgba(31, 41, 55, .8) !important; }
+            .telescope-logs tr:last-child { border-bottom: 0 !important; }
+            .telescope-logs td { max-width: none !important; padding: .25rem 0 !important; overflow-wrap: anywhere !important; white-space: normal !important; }
+            .telescope-logs td::before { content: attr(data-label); display: block !important; margin-bottom: .125rem !important; color: #6b7280 !important; font: 700 .625rem/1 ui-sans-serif, system-ui, sans-serif !important; letter-spacing: .06em !important; text-transform: uppercase !important; }
+            .telescope-logs td:nth-child(2)::before { display: none !important; }
+            .telescope-logs td:nth-child(2) { padding-top: .5rem !important; }
+            .telescope-logs td:nth-child(3) { color: #e5e7eb !important; font-size: .8125rem !important; line-height: 1.35 !important; }
+            .telescope-logs td:only-child { padding: 2rem 1rem !important; text-align: center !important; }
+            .telescope-logs td:only-child::before { display: none !important; }
 
             /* Bottom sheet (roadmap item 1's 4th sub-point) - real slide-up/
                slide-down, not an instant show/hide. #detailModal itself keeps
@@ -246,11 +270,11 @@ if ($wantsJson) {
                the animation lives entirely on the inner sheet's transform, so
                toggling .open a frame after removing .hidden is what actually
                triggers the transition (a bare display change can't animate). */
-            #detailModal { align-items: flex-end; padding: 0; }
-            #detailModal #detailModalSheet { max-height: 88dvh; border-radius: 1rem 1rem 0 0; padding: 1rem; transform: translateY(100%); transition: transform .28s cubic-bezier(.32,.72,0,1); }
-            #detailModal.open #detailModalSheet { transform: translateY(0); }
-            #detailModalGrip { display: block; }
-            #modalCopyRow button { min-height: 2.75rem; }
+            #detailModal { align-items: flex-end !important; padding: 0 !important; }
+            #detailModal #detailModalSheet { max-height: 88dvh !important; border-radius: 1rem 1rem 0 0 !important; padding: 1rem !important; transform: translateY(100%) !important; transition: transform .28s cubic-bezier(.32,.72,0,1) !important; }
+            #detailModal.open #detailModalSheet { transform: translateY(0) !important; }
+            #detailModalGrip { display: block !important; }
+            #modalCopyRow button { min-height: 2.75rem !important; }
         }
     </style>
 </head>
@@ -274,6 +298,10 @@ if ($wantsJson) {
                     <span id="pushBtnLabel">Enable Alerts</span>
                 </button>
             </div>
+            <button id="copyHeaderBtn" onclick="copyVisibleErrors(this)" class="flex items-center gap-1 px-3 py-1.5 bg-cyan-950/60 hover:bg-cyan-900/80 text-cyan-300 rounded-lg transition border border-cyan-800/80 cursor-pointer" title="Copy all currently visible errors on screen to clipboard">
+                <svg class="icon text-cyan-400 text-[11px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                <span>Copy Visible Errors</span>
+            </button>
             <button onclick="resetLogs()" class="flex items-center gap-1 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition border border-gray-700 cursor-pointer" title="Clear and reset Telescope logs">
                 <svg class="icon text-red-400 text-[11px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                 <span>Reset Logs</span>
@@ -406,11 +434,15 @@ if ($wantsJson) {
         </aside>
 
         <main class="telescope-main flex-1 flex flex-col p-6 overflow-hidden">
-            <div class="telescope-search mb-4 flex items-center gap-4">
+            <div class="telescope-search mb-4 flex items-center gap-3">
                 <div class="relative flex-1">
                     <svg class="icon absolute left-3.5 top-3 text-gray-500 text-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
                     <input type="text" id="searchInput" oninput="loadPortalLogs()" placeholder="Search system logs by route, severity, keywords, trace parameters or IP..." class="w-full bg-gray-900 border border-gray-800 text-gray-200 text-xs rounded-xl pl-9 pr-4 py-2.5 outline-none focus:border-cyan-500 transition font-sans">
                 </div>
+                <button id="copySearchBtn" onclick="copyVisibleErrors(this)" class="flex items-center gap-1.5 px-3 py-2.5 bg-cyan-950/80 hover:bg-cyan-900/90 text-cyan-300 text-xs rounded-xl transition border border-cyan-800/80 cursor-pointer font-sans whitespace-nowrap" title="Copy all currently filtered error logs to clipboard">
+                    <svg class="icon text-cyan-400 w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    <span>Copy Errors (<span id="copyErrorsCount">0</span>)</span>
+                </button>
             </div>
 
             <div class="telescope-logs flex-1 bg-gray-900/60 border border-gray-800 rounded-xl overflow-y-auto">
@@ -663,6 +695,10 @@ if ($wantsJson) {
 
         filtered = filtered.filter(l => matchesTimeframe(l, timeframe, dateFrom, dateTo));
 
+        window.currentVisibleLogs = filtered;
+        const countSpan = document.getElementById('copyErrorsCount');
+        if (countSpan) countSpan.innerText = filtered.length;
+
         if (filtered.length === 0) {
             tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-8 text-center text-gray-500 italic">No events recorded for this selection.</td></tr>`;
             return;
@@ -713,6 +749,51 @@ if ($wantsJson) {
             console.warn('Server-side log reset request failed:', e);
         }
         loadPortalLogs();
+    }
+
+    async function copyVisibleErrors(btnEl) {
+        const logs = window.currentVisibleLogs || [];
+        if (!logs.length) {
+            if (btnEl) {
+                const label = btnEl.querySelector('span') || btnEl;
+                const originalText = label.innerText;
+                label.innerText = 'No visible errors to copy';
+                setTimeout(() => { label.innerText = originalText; }, 1500);
+            }
+            return;
+        }
+
+        const searchVal = document.getElementById('searchInput')?.value || '';
+        const timeframeVal = document.getElementById('timeframeSelect')?.value || 'today';
+
+        const header = [
+            `=== TELESCOPE LOGS EXPORT ===`,
+            `Portal: ${activePortal.toUpperCase()} | Total Visible Count: ${logs.length}`,
+            `Search Term: ${searchVal || 'None'} | Timeframe: ${timeframeVal}`,
+            `Exported At: ${new Date().toLocaleString()}`,
+            `====================================\n`
+        ].join('\n');
+
+        const formattedEntries = logs.map((log, index) => {
+            const severity = (log.severity || 'LOG').toUpperCase();
+            const timestamp = log.timestamp || 'N/A';
+            const origin = log.origin || log.user || 'Unknown Origin';
+            const message = log.msg || log.action || 'No message text';
+
+            let extraInfo = '';
+            if (log.trace) {
+                extraInfo = `\nStack Trace:\n${log.trace}`;
+            } else if (log.details && typeof log.details === 'object' && Object.keys(log.details).length > 0) {
+                extraInfo = `\nDetails:\n${JSON.stringify(log.details, null, 2)}`;
+            } else if (log.extra && typeof log.extra === 'object' && Object.keys(log.extra).length > 0) {
+                extraInfo = `\nExtra Payload:\n${JSON.stringify(log.extra, null, 2)}`;
+            }
+
+            return `[${index + 1}/${logs.length}] ${timestamp} | [${severity}] | ${origin}\nMessage: ${message}${extraInfo}`;
+        }).join('\n\n--------------------------------------------------\n\n');
+
+        const fullExport = `${header}\n${formattedEntries}`;
+        await copyToClipboard(fullExport, btnEl);
     }
 
     // 1-tap copy buttons (roadmap item 1's bottom-sheet sub-point). "Stack

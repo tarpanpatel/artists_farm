@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Drawer as FlowbiteDrawer, DrawerItems, TextInput as FlowbiteTextInput, Tabs, TabItem, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, Checkbox } from 'flowbite-react';
 import { Button } from './Button';
 import { Badge } from './Badge';
-import { Tooltip } from './Tooltip';
+import { Popover } from './Popover';
 import { TablePagination } from './TablePagination';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
 import { Boxes, PackagePlus, AlertTriangle, Plus, CheckCircle2, X, Upload, Search, ShoppingCart, Settings, Package, Check, ClipboardEdit, Edit2, Pencil, ChevronDown, ChevronUp, Loader2, FlaskConical, Coffee, Milk, Apple, Banana, Cake, Carrot, Wheat, SprayCan, Drumstick, UtensilsCrossed, Croissant, Soup, Droplet, Snowflake, Fish, Wrench, Balloon, Refrigerator, Microwave, Fan, Blend, Bean, HandPlatter, GlassWater, LeafyGreen, Trash2, Candy, Flame, Cherry, Grape, Citrus, Egg, CupSoda, Utensils, Sandwich, Cookie, Nut, Filter, Eye, type FlowbiteIconComponent } from './icons/FlowbiteIcons';
@@ -1513,11 +1513,18 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                                   <div className="flex items-center gap-1.5">
                                     <span className="font-semibold text-slate-800 dark:text-slate-100 text-sm truncate">{item.name}</span>
                                     {item.is_verified && (
-                                      <Tooltip content="Verified master item">
+                                      <Popover
+                                        trigger="hover"
+                                        content={
+                                          <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                                            Verified master item
+                                          </div>
+                                        }
+                                      >
                                         <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">
                                           ✓
                                         </span>
-                                      </Tooltip>
+                                      </Popover>
                                     )}
                                   </div>
                                   <div className="flex items-center gap-2 mt-0.5">
@@ -2889,15 +2896,23 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                       alt="Preview"
                       className="w-full h-full object-cover"
                     />
-                    <Tooltip content="Remove Image">
+                    <Popover
+                      trigger="hover"
+                      content={
+                        <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                          Remove Image
+                        </div>
+                      }
+                    >
                       <button
                         type="button"
+                        aria-label="Remove Image"
                         onClick={() => setImagePath('')}
                         className="absolute top-1 right-1 bg-slate-900/80 text-white p-0.5 rounded-full hover:bg-slate-900"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
-                    </Tooltip>
+                    </Popover>
                   </div>
                 )}
               </div>

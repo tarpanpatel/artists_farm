@@ -20,13 +20,16 @@ import {
   CreditCard,
   Edit2,
   Pencil,
+  Eye,
   X,
 } from './icons/FlowbiteIcons';
 import { Guest, BillingReceipt } from '../types';
 import { t } from '../i18n/en';
 import { GUEST_STATUS_CHECKEDOUT_LEGACY, GUEST_STATUS_CHECKED_OUT } from '../constants/guestStatus';
 import { Badge } from './Badge';
+import { Popover } from './Popover';
 import { useToast } from './ToastContext';
+import { useAuth } from '../contexts/AuthContext';
 import { MobileBookingCardStack } from './MobileBookingCardStack';
 import { ReceiptEditModal } from './ReceiptEditModal';
 import { BookingDetailsModal } from './BookingDetailsModal';
@@ -96,6 +99,18 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   focusGuestId = null,
 }) => {
   const { showToast } = useToast();
+  const { activeRole } = useAuth();
+  // ROLES.md (24 Aug 2026): same role gate BookingDetailsModal.tsx already
+  // enforces (23 Aug 2026) - Staff Kitchen is view-only on bookings (no
+  // edit/checkout), Staff can edit but not checkout. This page has its own
+  // room-card and Past-bookings-table Edit/Checkout buttons that open
+  // ReceiptEditModal/BookingDetailsModal directly, bypassing that modal's own
+  // gate entirely - found 24 Aug 2026 (Staff Kitchen could still see and use
+  // both here). Read directly from AuthContext, same pattern.
+  const normalizedActiveRole = (activeRole || '').toLowerCase().trim();
+  const isStaffKitchenRole = normalizedActiveRole === 'staff kitchen';
+  const canActOnBooking = !isStaffKitchenRole;
+  const canCheckoutBookingRole = !isStaffKitchenRole && normalizedActiveRole !== 'staff';
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'today' | 'upcoming' | 'past_bookings'>('today');
   const [pastBookingsDesktopPage, setPastBookingsDesktopPage] = useState(1);
@@ -455,18 +470,39 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                               </span>
                             )}
                             {guest.otaSource && (
-                              <Badge
-                                variant="warning"
-                                size="sm"
-                                className="billing-checkout__ota-badge whitespace-nowrap shrink-0"
-                                title={t('ota_converted_badge_tooltip', 'Converted from an OTA calendar sync - editing this only changes this app, not the original platform')}
+                              // Click-triggered Popover (24 Aug 2026) - was a hover-only Badge
+                              // `title` (rendered via Badge.tsx's Tooltip wrapper), which can't
+                              // hold a clickable link and is a stuck-open risk on mobile taps
+                              // (see CLAUDE.md's hover-popover rule). Room number dropped from
+                              // the badge text itself - it's already the room card's own
+                              // header, repeating it here is redundant.
+                              <Popover
+                                trigger="click"
+                                placement="bottom"
+                                content={
+                                  <div className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-300 leading-relaxed max-w-xs space-y-1.5">
+                                    <p>{t('ota_converted_badge_tooltip', 'Converted from an OTA calendar sync - editing this only changes this app, not the original platform.')}</p>
+                                    <p>
+                                      <a href="#ical_sync" className="text-blue-600 dark:text-blue-400 font-semibold underline cursor-pointer">
+                                        {t('manage_calendar_sync_link', 'Manage Calendar Sync Settings')}
+                                      </a>
+                                    </p>
+                                  </div>
+                                }
                               >
-                                <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                                  <Globe className="w-2.5 h-2.5 shrink-0" />
-                                  <span>{guest.otaSourceLabel || guest.otaSource}</span>
-                                  {guest.roomNumber && <span className="opacity-70">&middot; {guest.roomNumber}</span>}
+                                <span className="inline-flex cursor-pointer">
+                                  <Badge
+                                    variant="warning"
+                                    size="sm"
+                                    className="billing-checkout__ota-badge whitespace-nowrap shrink-0"
+                                  >
+                                    <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                                      <Globe className="w-2.5 h-2.5 shrink-0" />
+                                      <span>{guest.otaSourceLabel || guest.otaSource}</span>
+                                    </span>
+                                  </Badge>
                                 </span>
-                              </Badge>
+                              </Popover>
                             )}
                           </div>
                         </div>
@@ -546,8 +582,25 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                       </div>
                     </div>
 
-                    {/* Action Buttons */}
-                    {canCheckout ? (
+                    {/* Action Buttons - canActOnBooking/canCheckoutBookingRole
+                        (ROLES.md, 24 Aug 2026): Staff Kitchen gets a single
+                        view-only button that opens the same modal in its
+                        already-read-only state; Staff gets Edit but never
+                        Checkout even when the stay-status-based `canCheckout`
+                        below would otherwise show it. */}
+                    {!canActOnBooking ? (
+                      <div className="billing-checkout__guest-card-actions pt-0.5">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          block
+                          onClick={() => handleEditGuest(guest)}
+                          leftIcon={<Eye className="w-3.5 h-3.5 shrink-0" />}
+                        >
+                          {t('view_booking_button', 'View Booking')}
+                        </Button>
+                      </div>
+                    ) : canCheckout && canCheckoutBookingRole ? (
                       <div className="billing-checkout__guest-card-actions grid grid-cols-2 gap-2 pt-0.5">
                         <Button variant="primary" size="sm" onClick={() => handleEditGuest(guest)} leftIcon={<Edit2 className="w-3.5 h-3.5 shrink-0" />}>
                           {t('edit_button', 'Edit')}
@@ -713,14 +766,25 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
         // drifted from the shared Button component used for this exact same
         // action elsewhere on this page (the room-card Edit button above).
         <div className="whitespace-nowrap flex items-center gap-2">
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => handleEditGuest(row)}
-            leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
-          >
-            {t('edit_booking_button', 'Edit Booking')}
-          </Button>
+          {canActOnBooking ? (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => handleEditGuest(row)}
+              leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
+            >
+              {t('edit_booking_button', 'Edit Booking')}
+            </Button>
+          ) : (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => handleEditGuest(row)}
+              leftIcon={<Eye className="w-3.5 h-3.5 shrink-0" />}
+            >
+              {t('view_booking_button', 'View Booking')}
+            </Button>
+          )}
         </div>
       ),
     },
@@ -828,6 +892,8 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                   guests={searchedGuests}
                   rooms={rooms}
                   hideSearchAndFilter
+                  canEdit={canActOnBooking}
+                  canCheckout={canCheckoutBookingRole}
                   onSelectGuest={(guestId) => {
                     const guest = searchedGuests.find((g) => g.id === guestId);
                     if (guest) setSelectedGuestForDetails(guest);

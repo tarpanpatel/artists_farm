@@ -1,6 +1,6 @@
 import React from 'react';
 import { Badge as FlowbiteBadge, createTheme } from 'flowbite-react';
-import { Tooltip } from './Tooltip';
+import { Popover } from './Popover';
 
 type BadgeVariant = 'success' | 'danger' | 'warning' | 'info' | 'neutral';
 type BadgeSize = 'sm' | 'md';
@@ -72,6 +72,22 @@ export const Badge: React.FC<BadgeProps> = ({
   // `title` used to forward straight to the DOM (a native browser tooltip) -
   // DESIGN.md bans that everywhere. Wrapping here, once, fixes every caller
   // across the app automatically instead of chasing each <Badge title=...>
-  // call site individually (found 22 Aug 2026 auditing Phase 5).
-  return title ? <Tooltip content={title}>{badge}</Tooltip> : badge;
+  // call site individually (found 22 Aug 2026 auditing Phase 5). Switched
+  // from the hover-only Tooltip component to Popover (24 Aug 2026, on
+  // request - "sitewide only have popovers") - same hover-triggered visual
+  // result, but Popover already closes itself on a click of its own trigger
+  // (see Popover.tsx's handleClick), so it can't get stuck open on mobile the
+  // way a plain hover tooltip can (no cursor to fire mouseleave with).
+  return title ? (
+    <Popover
+      trigger="hover"
+      content={
+        <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+          {title}
+        </div>
+      }
+    >
+      {badge}
+    </Popover>
+  ) : badge;
 };

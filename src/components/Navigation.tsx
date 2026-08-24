@@ -7,7 +7,7 @@ import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { isKitchenModuleNavItem } from '../data/appConfig';
-import { Tooltip } from './Tooltip';
+import { Popover } from './Popover';
 
 export type TabType =
   | 'dashboard'
@@ -93,6 +93,15 @@ export const Navigation: React.FC<NavigationProps> = ({
   kitchenModuleEnabled = true,
 }) => {
   const { activeRole, logout, currentUser } = useAuth();
+  // Legacy bookmarked/synthetic key that has no nav-tree node of its own -
+  // normalize once here so sidebar highlighting agrees with App.tsx's own
+  // equivalent `routeKey` normalization in isRouteAllowed() (found 24 Aug
+  // 2026: navigating via the old '#attendance_salaries' link correctly
+  // opened the right page, but the sidebar never highlighted "Attendance
+  // Calendar" or auto-expanded its "Team" parent group, since the real tree
+  // node's uniqueKey is 'attendance_calendar' and every comparison below was
+  // a strict `===` against the raw, unnormalized prop).
+  const normalizedActiveMenuItemKey = activeMenuItemKey === 'attendance_salaries' ? 'attendance_calendar' : activeMenuItemKey;
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
 
   // The dimming overlay below used to be gated only by `isSidebarOpen &&`
@@ -123,13 +132,13 @@ export const Navigation: React.FC<NavigationProps> = ({
   // Scroll active item into center of sidebar viewport
   useEffect(() => {
     const timer = setTimeout(() => {
-      const activeEl = document.querySelector('[data-uniquekey="' + activeMenuItemKey + '"]');
+      const activeEl = document.querySelector('[data-uniquekey="' + normalizedActiveMenuItemKey + '"]');
       if (activeEl) {
         activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }, 150);
     return () => clearTimeout(timer);
-  }, [activeMenuItemKey]);
+  }, [normalizedActiveMenuItemKey]);
 
   const isVisible = useCallback((allowedRoles?: string[], itemTabKey?: string, uniqueKey?: string) => {
     // Hide kitchen items if kitchen module is disabled
@@ -321,7 +330,7 @@ export const Navigation: React.FC<NavigationProps> = ({
 
   // Auto-expand active top-tier parent group and auto-collapse non-active top-tier parent groups
   useEffect(() => {
-    const activeKey = activeMenuItemKey;
+    const activeKey = normalizedActiveMenuItemKey;
 
     const findOwningTopLevelParentId = (nodes: TreeNode[]): string | null => {
       for (const parentNode of nodes) {
@@ -357,7 +366,7 @@ export const Navigation: React.FC<NavigationProps> = ({
       }
       return next;
     });
-  }, [activeMenuItemKey, tree]);
+  }, [normalizedActiveMenuItemKey, tree]);
 
   const customUrlRootItems = useMemo(() => {
     return filteredNavItems.filter(i => i.isVisible && i.customUrl && !i.parentId && isVisible(i.roles, i.tabKey));
@@ -427,7 +436,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   const renderNode = (node: TreeNode, _depth: number = 0): React.ReactNode => {
     const hasChildren = node.children.length > 0;
     const isExpanded = expandedParents.has(node.id);
-    const isActive = activeMenuItemKey === (node.uniqueKey || node.tabKey);
+    const isActive = normalizedActiveMenuItemKey === (node.uniqueKey || node.tabKey);
     const ItemIcon = getIconComponent(node.iconName);
     const badge = getBadge(node.uniqueKey || '', node.title);
     const itemKey = node.uniqueKey || node.tabKey;
@@ -485,7 +494,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           {isExpanded && (
             <ul id={`dropdown-${node.id}`} className="py-2 space-y-1">
               {node.children.map(child => {
-                const childActive = activeMenuItemKey === (child.uniqueKey || child.tabKey);
+                const childActive = normalizedActiveMenuItemKey === (child.uniqueKey || child.tabKey);
                 const childBadge = getBadge(child.uniqueKey || '', child.title);
                 const childKey = child.uniqueKey || child.tabKey;
                 const childHref = child.customUrl || `#${child.urlSlug || childKey}`;
@@ -570,7 +579,7 @@ export const Navigation: React.FC<NavigationProps> = ({
 
   const renderIconItem = (item: FlatNavItem, i: number) => {
     const ItemIcon = item.icon;
-    const isActive = activeMenuItemKey === item.uniqueKey;
+    const isActive = normalizedActiveMenuItemKey === item.uniqueKey;
     const linkHref = item.customUrl || `#${item.urlSlug || item.uniqueKey}`;
     return (
       <a
@@ -635,24 +644,42 @@ export const Navigation: React.FC<NavigationProps> = ({
             </ul>
 
             <div className="flex flex-col items-center gap-2 w-full pb-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-              <Tooltip content="Sign Out Terminal" position="right">
+              <Popover
+                trigger="hover"
+                placement="right"
+                content={
+                  <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                    Sign Out Terminal
+                  </div>
+                }
+              >
                 <button
                   type="button"
+                  aria-label="Sign Out Terminal"
                   onClick={handleLogoutClick}
                   className="w-10 h-10 flex items-center justify-center rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
                 >
                   <LogOut className="w-5 h-5" />
                 </button>
-              </Tooltip>
-              <Tooltip content="Expand Navigation Menu" position="right">
+              </Popover>
+              <Popover
+                trigger="hover"
+                placement="right"
+                content={
+                  <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                    Expand Navigation Menu
+                  </div>
+                }
+              >
                 <button
                   type="button"
+                  aria-label="Expand Navigation Menu"
                   onClick={onToggleIconOnly}
                   className="w-10 h-10 flex items-center justify-center rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>
-              </Tooltip>
+              </Popover>
             </div>
           </div>
         ) : (

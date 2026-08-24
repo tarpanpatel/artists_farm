@@ -8,7 +8,7 @@ import {
   deleteSystemServiceRequestTypeFromDB,
 } from '../services/api';
 import { useConfirm } from './ConfirmDialogContext';
-import { Tooltip } from './Tooltip';
+import { Popover } from './Popover';
 import { StyledSelect } from './StyledSelect';
 import { Button } from './Button';
 import { Input } from './Input';
@@ -218,51 +218,83 @@ export const ServiceRequestTypesManager: React.FC = () => {
                               if (e.key === 'Escape') handleCancelEdit();
                             }}
                           />
-                          <Tooltip content="Save">
+                          <Popover
+                            trigger="hover"
+                            content={
+                              <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                                Save
+                              </div>
+                            }
+                          >
                             <button
                               type="button"
+                              aria-label="Save"
                               onClick={() => handleInlineSave(item)}
                               disabled={updatingTypeId === item.id}
                               className="service-request-types-manager__edit-save p-1 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
                             >
                               <Check className="w-4 h-4" />
                             </button>
-                          </Tooltip>
-                          <Tooltip content="Cancel">
+                          </Popover>
+                          <Popover
+                            trigger="hover"
+                            content={
+                              <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                                Cancel
+                              </div>
+                            }
+                          >
                             <button
                               type="button"
+                              aria-label="Cancel"
                               onClick={handleCancelEdit}
                               className="service-request-types-manager__edit-cancel p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                             >
                               <X className="w-4 h-4" />
                             </button>
-                          </Tooltip>
+                          </Popover>
                         </div>
                       ) : (
                         <>
                           <span className="service-request-types-manager__type-label text-sm text-slate-800 dark:text-slate-100 font-medium">{item.label}</span>
                           <div className="service-request-types-manager__type-actions flex items-center gap-1 shrink-0">
-                            <Tooltip content="Edit label">
+                            <Popover
+                              trigger="hover"
+                              content={
+                                <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                                  Edit label
+                                </div>
+                              }
+                            >
                               <Button
                                 variant="ghost"
                                 size="xs"
+                                aria-label="Edit label"
                                 onClick={() => handleStartEdit(item)}
                                 className="text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 p-1 h-auto"
                               >
                                 <Pencil className="w-3.5 h-3.5" />
                               </Button>
-                            </Tooltip>
-                            <Tooltip content="Remove from global catalog">
+                            </Popover>
+                            <Popover
+                              trigger="hover"
+                              content={
+                                <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                                  Remove from global catalog
+                                </div>
+                              }
+                            >
                               <Button
                                 variant="ghost"
                                 size="xs"
+                                aria-label="Remove from global catalog"
                                 onClick={() => handleDeleteType(item.id)}
                                 disabled={deletingTypeId === item.id}
                                 className="text-red-500 hover:text-red-700 dark:hover:text-red-400 p-1 h-auto"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </Button>
-                            </Tooltip>
+                            </Popover>
                           </div>
                         </>
                       )}

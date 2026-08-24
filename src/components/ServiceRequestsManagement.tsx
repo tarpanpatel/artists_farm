@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, CheckCircle2, Clock, Home, ChevronLeft, ChevronRight, Pencil, Trash2, Settings, X } from './icons/FlowbiteIcons';
-import { Tooltip } from './Tooltip';
 import { Popover } from './Popover';
 import {
   ServiceRequestType,
@@ -775,14 +774,22 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                           <Button variant="primary" size="sm" onClick={() => handleStartEditType(rt)} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
                             Edit
                           </Button>
-                          <Tooltip content="Delete">
+                          <Popover
+                            trigger="hover"
+                            content={
+                              <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                                Delete
+                              </div>
+                            }
+                          >
                             <button
+                              aria-label="Delete"
                               onClick={() => handleDeleteType(rt)}
                               className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-slate-200/60 dark:hover:bg-slate-800 cursor-pointer transition-colors"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
-                          </Tooltip>
+                          </Popover>
                         </div>
                       </div>
                     )}
