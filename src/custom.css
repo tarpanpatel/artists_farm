@@ -314,13 +314,17 @@ div[datepicker-popover],
    text-fg-disabled, which resolves via the --color-fg-disabled fix above) to
    any day passed via the `datesDisabled` option (DateRangePicker.tsx's
    blockedDates prop), same as it does for minDate/maxDate/daysOfWeekDisabled
-   - but ships no background or strikethrough of its own, so a merely-grey-
-   text day sitting next to normal ones reads as "slightly muted", not
-   "actually unavailable, don't try this". Deliberately does NOT touch
-   .prev/.next (out-of-month greying) - those get text-fg-disabled too but
-   never the .disabled class, so this selector leaves them alone. */
+   - but ships no strikethrough of its own, so a merely-grey-text day sitting
+   next to normal ones reads as "slightly muted", not "actually unavailable,
+   don't try this". Deliberately does NOT touch .prev/.next (out-of-month
+   greying) - those get text-fg-disabled too but never the .disabled class,
+   so this selector leaves them alone.
+   24 Aug 2026: dropped the filled `background-color` square this rule used
+   to also add - reported as visually reading like every blocked day got its
+   own button/chip, when the native text-fg-disabled grey (already applied
+   by DaysView.js with no help needed from here) plus this rule's own
+   strikethrough is enough on its own to read as "unavailable". */
 .datepicker-cell.disabled {
-  background-color: var(--color-default-medium, #e5e7eb) !important;
   text-decoration: line-through;
 }
 
@@ -1029,6 +1033,26 @@ html {
 .no-scrollbar {
   -ms-overflow-style: none !important;
   scrollbar-width: none !important;
+}
+
+/* flowbite-react's own Checkbox theme ships with ZERO disabled-state styling
+   (see node_modules/flowbite-react/dist/components/Checkbox/theme.js - base/
+   color/indeterminate variants only, no `disabled:` variant at all), so a
+   checked-but-disabled checkbox renders pixel-identical to an enabled one -
+   still the full vivid `checked:bg-current` blue - even though it's already
+   correctly non-interactive via the `disabled` prop/attribute. Found 24 Aug
+   2026 from a user screenshot of BookingDetailsModal's "Guest Notes"/"Foreign
+   National Guest" checkboxes (both `disabled={!isEditing}`, correctly inert
+   before "Edit" is clicked) looking exactly as active/clickable as they do
+   once editing is actually on - a misleading affordance, not a real
+   interactivity bug (the underlying disabled state was always correct).
+   Every one of this app's ~16 call sites using flowbite-react's <Checkbox>
+   shares this gap, so this is a global override (never edit the shipped
+   theme file itself - see "Flowbite Core Files vs. Overrides" above). */
+input[type="checkbox"]:disabled {
+  opacity: 0.5;
+  filter: grayscale(70%);
+  cursor: not-allowed !important;
 }
 
 /* ==========================================================================

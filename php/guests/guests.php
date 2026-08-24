@@ -923,7 +923,53 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     $stmt = $pdo->prepare("UPDATE guests SET c_form_filed_at = ?, c_form_number = ?, c_form_document_url = ? WHERE id = ? AND property_id = ?");
                     $stmt->execute([$filedAt, $filed ? $cFormNumber : null, $filed ? $documentUrl : null, $guestId, $propertyId]);
 
-                    // Send Telegram notification when C-Form is saved
+                    // Respond to the client NOW, before the Telegram send below - found
+                    // 24 Aug 2026, reported as "Save C-Form button taking unusually long".
+                    // sendPropertyTelegramPhoto() below uploads the actual attached file
+                    // (a scanned PDF/photo, sometimes several MB) to api.telegram.org as
+                    // part of THIS same request - unlike every other Telegram notification
+                    // in this app (plain-text messages, near-instant), a real file upload
+                    // over Telegram's Bot API can legitimately take several seconds, and
+                    // the frontend's `await markCFormFiled()` was blocked on the entire
+                    // thing before this fix, even though the save itself (the UPDATE
+                    // above) had already fully succeeded. The DB write is already
+                    // committed by this point, so it's safe to tell the client "success"
+                    // and let the notification finish in the background - this mirrors
+                    // the existing project convention of never letting a Telegram/
+                    // WhatsApp send gate a business operation (see the ledger-posting
+                    // note in CLAUDE.md), just applied to the HTTP response itself
+                    // instead of a DB transaction.
+                    echo json_encode([
+                        'status' => 'success',
+                        'message' => $filed ? 'C-Form marked as filed' : 'C-Form marked as not filed',
+                        'data' => [
+                            'c_form_filed_at' => $filedAt,
+                            'c_form_filed' => $filed,
+                            'c_form_number' => $cFormNumber,
+                            'c_form_document_url' => $filed ? $documentUrl : null
+                        ]
+                    ]);
+                    if (function_exists('fastcgi_finish_request')) {
+                        // PHP-FPM: actually closes the client connection now: the rest of
+                        // this request keeps running server-side, but the browser's fetch()
+                        // resolves immediately instead of waiting on it.
+                        fastcgi_finish_request();
+                    } else {
+                        // mod_php/CLI dev server fallback (no true fastcgi_finish_request):
+                        // flush what's buffered so far. Doesn't close the TCP connection
+                        // the way fastcgi_finish_request() does, but browsers resolve
+                        // fetch()/XHR as soon as the response body they asked for has fully
+                        // arrived, so this still unblocks the frontend the same way in
+                        // practice - Content-Length isn't set, so nothing here changes if a
+                        // given SAPI can't flush early; it just falls back to the old
+                        // (slower but correct) blocking behavior.
+                        ignore_user_abort(true);
+                        if (ob_get_level() > 0) { @ob_end_flush(); }
+                        @flush();
+                    }
+
+                    // Send Telegram notification when C-Form is saved - now happens AFTER
+                    // the client has already gotten its response (see above).
                     if ($filed) {
                         try {
                             $gStmt = $pdo->prepare("SELECT guest_name FROM guests WHERE id = ? AND property_id = ?");
@@ -961,17 +1007,6 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                             error_log("Failed to send C-Form Telegram notification: " . $e->getMessage());
                         }
                     }
-
-                    echo json_encode([
-                        'status' => 'success',
-                        'message' => $filed ? 'C-Form marked as filed' : 'C-Form marked as not filed',
-                        'data' => [
-                            'c_form_filed_at' => $filedAt,
-                            'c_form_filed' => $filed,
-                            'c_form_number' => $cFormNumber,
-                            'c_form_document_url' => $filed ? $documentUrl : null
-                        ]
-                    ]);
                 } catch (PDOException $e) {
                     http_response_code(500);
                     echo json_encode(['status' => 'error', 'message' => 'Failed to update C-Form status: ' . $e->getMessage()]);

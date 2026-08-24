@@ -73,6 +73,26 @@ if (!isTelescopeAuthed()) {
     exit();
 }
 
+// TEMPORARY one-off diagnostic (24 Aug 2026, live report: "I logged in twice recently but it's
+// not showing" in the Login Portal) - lets whoever's already authenticated into Telescope check
+// the real audit_logs rows directly, without needing separate DB/SSH/MySQL-MCP access (none of
+// which reach staging's DB from outside the server itself - see database.php, host is hardcoded
+// 'localhost' for both staging and production, i.e. only reachable from server-side PHP like
+// this). Gated by the SAME telescope session check every other action on this page already
+// requires (isTelescopeAuthed() above), not a new auth mechanism. Safe to delete this whole block
+// once the login-audit-logging bug is actually diagnosed - not meant to be a permanent DB browser.
+if ($action === 'debug_login_writes') {
+    header('Content-Type: application/json');
+    try {
+        require_once __DIR__ . '/../config/database.php';
+        $rows = $pdo->query("SELECT id, timestamp, user, action, status, property_id FROM audit_logs WHERE module = 'login' ORDER BY id DESC LIMIT 10")->fetchAll();
+        echo json_encode(['status' => 'success', 'db' => $db_name ?? null, 'rows' => $rows]);
+    } catch (Throwable $e) {
+        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+    }
+    exit();
+}
+
 if ($wantsJson) {
     header('Content-Type: application/json');
     header('Access-Control-Allow-Origin: *');

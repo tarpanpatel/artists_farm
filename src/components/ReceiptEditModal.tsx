@@ -4,6 +4,7 @@ import { Guest, BillingReceipt, PayeeEntity } from '../types';
 import { StyledSelect } from './StyledSelect';
 import { DateRangePicker } from './DateRangePicker';
 import { Input } from './Input';
+import { Button } from './Button';
 import { fetchMenuFromDB, fetchPayeesFromDB, fetchServiceRequestsFromDB } from '../services/api';
 import { useToast } from './ToastContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,7 +13,7 @@ import { t } from '../i18n/en';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import { UpiPaymentBlock } from '../utils/upiQrCode';
 import { shareTextContent } from '../utils/shareText';
-import { Drawer as FlowbiteDrawer, DrawerItems } from 'flowbite-react';
+import { Drawer as FlowbiteDrawer, DrawerItems, Modal } from 'flowbite-react';
 
 interface ReceiptEditModalProps {
   isOpen: boolean;
@@ -70,7 +71,9 @@ interface ManualAdjustment {
 interface SplitPaymentRow {
   id: string;
   mode: 'Cash' | 'UPI' | 'Card' | 'Bank Transfer';
-  amount: number;
+  // '' (not just number) so the amount field can actually sit empty while
+  // being typed into - see handleUpdateSplitRow's onChange below for why.
+  amount: number | '';
   refNo?: string;
   payToId?: string; // staff/payee id whose QR code this UPI row goes to
 }
@@ -360,6 +363,14 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   const totalSplitSum = splitRows.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
   const isSplitMatching = Math.abs(totalSplitSum - grandTargetDue) < 0.01;
 
+  // Resolves which row/payee the big "Show QR" modal below is currently
+  // displaying (24 Aug 2026 - was a tiny w-32 h-32 inline image before,
+  // too small for a customer to actually scan from across a desk).
+  // visibleQrRowId doubles as "which row's modal is open" now that there's
+  // no more inline expand/collapse to distinguish it from.
+  const qrModalRow = splitRows.find((r) => r.id === visibleQrRowId) || null;
+  const qrModalPayTo = qrModalRow ? payToOptions.find((p) => p.id === qrModalRow.payToId) : null;
+
   // Add Incidental Item from dropdown
   const handleAddIncidentalItem = () => {
     if (!selectedMenuId) return;
@@ -476,20 +487,19 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
     return true;
   };
 
-  // Naming someone in "Pending Received By" IS the payment event (confirmed
-  // with the user 19 Aug 2026) - not mere attribution. It means this specific
-  // person just collected the outstanding lodging balance right now, so fold
-  // it straight into Advance Paid (the running "collected so far" counter -
-  // see lodgingPendingDue = roomCharges - advancePaid above) and save
-  // immediately, same real-time treatment as editing Advance Paid directly.
-  // Clearing the dropdown back to blank does NOT reverse this - money doesn't
-  // un-collect itself; a mistaken selection must be fixed via Advance Paid.
+  // REVERSED 25 Aug 2026 (previously: naming someone here instantly folded
+  // the full pending balance into Advance Paid, treating the selection
+  // itself as the payment event - confirmed with the user 19 Aug 2026).
+  // Reported live as "Pending Accommodation Due becomes 0 when I change the
+  // user" - the auto-zeroing read as broken/surprising rather than as the
+  // intended shortcut, so per the user's explicit choice this is now plain
+  // attribution only, same as "Received By (Booking)" / advanceReceivedBy
+  // right above: just records who received/will receive it, with zero side
+  // effect on Advance Paid or Pending Due. Staff now edit Advance Paid
+  // themselves (see handleMoneyFieldBlur below) when money actually changes
+  // hands - this dropdown no longer does it on their behalf.
   const handlePendingReceivedByChange = (val: string) => {
     setPendingReceivedBy(val);
-    if (val) {
-      setAdvancePaid(roomCharges);
-      saveGuestEdits({ advancePaid: roomCharges, pendingReceivedBy: val });
-    }
   };
 
   // Advance Paid and Base Lodging Charges directly determine Pending Lodging
@@ -596,10 +606,10 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
             </div>
             <div>
               <h2 className="receipt-edit-modal__title text-base font-semibold text-slate-900 dark:text-white m-0">
-                {internalMode === 'edit-only' ? t('edit_booking_billing_heading', 'Edit Guest Booking & Billing Details') : t('checkout_settlement_heading', 'Guest Billing & Final Checkout Settlement')}
+                {internalMode === 'edit-only' ? t('edit_booking_billing_heading', 'Edit Guest Booking & Billing Details') : t('checkout_settlement_heading', 'Checkout and Billing')}
               </h2>
               <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 m-0">
-                Room: {guest.roomNumber} • Guest: {editGuestName || guest.guestName} ({editPhoneNumber || guest.phoneNumber})
+                Room: {guest.roomNumber}
               </p>
             </div>
           </div>
@@ -743,15 +753,17 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                       />
                     </div>
                     <div className="sm:col-span-3 flex items-end">
-                      <button
+                      <Button
                         type="button"
+                        variant="primary"
+                        size="sm"
+                        block
                         onClick={handleAddIncidentalItem}
                         disabled={!selectedMenuId}
-                        className="w-full py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold text-xs rounded-lg disabled:opacity-50 transition-all flex items-center justify-center gap-1 cursor-pointer"
+                        leftIcon={<Plus className="w-3.5 h-3.5" />}
                       >
-                        <Plus className="w-3.5 h-3.5" />
                         {t('insert_button', 'Insert')}
-                      </button>
+                      </Button>
                     </div>
                   </div>
 
@@ -873,13 +885,15 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                     />
                   </div>
 
-                  <button
+                  <Button
                     type="submit"
+                    variant="dark"
+                    size="sm"
+                    block
                     disabled={!adjType || !adjAmount || Number(adjAmount) <= 0}
-                    className="w-full py-2 bg-slate-800 hover:bg-slate-900 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all cursor-pointer text-xs"
                   >
                     {t('apply_adjustment_button', 'Apply Adjustment')}
-                  </button>
+                  </Button>
                 </form>
 
                 {/* Applied Adjustments List */}
@@ -913,7 +927,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
               <div className="bg-emerald-50/70 dark:bg-emerald-950/30 rounded-lg border-2 border-emerald-500/80 p-4 sm:p-6 space-y-4 shadow-sm">
                 <div className="flex items-center gap-2 text-[10px] font-semibold text-emerald-900 dark:text-emerald-200 uppercase tracking-wide border-b border-emerald-200/60 pb-2">
                   <IndianRupee className="w-4 h-4 text-emerald-600" />
-                  <span>{t('final_checkout_split_heading', 'Final Checkout Split Settlement')}</span>
+                  <span>{t('final_checkout_split_heading', 'Final Checkout Bill')}</span>
                 </div>
 
                 <div className="space-y-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
@@ -1123,7 +1137,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                 {/* Split Distribution Matrix */}
                 <div className="space-y-2 pt-2 border-t border-emerald-200 dark:border-emerald-800">
                   <div className="flex justify-between items-center gap-2">
-                    <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">{t('split_distribution_matrix_heading', 'Split Distribution Matrix')}</span>
+                    <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">{t('split_distribution_matrix_heading', 'Split Payment')}</span>
                     <button
                       type="button"
                       onClick={handleAddSplitRow}
@@ -1145,7 +1159,19 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                             min="0"
                             inputMode="decimal"
                             value={row.amount}
-                            onChange={(e) => handleUpdateSplitRow(row.id, 'amount', Math.max(0, Number(e.target.value)))}
+                            // 24 Aug 2026 bugfix: this used to coerce through
+                            // Number(e.target.value) unconditionally, so an
+                            // emptied field became 0 immediately - React then
+                            // re-renders the controlled input back to "0",
+                            // and the next digit you type lands AFTER that
+                            // stuck zero ("07") instead of replacing it,
+                            // since there was never an actually-empty state
+                            // for backspace to reach. Same '' === '' guard
+                            // already used by the Add Adjustment "Amount"
+                            // field above - let the field genuinely go
+                            // empty while typing; every place that reads
+                            // amount back out already does `Number(...) || 0`.
+                            onChange={(e) => handleUpdateSplitRow(row.id, 'amount', e.target.value === '' ? '' : Math.max(0, Number(e.target.value)))}
                             placeholder={t('amount_placeholder', 'Amount (₹)')}
                             className="flex-1 font-extrabold"
                           />
@@ -1186,17 +1212,14 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                             <button
                               type="button"
                               disabled={!selectedPayTo}
-                              onClick={() => setVisibleQrRowId((prev) => (prev === row.id ? null : row.id))}
+                              // Always opens the big modal now (24 Aug 2026) -
+                              // no more inline toggle, so there's nothing
+                              // left to "hide" from this button itself.
+                              onClick={() => setVisibleQrRowId(row.id)}
                               className="flex items-center gap-1 text-[10px] font-semibold px-2 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap"
                             >
-                              <QrCode className="w-3.5 h-3.5" /> {visibleQrRowId === row.id ? t('hide_qr_button', 'Hide QR') : t('show_qr_button', 'Show QR')}
+                              <QrCode className="w-3.5 h-3.5" /> {t('show_qr_button', 'Show QR')}
                             </button>
-                          </div>
-                        )}
-                        {row.mode === 'UPI' && visibleQrRowId === row.id && selectedPayTo && (
-                          <div className="flex flex-col items-center gap-1 p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg">
-                            <img src={selectedPayTo.qrCodeUrl} alt={`${selectedPayTo.name} UPI QR code`} className="w-32 h-32 object-contain" />
-                            <span className="text-[10px] font-semibold text-slate-500">{selectedPayTo.name}</span>
                           </div>
                         )}
                       </div>
@@ -1211,51 +1234,112 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
         </div>
       </div>
 
-        {/* Footer Actions */}
+        {/* Footer Actions - migrated to the shared <Button> (24 Aug 2026, "quality
+            buttons should be same" report) - these were hand-rolled bg-cyan-600/
+            bg-emerald-600 buttons carrying shadow-md, in direct violation of
+            DESIGN.md's "no button ever has a box-shadow" rule, and using colors
+            outside Button.tsx's canonical palette (cyan isn't a defined variant
+            at all). Every other action button in this modal (Insert, Apply
+            Adjustment) was migrated in the same pass. */}
         <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3 bg-gray-50 dark:bg-gray-850">
           {internalMode === 'edit-and-checkout' && (
-            <button
+            <Button
               type="button"
+              variant="secondary"
+              size="lg"
+              className="flex-1"
               onClick={() => setIsPrintModalOpen(true)}
-              className="flex-1 h-12 py-3 px-4 bg-cyan-600 hover:bg-cyan-700 active:scale-98 text-white font-bold text-xs rounded-lg transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md shrink-0"
+              leftIcon={<Printer className="w-4 h-4 shrink-0" />}
             >
-              <Printer className="w-4 h-4 shrink-0" />
-              <span>{t('preview_share_bill_button', 'Preview & Share Bill')}</span>
-            </button>
+              {t('preview_share_bill_button', 'Preview & Share Bill')}
+            </Button>
           )}
 
-          <button
+          <Button
             type="button"
+            variant="success"
+            size="lg"
+            className="flex-1"
             onClick={handleSaveOrCheckout}
             disabled={isProcessing || (internalMode === 'edit-and-checkout' && !isSplitMatching)}
-            className="flex-1 h-12 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs rounded-lg transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md shrink-0"
+            leftIcon={isProcessing ? <Loader2 className="w-4 h-4 animate-spin shrink-0" /> : <CheckCircle2 className="w-4 h-4 shrink-0" />}
           >
-            {isProcessing ? <Loader2 className="w-4 h-4 animate-spin shrink-0" /> : <CheckCircle2 className="w-4 h-4 shrink-0" />}
-            <span>
-              {isProcessing
-                ? (internalMode === 'edit-only' ? 'Saving Changes...' : 'Processing Checkout...')
-                : internalMode === 'edit-only'
-                ? t('save_booking_changes_button', 'Save Booking Changes')
-                : !isSplitMatching
-                ? `Split Total Must Equal ₹${grandTargetDue.toFixed(2)}`
-                : t('checkout_close_booking_button', 'Checkout & Close Booking')
-              }
-            </span>
-          </button>
+            {isProcessing
+              ? (internalMode === 'edit-only' ? 'Saving Changes...' : 'Processing Checkout...')
+              : internalMode === 'edit-only'
+              ? t('save_booking_changes_button', 'Save Booking Changes')
+              : !isSplitMatching
+              ? `Split Total Must Equal ₹${grandTargetDue.toFixed(2)}`
+              : t('checkout_close_booking_button', 'Checkout & Close Booking')
+            }
+          </Button>
 
           {internalMode === 'edit-only' && (
-            <button
+            <Button
               type="button"
+              variant="success"
+              size="lg"
+              className="flex-1"
               onClick={handleSaveAndProceedToCheckout}
               disabled={isProcessing}
-              className="flex-1 h-12 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold text-xs rounded-lg transition-all cursor-pointer shadow-md flex items-center justify-center gap-2 shrink-0"
+              leftIcon={<CheckCircle2 className="w-4 h-4 shrink-0" />}
             >
-              <CheckCircle2 className="w-4 h-4 shrink-0" />
-              <span>{t('save_and_proceed_checkout_button', 'Save and Proceed to Checkout')}</span>
-            </button>
+              {t('save_and_proceed_checkout_button', 'Save and Proceed to Checkout')}
+            </Button>
           )}
         </div>
       </FlowbiteDrawer>
+
+      {/* Big "Show QR" modal (24 Aug 2026) - the QR used to render inline at a
+          tiny w-32 h-32, too small for a customer to actually scan across a
+          desk. Centered Modal per DESIGN.md's "confirmation/alert prompts" spec
+          (this is a plain "show content" prompt, not a data-entry form or a
+          list, so it's a Modal, not a right-side Drawer) - same z-9999 tier as
+          ConfirmDialogContext's dialog, so it stacks above this already-open
+          Drawer. */}
+      <Modal
+        show={!!(qrModalRow && qrModalPayTo)}
+        onClose={() => setVisibleQrRowId(null)}
+        dismissible
+        size="md"
+        popup
+        className="z-9999"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-t-lg">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-blue-100 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400">
+              <QrCode className="w-4 h-4" />
+            </div>
+            <h2 className="text-base font-semibold text-slate-900 dark:text-white m-0 truncate">
+              {qrModalPayTo?.name}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => setVisibleQrRowId(null)}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer shrink-0"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="p-6 flex flex-col items-center gap-3">
+          {qrModalPayTo && (
+            <img
+              src={qrModalPayTo.qrCodeUrl}
+              alt={`${qrModalPayTo.name} UPI QR code`}
+              className="w-full max-w-72 aspect-square object-contain bg-white rounded-lg border border-slate-200 dark:border-slate-700 p-3"
+            />
+          )}
+          <div className="text-center">
+            <p className="text-sm font-bold text-slate-900 dark:text-white">{qrModalPayTo?.name}</p>
+            {qrModalRow && Number(qrModalRow.amount) > 0 && (
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
+                Amount to pay: ₹{Number(qrModalRow.amount).toFixed(2)}
+              </p>
+            )}
+          </div>
+        </div>
+      </Modal>
 
 
 

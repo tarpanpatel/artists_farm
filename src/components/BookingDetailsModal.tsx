@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2, Share2, LogOut, Upload, CreditCard, Globe, AlertTriangle, X, IndianRupee, Paperclip, ScanLine } from './icons/FlowbiteIcons';
 import { Drawer as FlowbiteDrawer, DrawerItems, Checkbox } from 'flowbite-react';
 import { Badge } from './Badge';
@@ -160,6 +160,10 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   // happened without a server round-trip just to read the barcode.
   const [cFormFile, setCFormFile] = useState<File | null>(null);
   const [barcodeScanStatus, setBarcodeScanStatus] = useState<'idle' | 'scanning' | 'found' | 'not_found'>('idle');
+  // Lets the new "Reupload" button (24 Aug 2026) trigger the same hidden file
+  // input the dropzone label already wires up, rather than duplicating the
+  // <input type="file"> element itself.
+  const cFormFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (guest) {
@@ -193,6 +197,15 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
 
   const g = guest as any;
   const isCFormFiled = cFormFiledState;
+  // Once a C-Form has actually been filed & saved, lock its number field/
+  // upload/Save button the same way every other field on this form is
+  // already locked until "Edit" is clicked (24 Aug 2026 - reported as these
+  // two staying fully active/editable even while the rest of the form sat
+  // greyed out in view mode). Deliberately does NOT gate on canActOnBooking
+  // here - that's still the right check for the FIRST-time fill-in flow
+  // (see the checkbox/upload/Save button below), this only adds the extra
+  // "already filed" lock on top once there's something saved to protect.
+  const cFormLocked = isCFormFiled && !isEditing;
   const noOfGuests = g.no_of_guests ?? g.numberOfGuests ?? 1;
   const roomRent = g.base_room_rent ?? g.roomRate ?? 0;
   const advancePaid = g.advance_paid ?? g.advanceAmount ?? 0;
@@ -819,35 +832,58 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                         never reaches Telegram) until "Save C-Form" below
                         actually goes through - see that button's onClick. */}
                     <div>
-                      <label
-                        htmlFor="c-form-file-input"
-                        className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/60 text-xs text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/60 transition-colors"
-                      >
-                        <Paperclip className="w-3.5 h-3.5 shrink-0 text-slate-400" />
-                        <span className="flex-1 truncate">
-                          {cFormFile ? cFormFile.name : 'Upload the filed Form C (PDF or photo) - we\'ll read the Applicant ID from its barcode and fill it in below automatically.'}
-                        </span>
-                        <input
-                          id="c-form-file-input"
-                          type="file"
-                          accept="application/pdf,image/jpeg,image/png,image/webp"
-                          className="hidden"
-                          onChange={async (e) => {
-                            const file = e.target.files?.[0] || null;
-                            e.target.value = ''; // allow re-selecting the same file after a failed scan
-                            if (!file) return;
-                            setCFormFile(file);
-                            setBarcodeScanStatus('scanning');
-                            const applicantId = await scanApplicantIdFromFile(file);
-                            if (applicantId) {
-                              setCFormNumberState(applicantId);
-                              setBarcodeScanStatus('found');
-                            } else {
-                              setBarcodeScanStatus('not_found');
-                            }
-                          }}
-                        />
-                      </label>
+                      <div className="flex items-center gap-2">
+                        <label
+                          htmlFor="c-form-file-input"
+                          className={`flex flex-1 min-w-0 items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/60 text-xs text-slate-600 dark:text-slate-300 transition-colors ${
+                            cFormLocked
+                              ? 'opacity-60 cursor-not-allowed'
+                              : 'cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/60'
+                          }`}
+                        >
+                          <Paperclip className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+                          <span className="flex-1 truncate">
+                            {cFormFile ? cFormFile.name : 'Upload the filed Form C (PDF or photo) - we\'ll read the Applicant ID from its barcode and fill it in below automatically.'}
+                          </span>
+                          <input
+                            id="c-form-file-input"
+                            ref={cFormFileInputRef}
+                            type="file"
+                            accept="application/pdf,image/jpeg,image/png,image/webp"
+                            className="hidden"
+                            disabled={cFormLocked}
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0] || null;
+                              e.target.value = ''; // allow re-selecting the same file after a failed scan
+                              if (!file) return;
+                              setCFormFile(file);
+                              setBarcodeScanStatus('scanning');
+                              const applicantId = await scanApplicantIdFromFile(file);
+                              if (applicantId) {
+                                setCFormNumberState(applicantId);
+                                setBarcodeScanStatus('found');
+                              } else {
+                                setBarcodeScanStatus('not_found');
+                              }
+                            }}
+                          />
+                        </label>
+                        {/* Explicit second trigger for the same hidden file input above
+                            (24 Aug 2026 request) - the dropzone label already opens the
+                            file picker on click, but once a C-Form document is already
+                            attached, a plain dropzone reads more like "nothing's here
+                            yet" than "click to replace this". Locked the same as the
+                            label/number field/Save button above - swapping the filed
+                            document is an edit, so it needs "Edit" clicked first too. */}
+                        <button
+                          type="button"
+                          disabled={cFormLocked}
+                          onClick={() => cFormFileInputRef.current?.click()}
+                          className="shrink-0 px-3 py-2 rounded-lg text-xs font-bold border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white dark:disabled:hover:bg-slate-800 transition-colors cursor-pointer"
+                        >
+                          Reupload
+                        </button>
+                      </div>
                       {barcodeScanStatus === 'scanning' && (
                         <p className="mt-1 flex items-center gap-1 text-2xs text-slate-500 dark:text-slate-400">
                           <Loader2 className="w-3 h-3 animate-spin" /> Reading barcode...
@@ -872,11 +908,12 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                         value={cFormNumberState}
                         onChange={(e) => setCFormNumberState(e.target.value)}
                         placeholder="C-Form Confirmation No. / Applicant ID"
-                        className="flex-1 px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                        disabled={cFormLocked}
+                        className="flex-1 px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-500 dark:disabled:text-slate-400 disabled:cursor-not-allowed"
                       />
                       <button
                         type="button"
-                        disabled={isSavingCForm}
+                        disabled={isSavingCForm || cFormLocked}
                         onClick={async () => {
                           setIsSavingCForm(true);
                           // Upload (if a file was picked) BEFORE marking filed, so the

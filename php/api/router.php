@@ -982,7 +982,21 @@ switch ($action) {
                         $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
                         $stmtAudit = $pdo->prepare("INSERT INTO audit_logs (property_id, action, timestamp, user, ip_address, user_agent, status, module) VALUES (?, ?, NOW(), ?, ?, ?, 'Success', 'login')");
                         $stmtAudit->execute([1, "Staff User {$user['username']} logged into system", $user['username'], $ip, $ua]);
-                    } catch (Exception $ea) {}
+                    } catch (Exception $ea) {
+                        // SECURITY/DIAGNOSTICS (24 Aug 2026, live report: "I logged in twice
+                        // recently but it's not showing" in Telescope's Login Portal) - this catch
+                        // used to be completely empty, so if this INSERT ever failed (schema
+                        // drift, constraint violation, connection hiccup), the login still
+                        // succeeded normally for the user but left ZERO trace anywhere - not even
+                        // in Telescope's own SQL Error portal, since the exception never reached
+                        // TelescopeLogger at all. That's exactly the "not showing" symptom with no
+                        // way to diagnose it. Now at least the NEXT occurrence is visible instead
+                        // of silently invisible - login itself must still never fail because of a
+                        // logging problem, so this stays non-fatal.
+                        if (class_exists('TelescopeLogger')) {
+                            TelescopeLogger::log('sql', 'SQL Error', $ea->getMessage(), "Login audit_logs INSERT failed for user {$user['username']}", ['username' => $user['username']]);
+                        }
+                    }
 
                     echo json_encode([
                         'success' => true,
