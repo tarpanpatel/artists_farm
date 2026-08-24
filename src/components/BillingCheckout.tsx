@@ -912,12 +912,13 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                 {searchedGuests.length === 0 ? (
                   <div className="p-12 text-center">
                     <Search className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-                    <h3 className="billing-checkout__subtitle text-lg font-semibold text-gray-800 dark:text-gray-200 mb-1">
-                      {t('no_guest_records_found', 'No Guest Records Found')}
+                    <h3 className="billing-checkout__subtitle text-lg font-semibold text-gray-800 dark:text-gray-200">
+                      {activeTab === 'upcoming'
+                        ? t('no_upcoming_bookings', 'No upcoming bookings.')
+                        : activeTab === 'past_bookings'
+                        ? t('no_past_bookings', 'No past bookings.')
+                        : t('no_bookings_today', 'No bookings today.')}
                     </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {t('no_guest_records_description', 'No guest records match the current tab filter or search term. Switch tabs or room filter to view other reservations.')}
-                    </p>
                   </div>
                 ) : (
                   <>
@@ -959,12 +960,9 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
           {activeTab === 'today' && filteredGroups.length === 0 && (
             <div className="billing-checkout__empty-state p-12 text-center">
               <Search className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-              <h3 className="billing-checkout__subtitle text-lg font-semibold text-gray-800 dark:text-gray-200 mb-1">
-                {t('no_guest_records_found', 'No Guest Records Found')}
+              <h3 className="billing-checkout__subtitle text-lg font-semibold text-gray-800 dark:text-gray-200">
+                {t('no_bookings_today', 'No bookings today.')}
               </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {t('no_guest_records_description', 'No guest records match the current tab filter or search term. Switch tabs or room filter to view other reservations.')}
-              </p>
             </div>
           )}
           </div>

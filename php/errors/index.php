@@ -470,20 +470,31 @@ if ($wantsJson) {
                 </button>
             </div>
 
-            <div class="telescope-logs flex-1 bg-gray-900/60 border border-gray-800 rounded-xl overflow-y-auto">
-                <table class="w-full text-xs text-left">
-                    <thead class="bg-gray-800/60 text-gray-400 font-sans border-b border-gray-800 sticky top-0 uppercase text-[10px] tracking-wider">
-                        <tr>
-                            <th class="px-4 py-3 w-40">Timestamp</th>
-                            <th class="px-4 py-3 w-28">Severity</th>
-                            <th class="px-4 py-3">Log Message</th>
-                            <th class="px-4 py-3 w-72">User / Origin Location</th>
-                            <th class="px-4 py-3 w-14"></th>
-                        </tr>
-                    </thead>
-                    <tbody id="logsTableBody" class="divide-y divide-gray-800/50">
-                    </tbody>
-                </table>
+            <div class="telescope-logs flex-1 bg-gray-900/60 border border-gray-800 rounded-xl overflow-hidden flex flex-col">
+                <div class="telescope-logs-scroll flex-1 overflow-y-auto">
+                    <table class="w-full text-xs text-left">
+                        <thead class="bg-gray-800/60 text-gray-400 font-sans border-b border-gray-800 sticky top-0 uppercase text-[10px] tracking-wider">
+                            <tr>
+                                <th class="px-4 py-3 w-40">Timestamp</th>
+                                <th class="px-4 py-3 w-28">Severity</th>
+                                <th class="px-4 py-3">Log Message</th>
+                                <th class="px-4 py-3 w-72">User / Origin Location</th>
+                                <th class="px-4 py-3 w-14"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="logsTableBody" class="divide-y divide-gray-800/50">
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Pagination footer (24 Aug 2026, requested - "every log"
+                     was rendering unbounded, sometimes hundreds of rows in
+                     one unpaged list). Pinned outside the scrollable area
+                     above so it stays visible instead of scrolling away with
+                     the log rows - see loadPortalLogs()/renderLogsPage() for
+                     how it's populated. Applies to every portal, since it's
+                     driven by whatever window.currentVisibleLogs holds, not
+                     hardcoded to one portal's data. -->
+                <div id="logsPagination" class="shrink-0"></div>
             </div>
         </main>
     </div>
