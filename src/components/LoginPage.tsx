@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Alert } from 'flowbite-react';
-import { AlertCircle, Lock, Phone, KeyRound, Building2, ShieldCheck, Mail, CheckCircle2, ArrowLeft, Loader2, Delete, Bot } from './icons/FlowbiteIcons';
-import { AIChatWidget } from './AIChatWidget';
+import { AlertCircle, Lock, Phone, KeyRound, Building2, ShieldCheck, Mail, CheckCircle2, ArrowLeft, Loader2, Delete } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';
 
 interface LoginPageProps {
@@ -26,7 +25,6 @@ interface LoginPageProps {
 export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', onLoginSuccess, onLoginFailed, onNeedsPropertySelection }) => {
   const isTerminal = variant === 'terminal';
 
-  const [isVisitorChatOpen, setIsVisitorChatOpen] = useState(false);
   const [mobileNumber, setMobileNumber] = useState('');
   const [passcode, setPasscode] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -647,26 +645,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
         )}
       </div>
 
-      {/* Floating Visitor AI Sales & Support Assistant */}
-      <div className="fixed bottom-6 right-6 z-60 font-sans print:hidden">
-        {!isVisitorChatOpen ? (
-          <button
-            type="button"
-            onClick={() => setIsVisitorChatOpen(true)}
-            className="flex items-center gap-2.5 px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-full shadow-2xl shadow-blue-500/40 hover:scale-105 active:scale-95 transition-all cursor-pointer border border-white/20 font-bold text-xs"
-          >
-            <Bot className="w-5 h-5 text-white animate-pulse" />
-            <span>Ask Ground Code AI?</span>
-          </button>
-        ) : (
-          <AIChatWidget
-            isOpen={true}
-            onClose={() => setIsVisitorChatOpen(false)}
-            userRole="Visitor"
-            propertyName="Ground Code Platform"
-          />
-        )}
-      </div>
     </div>
   );
 };

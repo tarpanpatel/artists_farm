@@ -520,19 +520,18 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                 {activeSection === 'ai_services' && 'AI Services & Provider Config'}
               </h2>
             </div>
-
-            {/* Header Online AI API Toggle Switch */}
-            <div className="ms-auto flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-700/60 rounded-xl border border-slate-200 dark:border-slate-700 shrink-0">
-              <Bot className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 hidden sm:inline">Online AI API:</span>
-              <ToggleSwitch
-                enabled={aiConfig.enabled}
-                onChange={(val) => handleToggleAiModeHeader(val)}
-              />
-              <span className={`text-2xs font-bold px-2 py-0.5 rounded-full ${aiConfig.enabled ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'}`}>
-                {aiConfig.enabled ? 'ONLINE' : 'OFFLINE'}
-              </span>
-            </div>
+            {/* The "Online AI API" toggle used to also render here, unconditionally,
+                for every section (Default Bills, Tenants & Properties, Appearance,
+                etc.) - not just AI Services, where the exact same control (same
+                aiConfig state, same handleToggleAiModeHeader handler) already lives
+                in its own properly-scoped card below. Found 24 Aug 2026 from a
+                mobile screenshot of the Default Bills screen: this out-of-place
+                copy competed with the section title for space in a single header
+                row with no wrap fallback, clipping off-screen and forcing a
+                horizontal scrollbar on narrow viewports - and on the ai_services
+                section itself it rendered as a literal duplicate of the section's
+                own toggle. Removed rather than reduced/hidden-below-breakpoint,
+                since the properly-placed one already covers every real use case. */}
           </div>
         </header>
 
