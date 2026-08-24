@@ -21,8 +21,13 @@ require_once __DIR__ . '/../errors/logger.php';
 $allowed_origins = [
     'http://localhost', 'http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:8080',
     'http://127.0.0.1', 'http://127.0.0.1:3000', 'http://127.0.0.1:5173', 'http://127.0.0.1:5174', 'http://127.0.0.1:8080',
+    // Production still lives on artistic-sthan.com (ground-code.com migration, started 24 Aug
+    // 2026, is staging-only so far - production moves in a later step once staging is verified).
     'https://artistic-sthan.com', 'https://www.artistic-sthan.com',
-    'https://staging.artistic-sthan.com',
+    // Staging cut over to ground-code.com 24 Aug 2026 - staging.artistic-sthan.com is
+    // deliberately NOT in this list any more so a stray request from that old frontend gets a
+    // real CORS 403 instead of silently still being treated as a trusted origin.
+    'https://staging.ground-code.com',
 ];
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 header('Access-Control-Allow-Origin: ' . (in_array($origin, $allowed_origins) ? $origin : 'https://artistic-sthan.com'));
@@ -74,12 +79,21 @@ $server_name = $_SERVER['SERVER_NAME'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost';
 
 // Check if running on local environment (localhost or 127.0.0.1)
 $__is_local_env = $server_name === 'localhost' || $server_name === '127.0.0.1' || str_contains($server_name, '192.168.');
-// Staging (staging.artistic-sthan.com) is deployed from the exact same public_html codebase
-// as production (see deploy-staging.ps1's rsync step), so without this check it fell into the
-// same "anything that isn't local" branch as real production and connected to the SAME
-// `groundcode` database - every test booking/checkout/delete done on staging was landing
-// directly in live tenant data. Confirmed 15 Aug 2026.
-$__is_staging_env = $server_name === 'staging.artistic-sthan.com';
+// Staging is deployed from the exact same codebase as production (see deploy-staging.ps1's
+// git-pull step), so without this check it fell into the same "anything that isn't local"
+// branch as real production and connected to the SAME `groundcode` database - every test
+// booking/checkout/delete done on staging was landing directly in live tenant data. Confirmed
+// 15 Aug 2026.
+// Domain migration (24 Aug 2026): staging cut over from staging.artistic-sthan.com to
+// staging.ground-code.com - deploy-staging.ps1, CORS allow-list, etc. now all point at the new
+// domain exclusively. The OLD hostname is kept recognized here too, on purpose, purely as a
+// safety net: its DNS/vhost still exists and nothing deletes it as part of this migration, so
+// if it's ever hit again (a bookmark, a stale QR code, a search-engine cache) it must keep
+// landing on the (harmless) staging DB, never silently fall through to this same "anything
+// that isn't local" branch and start writing to live production data - which is the exact
+// incident this whole check exists to prevent. Safe to remove once the old subdomain is
+// actually retired/redirected server-side.
+$__is_staging_env = in_array($server_name, ['staging.ground-code.com', 'staging.artistic-sthan.com'], true);
 // Shared local/live flag for anything outside DB credentials that needs the same distinction
 // (e.g. cookie 'secure' flag - must be false on local plain-HTTP or the session cookie never
 // gets set/sent and login silently fails). database.php is require_once'd by every endpoint

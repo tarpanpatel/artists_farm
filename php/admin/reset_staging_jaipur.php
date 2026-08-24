@@ -2,7 +2,7 @@
 /**
  * Staging Reset Helper Script for Artists Farm Jaipur (Property ID 1)
  */
-$_SERVER['HTTP_HOST'] = 'staging.artistic-sthan.com';
+$_SERVER['HTTP_HOST'] = 'staging.ground-code.com'; // moved from staging.artistic-sthan.com 24 Aug 2026
 require_once __DIR__ . '/../config/database.php';
 
 if (!isset($pdo)) {

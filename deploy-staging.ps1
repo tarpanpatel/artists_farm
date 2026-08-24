@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Commit-and-deploy pipeline for Artists Farm Staging Environment (staging.artistic-sthan.com).
+  Commit-and-deploy pipeline for Artists Farm Staging Environment (staging.ground-code.com).
 
 .DESCRIPTION
   Builds the React frontend and updates the PHP backend on the staging subdomain, from the SAME
@@ -8,7 +8,7 @@
   testing before you promote (see deploy.ps1's "Promote to Live" - same script, no -Target
   needed, since GitHub already has the commits pushed here).
   1. Pushes local commits to GitHub (multi-tenant branch).
-  2. `git pull`s on ~/staging.artistic-sthan.com directly (own git checkout, independent of
+  2. `git pull`s on ~/staging.ground-code.com directly (own git checkout, independent of
      ~/public_html - NOT an rsync mirror of whatever's already live on production. This was the
      bug in the original version of this script: rsyncing FROM public_html meant staging could
      only ever mirror production, never get ahead of it, defeating the entire point of a staging
@@ -16,20 +16,28 @@
   3. Stashes any uncommitted local changes.
   4. Runs `npm run build` from clean state.
   5. Restores working tree stash.
-  6. Packages dist/, uploads, and swaps into place at ~/staging.artistic-sthan.com/dist/.
+  6. Packages dist/, uploads, and swaps into place at ~/staging.ground-code.com/dist/.
   7. Verifies live staging bundle response.
 
+.DOMAIN MIGRATION (24 Aug 2026)
+  Staging moved from staging.artistic-sthan.com to staging.ground-code.com - same hosting
+  account/server (91.238.163.173), new cPanel subdomain. The old subdomain's git checkout at
+  ~/staging.artistic-sthan.com is left in place (not deleted) but is no longer touched by this
+  script; php/config/database.php still recognizes its hostname as staging too, purely as a
+  safety net (see that file's comment) in case it's ever hit directly.
+
 .ONE-TIME SERVER SETUP REQUIRED
-  ~/staging.artistic-sthan.com must be its own git checkout of this repo (branch multi-tenant)
-  before step 2 above will work - it currently is NOT (confirmed 15 Aug 2026: plain rsync'd
-  files, `git status` reports "not a git repository"). Someone with server access needs to run,
-  once:
-    cd ~/staging.artistic-sthan.com
-    # back up anything not in git first (uploaded images/documents, db_pass.php, .env) -
+  ~/staging.ground-code.com must be its own git checkout of this repo (branch multi-tenant)
+  before step 2 above will work. Someone with server access needs to run, once:
+    cd ~/staging.ground-code.com
+    # back up anything not in git first (the cPanel-generated .htaccess/.user.ini/php.ini/
+    # cgi-bin/.well-known, plus db_pass.php/.env/php/uploads/* once restored) -
     # `git clone` into a non-empty directory will fail, so those need moving aside and back.
     git clone -b multi-tenant https://github.com/tarpanpatel/artists_farm.git .
     # then restore db_pass.php / .env / php/uploads/* into place - these are gitignored on
-    # purpose (secrets, tenant files) and a fresh clone won't have them.
+    # purpose (secrets, tenant files) and a fresh clone won't have them. Reusing the existing
+    # staging.artistic-sthan.com/php/config/db_pass.php works unchanged - it's the same
+    # staging_groundcode DB on the same MySQL server, only the hostname changed.
 
 .USAGE
   .\deploy-staging.ps1
@@ -47,8 +55,8 @@ $SshKey      = "C:\Users\Tarpan Patel\Documents\Downloads\github_cpanel"
 $SshHost     = "91.238.163.173"
 $SshPort     = 88
 $SshUser     = "apartment"
-$RemoteDir   = "~/staging.artistic-sthan.com"
-$LiveUrl     = "https://staging.artistic-sthan.com/dist/"
+$RemoteDir   = "~/staging.ground-code.com"
+$LiveUrl     = "https://staging.ground-code.com/dist/"
 $ProjectRoot = $PSScriptRoot
 
 function Write-Step($msg) {
@@ -200,7 +208,8 @@ try {
         $liveHtml = Invoke-WebRequest -Uri $LiveUrl -UseBasicParsing -ErrorAction Stop
     } catch {
         # Retry the SAME staging URL after a short pause, not a different
-        # site. This used to fall back to https://artistic-sthan.com/dist/ -
+        # site. This used to fall back to https://artistic-sthan.com/dist/ (an earlier version,
+        # before the 24 Aug 2026 domain migration to staging.ground-code.com) -
         # PRODUCTION, a completely separate build with its own bundle hashes
         # - so any merely-transient hiccup on the first staging fetch (e.g. a
         # brief LiteSpeed blip right after the rsync swap above) guaranteed a
@@ -263,14 +272,14 @@ try {
     # nameservers, so this is the genuinely correct address, not a guess),
     # bypassing this machine's own DNS resolution for just this one request.
     # Found live, testing this very check: Windows' local resolver failed to
-    # resolve staging.artistic-sthan.com entirely (curl error 6) on one
+    # resolve staging.ground-code.com entirely (curl error 6) on one
     # attempt and worked fine moments later - the same local-DNS flakiness
     # this whole incident kept running into. A deploy machine with an
     # unreliable resolver shouldn't be able to make this check cry wolf.
     Write-Step "Verifying Staging Backend API"
     $apiJson = $null
     for ($__attempt = 1; $__attempt -le 2 -and -not $apiJson; $__attempt++) {
-        $__curlOut = & curl.exe -s -m 20 --resolve "staging.artistic-sthan.com:443:$SshHost" "https://staging.artistic-sthan.com/php/api/router.php?action=get_nav_menu" 2>$null
+        $__curlOut = & curl.exe -s -m 20 --resolve "staging.ground-code.com:443:$SshHost" "https://staging.ground-code.com/php/api/router.php?action=get_nav_menu" 2>$null
         if ($__curlOut) {
             try { $apiJson = $__curlOut | ConvertFrom-Json -ErrorAction Stop } catch {}
         }
@@ -284,7 +293,7 @@ try {
     Write-Ok "Staging backend API verified alive (get_nav_menu responded with a real API envelope: $__apiSummary)."
     
     Write-Host ""
-    Write-Host "Staging Deploy Complete: https://staging.artistic-sthan.com/dist/" -ForegroundColor Green
+    Write-Host "Staging Deploy Complete: https://staging.ground-code.com/dist/" -ForegroundColor Green
 
 } catch {
     Write-Err $_.Exception.Message
