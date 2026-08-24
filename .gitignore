@@ -14,9 +14,14 @@ tests/e2e/.auth/
 !tailwind.config.*
 !manifest.json
 !php/errors/manifest.json
-test_*.php
-!php/tests/test_ai_intents.php
-fix_*.php
+# Root-anchored (24 Aug 2026 - previously bare `test_*.php`/`fix_*.php`, which silently dropped
+# php/tests/test_ai_intents.php from every commit/auto-commit for weeks with no error, since a
+# bare pattern matches the basename anywhere in the tree, not just repo-root scratch scripts).
+# This still ignores a quick `test_foo.php`/`fix_foo.php` dropped at the repo root for one-off
+# debugging, but any real test/fix file placed in a real subfolder (php/tests/, etc.) is tracked
+# by default now - no more per-file `!exceptions` needed as the suite grows.
+/test_*.php
+/fix_*.php
 temp_*.sql
 temp_*.js
 temp_dump*.sql
