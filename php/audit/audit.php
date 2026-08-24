@@ -55,6 +55,26 @@ function handleAuditRequests($pdo, $request_method, $action, $propertyId) {
                     try { $stmt->execute(array_merge([$propertyId], $log)); } catch (PDOException $e) {}
                 }
             }
+            // Cross-property mode (24 Aug 2026, found live: a staff edit made on
+            // "Resort Hut" showed a success toast and a real audit_logs row (both
+            // confirmed in the DB), but never appeared in Telescope's Staff
+            // Activity/Login portals). Root cause: Telescope (php/errors/index.php)
+            // is a standalone page with no property-scoped URL of its own - its
+            // `fetch('../api/router.php?action=get_audit_logs')` call carries no
+            // tenant_slug/property_slug/property_id at all, so the shared
+            // getCurrentPropertyId() resolver (php/config/property_resolver.php)
+            // falls all the way through to its hardcoded default fallback
+            // ('jaipur', property id 1) - Telescope was silently only ever able to
+            // show property 1's staff activity, no matter which property the
+            // actual event happened on. Telescope's other portals (php/js/sql/
+            // security errors) are already a single shared, non-property-scoped
+            // log by design, so "show every property, labelled" is the correct
+            // fix here too, not picking one property to default to - gated behind
+            // an explicit opt-in query param so the React app's own real,
+            // single-property Audit Logs page (AuditLogsView.tsx, which SHOULD
+            // stay scoped to whichever property the logged-in user is actually
+            // in) keeps its exact current behavior unchanged.
+            $wantsAllProperties = isset($_GET['scope']) && $_GET['scope'] === 'all';
             try {
                 $sql = "SELECT a.id, a.timestamp, COALESCE(a.user, u.username, 'System') as user, a.action,
                         COALESCE(a.ip_address, '') as ip_address,
@@ -63,13 +83,17 @@ function handleAuditRequests($pdo, $request_method, $action, $propertyId) {
                         COALESCE(a.device_type, 'desktop') as device_type,
                         COALESCE(a.status, 'Success') as status,
                         COALESCE(a.module, '') as module,
-                        COALESCE(a.user_agent, '') as user_agent
-                        FROM audit_logs a 
-                        LEFT JOIN staff_users u ON a.user_id = u.id 
-                        WHERE a.property_id = ?
-                        ORDER BY a.timestamp DESC LIMIT 300";
+                        COALESCE(a.user_agent, '') as user_agent,
+                        a.property_id,
+                        COALESCE(p.name, '') as property_name,
+                        COALESCE(p.slug, '') as property_slug
+                        FROM audit_logs a
+                        LEFT JOIN staff_users u ON a.user_id = u.id
+                        LEFT JOIN properties p ON a.property_id = p.id"
+                        . ($wantsAllProperties ? "" : " WHERE a.property_id = ?") .
+                        " ORDER BY a.timestamp DESC LIMIT 300";
                 $stmt = $pdo->prepare($sql);
-                $stmt->execute([$propertyId]);
+                $stmt->execute($wantsAllProperties ? [] : [$propertyId]);
                 echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
             } catch (PDOException $e) {
                 try {
@@ -80,10 +104,13 @@ function handleAuditRequests($pdo, $request_method, $action, $propertyId) {
                             COALESCE(device_type, 'desktop') as device_type,
                             COALESCE(status, 'Success') as status,
                             COALESCE(module, '') as module,
-                            COALESCE(user_agent, '') as user_agent
-                            FROM audit_logs WHERE property_id = ? ORDER BY timestamp DESC LIMIT 300";
+                            COALESCE(user_agent, '') as user_agent,
+                            property_id
+                            FROM audit_logs"
+                            . ($wantsAllProperties ? "" : " WHERE property_id = ?") .
+                            " ORDER BY timestamp DESC LIMIT 300";
                     $stmt = $pdo->prepare($sql);
-                    $stmt->execute([$propertyId]);
+                    $stmt->execute($wantsAllProperties ? [] : [$propertyId]);
                     echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
                 } catch (PDOException $e2) {
                     echo json_encode(['status' => 'success', 'data' => []]);

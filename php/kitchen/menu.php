@@ -316,6 +316,86 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                 } catch (Exception $e) {}
                 markSchemaVerified('nav_menu_self_heal_v3');
             }
+
+            // v4 (24 Aug 2026, ROLES.md's "Staff kitchen order-status view" open
+            // follow-up): a scoped-down Kitchen entry for the generic `Staff` role
+            // ONLY - live orders + served orders + "Mark Served", not the full
+            // Kitchen module. Deliberately its own standalone nav item rather than
+            // adding "Staff" back into kitchen_overview/take_food_order's
+            // roles_json - that's the single umbrella permission every other
+            // Kitchen sub-page (Take Order, Menu Catalog, Requisitions, Staff
+            // Meals, Recipe Builder) keys off of, so widening it would silently
+            // reopen the full module the 23 Aug fix deliberately closed for Staff.
+            // tab_key 'kitchen' + unique_key 'staff_kitchen_status' resolves to
+            // KitchenManagement via App.tsx's live-nav-item routeMap fallback
+            // (uniqueKeys not in its static routeMap fall back to the item's own
+            // tabKey); KitchenManagement.tsx's own isRestrictedStaffKitchenView
+            // check (activeRole === 'Staff') does the actual UI restriction once
+            // there. INSERT IGNORE so re-running this after someone deletes/edits
+            // the row via the Nav Menu Editor doesn't resurrect it.
+            // SUPERSEDED by v5 immediately below, same day - left in place
+            // unmodified (self-heal blocks never get edited after shipping, see
+            // v2->v3's own precedent) purely so environments that already ran v4
+            // have a historical record of what markSchemaVerified('nav_menu_self_heal_v4')
+            // actually did; v5 deletes what this block inserted.
+            if (!isSchemaVerified('nav_menu_self_heal_v4')) {
+                try {
+                    $pdo->exec("INSERT IGNORE INTO nav_menu_items
+                        (id, property_id, title, tab_key, unique_key, url_slug, category, icon_name, display_order, roles_json, is_visible, parent_id)
+                        VALUES
+                        ('nav-staff-kitchen-status', 1, 'Kitchen Order Status', 'kitchen', 'staff_kitchen_status', 'staff_kitchen_status', 'Kitchen & Food', 'Utensils', 2, '[\"Staff\"]', 1, NULL)");
+                } catch (Exception $e) {}
+                markSchemaVerified('nav_menu_self_heal_v4');
+            }
+
+            // v5 (24 Aug 2026, same day correction - explicit product direction):
+            // "the nav tree must never change shape for a role - a role with access
+            // to Food Orders only reaches it via Kitchen > Food Orders, same as
+            // every other role, so that if that role is ever granted MORE kitchen
+            // access later, its menu just gains siblings under the SAME already-
+            // familiar 'Kitchen' parent instead of the whole navigation shape
+            // changing out from under them." v4's standalone top-level item broke
+            // that rule. Fix:
+            //   1. Delete the standalone 'staff_kitchen_status' row v4 inserted.
+            //   2. Grant `Staff` the real "Kitchen" (kitchen_overview) parent row
+            //      AND its "Food Orders" (take_food_order) child row - both are
+            //      required: App.tsx's canSeeNavKey()/kitchenAccessAllowed/sidebar
+            //      filtering all key off the CHILD's own roles_json, but
+            //      isRouteAllowed()'s special-case bypass for the
+            //      'take_food_order'/'kitchen_orders' keys deliberately checks the
+            //      PARENT (kitchen_overview) row's roles instead (see that
+            //      function's own 23 Aug comment) - granting only one of the two
+            //      would either hide the sidebar link entirely or show it but bounce
+            //      the click straight back to Dashboard.
+            // KitchenManagement.tsx's isRestrictedStaffKitchenView flag (unchanged
+            // from v4/24 Aug) still does the actual UI restriction once Staff is
+            // inside the page - only now they arrive via the same real "Food
+            // Orders" child every other kitchen-enabled role uses, landing on the
+            // Live Tickets tab instead of Take Order (see that file's
+            // isRestrictedStaffKitchenView-gated getInitialTab() override), rather
+            // than via a synthetic shortcut item that doesn't exist for anyone else.
+            // json_decode/encode round-trip (not the v2 block's string REPLACE
+            // technique) so this stays correct regardless of each row's current
+            // roles_json contents and never duplicates "Staff" on a re-run.
+            if (!isSchemaVerified('nav_menu_self_heal_v5')) {
+                try {
+                    $pdo->exec("DELETE FROM nav_menu_items WHERE unique_key = 'staff_kitchen_status'");
+                    foreach (['take_food_order', 'kitchen_overview'] as $grantKey) {
+                        $stmt = $pdo->prepare("SELECT id, roles_json FROM nav_menu_items WHERE unique_key = ?");
+                        $stmt->execute([$grantKey]);
+                        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+                        if ($row) {
+                            $roles = json_decode($row['roles_json'] ?? '[]', true) ?: [];
+                            if (!in_array('Staff', $roles, true)) {
+                                $roles[] = 'Staff';
+                                $upd = $pdo->prepare("UPDATE nav_menu_items SET roles_json = ? WHERE id = ?");
+                                $upd->execute([json_encode($roles), $row['id']]);
+                            }
+                        }
+                    }
+                } catch (Exception $e) {}
+                markSchemaVerified('nav_menu_self_heal_v5');
+            }
             try {
                 $stmt = $pdo->query("SELECT id, title, tab_key as tabKey, unique_key as uniqueKey, COALESCE(NULLIF(url_slug, ''), unique_key) as urlSlug, category, icon_name as iconName, display_order as `order`, roles_json, is_visible as isVisible, COALESCE(custom_url, '') as customUrl, IFNULL(open_in_new_tab, 0) as openInNewTab, parent_id as parentId FROM nav_menu_items ORDER BY display_order ASC");
                 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -355,6 +435,17 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
 
                     // Navigation structure is shared across every property/tenant, so a
                     // save here is not scoped to $propertyId — see get_nav_menu above.
+                    // Snapshot the pre-save roles_json per unique_key here (before the
+                    // transaction below overwrites it) purely for the audit diff after
+                    // the save succeeds - see that comment for why.
+                    $oldRolesByKey = [];
+                    try {
+                        $oldRows = $pdo->query("SELECT unique_key, title, roles_json FROM nav_menu_items")->fetchAll(PDO::FETCH_ASSOC);
+                        foreach ($oldRows as $r) {
+                            $oldRolesByKey[$r['unique_key']] = ['title' => $r['title'], 'roles' => $r['roles_json']];
+                        }
+                    } catch (Exception $eSnap) {}
+
                     $pdo->beginTransaction();
                     $stmt = $pdo->prepare("INSERT INTO nav_menu_items (id, title, tab_key, unique_key, url_slug, category, icon_name, display_order, roles_json, is_visible, custom_url, open_in_new_tab, parent_id)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -404,6 +495,36 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
 
                     $pdo->commit();
                     echo json_encode(['status' => 'success', 'message' => 'Navigation menu saved successfully']);
+
+                    // Audit trail (24 Aug 2026, extending the fix applied to
+                    // update_property/staff account CRUD) - this changes WHO can
+                    // access WHAT across every tenant on the platform (roles_json
+                    // is shared, unscoped by property - see the comment above),
+                    // arguably the single most security-relevant action in this
+                    // whole file, and previously had zero audit trail at all.
+                    // Diffs the pre-save snapshot above against the saved payload
+                    // to list exactly which nav items had a role-visibility
+                    // change, rather than just "menu saved".
+                    try {
+                        $changedItems = [];
+                        foreach ($items as $item) {
+                            $uk = $item['uniqueKey'] ?? '';
+                            if ($uk === '') continue;
+                            $newRolesJson = json_encode($item['roles'] ?? []);
+                            $old = $oldRolesByKey[$uk] ?? null;
+                            if (!$old || $old['roles'] !== $newRolesJson) {
+                                $changedItems[] = $item['title'] ?? $uk;
+                            }
+                        }
+                        $auditUser = $_SESSION['username'] ?? 'System';
+                        $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+                        $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+                        $actionMsg = empty($changedItems)
+                            ? 'Saved navigation menu (no role changes)'
+                            : 'Saved navigation menu - role changes: ' . implode(', ', array_slice($changedItems, 0, 10)) . (count($changedItems) > 10 ? ' +' . (count($changedItems) - 10) . ' more' : '');
+                        $stmtAudit = $pdo->prepare("INSERT INTO audit_logs (property_id, action, timestamp, user, ip_address, user_agent, status, module) VALUES (?, ?, NOW(), ?, ?, ?, 'Success', 'nav_menu_permissions')");
+                        $stmtAudit->execute([$propertyId, $actionMsg, $auditUser, $ip, $ua]);
+                    } catch (Exception $eAudit) {}
                 } catch (PDOException $e) {
                     if ($pdo->inTransaction()) $pdo->rollBack();
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);

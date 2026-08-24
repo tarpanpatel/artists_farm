@@ -1512,6 +1512,11 @@ switch ($action) {
             $params[] = $profileUserId;
             $pdo->prepare("UPDATE users SET {$fields} WHERE id = ?")->execute($params);
 
+            // Captured before the session is resynced below, so the audit
+            // entry names who this account WAS logged in as when the change
+            // was made, not the just-changed value.
+            $auditUserBefore = $_SESSION['username'] ?? $newUsername;
+
             // Keep the session username in sync so the header/sidebar reflect the change immediately.
             if ($newUsername !== ($profileUser['username'] ?? '')) {
                 $_SESSION['username'] = $newUsername;
@@ -1521,6 +1526,17 @@ switch ($action) {
                 'success' => true,
                 'message' => $newPasscode ? 'Account details and passcode updated' : 'Account details updated',
             ]);
+
+            // Audit trail (24 Aug 2026) - Root Admin's own account settings,
+            // including their passcode, had no audit trail at all. Never logs
+            // the actual passcode value, only that it changed.
+            try {
+                $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+                $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+                $actionMsg = 'Root Admin updated own account profile' . ($newPasscode ? ' (passcode changed)' : '');
+                $stmtAudit = $pdo->prepare("INSERT INTO audit_logs (property_id, action, timestamp, user, ip_address, user_agent, status, module) VALUES (?, ?, NOW(), ?, ?, ?, 'Success', 'platform_admin')");
+                $stmtAudit->execute([1, $actionMsg, $auditUserBefore, $ip, $ua]);
+            } catch (Exception $eAudit) {}
         } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -1605,6 +1621,18 @@ switch ($action) {
             }
 
             echo json_encode($response);
+
+            // Audit trail (24 Aug 2026, extending the platform_admin sweep) -
+            // tenant provisioning, same gap as everything else fixed in this
+            // pass.
+            try {
+                $auditUser = $_SESSION['username'] ?? 'Root Admin';
+                $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+                $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+                $actionMsg = "Created tenant: {$name} ({$slug})";
+                $stmtAudit = $pdo->prepare("INSERT INTO audit_logs (property_id, action, timestamp, user, ip_address, user_agent, status, module) VALUES (?, ?, NOW(), ?, ?, ?, 'Success', 'platform_admin')");
+                $stmtAudit->execute([1, $actionMsg, $auditUser, $ip, $ua]);
+            } catch (Exception $eAudit) {}
         } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -2286,6 +2314,21 @@ switch ($action) {
                 $id
             ]);
             echo json_encode(['success' => true, 'message' => 'Tenant updated successfully']);
+
+            // Audit trail (24 Aug 2026, extending the platform_admin sweep) -
+            // includes is_active, since deactivating a tenant here blocks that
+            // tenant's access to the whole app - a change worth a record on its
+            // own, not just folded into a generic "tenant updated".
+            try {
+                $auditUser = $_SESSION['username'] ?? 'Root Admin';
+                $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+                $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+                $activeLabel = !empty($input['is_active']) ? 'active' : 'inactive';
+                $subStatusLabel = $input['subscription_status'] ?? 'trial';
+                $actionMsg = "Updated tenant #{$id}: " . ($input['name'] ?? '') . " ({$slug}), status {$subStatusLabel}, {$activeLabel}";
+                $stmtAudit = $pdo->prepare("INSERT INTO audit_logs (property_id, action, timestamp, user, ip_address, user_agent, status, module) VALUES (?, ?, NOW(), ?, ?, ?, 'Success', 'platform_admin')");
+                $stmtAudit->execute([1, $actionMsg, $auditUser, $ip, $ua]);
+            } catch (Exception $eAudit) {}
         } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -2487,6 +2530,13 @@ switch ($action) {
                 exit;
             }
 
+            // Captured before 'updated_at'/id get appended below, so this only
+            // ever lists real, human-editable fields (e.g. ['gstin'], not
+            // ['gstin', 'updated_at']).
+            $changedColumns = array_map(function ($s) {
+                return trim(explode('=', $s)[0]);
+            }, $sets);
+
             $sets[] = 'updated_at = CURRENT_TIMESTAMP';
             $params[] = $property_id;
 
@@ -2495,6 +2545,50 @@ switch ($action) {
 
             if ($stmt->rowCount() > 0) {
                 echo json_encode(['success' => true, 'message' => 'Property updated successfully']);
+
+                // Audit trail (24 Aug 2026, added - reported live: "I just added
+                // gstin for artistfarm but its not shown in staff activity").
+                // This whole update_property action had never written to
+                // audit_logs at all - not a display bug, a real gap, unlike every
+                // other write module (billing.php, receipts.php, inventory.php,
+                // telegram/manager.php) which already logs its own action here.
+                // Lists which fields actually changed by human-readable label
+                // (e.g. "Updated Artists Farm Jaipur: GSTIN") rather than a
+                // generic "Property updated", so it's actually useful to read
+                // later. Wrapped in try/catch, same as every other module's audit
+                // insert - a failed audit write must never turn an
+                // already-successful save into an error response.
+                try {
+                    $fieldLabels = [
+                        'status' => 'Status', 'name' => 'Property Name', 'email' => 'Email',
+                        'phone' => 'Contact Phone', 'gstin' => 'GSTIN', 'upi_id' => 'UPI ID',
+                        'upi_qr_code_url' => 'UPI QR Code', 'walk_in_table_count' => 'Walk-in Table Count',
+                        'telegram_template_customization_enabled' => 'Telegram Template Customization',
+                        'google_maps_link' => 'Google Maps Link', 'address' => 'Address',
+                        'instructions' => 'Instructions', 'checkin_time' => 'Check-in Time',
+                        'checkout_time' => 'Check-out Time', 'default_tariff' => 'Default Tariff',
+                        'whatsapp_voucher_template' => 'WhatsApp Voucher Template',
+                    ];
+                    $changedLabels = array_map(function ($c) use ($fieldLabels) {
+                        return $fieldLabels[$c] ?? $c;
+                    }, $changedColumns);
+
+                    $propNameStmt = $pdo->prepare("SELECT name FROM properties WHERE id = ?");
+                    $propNameStmt->execute([$property_id]);
+                    $propName = $propNameStmt->fetchColumn() ?: "Property #$property_id";
+
+                    // $is_authenticated_user's session case has a real staff
+                    // username; the public property-setup path (see above) proved
+                    // ownership via tenant/property slug instead of a login, so
+                    // falls back to that slug rather than showing a blank user.
+                    $auditUser = $_SESSION['username'] ?? (trim($input['tenant_slug'] ?? '') ?: 'Property Setup');
+                    $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+                    $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+                    $actionMsg = "Updated {$propName}: " . implode(', ', $changedLabels);
+
+                    $stmtAudit = $pdo->prepare("INSERT INTO audit_logs (property_id, action, timestamp, user, ip_address, user_agent, status, module) VALUES (?, ?, NOW(), ?, ?, ?, 'Success', 'property_settings')");
+                    $stmtAudit->execute([$property_id, $actionMsg, $auditUser, $ip, $ua]);
+                } catch (Exception $eAudit) {}
             } else {
                 echo json_encode(['success' => true, 'message' => 'No changes made']);
             }
@@ -2541,6 +2635,20 @@ switch ($action) {
             }
 
             echo json_encode(['success' => true, 'message' => 'Property created', 'property_id' => $property_id]);
+
+            // Audit trail (24 Aug 2026, extending the sweep started on
+            // update_property/staff CRUD/save_nav_menu - Root Admin's own
+            // property/tenant lifecycle actions had the exact same gap: real
+            // account-provisioning/deletion events with zero record of who did
+            // them or when).
+            try {
+                $auditUser = $_SESSION['username'] ?? 'Root Admin';
+                $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+                $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+                $actionMsg = "Created property: {$name} ({$slug})";
+                $stmtAudit = $pdo->prepare("INSERT INTO audit_logs (property_id, action, timestamp, user, ip_address, user_agent, status, module) VALUES (?, ?, NOW(), ?, ?, ?, 'Success', 'platform_admin')");
+                $stmtAudit->execute([$property_id, $actionMsg, $auditUser, $ip, $ua]);
+            } catch (Exception $eAudit) {}
         } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -2572,6 +2680,20 @@ switch ($action) {
                 $property_id
             ]);
             echo json_encode(['success' => $ok, 'message' => $ok ? 'Property updated' : 'Failed']);
+
+            if ($ok) {
+                // Audit trail (24 Aug 2026) - Root Admin's own property-editing
+                // endpoint (distinct from the tenant-facing update_property
+                // above, which already got this fix), had the same gap.
+                try {
+                    $auditUser = $_SESSION['username'] ?? 'Root Admin';
+                    $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+                    $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+                    $actionMsg = "Root Admin updated property #{$property_id}: " . ($input['name'] ?? '') . ' (' . ($input['slug'] ?? '') . '), status ' . ($input['status'] ?? 'active');
+                    $stmtAudit = $pdo->prepare("INSERT INTO audit_logs (property_id, action, timestamp, user, ip_address, user_agent, status, module) VALUES (?, ?, NOW(), ?, ?, ?, 'Success', 'platform_admin')");
+                    $stmtAudit->execute([$property_id, $actionMsg, $auditUser, $ip, $ua]);
+                } catch (Exception $eAudit) {}
+            }
         } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -2587,12 +2709,38 @@ switch ($action) {
             exit;
         }
 
+        // Fetch before deleting - purely so the audit entry below can name
+        // what was destroyed instead of just an id that no longer resolves
+        // to anything afterward.
+        $deletedPropName = "Property #{$property_id}";
+        try {
+            $pStmt = $pdo->prepare("SELECT name, slug FROM properties WHERE id = ?");
+            $pStmt->execute([$property_id]);
+            $pRow = $pStmt->fetch(PDO::FETCH_ASSOC);
+            if ($pRow) $deletedPropName = "{$pRow['name']} ({$pRow['slug']})";
+        } catch (Exception $eSel) {}
+
         try {
             $pdo->beginTransaction();
             deletePropertyChildData($pdo, $property_id);
             $pdo->prepare("DELETE FROM properties WHERE id = ?")->execute([$property_id]);
             $pdo->commit();
             echo json_encode(['success' => true, 'message' => 'Property deleted successfully']);
+
+            // Audit trail (24 Aug 2026) - a destructive, irreversible action
+            // that previously left no record at all. Deliberately NOT scoped
+            // to the now-deleted property_id (that row and its whole audit
+            // history are gone with it) - logged against property 1 instead,
+            // same "not really property-scoped" convention router.php's own
+            // login audit insert already uses for a platform-level event.
+            try {
+                $auditUser = $_SESSION['username'] ?? 'Root Admin';
+                $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+                $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+                $actionMsg = "Deleted property: {$deletedPropName}";
+                $stmtAudit = $pdo->prepare("INSERT INTO audit_logs (property_id, action, timestamp, user, ip_address, user_agent, status, module) VALUES (?, ?, NOW(), ?, ?, ?, 'Success', 'platform_admin')");
+                $stmtAudit->execute([1, $actionMsg, $auditUser, $ip, $ua]);
+            } catch (Exception $eAudit) {}
         } catch (Exception $e) {
             $pdo->rollBack();
             http_response_code(500);
@@ -2617,6 +2765,15 @@ switch ($action) {
             echo json_encode(['success' => false, 'message' => 'tenant_id required']);
             exit;
         }
+
+        // Fetch before deleting - same reasoning as delete_property above.
+        $deletedTenantName = "Tenant #{$tenant_id}";
+        try {
+            $tStmt = $pdo->prepare("SELECT name, slug FROM tenants WHERE id = ?");
+            $tStmt->execute([$tenant_id]);
+            $tRow = $tStmt->fetch(PDO::FETCH_ASSOC);
+            if ($tRow) $deletedTenantName = "{$tRow['name']} ({$tRow['slug']})";
+        } catch (Exception $eSel) {}
 
         try {
             $pdo->beginTransaction();
@@ -2646,6 +2803,21 @@ switch ($action) {
                     ? 'Tenant and ' . count($propertyIds) . ' propert' . (count($propertyIds) === 1 ? 'y' : 'ies') . ' deleted successfully'
                     : 'Tenant deleted successfully',
             ]);
+
+            // Audit trail (24 Aug 2026) - the most destructive single action in
+            // this file (cascades to every property under the tenant) and
+            // previously had zero audit trail. Not scoped to the deleted
+            // tenant's properties (they're gone) - same "log against property 1
+            // for a platform-level event" convention delete_property/login
+            // above already use.
+            try {
+                $auditUser = $_SESSION['username'] ?? 'Root Admin';
+                $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+                $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+                $actionMsg = "Deleted tenant: {$deletedTenantName} (+" . count($propertyIds) . ' propert' . (count($propertyIds) === 1 ? 'y' : 'ies') . ')';
+                $stmtAudit = $pdo->prepare("INSERT INTO audit_logs (property_id, action, timestamp, user, ip_address, user_agent, status, module) VALUES (?, ?, NOW(), ?, ?, ?, 'Success', 'platform_admin')");
+                $stmtAudit->execute([1, $actionMsg, $auditUser, $ip, $ua]);
+            } catch (Exception $eAudit) {}
         } catch (Exception $e) {
             $pdo->rollBack();
             http_response_code(500);
@@ -2696,7 +2868,26 @@ switch ($action) {
         try {
             $stmt = $pdo->prepare("UPDATE staff_users SET passcode = ? WHERE 1");
             $ok = $stmt->execute(['123456']);
+            $affected = $stmt->rowCount();
             echo json_encode(['success' => $ok, 'message' => $ok ? 'All staff passcodes reset to 123456' : 'Failed']);
+
+            // Audit trail (24 Aug 2026) - this resets EVERY staff passcode on
+            // the ENTIRE platform, across every tenant, to one publicly-known
+            // value in a single call, and previously left no record of who
+            // triggered it or when. Given this exact codebase has already been
+            // burned once by a hardcoded '123456' backdoor (see the Security
+            // Backlog note), a blast-radius action this large deserves an
+            // audit trail more than almost anything else in this file.
+            if ($ok) {
+                try {
+                    $auditUser = $_SESSION['username'] ?? 'Root Admin';
+                    $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+                    $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+                    $actionMsg = "Reset ALL staff passcodes platform-wide to the default (123456) - {$affected} account(s) affected";
+                    $stmtAudit = $pdo->prepare("INSERT INTO audit_logs (property_id, action, timestamp, user, ip_address, user_agent, status, module) VALUES (?, ?, NOW(), ?, ?, ?, 'Success', 'platform_admin')");
+                    $stmtAudit->execute([1, $actionMsg, $auditUser, $ip, $ua]);
+                } catch (Exception $eAudit) {}
+            }
         } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);

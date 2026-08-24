@@ -218,12 +218,14 @@ export const Navigation: React.FC<NavigationProps> = ({
         category: 'Kitchen & Food',
         iconName: 'Utensils',
         order: 10,
-        // Staff (generic/base role) deliberately excluded - matches the
-        // real DB-seeded kitchen_overview row (fixed 22 Aug 2026, it used
-        // to include "Staff" there too, which is what actually let plain
-        // Staff reach kitchen pages at all - this synthetic fallback is
-        // only used before that real row has loaded, so it needs to agree).
-        roles: ['Super Admin', 'Admin', 'Staff Kitchen', 'Staff Supervisor'],
+        // Staff (generic/base role) re-added 24 Aug 2026 - the real DB-seeded
+        // kitchen_overview row now grants it too (nav_menu_self_heal_v5,
+        // php/kitchen/menu.php: Staff reaches the restricted "Food Orders"
+        // child through this same real "Kitchen" parent, not a standalone nav
+        // item, so this best-effort placeholder for the still-loading real row
+        // needs to agree or Staff would see "Kitchen" flicker in/out during the
+        // cold-start data race instead of staying visible throughout).
+        roles: ['Super Admin', 'Admin', 'Staff Kitchen', 'Staff Supervisor', 'Staff'],
         isVisible: true,
         parentId: null,
       };

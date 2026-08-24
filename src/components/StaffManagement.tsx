@@ -1892,7 +1892,22 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
               <div>
                 <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('staff_qr_upload_label', 'Payment QR Code Image (Optional)')}</label>
-                <Input
+                {/* Flowbite-style hidden-input + styled-label pattern (24 Aug 2026,
+                    reported live: "file upload UI is not like flowbite") - the raw
+                    <Input type="file"> this used to be just forwards Tailwind
+                    classes onto a native file input, whose OS-drawn "Choose
+                    File"/"No file chosen" chrome can't be restyled that way at all
+                    (browsers don't expose it to CSS beyond ::file-selector-button,
+                    which this project doesn't use) - it just looked like a bare,
+                    unstyled browser control regardless of the classes passed in.
+                    Same pattern PettyCashManagement.tsx's invoice/screenshot
+                    uploads already use. */}
+                <label htmlFor="new-staff-qr-upload-input" className="block bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-2.5 rounded-lg text-slate-600 dark:text-slate-300 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer shadow-md hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                  <QrCode className="w-4 h-4 text-slate-400" />
+                  <span>{newQrCodeUrl ? t('change_qr_image_button', 'Change QR Code Image') : t('choose_qr_image_button', 'Choose QR Code Image')}</span>
+                </label>
+                <input
+                  id="new-staff-qr-upload-input"
                   type="file"
                   accept="image/*"
                   onChange={(e) => {
@@ -1902,9 +1917,15 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                       reader.onloadend = () => setNewQrCodeUrl(reader.result as string);
                       reader.readAsDataURL(file);
                     }
+                    e.target.value = '';
                   }}
-                  className="w-full text-xs text-slate-500 bg-slate-50 dark:bg-slate-900 p-2 rounded-lg border border-slate-200 dark:border-slate-700"
+                  className="hidden"
                 />
+                {newQrCodeUrl && (
+                  <div className="mt-2 flex justify-center">
+                    <img src={newQrCodeUrl} alt={t('qr_code_preview_alt', 'QR code preview')} className="h-16 w-16 object-contain border border-slate-200 dark:border-slate-700 rounded-lg shadow-md bg-white" />
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center justify-end pt-3 border-t border-slate-100 dark:border-slate-700">
@@ -2091,7 +2112,17 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
               <div>
                 <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('replace_qr_label', 'Replace Payment QR Code Image')}</label>
-                <Input
+                {/* Flowbite-style hidden-input + styled-label pattern (24 Aug 2026,
+                    reported live: "file upload UI is not like flowbite") - see the
+                    matching fix in the Add Staff form above for why the old raw
+                    <Input type="file"> could never actually look flowbite-styled
+                    regardless of classes passed to it. */}
+                <label htmlFor="update-staff-qr-upload-input" className="block bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-2.5 rounded-lg text-slate-600 dark:text-slate-300 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer shadow-md hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                  <QrCode className="w-4 h-4 text-slate-400" />
+                  <span>{updateQrCodeUrl ? t('change_qr_image_button', 'Change QR Code Image') : t('choose_qr_image_button', 'Choose QR Code Image')}</span>
+                </label>
+                <input
+                  id="update-staff-qr-upload-input"
                   type="file"
                   accept="image/*"
                   onChange={(e) => {
@@ -2101,9 +2132,19 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                       reader.onloadend = () => setUpdateQrCodeUrl(reader.result as string);
                       reader.readAsDataURL(file);
                     }
+                    e.target.value = '';
                   }}
-                  className="w-full text-xs text-slate-500 bg-slate-50 dark:bg-slate-900 p-2 rounded-lg border border-slate-200 dark:border-slate-700"
+                  className="hidden"
                 />
+                {/* Preview the newly-chosen image if any, else fall back to
+                    whatever QR code is already saved for this staff member - the
+                    old plain file input gave no indication a QR code already
+                    existed at all. */}
+                {(updateQrCodeUrl || updateTargetUser?.qrCodeUrl) && (
+                  <div className="mt-2 flex justify-center">
+                    <img src={updateQrCodeUrl || updateTargetUser?.qrCodeUrl} alt={t('qr_code_preview_alt', 'QR code preview')} className="h-16 w-16 object-contain border border-slate-200 dark:border-slate-700 rounded-lg shadow-md bg-white" />
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-100 dark:border-slate-700 flex-wrap">

@@ -183,6 +183,20 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                     $syncStmt = $pdo->prepare("UPDATE staff_users SET access_all_properties = ? WHERE id = ?");
                     $syncStmt->execute([$accessAllProperties, $newStaffId]);
                     echo json_encode(['status' => 'success', 'message' => 'Staff member created successfully']);
+
+                    // Audit trail (24 Aug 2026, extending the fix applied to
+                    // update_property - staff account creation/role assignment is
+                    // at least as security-sensitive as a property setting change,
+                    // and had the exact same gap: no audit_logs write at all).
+                    try {
+                        $auditUser = $_SESSION['username'] ?? 'System';
+                        $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+                        $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+                        $newFullName = $input['fullName'] ?? ($input['name'] ?? $username);
+                        $actionMsg = "Created staff account: {$username} ({$newFullName}), role " . ($input['role'] ?? 'Staff');
+                        $stmtAudit = $pdo->prepare("INSERT INTO audit_logs (property_id, action, timestamp, user, ip_address, user_agent, status, module) VALUES (?, ?, NOW(), ?, ?, ?, 'Success', 'staff_management')");
+                        $stmtAudit->execute([$propertyId, $actionMsg, $auditUser, $ip, $ua]);
+                    } catch (Exception $eAudit) {}
                 } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
                 }
@@ -268,6 +282,32 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                         $syncStmt->execute([$accessAllProperties, $input['id']]);
                     }
                     echo json_encode(['status' => 'success', 'message' => 'Staff member updated successfully']);
+
+                    // Audit trail (24 Aug 2026, same fix as add_user above). Role
+                    // changes are called out explicitly with old->new (the single
+                    // most security-relevant field here - a role escalation should
+                    // never be silent), everything else just names the field.
+                    try {
+                        $changedFields = [];
+                        if ($existing) {
+                            if ((string)($existing['role'] ?? '') !== (string)$role) $changedFields[] = "Role ({$existing['role']} \u{2192} {$role})";
+                            if ((string)($existing['status'] ?? '') !== (string)$status) $changedFields[] = "Status ({$existing['status']} \u{2192} {$status})";
+                            if ((float)($existing['monthly_salary'] ?? 0) != (float)$monthlySalary) $changedFields[] = 'Monthly Salary';
+                            if ((float)($existing['daily_wage'] ?? 0) != (float)$dailyWage) $changedFields[] = 'Daily Wage';
+                            if ((int)($existing['is_financial_handler'] ?? 0) !== (int)$isFinancialHandler) $changedFields[] = 'Financial Handler Flag';
+                            if ((int)($existing['access_all_properties'] ?? 0) !== (int)$accessAllProperties) $changedFields[] = 'Access All Properties';
+                            if ((string)($existing['full_name'] ?? '') !== (string)$fullName) $changedFields[] = 'Full Name';
+                            if ((string)($existing['username'] ?? '') !== (string)$username) $changedFields[] = 'Username/Phone';
+                        }
+                        if (!empty($input['passcode'])) $changedFields[] = 'Passcode';
+
+                        $auditUser = $_SESSION['username'] ?? 'System';
+                        $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+                        $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+                        $actionMsg = "Updated staff account {$username}: " . (empty($changedFields) ? 'no field changes' : implode(', ', $changedFields));
+                        $stmtAudit = $pdo->prepare("INSERT INTO audit_logs (property_id, action, timestamp, user, ip_address, user_agent, status, module) VALUES (?, ?, NOW(), ?, ?, ?, 'Success', 'staff_management')");
+                        $stmtAudit->execute([$propertyId, $actionMsg, $auditUser, $ip, $ua]);
+                    } catch (Exception $eAudit) {}
                 } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
                 }
@@ -278,9 +318,31 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
+                    // Fetch before deleting - purely so the audit entry below can
+                    // name who was deleted instead of just an opaque id.
+                    $deletedName = $input['id'] ?? '';
+                    try {
+                        $stmtSel = $pdo->prepare("SELECT username, full_name, role FROM staff_users WHERE id = ? AND property_id = ?");
+                        $stmtSel->execute([$input['id'], $propertyId]);
+                        $delRow = $stmtSel->fetch(PDO::FETCH_ASSOC);
+                        if ($delRow) {
+                            $deletedName = ($delRow['full_name'] ?: $delRow['username']) . " ({$delRow['role']})";
+                        }
+                    } catch (PDOException $eSel) {}
+
                     $stmt = $pdo->prepare("DELETE FROM staff_users WHERE id = ? AND property_id = ?");
                     $stmt->execute([$input['id'], $propertyId]);
                     echo json_encode(['status' => 'success', 'message' => 'Staff member deleted successfully']);
+
+                    // Audit trail (24 Aug 2026, same fix as add_user/update_user above).
+                    try {
+                        $auditUser = $_SESSION['username'] ?? 'System';
+                        $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+                        $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+                        $actionMsg = "Deleted staff account: {$deletedName}";
+                        $stmtAudit = $pdo->prepare("INSERT INTO audit_logs (property_id, action, timestamp, user, ip_address, user_agent, status, module) VALUES (?, ?, NOW(), ?, ?, ?, 'Success', 'staff_management')");
+                        $stmtAudit->execute([$propertyId, $actionMsg, $auditUser, $ip, $ua]);
+                    } catch (Exception $eAudit) {}
                 } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
                 }

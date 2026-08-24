@@ -519,6 +519,16 @@ if ($wantsJson) {
     const LS_SEEN_PREFIX = 'telescope_last_seen_';
     let activePortal = new URLSearchParams(window.location.search).get('portal') || localStorage.getItem('telescope_active_portal') || 'requests';
     let pollingIntervalToken = null;
+    // Pagination (24 Aug 2026, requested - applies to every portal, since
+    // it's driven by whatever loadPortalLogs() last computed, not
+    // per-portal). lastFilterSignature lets loadPortalLogs() tell "the
+    // active filters actually changed, reset to page 1" apart from "this is
+    // just the 4-second Live Polling tick re-running with the same filters"
+    // - without that distinction, polling would silently snap the user back
+    // to page 1 every few seconds while they're reading an older page.
+    const LOGS_PAGE_SIZE = 10;
+    let currentLogsPage = 1;
+    let lastFilterSignature = null;
 
     function getClientLogs() {
         try {
@@ -673,27 +683,42 @@ if ($wantsJson) {
         } catch (e) {}
 
         try {
-            const aRes = await fetch(`../api/router.php?action=get_audit_logs`);
+            // scope=all (24 Aug 2026): Telescope is a standalone page with no
+            // property-scoped URL of its own, so the parameterless fetch this used
+            // to be silently fell through the shared getCurrentPropertyId()
+            // resolver's default fallback (hardcoded to property 'jaipur', id 1) -
+            // meaning Staff Activity/Login here could only ever show that ONE
+            // property's rows, no matter which property an event actually
+            // happened on (found live: a real staff edit + its real audit_logs
+            // row on a different property never appeared here). Every other
+            // portal on this page is already a single shared, non-property-scoped
+            // log, so "every property, labelled" - not "pick one property to
+            // default to" - is the fix; see audit.php's get_audit_logs handler for
+            // the opt-in `scope=all` branch this relies on (default/unscoped
+            // behavior for every OTHER caller, e.g. the real app's own
+            // single-property Audit Logs page, is unchanged).
+            const aRes = await fetch(`../api/router.php?action=get_audit_logs&scope=all`);
             const aData = await aRes.json();
             if (Array.isArray(aData.data)) {
                 const existingIds = new Set(allLogs.map(l => l.id));
+                const propertyLabel = (l) => l.property_name || (l.property_id ? `Property #${l.property_id}` : 'Unknown Property');
                 const activityMapped = aData.data.filter(l => (l.module || '').toLowerCase() !== 'login').map(l => ({
                     id: `activity-${l.id}`,
                     portal: 'staff_activity',
                     severity: l.status === 'Failed' ? 'Warning' : 'Info',
                     msg: l.action,
-                    origin: l.user || 'System',
+                    origin: `${propertyLabel(l)} · ${l.user || 'System'}`,
                     timestamp: l.timestamp,
-                    details: { browser: l.browser, os: l.os, device_type: l.device_type, ip_address: l.ip_address, user_agent: l.user_agent, status: l.status, module: l.module }
+                    details: { browser: l.browser, os: l.os, device_type: l.device_type, ip_address: l.ip_address, user_agent: l.user_agent, status: l.status, module: l.module, property_id: l.property_id, property_name: l.property_name, property_slug: l.property_slug }
                 }));
                 const loginMapped = aData.data.filter(l => (l.module || '').toLowerCase() === 'login').map(l => ({
                     id: `login-${l.id}`,
                     portal: 'login',
                     severity: l.status === 'Failed' ? 'Warning' : 'Info',
                     msg: l.action,
-                    origin: l.user,
+                    origin: `${propertyLabel(l)} · ${l.user || 'System'}`,
                     timestamp: l.timestamp,
-                    details: { browser: l.browser, os: l.os, device_type: l.device_type, ip_address: l.ip_address, user_agent: l.user_agent, status: l.status }
+                    details: { browser: l.browser, os: l.os, device_type: l.device_type, ip_address: l.ip_address, user_agent: l.user_agent, status: l.status, property_id: l.property_id, property_name: l.property_name, property_slug: l.property_slug }
                 }));
                 [...activityMapped, ...loginMapped].forEach(al => {
                     if (!existingIds.has(al.id)) {
@@ -763,13 +788,43 @@ if ($wantsJson) {
         const countSpan = document.getElementById('copyErrorsCount');
         if (countSpan) countSpan.innerText = filtered.length;
 
+        // Only reset to page 1 when the actual filters changed - not on
+        // every Live Polling re-run of this same function with the same
+        // filters (see the globals' comment above).
+        const filterSignature = JSON.stringify([activePortal, search, timeframe, dateFrom, dateTo]);
+        if (filterSignature !== lastFilterSignature) {
+            currentLogsPage = 1;
+            lastFilterSignature = filterSignature;
+        }
+
+        renderLogsPage();
+    }
+
+    function changeLogsPage(delta) {
+        currentLogsPage += delta;
+        renderLogsPage();
+    }
+
+    function renderLogsPage() {
+        const tbody = document.getElementById('logsTableBody');
+        const paginationEl = document.getElementById('logsPagination');
+        const filtered = window.currentVisibleLogs || [];
+
         if (filtered.length === 0) {
             tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500 italic">No events recorded for this selection.</td></tr>`;
+            if (paginationEl) paginationEl.innerHTML = '';
             return;
         }
 
+        const totalPages = Math.max(1, Math.ceil(filtered.length / LOGS_PAGE_SIZE));
+        if (currentLogsPage > totalPages) currentLogsPage = totalPages;
+        if (currentLogsPage < 1) currentLogsPage = 1;
+
+        const startIdx = (currentLogsPage - 1) * LOGS_PAGE_SIZE;
+        const pageItems = filtered.slice(startIdx, startIdx + LOGS_PAGE_SIZE);
+
         const lastSeen = getLastSeen(activePortal);
-        tbody.innerHTML = filtered.map(r => {
+        tbody.innerHTML = pageItems.map(r => {
             let sevClass = 'text-gray-400 bg-gray-800';
             const sev = (r.severity || '').toLowerCase();
             if (sev.includes('fatal') || sev.includes('error') || sev.includes('exception')) sevClass = 'text-red-400 bg-red-950/60 border border-red-800/40';
@@ -801,6 +856,21 @@ if ($wantsJson) {
                 </tr>
             `;
         }).join('');
+
+        if (paginationEl) {
+            const rangeStart = startIdx + 1;
+            const rangeEnd = Math.min(startIdx + LOGS_PAGE_SIZE, filtered.length);
+            paginationEl.innerHTML = `
+                <div class="flex items-center justify-between gap-3 px-4 py-3 border-t border-gray-800 text-[11px] font-sans text-gray-400">
+                    <span>Showing ${rangeStart}-${rangeEnd} of ${filtered.length}</span>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="changeLogsPage(-1)" ${currentLogsPage <= 1 ? 'disabled' : ''} class="px-3 py-1.5 min-h-[2.25rem] rounded-lg bg-gray-800 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed text-gray-300 border border-gray-700 transition cursor-pointer font-semibold">&lsaquo; Prev</button>
+                        <span class="px-1 font-semibold text-gray-300 whitespace-nowrap">Page ${currentLogsPage} / ${totalPages}</span>
+                        <button type="button" onclick="changeLogsPage(1)" ${currentLogsPage >= totalPages ? 'disabled' : ''} class="px-3 py-1.5 min-h-[2.25rem] rounded-lg bg-gray-800 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed text-gray-300 border border-gray-700 transition cursor-pointer font-semibold">Next &rsaquo;</button>
+                    </div>
+                </div>
+            `;
+        }
     }
 
     async function resetLogs() {
