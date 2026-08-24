@@ -265,6 +265,8 @@ if ($wantsJson) {
             .telescope-search { margin-bottom: 1rem !important; }
             #searchInput { min-height: 2.75rem !important; font-size: .8125rem !important; }
             .telescope-logs { overflow: visible !important; border-radius: .75rem !important; }
+            .telescope-logs-scroll { overflow: visible !important; }
+            #logsPagination { position: sticky !important; bottom: 0 !important; background: #111827 !important; }
             .telescope-logs table, .telescope-logs tbody, .telescope-logs tr, .telescope-logs td { display: block !important; width: 100% !important; }
             .telescope-logs thead { display: none !important; }
             .telescope-logs tbody { divide: none !important; }

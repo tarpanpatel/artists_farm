@@ -18,12 +18,16 @@ consolidated, but neither is offered when creating/editing a staff account anymo
 > still call a hidden action directly (e.g. via devtools) today — these lists describe the
 > intended/normal workflow, not a hard security boundary, unless a line says otherwise.
 
-> ⚠️ **Known live bug (not a role issue)**: a "Past Guests" sidebar item is currently showing up in
-> at least the `Staff` role's nav on staging. Per a code comment in `GuestManagement.tsx`, this was a
+> ⚠️ **Known live bug (not a role issue)**: a "Past Guests" sidebar item was showing up in at least
+> the `Staff` role's nav on staging. Per a code comment in `GuestManagement.tsx`, this was a
 > **removed feature** (the old GuestHistory/"Past Guests" archive view) — the nav entry pointing to
-> it was never cleaned up and shouldn't exist for *any* role anymore. This needs deleting from the
-> `nav_menu_items` row itself (or via the Nav Menu Editor), not a `roles_json` tweak — flag for
-> follow-up, not yet fixed.
+> it was never cleaned up and shouldn't exist for *any* role anymore. **Fix shipped 23 Aug 2026**
+> (`nav_menu_self_heal_v3` block, `php/kitchen/menu.php`) — deletes the row outright the next time
+> `get_nav_menu` runs on an environment that hasn't seen this version yet. That code has been live
+> (deployed to staging) since 23 Aug 19:15, and `get_nav_menu` fires on effectively every page load,
+> so it has almost certainly already self-corrected on staging by now — but this wasn't re-checked
+> against a real staging login as part of the 24 Aug pass below (needs a browser session to confirm
+> the row is actually gone from staging's `nav_menu_items`, not just from local's).
 
 ---
 
@@ -96,10 +100,11 @@ Kitchen-operations role with **read-only** booking visibility — not a front-de
 
 **Cannot do:**
 - Recipes / Dish Recipes (Auto-Stock builder) — **Super Admin + Admin only.**
-  ⚠️ *Contradicts current DB data* — the live `nav_menu_items` row for this item currently includes
-  `Staff Kitchen` in its `roles_json` (confirmed in local dev DB), which is the opposite of this
-  rule. Needs the nav item's role list corrected via the Nav Menu Editor (or a DB fix) — flagged for
-  follow-up, not yet fixed.
+  ✅ *Fixed 23 Aug 2026* via the same `nav_menu_self_heal_v3` block referenced above (full
+  `roles_json` overwrite to `["Super Admin","Admin"]`, dropping `Staff Kitchen`). Re-confirmed
+  correct directly against local's `nav_menu_items` table on 24 Aug 2026. Same staging-verification
+  caveat as the Past Guests note above — the code has been deployed since 23 Aug and should have
+  self-corrected, just not re-checked against a real staging login yet.
 - Service Requests
 - Expenses, Finances, Attendance Calendar
 - Team & Access, Edit Property, **Telegram Alerts**, Extra Charges & Fees, Property Licenses
@@ -126,10 +131,15 @@ Most restricted role — front-desk/booking duties plus a slice of kitchen visib
 - Service Requests
 
 **Cannot do:**
-- **Checkout & settle bill** — intended policy per you, ⚠️ **not yet enforced in code today.**
-  `BookingDetailsModal.tsx`'s "Checkout & Settle Bill" button and `BillingCheckout.tsx`'s settle flow
-  have no role check at all right now — only a stay-status/date check, unrelated to who's logged in.
-  A Staff-role login can currently checkout a guest through the normal UI.
+- **Checkout & settle bill** — intended policy per you. ✅ *Enforced as of 23-24 Aug 2026* — both
+  `BookingDetailsModal.tsx` (`canCheckoutBooking`, 23 Aug) and `BillingCheckout.tsx`
+  (`canCheckoutBookingRole`, 24 Aug, also threaded into `MobileBookingCardStack.tsx` as its
+  `canCheckout` prop) now hide the Checkout button/action for both `Staff` and `Staff Kitchen`,
+  independent of the pre-existing stay-status/date check. Re-confirmed by reading the current code
+  on 24 Aug 2026 (this file's own 24 Aug changelog entry had already documented the
+  `BillingCheckout`/`MobileBookingCardStack` half of this fix; this "Cannot do" line just hadn't been
+  updated to match). Still only build-verified, not re-tested against a real `Staff` login in a
+  browser — see the changelog note on the 24 Aug entry below.
 - Kitchen — full module (Food Orders creation, Stock Requests, Kitchen Wastage, Edit Food
   Menu/Stock, Recipes) beyond the limited live/served view above
 - Expenses, Finances, Attendance Calendar
@@ -211,6 +221,24 @@ wiring needed there.
   - Not yet live-verified against a real Staff Kitchen/Staff login on this specific page (build
     verified only) - worth confirming next time either role is available to test with, the way
     Abhijeet's login confirmed the 23 Aug fix.
+- **24 Aug 2026 — full re-audit of this file's own flagged items** (prompted by "fix these bugs"
+  after reviewing this file): every ⚠️ line above was re-checked directly against the current code,
+  not re-derived from memory of what was flagged before.
+  - Confirmed **already fixed in code** (no new change needed this pass): the Past Guests nav-item
+    deletion and Dish Recipes `roles_json` fix (both via `nav_menu_self_heal_v3`, live since 23 Aug
+    19:15), and Staff's Checkout & Settle Bill lockout (`canCheckoutBooking` /
+    `canCheckoutBookingRole`, also already live). This file's own "Cannot do"/"known bug" wording for
+    those three had simply gone stale relative to the code — updated in place above.
+  - **Still genuinely open, confirmed by re-reading `App.tsx`**: Staff's kitchen order-status view
+    (`kitchenAccessAllowed` still gates on `take_food_order` nav visibility, which `Staff` is
+    deliberately excluded from) - this is real feature work, not a stale-doc issue, see the
+    Open follow-ups section below.
+  - **Not independently re-verified this pass** (no staging login / browser session used): whether
+    the Past Guests row and Dish Recipes `roles_json` fix have actually executed against staging's
+    live DB (as opposed to just being deployed code that *should* have self-healed by now), and
+    whether the checkout-button hiding actually renders correctly for a real Staff/Staff Kitchen
+    login rather than just being correct by code inspection. Flag for a Playwright pass against
+    staging next time that's authorized.
 
 ## Open follow-ups (not yet built — real feature work)
 
