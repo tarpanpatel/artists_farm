@@ -936,8 +936,19 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       </div>
       )}
 
-      {/* Booking Calendar Row - Flowbite Application UI Calendar Standard */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden space-y-0">
+      {/* Booking Calendar Row - Flowbite Application UI Calendar Standard.
+          overflow-hidden REMOVED from this outer card (25 Aug 2026, live
+          report: the "jump to month" Datepicker's popup calendar rendered
+          "like an iframe, not popping out" - it's a plain absolutely-
+          positioned child, not a portal, so this card's own overflow-hidden
+          (there to keep the grid's square-edged day cells clipped to the
+          card's rounded corners) was clipping the popup down to almost
+          nothing too, since both live in the same DOM subtree. Moved the
+          clipping down to a wrapper around just the Days Header + Calendar
+          Grid + Legend below instead (see rounded-b-lg overflow-hidden
+          further down) - the header toolbar above that, where the
+          Datepicker actually lives, is no longer clipped at all. */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm space-y-0">
         {/* Header Toolbar - layout only (title/button/date-nav positioning),
             NOT the calendar grid below (color-coding, blocked dates, OTA
             conversion, edit modal - that stays untouched per the protected-
@@ -1013,6 +1024,12 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           </div>
         </div>
 
+        {/* Clipping moved here (25 Aug 2026, see the outer card's own
+            comment above) - just the grid/legend below stays clipped to the
+            card's rounded bottom corners; the toolbar above is free of any
+            overflow constraint now, so its Datepicker popup can render in
+            full instead of getting cut off. */}
+        <div className="overflow-hidden rounded-b-lg">
         {/* Days Header */}
         <div className="grid grid-cols-7 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 py-2.5">
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
@@ -1442,6 +1459,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               <span>{t('legend_pending_action', 'Action Pending (ID, C-Form, Check-in/out)')}</span>
             </div>
           </div>
+        </div>
         </div>
       </div>
 
