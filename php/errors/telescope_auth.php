@@ -22,6 +22,18 @@
 if (!function_exists('getTelescopePassword')) {
 
     function getTelescopePassword(): string {
+        // Staging always uses this fixed passcode (explicit request) so QA/staff can unlock
+        // Telescope there without needing to look up a generated password - staging never holds
+        // real guest data, so a shared, memorable passcode is an acceptable tradeoff there in a
+        // way it wouldn't be on production. Checked first (before the env var / generated-file
+        // fallbacks below) so it's authoritative on staging regardless of what else is configured.
+        // Server-name check only (no database.php require) - this file is deliberately
+        // DB-independent, see the file-level doc comment above.
+        $serverName = $_SERVER['SERVER_NAME'] ?? $_SERVER['HTTP_HOST'] ?? '';
+        if ($serverName === 'staging.ground-code.com') {
+            return '368545';
+        }
+
         $envPass = getenv('TELESCOPE_ACCESS_PASSWORD');
         if ($envPass) {
             return $envPass;
@@ -100,6 +112,7 @@ if (!function_exists('getTelescopePassword')) {
         <div class="text-xs text-red-400 bg-red-950/40 border border-red-900 rounded-lg px-3 py-2"><?= htmlspecialchars($error) ?></div>
         <?php endif; ?>
         <input type="password" id="passwordInput" placeholder="Access password" autofocus
+            inputmode="numeric"
             class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500">
         <button type="submit" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-semibold rounded-lg px-3 py-2 transition cursor-pointer">
             Unlock
