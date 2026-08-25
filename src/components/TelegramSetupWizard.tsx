@@ -333,7 +333,6 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
           </div>
           <div>
             <h2 className="telegram-setup-wizard__title text-base font-semibold text-slate-900 dark:text-white m-0">{t('telegram_setup_title', 'Telegram Setup')}</h2>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 m-0">{t('configure_bot_subtitle', 'Configure bot settings and pairing alerts')}</p>
           </div>
         </div>
         <button
@@ -401,9 +400,6 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
               <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
                 <div>
                   <div className="text-sm font-semibold text-slate-900 dark:text-white">{t('enable_telegram_notifications_label', 'Enable Telegram Notifications')}</div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    {t('enable_telegram_notifications_description', 'Toggle to enable or disable all Telegram notifications.')}
-                  </div>
                 </div>
                 <ToggleSwitch
                   enabled={!!wizardConfig?.enabled}

@@ -345,13 +345,22 @@ function createMultiKeyProperty($pdo) {
         $stmt->execute([$tenant_id, $name, $slug, $address, $currency, $timezone]);
         $property_id = $pdo->lastInsertId();
 
-        // Create shared data record for this MultiKey property
+        // Create shared data record for this MultiKey property.
+        // BUG FIX (26 Aug 2026, reported live: "SQLSTATE[23000]: Integrity constraint violation:
+        // 4025 CONSTRAINT `property_shared_data.kitchen_details` failed" on every attempt to add a
+        // Multi Key property): the STAFF row used to pass '' (empty string) for kitchen_details.
+        // That column is JSON, and MariaDB auto-attaches an implicit
+        // CHECK (json_valid(kitchen_details)) constraint named after the column itself - which is
+        // exactly the constraint name in that error. An empty string is not valid JSON, so the
+        // whole INSERT was rejected and no Multi Key property could be created at all. NULL is the
+        // correct "no kitchen config on this row" value (the column is already DEFAULT NULL, and
+        // the EXPENSES row on the very next line was already doing this correctly) - never ''.
         $stmt = $pdo->prepare("
             INSERT INTO property_shared_data (property_id, data_type, staff_json, kitchen_details)
-            VALUES (?, 'STAFF', ?, ?), (?, 'EXPENSES', NULL, NULL), (?, 'KITCHEN', NULL, ?)
+            VALUES (?, 'STAFF', ?, NULL), (?, 'EXPENSES', NULL, NULL), (?, 'KITCHEN', NULL, ?)
         ");
         $stmt->execute([
-            $property_id, json_encode([]), '',
+            $property_id, json_encode([]),
             $property_id,
             $property_id, json_encode([])
         ]);

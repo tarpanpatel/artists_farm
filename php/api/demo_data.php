@@ -1786,13 +1786,118 @@ function generateDemoData($pdo, $propertyId) {
             $stmt->execute([$propertyId, $lic['type'], $lic['name'], $lic['number'], $lic['authority'], $lic['start'], $lic['end'], $lic['notes']]);
         }
 
+        // FINAL SAFETY NET (26 Aug 2026, explicit user requirement: "make sure everytime i click
+        // on reset demo data such issues dont come"). Every placement path above already avoids
+        // overlaps on its own (section 3's bookings, 3b's OTA blocks, 6g's multi-channel feeds all
+        // share range registries) - but that correctness depends on several invariants staying
+        // true across future edits, and it has silently broken before (20 Aug 2026: sections 3b
+        // and 6g were blind to each other and stacked two OTA bars on Room 101's same dates).
+        // This pass is the guarantee that does NOT depend on any of that: it re-reads what was
+        // actually written and removes any real overlap it finds, so a demo reset can never leave
+        // a double-booked room behind regardless of which placement path regressed.
+        // Deliberately runs INSIDE the transaction, before commit - a demo dataset must never be
+        // committed in a state that violates the "1 room = 1 active booking" rule (CLAUDE.md).
+        // Comparison is half-open (start < other_end && end > other_start) so same-day turnover -
+        // one stay ending the morning the next begins - is correctly NOT treated as an overlap.
+        $conflictsRemoved = purgeDemoBookingOverlaps($pdo, $propertyId);
+
         $pdo->commit();
-        return ['status' => 'success', 'message' => 'Demo data generated successfully'];
+        $msg = 'Demo data generated successfully';
+        if ($conflictsRemoved > 0) {
+            // Surfaced rather than silently swallowed - if this ever fires, a placement path above
+            // has regressed and needs fixing at the source; the safety net is not meant to be
+            // load-bearing in normal operation.
+            $msg .= " (safety net removed $conflictsRemoved overlapping demo row(s) - a placement path in generateDemoData() has regressed, please investigate)";
+            if (class_exists('TelescopeLogger')) {
+                TelescopeLogger::log('sql', 'Demo Overlap Safety Net Fired', "Removed $conflictsRemoved overlapping demo row(s)", "Property ID: $propertyId", [
+                    'property_id' => $propertyId,
+                    'removed' => $conflictsRemoved,
+                ]);
+            }
+        }
+        return ['status' => 'success', 'message' => $msg];
 
     } catch (Exception $e) {
         $pdo->rollBack();
         return ['status' => 'error', 'message' => $e->getMessage()];
     }
+}
+
+/**
+ * Removes any overlapping DEMO stay from a property's rooms - both real guest bookings and synced
+ * OTA calendar blocks - keeping the earliest-starting one in each conflicting pair. Returns how
+ * many rows it deleted (0 in normal operation).
+ *
+ * Scoped strictly to `is_demo = 1` rows: this must never touch a real booking or a real OTA feed,
+ * even on a property that has both. Scope covers the property AND its MULTI_KEY_ROOM children,
+ * the same way clearDemoData()/ICalSyncManager::getBlockedDates() expand scope - OTA feeds are
+ * connected per-room, against each room's own property_id, not the multi-key parent's.
+ */
+function purgeDemoBookingOverlaps($pdo, $propertyId): int {
+    $removed = 0;
+
+    $scopeStmt = $pdo->prepare("SELECT id FROM properties WHERE id = ? OR parent_property_id = ?");
+    $scopeStmt->execute([$propertyId, $propertyId]);
+    $scopeIds = $scopeStmt->fetchAll(PDO::FETCH_COLUMN);
+    if (empty($scopeIds)) return 0;
+    $inScope = implode(',', array_fill(0, count($scopeIds), '?'));
+
+    // --- 1. Guest bookings, grouped per room. room_id NULL means "unassigned", which genuinely
+    //        can hold several concurrent stays (it isn't one physical room), so it's skipped.
+    $stmt = $pdo->prepare("
+        SELECT id, room_id, checkin_date AS start_at, expected_checkout AS end_at
+        FROM guests
+        WHERE property_id = ? AND is_demo = 1 AND room_id IS NOT NULL
+          AND status IN (?, ?, ?)
+        ORDER BY room_id, checkin_date, id
+    ");
+    $stmt->execute([$propertyId, GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_IN, GUEST_STATUS_BOOKED]);
+    $removed += deleteOverlappingRows($pdo, $stmt->fetchAll(PDO::FETCH_ASSOC), 'room_id', 'guests');
+
+    // --- 2. Synced OTA events, grouped per room (a config belongs to exactly one room, so group
+    //        by the config's property_id to catch Airbnb-vs-Booking.com conflicts on one room).
+    $stmt = $pdo->prepare("
+        SELECT e.id, c.property_id AS room_id, e.event_start AS start_at, e.event_end AS end_at
+        FROM ical_synced_events e
+        JOIN ical_sync_configs c ON c.id = e.sync_config_id
+        WHERE c.property_id IN ($inScope) AND c.is_demo = 1
+        ORDER BY c.property_id, e.event_start, e.id
+    ");
+    $stmt->execute($scopeIds);
+    $removed += deleteOverlappingRows($pdo, $stmt->fetchAll(PDO::FETCH_ASSOC), 'room_id', 'ical_synced_events');
+
+    return $removed;
+}
+
+/**
+ * Shared overlap sweep for purgeDemoBookingOverlaps(). Rows must arrive pre-sorted by group then
+ * start_at. Walks each group once keeping a running "furthest end kept so far" watermark - any row
+ * starting before that watermark overlaps something already kept, so it's deleted.
+ */
+function deleteOverlappingRows($pdo, array $rows, string $groupKey, string $table): int {
+    $removed = 0;
+    $groups = [];
+    foreach ($rows as $r) {
+        $groups[(int)$r[$groupKey]][] = $r;
+    }
+    $del = $pdo->prepare("DELETE FROM `$table` WHERE id = ?");
+    foreach ($groups as $groupRows) {
+        $keptEnd = null;
+        foreach ($groupRows as $row) {
+            $start = strtotime($row['start_at']);
+            $end = strtotime($row['end_at']);
+            if ($start === false || $end === false) continue;
+            // Half-open: a stay starting exactly when the kept one ends is same-day turnover, not
+            // an overlap, so `<` (not `<=`) is deliberate here.
+            if ($keptEnd !== null && $start < $keptEnd) {
+                $del->execute([$row['id']]);
+                $removed += $del->rowCount();
+                continue;
+            }
+            $keptEnd = ($keptEnd === null) ? $end : max($keptEnd, $end);
+        }
+    }
+    return $removed;
 }
 
 function clearDemoData($pdo, $propertyId) {
