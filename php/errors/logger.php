@@ -73,7 +73,15 @@ if (!class_exists('TelescopeLogger')) {
          * someone remembers to add it to a list.
          */
         private static function maybeSendWebPushAlert($portal, $severity, $msg, $origin) {
-            $routineNoise = ['INFO', 'SUCCESS', 'Notice', 'Deprecated'];
+            // 'AI Query'/'AI Outcome' (php/api/ai_assistant.php, portal 'ai_chat') log every
+            // single AI Chat Widget message - normal usage, not an error - and were pushing a
+            // phone notification for each one (reported live: "No need for ai query in
+            // notification. Only provide notifications of errors"). Added here rather than
+            // widened to "skip the whole ai_chat portal", so 'Gemini Call Failed' (a real
+            // provider-call failure, same portal) still alerts correctly.
+            // 'AI Config Updated' (php/api/ai_config.php, portal 'system') is a routine admin
+            // settings-change audit entry, not an error - same reasoning as the ai_chat entries.
+            $routineNoise = ['INFO', 'SUCCESS', 'Notice', 'Deprecated', 'AI Query', 'AI Outcome', 'AI Config Updated'];
             if ($portal !== 'security' && in_array($severity, $routineNoise, true)) {
                 return;
             }
