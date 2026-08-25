@@ -111,13 +111,14 @@ Kitchen-operations role with **read-only** booking visibility — not a front-de
   Edit Kitchen Stock, Edit Food Menu, mark orders served
 
 **Cannot do:**
+- Service Requests. ✅ *Fixed 25 Aug 2026* — see changelog below (`nav_menu_self_heal_v7`). Was
+  showing in full (sidebar tab + Dashboard widget) for every role until this fix, this one included.
 - Recipes / Dish Recipes (Auto-Stock builder) — **Super Admin + Admin only.**
   ✅ *Fixed 23 Aug 2026* via the same `nav_menu_self_heal_v3` block referenced above (full
   `roles_json` overwrite to `["Super Admin","Admin"]`, dropping `Staff Kitchen`). Re-confirmed
   correct directly against local's `nav_menu_items` table on 24 Aug 2026. Same staging-verification
   caveat as the Past Guests note above — the code has been deployed since 23 Aug and should have
   self-corrected, just not re-checked against a real staging login yet.
-- Service Requests
 - Expenses, Finances, Attendance Calendar
 - Team & Access, Edit Property, **Telegram Alerts**, Extra Charges & Fees, Property Licenses
 - Reports & Earnings, Past Bills & Receipts, Download Data & Excel
@@ -299,5 +300,34 @@ wiring needed there.
   this time confirming the sidebar renders as **Kitchen → Food Orders** (nested, badge-counted, no
   standalone item) and that "Mark Served" writes a real `Served` status + timestamp to `order_items`
   through that path.
+- **25 Aug 2026 — `php/kitchen/menu.php`, new `nav_menu_self_heal_v7` block; `src/App.tsx`,
+  `src/components/OperationalDashboard.tsx`, `src/components/TodayOverview.tsx`,
+  `src/components/MultiKeyPropertyOverview.tsx`**: reported live via screenshot - a `Staff Kitchen`
+  login's Dashboard showed a full "Service Requests" sidebar tab *and* KPI widget, despite this
+  table always documenting Staff Kitchen as unable to do Service Requests.
+  - Root cause: `php/service_requests/service_requests.php`'s own `schema_service_requests_v3`
+    self-heal `INSERT`s this nav item with **no `roles_json` at all**, and both
+    `Navigation.tsx`'s `isVisible()` and `App.tsx`'s `canSeeNavKey()`/`isRouteAllowed()` treat a
+    null/empty `roles_json` as "visible to every role" (no restriction), not "visible to nobody" -
+    so this item had been open to every role, on every environment, since the day it was first
+    seeded. Not a regression - it never enforced this table's stated policy in the first place.
+  - Fixed via `nav_menu_self_heal_v7` (full `roles_json` overwrite to `["Super Admin","Root
+    Admin","Admin","Staff Supervisor","Staff"]`, dropping `Staff Kitchen`) - same
+    full-overwrite technique v3's Telegram/Dish-Recipes fixes used, since the end state here is
+    fully and unambiguously known. This alone fixes the sidebar tab (Navigation.tsx) and the
+    direct-hash route guard (App.tsx Guard Effect 1) for free, since both already read from this
+    same `roles_json` column - no separate code change needed for either.
+  - The Dashboard's own "Service Requests" KPI card was a **second, independent** bug: it rendered
+    unconditionally in both `OperationalDashboard.tsx` and `TodayOverview.tsx`, with no per-role
+    check at all - the same class of bug the 23 Aug `kitchenAccessAllowed` fix closed for the "Live
+    Kitchen Tickets" card, just never applied here. Fixed by adding a `serviceRequestsAccessAllowed`
+    prop (`App.tsx`, computed via `canSeeNavKey('service_requests')`, same umbrella-permission
+    pattern as `kitchenAccessAllowed`) and threading it to every render call site of both
+    components (`OperationalDashboard` x3 - direct, and the two nested inside
+    `MultiKeyPropertyOverview.tsx` - plus `TodayOverview` x1), gating the KPI card on it in both
+    files. Defaults `true` in both components' props so no other caller needs to change.
+  - Build-verified only (`tsc --noEmit` + production build) - not yet re-checked against a real
+    `Staff Kitchen` login in a browser. Worth confirming next time that role is available to test
+    with, same caveat as several entries above.
 
-*(none currently — see the 24 Aug 2026 changelog entry below for the item that used to be here)*
+*(none currently)*

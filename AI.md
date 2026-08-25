@@ -93,6 +93,21 @@ first thing to check.
 time-boxed code built specifically for this trial** - safe to delete once the trial is done and
 online mode is switched back off, not meant as permanent infrastructure.
 
+**Real bug fixed 25 Aug 2026: one API key slot per provider, not one shared slot for all of
+them.** `ai_config.json` used to have a single flat `api_key` string used by whichever provider
+was selected - so saving OpenAI's key, then switching the dropdown back to OpenCode Zen, silently
+left OpenCode Zen using OpenAI's key (wrong format entirely) with zero warning until it failed at
+call time. Caught live: config had `"provider": "opencode_zen"` with an `sk-proj-...` (OpenAI-
+shaped) key, and OpenCode Zen's API correctly rejected it (`HTTP 401 AuthError: Invalid API key`).
+Fixed in both `ai_config.php` and `ai_assistant.php`: the config now stores `api_keys` (an object
+keyed by provider id) instead of a single `api_key`, with a one-time best-effort migration for
+config files still in the old flat shape. **If you switch providers, you need to (re-)enter that
+provider's own key at least once** - it's no longer silently inherited from whatever provider was
+saved last. Also added: the OpenAI branch never logged a call failure to Telescope at all before
+this (unlike the Gemini/OpenCode Zen branches) - a bad key or no billing/quota looked identical to
+"everything's fine" and silently fell back to offline. Both branches now log `'... Call Failed'`
+consistently.
+
 ## Known limitation (why this plan exists at all)
 
 The offline engine is a keyword/phrase matcher, not a real language model - it can only ever be as
