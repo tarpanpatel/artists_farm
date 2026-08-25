@@ -74,7 +74,35 @@ require_once __DIR__ . "/property_resolver.php";
 require_once __DIR__ . "/schema_cache.php";
 require_once __DIR__ . "/../database/migrations.php";
 
-$server_name = $_SERVER['SERVER_NAME'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost';
+$server_name = $_SERVER['SERVER_NAME'] ?? $_SERVER['HTTP_HOST'] ?? null;
+
+// CLI fallback (found 25 Aug 2026 building php/cron/dispatcher.php): every
+// cron script requires this file too, but a CLI process has no HTTP request
+// at all - SERVER_NAME/HTTP_HOST are simply absent from $_SERVER, so without
+// this branch $server_name silently defaulted to 'localhost' and every cron
+// job, on every environment, tried to connect with local dev credentials
+// (root/no password) the moment it actually ran - confirmed live the first
+// time dispatcher.php was ever executed on staging. This is almost
+// certainly why no cron job in this codebase had ever been proven to run
+// successfully end to end before. Derived from the running script's own
+// on-disk path instead (stable regardless of HTTP context, since staging
+// and production are separate checkouts at known paths) - falls back to
+// staging, never production, if the path doesn't clearly match either, per
+// this file's own "never silently fall through to production" principle
+// (see the staging-DB-isolation comment right below).
+if ($server_name === null && php_sapi_name() === 'cli') {
+    $scriptPath = str_replace('\\', '/', __FILE__);
+    if (str_contains($scriptPath, '/staging.ground-code.com/')) {
+        $server_name = 'staging.ground-code.com';
+    } elseif (str_contains($scriptPath, '/ground-code.com/')) {
+        $server_name = 'ground-code.com';
+    } elseif (str_contains($scriptPath, '/xampp/htdocs/')) {
+        $server_name = 'localhost';
+    } else {
+        $server_name = 'staging.ground-code.com';
+    }
+}
+$server_name = $server_name ?? 'localhost';
 
 // Check if running on local environment (localhost or 127.0.0.1)
 $__is_local_env = $server_name === 'localhost' || $server_name === '127.0.0.1' || str_contains($server_name, '192.168.');
