@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Drawer, Tabs, TabItem, type TabsRef, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, Checkbox } from 'flowbite-react';
+import { Drawer, Modal, Tabs, TabItem, type TabsRef, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, Checkbox } from 'flowbite-react';
 import {
   UtensilsCrossed,
   Plus,
@@ -3181,17 +3181,18 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           </div>
         </Drawer>
 
-        {/* ORDER INSTRUCTIONS DRAWER (23 Aug 2026) - kitchen-only free-text
-            note attached to the whole order at submit time (e.g. "less
-            spicy", "serve at 8pm"), triggered by the "Instructions" checkbox
-            in both the desktop cart panel and mobile cart drawer above. */}
-        <Drawer
-          open={isInstructionsDrawerOpen}
-          onClose={() => setIsInstructionsDrawerOpen(false)}
-          position="right"
-          className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
-        >
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+        {/* ORDER INSTRUCTIONS MODAL (23 Aug 2026, converted from a Drawer 25 Aug 2026 per
+            DESIGN.md's "nested dialogs never stack a second Drawer" rule) - kitchen-only
+            free-text note attached to the whole order at submit time (e.g. "less spicy",
+            "serve at 8pm"), triggered by the "Instructions" checkbox in both the desktop cart
+            panel and the mobile expanded-cart panel above - the mobile trigger sits inside
+            that panel's own full-width overlay, so opening this as a second stacked Drawer
+            read as nothing happening (both are full-width right-edge/bottom surfaces
+            fighting for the same space). z-58 unchanged - still the correct tier for a
+            top-level page dialog. */}
+        <Modal show={isInstructionsDrawerOpen} onClose={() => setIsInstructionsDrawerOpen(false)} dismissible size="md" popup className="z-58">
+          <div className="flex flex-col max-h-[85vh]">
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-t-lg shrink-0">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400">
                 <ClipboardEdit className="w-4 h-4" />
@@ -3221,7 +3222,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               autoFocus
             />
           </div>
-          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850 rounded-b-lg shrink-0">
             {/* Was "Done" (23 Aug 2026, on request) - this button commits the
                 typed instructions text, so "Save" reads more accurately than a
                 plain dismiss action. Reuses the existing save_button key
@@ -3233,7 +3234,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               {t('save_button', 'Save')}
             </Button>
           </div>
-        </Drawer>
+          </div>
+        </Modal>
 
         {/* CUSTOM MEAL DRAWER */}
         <Drawer
