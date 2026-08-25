@@ -1,4 +1,19 @@
-const CACHE_NAME = 'farm-pos-v7';
+// Bump this on any deploy where the SW itself needs installed PWAs to
+// actually notice - the fetch handler below deliberately serves the cached
+// HTML shell instantly and only refreshes it in the background (for fast
+// PWA startup), so a content-only deploy (CSS/JS/component changes with no
+// edit to this file) leaves sw.js byte-identical - the browser's own SW
+// update check finds nothing new, so neither the cache wipe on `activate`
+// below NOR UpdateAvailableBanner's "Reload" prompt (main.tsx's
+// 'controllerchange' listener, which only fires on a genuine new-worker
+// install) ever trigger. Installed PWAs were stuck on a pre-deploy cached
+// shell indefinitely - not just until their next relaunch - until this was
+// bumped (found 25 Aug 2026: a same-day PageHeader/drawer-safe-area fix
+// rendered correctly in a browser tab but stayed broken in the installed
+// PWA). A fully automatic per-build version stamp would close this gap for
+// every future deploy, not just this one - worth doing later, out of scope
+// for this immediate fix.
+const CACHE_NAME = 'farm-pos-v8';
 
 // Hashed asset pattern — Vite content-hashed files (e.g. index-CrXjaekR.js)
 // These must NEVER be cached by the SW; the browser cache handles them natively
