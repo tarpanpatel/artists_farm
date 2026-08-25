@@ -41,7 +41,7 @@ $configFilePath = __DIR__ . '/../config/ai_config.json';
 // Default config: enabled = false (OFFLINE MODE default for testing offline engine)
 $defaultConfig = [
     'enabled' => false,
-    'provider' => 'gemini', // 'gemini' | 'openai' | 'claude' | 'custom_ollama'
+    'provider' => 'gemini', // 'gemini' | 'openai' | 'opencode_zen' | 'claude' | 'custom_ollama'
     'api_key' => '',
     'custom_endpoint' => 'http://localhost:11434/v1',
     'updated_at' => date('Y-m-d H:i:s'),
@@ -107,7 +107,7 @@ if ($method === 'POST') {
         $currentConfig['enabled'] = (bool)$input['enabled'];
         $changedFields[] = 'Online AI ' . ($currentConfig['enabled'] ? 'enabled' : 'disabled');
     }
-    if (isset($input['provider']) && in_array($input['provider'], ['gemini', 'openai', 'claude', 'custom_ollama']) && $input['provider'] !== $currentConfig['provider']) {
+    if (isset($input['provider']) && in_array($input['provider'], ['gemini', 'openai', 'opencode_zen', 'claude', 'custom_ollama']) && $input['provider'] !== $currentConfig['provider']) {
         $currentConfig['provider'] = $input['provider'];
         $changedFields[] = "Provider set to {$input['provider']}";
     }
