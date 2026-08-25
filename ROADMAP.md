@@ -52,6 +52,58 @@ Complete mobile-first overhaul of the **Telescope Error Center** standalone PWA 
 
 ---top priority ends--- 
 
+### Feature: Shareable availability + rates PNG for prospective guests (requested 25 Aug 2026)
+
+**The use case** (user's own framing): a staff member is talking to a prospective customer who
+asks "which rooms are free, and what's the price?" for a given month or date range. Rather than
+typing it out room by room, staff pick the range in the app, hit a button, and get a **PNG image**
+showing availability + rates that they can send to the prospect. Must work for both a SINGLE
+property and a MULTI_KEY property (one row per room).
+
+**What already exists to build on** (verified in-code 25 Aug 2026, not assumed):
+
+- **Availability data - nothing new needed.** Already computed for the Booking Calendar: real
+  bookings from the `guests` table, plus OTA calendar holds via `get_blocked_dates`
+  (`php/api/ical_sync.php`). Both are already fetched and merged client-side by
+  `OperationalDashboard.tsx`, which is also what `MultiKeyPropertyOverview.tsx` reuses per-room -
+  so the multi-key case is already solved at the data layer.
+- **Rates.** `properties.default_tariff` (self-healing column, see `php/config/database.php`),
+  and each MULTI_KEY_ROOM child row carries its own `default_tariff`, editable via
+  `update_room_tariff` (`php/api/multikey_properties.php`, dispatched from `router.php`). So
+  per-room pricing already exists and is already per-room-correct for multi-key.
+- **PNG generation.** `html-to-image` is already a proven pattern in this codebase - it's how
+  checkout bills and walk-in tab bills are rendered to PNG for WhatsApp sharing (see
+  `ReceiptEditModal.tsx` / `WalkInTabBillModal.tsx`, and the `<UpiPaymentBlock>` note in
+  CLAUDE.md). Same approach applies directly here: build the DOM, render node to PNG.
+
+**Three decisions needed before implementing** (raised with the user 25 Aug 2026, not yet
+answered - do not start building until these are settled, especially #1):
+
+1. **Rates are currently FLAT, not date-based.** `default_tariff` is a single number per room.
+   There is no seasonal / weekend / peak-date pricing table anywhere in the schema. So as things
+   stand, the PNG would print the same price for every single day in the range. If the real
+   requirement is "₹5,000 weekdays / ₹8,000 weekends / ₹12,000 Diwali," that needs a **new
+   date-range pricing layer** (rate rules with date ranges + precedence over the flat
+   `default_tariff` fallback) - a genuine feature in its own right, not a small addition, and it
+   changes the shape of everything downstream (the API response, the PNG layout, and whether a
+   "from ₹X" summary is even meaningful). Settle this first.
+2. **Delivery path - WhatsApp `wa.me` links cannot attach an image.** This is a known hard
+   constraint already documented in CLAUDE.md (it's exactly why the UPI QR had to be *drawn into*
+   the bill PNG rather than attached). So realistically the PNG is saved / shared via the phone's
+   native share sheet (`navigator.share` with files - works on mobile, which is where staff
+   actually are), or downloaded and manually attached. Do not design around auto-attaching to a
+   `wa.me` link; it does not work.
+3. **Image layout - two sensible formats**, pick one (or make it a toggle):
+   - **Calendar grid** - rooms as rows, days as columns, colour-coded free/booked cells. Best for
+     "show me the whole month at a glance."
+   - **Summary list** - "Room 101 - free 1-4, 9-30 Oct - ₹5,000/night." Cleaner on a phone
+     screen and better for a short range.
+
+**Non-negotiable constraint regardless of the above**: the generated PNG is going to an OUTSIDE
+prospect, not staff. It must show only *available / not available* - never guest names, booking
+sources, phone numbers, or any other booking detail that leaks one guest's data to another
+prospective customer. Sanitize at the point the image data is built, not just visually.
+
 ### Documentation: short file-purpose header comments
 
 Every source file in `src/` and `php/` should carry a short (1-3 line)
@@ -210,5 +262,5 @@ git history) - kept here as a short record of what was actually exercised and wh
 
 ---
 
-*Last Updated: 2026-08-23*
+*Last Updated: 2026-08-25*
 
