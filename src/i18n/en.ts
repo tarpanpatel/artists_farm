@@ -1204,6 +1204,8 @@ export const strings: Record<string, string> = {
   telescope_error_center_tooltip: "Open Telescope Error Center - View user problems and system errors",
   telescope_monitor_label: "Telescope Monitor",
   logged_in_as_label: "Logged in as",
+  quick_actions_label: "Quick Actions",
+  share_food_menu_button: "Share Menu",
   sign_out_terminal_button: "Sign Out Terminal",
   toggle_sidebar_tooltip: "Toggle Sidebar Menu",
   toggle_sidebar_aria: "Toggle Sidebar Navigation",

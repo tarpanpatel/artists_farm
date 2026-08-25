@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { getIconComponent } from '../utils/iconResolver';
-import { ChevronRight, ChevronDown, LogOut, LinkIcon, UserRound } from './icons/FlowbiteIcons';
+import { ChevronRight, ChevronDown, LogOut, LinkIcon, UserRound, Share2 } from './icons/FlowbiteIcons';
 import { NavMenuItem } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
@@ -8,6 +8,10 @@ import { useKitchenContext } from '../contexts/KitchenContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { isKitchenModuleNavItem } from '../data/appConfig';
 import { Popover } from './Popover';
+import { useToast } from './ToastContext';
+import { getPropertySlug } from '../services/api';
+import { shareTextContent } from '../utils/shareText';
+import { t } from '../i18n/en';
 
 export type TabType =
   | 'dashboard'
@@ -84,7 +88,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   guests: _guests,
   isMultiKeyProperty: _isMultiKeyProperty = false,
   multiKeyPropertyId: _multiKeyPropertyId,
-  multiKeyPropertyName: _multiKeyPropertyName,
+  multiKeyPropertyName,
   multiKeyPropertySlug: _multiKeyPropertySlug,
   currentRoomSlug: _currentRoomSlug,
   onNavigateToMultiKeyOverview: _onNavigateToMultiKeyOverview,
@@ -391,6 +395,31 @@ export const Navigation: React.FC<NavigationProps> = ({
   }, [setActiveTab, setActiveMenuItemKey, onCloseSidebar]);
 
   const { confirm } = useConfirm();
+  const { showToast } = useToast();
+
+  // "Share Menu" (public food_menu.php link) - moved here from
+  // OperationalDashboard.tsx's Dashboard header (25 Aug 2026, explicit
+  // request) into the sidebar's "Quick Actions", freeing that header down
+  // to a single button so it could go back to always-top-right without
+  // recreating the 2-button mobile overlap it was originally part of.
+  // multiKeyPropertyName holds preloadedData.currentProperty?.name
+  // regardless of whether the property is actually multi-key (see
+  // App.tsx's <Navigation> render) - same source OperationalDashboard.tsx's
+  // own propertyName prop used, just under this prop's (slightly
+  // misleading, multi-key-specific-sounding) name.
+  const handleShareFoodMenu = () => {
+    const propertySlug = getPropertySlug();
+    const menuUrl = `${window.location.origin}/food_menu/${propertySlug}/`;
+    const message = `🍽️ Check out the menu at ${multiKeyPropertyName || 'our place'}!\n${menuUrl}`;
+    shareTextContent(
+      `${multiKeyPropertyName || 'Food'} Menu`,
+      message,
+      showToast,
+      'Menu link copied - paste it wherever you\'d like to share it.',
+      'Could not share or copy the menu link.',
+    );
+    if (window.innerWidth < 768) onCloseSidebar();
+  };
 
   const handleLogoutClick = useCallback(async () => {
     if (logout) {
@@ -691,6 +720,31 @@ export const Navigation: React.FC<NavigationProps> = ({
         ) : (
           <div className="h-full px-3 py-4 overflow-y-auto bg-white dark:bg-gray-800 flex flex-col justify-between">
             <div className="space-y-2">
+              {/* Quick Actions (25 Aug 2026) - "Share Menu" moved here from
+                  the Dashboard header, explicit request. Own small section
+                  rather than folded into "Custom Links" below - that list
+                  is admin-configured URLs from the DB, this is a hardcoded
+                  JS action (opens the native share sheet / copies a link),
+                  a different kind of item entirely. Room to add more real
+                  quick actions here later without another new section. */}
+              <div className="pb-2 border-b border-gray-200 dark:border-gray-700 space-y-1">
+                <div className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                  {t('quick_actions_label', 'Quick Actions')}
+                </div>
+                <ul className="space-y-1">
+                  <li>
+                    <button
+                      type="button"
+                      onClick={handleShareFoodMenu}
+                      className="w-full flex items-center p-2 text-sm font-medium rounded-lg transition duration-75 cursor-pointer text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      <Share2 className="w-5 h-5 shrink-0 text-gray-500 dark:text-gray-400" />
+                      <span className="ms-3 flex-1 text-left truncate">{t('share_food_menu_button', 'Share Menu')}</span>
+                    </button>
+                  </li>
+                </ul>
+              </div>
+
               <ul className="space-y-1 font-medium">
                 {tree.map(node => renderNode(node, 0))}
               </ul>

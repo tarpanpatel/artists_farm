@@ -39,8 +39,6 @@ import { Input } from './Input';
 import { t } from '../i18n/en';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import { isCFormGenuinelyFiled } from '../utils/cFormStatus';
-import { shareTextContent } from '../utils/shareText';
-import { Share2 } from './icons/FlowbiteIcons';
 
 interface OperationalDashboardProps {
   guests: Guest[];
@@ -548,28 +546,14 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   ].sort((a, b) => (a.severity === b.severity ? 0 : a.severity === 'red' ? -1 : 1));
   const totalAlerts = combinedAlerts.length;
 
-  // Public "Share Menu" link (food_menu.php via the /food_menu/{slug}/
-  // rewrite in .htaccess) - same pattern as TodayOverview.tsx's (the
-  // multi-key dashboard) and MenuManager.tsx's Share Menu buttons, added
-  // here for the single-property Dashboard, which had no way to hand a
-  // guest the public menu link at all (found 22 Aug 2026). Only rendered in
-  // the non-minimal branch below - minimalMode is this same component
-  // reused per-room inside MultiKeyPropertyOverview.tsx, and the food menu
-  // is one shared thing per property, not per-room, so a per-room Share
-  // Menu button would be redundant (TodayOverview.tsx already covers the
-  // multi-key case once, at the property level).
-  const handleShareFoodMenu = () => {
-    const propertySlug = getPropertySlug();
-    const menuUrl = `${window.location.origin}/food_menu/${propertySlug}/`;
-    const message = `🍽️ Check out the menu at ${propertyName || 'our place'}!\n${menuUrl}`;
-    shareTextContent(
-      `${propertyName || 'Food'} Menu`,
-      message,
-      showToast,
-      'Menu link copied - paste it wherever you\'d like to share it.',
-      'Could not share or copy the menu link.',
-    );
-  };
+  // The "Share Menu" action that used to live here (food_menu.php public
+  // link, via the /food_menu/{slug}/ rewrite) moved into the sidebar's
+  // "Quick Actions" (Navigation.tsx, 25 Aug 2026, explicit request) - see
+  // that file for the current implementation. Removing it from here (rather
+  // than duplicating it in both places) is what let this Dashboard's
+  // PageHeader safely go back to a single top-right button (forceRow
+  // below) without recreating the 2-button mobile overlap this exact button
+  // was originally part of.
 
   return (
     <div className="operational-dashboard space-y-6">
@@ -580,12 +564,17 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           </PageHeaderButton>
         </div>
       ) : (
+        // forceRow (25 Aug 2026): Dashboard used to have two header buttons
+        // (Share Menu + Add Booking), which is exactly the case PageHeader's
+        // default mobile flex-col stacking exists to protect against - the
+        // two together didn't fit one row on a real phone. Share Menu moved
+        // to the sidebar's "Quick Actions" (Navigation.tsx, explicit
+        // request) specifically so this could safely go back to top-right
+        // with the one button that's left, matching Bookings' treatment.
         <PageHeader
           title={t('dashboard_heading', 'Dashboard')}
+          forceRow
         >
-          <PageHeaderButton onClick={handleShareFoodMenu} icon={Share2} variant="secondary">
-            {t('share_food_menu_button', 'Share Menu')}
-          </PageHeaderButton>
           <PageHeaderButton onClick={() => setShowAddGuestModal(true)} icon={Plus}>
             {t('add_booking_button', 'Add Booking')}
           </PageHeaderButton>
