@@ -60,7 +60,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className={`app-input-wrapper ${fullWidth ? 'w-full' : 'inline-block'} input`}>
         {label && (
-          <div className="mb-1 block">
+          <div className="mb-1.5 block">
             <FlowbiteLabel
               htmlFor={inputId}
               className={`app-label text-xs font-semibold text-slate-700 dark:text-slate-200 ${labelClassName || ''} input__label`}
@@ -78,7 +78,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             icon={resolvedIcon}
             color={hasError ? 'failure' : (color as any)}
             theme={inputTheme as any}
-            className={`w-full ${className}`}
+            className={`w-full h-10 ${className}`}
             {...(props as any)}
           />
           {rightIcon && (

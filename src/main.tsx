@@ -1,6 +1,16 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App';
+// Self-hosted Inter (25 Aug 2026, replaces the fonts.googleapis.com <link> in
+// index.html) - same font, same weights (variable 100-900 covers the
+// 300/400/500/600/700/800 the app actually uses), but same-origin: no DNS/TLS
+// round trip to a third-party host on a cold PWA launch, and it's cacheable
+// by sw.js for real offline use. Only the non-italic weight axis is pulled in
+// (wght.css, not the heavier standard.css/opsz.css variants) since this app
+// never sets font-style: italic. Subsetted by unicode-range same as Google's
+// own delivery, so a Latin-only page still only downloads the ~48KB latin
+// file, not every script's glyphs.
+import '@fontsource-variable/inter/wght.css';
 import './index.css';
 import './custom.css';
 import './mobile_screen_fix.css';

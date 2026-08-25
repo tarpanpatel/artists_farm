@@ -31,30 +31,34 @@ export const formatDateTimeDDMMYYYY = (dateStr?: string | null): string => {
   const cleaned = String(dateStr).trim();
   if (!cleaned) return '';
 
-  // Handle "YYYY-MM-DD HH:mm:ss" or "YYYY-MM-DD" formats
-  const dtMatch = cleaned.match(/^(\d{4})-(\d{2})-(\d{2})\s(.+)$/);
-  if (dtMatch) return `${dtMatch[3]}/${dtMatch[2]}/${dtMatch[1]} ${dtMatch[4]}`;
+  const stripSeconds = (timeStr: string): string => {
+    return timeStr.replace(/:(\d{2}):\d{2}/g, ':$1');
+  };
 
-  // Handle "DD/MM/YYYY HH:mm:ss" or "DD/MM/YYYY"
+  // Handle "YYYY-MM-DD HH:mm:ss" or "YYYY-MM-DD HH:mm"
+  const dtMatch = cleaned.match(/^(\d{4})-(\d{2})-(\d{2})\s(.+)$/);
+  if (dtMatch) return `${dtMatch[3]}/${dtMatch[2]}/${dtMatch[1]} ${stripSeconds(dtMatch[4])}`;
+
+  // Handle "DD/MM/YYYY HH:mm:ss" or "DD/MM/YYYY HH:mm"
   const dmyMatch = cleaned.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s(.+)$/);
-  if (dmyMatch) return `${dmyMatch[1].padStart(2, '0')}/${dmyMatch[2].padStart(2, '0')}/${dmyMatch[3]} ${dmyMatch[4]}`;
+  if (dmyMatch) return `${dmyMatch[1].padStart(2, '0')}/${dmyMatch[2].padStart(2, '0')}/${dmyMatch[3]} ${stripSeconds(dmyMatch[4])}`;
 
   // Handle "DD/MM/YYYY" only
   const dmyOnly = cleaned.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (dmyOnly) return `${dmyOnly[1].padStart(2, '0')}/${dmyOnly[2].padStart(2, '0')}/${dmyOnly[3]}`;
 
   // Handle native <input type="datetime-local"> value format "YYYY-MM-DDTHH:mm"
-  // (optionally with :ss/.SSS) - the base formatDateDDMMYYYY() fallback below
-  // parses this fine via `new Date(cleaned)` but silently drops the time
-  // component (it only ever formats date parts), so a datetime-local value fed
-  // through this function used to come out date-only with no time at all
-  // (found 21 Aug 2026, via KitchenManagement.tsx's Staff Meals date/time
-  // field - see toDatetimeLocalValue() below for the reverse direction).
   const isoLocalMatch = cleaned.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
   if (isoLocalMatch) return `${isoLocalMatch[3]}/${isoLocalMatch[2]}/${isoLocalMatch[1]} ${isoLocalMatch[4]}:${isoLocalMatch[5]}`;
 
+  // JS Date ISO string fallback
+  const dt = new Date(cleaned);
+  if (!isNaN(dt.getTime()) && (cleaned.includes('T') || cleaned.includes('-'))) {
+    return `${pad(dt.getDate())}/${pad(dt.getMonth() + 1)}/${dt.getFullYear()} ${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+  }
+
   // Fallback: try the base formatter
-  return formatDateDDMMYYYY(cleaned);
+  return stripSeconds(formatDateDDMMYYYY(cleaned));
 };
 
 const pad = (n: number | string): string => String(n).padStart(2, '0');

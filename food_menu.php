@@ -64,7 +64,13 @@ if ($propertyId > 0) {
     <title><?= htmlspecialchars($pageTitle) ?> - <?= htmlspecialchars($restaurantName) ?></title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Non-render-blocking (25 Aug 2026, same fix as index.html/home.html/
+         index3.html): a plain <link rel="stylesheet"> here would hold the
+         whole page blank until this third-party fetch completes - and this
+         page is guest-facing, opened cold off a QR-code scan on cellular,
+         the exact conditions that make that round trip most painful. -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'; this.onload=null;">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
     <style>
         :root {
           --bg-page: #f8f6f0;

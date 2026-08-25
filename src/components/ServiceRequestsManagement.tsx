@@ -25,7 +25,8 @@ import { Input } from './Input';
 import { formatDateTimeDDMMYYYY } from '../utils/dateUtils';
 
 import { useConfigurationData } from '../contexts/ConfigurationDataContext';
-import { Card, Badge, TextInput as FlowbiteTextInput, Textarea as FlowbiteTextarea, Checkbox as FlowbiteCheckbox, Label as FlowbiteLabel, Drawer } from 'flowbite-react';
+import { Tabs, TabItem, Card, Badge, TextInput as FlowbiteTextInput, Textarea as FlowbiteTextarea, Checkbox as FlowbiteCheckbox, Label as FlowbiteLabel, Drawer } from 'flowbite-react';
+import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
 
 interface Room {
   id: number;
@@ -71,8 +72,9 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
   const [newChargeAmount, setNewChargeAmount] = useState('');
   const [saving, setSaving] = useState(false);
   const [fulfillingId, setFulfillingId] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<'pending' | 'fulfilled'>('pending');
   const [fulfilledPage, setFulfilledPage] = useState(0);
-  const FULFILLED_PAGE_SIZE = 5;
+  const FULFILLED_PAGE_SIZE = 10;
 
   const [customRequestLabel, setCustomRequestLabel] = useState('');
   const [saveToCatalog, setSaveToCatalog] = useState(true);
@@ -334,8 +336,52 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const pending = requests.filter((r) => r.status === 'Pending');
-  const fulfilled = requests.filter((r) => r.status === 'Fulfilled');
+  const parseTimestampToMs = (str?: string | null): number => {
+    if (!str) return 0;
+    const s = String(str).trim();
+    if (!s) return 0;
+
+    const dmyMatch = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+    if (dmyMatch) {
+      const day = parseInt(dmyMatch[1], 10);
+      const month = parseInt(dmyMatch[2], 10) - 1;
+      const year = parseInt(dmyMatch[3], 10);
+      const hours = dmyMatch[4] ? parseInt(dmyMatch[4], 10) : 0;
+      const minutes = dmyMatch[5] ? parseInt(dmyMatch[5], 10) : 0;
+      const seconds = dmyMatch[6] ? parseInt(dmyMatch[6], 10) : 0;
+      return new Date(year, month, day, hours, minutes, seconds).getTime();
+    }
+
+    const ymdMatch = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+    if (ymdMatch) {
+      const year = parseInt(ymdMatch[1], 10);
+      const month = parseInt(ymdMatch[2], 10) - 1;
+      const day = parseInt(ymdMatch[3], 10);
+      const hours = ymdMatch[4] ? parseInt(ymdMatch[4], 10) : 0;
+      const minutes = ymdMatch[5] ? parseInt(ymdMatch[5], 10) : 0;
+      const seconds = ymdMatch[6] ? parseInt(ymdMatch[6], 10) : 0;
+      return new Date(year, month, day, hours, minutes, seconds).getTime();
+    }
+
+    const dt = new Date(s).getTime();
+    return isNaN(dt) ? 0 : dt;
+  };
+
+  const pending = requests
+    .filter((r) => r.status === 'Pending')
+    .sort((a, b) => {
+      const timeB = parseTimestampToMs(b.createdAt) || (typeof b.id === 'number' ? b.id : 0);
+      const timeA = parseTimestampToMs(a.createdAt) || (typeof a.id === 'number' ? a.id : 0);
+      return timeB - timeA;
+    });
+
+  const fulfilled = requests
+    .filter((r) => r.status === 'Fulfilled')
+    .sort((a, b) => {
+      const timeB = parseTimestampToMs(b.fulfilledAt) || parseTimestampToMs(b.createdAt) || (typeof b.id === 'number' ? b.id : 0);
+      const timeA = parseTimestampToMs(a.fulfilledAt) || parseTimestampToMs(a.createdAt) || (typeof a.id === 'number' ? a.id : 0);
+      return timeB - timeA;
+    });
   const fulfilledPageCount = Math.max(1, Math.ceil(fulfilled.length / FULFILLED_PAGE_SIZE));
   // Clamp rather than trust state directly - the fulfilled list's length can
   // shrink out from under a page number already in state (e.g. after a
@@ -438,114 +484,144 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
           </PageHeaderButton>
         </div>
       </PageHeader>
-      <Card className="shadow-md border-gray-200 dark:border-gray-700 service-requests-management__list-card">
-        {loading ? (
-          <div className="text-center py-6 text-slate-500 dark:text-slate-400 text-sm service-requests-management__loading">{t('loading_spinner_default_message', 'Loading...')}</div>
-        ) : requests.length === 0 ? (
-          <div className="text-center py-6 text-slate-500 dark:text-slate-400 text-sm service-requests-management__empty-state">{t('no_service_requests_label', 'No service requests logged yet.')}</div>
-        ) : (
-          <div className="space-y-6 service-requests-management__sections">
-            {pending.length > 0 && (
-              <div className="space-y-3 service-requests-management__section">
-                <div className="flex items-center gap-2">
-                  <Badge color="warning" size="xs" className="font-semibold uppercase tracking-wide">
-                    {t('pending_status_badge', 'Pending')} ({pending.length})
-                  </Badge>
-                </div>
-                <div className="space-y-2.5 service-requests-management__request-list">
-                  {pending.map((r) => (
-                    <div key={r.id} className="flex items-center justify-between gap-3 p-4 bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg service-requests-management__request-item service-requests-management__request-item--pending shadow-md">
-                      <div className="flex-1 min-w-0 service-requests-management__request-details">
-                        <div className="flex items-center gap-2 flex-wrap service-requests-management__request-header">
-                          <span className="font-bold text-slate-900 dark:text-white text-sm service-requests-management__request-type">{getRequestTypeLabel(r.requestType)}</span>
-                          <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 service-requests-management__request-room border border-slate-200 dark:border-slate-600">
-                            <Home className="w-3 h-3 text-slate-400" /> {r.roomName}
-                          </span>
-                          {Boolean(r.chargeAmount && r.chargeAmount > 0) && (
-                            <Badge color="success" size="xs" className="font-bold">
-                              ₹{Number(r.chargeAmount).toFixed(2)}
-                            </Badge>
-                          )}
-                        </div>
-                        {r.description && <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 service-requests-management__request-description">{r.description}</p>}
-                        <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 service-requests-management__request-meta">{t('requested_by_text', 'Requested by')} {r.requestedBy} · {formatDateTimeDDMMYYYY(r.createdAt)}</p>
-                      </div>
-                      <Button
-                        variant="success"
-                        size="sm"
-                        disabled={fulfillingId === r.id}
-                        onClick={() => handleFulfill(r.id, r.requestType, r.roomName)}
-                        className="shrink-0 service-requests-management__fulfill-button rounded-lg text-xs font-semibold"
-                      >
-                        <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
-                        {fulfillingId === r.id ? t('updating_button', 'Updating...') : t('mark_fulfilled_button', 'Mark Fulfilled')}
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+      <div className="service-requests-management__desk">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <Tabs
+            aria-label="Service Request Status Tabs"
+            variant="default"
+            theme={attachedTabsTheme}
+            clearTheme={attachedTabsClearTheme}
+            onActiveTabChange={(tabIndex: number) => {
+              const tabs: ('pending' | 'fulfilled')[] = ['pending', 'fulfilled'];
+              if (tabs[tabIndex]) setActiveTab(tabs[tabIndex]);
+            }}
+          >
+            <TabItem
+              active={activeTab === 'pending'}
+              title={`Pending${pending.length ? ` (${pending.length})` : ''}`}
+            />
+            <TabItem
+              active={activeTab === 'fulfilled'}
+              title={`Fulfilled${fulfilled.length ? ` (${fulfilled.length})` : ''}`}
+            />
+          </Tabs>
+        </div>
 
-            {fulfilled.length > 0 && (
-              <div className="space-y-3 service-requests-management__section">
-                <div className="flex items-center gap-2">
-                  <Badge color="success" size="xs" className="font-semibold uppercase tracking-wide">
-                    {t('fulfilled_status_badge', 'Fulfilled')} ({fulfilled.length})
-                  </Badge>
-                </div>
-                <div className="space-y-2.5 service-requests-management__request-list">
-                  {paginatedFulfilled.map((r) => (
-                    <div key={r.id} className="flex items-center justify-between gap-3 p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-lg opacity-85 service-requests-management__request-item service-requests-management__request-item--fulfilled shadow-md">
-                      <div className="flex-1 min-w-0 service-requests-management__request-details">
-                        <div className="flex items-center gap-2 flex-wrap service-requests-management__request-header">
-                          <span className="font-semibold text-slate-900 dark:text-white text-sm service-requests-management__request-type">{getRequestTypeLabel(r.requestType)}</span>
-                          <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 service-requests-management__request-room border border-slate-200 dark:border-slate-600">
-                            <Home className="w-3 h-3 text-slate-400" /> {r.roomName}
-                          </span>
-                          {Boolean(r.chargeAmount && r.chargeAmount > 0) && (
-                            <Badge color="success" size="xs" className="font-bold">
-                              ₹{Number(r.chargeAmount).toFixed(2)}
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 service-requests-management__request-meta">
-                          {t('fulfilled_by_text', 'Fulfilled by')} {r.fulfilledBy} · {r.fulfilledAt}
-                        </p>
-                      </div>
-                      <Badge color="success" size="xs" icon={CheckCircle2} className="shrink-0 font-semibold">
-                        {t('done_badge', 'Done')}
-                      </Badge>
+        <Card className="shadow-md space-y-4 rounded-t-none border-t-0 -mt-px service-requests-management__desk-body">
+          {loading ? (
+            <div className="text-center py-6 text-slate-500 dark:text-slate-400 text-sm service-requests-management__loading">{t('loading_spinner_default_message', 'Loading...')}</div>
+          ) : requests.length === 0 ? (
+            <div className="text-center py-6 text-slate-500 dark:text-slate-400 text-sm service-requests-management__empty-state">{t('no_service_requests_label', 'No service requests logged yet.')}</div>
+          ) : (
+            <div className="space-y-4 service-requests-management__sections">
+              {/* Pending Tab Content */}
+              {activeTab === 'pending' && (
+                <div className="space-y-3 service-requests-management__section">
+                  {pending.length === 0 ? (
+                    <div className="p-8 text-center text-slate-400 font-semibold text-xs">
+                      No pending service requests.
                     </div>
-                  ))}
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 service-requests-management__request-list">
+                      {pending.map((r) => (
+                        <div key={r.id} className="flex items-center justify-between gap-3 p-4 bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg service-requests-management__request-item service-requests-management__request-item--pending shadow-sm">
+                          <div className="flex-1 min-w-0 service-requests-management__request-details">
+                            <div className="flex items-center gap-2 flex-wrap service-requests-management__request-header">
+                              <span className="font-bold text-slate-900 dark:text-white text-sm service-requests-management__request-type">{getRequestTypeLabel(r.requestType)}</span>
+                              <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 service-requests-management__request-room border border-slate-200 dark:border-slate-600">
+                                <Home className="w-3 h-3 text-slate-400" /> {r.roomName}
+                              </span>
+                              {Boolean(r.chargeAmount && r.chargeAmount > 0) && (
+                                <Badge color="success" size="xs" className="font-bold">
+                                  ₹{Number(r.chargeAmount).toFixed(2)}
+                                </Badge>
+                              )}
+                            </div>
+                            {r.description && <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 service-requests-management__request-description">{r.description}</p>}
+                            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 service-requests-management__request-meta">{t('requested_by_text', 'Requested by')} {r.requestedBy} · {formatDateTimeDDMMYYYY(r.createdAt)}</p>
+                          </div>
+                          <Button
+                            variant="success"
+                            size="sm"
+                            disabled={fulfillingId === r.id}
+                            onClick={() => handleFulfill(r.id, r.requestType, r.roomName)}
+                            className="shrink-0 service-requests-management__fulfill-button rounded-lg text-xs font-semibold"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                            {fulfillingId === r.id ? t('updating_button', 'Updating...') : t('mark_fulfilled_button', 'Mark Fulfilled')}
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                {fulfilledPageCount > 1 && (
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700 service-requests-management__fulfilled-pagination">
-                    <button
-                      type="button"
-                      onClick={() => setFulfilledPage((p) => Math.max(0, p - 1))}
-                      disabled={clampedFulfilledPage === 0}
-                      className="flex items-center gap-1 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                    >
-                      <ChevronLeft className="w-3.5 h-3.5" /> {t('previous_button', 'Previous')}
-                    </button>
-                    <span className="text-xs text-slate-400 dark:text-slate-500">
-                      {t('page_label', 'Page')} {clampedFulfilledPage + 1} {t('of_label', 'of')} {fulfilledPageCount}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setFulfilledPage((p) => Math.min(fulfilledPageCount - 1, p + 1))}
-                      disabled={clampedFulfilledPage >= fulfilledPageCount - 1}
-                      className="flex items-center gap-1 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                    >
-                      {t('next_button', 'Next')} <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </Card>
+              )}
+
+              {/* Fulfilled Tab Content */}
+              {activeTab === 'fulfilled' && (
+                <div className="space-y-3 service-requests-management__section">
+                  {fulfilled.length === 0 ? (
+                    <div className="p-8 text-center text-slate-400 font-semibold text-xs">
+                      No fulfilled service requests.
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 service-requests-management__request-list">
+                        {paginatedFulfilled.map((r) => (
+                          <div key={r.id} className="flex items-center justify-between gap-3 p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-lg opacity-85 service-requests-management__request-item service-requests-management__request-item--fulfilled shadow-sm">
+                            <div className="flex-1 min-w-0 service-requests-management__request-details">
+                              <div className="flex items-center gap-2 flex-wrap service-requests-management__request-header">
+                                <span className="font-semibold text-slate-900 dark:text-white text-sm service-requests-management__request-type">{getRequestTypeLabel(r.requestType)}</span>
+                                <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 service-requests-management__request-room border border-slate-200 dark:border-slate-600">
+                                  <Home className="w-3 h-3 text-slate-400" /> {r.roomName}
+                                </span>
+                                {Boolean(r.chargeAmount && r.chargeAmount > 0) && (
+                                  <Badge color="success" size="xs" className="font-bold">
+                                    ₹{Number(r.chargeAmount).toFixed(2)}
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 service-requests-management__request-meta">
+                                {t('fulfilled_by_text', 'Fulfilled by')} {r.fulfilledBy} · {formatDateTimeDDMMYYYY(r.fulfilledAt)}
+                              </p>
+                            </div>
+                            <Badge color="success" size="xs" icon={CheckCircle2} className="shrink-0 font-semibold">
+                              {t('done_badge', 'Done')}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                      {fulfilledPageCount > 1 && (
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700 service-requests-management__fulfilled-pagination">
+                          <button
+                            type="button"
+                            onClick={() => setFulfilledPage((p) => Math.max(0, p - 1))}
+                            disabled={clampedFulfilledPage === 0}
+                            className="flex items-center gap-1 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                          >
+                            <ChevronLeft className="w-3.5 h-3.5" /> {t('previous_button', 'Previous')}
+                          </button>
+                          <span className="text-xs text-slate-400 dark:text-slate-500">
+                            {t('page_label', 'Page')} {clampedFulfilledPage + 1} {t('of_label', 'of')} {fulfilledPageCount}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setFulfilledPage((p) => Math.min(fulfilledPageCount - 1, p + 1))}
+                            disabled={clampedFulfilledPage >= fulfilledPageCount - 1}
+                            className="flex items-center gap-1 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                          >
+                            {t('next_button', 'Next')} <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </Card>
+      </div>
 
       {/* New Service Request Right Drawer */}
       <Drawer
@@ -707,7 +783,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Category</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Category</label>
                 <select
                   value={newTypeCategory}
                   onChange={(e) => setNewTypeCategory(e.target.value)}
@@ -768,7 +844,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                           <div>
-                            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Category</label>
+                            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Category</label>
                             <select
                               value={editingTypeCategory}
                               onChange={(e) => setEditingTypeCategory(e.target.value)}
