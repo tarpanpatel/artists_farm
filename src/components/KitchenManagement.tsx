@@ -36,7 +36,7 @@ import {
 import { Guest, Order, OrderItem, MenuItem, Requisition, InventoryItem, WalkInTab } from '../types';
 import { GUEST_STATUS_CHECKED_IN, GUEST_STATUS_ACTIVE_LEGACY } from '../constants/guestStatus';
 import { recordTelescopeLog } from '../utils/telescopeLogger';
-import { resolveTelegramTemplate, fetchServedLogsFromDB, addServedLogToDB, fetchRecipesFromDB, saveRecipeToDB, deleteRecipeFromDB, depleteStockForDish, getPropertySlug, updateOrderItemStatus, updateOrderStatusDB, updateItemReminderTimestamp, checkStaleReminders, StaleReminderItem, fetchTelegramConfigDB, fetchStaffMealOptionsFromDB, addStaffMealOptionToDB, fetchStaffMealLogsFromDB, addStaffMealLogToDB, addOrderToDB, fetchWalkInTabsFromDB, openWalkInTabDB } from '../services/api';
+import { resolveTelegramTemplate, fetchServedLogsFromDB, addServedLogToDB, fetchRecipesFromDB, saveRecipeToDB, deleteRecipeFromDB, depleteStockForDish, getPropertySlug, updateOrderItemStatus, updateOrderStatusDB, updateItemReminderTimestamp, fetchStaffMealOptionsFromDB, addStaffMealOptionToDB, fetchStaffMealLogsFromDB, addStaffMealLogToDB, addOrderToDB, fetchWalkInTabsFromDB, openWalkInTabDB } from '../services/api';
 import { StyledSelect } from './StyledSelect';
 import { Popover } from './Popover';
 import { useToast } from './ToastContext';
@@ -155,7 +155,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const { confirm } = useConfirm();
   const { orders, addOrder, refreshOrders, updateOrderStatus, pendingOrdersCount } = useKitchenContext();
   const { inventory, requisitions } = useInventoryContext();
-  const { currentUser, isAuthenticated, activeRole } = useAuth();
+  const { currentUser, activeRole } = useAuth();
   // ROLES.md (24 Aug 2026, corrected same day - see git history/comments in
   // php/kitchen/menu.php's nav_menu_self_heal_v5 for why): generic `Staff`
   // gets a scoped-down order-status view only - live orders + served orders +
@@ -723,72 +723,18 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     });
   };
 
-  // --- Shared Reminder/Nudge Engine: auto-fires the same reminders as the manual
-  // buttons above once an item has sat unaddressed longer than the property's
-  // configured threshold. Since no background worker exists, this runs as a
-  // page-open poll (see ROADMAP.md) rather than a true server-side cron - it only
-  // fires while a staff member has the Kitchen page open, same tradeoff already
-  // accepted for the 15s order auto-sync above. Manual taps reset the same
-  // last_reminder_at the auto-check reads, so either path resets the countdown.
-  const [reminderThresholdMinutes, setReminderThresholdMinutes] = useState(5);
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    fetchTelegramConfigDB().then((cfg) => {
-      if (cfg.reminderThresholdMinutes) setReminderThresholdMinutes(cfg.reminderThresholdMinutes);
-    });
-  }, [isAuthenticated]);
-
-  const autoFireKitchenReminder = async (stale: StaleReminderItem) => {
-    const reminderVars: Record<string, string> = {
-      order_id: String(stale.order_id),
-      qty: String(stale.quantity),
-      dish_name: stale.dish_name,
-      room_no: stale.room_no,
-      elapsed_minutes: String(stale.elapsed_minutes),
-    };
-    const resolved = await resolveTelegramTemplate('kitchen_order_reminder', reminderVars);
-    // #live_tickets (not bare #kitchen, which lands on Take Order) - see the
-    // matching manual-reminder comment above.
-    const appUrl = `${window.location.origin}${window.location.pathname}#live_tickets`;
-    const fallbackMsg = `⏰ <b>KITCHEN REMINDER</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #${stale.order_id}\n• <b>${stale.quantity}x</b> ${stale.dish_name} (${stale.room_no})\n⏱️ <b>Pending for:</b> ${stale.elapsed_minutes} min\n━━━━━━━━━━━━━━━━━━\n👨‍🍳 <i>Auto-reminder — please check on this order.</i>\n\n🔗 <b>Open Kitchen Board:</b> <a href="${appUrl}">${appUrl}</a>`;
-    const finalMsg = resolved ? `${resolved}\n\n🔗 <b>Open Kitchen Board:</b> <a href="${appUrl}">${appUrl}</a>` : fallbackMsg;
-    onDispatchTelegram?.('Kitchen Order Reminder (Auto)', finalMsg, 'kitchen', undefined, 'kitchen_order_reminder');
-    updateItemReminderTimestamp(stale.item_id);
-  };
-
-  const autoFirePickupReminder = async (stale: StaleReminderItem) => {
-    const reminderVars: Record<string, string> = {
-      order_id: String(stale.order_id),
-      qty: String(stale.quantity),
-      dish_name: stale.dish_name,
-      room_no: stale.room_no,
-      ready_since: `${stale.elapsed_minutes} min ago`,
-    };
-    const resolved = await resolveTelegramTemplate('kitchen_pickup_reminder', reminderVars);
-    // #live_tickets (not bare #kitchen, which lands on Take Order) - see the
-    // matching manual-reminder comment above.
-    const appUrl = `${window.location.origin}${window.location.pathname}#live_tickets`;
-    const inlineKeyboard = {
-      inline_keyboard: [
-        [{ text: '🍽️ Tap when Served', callback_data: `serve_item_${stale.order_id}_${stale.item_index ?? 0}` }]
-      ]
-    };
-    const fallbackMsg = `⏰ <b>STILL WAITING FOR PICKUP</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #${stale.order_id}\n• <b>${stale.quantity}x</b> ${stale.dish_name} (${stale.room_no})\n⏱️ <b>Ready since:</b> ${stale.elapsed_minutes} min ago\n━━━━━━━━━━━━━━━━━━\n🏃 <i>Auto-reminder — please collect and tap below when served.</i>\n\n🔗 <b>Open Kitchen Board:</b> <a href="${appUrl}">${appUrl}</a>`;
-    const finalMsg = resolved ? `${resolved}\n\n🔗 <b>Open Kitchen Board:</b> <a href="${appUrl}">${appUrl}</a>` : fallbackMsg;
-    onDispatchTelegram?.('Pickup Reminder (Auto)', finalMsg, 'admin', inlineKeyboard, 'kitchen_pickup_reminder');
-    updateItemReminderTimestamp(stale.item_id);
-  };
-
-  useEffect(() => {
-    const pollStaleReminders = async () => {
-      const { pending, ready } = await checkStaleReminders(reminderThresholdMinutes);
-      for (const item of pending) await autoFireKitchenReminder(item);
-      for (const item of ready) await autoFirePickupReminder(item);
-    };
-    const interval = setInterval(pollStaleReminders, 60000);
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reminderThresholdMinutes]);
+  // The automatic background reminder poll (fired every 60s for any item past
+  // its configured threshold, regardless of how long it had already been
+  // stale - no cap) was removed 25 Aug 2026 per explicit user request: "I just
+  // want one reminder go every time bell is clicked." It was firing
+  // indefinitely, every few minutes, for long-neglected items (a 44h/55h-old
+  // demo order in this exact case) - reported live as "reminders coming
+  // automatically" after a single manual bell-icon tap. Reminders are now
+  // ONLY ever sent by the manual "Send Reminder"/"Send Pickup Reminder"
+  // buttons above (handleSendKitchenReminder/handleSendPickupReminder) - one
+  // tap, one message, no background engine. last_reminder_at/
+  // check_stale_reminders still exist server-side (harmless if unused) in
+  // case an opt-in version of this is wanted again later.
 
   // Staff Meals State
   // Native <input type="datetime-local"> value format ("YYYY-MM-DDTHH:mm"),
