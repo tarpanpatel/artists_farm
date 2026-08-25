@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Globe, Loader2, CheckCircle2, Hash, AlertTriangle } from './icons/FlowbiteIcons';
-import { Drawer, Alert } from 'flowbite-react';
+import { Modal, Alert } from 'flowbite-react';
 import { X } from './icons/FlowbiteIcons';
 import { Guest } from '../types';
 import { Input } from './Input';
@@ -105,13 +105,17 @@ export const ConvertOtaBookingModal: React.FC<ConvertOtaBookingModalProps> = ({
   const fieldLabelClass = 'text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase';
 
   return (
-    <Drawer
-      open
-      onClose={onClose}
-      position="right"
-      className="z-70 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between convert-ota-booking-modal__root"
-    >
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+    // Modal, not Drawer (25 Aug 2026, DESIGN.md's "nested dialogs never stack a second
+    // Drawer" rule) - one of this component's three entry points is a row inside
+    // OperationalDashboard.tsx's "All System Alerts" Drawer (still open underneath when this
+    // was itself a Drawer). The other two entry points (the dashboard's own Alerts preview,
+    // the calendar's own OTA-block popover) aren't nested, but a Modal is correct for those
+    // too - it's the safe default regardless of which entry point was used. z-70 is unchanged
+    // from before, the correct existing scale tier for a secondary dialog on top of an
+    // already-open page modal.
+    <Modal show onClose={onClose} dismissible size="lg" popup className="z-70 convert-ota-booking-modal__root">
+      <div className="flex flex-col max-h-[85vh]">
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-t-lg shrink-0">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 flex items-center justify-center text-amber-600 dark:text-amber-400">
             <Globe className="w-4 h-4" />
@@ -249,7 +253,7 @@ export const ConvertOtaBookingModal: React.FC<ConvertOtaBookingModalProps> = ({
           </div>
         </div>
       </div>
-      <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850 rounded-b-lg shrink-0">
         <button
           type="button"
           onClick={onClose}
@@ -281,6 +285,7 @@ export const ConvertOtaBookingModal: React.FC<ConvertOtaBookingModalProps> = ({
           <span>{t('convert_to_booking_button', 'Convert to Booking')}</span>
         </button>
       </div>
-    </Drawer>
+      </div>
+    </Modal>
   );
 };

@@ -16,7 +16,7 @@ import {
   Save,
   HelpCircle,
 } from './icons/FlowbiteIcons';
-import { Drawer } from 'flowbite-react';
+import { Modal } from 'flowbite-react';
 import { Button } from './Button';
 import { Input } from './Input';
 import {
@@ -296,11 +296,15 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
   const isConnected = currentState.status === 'connected' || currentState.chatId !== null;
 
   return (
-    // z-60: this wizard can be opened from a screen with another page drawer
-    // already behind it, so it needs the "secondary drawer above an open page
-    // drawer" tier (see the z-index scale note in src/index.css).
-    <Drawer open={isOpen} onClose={onClose} position="right" className="z-60 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between telegram-setup-wizard__root">
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+    // Modal, not Drawer (25 Aug 2026, DESIGN.md's "nested dialogs never stack a second
+    // Drawer" rule) - this wizard's whole reason for being z-60 in the first place was "opened
+    // from a screen with another page drawer already behind it" (TelegramNotificationModal.tsx
+    // is itself a Drawer, and renders this wizard inside it) - a textbook case of exactly what
+    // that rule now forbids. z-60 is still the correct tier (secondary dialog above an
+    // already-open page drawer), only the shape changed.
+    <Modal show={isOpen} onClose={onClose} dismissible size="xl" popup className="z-60 telegram-setup-wizard__root">
+      <div className="flex flex-col max-h-[85vh]">
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-t-lg shrink-0">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-lg bg-sky-50 dark:bg-sky-950 border border-sky-200 dark:border-sky-800 flex items-center justify-center text-sky-600 dark:text-sky-400">
             <Rocket className="w-4.5 h-4.5" />
@@ -630,7 +634,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
           )}
         </div>
       </div>
-      <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-850">
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-850 rounded-b-lg shrink-0">
         <button
           onClick={goBack}
           disabled={currentIndex === 0}
@@ -655,6 +659,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
           </button>
         </div>
       </div>
-    </Drawer>
+      </div>
+    </Modal>
   );
 };

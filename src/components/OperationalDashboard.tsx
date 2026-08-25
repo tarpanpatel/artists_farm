@@ -1520,12 +1520,14 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           guest={selectedBooking}
           isOpen={showCheckinVerification}
           onClose={() => {
+            // FIXED 25 Aug 2026 (live report: "When I click close, I exit to dashboard, it
+            // should go back to the booking modal") - this used to also null selectedBooking,
+            // closing Booking Details right along with it. That was a deliberate earlier
+            // decision (see git history), explicitly reversed by this report: closing
+            // (manually, or automatically after completing) now reveals Booking Details again,
+            // since this is opened from inside it and conceptually a step within it, not a
+            // sibling screen that should dump you back out to the dashboard.
             setShowCheckinVerification(false);
-            // This modal is opened from inside Booking Details, on top of it -
-            // closing (manually, or automatically after completing) should
-            // return to the dashboard, not reveal Booking Details sitting
-            // underneath unexpectedly.
-            setSelectedBooking(null);
           }}
           onVerificationComplete={(guestId) => {
             onGuestVerificationUpdated?.(guestId);
