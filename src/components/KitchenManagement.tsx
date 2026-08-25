@@ -2548,10 +2548,16 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     wrapping it in a flex/justify-end container is what
                     actually constrains it to its own content width instead
                     of needing a one-off width override on the button itself. */}
-                <div className="p-3 pb-3.5 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shrink-0 flex flex-col gap-2.5">
+                {/* Instructions checkbox moved onto the same row as the Send
+                    button, left-aligned against it (25 Aug 2026, explicit
+                    request) - was its own full-width row stacked above the
+                    button before. Button still needs its own shrink-0 (see
+                    the "Action Footer" comment above on Button's root being
+                    a block-level flex that otherwise fills the row). */}
+                <div className="p-3 pb-3.5 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shrink-0 flex items-center justify-between gap-2.5">
                   {/* Order Instructions checkbox (23 Aug 2026) - same behavior as
                       the desktop cart panel's own copy above. */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
                     <Checkbox
                       id="order-instructions-checkbox-mobile"
                       checked={!!cartInstructions.trim()}
@@ -2571,26 +2577,24 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                           setIsInstructionsDrawerOpen(true);
                         }
                       }}
-                      className="text-xs font-medium text-gray-600 dark:text-gray-300 cursor-pointer select-none flex items-center gap-1.5"
+                      className="text-xs font-medium text-gray-600 dark:text-gray-300 cursor-pointer select-none flex items-center gap-1.5 min-w-0"
                     >
-                      <ClipboardEdit className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
-                      {t('order_instructions_checkbox_label', 'Instructions')}
+                      <ClipboardEdit className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" />
+                      <span className="truncate">{t('order_instructions_checkbox_label', 'Instructions')}</span>
                       {!!cartInstructions.trim() && (
-                        <span className="text-2xs text-blue-600 dark:text-blue-400 font-normal">({t('tap_to_edit_label', 'tap to edit')})</span>
+                        <span className="text-2xs text-blue-600 dark:text-blue-400 font-normal shrink-0">({t('tap_to_edit_label', 'tap to edit')})</span>
                       )}
                     </label>
                   </div>
-                  <div className="flex justify-end">
-                    <Button
-                      variant="primary"
-                      size="lg"
-                      onClick={handleOrderSubmitClick}
-                      disabled={isOrderSubmitDisabled && !noCheckedInGuestBlocking}
-                      className={noCheckedInGuestBlocking ? 'opacity-50' : undefined}
-                    >
-                      <span>{isSubmittingOrder ? t('sending_order_button', 'Sending...') : t('send_order_to_kitchen_button')}</span>
-                    </Button>
-                  </div>
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    onClick={handleOrderSubmitClick}
+                    disabled={isOrderSubmitDisabled && !noCheckedInGuestBlocking}
+                    className={`shrink-0 ${noCheckedInGuestBlocking ? 'opacity-50' : ''}`}
+                  >
+                    <span>{isSubmittingOrder ? t('sending_order_button', 'Sending...') : t('send_order_to_kitchen_button')}</span>
+                  </Button>
                 </div>
                 </div>
               </div>

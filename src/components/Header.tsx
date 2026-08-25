@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Dropdown, DropdownItem } from 'flowbite-react';
 import { Popover } from './Popover';
 import {
@@ -17,7 +17,8 @@ import {
   ArrowRight,
   Eye,
   Check,
-  Home as RoomIcon
+  Home as RoomIcon,
+  X
 } from './icons/FlowbiteIcons';
 import { useAuth } from '../contexts/AuthContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
@@ -128,6 +129,35 @@ export const Header: React.FC<HeaderProps> = ({
   }, []);
   const [lastSeenHash, setLastSeenHash] = useState<string>('');
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
+  const notificationWrapperRef = useRef<HTMLDivElement | null>(null);
+
+  // Click-outside + Escape to dismiss (25 Aug 2026, reported live: "No way
+  // to close notification when I opened here") - this dropdown previously
+  // had no dismiss path at all besides tapping the bell a second time
+  // (already non-obvious once open) or clicking a "View" link that
+  // navigates away. Same handleClickOutside/handleKeyDown pattern
+  // Popover.tsx already uses elsewhere in this app, reused here rather than
+  // migrating this whole hand-rolled dropdown onto that shared component.
+  useEffect(() => {
+    if (!showNotificationDropdown) return;
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as Node;
+      if (notificationWrapperRef.current && !notificationWrapperRef.current.contains(target)) {
+        setShowNotificationDropdown(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowNotificationDropdown(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showNotificationDropdown]);
 
   // Calendar Sync quick-action - only shown once at least one iCal feed
   // exists (any room for a MultiKey property, or the property itself for a
@@ -383,7 +413,7 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           {/* Notification Bell Button */}
-          <div className="header__notification relative">
+          <div className="header__notification relative" ref={notificationWrapperRef}>
             <button
               onClick={handleToggleNotifications}
               title={t('notifications_tooltip', 'Notifications')}
@@ -409,16 +439,37 @@ export const Header: React.FC<HeaderProps> = ({
                 bled off the LEFT edge of the screen with no way to reach the
                 cut-off content. Below sm, switch to viewport-fixed
                 positioning (pinned under the header, small side margins)
-                instead of anchor-relative. */}
+                instead of anchor-relative.
+                top-16 -> top-[calc(4rem+env(safe-area-inset-top))] (25 Aug
+                2026): the header this pins itself under grew taller than a
+                flat 64px on notched devices (see Header.tsx's own h-* fix
+                earlier today) - a stale top-16 here made the dropdown start
+                ABOVE the header's real bottom edge, rendering over/covering
+                it entirely, including the bell button itself. Reported live
+                as "can't see the site header" and, since the covered bell
+                was then unreachable to tap again, "no way to close" - now
+                also has its own explicit close button and click-outside/
+                Escape dismiss (see the effect above) as a real fix for that
+                second part, not just a side effect of this position fix. */}
             {showNotificationDropdown && (
-              <div className="header__dropdown notifications-popover-dropdown fixed left-2 right-2 top-16 max-sm:w-auto sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-96 bg-white dark:bg-slate-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 py-2 z-50 animate-in fade-in slide-in-from-top-2">
-                <div className="header__dropdown-header px-4 py-2.5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+              <div className="header__dropdown notifications-popover-dropdown fixed left-2 right-2 top-[calc(4rem+env(safe-area-inset-top,0px))] max-sm:w-auto sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-96 bg-white dark:bg-slate-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 py-2 z-50 animate-in fade-in slide-in-from-top-2">
+                <div className="header__dropdown-header px-4 py-2.5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between gap-2">
                   <span className="header__dropdown-title text-[10px] font-semibold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
                     <Bell className="w-3.5 h-3.5 text-blue-600" />
                     {t('notifications_label', 'Notifications')}
                   </span>
-                  <span className="header__dropdown-count text-[10px] bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 font-semibold px-2 py-0.5 rounded-full">
-                    {totalCount} updates
+                  <span className="flex items-center gap-2 shrink-0">
+                    <span className="header__dropdown-count text-[10px] bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 font-semibold px-2 py-0.5 rounded-full">
+                      {totalCount} updates
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowNotificationDropdown(false)}
+                      aria-label={t('close_button', 'Close')}
+                      className="header__dropdown-close p-1 -m-1 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:hover:text-white dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   </span>
                 </div>
 
