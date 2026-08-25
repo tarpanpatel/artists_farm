@@ -6,6 +6,7 @@
 
 function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
     require_once __DIR__ . '/../config/schema_cache.php';
+    require_once __DIR__ . '/../uploads/image_cleanup.php';
 
     // Ensure menu_items table exists
     try {
@@ -159,6 +160,13 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                         if ($foundId) $catId = (int)$foundId;
                     }
 
+                    // Captured before the UPDATE below so a photo replacement
+                    // can delete the file the old path pointed at once the
+                    // new one is safely saved - see php/uploads/image_cleanup.php.
+                    $oldImagePathStmt = $pdo->prepare("SELECT image_path FROM menu_items WHERE id = ? AND property_id = ?");
+                    $oldImagePathStmt->execute([$input['id'], $propertyId]);
+                    $oldMenuImagePath = $oldImagePathStmt->fetchColumn() ?: null;
+
                     try {
                         $stmt = $pdo->prepare("UPDATE menu_items SET name = COALESCE(?, name), category_id = COALESCE(?, category_id), price = COALESCE(?, price), is_hidden = COALESCE(?, is_hidden), image_path = COALESCE(?, image_path) WHERE id = ? AND property_id = ?");
                         $stmt->execute([
@@ -182,6 +190,11 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                             $propertyId
                         ]);
                     }
+
+                    if (!empty($input['imagePath'])) {
+                        deleteReplacedImage($oldMenuImagePath, $input['imagePath']);
+                    }
+
                     echo json_encode(['status' => 'success', 'message' => 'Menu item updated successfully']);
                 } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);

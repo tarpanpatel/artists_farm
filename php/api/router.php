@@ -43,6 +43,7 @@ require_once __DIR__ . '/../finance/ledger.php';
 require_once __DIR__ . '/../finance/petty_cash.php';
 require_once __DIR__ . '/../staff/staff.php';
 require_once __DIR__ . '/../audit/audit.php';
+require_once __DIR__ . '/../uploads/image_cleanup.php';
 // Conditional (12 Aug 2026): this was an unconditional require - a malware
 // scanner quarantining this ONE file (a real, recurring event on the live
 // server) took down every action router.php handles, including login,
@@ -2535,6 +2536,17 @@ switch ($action) {
             $sets = [];
             $params = [];
 
+            // Captured before the UPDATE below so a QR-code replacement can
+            // delete the file the old URL pointed at once the new one is
+            // safely saved - see php/uploads/image_cleanup.php. Only
+            // queried when the field is actually part of this save.
+            $oldUpiQrCodeUrl = null;
+            if (array_key_exists('upi_qr_code_url', $input)) {
+                $oldUrlStmt = $pdo->prepare("SELECT upi_qr_code_url FROM properties WHERE id = ?");
+                $oldUrlStmt->execute([$property_id]);
+                $oldUpiQrCodeUrl = $oldUrlStmt->fetchColumn() ?: null;
+            }
+
             if (isset($input['status'])) {
                 $sets[] = 'status = ?';
                 $params[] = $input['status'];
@@ -2630,6 +2642,15 @@ switch ($action) {
 
             $stmt = $pdo->prepare("UPDATE properties SET " . implode(', ', $sets) . " WHERE id = ?");
             $stmt->execute($params);
+
+            // Delete the old QR file now that the new value (or removal) is
+            // safely committed. deleteReplacedImage() itself no-ops when the
+            // value didn't actually change, so this is safe to call
+            // unconditionally whenever the field was part of this save.
+            if ($oldUpiQrCodeUrl !== null) {
+                $newUpiQrCodeUrl = array_key_exists('upi_qr_code_url', $input) ? (trim($input['upi_qr_code_url']) ?: null) : null;
+                deleteReplacedImage($oldUpiQrCodeUrl, $newUpiQrCodeUrl);
+            }
 
             if ($stmt->rowCount() > 0) {
                 echo json_encode(['success' => true, 'message' => 'Property updated successfully']);

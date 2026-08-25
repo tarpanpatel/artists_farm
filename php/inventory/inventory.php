@@ -6,6 +6,7 @@
 
 function handleInventoryRequests($pdo, $request_method, $action, $propertyId) {
     require_once __DIR__ . '/../config/schema_cache.php';
+    require_once __DIR__ . '/../uploads/image_cleanup.php';
 
     // Self-heal the System Stock Catalog schema (added 17 Aug 2026) - get_inventory's
     // UNION ALL below joins req_catalog against system_stock_catalog via
@@ -599,8 +600,23 @@ function handleInventoryRequests($pdo, $request_method, $action, $propertyId) {
                             $catId = $pdo->lastInsertId();
                         }
                     }
+                    // Captured before the UPDATE below so a photo replacement
+                    // can delete the file the old path pointed at once the
+                    // new one is safely saved - see php/uploads/image_cleanup.php.
+                    $oldCatalogImagePath = null;
+                    if (!empty($input['imagePath'])) {
+                        $oldImgStmt = $pdo->prepare("SELECT image_path FROM req_catalog WHERE id = ? AND property_id = ?");
+                        $oldImgStmt->execute([$id, $propertyId]);
+                        $oldCatalogImagePath = $oldImgStmt->fetchColumn() ?: null;
+                    }
+
                     $stmtUp = $pdo->prepare("UPDATE req_catalog SET item_name = ?, category_id = ?, unit_label = ?, image_path = COALESCE(?, image_path) WHERE id = ? AND property_id = ?");
                     $stmtUp->execute([$name, $catId, $unit, !empty($input['imagePath']) ? $input['imagePath'] : null, $id, $propertyId]);
+
+                    if (!empty($input['imagePath'])) {
+                        deleteReplacedImage($oldCatalogImagePath, $input['imagePath']);
+                    }
+
                     echo json_encode(['status' => 'success', 'message' => 'Catalog item updated']);
                 } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
