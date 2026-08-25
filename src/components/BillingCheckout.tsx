@@ -17,7 +17,6 @@ import {
   Home,
   Loader2,
   Globe,
-  CreditCard,
   Edit2,
   Pencil,
   Eye,
@@ -255,26 +254,6 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       res[cat] = (res[cat] || 0) + 1;
     });
     return res;
-  }, [uniqueGuests, todayStr]);
-
-  // Guests actually needing attention today (24 Aug 2026) - a pending C-Form
-  // or ID verification, same two conditions each guest card's own warning
-  // badges below already check individually. The "X requiring attention
-  // today" pill above the list used to just show tabCounts.today (literally
-  // "how many bookings fall in the Today tab", unrelated to whether any of
-  // them actually need anything) - harmless-looking when they happened to be
-  // the same number, but not what the label claims. Computed so its new
-  // click-to-open popover (see the pill's Popover below) can list the real
-  // guests/issues instead of a number with nothing behind it.
-  const todaysAttentionGuests = useMemo(() => {
-    return uniqueGuests.filter((g) => {
-      if (getGuestTabCategory(g) !== 'today') return false;
-      // isCFormGenuinelyFiled(), not a bare cFormFiledAt check (25 Aug 2026) - see that
-      // helper's own comment for why cFormFiledAt alone isn't proof of anything.
-      const cFormPending = g.isForeignGuest && !isCFormGenuinelyFiled(g);
-      const idPending = g.idVerificationStatus !== 'Complete';
-      return cFormPending || idPending;
-    });
   }, [uniqueGuests, todayStr]);
 
   // Target guests matching the active tab. Room filtering used to be a
@@ -885,6 +864,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       <PageHeader
         title={t('bookings_page_title', 'Bookings')}
         hideBorder
+        forceRow
       >
         <PageHeaderButton
           onClick={() => {
@@ -939,64 +919,11 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
             />
           </Tabs>
 
-          {/* Click-to-open Popover (24 Aug 2026, "all such warning badges should
-              open a popover and show a button which will take to the place
-              where those issues can be resolved") - was a plain static pill
-              with no action of its own. Now genuinely reflects real pending
-              issues (see todaysAttentionGuests above) and its popover lists
-              each one with a button straight into that guest's booking. */}
-          {todaysAttentionGuests.length > 0 && (
-            <Popover
-              trigger="click"
-              placement="bottom"
-              content={
-                <div className="w-64 max-w-[80vw] p-2 space-y-1">
-                  <p className="px-1.5 pt-1 pb-1.5 text-2xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700">
-                    Needs attention today
-                  </p>
-                  {todaysAttentionGuests.map((g) => {
-                    // isCFormGenuinelyFiled(), not a bare cFormFiledAt check (25 Aug 2026) -
-                    // see that helper's own comment.
-                    const cFormPending = g.isForeignGuest && !isCFormGenuinelyFiled(g);
-                    const idPending = g.idVerificationStatus !== 'Complete';
-                    return (
-                      <button
-                        key={g.id}
-                        type="button"
-                        onClick={() => handleEditGuest(g, cFormPending ? 'c_form' : 'id_verification')}
-                        className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg text-left hover:bg-slate-100 dark:hover:bg-slate-700/60 cursor-pointer"
-                      >
-                        <span className="min-w-0">
-                          <span className="block text-xs font-semibold text-slate-900 dark:text-white truncate">{g.guestName}</span>
-                          <span className="block text-2xs text-amber-700 dark:text-amber-400 font-medium">
-                            {[cFormPending && 'C-Form', idPending && 'ID'].filter(Boolean).join(' + ')} pending
-                          </span>
-                        </span>
-                        <ArrowRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      </button>
-                    );
-                  })}
-                </div>
-              }
-            >
-              <button
-                type="button"
-                // FIXED 25 Aug 2026 (live report: "1 requiring attention today" and "Checked In
-                // Today" can't be of same color badge) - this was emerald/green, the exact same
-                // color family as the Badge component's "success" variant used for "Checked In
-                // Today" right next to it on the same card, so a card needing action and a card
-                // that's simply, positively checked-in read as the same signal at a glance.
-                // Recolored to amber to match: (a) the amber "pending" labels already used
-                // inside this pill's own popover for each listed guest, and (b) the individual
-                // C-Form Pending/ID Pending badges below that this count is literally summing up
-                // - this pill was the one piece of that picture still colored like good news.
-                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300 self-end sm:self-center mb-1.5 sm:mb-0 shrink-0 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors"
-              >
-                <CreditCard className="h-3.5 w-3.5" />
-                <span>{todaysAttentionGuests.length} requiring attention today</span>
-              </button>
-            </Popover>
-          )}
+          {/* "N requiring attention today" pill removed (25 Aug 2026, explicit
+              request) - the underlying C-Form/ID-verification alerting this
+              summed up is already surfaced more prominently on the Dashboard's
+              System Alerts panel (OperationalDashboard.tsx), so this was a
+              redundant second surface for the same signal. */}
         </div>
 
         <Card className="billing-checkout__desk-body shadow-md space-y-4 rounded-t-none border-t-0 -mt-px">

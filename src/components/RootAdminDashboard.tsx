@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send, Mail, Bell, UserCog, Pencil, DatabaseBackup, Loader2, RefreshCw, AlertTriangle, UserRound, Receipt, Package, Bot, Server } from './icons/FlowbiteIcons';
-import { Card } from 'flowbite-react';
+import { Card, Sidebar, SidebarItems, SidebarItemGroup, SidebarItem } from 'flowbite-react';
 import { KpiCard } from './KpiCard';
 import { Button } from './Button';
+import { StyledSelect } from './StyledSelect';
 import { ToggleSwitch } from './ToggleSwitch';
 import { t } from '../i18n/en';
 import { AppearanceSettings } from './AppearanceSettings';
@@ -412,94 +413,110 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
         />
       )}
 
-      {/* Sidebar */}
-      <aside
-        className={`root-admin-dashboard__sidebar fixed top-0 left-0 z-[55] h-screen w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col transition-all duration-200 ${
+      {/* Sidebar - real flowbite-react <Sidebar>, not a hand-rolled <aside>
+          (25 Aug 2026 - this whole dashboard barely used any flowbite-react
+          components before this, just Card). theme.root.inner override
+          supplies bg-white/no-rounding/safe-area-top padding in place of
+          Sidebar's own defaults (bg-gray-50, rounded), which don't fit a
+          full-height fixed sidebar sitting flush against the screen edge. */}
+      <Sidebar
+        aria-label={t('root_admin_sidebar_aria', 'Root Admin Sidebar')}
+        className={`root-admin-dashboard__sidebar fixed top-0 left-0 z-[55] h-screen w-64 border-r border-gray-200 dark:border-gray-700 transition-all duration-200 ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
+        theme={{
+          root: {
+            inner: 'h-full overflow-y-auto overflow-x-hidden bg-white px-3 pt-[calc(1rem+env(safe-area-inset-top,0px))] pb-4 dark:bg-gray-800 flex flex-col justify-between',
+          },
+        }}
       >
-        <div className="h-full px-3 py-4 overflow-y-auto bg-white dark:bg-gray-800 flex flex-col justify-between">
-          <div className="space-y-1">
-            {/* Branding */}
-            <div className="px-3 pb-3 mb-2 border-b border-gray-200 dark:border-gray-700">
-              <h1 className="root-admin-dashboard__page-title text-sm font-semibold text-gray-900 dark:text-white">{t('root_admin_branding', 'Root Admin')}</h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t('system_management_label', 'System Management')}</p>
-            </div>
+        <div className="space-y-1">
+          {/* Branding */}
+          <div className="px-3 pb-3 mb-2 border-b border-gray-200 dark:border-gray-700">
+            <h1 className="root-admin-dashboard__page-title text-sm font-semibold text-gray-900 dark:text-white">{t('root_admin_branding', 'Root Admin')}</h1>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t('system_management_label', 'System Management')}</p>
+          </div>
 
-            <div className="px-3 pb-2 mb-2 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-500 dark:text-gray-400">
-              Hello, {displayUsername}
-            </div>
+          <div className="px-3 pb-2 mb-2 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-500 dark:text-gray-400">
+            Hello, {displayUsername}
+          </div>
 
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeSection === item.section;
-              return (
-                <button
+          <SidebarItems>
+            <SidebarItemGroup>
+              {menuItems.map((item) => (
+                <SidebarItem
                   key={item.id}
-                  type="button"
+                  as="button"
+                  icon={item.icon}
+                  active={activeSection === item.section}
                   onClick={() => goToSection(item.section)}
-                  className={`w-full flex items-center p-2 text-sm font-medium rounded-lg group transition duration-75 cursor-pointer ${
-                    isActive
-                      ? 'bg-gray-100 text-blue-600 dark:bg-gray-700 dark:text-blue-400 font-semibold'
-                      : 'text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700'
-                  }`}
+                  className="w-full cursor-pointer text-left"
                 >
-                  <Icon className={`w-5 h-5 transition duration-75 shrink-0 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white'}`} />
-                  <span className="ms-3 flex-1 text-left truncate">{item.label}</span>
-                </button>
-              );
-            })}
+                  {item.label}
+                </SidebarItem>
+              ))}
 
-            {/* Telescope Monitoring Link */}
-            <button
-              type="button"
-              onClick={handleTelescopeOpen}
-              className="w-full flex items-center p-2 text-sm font-medium rounded-lg transition duration-75 cursor-pointer text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-900 dark:hover:text-purple-100"
-              title={t('telescope_error_center_tooltip', 'Open Telescope Error Center - View user problems and system errors')}
-            >
-              <Eye className="w-5 h-5 shrink-0 text-purple-500 dark:text-purple-400" />
-              <span className="ms-3 flex-1 text-left truncate">{t('telescope_monitor_label', 'Telescope Monitor')}</span>
-            </button>
-          </div>
+              {/* Telescope Monitoring Link */}
+              <SidebarItem
+                as="button"
+                icon={Eye}
+                onClick={handleTelescopeOpen}
+                title={t('telescope_error_center_tooltip', 'Open Telescope Error Center - View user problems and system errors')}
+                className="w-full cursor-pointer text-left text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-900 dark:hover:text-purple-100"
+              >
+                {t('telescope_monitor_label', 'Telescope Monitor')}
+              </SidebarItem>
+            </SidebarItemGroup>
+          </SidebarItems>
+        </div>
 
-          <div className="pt-3 mt-auto border-t border-gray-200 dark:border-gray-700 space-y-2">
-            <div className="navigation__user-profile flex items-center gap-2.5 px-2 py-1.5 rounded-lg bg-gray-50 dark:bg-gray-700/50">
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 ring-2 ring-blue-500/30 shrink-0">
-                <UserRound className="w-4 h-4 text-gray-600 dark:text-gray-300" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate">
-                  {(() => {
-                    if (typeof window !== 'undefined') {
-                      try {
-                        const raw = localStorage.getItem('artists_farm_user_session');
-                        if (raw) {
-                          const parsed = JSON.parse(raw);
-                          if (parsed?.name) return parsed.name;
-                        }
-                      } catch (e) {}
-                    }
-                    return /^\+?\d{7,15}$/.test((displayUsername || '').replace(/[\s-]/g, '')) ? 'Root Admin' : displayUsername;
-                  })()}
-                </div>
+        <div className="pt-3 mt-auto border-t border-gray-200 dark:border-gray-700 space-y-2">
+          <div className="navigation__user-profile flex items-center gap-2.5 px-2 py-1.5 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 ring-2 ring-blue-500/30 shrink-0">
+              <UserRound className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate">
+                {(() => {
+                  if (typeof window !== 'undefined') {
+                    try {
+                      const raw = localStorage.getItem('artists_farm_user_session');
+                      if (raw) {
+                        const parsed = JSON.parse(raw);
+                        if (parsed?.name) return parsed.name;
+                      }
+                    } catch (e) {}
+                  }
+                  return /^\+?\d{7,15}$/.test((displayUsername || '').replace(/[\s-]/g, '')) ? 'Root Admin' : displayUsername;
+                })()}
               </div>
             </div>
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center gap-3 p-2.5 text-xs font-semibold rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/50 transition-all cursor-pointer shadow-2xs"
-              style={{ color: '#ff5252' }}
-            >
-              <LogOut className="w-4 h-4 text-red-500" />
-              <span>{t('sign_out_terminal_button', 'Sign Out Terminal')}</span>
-            </button>
           </div>
+          {/* Redundant inline style={{color:'#ff5252'}} removed (25 Aug 2026)
+              - a raw hex fighting/overriding the already-correct text-red-600
+              Tailwind class right next to it, outside the design-token scale
+              for no apparent reason (same class of drift DESIGN.md's button
+              rules exist to prevent). text-red-600 alone renders the
+              intended red. */}
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 p-2.5 text-xs font-semibold rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/50 transition-all cursor-pointer shadow-2xs"
+          >
+            <LogOut className="w-4 h-4 text-red-500" />
+            <span>{t('sign_out_terminal_button', 'Sign Out Terminal')}</span>
+          </button>
         </div>
-      </aside>
+      </Sidebar>
 
       {/* Main Content */}
       <main ref={mainScrollRef} className="root-admin-dashboard__main flex-1 md:pl-64 min-h-screen bg-gray-50 dark:bg-gray-900">
-        {/* Top Bar */}
-        <header className="root-admin-dashboard__topbar bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-20 h-16 flex items-center">
+        {/* Top Bar - h-16 grown to h-[calc(4rem+env(safe-area-inset-top))]
+            (25 Aug 2026): a plain h-16 sticky-top bar has nothing reserving
+            room for the status bar/notch in standalone PWA mode, so its
+            content (page title) rendered flush under it - same root cause
+            as Header.tsx's fix earlier today, this page just has its own
+            separate topbar entirely (Root Admin doesn't reuse Header.tsx). */}
+        <header className="root-admin-dashboard__topbar bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-20 h-[calc(4rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)] flex items-center">
           <div className="max-w-7xl w-full mx-auto px-4 lg:px-8 flex items-center gap-3">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -727,15 +744,17 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                     {t('root_demo_data_target_label', 'Target property:')} <span className="font-semibold text-slate-900 dark:text-white">{demoProperty.name}</span>
                     <span className="text-slate-400 dark:text-slate-500"> ({demoProperty.slug})</span>
                   </p>
-                  <button
+                  <Button
                     type="button"
+                    variant="warning"
                     onClick={handleResetDemoData}
                     disabled={isResettingDemo}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg transition-all cursor-pointer shadow-xs"
+                    block
+                    leftIcon={isResettingDemo ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                    className="sm:w-auto"
                   >
-                    {isResettingDemo ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                     {isResettingDemo ? t('root_demo_data_resetting', 'Resetting...') : t('root_demo_data_reset_button', 'Reset Demo Data Now')}
-                  </button>
+                  </Button>
                 </>
               )}
             </Card>
@@ -773,16 +792,16 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                     <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
                       Online AI Service Provider
                     </label>
-                    <select
+                    <StyledSelect
                       value={aiConfig.provider}
-                      onChange={(e) => setAiConfig({ ...aiConfig, provider: e.target.value })}
-                      className="w-full bg-slate-50 dark:bg-gray-900 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-700 text-xs rounded-lg p-2.5 outline-none focus:border-blue-500 font-semibold"
-                    >
-                      <option value="gemini">Google Gemini (gemini-1.5-flash) - Default</option>
-                      <option value="openai">OpenAI (gpt-4o-mini / gpt-4o)</option>
-                      <option value="claude">Anthropic Claude (claude-3-5-sonnet)</option>
-                      <option value="custom_ollama">Custom Local LLM / Ollama (http://localhost:11434/v1)</option>
-                    </select>
+                      onChange={(value) => setAiConfig({ ...aiConfig, provider: value })}
+                      options={[
+                        { value: 'gemini', label: 'Google Gemini (gemini-1.5-flash) - Default' },
+                        { value: 'openai', label: 'OpenAI (gpt-4o-mini / gpt-4o)' },
+                        { value: 'claude', label: 'Anthropic Claude (claude-3-5-sonnet)' },
+                        { value: 'custom_ollama', label: 'Custom Local LLM / Ollama (http://localhost:11434/v1)' },
+                      ]}
+                    />
                     <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
                       {aiConfig.provider === 'gemini' && 'Google Gemini 1.5 Flash offers high-speed responses and broad language understanding.'}
                       {aiConfig.provider === 'openai' && 'OpenAI GPT-4o-mini provides robust reasoning and structured JSON output.'}

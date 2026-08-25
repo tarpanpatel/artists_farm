@@ -15,6 +15,15 @@ interface PageHeaderProps {
   // than a breaking removal, since every existing call site still passes
   // it - safe to actually delete once nothing references it anymore.
   hideBorder?: boolean;
+  // Opt-out of the mobile flex-col stack (25 Aug 2026) - the default is
+  // deliberately flex-col on mobile (see the 21/25 Aug comment below on the
+  // wrapper div) because a page with 2+ action buttons has nowhere for them
+  // to go on a narrow phone without colliding with the title. A page with
+  // exactly one short, compact action (e.g. Bookings' single "Add Booking"
+  // button) can stay top-right on every viewport without that risk - set
+  // this true there rather than reverting the shared default everyone else
+  // needs.
+  forceRow?: boolean;
 }
 
 /**
@@ -41,7 +50,7 @@ interface PageHeaderProps {
  * `title`, not `subtitle`) - harmless duplication of the same pattern, not
  * a conflict.
  */
-export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, children }) => (
+export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, children, forceRow }) => (
   // flex-col on mobile, flex-row from sm: up (found 21 Aug 2026) - this was
   // always flex-row, so on a narrow phone a page with 2+ action buttons
   // (e.g. "Manage Custom Types" + "New Request") left the title/subtitle
@@ -53,7 +62,10 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, childre
   // pre-21-Aug copy of this file) while this exact comment stayed put right
   // above the regressed class - reported as the Dashboard header's title,
   // "Help?" link, and action buttons all colliding on a real phone.
-  <div className="gen_page_head flex flex-col items-start sm:flex-row sm:items-center justify-between gap-3 pb-3 mb-4 page-header">
+  // forceRow opts a specific page back into always-flex-row (see the prop's
+  // own comment) - used by Bookings, whose single compact button doesn't
+  // have that collision risk and was asked to stay top-right always.
+  <div className={`gen_page_head flex ${forceRow ? 'flex-row items-center' : 'flex-col items-start sm:flex-row sm:items-center'} justify-between gap-3 pb-3 mb-4 page-header`}>
     <div className="min-w-0 flex-1 page-header__left">
       <div className="flex items-center flex-wrap gap-2 page-header__title-row">
         <h1 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight sm:text-2xl page-header__title">
