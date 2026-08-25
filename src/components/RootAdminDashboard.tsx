@@ -105,11 +105,14 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
     api_key: '',
     custom_endpoint: 'http://localhost:11434/v1',
   });
-  // SECURITY (24 Aug 2026): the server never sends the real api_key back any more (see
-  // ai_config.php's GET handler) - only whether one is already on file. The password input below
-  // stays blank until the admin types a NEW key; leaving it blank on save intentionally keeps
-  // whatever key is already stored (server-side no-op on an empty api_key field).
-  const [hasApiKey, setHasApiKey] = useState(false);
+  // SECURITY (24 Aug 2026): the server never sends any real api_key back any more (see
+  // ai_config.php's GET handler) - only whether one is already on file, PER PROVIDER (25 Aug 2026
+  // fix - see ai_config.php's own comment for the real bug this replaces: a single shared
+  // has_api_key/api_key meant switching providers silently reused whatever key a DIFFERENT
+  // provider had last saved, with no warning, since there was only ever one slot on the server
+  // too). The password input below stays blank until the admin types a NEW key; leaving it blank
+  // on save intentionally keeps whatever key is already stored server-side for THAT provider.
+  const [hasApiKeyByProvider, setHasApiKeyByProvider] = useState<Record<string, boolean>>({});
   const [isSavingAiConfig, setIsSavingAiConfig] = useState(false);
 
   useEffect(() => {
@@ -118,7 +121,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
       .then((resData) => {
         if (resData && resData.data) {
           setAiConfig((prev) => ({ ...prev, ...resData.data, api_key: '' }));
-          setHasApiKey(!!resData.data.has_api_key);
+          setHasApiKeyByProvider(resData.data.has_api_key_by_provider || {});
         }
       })
       .catch((err) => console.error('Failed to load AI config:', err));
@@ -151,10 +154,11 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
       });
       const resData = await res.json();
       if (resData?.status === 'success') {
-        // Clear the typed key back out of local state and re-derive hasApiKey from the server's
-        // response - never keep holding a just-typed real key in memory longer than the request.
+        // Clear the typed key back out of local state and re-derive hasApiKeyByProvider from the
+        // server's response - never keep holding a just-typed real key in memory longer than the
+        // request.
         setAiConfig((prev) => ({ ...prev, ...resData.data, api_key: '' }));
-        setHasApiKey(!!resData.data?.has_api_key);
+        setHasApiKeyByProvider(resData.data?.has_api_key_by_provider || {});
         showToast('AI Provider Settings saved successfully!', { type: 'success' });
       } else if (res.status === 429) {
         // RateLimiter.checkAndBlock() (rate_limiter.php) responds with {error, code}, not
@@ -801,7 +805,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                     </label>
                     <StyledSelect
                       value={aiConfig.provider}
-                      onChange={(value) => setAiConfig({ ...aiConfig, provider: value })}
+                      onChange={(value) => setAiConfig({ ...aiConfig, provider: value, api_key: '' })}
                       options={[
                         { value: 'gemini', label: 'Google Gemini (gemini-1.5-flash) - Default' },
                         { value: 'openai', label: 'OpenAI (gpt-4o-mini / gpt-4o)' },
@@ -823,7 +827,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                   <div>
                     <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-2">
                       API Key ({aiConfig.provider.toUpperCase()})
-                      {hasApiKey && (
+                      {hasApiKeyByProvider[aiConfig.provider] && (
                         <span className="text-2xs font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
                           Key on file
                         </span>
@@ -833,7 +837,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                       type="password"
                       value={aiConfig.api_key}
                       onChange={(e) => setAiConfig({ ...aiConfig, api_key: e.target.value })}
-                      placeholder={hasApiKey ? '•••••••••••••• (leave blank to keep current key)' : (aiConfig.provider === 'gemini' ? 'AIzaSy...' : 'sk-...')}
+                      placeholder={hasApiKeyByProvider[aiConfig.provider] ? '•••••••••••••• (leave blank to keep current key)' : (aiConfig.provider === 'gemini' ? 'AIzaSy...' : 'sk-...')}
                       className="w-full bg-slate-50 dark:bg-gray-900 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-700 text-xs rounded-lg p-2.5 outline-none focus:border-blue-500 font-mono"
                     />
                     <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">

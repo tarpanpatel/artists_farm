@@ -225,6 +225,24 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                     markSchemaVerified('nav_menu_self_heal_v6');
                 } catch (Exception $e) {}
             }
+            // v7 (25 Aug 2026, reported live via screenshot - a "Staff Kitchen" login's
+            // Dashboard showed a full "Service Requests" sidebar tab + widget). Root cause:
+            // service_requests.php's own schema_service_requests_v3 self-heal INSERTs this
+            // nav item with no roles_json at all, and Navigation.tsx's isVisible()/App.tsx's
+            // canSeeNavKey() both treat a null/empty roles_json as "visible to every role" (no
+            // restriction), not "visible to nobody" - so this item has been open to every role
+            // since it was first seeded, never actually enforcing ROLES.md's policy (Admin/
+            // Staff Supervisor/Staff get it, Staff Kitchen does not - it's a read-only kitchen-
+            // operations role, not front-desk). Full roles_json overwrite (end state is fully
+            // known here, same reasoning v3's Telegram/Dish-Recipes fixes used) rather than the
+            // v2 block's targeted-string technique.
+            if (!isSchemaVerified('nav_menu_self_heal_v7')) {
+                try {
+                    $pdo->exec("UPDATE nav_menu_items SET roles_json = '[\"Super Admin\",\"Root Admin\",\"Admin\",\"Staff Supervisor\",\"Staff\"]' WHERE unique_key = 'service_requests'");
+                } catch (Exception $e) {}
+                markSchemaVerified('nav_menu_self_heal_v7');
+            }
+
             if (!isSchemaVerified('nav_menu_self_heal_v2')) {
             try {
 

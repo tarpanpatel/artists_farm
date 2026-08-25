@@ -67,6 +67,11 @@ interface OperationalDashboardProps {
   // comes from. Defaults true so this stays harmless if a call site ever
   // forgets to pass it, matching kitchenModuleEnabled's own default below.
   kitchenAccessAllowed?: boolean;
+  // Per-role Service Requests permission (25 Aug 2026), same pattern/reasoning
+  // as kitchenAccessAllowed above - see App.tsx's serviceRequestsAccessAllowed
+  // and ROLES.md's 25 Aug 2026 changelog entry. Defaults true for the same
+  // "harmless if a call site forgets to pass it" reason.
+  serviceRequestsAccessAllowed?: boolean;
   propertyName?: string;
   propertyMapsLink?: string;
   propertyPhone?: string;
@@ -118,6 +123,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   activeMenuItemKey: _activeMenuItemKey,
   kitchenModuleEnabled = true,
   kitchenAccessAllowed = true,
+  serviceRequestsAccessAllowed = true,
   propertyName = '',
   propertyMapsLink = '',
   propertyPhone = '',
@@ -604,12 +610,14 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             value={inHouseCount}
           />
         )}
-        <KpiCard
-          label="Service Requests"
-          icon={Bell}
-          badge={{ text: 'Active', color: 'failure' }}
-          value={pendingRequestsCount}
-        />
+        {serviceRequestsAccessAllowed && (
+          <KpiCard
+            label="Service Requests"
+            icon={Bell}
+            badge={{ text: 'Active', color: 'failure' }}
+            value={pendingRequestsCount}
+          />
+        )}
       </div>
       )}
 

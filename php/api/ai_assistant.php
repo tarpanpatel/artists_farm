@@ -76,11 +76,15 @@ if (empty($prompt)) {
 }
 
 // Load AI Configuration
+// api_keys (25 Aug 2026 - see ai_config.php's matching comment for the full bug this fixes): one
+// key slot per provider, not a single shared field - a single field meant switching the provider
+// dropdown silently reused whatever key was saved for a DIFFERENT provider last, with no warning,
+// which is exactly what was happening live (OpenCode Zen being called with an OpenAI-shaped key).
 $configFilePath = __DIR__ . '/../config/ai_config.json';
 $aiConfig = [
     'enabled' => false,
     'provider' => 'gemini',
-    'api_key' => '',
+    'api_keys' => ['gemini' => '', 'openai' => '', 'opencode_zen' => '', 'claude' => '', 'custom_ollama' => ''],
     'custom_endpoint' => 'http://localhost:11434/v1',
 ];
 
@@ -275,7 +279,17 @@ $conversationHistory = sanitizeConversationHistory($input['conversation_history'
 // IF ONLINE AI API IS ENABLED (opt-in, off by default - see ai_config.php): Try Provider API
 if ($aiConfig['enabled'] === true) {
     $provider = $aiConfig['provider'];
-    $apiKey = !empty($aiConfig['api_key']) ? $aiConfig['api_key'] : getenv('GEMINI_API_KEY');
+    // Per-provider key lookup (25 Aug 2026 fix). Falls back to the legacy flat 'api_key' field for
+    // the transition window before this environment's next real save via ai_config.php's POST
+    // handler (the only thing that actually rewrites the on-disk file into the new api_keys shape
+    // - a GET there only migrates it in memory for that one response, never persists it) - without
+    // this fallback, an environment that hasn't re-saved since this fix deployed would go dark
+    // instead of keeping whatever was already working.
+    $providerKey = $aiConfig['api_keys'][$provider] ?? '';
+    if (empty($providerKey) && !empty($aiConfig['api_key'])) {
+        $providerKey = $aiConfig['api_key'];
+    }
+    $apiKey = !empty($providerKey) ? $providerKey : getenv('GEMINI_API_KEY');
 
     // ACTION_REFERENCE kept in sync by hand with offline_intent_engine.php's hand-written intent
     // table (24 Aug 2026) - without this, an online provider only ever knew about

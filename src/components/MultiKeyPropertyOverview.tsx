@@ -91,6 +91,12 @@ interface MultiKeyPropertyOverviewProps {
   // for the full explanation. Passed straight through to both of this
   // component's internal OperationalDashboard renders below.
   kitchenAccessAllowed?: boolean;
+  // Same pattern as kitchenAccessAllowed above, for the Dashboard "Service
+  // Requests" KPI card - see App.tsx's serviceRequestsAccessAllowed / ROLES.md's
+  // 25 Aug 2026 changelog entry for the full explanation. Passed straight
+  // through to both of this component's internal OperationalDashboard renders
+  // below, same as kitchenAccessAllowed is.
+  serviceRequestsAccessAllowed?: boolean;
   hideHeader?: boolean;
   serviceRequests?: any[];
 }
@@ -129,6 +135,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
   onSetActiveMenuItemKey,
   kitchenModuleEnabled = false,
   kitchenAccessAllowed = true,
+  serviceRequestsAccessAllowed = true,
   hideHeader = false,
   serviceRequests = [],
 }) => {
@@ -293,6 +300,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                   }}
                   kitchenModuleEnabled={kitchenModuleEnabled}
                   kitchenAccessAllowed={kitchenAccessAllowed}
+                  serviceRequestsAccessAllowed={serviceRequestsAccessAllowed}
                   serviceRequests={serviceRequests}
                 />
               )}
@@ -394,6 +402,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                         propertyCheckoutTime={property.checkout_time || ''}
                         kitchenModuleEnabled={kitchenModuleEnabled}
                         kitchenAccessAllowed={kitchenAccessAllowed}
+                        serviceRequestsAccessAllowed={serviceRequestsAccessAllowed}
                         serviceRequests={serviceRequests}
                         minimalMode
                       />

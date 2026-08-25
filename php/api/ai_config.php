@@ -38,11 +38,20 @@ if (empty($_SESSION['username']) || !$isRootAdmin) {
 
 $configFilePath = __DIR__ . '/../config/ai_config.json';
 
+const AI_PROVIDERS = ['gemini', 'openai', 'opencode_zen', 'claude', 'custom_ollama'];
+
 // Default config: enabled = false (OFFLINE MODE default for testing offline engine)
+// api_keys (25 Aug 2026 - REAL BUG FIX, found live): this used to be a single flat 'api_key'
+// string shared by every provider. Switching the provider dropdown never cleared or swapped it,
+// so saving a new key for provider B silently overwrote provider A's key too - then switching
+// back to A reused B's key (wrong format/service entirely) with zero warning. Confirmed live: the
+// config ended up with provider=opencode_zen but an OpenAI-shaped key left over from an earlier
+// save, which OpenCode Zen's API correctly rejected as invalid. Now one slot per provider, keyed
+// by provider id, so switching providers can never silently carry over the wrong key again.
 $defaultConfig = [
     'enabled' => false,
     'provider' => 'gemini', // 'gemini' | 'openai' | 'opencode_zen' | 'claude' | 'custom_ollama'
-    'api_key' => '',
+    'api_keys' => array_fill_keys(AI_PROVIDERS, ''),
     'custom_endpoint' => 'http://localhost:11434/v1',
     'updated_at' => date('Y-m-d H:i:s'),
 ];
@@ -55,7 +64,25 @@ function loadAiConfig(string $path, array $default): array {
     }
     $content = file_get_contents($path);
     $parsed = !empty($content) ? json_decode($content, true) : null;
-    return is_array($parsed) ? array_merge($default, $parsed) : $default;
+    $config = is_array($parsed) ? array_merge($default, $parsed) : $default;
+
+    // ONE-TIME MIGRATION (25 Aug 2026): older config files on disk have a flat 'api_key' string
+    // instead of 'api_keys'. Best-effort carry it forward as that config's CURRENT provider's key
+    // (the closest available guess - there's no way to recover which provider each historical save
+    // actually belonged to) rather than losing it outright, then drop the old field so this only
+    // ever runs once per environment.
+    if (!isset($parsed['api_keys']) && !empty($config['api_key'])) {
+        $config['api_keys'] = array_fill_keys(AI_PROVIDERS, '');
+        $config['api_keys'][$config['provider']] = $config['api_key'];
+    }
+    unset($config['api_key']);
+    if (!isset($config['api_keys']) || !is_array($config['api_keys'])) {
+        $config['api_keys'] = array_fill_keys(AI_PROVIDERS, '');
+    }
+    // Guarantee every known provider has at least an empty slot, even if the file predates one.
+    $config['api_keys'] = array_merge(array_fill_keys(AI_PROVIDERS, ''), $config['api_keys']);
+
+    return $config;
 }
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
@@ -63,19 +90,17 @@ $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 if ($method === 'GET') {
     $config = loadAiConfig($configFilePath, $defaultConfig);
 
-    // SECURITY (24 Aug 2026): only ever return a masked key - never the real one. This used to
-    // copy the whole config (including the real api_key) into the response and just ADD a
-    // masked_key field alongside it, so the "masking" never actually masked anything.
+    // SECURITY (24 Aug 2026): only ever return whether a key is on file - never the real key.
+    // has_api_key_by_provider (25 Aug 2026, replaces the old single has_api_key/masked_key) - one
+    // flag per provider so the frontend can show "Key on file" correctly for WHATEVER provider is
+    // currently selected in the dropdown, including right after switching it client-side before
+    // any save happens, without ever needing to see (or send) a real key for any provider.
     $responseConfig = $config;
-    if (!empty($responseConfig['api_key'])) {
-        $responseConfig['masked_key'] = substr($responseConfig['api_key'], 0, 4) . '...' . substr($responseConfig['api_key'], -4);
-    }
-    unset($responseConfig['api_key']);
-    // Tell the frontend whether a key is already on file, without ever sending it - the API Key
-    // input on RootAdminDashboard.tsx should show this as a placeholder, not a real value, and
-    // only overwrite the stored key when the admin actually types a new one (see the POST
-    // handler below, which now leaves api_key untouched when the field arrives blank).
-    $responseConfig['has_api_key'] = !empty($config['api_key']);
+    unset($responseConfig['api_keys']);
+    $responseConfig['has_api_key_by_provider'] = array_map(
+        fn($key) => !empty($key),
+        $config['api_keys']
+    );
 
     echo json_encode([
         'status' => 'success',
@@ -107,16 +132,20 @@ if ($method === 'POST') {
         $currentConfig['enabled'] = (bool)$input['enabled'];
         $changedFields[] = 'Online AI ' . ($currentConfig['enabled'] ? 'enabled' : 'disabled');
     }
-    if (isset($input['provider']) && in_array($input['provider'], ['gemini', 'openai', 'opencode_zen', 'claude', 'custom_ollama']) && $input['provider'] !== $currentConfig['provider']) {
+    if (isset($input['provider']) && in_array($input['provider'], AI_PROVIDERS, true) && $input['provider'] !== $currentConfig['provider']) {
         $currentConfig['provider'] = $input['provider'];
         $changedFields[] = "Provider set to {$input['provider']}";
     }
-    // Blank api_key means "leave the stored key unchanged" (the GET handler above never sends
-    // the real key back to the form, so an unmodified save must not overwrite a real key with
-    // an empty string) - only a genuinely non-empty value updates it.
+    // Blank api_key means "leave this provider's stored key unchanged" (the GET handler above
+    // never sends any real key back to the form, so an unmodified save must not overwrite one with
+    // an empty string) - only a genuinely non-empty value updates it. Saved into api_keys[provider]
+    // for THIS request's resulting provider (not necessarily the one before this request) - so
+    // switching provider AND typing its key in the same save correctly targets the new provider,
+    // never the old one (see api_keys migration/bug-fix comment above loadAiConfig() for the
+    // single-shared-key bug this replaces).
     if (isset($input['api_key']) && trim($input['api_key']) !== '') {
-        $currentConfig['api_key'] = trim($input['api_key']);
-        $changedFields[] = 'API key updated';
+        $currentConfig['api_keys'][$currentConfig['provider']] = trim($input['api_key']);
+        $changedFields[] = "API key updated for {$currentConfig['provider']}";
     }
     if (isset($input['custom_endpoint']) && trim($input['custom_endpoint']) !== $currentConfig['custom_endpoint']) {
         $currentConfig['custom_endpoint'] = trim($input['custom_endpoint']);
@@ -153,8 +182,11 @@ if ($method === 'POST') {
     }
 
     $responseConfig = $currentConfig;
-    unset($responseConfig['api_key']);
-    $responseConfig['has_api_key'] = !empty($currentConfig['api_key']);
+    unset($responseConfig['api_keys']);
+    $responseConfig['has_api_key_by_provider'] = array_map(
+        fn($key) => !empty($key),
+        $currentConfig['api_keys']
+    );
 
     echo json_encode([
         'status' => 'success',

@@ -1101,6 +1101,15 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // kitchenModuleEnabled already uses (see "Props Threading" in CLAUDE.md).
   const kitchenAccessAllowed = useMemo(() => canSeeNavKey('take_food_order'), [activeRole, visibleNavItems]);
 
+  // Same pattern as kitchenAccessAllowed above, for the Dashboard/TodayOverview
+  // "Service Requests" KPI card (25 Aug 2026 - found live: a Staff Kitchen login
+  // saw this widget with real pending-request data despite ROLES.md documenting
+  // that role as unable to access Service Requests at all; the card had no
+  // per-role check, only the sidebar's `service_requests` nav item did - and
+  // that nav item's own roles_json was separately found to be unset, granting
+  // it to every role - see ROLES.md's 25 Aug changelog entry for both halves).
+  const serviceRequestsAccessAllowed = useMemo(() => canSeeNavKey('service_requests'), [activeRole, visibleNavItems]);
+
   // Guard Effect 1: Trigger whenever activeRole, activeMenuItemKey, or visibleNavItems update
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -2005,6 +2014,7 @@ ${itemsStr}
                   onSetActiveMenuItemKey={setActiveMenuItemKey}
                   kitchenModuleEnabled={isModuleEnabled('kitchen')}
                   kitchenAccessAllowed={kitchenAccessAllowed}
+                  serviceRequestsAccessAllowed={serviceRequestsAccessAllowed}
                   onUpdateBooking={handleUpdateGuest}
                   onDeleteBooking={handleDeleteGuest}
                   onGuestVerificationUpdated={handleGuestVerificationUpdated}
@@ -2048,6 +2058,7 @@ ${itemsStr}
                         propertyCheckinTime={preloadedData.currentProperty?.checkin_time || ''}
                         propertyCheckoutTime={preloadedData.currentProperty?.checkout_time || ''}
                         serviceRequests={serviceRequests}
+                        serviceRequestsAccessAllowed={serviceRequestsAccessAllowed}
                         onCheckout={(guestId) => {
                           setFocusGuestId(guestId);
                           handleNavigateTab('guests', 'all_bookings');
@@ -2077,6 +2088,7 @@ ${itemsStr}
                       onSetActiveMenuItemKey={setActiveMenuItemKey}
                       kitchenModuleEnabled={isModuleEnabled('kitchen')}
                       kitchenAccessAllowed={kitchenAccessAllowed}
+                      serviceRequestsAccessAllowed={serviceRequestsAccessAllowed}
                       hideHeader={true}
                       onUpdateBooking={handleUpdateGuest}
                       onDeleteBooking={handleDeleteGuest}
@@ -2107,6 +2119,7 @@ ${itemsStr}
                         onAddGuest={handleAddGuest}
                         kitchenModuleEnabled={isModuleEnabled('kitchen')}
                         kitchenAccessAllowed={kitchenAccessAllowed}
+                        serviceRequestsAccessAllowed={serviceRequestsAccessAllowed}
                         onUpdateBooking={handleUpdateGuest}
                         onDeleteBooking={handleDeleteGuest}
                         onGuestVerificationUpdated={handleGuestVerificationUpdated}

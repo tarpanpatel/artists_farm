@@ -37,6 +37,11 @@ interface TodayOverviewProps {
   propertyCheckinTime?: string;
   propertyCheckoutTime?: string;
   serviceRequests?: any[];
+  // Per-role Service Requests permission (25 Aug 2026) - see App.tsx's
+  // serviceRequestsAccessAllowed / OperationalDashboard's own prop of the same
+  // name for the full explanation. Defaults true so this stays harmless if a
+  // call site ever forgets to pass it.
+  serviceRequestsAccessAllowed?: boolean;
 }
 
 export const TodayOverview: React.FC<TodayOverviewProps> = ({
@@ -62,6 +67,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   propertyCheckinTime = '',
   propertyCheckoutTime = '',
   serviceRequests = [],
+  serviceRequestsAccessAllowed = true,
 }) => {
   const { showToast } = useToast();
 
@@ -425,12 +431,14 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             value={inHouseCount}
           />
         )}
-        <KpiCard
-          label="Service Requests"
-          icon={Bell}
-          badge={{ text: 'Active', color: 'failure' }}
-          value={pendingRequests}
-        />
+        {serviceRequestsAccessAllowed && (
+          <KpiCard
+            label="Service Requests"
+            icon={Bell}
+            badge={{ text: 'Active', color: 'failure' }}
+            value={pendingRequests}
+          />
+        )}
       </div>
 
       <div className="today-overview__calendar bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 space-y-4">
