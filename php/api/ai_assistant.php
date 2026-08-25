@@ -226,7 +226,13 @@ function getGeminiUsageSummary(): ?array {
     ];
 }
 
-function logAiOutcome(string $prompt, string $userRole, string $mode, string $provider, ?array $action): void {
+// $replyText (added 25 Aug 2026): the whole point of this log during a Gemini trial week is to
+// mine real query->outcome pairs for new offline intents (see this function's own doc comment
+// above) - without the actual generated reply text, Telescope only ever showed "what was asked",
+// never "what Gemini actually said back", which is the half that matters most for writing a
+// matching offline reply. All 3 call sites already have $replyText in scope at the point they
+// call this - it just wasn't being passed through.
+function logAiOutcome(string $prompt, string $userRole, string $mode, string $provider, ?array $action, string $replyText = ''): void {
     if (!class_exists('TelescopeLogger')) return;
     $actionType = $action['type'] ?? 'NONE';
     TelescopeLogger::log('ai_chat', 'AI Outcome', $prompt, "Role: $userRole | Mode: $mode ($provider) | Action: $actionType", [
@@ -234,6 +240,7 @@ function logAiOutcome(string $prompt, string $userRole, string $mode, string $pr
         'action' => $action,
         'mode' => $mode,
         'provider' => $provider,
+        'reply' => mb_substr($replyText, 0, 2000),
     ]);
 }
 
@@ -336,7 +343,7 @@ if ($aiConfig['enabled'] === true) {
                 }
 
                 recordGeminiUsage((int)($resData['usageMetadata']['totalTokenCount'] ?? 0), false);
-                logAiOutcome($prompt, $userRole, 'online', 'gemini', $extractedAction);
+                logAiOutcome($prompt, $userRole, 'online', 'gemini', $extractedAction, $replyText);
                 echo json_encode([
                     'status' => 'success',
                     'reply' => trim($replyText),
@@ -391,7 +398,7 @@ if ($aiConfig['enabled'] === true) {
                     $extractedAction = null;
                 }
 
-                logAiOutcome($prompt, $userRole, 'online', 'openai', $extractedAction);
+                logAiOutcome($prompt, $userRole, 'online', 'openai', $extractedAction, $replyText);
                 echo json_encode([
                     'status' => 'success',
                     'reply' => trim($replyText),
@@ -412,7 +419,7 @@ if ($aiConfig['enabled'] === true) {
 // file's doc comment. Merged in AFTER the hand-written table so a hand-written intent still wins
 // any scoring tie.
 $result = runOfflineIntentEngine($prompt, $liveContext, $userRole, buildNavMenuIntents($pdo));
-logAiOutcome($prompt, $userRole, 'offline', 'offline', $result['action']);
+logAiOutcome($prompt, $userRole, 'offline', 'offline', $result['action'], $result['reply']);
 echo json_encode([
     'status' => 'success',
     'reply' => $result['reply'],

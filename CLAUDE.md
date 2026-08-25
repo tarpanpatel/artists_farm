@@ -78,6 +78,14 @@ Features whose UI/backend wiring isn't obvious from file names alone - check her
 - Daily cron `php/cron/check_licenses.php` sends 7/4/1-day-out Telegram expiry alerts.
 - The i18n keys for this (`license_management_heading`, `license_type_*`, etc.) existed in `en.ts` for a while before the UI did - if you find orphaned-looking i18n keys again elsewhere, ask whether a page was planned but never finished, don't assume they're dead.
 
+### AI Assistant (offline intent engine + online providers)
+**Full architecture, the Gemini trial-week plan, and current status all live in `AI.md`** - read
+it before touching `php/ai/offline_intent_engine.php`, `php/api/ai_assistant.php`, or Root Admin's
+"AI Services Config". Short version: offline rule-based matcher is the free default; Gemini/OpenAI
+are opt-in online alternatives; a ~1-week Gemini trial is planned to mine real query→answer pairs
+into permanent offline coverage (not yet started as of 25 Aug 2026 - no real API key is configured
+anywhere yet, despite the config's `enabled` flag reading true).
+
 ### QR Code & UPI Payment Sharing (added 15 Aug 2026)
 - Booking-confirmation and checkout-bill WhatsApp shares can include a scannable UPI QR code + the property's UPI ID, so guests can pay by scanning rather than typing details.
 - Property-level `upi_id` field, set in Edit Property (`PropertyEditForm.tsx`, next to GSTIN).
