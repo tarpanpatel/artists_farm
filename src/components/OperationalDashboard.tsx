@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Drawer, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, Checkbox, Datepicker } from 'flowbite-react';
+import { Drawer, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, Datepicker } from 'flowbite-react';
 import { X, ChevronLeft, ChevronRight } from './icons/FlowbiteIcons';
 import { Popover } from './Popover';
 import {
@@ -418,6 +418,15 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       g.idVerificationStatus === 'Complete' &&
       (g.totalAmount || 0) <= (g.advanceAmount || 0)
   );
+  // C-Form (FRRO) filing due-time clock, moved up here (25 Aug 2026) from right before the
+  // now-removed standalone "C-Form Filing Due" box so it's available to the addAlertReason
+  // calls below too. Ticks every minute so the countdown stays live without re-rendering the
+  // whole dashboard constantly.
+  const [cFormNow, setCFormNow] = useState(() => Date.now());
+  useEffect(() => {
+    const interval = setInterval(() => setCFormNow(Date.now()), 60000);
+    return () => clearInterval(interval);
+  }, []);
   // A guest can independently match more than one of the checks below (most
   // commonly: checked out with no ID on file AND still owing money). Rather
   // than listing that guest once per matching category, merge everything
@@ -467,6 +476,33 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   addAlertReason(overdueCheckouts, 'Overdue Checkout', 'red', (g) => `Due ${formatAlertDate(g.expectedCheckout)}`);
   addAlertReason(checkinPending, 'Check-in Pending', 'amber', () => 'ID verification needed');
   addAlertReason(idMissingAfterCheckout, 'ID Missing', 'amber', () => 'Checked out without ID on file');
+  // C-Form Filing (FRRO), foreign guests must be filed within 24h of check-in - folded into
+  // System Alerts (25 Aug 2026, explicit request: "Remove this individual c form box. It
+  // should be part of alerts only") instead of the separate standalone "C-Form Filing Due"
+  // box this used to render as. isCFormGenuinelyFiled() gate is the same one every other
+  // "is this actually filed" check in the app now goes through - see its own comment.
+  // Overdue vs. still-within-24h split into two addAlertReason calls (not one) since that
+  // function's severity is per-call, not per-guest, and the old box distinguished them with
+  // red vs. amber styling too.
+  const formatCFormDue = (checkinDate: string): { label: string; overdue: boolean } => {
+    const checkin = new Date((checkinDate || '').replace(' ', 'T'));
+    if (isNaN(checkin.getTime())) return { label: 'Due date unknown', overdue: true };
+    const dueAt = checkin.getTime() + 24 * 60 * 60 * 1000;
+    const diffMs = dueAt - cFormNow;
+    const overdue = diffMs < 0;
+    const abs = Math.abs(diffMs);
+    const hours = Math.floor(abs / (60 * 60 * 1000));
+    const minutes = Math.floor((abs % (60 * 60 * 1000)) / 60000);
+    const span = `${hours}h ${minutes}m`;
+    return { label: overdue ? `Overdue by ${span}` : `Due in ${span}`, overdue };
+  };
+  const cFormPending = guests.filter(
+    (g) => g.isForeignGuest && (g.status === GUEST_STATUS_ACTIVE_LEGACY || (g.status as string) === GUEST_STATUS_CHECKED_IN) && !isCFormGenuinelyFiled(g)
+  );
+  const cFormOverdueList = cFormPending.filter((g) => formatCFormDue(g.checkinDate).overdue);
+  const cFormDueSoonList = cFormPending.filter((g) => !formatCFormDue(g.checkinDate).overdue);
+  addAlertReason(cFormOverdueList, 'Overdue C-Form', 'red', (g) => formatCFormDue(g.checkinDate).label);
+  addAlertReason(cFormDueSoonList, 'C-Form Due Soon', 'amber', (g) => formatCFormDue(g.checkinDate).label);
   addAlertReason(
     unsettledBills,
     'Unsettled Bill',
@@ -512,31 +548,6 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   ].sort((a, b) => (a.severity === b.severity ? 0 : a.severity === 'red' ? -1 : 1));
   const totalAlerts = combinedAlerts.length;
 
-  // --- C-Form (FRRO) filing tracker: foreign guests must be filed within
-  // 24h of check-in. Ticks every minute so the countdown stays live without
-  // re-rendering the whole dashboard constantly. ---
-  const [cFormNow, setCFormNow] = useState(() => Date.now());
-  useEffect(() => {
-    const interval = setInterval(() => setCFormNow(Date.now()), 60000);
-    return () => clearInterval(interval);
-  }, []);
-  // isCFormGenuinelyFiled(), not a bare cFormFiledAt check (25 Aug 2026) - see that helper's
-  // own comment.
-  const cFormPending = guests.filter(
-    (g) => g.isForeignGuest && (g.status === GUEST_STATUS_ACTIVE_LEGACY || (g.status as string) === GUEST_STATUS_CHECKED_IN) && !isCFormGenuinelyFiled(g)
-  );
-  const formatCFormDue = (checkinDate: string): { label: string; overdue: boolean } => {
-    const checkin = new Date((checkinDate || '').replace(' ', 'T'));
-    if (isNaN(checkin.getTime())) return { label: 'Due date unknown', overdue: true };
-    const dueAt = checkin.getTime() + 24 * 60 * 60 * 1000;
-    const diffMs = dueAt - cFormNow;
-    const overdue = diffMs < 0;
-    const abs = Math.abs(diffMs);
-    const hours = Math.floor(abs / (60 * 60 * 1000));
-    const minutes = Math.floor((abs % (60 * 60 * 1000)) / 60000);
-    const span = `${hours}h ${minutes}m`;
-    return { label: overdue ? `Overdue by ${span}` : `Due in ${span}`, overdue };
-  };
   // Public "Share Menu" link (food_menu.php via the /food_menu/{slug}/
   // rewrite in .htaccess) - same pattern as TodayOverview.tsx's (the
   // multi-key dashboard) and MenuManager.tsx's Share Menu buttons, added
@@ -673,52 +684,11 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
         </div>
       ) : null}
 
-      {/* C-Form (FRRO) Filing Tracker for foreign guests */}
-      {!minimalMode && cFormPending.length > 0 && (
-        <div className="operational-dashboard__cform-tracker bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6">
-          <h3 className="operational-dashboard__cform-title font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2 mb-3 pb-2 border-b border-slate-100 dark:border-slate-700">
-            <AlertTriangle className="w-4 h-4 text-red-600" />
-            {t('cform_filing_due_heading', 'C-Form Filing Due')}
-            <span className="operational-dashboard__cform-badge text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-300">
-              {cFormPending.length}
-            </span>
-          </h3>
-          <ul className="space-y-1.5">
-            {cFormPending.map((g) => {
-              const due = formatCFormDue(g.checkinDate);
-              return (
-                <li
-                  key={g.id}
-                  className={`flex items-center justify-between gap-3 rounded-lg border p-2.5 ${
-                    due.overdue
-                      ? 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30'
-                      : 'border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30'
-                  }`}
-                >
-                  <button
-                    onClick={() => { setSelectedBookingFocusSection(null); setSelectedBooking(g); }}
-                    className="text-left cursor-pointer hover:opacity-80 transition-opacity"
-                  >
-                    <p className="text-sm font-semibold text-slate-900 dark:text-white">{g.guestName}</p>
-                    <p className={`text-xs font-medium ${due.overdue ? 'text-red-700 dark:text-red-400' : 'text-amber-700 dark:text-amber-400'}`}>
-                      {due.label}
-                    </p>
-                  </button>
-                  <Checkbox
-                      // FIXED 25 Aug 2026 (live report: a booking showed "Filed" with an
-                      // empty confirmation number) - this called markCFormFiled(id, true)
-                      // directly with no way to ever attach a number, the same shortcut
-                      // BillingCheckout.tsx's Past Bookings checkbox had. Opens the real
-                      // C-Form section (which now requires a number/document before it will
-                      // save) instead of toggling filed=true with nothing behind it.
-                      onChange={() => { setSelectedBookingFocusSection('c_form'); setSelectedBooking(g); }}
-                    />{t('mark_filed_label', 'Mark filed')}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
+      {/* Standalone "C-Form Filing Due" box removed (25 Aug 2026, explicit request: "Remove
+          this individual c form box. It should be part of alerts only") - overdue/due-soon
+          C-Form guests now surface as "Overdue C-Form"/"C-Form Due Soon" rows in the System
+          Alerts panel below instead (see the addAlertReason calls above), same "Resolve"-into-
+          the-booking-modal pattern as every other alert there. */}
 
       {/* 3-Column Operational Row: System Alerts | Kitchen Queue | Requisitions */}
       {!minimalMode && (
@@ -752,7 +722,12 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 {combinedAlerts.slice(0, 5).map((item) => {
                   const key = item.kind === 'guest' ? item.guest.id : `ota-${item.block.external_event_id}`;
                   const title = item.kind === 'guest' ? item.guest.guestName : (item.block.source_label || item.block.source || 'OTA Block');
-                  const subtitle = item.kind === 'guest' ? item.guest.roomNumber : roomName;
+                  // isMultiKeyProperty gate (25 Aug 2026, explicit request: "in single
+                  // property no need to show property name") - this row's own room/property
+                  // label is only meaningfully distinguishing across a multi-room property;
+                  // on a single property it's redundant (usually just repeats the property
+                  // name you're already looking at) and was cluttering every row.
+                  const subtitle = isMultiKeyProperty ? (item.kind === 'guest' ? item.guest.roomNumber : roomName) : null;
                   return (
                     <div
                       key={key}
@@ -958,7 +933,11 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           </div>
 
           <button
-            onClick={() => onNavigate('kitchen', 'stock_requests')}
+            // FIXED 25 Aug 2026 (live report: "View stock request on dashboard taking to
+            // wrong page") - Stock Requests actually lives under the Inventory tab (see
+            // App.tsx's stock_requests: { tab: 'inventory', key: 'stock_requests' } mapping),
+            // not Kitchen - this landed on Kitchen's own default view instead every time.
+            onClick={() => onNavigate('inventory', 'stock_requests')}
             className="mt-4 w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-semibold text-xs py-2 rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer"
           >
             <span>{t('view_stock_requests_button', 'View Stock Requests')} ({pendingStockRequestsCount})</span>
@@ -1019,7 +998,16 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           <div className="flex items-center gap-2 ml-auto">
             <button
               type="button"
-              onClick={() => onNavigate('new_booking')}
+              // FIXED 25 Aug 2026 (live report: "New booking button over calendar not
+              // working") - onNavigate('new_booking') was routing to a tab named
+              // 'new_booking', which doesn't exist anywhere in App.tsx's TabType/
+              // handleNavigateTab - the click landed nowhere. This button's whole job is
+              // "open the Add Booking drawer", exactly what the two "Add Booking" buttons in
+              // this same file's own page header already do correctly - reuse that, not a
+              // dead tab-navigation call. Doesn't touch the calendar grid itself (color-
+              // coding, blocked dates, OTA conversion, edit modal - the protected logic),
+              // only this toolbar button's destination.
+              onClick={() => setShowAddGuestModal(true)}
               className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-xs px-3 py-1.5 inline-flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -1638,7 +1626,9 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 {combinedAlerts.map((item) => {
                   const key = item.kind === 'guest' ? item.guest.id : `ota-${item.block.external_event_id}`;
                   const title = item.kind === 'guest' ? item.guest.guestName : (item.block.source_label || item.block.source || 'OTA Block');
-                  const subtitle = item.kind === 'guest' ? item.guest.roomNumber : roomName;
+                  // isMultiKeyProperty gate - see the same-purpose comment on the 5-row
+                  // preview above (25 Aug 2026).
+                  const subtitle = isMultiKeyProperty ? (item.kind === 'guest' ? item.guest.roomNumber : roomName) : null;
                   return (
                     <TableRow
                       key={key}

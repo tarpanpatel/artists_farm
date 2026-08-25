@@ -120,7 +120,13 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
   onDispatchTelegram,
   onCheckout,
   activeMenuItemKey = '',
-  onSetActiveMenuItemKey: _onSetActiveMenuItemKey,
+  // FIXED 25 Aug 2026 (live report: "View stock request on dashboard taking to wrong page")
+  // - this was threaded down from App.tsx (which passes its real setActiveMenuItemKey) but
+  // never actually called anywhere in this file, so every 2-argument onNavigate(tab, key)
+  // call from a room's embedded OperationalDashboard (Stock Requests, View All Bookings,
+  // etc.) landed on that tab's own default sub-view instead of the specific one requested -
+  // see the onNavigate wrappers below, now using this.
+  onSetActiveMenuItemKey,
   kitchenModuleEnabled = false,
   kitchenAccessAllowed = true,
   hideHeader = false,
@@ -244,7 +250,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                   roomName={selectedRoom.name}
                   roomId={selectedRoom.id}
                   propertySlug={propertySlug}
-                  onNavigate={(tab) => setActiveTab?.(tab)}
+                  onNavigate={(tab, menuItemKey) => { setActiveTab?.(tab); if (menuItemKey) onSetActiveMenuItemKey?.(menuItemKey); }}
                   onOpenCheckin={() => setActiveTab?.('guests')}
                   onAddGuest={onAddGuest}
                   onCheckoutGuest={onCheckoutGuest}
@@ -365,7 +371,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                         roomName={selectedRoom.name}
                         roomId={selectedRoom.id}
                         propertySlug={propertySlug}
-                        onNavigate={(tab) => setActiveTab?.(tab)}
+                        onNavigate={(tab, menuItemKey) => { setActiveTab?.(tab); if (menuItemKey) onSetActiveMenuItemKey?.(menuItemKey); }}
                         onOpenCheckin={() => setActiveTab?.('guests')}
                         onAddGuest={onAddGuest}
                         onCheckoutGuest={onCheckoutGuest}

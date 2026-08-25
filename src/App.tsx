@@ -2098,7 +2098,13 @@ ${itemsStr}
                     <ErrorBoundary section="Operational Dashboard">
                       <OperationalDashboard
                         guests={guests}
-                        onNavigate={(tab) => handleNavigateTab(tab)}
+                        // FIXED 25 Aug 2026 (live report: "View stock request on dashboard
+                        // taking to wrong page") - this wrapper silently dropped the second
+                        // argument every OperationalDashboard onNavigate() call passes
+                        // (menuItemKey, e.g. 'stock_requests'/'all_bookings') - handleNavigateTab
+                        // takes one and landed on each tab's own default sub-view instead every
+                        // time, not just for Stock Requests.
+                        onNavigate={(tab, menuItemKey) => handleNavigateTab(tab, menuItemKey)}
                         onOpenCheckin={() => handleNavigateTab('guests', 'guest_registration')}
                         onAddGuest={handleAddGuest}
                         kitchenModuleEnabled={isModuleEnabled('kitchen')}
