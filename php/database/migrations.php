@@ -69,6 +69,24 @@ function initializeDatabaseTables($pdo) {
             error_log("Properties telegram_template_customization_enabled column migration error: " . $e->getMessage());
         }
 
+        // Self-heal-in-reverse: drop `allow_custom_telegram_bot` (26 Aug 2026). It was added for a
+        // Root-Admin "let this property use its own bot" toggle that was never actually built - no
+        // control was ever rendered, and the `allowCustomBot` prop threaded down to
+        // TelegramSetupWizard.tsx was declared but never read, so the value could never affect
+        // anything. Removed at the user's explicit direction: the Telegram strategy is pure
+        // White-Glove (Root Admin sets bot tokens centrally, property owners never touch a token),
+        // which makes a per-property "allow custom bot" switch a contradiction rather than a
+        // pending feature. Same one-time-drop pattern as orders.php's reminder-column removal -
+        // guarded by its own SHOW COLUMNS check so it's idempotent and a no-op once applied.
+        try {
+            $stmt = $pdo->query("SHOW COLUMNS FROM properties LIKE 'allow_custom_telegram_bot'");
+            if ($stmt->fetch()) {
+                $pdo->exec("ALTER TABLE properties DROP COLUMN `allow_custom_telegram_bot`");
+            }
+        } catch (Exception $e) {
+            error_log("Properties allow_custom_telegram_bot column drop error: " . $e->getMessage());
+        }
+
         return true;
     } catch (Exception $e) {
         // Log the error but don't fail - table might exist in different format

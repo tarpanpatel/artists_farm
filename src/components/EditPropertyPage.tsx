@@ -45,7 +45,11 @@ export const EditPropertyPage: React.FC<EditPropertyPageProps> = ({ property, on
       <div className="edit-property-page__header mb-4">
         <PageHeader
           title={isRoom ? t('edit_room_page_heading', 'Edit Room') : t('edit_property_page_heading', 'Edit Property')}
-          subtitle={`${property.name || t('property_details_subtitle', 'Property details & contact information')}${property.slug ? ` · ${property.slug}` : ''}`}
+          subtitle={
+            isRoom
+              ? t('edit_room_help_text', 'Configure details, room name, and per-night tariff for this specific room.')
+              : t('edit_property_help_text', "Use this page to update your property's details:\n• Phone & UPI payment info\n• Check-in & Check-out times\n• Address & special guest notes\nAll changes update live on guest receipts & messages!")
+          }
         />
       </div>
 

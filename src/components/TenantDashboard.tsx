@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Building2, LogOut, Plus, AlertCircle, Loader2,
-  Pencil, Trash2, ExternalLink, CheckCircle, XCircle, Layers,
+  Pencil, Trash2, ExternalLink, CheckCircle, Layers,
   Home, TrendingUp, ChevronRight, Lock, Zap, User,
   Calendar, Bell,
 } from './icons/FlowbiteIcons';
@@ -9,11 +9,13 @@ import { Input } from './Input';
 import { Textarea } from './Textarea';
 import { StyledSelect } from './StyledSelect';
 import { LoadingScreen } from './LoadingScreen';
-import { API_ROOT_BASE, apiFetch, getPropertySlug } from '../services/api';
+import { API_ROOT_BASE, apiFetch } from '../services/api';
 import { Button } from './Button';
 import { Alert as FlowbiteAlert, Drawer, Modal, Checkbox } from 'flowbite-react';
 import { X } from './icons/FlowbiteIcons';
 import { KpiCard } from './KpiCard';
+import { ToggleSwitch } from './ToggleSwitch';
+import { PropertyCreationWizard } from './PropertyCreationWizard';
 import { t } from '../i18n/en';
 
 interface SlotBreakdownItem {
@@ -42,10 +44,18 @@ interface Property {
   status?: string;
   gstin?: string;
   telegram_template_customization_enabled?: number;
+  email?: string;
   phone?: string;
+  address?: string;
   google_maps_link?: string;
   whatsapp_voucher_template?: string;
   instructions?: string;
+  upi_id?: string;
+  upi_qr_code_url?: string;
+  walk_in_table_count?: number;
+  checkin_time?: string | null;
+  checkout_time?: string | null;
+  default_tariff?: number | null;
 }
 
 interface TenantInfo {
@@ -65,12 +75,13 @@ interface TenantDashboardProps {
   isPlatformAdmin?: boolean;
 }
 
-type ModalState = 
+type ModalState =
   | { type: 'none' }
-  | { type: 'add' }
+  // Property Setup Wizard (26 Aug 2026) - replaces the old single-screen 'add' modal. `property`
+  // present means resuming an existing draft; absent means a brand-new property.
+  | { type: 'wizard'; property?: Property }
   | { type: 'edit'; property: Property }
   | { type: 'delete'; property: Property }
-  | { type: 'slots_exceeded'; needed: number; remaining: number }
   | { type: 'upgrade' };
 
 export const TenantDashboard: React.FC<TenantDashboardProps> = ({
@@ -87,19 +98,42 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [modal, setModal] = useState<ModalState>({ type: 'none' });
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [, setGuests] = useState<any[]>([]);
+  const [guests, setGuests] = useState<any[]>([]);
   const [, setServiceRequests] = useState<any[]>([]);
   const [todaysArrivalsCount, setTodaysArrivalsCount] = useState(0);
   const [todaysDeparturesCount, setTodaysDeparturesCount] = useState(0);
   const [inHouseCount, setInHouseCount] = useState(0);
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
+  const [selectedAnalyticsPropId, setSelectedAnalyticsPropId] = useState<string>('all');
 
-  // Add property form state
-  const [newPropName, setNewPropName] = useState('');
-  const [newPropType, setNewPropType] = useState<'SINGLE' | 'MULTI_KEY'>('SINGLE');
-  const [newPropRooms, setNewPropRooms] = useState(1);
-  const [addLoading, setAddLoading] = useState(false);
-  const [addError, setAddError] = useState<string | null>(null);
+  // Computed Combined Analytics
+  const filteredGuestsForAnalytics = useMemo(() => {
+    if (selectedAnalyticsPropId === 'all') return guests;
+    return guests.filter((g) => String(g.property_id || g.propertyId) === String(selectedAnalyticsPropId));
+  }, [guests, selectedAnalyticsPropId]);
+
+  const totalBookingsAnalytics = filteredGuestsForAnalytics.length;
+
+  const combinedRevenueAnalytics = useMemo(() => {
+    return filteredGuestsForAnalytics.reduce((sum, g) => {
+      const amt = Number(g.totalAmount ?? g.roomRate ?? g.total_amount ?? g.total_charge ?? g.advanceAmount ?? 0) || 0;
+      return sum + amt;
+    }, 0);
+  }, [filteredGuestsForAnalytics]);
+
+  const avgOccupancyAnalytics = useMemo(() => {
+    const targetProps = selectedAnalyticsPropId === 'all'
+      ? properties
+      : properties.filter(p => String(p.id) === String(selectedAnalyticsPropId));
+    
+    const totalSlotsOrRooms = targetProps.reduce((sum, p) => sum + (Number((p as any).room_count || (p as any).rooms) || 1), 0);
+    const activeInHouse = filteredGuestsForAnalytics.filter(g =>
+      ['checked in', 'checkedin', 'checked-in', 'active'].includes((g.status || '').toLowerCase())
+    ).length;
+
+    if (totalSlotsOrRooms <= 0) return 0;
+    return Math.min(100, Math.round((activeInHouse / totalSlotsOrRooms) * 100));
+  }, [properties, selectedAnalyticsPropId, filteredGuestsForAnalytics]);
 
   // Edit form state
   const [editName, setEditName] = useState('');
@@ -135,23 +169,32 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
       if (slotsData.success) setSlotUsage(slotsData.data);
 
       const props = propsData.success ? (propsData.data || []) : [];
-      const targetProp = props.find((p: Property) => p.slug === getPropertySlug()) || props[0];
-      if (targetProp) {
-        const [guestsRes, reqRes] = await Promise.all([
-          apiFetch(`/php/api/router.php?action=get_guests&property_id=${targetProp.id}`),
-          apiFetch(`/php/api/router.php?action=get_service_requests&property_id=${targetProp.id}`),
+      if (props.length > 0) {
+        const fetchPromises = props.flatMap((p: Property) => [
+          apiFetch(`/php/api/router.php?action=get_guests&property_id=${p.id}`).then(r => r.json()).catch(() => ({ data: [] })),
+          apiFetch(`/php/api/router.php?action=get_service_requests&property_id=${p.id}`).then(r => r.json()).catch(() => ({ data: [] })),
         ]);
-        const [guestsJson, reqJson] = await Promise.all([guestsRes.json(), reqRes.json()]);
-        const guestsList = (guestsJson.data || guestsJson) as any[];
-        const reqList = (reqJson.data || reqJson) as any[];
-        setGuests(Array.isArray(guestsList) ? guestsList : []);
-        setServiceRequests(Array.isArray(reqList) ? reqList : []);
+        const results = await Promise.all(fetchPromises);
+        const allGuestsList: any[] = [];
+        const allReqList: any[] = [];
+
+        for (let i = 0; i < results.length; i += 2) {
+          const guestsJson = results[i];
+          const reqJson = results[i + 1];
+          const guestsList = (guestsJson.data || guestsJson) as any[];
+          const reqList = (reqJson.data || reqJson) as any[];
+          if (Array.isArray(guestsList)) allGuestsList.push(...guestsList);
+          if (Array.isArray(reqList)) allReqList.push(...reqList);
+        }
+
+        setGuests(allGuestsList);
+        setServiceRequests(allReqList);
 
         const today = new Date().toISOString().split('T')[0];
-        const arrivals = guestsList.filter((g: any) => (g.checkinDate || g.checkin_date || '').startsWith(today));
-        const departures = guestsList.filter((g: any) => (g.checkoutDate || g.checkout_date || '').startsWith(today) && (g.status || '').toLowerCase().includes('checkout'));
-        const inHouse = guestsList.filter((g: any) => ['checked in', 'checkedin', 'checked-in', 'active'].includes((g.status || '').toLowerCase()));
-        const pending = reqList.filter((r: any) => (r.status || '').toLowerCase() === 'pending');
+        const arrivals = allGuestsList.filter((g: any) => (g.checkinDate || g.checkin_date || '').startsWith(today));
+        const departures = allGuestsList.filter((g: any) => (g.checkoutDate || g.checkout_date || '').startsWith(today) && (g.status || '').toLowerCase().includes('checkout'));
+        const inHouse = allGuestsList.filter((g: any) => ['checked in', 'checkedin', 'checked-in', 'active'].includes((g.status || '').toLowerCase()));
+        const pending = allReqList.filter((r: any) => (r.status || '').toLowerCase() === 'pending');
         setTodaysArrivalsCount(arrivals.length);
         setTodaysDeparturesCount(departures.length);
         setInHouseCount(inHouse.length);
@@ -172,53 +215,6 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
     localStorage.removeItem('artists_farm_user_session');
     onLogout();
     window.location.href = '/login/';
-  };
-
-  const autoSlug = (name: string) =>
-    name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-
-  const handleAddProperty = async () => {
-    if (!newPropName.trim()) { setAddError('Property name is required'); return; }
-    const slug = autoSlug(newPropName);
-    const slotsNeeded = newPropType === 'MULTI_KEY' ? newPropRooms : 1;
-    const remaining = slotUsage?.remaining_slots ?? 0;
-
-    if (slotsNeeded > remaining) {
-      setModal({ type: 'slots_exceeded', needed: slotsNeeded, remaining });
-      return;
-    }
-
-    setAddLoading(true);
-    setAddError(null);
-    try {
-      const res = await fetch('/php/api/router.php?action=create_property_for_tenant', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tenant_id: tenantId,
-          name: newPropName.trim(),
-          slug,
-          property_type: newPropType,
-          room_count: newPropRooms,
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setModal({ type: 'none' });
-        setNewPropName('');
-        setNewPropType('SINGLE');
-        setNewPropRooms(1);
-        showSuccess(`"${newPropName}" created successfully`);
-        await loadData();
-      } else {
-        setAddError(data.message || 'Failed to create property');
-      }
-    } catch {
-      setAddError('Network error. Please try again.');
-    } finally {
-      setAddLoading(false);
-    }
   };
 
   const handleToggleActive = async (property: Property) => {
@@ -436,7 +432,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                   leftIcon={<Plus className="w-4 h-4" />}
                   variant="primary"
                   size="sm"
-                  onClick={() => { setAddError(null); setNewPropName(''); setNewPropType('SINGLE'); setNewPropRooms(1); setModal({ type: 'add' }); }}
+                  onClick={() => setModal({ type: 'wizard' })}
                   className="tenant-dashboard__properties-add-btn"
                 >
                   {t('add_property_button', 'Add Property')}
@@ -470,26 +466,67 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                   ? `${API_ROOT_BASE}/${tenantSlug}/${property.slug}/#dashboard`
                   : `${API_ROOT_BASE}/${property.slug}/#dashboard`;
 
+                // Draft properties (26 Aug 2026, "Save & Exit" mid-wizard) render a distinct card -
+                // incomplete, so no Open/Edit/Active-toggle actions (there's nothing real to open
+                // yet); Continue resumes the wizard exactly where it left off, Delete abandons it.
+                if (property.status === 'draft') {
+                  return (
+                    <div
+                      key={property.id}
+                      className="bg-amber-50 dark:bg-amber-950/20 rounded-lg border-2 border-dashed border-amber-300 dark:border-amber-800 p-4 sm:p-6 tenant-dashboard__property-card tenant-dashboard__property-card--draft"
+                    >
+                      <div className="flex items-center gap-2.5 mb-3">
+                        <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-800 flex items-center justify-center shadow-xs">
+                          {isMultiKey ? <Layers className="w-5 h-5 text-amber-600 dark:text-amber-400" /> : <Home className="w-5 h-5 text-amber-600 dark:text-amber-400" />}
+                        </div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300/60 dark:border-amber-800/40">
+                          Draft - Setup Incomplete
+                        </span>
+                      </div>
+                      <h3 className="font-semibold text-slate-900 dark:text-white mb-1">{property.name || 'Untitled property'}</h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">This property isn't live yet - finish setup to start taking bookings.</p>
+                      <div className="pt-4 border-t border-amber-200 dark:border-amber-900 flex items-center justify-between">
+                        <Button variant="primary" size="sm" onClick={() => setModal({ type: 'wizard', property })}>
+                          Continue Setup
+                        </Button>
+                        <Button variant="ghost" size="xs" onClick={() => setModal({ type: 'delete', property })} title={t('delete_tooltip', 'Delete')} className="text-slate-400 hover:text-red-600">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                }
+
                 return (
                   <div
                     key={property.id}
                     className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-4 sm:p-6 shadow-sm hover:shadow-md transition-all group tenant-dashboard__property-card"
                   >
-                    <div className="flex items-start justify-between mb-4 tenant-dashboard__property-card-header">
-                      <div className={`w-11 h-11 rounded-lg flex items-center justify-center shadow-sm ${isMultiKey ? 'bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/40 dark:to-purple-900/40' : 'bg-gradient-to-br from-teal-100 to-emerald-100 dark:from-teal-900/40 dark:to-emerald-900/40'} tenant-dashboard__property-card-icon-container`}>
-                        {isMultiKey ? (
-                          <Layers className="w-5 h-5 text-indigo-600 dark:text-indigo-400 tenant-dashboard__property-card-icon" />
-                        ) : (
-                          <Home className="w-5 h-5 text-teal-600 dark:text-teal-400 tenant-dashboard__property-card-icon" />
-                        )}
+                    <div className="flex items-start justify-between mb-3 tenant-dashboard__property-card-header">
+                      <div className="flex items-center gap-2.5">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shadow-xs ${isMultiKey ? 'bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800' : 'bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800'} tenant-dashboard__property-card-icon-container`}>
+                          {isMultiKey ? (
+                            <Layers className="w-5 h-5 text-indigo-600 dark:text-indigo-400 tenant-dashboard__property-card-icon" />
+                          ) : (
+                            <Home className="w-5 h-5 text-teal-600 dark:text-teal-400 tenant-dashboard__property-card-icon" />
+                          )}
+                        </div>
+                        <div>
+                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${isMultiKey ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/40' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'} tenant-dashboard__property-type-badge`}>
+                            {isMultiKey ? 'Multi-Room Hotel' : 'Single Property'}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1.5 tenant-dashboard__property-card-badges">
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${isMultiKey ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300' : 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300'} tenant-dashboard__property-type-badge`}>
-                          {isMultiKey ? t('tenant_multi_key_badge', 'Multi-Key') : t('single_type_label', 'Single')}
-                        </span>
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${property.is_active ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'} tenant-dashboard__property-status-badge`}>
+
+                      {/* Active / Inactive Status Toggle Switch */}
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs font-semibold ${property.is_active ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'}`}>
                           {property.is_active ? t('active_status_badge', 'Active') : t('tenant_inactive_status_badge', 'Inactive')}
                         </span>
+                        <ToggleSwitch
+                          enabled={!!property.is_active}
+                          onChange={() => handleToggleActive(property)}
+                        />
                       </div>
                     </div>
 
@@ -499,7 +536,9 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                     <p className="text-xs text-slate-400 dark:text-slate-500 font-mono mb-1 tenant-dashboard__property-card-slug">/{property.slug}</p>
                     {isMultiKey && (
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 tenant-dashboard__property-card-rooms">
-                        {roomCount} room{roomCount !== 1 ? 's' : ''} · {roomCount} slot{roomCount !== 1 ? 's' : ''}
+                        {roomCount > 0
+                          ? `${roomCount} room${roomCount !== 1 ? 's' : ''} · ${roomCount} slot${roomCount !== 1 ? 's' : ''}`
+                          : '0 rooms (No sub-rooms created yet)'}
                       </p>
                     )}
 
@@ -510,9 +549,6 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                       <div className="flex items-center gap-1 tenant-dashboard__property-card-controls">
                         <Button variant="primary" size="sm" onClick={() => { setEditName(property.name); setEditGstin(property.gstin || ''); setEditTelegramTemplateCustomization(!!property.telegram_template_customization_enabled); setEditPhone(property.phone || ''); setEditMapsLink(property.google_maps_link || ''); setEditInstructions(property.instructions || ''); setModal({ type: 'edit', property }); }} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
                           Edit
-                        </Button>
-                        <Button variant="ghost" size="xs" onClick={() => handleToggleActive(property)} title={property.is_active ? t('deactivate_tooltip', 'Deactivate') : t('activate_tooltip', 'Activate')} className={`${property.is_active ? 'text-slate-400 hover:text-amber-600' : 'text-slate-400 hover:text-emerald-600'} tenant-dashboard__property-card-toggle-btn`}>
-                          {property.is_active ? <XCircle className="w-3.5 h-3.5" /> : <CheckCircle className="w-3.5 h-3.5" />}
                         </Button>
                         <Button variant="ghost" size="xs" onClick={() => setModal({ type: 'delete', property })} title={t('delete_tooltip', 'Delete')} className="text-slate-400 hover:text-red-600 tenant-dashboard__property-card-delete-btn">
                           <Trash2 className="w-3.5 h-3.5" />
@@ -526,7 +562,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           )}
         </section>
 
-        {/* â"ۉ"€ Combined Analytics (Placeholder) â"ۉ"€ */}
+        {/* Combined Analytics */}
         <section className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-6 shadow-sm tenant-dashboard__analytics">
           <div className="flex items-center justify-between mb-6 tenant-dashboard__analytics-header">
             <div className="tenant-dashboard__analytics-title-wrapper">
@@ -535,8 +571,8 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
             </div>
             <div className="flex items-center gap-2 tenant-dashboard__analytics-filters">
               <StyledSelect
-                value=""
-                onChange={() => {}}
+                value={selectedAnalyticsPropId}
+                onChange={(value) => setSelectedAnalyticsPropId(value)}
                 options={[
                   { value: 'all', label: t('all_properties_option', 'All Properties') },
                   ...properties.map(p => ({ value: String(p.id), label: p.name })),
@@ -547,124 +583,38 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 tenant-dashboard__analytics-grid">
-            {[t('total_bookings_label', 'Total Bookings'), t('combined_revenue_label', 'Combined Revenue'), t('avg_occupancy_label', 'Avg. Occupancy')].map((label) => (
-              <div key={label} className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 text-center border border-slate-100 dark:border-slate-700/50 tenant-dashboard__analytics-card">
-                <TrendingUp className="w-6 h-6 text-slate-300 dark:text-slate-600 mx-auto mb-2 tenant-dashboard__analytics-card-icon" />
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 tenant-dashboard__analytics-card-label">{label}</p>
-                <p className="text-sm font-semibold text-slate-400 dark:text-slate-500 tenant-dashboard__analytics-card-value">{t('coming_soon_badge', 'Coming Soon')}</p>
-              </div>
-            ))}
+            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-5 text-center border border-slate-100 dark:border-slate-700/50 tenant-dashboard__analytics-card">
+              <TrendingUp className="w-6 h-6 text-indigo-500 mx-auto mb-2 tenant-dashboard__analytics-card-icon" />
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 tenant-dashboard__analytics-card-label">{t('total_bookings_label', 'Total Bookings')}</p>
+              <p className="text-2xl font-bold text-slate-900 dark:text-white tenant-dashboard__analytics-card-value">{totalBookingsAnalytics}</p>
+            </div>
+            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-5 text-center border border-slate-100 dark:border-slate-700/50 tenant-dashboard__analytics-card">
+              <Building2 className="w-6 h-6 text-emerald-500 mx-auto mb-2 tenant-dashboard__analytics-card-icon" />
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 tenant-dashboard__analytics-card-label">{t('combined_revenue_label', 'Combined Revenue')}</p>
+              <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 tenant-dashboard__analytics-card-value">₹{combinedRevenueAnalytics.toLocaleString('en-IN')}</p>
+            </div>
+            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-5 text-center border border-slate-100 dark:border-slate-700/50 tenant-dashboard__analytics-card">
+              <Layers className="w-6 h-6 text-blue-500 mx-auto mb-2 tenant-dashboard__analytics-card-icon" />
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 tenant-dashboard__analytics-card-label">{t('avg_occupancy_label', 'Avg. Occupancy')}</p>
+              <p className="text-2xl font-bold text-slate-900 dark:text-white tenant-dashboard__analytics-card-value">{avgOccupancyAnalytics}%</p>
+            </div>
           </div>
         </section>
       </main>
 
-      {/* Add Property Drawer */}
-      <Drawer
-        open={modal.type === 'add'}
-        onClose={() => setModal({ type: 'none' })}
-        position="right"
-        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
-      >
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-              <Plus className="w-4 h-4" />
-            </div>
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white m-0">
-              {t('add_new_property_heading', 'Add New Property')}
-            </h2>
-          </div>
-          <button
-            type="button"
-            onClick={() => setModal({ type: 'none' })}
-            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-4 space-y-5 tenant-dashboard__modal-body">
-          {addError && (
-            <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-300 tenant-dashboard__modal-error">
-              <AlertCircle className="w-4 h-4 shrink-0 tenant-dashboard__modal-error-icon" />
-              {addError}
-            </div>
-          )}
-          <div className="tenant-dashboard__form-group">
-            <Input
-              id="new-property-name"
-              label={t('tenant_property_name_label', 'Property Name')}
-              value={newPropName}
-              onChange={e => setNewPropName(e.target.value)}
-              placeholder={t('property_name_placeholder', 'e.g. Sea View Villa')}
-              className="tenant-dashboard__input"
-            />
-            {newPropName && (
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 tenant-dashboard__slug-preview">{t('tenant_slug_label', 'Slug:')} <span className="font-mono text-indigo-500">/{autoSlug(newPropName)}</span></p>
-            )}
-          </div>
-          <div className="tenant-dashboard__form-group">
-            <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 tenant-dashboard__form-label">{t('tenant_property_type_label', 'Property Type')}</label>
-            <div className="grid grid-cols-2 gap-3 tenant-dashboard__type-selector">
-              <button
-                onClick={() => setNewPropType('SINGLE')}
-                className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${newPropType === 'SINGLE' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300'} tenant-dashboard__type-btn`}
-              >
-                <Home className={`w-5 h-5 ${newPropType === 'SINGLE' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'} tenant-dashboard__type-icon`} />
-                <span className={`text-xs font-semibold ${newPropType === 'SINGLE' ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-500 dark:text-slate-400'} tenant-dashboard__type-label`}>{t('single_type_label', 'Single')}</span>
-                <span className="text-xs text-slate-400 tenant-dashboard__type-desc">{t('one_slot_label', '1 slot')}</span>
-              </button>
-              <button
-                onClick={() => setNewPropType('MULTI_KEY')}
-                className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${newPropType === 'MULTI_KEY' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300'} tenant-dashboard__type-btn`}
-              >
-                <Layers className={`w-5 h-5 ${newPropType === 'MULTI_KEY' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'} tenant-dashboard__type-icon`} />
-                <span className={`text-xs font-semibold ${newPropType === 'MULTI_KEY' ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-500 dark:text-slate-400'} tenant-dashboard__type-label`}>{t('multi_key_type_label', 'Multi-Key')}</span>
-                <span className="text-xs text-slate-400 tenant-dashboard__type-desc">{t('n_slots_label', 'N slots')}</span>
-              </button>
-            </div>
-          </div>
-          {newPropType === 'MULTI_KEY' && (
-            <div className="tenant-dashboard__form-group">
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 tenant-dashboard__form-label">
-                {t('number_of_rooms_label', 'Number of Rooms')}
-                <span className="text-slate-400 font-normal ml-1 tenant-dashboard__form-hint">(max {remaining} slot{remaining !== 1 ? 's' : ''} available)</span>
-              </label>
-              <Input
-                id="new-property-rooms"
-                type="number"
-                min={1}
-                max={remaining}
-                value={newPropRooms}
-                onChange={e => setNewPropRooms(Math.max(1, parseInt(e.target.value) || 1))}
-                helperText={newPropRooms > remaining ? `Not enough slots — you have ${remaining} remaining` : undefined}
-                error={newPropRooms > remaining}
-                className="tenant-dashboard__input"
-              />
-            </div>
-          )}
-        </div>
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => setModal({ type: 'none' })}
-          >
-            {t('cancel_button', 'Cancel')}
-          </Button>
-          <Button
-            id="confirm-add-property-btn"
-            variant="primary"
-            size="sm"
-            leftIcon={addLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}
-            onClick={handleAddProperty}
-            disabled={addLoading || newPropRooms > remaining}
-            className="tenant-dashboard__modal-submit-btn"
-          >
-            {t('create_property_button', 'Create Property')}
-          </Button>
-        </div>
-      </Drawer>
+      {/* Property Setup Wizard (26 Aug 2026) - multi-step, timeline-stepper flow replacing the old
+          single-screen Add Property drawer. `property` (present when resuming a draft) or absent
+          (fresh property) both render the same component - see PropertyCreationWizard.tsx. */}
+      {modal.type === 'wizard' && (
+        <PropertyCreationWizard
+          isOpen
+          onClose={() => setModal({ type: 'none' })}
+          onSaved={() => { showSuccess('Property saved'); loadData(); }}
+          tenantId={tenantId}
+          remainingSlots={remaining}
+          existingProperty={modal.property}
+        />
+      )}
 
       {/* Edit Property Drawer */}
       <Drawer
@@ -725,7 +675,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
             <div className="grid grid-cols-2 gap-3 mb-3 tenant-dashboard__edit-grid">
               <div className="tenant-dashboard__form-group">
                 <Input
-                  label={t('tenant_contact_phone_label', 'Contact Phone')}
+                  label={t('tenant_contact_phone_label', 'Contact number of property')}
                   labelClassName="text-xs"
                   value={editPhone}
                   onChange={e => setEditPhone(e.target.value)}
@@ -859,56 +809,6 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 className="tenant-dashboard__modal-delete-btn"
               >
                 {t('delete_permanently_button', 'Delete Permanently')}
-              </Button>
-            </div>
-          </>
-        )}
-      </Modal>
-
-      {/* Slots Exceeded Modal - confirmation/alert prompt, not a form; same
-          "modal, not drawer" rule as above. */}
-      <Modal
-        show={modal.type === 'slots_exceeded'}
-        onClose={() => setModal({ type: 'none' })}
-        dismissible
-        size="lg"
-        popup
-        className="z-9999"
-      >
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-t-lg">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 flex items-center justify-center text-amber-600 dark:text-amber-400">
-              <Zap className="w-4 h-4" />
-            </div>
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white m-0">
-              {t('not_enough_slots_heading', 'Not Enough Slots')}
-            </h2>
-          </div>
-          <button
-            type="button"
-            onClick={() => setModal({ type: 'none' })}
-            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        {modal.type === 'slots_exceeded' && (
-          <>
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 tenant-dashboard__modal-body">
-              <p className="text-sm text-slate-600 dark:text-slate-400 tenant-dashboard__slots-info m-0">
-                You need <span className="font-semibold text-slate-900 dark:text-white tenant-dashboard__slots-needed">{modal.needed} slot(s)</span> but only have{' '}
-                <span className="font-semibold text-amber-600 dark:text-amber-400 tenant-dashboard__slots-remaining">{modal.remaining} remaining</span>.
-              </p>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 tenant-dashboard__slots-message m-0">
-                {t('contact_root_admin_upgrade_message', 'Please contact your Root Admin to upgrade your subscription package.')}
-              </p>
-            </div>
-            <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850 rounded-b-lg">
-              <Button variant="secondary" size="sm" onClick={() => setModal({ type: 'add' })} className="tenant-dashboard__modal-back-btn">
-                {t('back_button', 'Back')}
-              </Button>
-              <Button variant="warning" size="sm" leftIcon={<Zap className="w-4 h-4" />} onClick={() => setModal({ type: 'upgrade' })} className="tenant-dashboard__modal-upgrade-btn">
-                {t('upgrade_package_button', 'Upgrade Package')}
               </Button>
             </div>
           </>

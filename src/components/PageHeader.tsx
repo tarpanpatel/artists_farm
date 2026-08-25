@@ -77,7 +77,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, childre
             trigger="click"
             title="About this page"
             content={
-              <div className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-300 leading-relaxed max-w-xs">
+              <div className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-300 leading-relaxed max-w-xs whitespace-pre-line">
                 {subtitle}
               </div>
             }

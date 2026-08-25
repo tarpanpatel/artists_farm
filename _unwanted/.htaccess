@@ -1,0 +1,16 @@
+# Deny-all for the whole _unwanted/ tree - archived/removed code kept for its
+# reference value (see each subfolder's own notes), never meant to be served.
+# This guards against the case where the directory is ever copied wholesale to
+# a live server instead of deployed via the normal git-tracked path - matches
+# the same convention this folder has used since it was first created (see
+# git history: "chore: archive unauthenticated debug/admin scripts out of the
+# web root", 11 Aug 2026).
+<IfModule mod_authz_core.c>
+    # Apache 2.4+
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    # Apache 2.2 and earlier
+    Order deny,allow
+    Deny from all
+</IfModule>

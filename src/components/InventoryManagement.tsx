@@ -819,8 +819,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         custom_notes: specialRequestText.trim() || 'None',
       };
       const resolved = await resolveTelegramTemplate('requisition_material_request', reqVars);
-      const tgMessage = resolved || `📋 <b>NEW STOCK REQUISITION SHEET #${newSheetId}</b>\n━━━━━━━━━━━━━━━━━━\n👤 Requested By: <b>${currentUser?.name || 'Staff'}</b>\n📅 Date: ${newSheet.date}\n🟢 Status: <b>PENDING</b>\n━━━━━━━━━━━━━━━━━━\n📝 Items Requested:\n${itemsListStr}`;
-      onDispatchTelegram('Requisition', tgMessage, 'kitchen', undefined, 'requisition_material_request');
+      const tgMessage = resolved || `📋 <b>NEW STOCK REQUEST #${newSheetId}</b>\n━━━━━━━━━━━━━━━━━━\n👤 Requested By: <b>${currentUser?.name || 'Staff'}</b>\n📅 Date: ${newSheet.date}\n🟢 Status: <b>PENDING</b>\n━━━━━━━━━━━━━━━━━━\n📝 Items Requested:\n${itemsListStr}`;
+      onDispatchTelegram('Stock Request', tgMessage, 'kitchen', undefined, 'requisition_material_request');
     }
 
     setReqBasket([]);

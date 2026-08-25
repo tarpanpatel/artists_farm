@@ -32,7 +32,6 @@ import { Smartphone, Download, X as CloseIcon, Share, PlusSquare, MoreVertical, 
 import { LoadingScreen } from './components/LoadingScreen';
 import { LoginPage } from './components/LoginPage';
 import { MultiKeyPropertyOverview } from './components/MultiKeyPropertyOverview';
-import { AIChatWidget } from './components/AIChatWidget';
 import { getPropertyAndRoomSlugs } from './services/api';
 
 // Code-split: everything below is either a secondary/admin tab that most
@@ -58,7 +57,6 @@ const ServiceRequestsManagement = lazyWithRetry(() => import('./components/Servi
 const LicenseManagement = lazyWithRetry(() => import('./components/LicenseManagement').then(m => ({ default: m.LicenseManagement })), 'LicenseManagement');
 const TelegramNotificationModal = lazyWithRetry(() => import('./components/TelegramNotificationModal').then(m => ({ default: m.TelegramNotificationModal })), 'TelegramNotificationModal');
 const EditPropertyPage = lazyWithRetry(() => import('./components/EditPropertyPage').then(m => ({ default: m.EditPropertyPage })), 'EditPropertyPage');
-const WhatsAppTemplateSettings = lazyWithRetry(() => import('./components/WhatsAppTemplateSettings').then(m => ({ default: m.WhatsAppTemplateSettings })), 'WhatsAppTemplateSettings');
 const PlatformPropertyManagement = lazyWithRetry(() => import('./components/PlatformPropertyManagement').then(m => ({ default: m.PlatformPropertyManagement })), 'PlatformPropertyManagement');
 const TenantDashboard = lazyWithRetry(() => import('./components/TenantDashboard').then(m => ({ default: m.TenantDashboard })), 'TenantDashboard');
 const RootAdminDashboard = lazyWithRetry(() => import('./components/RootAdminDashboard').then(m => ({ default: m.RootAdminDashboard })), 'RootAdminDashboard');
@@ -294,13 +292,6 @@ function AppBody({ preloadedData }: AppBodyProps) {
   const [activeTab, setActiveTab] = useState<TabType>(initialActive.tab);
   const [activeMenuItemKey, setActiveMenuItemKey] = useState<string>(initialActive.key);
   const [autoOpenAddStaffModal, setAutoOpenAddStaffModal] = useState<boolean>(false);
-  const [initialExpenseData, setInitialExpenseData] = useState<{ amount?: number; description?: string } | null>(null);
-  const [initialStaffMealName, setInitialStaffMealName] = useState<string | null>(null);
-  const [initialEditStaffName, setInitialEditStaffName] = useState<string | null>(null);
-  const [initialReqData, setInitialReqData] = useState<{ itemName?: string; qty?: number; unit?: string } | null>(null);
-  const [initialServiceRequestData, setInitialServiceRequestData] = useState<{ roomNumber?: string; item?: string } | null>(null);
-  const [initialAddStaffData, setInitialAddStaffData] = useState<{ name?: string; phone?: string; role?: string; salary?: number } | null>(null);
-  const [initialNewMenuItemData, setInitialNewMenuItemData] = useState<{ name?: string; price?: number; category?: string } | null>(null);
   const [propertyName] = useState<string>(
     preloadedData.currentProperty?.name || getPropertySlug().charAt(0).toUpperCase() + getPropertySlug().slice(1).replace(/-/g, ' ') || 'Property'
   );
@@ -654,7 +645,6 @@ function AppBody({ preloadedData }: AppBodyProps) {
   const [isIconOnly, setIsIconOnly] = useState(false);
   const [isAddBookingModalOpen, setIsAddBookingModalOpen] = useState(false);
   const [isAddExpenseModalOpen, setIsAddExpenseModalOpen] = useState(false);
-  const [isAIChatOpen, setIsAIChatOpen] = useState(false);
 
   const [guests, setGuests] = useState<Guest[]>(() => preloadedData.initialGuests || []);
   const [receipts, setReceipts] = useState<BillingReceipt[]>(() => preloadedData.initialReceipts || []);
@@ -1892,7 +1882,6 @@ ${itemsStr}
             showInstallIcon={canShowInstallIcon}
             onInstallIconClick={handleHeaderInstallClick}
             onNavigate={(tab, itemKey) => handleNavigateTab(tab, itemKey)}
-            onToggleAIChat={() => setIsAIChatOpen((prev) => !prev)}
           />
         )}
 
@@ -1946,15 +1935,10 @@ ${itemsStr}
             dispatchLogs={telegramLogs}
             onSendTestNotification={handleSendTestNotification}
             kitchenModuleEnabled={kitchenEnabled}
-            // Raw DB flag only - role-based bypass (Root Admin always edits;
-            // Admin/Super Admin only when this is on) is handled entirely
-            // inside TelegramNotificationModal's own canEditTemplates, so
-            // OR'ing role checks in here too double-applied the same rule
-            // and made the toggle a no-op for Super Admin (found 22 Aug
-            // 2026 via "View site as" - Super Admin kept showing Edit with
-            // the property's toggle off, since this prop was already
-            // forcing true before canEditTemplates ever ran).
-            templateCustomizationEnabled={!!preloadedData.currentProperty?.telegram_template_customization_enabled}
+            // Hardcoded false (26 Aug 2026) - see the other
+            // TelegramNotificationModal render site's comment above for why
+            // per-property customization no longer exists at all.
+            templateCustomizationEnabled={false}
           />
         </Suspense>
 
@@ -2206,13 +2190,6 @@ ${itemsStr}
                     onDispatchTelegram={dispatchTelegramAlert}
                     activeMenuItemKey={activeMenuItemKey}
                     isMultiKeyProperty={preloadedData.isMultiKeyProperty}
-                    initialStaffName={initialStaffMealName || undefined}
-                    initialReqItemName={initialReqData?.itemName}
-                    initialReqQty={initialReqData?.qty}
-                    initialReqUnit={initialReqData?.unit}
-                    initialNewMenuItemName={initialNewMenuItemData?.name}
-                    initialNewMenuItemPrice={initialNewMenuItemData?.price}
-                    initialNewMenuItemCategory={initialNewMenuItemData?.category}
                     propertyName={preloadedData.currentProperty?.name || ''}
                     propertyGstin={preloadedData.currentProperty?.gstin || ''}
                     propertyUpiId={preloadedData.currentProperty?.upi_id || ''}
@@ -2278,11 +2255,6 @@ ${itemsStr}
                     propertyId={preloadedData.currentProperty?.id}
                     autoOpenAddModal={autoOpenAddStaffModal}
                     onClearAutoOpenAddModal={() => setAutoOpenAddStaffModal(false)}
-                    initialEditStaffName={initialEditStaffName || undefined}
-                    initialAddStaffName={initialAddStaffData?.name}
-                    initialAddStaffPhone={initialAddStaffData?.phone}
-                    initialAddStaffRole={initialAddStaffData?.role}
-                    initialAddStaffSalary={initialAddStaffData?.salary}
                   />
                 </ErrorBoundary>
               )}
@@ -2333,8 +2305,6 @@ ${itemsStr}
                     rooms={preloadedData.currentProperty?.rooms || []}
                     isMultiKeyProperty={preloadedData.isMultiKeyProperty}
                     onDispatchTelegram={dispatchTelegramAlert}
-                    initialRoomNumber={initialServiceRequestData?.roomNumber}
-                    initialRequestItem={initialServiceRequestData?.item}
                   />
                 </ErrorBoundary>
               )}
@@ -2364,24 +2334,6 @@ ${itemsStr}
 
               {!selectedRoomSlugOverride && activeTab === 'telegram' && (
                 <div className="space-y-6">
-                  <ErrorBoundary section="WhatsApp Template Settings">
-                    <WhatsAppTemplateSettings
-                      property={{
-                        id: preloadedData.currentProperty?.id,
-                        name: preloadedData.currentProperty?.name,
-                        email: preloadedData.currentProperty?.email,
-                        phone: preloadedData.currentProperty?.phone,
-                        gstin: preloadedData.currentProperty?.gstin,
-                        upi_id: preloadedData.currentProperty?.upi_id,
-                        address: preloadedData.currentProperty?.address,
-                        google_maps_link: preloadedData.currentProperty?.google_maps_link,
-                        instructions: preloadedData.currentProperty?.instructions,
-                        whatsapp_voucher_template: preloadedData.currentProperty?.whatsapp_voucher_template,
-                        telegram_template_customization_enabled: preloadedData.currentProperty?.telegram_template_customization_enabled,
-                      }}
-                      onSaved={() => window.location.reload()}
-                    />
-                  </ErrorBoundary>
                   <TelegramNotificationModal
                     isOpen={true}
                     onClose={() => setIsTelegramModalOpen(false)}
@@ -2392,10 +2344,17 @@ ${itemsStr}
                     isEmbedded={true}
                     onLogAudit={logAudit}
                     kitchenModuleEnabled={kitchenEnabled}
-                    // See the other TelegramNotificationModal render site's
-                    // comment above - raw DB flag only, role bypass lives
-                    // inside the component's own canEditTemplates.
-                    templateCustomizationEnabled={!!preloadedData.currentProperty?.telegram_template_customization_enabled}
+                    // Per-property Telegram template customization removed
+                    // (26 Aug 2026, explicit request: "no need to have
+                    // Telegram Template Permissions block") - its only UI,
+                    // WhatsAppTemplateSettings.tsx's toggle card, is gone
+                    // from this tab, so the DB column it used to write is now
+                    // frozen/unreachable. Hardcoded false to match: Root
+                    // Admin (canEditTemplates' unconditional isRootAdmin
+                    // branch) manages the shared template set exclusively;
+                    // every property's own Admin/Super Admin gets view-only,
+                    // same as an "off" toggle always did.
+                    templateCustomizationEnabled={false}
                   />
                 </div>
               )}
@@ -2498,8 +2457,6 @@ ${itemsStr}
                 onDispatchTelegram={dispatchTelegramAlert}
                 onlyForm={true}
                 onClose={() => setIsAddExpenseModalOpen(false)}
-                initialAmount={initialExpenseData?.amount}
-                initialDescription={initialExpenseData?.description}
                 kitchenModuleEnabled={isModuleEnabled('kitchen')}
               />
             </Suspense>
@@ -2595,57 +2552,6 @@ ${itemsStr}
         )}
 
         <GlobalModal />
-        <AIChatWidget
-          isOpen={isAIChatOpen}
-          onClose={() => setIsAIChatOpen(false)}
-          userRole={activeRole}
-          propertyName={preloadedData.currentProperty?.name}
-          guests={guests}
-          onNavigate={(tab, itemKey, extraData) => {
-            setIsAIChatOpen(false);
-            setActiveTab(tab as any);
-            if (itemKey) setActiveMenuItemKey(itemKey);
-            if (extraData?.staffName) {
-              if (itemKey === 'staff_directory_salaries') {
-                setInitialEditStaffName(extraData.staffName);
-              } else {
-                setInitialStaffMealName(extraData.staffName);
-              }
-            }
-            if (extraData?.reqItemName || extraData?.reqQty) {
-              setInitialReqData({ itemName: extraData.reqItemName, qty: extraData.reqQty, unit: extraData.reqUnit });
-            }
-            if (extraData?.addStaffName || extraData?.addStaffPhone || extraData?.addStaffRole || extraData?.addStaffSalary) {
-              setInitialAddStaffData({ name: extraData.addStaffName, phone: extraData.addStaffPhone, role: extraData.addStaffRole, salary: extraData.addStaffSalary });
-            }
-            if (extraData?.newMenuItemName || extraData?.newMenuItemPrice || extraData?.newMenuItemCategory) {
-              setInitialNewMenuItemData({ name: extraData.newMenuItemName, price: extraData.newMenuItemPrice, category: extraData.newMenuItemCategory });
-            }
-          }}
-          onOpenAddBooking={() => {
-            setIsAIChatOpen(false);
-            setIsAddBookingModalOpen(true);
-          }}
-          onOpenAddExpense={(data) => {
-            setInitialExpenseData(data || null);
-            setIsAIChatOpen(false);
-            setIsAddExpenseModalOpen(true);
-          }}
-          onOpenTelegramModal={() => {
-            setIsAIChatOpen(false);
-            setIsTelegramModalOpen(true);
-          }}
-          onOpenAddServiceRequest={(data) => {
-            // Unlike Add Booking/Expense (globally-mounted modals), the New Service Request
-            // drawer lives inside ServiceRequestsManagement itself, only mounted when that tab
-            // is active - so this has to switch tabs too, same as the staff_meals/edit_staff
-            // navigate flow, not just set data and expect a hidden component to react to it.
-            setInitialServiceRequestData(data || null);
-            setIsAIChatOpen(false);
-            setActiveTab('service_requests' as any);
-            setActiveMenuItemKey('service_requests');
-          }}
-        />
     </div>
   );
 }

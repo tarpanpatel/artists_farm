@@ -36,6 +36,8 @@ interface BookingDetailsModalProps {
   propertyAddress?: string;
   propertyMapsLink?: string;
   propertyPhone?: string;
+  // Vestigial (26 Aug 2026) - see the destructuring default below for why
+  // this is never read anymore.
   propertyWhatsappTemplate?: string;
   propertyUpiId?: string;
   propertyUpiQrCodeUrl?: string;
@@ -88,7 +90,14 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   propertyAddress = '',
   propertyMapsLink = '',
   propertyPhone = '',
-  propertyWhatsappTemplate = '',
+  // No longer read (26 Aug 2026, explicit request: "dont let there be
+  // facility of whatsapp message customisation") - the voucher message is
+  // now always DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, see buildShareMessage()
+  // below. Left in the props interface (default '', never used) purely so
+  // the ~7 call sites that still thread this prop down from App.tsx don't
+  // all need editing - see PropertyEditForm.tsx for where the (now
+  // non-editable) live preview of this exact message moved to instead.
+  propertyWhatsappTemplate: _propertyWhatsappTemplate = '',
   propertyUpiId = '',
   propertyUpiQrCodeUrl = '',
   propertyCheckinTime = '',
@@ -470,7 +479,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     const checkoutTimeVal = propertyCheckoutTime || propDetails.checkout_time || '11:00';
     const notesVal = propertyInstructions || propDetails.instructions || g.instructions || g.notes || '';
 
-    return renderWhatsappVoucherTemplate(propertyWhatsappTemplate || DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, {
+    return renderWhatsappVoucherTemplate(DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, {
       guest_name: guest.guestName,
       room_name: unitName,
       room_number: unitName,

@@ -108,21 +108,6 @@ interface KitchenManagementProps {
   // tenant with e.g. 20 tables would otherwise have no way to name half of
   // them (found 20 Aug 2026).
   propertyWalkInTableCount?: number;
-  initialStaffName?: string;
-  // AI Assistant deep-link (24 Aug 2026, live report: "Request 100gm besan") - lands on the Raw
-  // Material Requisitions tab with the New Requisition drawer already open, item/qty/unit
-  // pre-filled. Never submits the requisition itself - the user still reviews and clicks
-  // 'Request Material' themselves, same rule every other AI-prefilled form follows.
-  initialReqItemName?: string;
-  initialReqQty?: number;
-  initialReqUnit?: string;
-  // AI Assistant deep-link (24 Aug 2026, proactive action-surface audit, not a live bug report) -
-  // lands on the Edit Food Menu tab with the "Add New Food Menu Item" drawer already open,
-  // name/price/category pre-filled. Never submits itself - same "user reviews and clicks Save"
-  // rule every other AI-prefilled form in this app follows.
-  initialNewMenuItemName?: string;
-  initialNewMenuItemPrice?: number;
-  initialNewMenuItemCategory?: string;
 }
 
 // Sentinel dropdown value for the "New Customer" row in the walk-in tab
@@ -143,13 +128,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   propertyUpiId = '',
   propertyUpiQrCodeUrl = '',
   propertyWalkInTableCount = 10,
-  initialStaffName,
-  initialReqItemName,
-  initialReqQty,
-  initialReqUnit,
-  initialNewMenuItemName,
-  initialNewMenuItemPrice,
-  initialNewMenuItemCategory,
 }) => {
   const { showToast, removeToast } = useToast();
   const { confirm } = useConfirm();
@@ -183,10 +161,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     if (key === 'staff_meals') return 'staff_meals';
     if (key === 'edit_food_menu') return 'menu_catalog';
     if (key === 'beta_recipe_builder') return 'beta_recipe_builder';
-    // 'kitchen_requisitions' is a synthetic key (24 Aug 2026, AI Assistant deep-link only) - this
-    // tab has no real nav_menu_items entry of its own (only reachable in-page via its own tab
-    // bar), so this key exists purely so the AI's navigate action has something to target.
-    if (key === 'kitchen_requisitions') return 'requisitions';
     if (key === 'kitchen_orders' || key === 'live_orders' || key === 'live_kitchen_orders' || key === 'live_tickets') return 'kds';
     return 'kds';
   };
@@ -773,17 +747,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
   const smStaffList = useMemo(() => staff.filter(s => s.status === 'Active').map(s => s.name), [staff]);
 
-  useEffect(() => {
-    if (initialStaffName && smStaffList.length > 0) {
-      const target = initialStaffName.toLowerCase().trim();
-      const matched = smStaffList.find((s) => s.toLowerCase().trim() === target || s.toLowerCase().trim().includes(target));
-      if (matched) {
-        setSmSelectedStaff([matched]);
-      }
-    }
-  }, [initialStaffName, smStaffList]);
-
-
   const handleSaveCustomMeal = () => {
     if (!newMealName) return;
     const cost = parseFloat(newMealCost) || 0;
@@ -1170,40 +1133,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const [reqSearch, setReqSearch] = useState('');
   const [reqDesktopPage, setReqDesktopPage] = useState(1);
   const REQ_DESKTOP_PAGE_SIZE = 15;
-
-  // AI Assistant deep-link pre-fill (24 Aug 2026, live report: "Request 100gm besan"). Guarded
-  // to run once per distinct value so it doesn't keep reopening the drawer if the staff member
-  // closes it or edits a field afterward.
-  const [appliedReqPrefill, setAppliedReqPrefill] = useState<string | null>(null);
-  useEffect(() => {
-    if (activeTab !== 'requisitions') return;
-    if (!initialReqItemName && !initialReqQty) return;
-    const prefillKey = `${initialReqItemName || ''}|${initialReqQty || ''}|${initialReqUnit || ''}`;
-    if (appliedReqPrefill === prefillKey) return;
-
-    if (initialReqItemName) setReqItemName(initialReqItemName);
-    if (initialReqQty) setReqQty(initialReqQty);
-    if (initialReqUnit) setReqUnit(initialReqUnit);
-    setIsReqModalOpen(true);
-    setAppliedReqPrefill(prefillKey);
-  }, [activeTab, initialReqItemName, initialReqQty, initialReqUnit, appliedReqPrefill]);
-
-  // AI Assistant deep-link (24 Aug 2026, proactive action-surface audit) - opens the blank "Add
-  // New Food Menu Item" drawer pre-filled once the Edit Food Menu tab is active. Same guarded
-  // once-per-value pattern as the requisition prefill effect above.
-  const [appliedNewMenuItemPrefill, setAppliedNewMenuItemPrefill] = useState<string | null>(null);
-  useEffect(() => {
-    if (activeTab !== 'menu_catalog') return;
-    if (!initialNewMenuItemName && !initialNewMenuItemPrice && !initialNewMenuItemCategory) return;
-    const prefillKey = `${initialNewMenuItemName || ''}|${initialNewMenuItemPrice || ''}|${initialNewMenuItemCategory || ''}`;
-    if (appliedNewMenuItemPrefill === prefillKey) return;
-
-    if (initialNewMenuItemName) setNewItemName(initialNewMenuItemName);
-    if (initialNewMenuItemPrice) setNewItemPrice(initialNewMenuItemPrice);
-    if (initialNewMenuItemCategory) setNewItemCategory(initialNewMenuItemCategory as MenuItem['category']);
-    setIsNewMenuModalOpen(true);
-    setAppliedNewMenuItemPrefill(prefillKey);
-  }, [activeTab, initialNewMenuItemName, initialNewMenuItemPrice, initialNewMenuItemCategory, appliedNewMenuItemPrefill]);
 
   // Add Item to Order Cart
   const handleAddToCart = (item: MenuItem) => {
@@ -2742,8 +2671,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                               requested_by: req.requestedBy,
                             };
                             const resolved = await resolveTelegramTemplate('kitchen_requisition_approved', reqApprVars);
-                            const reqMsg = resolved || `✅ <b>MATERIAL REQUISITION APPROVED #${req.id}</b>\n• Material: <b>${req.itemName}</b> (${req.requestedQty} ${req.unit})\n• Requested By: <b>${req.requestedBy}</b>\n• Status: Released & Fulfilled from Store ✓`;
-                            onDispatchTelegram('Requisition Approved', reqMsg, 'kitchen', undefined, 'kitchen_requisition_approved');
+                            const reqMsg = resolved || `✅ <b>STOCK REQUEST APPROVED #${req.id}</b>\n• Material: <b>${req.itemName}</b> (${req.requestedQty} ${req.unit})\n• Requested By: <b>${req.requestedBy}</b>\n• Status: Released & Fulfilled from Store ✓`;
+                            onDispatchTelegram('Stock Request Approved', reqMsg, 'kitchen', undefined, 'kitchen_requisition_approved');
                           })();
                         }
                         recordTelescopeLog({

@@ -383,11 +383,18 @@ if (typeof window !== 'undefined' && !(window as any).__csrfFetchPatched) {
   };
 }
 
-export async function apiFetch(url: string, init?: RequestInit): Promise<Response> {
+// propertySlugOverride (26 Aug 2026): every request normally carries the CURRENTLY-OPEN property's
+// slug, which is right for the whole tenant-facing app. Root Admin screens are the exception - they
+// act ON a property without having it open (e.g. generating Telegram pairing deep links for any
+// property from the Root Dashboard), and the backend resolves scope from this exact param. Opt-in
+// on purpose rather than "respect any property_slug already in the URL": one existing call site
+// (MultiKeyPropertyOverview.tsx's get_staff) passes one today and has always had it silently
+// overwritten here, so honouring it implicitly would quietly change that call's behaviour too.
+export async function apiFetch(url: string, init?: RequestInit, propertySlugOverride?: string): Promise<Response> {
   const method = (init?.method || 'GET').toUpperCase();
   const customHeaders = (init?.headers as Record<string, string>) || {};
   const urlObj = new URL(url, window.location.origin);
-  urlObj.searchParams.set('property_slug', getPropertySlug());
+  urlObj.searchParams.set('property_slug', propertySlugOverride || getPropertySlug());
   const action = urlObj.searchParams.get('action') || '';
   const cacheKey = urlObj.toString();
   const isCacheable = method === 'GET' && CACHEABLE_ACTIONS.has(action);
@@ -2290,10 +2297,10 @@ export async function sendTelegramAlertDB(payload: {
   }
 }
 
-export async function fetchTelegramConfigDB(): Promise<PropertyTelegramConfig> {
+export async function fetchTelegramConfigDB(propertySlug?: string): Promise<PropertyTelegramConfig> {
   const fallback: PropertyTelegramConfig = { enabled: true, botToken: null, groups: [], routing: {} };
   try {
-    const res = await apiFetch(`${API_BASE}?action=get_telegram_config`);
+    const res = await apiFetch(`${API_BASE}?action=get_telegram_config`, undefined, propertySlug);
     const json = await res.json();
     if (json.status === 'success' && json.data) {
       return { ...fallback, ...json.data, routing: json.data.routing || {} };
@@ -2321,9 +2328,12 @@ export async function saveTelegramConfigDB(config: PropertyTelegramConfig): Prom
 
 // --- Zero-Friction Telegram Setup Wizard ---
 
-export async function fetchTelegramBotIdentity(): Promise<{ username: string; name: string | null } | null> {
+// propertySlug (optional, 26 Aug 2026): pass a target property's slug to act on THAT property
+// instead of the currently-open one - used by Root Admin's Telegram pairing panel, which pairs
+// groups on behalf of any property. See apiFetch()'s propertySlugOverride comment.
+export async function fetchTelegramBotIdentity(propertySlug?: string): Promise<{ username: string; name: string | null } | null> {
   try {
-    const res = await apiFetch(`${API_BASE}?action=get_bot_identity`);
+    const res = await apiFetch(`${API_BASE}?action=get_bot_identity`, undefined, propertySlug);
     const json = await res.json();
     return json.status === 'success' ? json.data : null;
   } catch (err) {
@@ -2339,13 +2349,13 @@ export interface TelegramPairingStatus {
   groupName?: string;
 }
 
-export async function generateTelegramPairingCode(groupKey: string, groupName: string): Promise<string | null> {
+export async function generateTelegramPairingCode(groupKey: string, groupName: string, propertySlug?: string): Promise<string | null> {
   try {
     const res = await apiFetch(`${API_BASE}?action=generate_pairing_code`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ groupKey, groupName }),
-    });
+    }, propertySlug);
     const json = await res.json();
     return json.status === 'success' ? json.code : null;
   } catch (err) {
@@ -2354,9 +2364,9 @@ export async function generateTelegramPairingCode(groupKey: string, groupName: s
   }
 }
 
-export async function checkTelegramPairingStatus(code: string): Promise<TelegramPairingStatus> {
+export async function checkTelegramPairingStatus(code: string, propertySlug?: string): Promise<TelegramPairingStatus> {
   try {
-    const res = await apiFetch(`${API_BASE}?action=check_pairing_status&code=${encodeURIComponent(code)}`);
+    const res = await apiFetch(`${API_BASE}?action=check_pairing_status&code=${encodeURIComponent(code)}`, undefined, propertySlug);
     const json = await res.json();
     if (json.status === 'success' && json.data) return json.data as TelegramPairingStatus;
   } catch (err) {
@@ -2365,13 +2375,13 @@ export async function checkTelegramPairingStatus(code: string): Promise<Telegram
   return { status: 'not_found' };
 }
 
-export async function confirmTelegramPairing(code: string): Promise<{ success: boolean; chatId?: string; message?: string }> {
+export async function confirmTelegramPairing(code: string, propertySlug?: string): Promise<{ success: boolean; chatId?: string; message?: string }> {
   try {
     const res = await apiFetch(`${API_BASE}?action=confirm_pairing`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code }),
-    });
+    }, propertySlug);
     const json = await res.json();
     return { success: json.status === 'success', chatId: json.chatId, message: json.message };
   } catch (err) {
@@ -2380,13 +2390,13 @@ export async function confirmTelegramPairing(code: string): Promise<{ success: b
   }
 }
 
-export async function sendTelegramTestMessage(chatId: string): Promise<{ success: boolean; message?: string }> {
+export async function sendTelegramTestMessage(chatId: string, propertySlug?: string): Promise<{ success: boolean; message?: string }> {
   try {
     const res = await apiFetch(`${API_BASE}?action=send_telegram_test`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ chatId }),
-    });
+    }, propertySlug);
     const json = await res.json();
     return { success: json.status === 'success', message: json.message };
   } catch (err) {

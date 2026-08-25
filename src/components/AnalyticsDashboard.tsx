@@ -1064,8 +1064,8 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   })();
 
   const reqChartSeries = sortedReqItems.length > 0 
-    ? [{ name: 'Requisition Frequency', data: sortedReqItems.map(([_, count]) => count) }]
-    : [{ name: 'Requisition Frequency', data: [12, 9, 7, 5, 4] }];
+    ? [{ name: 'Stock Request Frequency', data: sortedReqItems.map(([_, count]) => count) }]
+    : [{ name: 'Stock Request Frequency', data: [12, 9, 7, 5, 4] }];
   const reqChartLabels = sortedReqItems.length > 0
     ? sortedReqItems.map(([name]) => name)
     : ['Tomato', 'Salad Groceries', 'Butter Dairy', 'Paneer Block', 'Cooking Gas Fuel'];

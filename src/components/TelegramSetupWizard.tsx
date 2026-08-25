@@ -13,12 +13,8 @@ import {
   ArrowLeft,
   RefreshCw,
   Bot,
-  Save,
-  HelpCircle,
 } from './icons/FlowbiteIcons';
 import { Modal } from 'flowbite-react';
-import { Button } from './Button';
-import { Input } from './Input';
 import {
   fetchTelegramBotIdentity,
   generateTelegramPairingCode,
@@ -84,9 +80,6 @@ interface TelegramSetupWizardProps {
   onClose: () => void;
   onComplete: () => void;
   propertyName?: string;
-  // Drives whether the Kitchen group step exists at all - see ALL_STEPS above.
-  // Defaults true so an existing caller that doesn't pass it keeps the old
-  // 3-group behaviour rather than silently losing the Kitchen step.
   kitchenModuleEnabled?: boolean;
 }
 
@@ -103,11 +96,6 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [wizardConfig, setWizardConfig] = useState<PropertyTelegramConfig | null>(null);
-  const [tokenInput, setTokenInput] = useState('');
-  const [savingToken, setSavingToken] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-  const [showBotFatherGuide, setShowBotFatherGuide] = useState(false);
 
   const STEPS = useMemo(
     () => ALL_STEPS.filter((s) => s.key !== 'kitchen' || kitchenModuleEnabled),
@@ -143,7 +131,6 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
     try {
       const cfg = await fetchTelegramConfigDB();
       setWizardConfig(cfg);
-      setTokenInput(cfg.botToken || '');
     } catch (e) {
       console.error('Failed to load Telegram Config:', e);
     }
@@ -251,34 +238,6 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
       console.error('Failed to clear group chat ID in DB:', e);
     }
     startPairing();
-  };
-
-  const handleSaveToken = async () => {
-    const trimmed = tokenInput.trim();
-    if (!trimmed || !wizardConfig) return;
-    setSavingToken(true);
-    setSaveError(null);
-    setSaveSuccess(false);
-    try {
-      const ok = await saveTelegramConfigDB({ ...wizardConfig, botToken: trimmed });
-      if (!ok) {
-        setSaveError('Could not save the token — please try again.');
-        return;
-      }
-      const identity = await fetchTelegramBotIdentity();
-      if (identity?.username) {
-        setSaveSuccess(true);
-        setBotUsername(identity.username);
-        setWizardConfig({ ...wizardConfig, botToken: trimmed });
-        setTimeout(() => setSaveSuccess(false), 3000);
-      } else {
-        setSaveError("Saved, but Telegram didn't recognize that token — double-check you copied the whole thing from BotFather.");
-      }
-    } catch {
-      setSaveError('Could not save the token — please try again.');
-    } finally {
-      setSavingToken(false);
-    }
   };
 
   const handleUpdateConfigField = async (field: keyof PropertyTelegramConfig, value: any) => {
@@ -407,85 +366,24 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                 />
               </div>
 
-              {/* Bot API Token */}
-              <div className="space-y-2">
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('bot_api_token_label', 'Bot API Token')}</label>
-                <div className="flex items-center gap-2 w-full">
-                  <div className="flex-1 min-w-0">
-                    <Input
-                      type="text"
-                      value={tokenInput}
-                      onChange={(e) => setTokenInput(e.target.value)}
-                      placeholder={t('bot_token_placeholder', 'Enter Bot Token (Leave empty to use platform default)')}
-                      className="w-full font-mono text-xs"
-                      fullWidth
-                    />
-                  </div>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={handleSaveToken}
-                    disabled={savingToken}
-                    leftIcon={savingToken ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                  >
-                    {t('save_button', 'Save')}
-                  </Button>
+              {/* White-Glove Bot Status Card */}
+              <div className="bg-emerald-50 dark:bg-emerald-950/40 p-4 rounded-xl border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-900 dark:text-emerald-300 flex items-start gap-3 shadow-xs">
+                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/60 flex items-center justify-center shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5">
+                  <Bot className="w-5 h-5" />
                 </div>
-                {saveSuccess && (
-                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Bot configured successfully!
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-sm text-emerald-950 dark:text-white">
+                      {botUsername ? `@${botUsername}` : 'Artists Farm Telegram Bot'}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-200 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 font-bold text-[10px] uppercase tracking-wider">
+                      White-Glove Active
+                    </span>
                   </div>
-                )}
-                {saveError && (
-                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-red-600 dark:text-red-400">
-                    <X className="w-3.5 h-3.5 shrink-0" /> {saveError}
-                  </div>
-                )}
-
-                {/* Collapsible/Guided Block */}
-                {(!botUsername || showBotFatherGuide) && (
-                  <div className="bg-slate-50 dark:bg-slate-800/40 p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 space-y-3 mt-2">
-                    <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex justify-between items-center">
-                      <span className="flex items-center gap-1.5">
-                        <Bot className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-                        {t('how_to_create_bot_heading', 'How to create a Telegram Bot:')}
-                      </span>
-                      {botUsername && (
-                        <button
-                          type="button"
-                          onClick={() => setShowBotFatherGuide(false)}
-                          className="text-[10px] text-slate-500 hover:text-slate-700 cursor-pointer"
-                        >
-                          {t('hide_guide_button', 'Hide Guide')}
-                        </button>
-                      )}
-                    </div>
-                    <div className="space-y-3 text-xs text-slate-600 dark:text-slate-400">
-                      <div>
-                        1. Open <a href="https://t.me/BotFather?text=%2Fnewbot" target="_blank" rel="noopener noreferrer" className="text-sky-600 hover:underline font-semibold">BotFather</a> and send <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded font-mono">/newbot</code>.
-                      </div>
-                      <div>
-                        2. Choose a display name, then choose a unique username ending in <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded font-mono">bot</code>.
-                      </div>
-                      <div>
-                        3. Copy the token generated (looks like <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded font-mono">123456:ABC...</code>) and paste it above.
-                      </div>
-                      <div>
-                        4. <b>Critical Step:</b> send <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded font-mono">/setprivacy</code> to BotFather, select your bot, and choose <b>Disable</b>.
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {botUsername && !showBotFatherGuide && (
-                  <button
-                    type="button"
-                    onClick={() => setShowBotFatherGuide(true)}
-                    className="text-[11px] text-sky-600 dark:text-sky-400 hover:underline inline-flex items-center gap-1 font-medium cursor-pointer"
-                  >
-                    <HelpCircle className="w-3.5 h-3.5" />
-                    {t('how_to_create_bot_link', 'How to create a new Telegram bot with BotFather')}
-                  </button>
-                )}
+                  <p className="mt-1 leading-relaxed text-emerald-800 dark:text-emerald-300">
+                    Your resort's dedicated Telegram bot is pre-configured and managed for you. Click <b>Next →</b> to pair your staff chat groups.
+                  </p>
+                </div>
               </div>
             </div>
           ) : (

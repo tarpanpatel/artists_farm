@@ -6,6 +6,7 @@ import { StyledSelect } from './StyledSelect';
 import { Button } from './Button';
 import { Input } from './Input';
 import { LoadingScreen } from './LoadingScreen';
+import { TelegramPairingPanel } from './TelegramPairingPanel';
 import { API_ROOT_BASE } from '../services/api';
 import { t } from '../i18n/en';
 import { useConfirm } from './ConfirmDialogContext';
@@ -37,6 +38,7 @@ interface Property {
   timezone?: string;
   parent_property_id?: number;
   telegram_template_customization_enabled?: number;
+  telegram_bot_token?: string;
   is_public_demo?: number;
 }
 
@@ -277,6 +279,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
           color_scheme: editingProperty.tailwind_color_scheme,
           status: editingProperty.status,
           telegram_template_customization_enabled: !!editingProperty.telegram_template_customization_enabled,
+          telegram_bot_token: editingProperty.telegram_bot_token || '',
           is_public_demo: !!editingProperty.is_public_demo,
         }),
       });
@@ -693,22 +696,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
         </div>
       )}
 
-      {/* Header */}
-      <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Building2 className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-            <div>
-              <h1 className="platform-property-management__page-title text-lg font-semibold text-slate-900 dark:text-white">
-                {t('platform_title', 'Ground Code Platform')}
-              </h1>
-              <p className="text-xs text-slate-600 dark:text-slate-400">
-                {t('admin_dashboard_subtitle', 'Administration Dashboard')}
-              </p>
-            </div>
-          </div>
-        </div>
-      </header>
+
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8">
@@ -1468,6 +1456,38 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                   {t('telegram_customization_hint', "All templates are designed here at the root admin level. When off, this property's Admin and Super Admin can view templates and the live preview but can't edit the wording. When on, both can edit.")}
                 </p>
               </div>
+
+              <div className="pt-2 border-t border-slate-300 dark:border-slate-600 space-y-2">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  White-Glove Telegram Bot Token
+                </label>
+                <Input
+                  type="text"
+                  value={editingProperty.telegram_bot_token || ''}
+                  onChange={(e) => setEditingProperty({ ...editingProperty, telegram_bot_token: e.target.value })}
+                  placeholder="Enter Bot Token (e.g. 7182930491:AAH...)"
+                  className="w-full font-mono text-xs"
+                />
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  White-Glove Telegram Bot token for this property. Leave empty to use system default bot.
+                </p>
+              </div>
+
+              {/* Method A White-Glove pairing (see CLAUDE.md): property owners never pair their own
+                  groups, so the admin does it here, per property. Only rendered for a saved
+                  property - pairing targets the property by slug, so an unsaved/new one has
+                  nothing for the backend to resolve yet. */}
+              {editingProperty.slug && (
+                <div className="pt-2 border-t border-slate-300 dark:border-slate-600 space-y-2">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Telegram Group Pairing
+                  </label>
+                  <TelegramPairingPanel
+                    propertySlug={editingProperty.slug}
+                    propertyName={editingProperty.name}
+                  />
+                </div>
+              )}
 
               <div className="pt-2 border-t border-slate-300 dark:border-slate-600">
                 <label className="flex items-center justify-between gap-3">

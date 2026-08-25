@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send, Mail, Bell, UserCog, Pencil, DatabaseBackup, Loader2, RefreshCw, AlertTriangle, UserRound, Receipt, Package, Bot, Server } from './icons/FlowbiteIcons';
+import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send, Mail, Bell, UserCog, Pencil, DatabaseBackup, Loader2, RefreshCw, AlertTriangle, UserRound, Receipt, Package, Server } from './icons/FlowbiteIcons';
 import { Card, Sidebar, SidebarItems, SidebarItemGroup, SidebarItem } from 'flowbite-react';
 import { KpiCard } from './KpiCard';
 import { Button } from './Button';
-import { StyledSelect } from './StyledSelect';
-import { ToggleSwitch } from './ToggleSwitch';
 import { t } from '../i18n/en';
 import { AppearanceSettings } from './AppearanceSettings';
 import { PlatformPropertyManagement } from './PlatformPropertyManagement';
@@ -46,9 +44,9 @@ interface RootAdminDashboardProps {
   activeRole: string;
 }
 
-type SectionType = 'dashboard' | 'tenants_properties' | 'appearance' | 'edit_main_menu' | 'default_expenses' | 'default_bills' | 'service_request_types' | 'system_stock' | 'telegram_templates' | 'email_settings' | 'account_settings' | 'db_sync' | 'demo_data' | 'ai_services' | 'cron_jobs';
+type SectionType = 'dashboard' | 'tenants_properties' | 'appearance' | 'edit_main_menu' | 'default_expenses' | 'default_bills' | 'service_request_types' | 'system_stock' | 'telegram_templates' | 'email_settings' | 'account_settings' | 'db_sync' | 'demo_data' | 'cron_jobs';
 
-const VALID_SECTIONS: SectionType[] = ['dashboard', 'tenants_properties', 'appearance', 'edit_main_menu', 'default_expenses', 'default_bills', 'service_request_types', 'system_stock', 'telegram_templates', 'email_settings', 'account_settings', 'db_sync', 'demo_data', 'ai_services', 'cron_jobs'];
+const VALID_SECTIONS: SectionType[] = ['dashboard', 'tenants_properties', 'appearance', 'edit_main_menu', 'default_expenses', 'default_bills', 'service_request_types', 'system_stock', 'telegram_templates', 'email_settings', 'account_settings', 'db_sync', 'demo_data', 'cron_jobs'];
 
 export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
   username,
@@ -98,84 +96,6 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
   const [isLoadingDemoProperty, setIsLoadingDemoProperty] = useState(false);
   const [demoPropertyError, setDemoPropertyError] = useState('');
   const [isResettingDemo, setIsResettingDemo] = useState(false);
-
-  const [aiConfig, setAiConfig] = useState({
-    enabled: false,
-    provider: 'gemini',
-    api_key: '',
-    custom_endpoint: 'http://localhost:11434/v1',
-  });
-  // SECURITY (24 Aug 2026): the server never sends any real api_key back any more (see
-  // ai_config.php's GET handler) - only whether one is already on file, PER PROVIDER (25 Aug 2026
-  // fix - see ai_config.php's own comment for the real bug this replaces: a single shared
-  // has_api_key/api_key meant switching providers silently reused whatever key a DIFFERENT
-  // provider had last saved, with no warning, since there was only ever one slot on the server
-  // too). The password input below stays blank until the admin types a NEW key; leaving it blank
-  // on save intentionally keeps whatever key is already stored server-side for THAT provider.
-  const [hasApiKeyByProvider, setHasApiKeyByProvider] = useState<Record<string, boolean>>({});
-  const [isSavingAiConfig, setIsSavingAiConfig] = useState(false);
-
-  useEffect(() => {
-    fetch('/php/api/ai_config.php')
-      .then((res) => res.json())
-      .then((resData) => {
-        if (resData && resData.data) {
-          setAiConfig((prev) => ({ ...prev, ...resData.data, api_key: '' }));
-          setHasApiKeyByProvider(resData.data.has_api_key_by_provider || {});
-        }
-      })
-      .catch((err) => console.error('Failed to load AI config:', err));
-  }, []);
-
-  const handleToggleAiModeHeader = async (enabled: boolean) => {
-    setAiConfig((prev) => ({ ...prev, enabled }));
-    try {
-      await fetch('/php/api/ai_config.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled }),
-      });
-      showToast(`Online AI API turned ${enabled ? 'ON' : 'OFF (Offline Engine Active)'}`, {
-        type: enabled ? 'info' : 'warning',
-      });
-    } catch (err) {
-      showToast('Failed to update AI Mode', { type: 'error' });
-    }
-  };
-
-  const handleSaveAiConfig = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSavingAiConfig(true);
-    try {
-      const res = await fetch('/php/api/ai_config.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(aiConfig),
-      });
-      const resData = await res.json();
-      if (resData?.status === 'success') {
-        // Clear the typed key back out of local state and re-derive hasApiKeyByProvider from the
-        // server's response - never keep holding a just-typed real key in memory longer than the
-        // request.
-        setAiConfig((prev) => ({ ...prev, ...resData.data, api_key: '' }));
-        setHasApiKeyByProvider(resData.data?.has_api_key_by_provider || {});
-        showToast('AI Provider Settings saved successfully!', { type: 'success' });
-      } else if (res.status === 429) {
-        // RateLimiter.checkAndBlock() (rate_limiter.php) responds with {error, code}, not
-        // {status, message} - this branch used to fall through to the generic message below,
-        // which is actively misleading here (found live, 25 Aug 2026: several legitimate
-        // back-to-back provider-switch saves tripped ai_config_save's 5-per-5-min limit, and the
-        // toast gave no hint it was temporary/self-resolving rather than a real save failure).
-        showToast(resData?.error || 'Too many save attempts - please wait a few minutes and try again.', { type: 'error' });
-      } else {
-        showToast(resData?.message || 'Failed to save AI Settings', { type: 'error' });
-      }
-    } catch (err) {
-      showToast('Failed to save AI Settings', { type: 'error' });
-    } finally {
-      setIsSavingAiConfig(false);
-    }
-  };
 
   useEffect(() => {
     if (activeSection !== 'demo_data' || demoProperty || isLoadingDemoProperty) return;
@@ -392,12 +312,6 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
       section: 'demo_data' as SectionType,
     },
     {
-      id: 'ai_services',
-      label: 'AI Services Config',
-      icon: Bot,
-      section: 'ai_services' as SectionType,
-    },
-    {
       id: 'cron_jobs',
       label: 'Cron Jobs',
       icon: Server,
@@ -552,22 +466,21 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                 {activeSection === 'db_sync' && t('root_db_sync_label', 'Sync to Local')}
                 {activeSection === 'demo_data' && t('root_demo_data_label', 'Reset Demo Data')}
                 {activeSection === 'system_stock' && t('root_system_stock_label', 'System Stock Catalog')}
-                {activeSection === 'ai_services' && 'AI Services & Provider Config'}
                 {activeSection === 'cron_jobs' && 'Cron Jobs'}
               </h2>
             </div>
-            {/* The "Online AI API" toggle used to also render here, unconditionally,
-                for every section (Default Bills, Tenants & Properties, Appearance,
-                etc.) - not just AI Services, where the exact same control (same
-                aiConfig state, same handleToggleAiModeHeader handler) already lives
-                in its own properly-scoped card below. Found 24 Aug 2026 from a
-                mobile screenshot of the Default Bills screen: this out-of-place
-                copy competed with the section title for space in a single header
-                row with no wrap fallback, clipping off-screen and forcing a
-                horizontal scrollbar on narrow viewports - and on the ai_services
-                section itself it rendered as a literal duplicate of the section's
-                own toggle. Removed rather than reduced/hidden-below-breakpoint,
-                since the properly-placed one already covers every real use case. */}
+            {/* A section-specific header toggle used to also render here,
+                unconditionally, for every section (Default Bills, Tenants &
+                Properties, Appearance, etc.), duplicating a control that
+                already lived properly-scoped in its own section below. Found
+                24 Aug 2026 from a mobile screenshot of the Default Bills
+                screen: this out-of-place copy competed with the section title
+                for space in a single header row with no wrap fallback,
+                clipping off-screen and forcing a horizontal scrollbar on
+                narrow viewports. Removed rather than reduced/hidden-below-
+                breakpoint, since the properly-placed one already covers every
+                real use case - keep this in mind before adding a new
+                section-specific control up here again. */}
           </div>
         </header>
 
@@ -771,111 +684,6 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
             </Card>
           )}
 
-          {/* AI Services Configuration Section */}
-          {activeSection === 'ai_services' && (
-            <div className="space-y-6">
-              <Card className="shadow-md">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-gray-200 dark:border-gray-700">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 rounded-xl">
-                      <Bot className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h3 className="text-base font-bold text-gray-900 dark:text-white">AI Services & Provider Configuration</h3>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Choose between Offline Engine & Online AI APIs (Gemini, OpenAI, Claude, Ollama)</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Online AI API:</span>
-                    <ToggleSwitch
-                      enabled={aiConfig.enabled}
-                      onChange={(val) => handleToggleAiModeHeader(val)}
-                    />
-                    <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${aiConfig.enabled ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'}`}>
-                      {aiConfig.enabled ? 'ONLINE' : 'OFFLINE MODE'}
-                    </span>
-                  </div>
-                </div>
-
-                <form onSubmit={handleSaveAiConfig} className="mt-6 space-y-5">
-                  {/* Provider Selector */}
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                      Online AI Service Provider
-                    </label>
-                    <StyledSelect
-                      value={aiConfig.provider}
-                      onChange={(value) => setAiConfig({ ...aiConfig, provider: value, api_key: '' })}
-                      options={[
-                        { value: 'gemini', label: 'Google Gemini (gemini-1.5-flash) - Default' },
-                        { value: 'openai', label: 'OpenAI (gpt-4o-mini / gpt-4o)' },
-                        { value: 'opencode_zen', label: 'OpenCode Zen (big-pickle, free) - Trial Week Provider' },
-                        { value: 'claude', label: 'Anthropic Claude (claude-3-5-sonnet)' },
-                        { value: 'custom_ollama', label: 'Custom Local LLM / Ollama (http://localhost:11434/v1)' },
-                      ]}
-                    />
-                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
-                      {aiConfig.provider === 'gemini' && 'Google Gemini 1.5 Flash offers high-speed responses and broad language understanding.'}
-                      {aiConfig.provider === 'openai' && 'OpenAI GPT-4o-mini provides robust reasoning and structured JSON output.'}
-                      {aiConfig.provider === 'opencode_zen' && "OpenCode Zen's free big-pickle model - the provider actually running this app's trial week (see AI.md). Real, on-topic answers confirmed 25 Aug 2026, no billing required."}
-                      {aiConfig.provider === 'claude' && 'Anthropic Claude 3.5 Sonnet delivers detailed, high-accuracy responses.'}
-                      {aiConfig.provider === 'custom_ollama' && 'Connect to a local Ollama server running on your network.'}
-                    </p>
-                  </div>
-
-                  {/* API Key Input */}
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-2">
-                      API Key ({aiConfig.provider.toUpperCase()})
-                      {hasApiKeyByProvider[aiConfig.provider] && (
-                        <span className="text-2xs font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                          Key on file
-                        </span>
-                      )}
-                    </label>
-                    <input
-                      type="password"
-                      value={aiConfig.api_key}
-                      onChange={(e) => setAiConfig({ ...aiConfig, api_key: e.target.value })}
-                      placeholder={hasApiKeyByProvider[aiConfig.provider] ? '•••••••••••••• (leave blank to keep current key)' : (aiConfig.provider === 'gemini' ? 'AIzaSy...' : 'sk-...')}
-                      className="w-full bg-slate-50 dark:bg-gray-900 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-700 text-xs rounded-lg p-2.5 outline-none focus:border-blue-500 font-mono"
-                    />
-                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
-                      The saved key is never sent back to this page - only Root Admins can view or change it, and it's never shown in plaintext once saved.
-                    </p>
-                  </div>
-
-                  {/* Custom Endpoint URL (if Custom Ollama selected) */}
-                  {aiConfig.provider === 'custom_ollama' && (
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                        Custom Base URL / Endpoint
-                      </label>
-                      <input
-                        type="text"
-                        value={aiConfig.custom_endpoint}
-                        onChange={(e) => setAiConfig({ ...aiConfig, custom_endpoint: e.target.value })}
-                        placeholder="http://localhost:11434/v1"
-                        className="w-full bg-slate-50 dark:bg-gray-900 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-700 text-xs rounded-lg p-2.5 outline-none focus:border-blue-500 font-mono"
-                      />
-                    </div>
-                  )}
-
-                  {/* Save Button */}
-                  <div className="pt-2">
-                    <Button
-                      type="submit"
-                      disabled={isSavingAiConfig}
-                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-5 py-2.5 rounded-lg flex items-center gap-2 cursor-pointer"
-                    >
-                      {isSavingAiConfig && <Loader2 className="w-4 h-4 animate-spin" />}
-                      <span>Save AI Provider Settings</span>
-                    </Button>
-                  </div>
-                </form>
-              </Card>
-            </div>
-          )}
         </div>
       </main>
     </div>

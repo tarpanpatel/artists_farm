@@ -1,18 +1,28 @@
 import React, { useState, useRef } from 'react';
-import { Loader2, CheckCircle2, AlertCircle, Upload, Trash2 } from './icons/FlowbiteIcons';
+import { Loader2, CheckCircle2, AlertCircle, Upload, Trash2, MessageCircle } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';
 import { Button } from './Button';
 import { Input } from './Input';
 import { WhatsAppEditor } from './WhatsAppEditor';
 import { uploadImageDBVerbose } from '../services/api';
+import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
 
 /**
  * Shared "Edit Property" form - property details only (name, contact,
  * GSTIN/UPI, address, check-in/out times, default tariff, maps link,
- * notes), saved via `update_property`. Guest WhatsApp messaging and the
- * Telegram customization toggle live in WhatsAppTemplateSettings.tsx (the
- * Telegram/messaging settings tab) instead - this page is property details
- * only, not guest/staff notification config.
+ * notes), saved via `update_property`. The Telegram customization toggle
+ * lives in WhatsAppTemplateSettings.tsx (the Telegram/messaging settings
+ * tab) instead - unrelated to property details.
+ *
+ * The guest-facing WhatsApp booking-confirmation message itself is NOT
+ * customizable (26 Aug 2026, explicit request - was previously a free-text
+ * template editor on the Telegram tab, removed) - every property sends the
+ * one shared DEFAULT_WHATSAPP_VOUCHER_TEMPLATE. Since that template only
+ * ever pulls from fields edited right here (phone/address/UPI/instructions/
+ * check-in-out times), a live read-only preview of it is rendered at the
+ * bottom of this form instead, built from this component's own in-progress
+ * field state - not the last-saved `property` prop - so it updates as you
+ * type, before you've even hit Save.
  */
 interface PropertyEditFormProps {
   property: {
@@ -114,6 +124,43 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
     }
   };
 
+  // Sample guest/booking values - the fields this form actually edits
+  // (property_name/phone/address/maps_link/upi/notes/check-in-out times)
+  // fill in for real; nothing here is guest- or booking-specific data this
+  // page has any business editing.
+  const previewSampleValues = {
+    guest_name: 'Tarpan Patel',
+    room_name: isRoom ? name.trim() || 'Room 101' : 'Room 101',
+    room_number: isRoom ? name.trim() || 'Room 101' : 'Room 101',
+    checkin_date: '08 Aug 2026',
+    checkout_date: '11 Aug 2026',
+    guest_count: '2',
+    room_tariff: '4,500.00',
+    advance_paid: '2,000.00',
+  };
+
+  // Same template + substitution logic BookingDetailsModal.tsx's real "Share
+  // via WhatsApp" send uses - this preview is only trustworthy if it can
+  // never drift from what actually goes out to a guest.
+  const getPreviewText = () => renderWhatsappVoucherTemplate(DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, {
+    ...previewSampleValues,
+    property_name: name.trim() || 'Your Property',
+    address: address.trim(),
+    property_address: address.trim(),
+    contact_phone: phone.trim(),
+    property_phone: phone.trim(),
+    phone: phone.trim(),
+    maps_link: mapsLink.trim(),
+    google_maps_link: mapsLink.trim(),
+    upi_id: upiId.trim(),
+    upi_qr_code_url: upiQrCodeUrl.trim(),
+    qr_code: upiQrCodeUrl.trim(),
+    other_notes: instructions.trim(),
+    instructions: instructions.trim(),
+    checkin_time: checkinTime,
+    checkout_time: checkoutTime,
+  });
+
   const handleSave = async () => {
     if (!name.trim()) return;
     setError(null);
@@ -209,7 +256,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
           <div className="property-edit-form__field">
             <Input
               type="tel"
-              label={t('tenant_contact_phone_label', 'Contact Phone')}
+              label={t('tenant_contact_phone_label', 'Contact number of property')}
               value={phone}
               // No maxLength - see GuestManagement.tsx's onChange comment (23 Aug 2026): it
               // truncates raw typed characters before digit-stripping runs, silently dropping
@@ -225,7 +272,6 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
               value={gstin}
               onChange={(e) => setGstin(e.target.value.toUpperCase())}
               placeholder="27ABCDE1234F1Z5"
-              helperText={t('gstin_help_text', 'Printed on GST tax invoices at checkout.')}
             />
           </div>
         </div>
@@ -240,7 +286,6 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
               value={upiId}
               onChange={(e) => setUpiId(e.target.value)}
               placeholder="yourproperty@okicici"
-              helperText={t('upi_id_help_text', 'A scannable UPI QR code and this ID are added to booking confirmation and bill messages shared over WhatsApp.')}
             />
             <div className="property-edit-form__qr-upload mt-2">
               <input
@@ -292,7 +337,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
                 </button>
               )}
               <p className="property-edit-form__field-help text-xs text-slate-400 dark:text-slate-500 mt-1">
-                {t('upi_qr_code_help_text', "Optional - upload your bank/PhonePe/GPay QR code image to show it as-is at billing and checkout, instead of an auto-generated one.")}
+                {t('upi_qr_code_help_text', "Optional - upload your bank/PhonePe/GPay QR code image to show it as-is at billing and checkout.")}
               </p>
               {qrUploadError && (
                 <p className="text-xs text-red-600 dark:text-red-400 mt-1 font-medium">{qrUploadError}</p>
@@ -387,8 +432,35 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
           placeholder={t('other_notes_placeholder', 'e.g. How to reach, check-in instructions, parking notes…')}
           rows={4}
         />
-        <p className="property-edit-form__field-help text-xs text-slate-400 dark:text-slate-500 mt-1">{t('other_notes_help', 'Supports WhatsApp formatting: *bold*, _italic_, ~strikethrough~, bullet lists, quotes, code.')}</p>
       </div>
+      )}
+
+      {/* Live WhatsApp voucher preview (26 Aug 2026) - not editable, see this
+          file's own top comment for why. Guest/booking fields (name, dates,
+          amounts) are fixed sample values; every property/contact field
+          below is read live from this form's own state, not the last-saved
+          `property` prop, so it updates as you type. */}
+      {!isRoom && (
+        <div className="property-edit-form__whatsapp-preview mt-2 border border-slate-200 dark:border-slate-700/80 rounded-lg overflow-hidden bg-slate-50/50 dark:bg-slate-900/60 p-4">
+          <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-200/80 dark:border-slate-800">
+            <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
+              <MessageCircle className="w-3.5 h-3.5" />
+            </span>
+            <div>
+              <h4 className="property-edit-form__preview-caption text-[10px] font-semibold text-slate-900 dark:text-white uppercase tracking-wider">
+                {t('whatsapp_preview_heading', 'Guest booking confirmation message/email')}
+              </h4>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                {t('whatsapp_preview_subtitle', "Updates live as you edit the fields above - this is exactly what guests receive, wording isn't customizable.")}
+              </p>
+            </div>
+          </div>
+          <div className="bg-[#e5ddd5] dark:bg-[#111b21] p-3 rounded-lg max-w-md mx-auto shadow-inner border border-slate-300/40 dark:border-slate-800">
+            <div className="bg-white dark:bg-[#202c33] p-3 rounded-lg shadow-md text-xs text-slate-800 dark:text-slate-100 whitespace-pre-wrap leading-relaxed border-l-4 border-emerald-500">
+              {getPreviewText()}
+            </div>
+          </div>
+        </div>
       )}
 
       <div className="flex justify-end gap-3 pt-2">

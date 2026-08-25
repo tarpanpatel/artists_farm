@@ -322,6 +322,79 @@ if (!function_exists('syncTenantSuperAdminRow')) {
     }
 }
 
+/**
+ * Alerts the SaaS admin that a new property has been created and needs its Telegram groups
+ * pairing (added 26 Aug 2026, "Method A" White-Glove onboarding - see CLAUDE.md). This is the fix
+ * for the real gap the user described: they have no way of knowing a property was created, since
+ * property owners create their own properties without the admin present.
+ *
+ * Deliberately routes through TelescopeLogger (Web Push to the admin's phone), NOT Telegram - see
+ * logger.php's own dated comment: "Telegram must not send or be involved in ANY admin-alert
+ * notification any more, full stop. The Web Push channel is now the only admin-alert channel."
+ * A new-property-needs-pairing notice is exactly that category of admin alert, so it follows the
+ * same rule as the crash/error alerts that were already moved off Telegram - not a new exception.
+ * Severity string is arbitrary but must NOT appear in logger.php's $routineNoise denylist, or it
+ * would silently never push (denylist, not allowlist, by design - see that file's own comment).
+ *
+ * Non-fatal by design (matches syncTenantSuperAdminRow() above) - a missing/broken Telescope
+ * logger must never fail the property creation itself.
+ */
+/**
+ * Turns the 'kitchen' module OFF for a just-created property (26 Aug 2026, owner-facing Property
+ * Setup Wizard's mandatory "Has Kitchen?" question). Only ever called for the "No" answer - kitchen
+ * defaults ON via system_modules.default_enabled (see module_manager.php's
+ * ALWAYS_ENABLED_MODULES_EXCEPT), so "Yes" needs no explicit row at all, same as every property
+ * created before this wizard existed. Mirrors the exact upsert + child-room propagation the
+ * existing 'toggle_property_module' action already does (router.php, same file) rather than
+ * duplicating different logic - a MULTI_KEY parent's kitchen setting must apply to its rooms too.
+ */
+if (!function_exists('disableKitchenModuleForNewProperty')) {
+    function disableKitchenModuleForNewProperty(PDO $pdo, $propertyId) {
+        $stmt = $pdo->prepare("
+            INSERT INTO property_modules (property_id, module_slug, is_enabled)
+            VALUES (?, 'kitchen', 0)
+            ON DUPLICATE KEY UPDATE is_enabled = 0, updated_at = CURRENT_TIMESTAMP
+        ");
+        $stmt->execute([$propertyId]);
+        $childStmt = $pdo->prepare("SELECT id FROM properties WHERE parent_property_id = ?");
+        $childStmt->execute([$propertyId]);
+        foreach ($childStmt->fetchAll(PDO::FETCH_COLUMN) as $childId) {
+            $stmt->execute([$childId]);
+        }
+    }
+}
+
+if (!function_exists('notifyAdminOfNewProperty')) {
+    function notifyAdminOfNewProperty(PDO $pdo, $tenantId, $propertyId, $propertyName, $propertyTypeLabel, $roomCount) {
+        try {
+            if (!class_exists('TelescopeLogger')) return;
+            $stmt = $pdo->prepare("SELECT name, owner_name, owner_phone FROM tenants WHERE id = ?");
+            $stmt->execute([$tenantId]);
+            $tenant = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+            $ownerLine = trim(($tenant['owner_name'] ?? '') . ' ' . (!empty($tenant['owner_phone']) ? '(' . $tenant['owner_phone'] . ')' : ''));
+            $roomsSuffix = ($propertyTypeLabel === 'Multi-Key') ? ", {$roomCount} room(s)" : '';
+
+            TelescopeLogger::log(
+                'system',
+                'New Property Created',
+                "{$propertyName} ({$propertyTypeLabel}{$roomsSuffix}) - Telegram groups need pairing",
+                'Tenant: ' . ($tenant['name'] ?? "#{$tenantId}") . (!empty($ownerLine) ? " | Owner: {$ownerLine}" : ''),
+                [
+                    'tenant_id' => $tenantId,
+                    'property_id' => $propertyId,
+                    'property_name' => $propertyName,
+                    'property_type' => $propertyTypeLabel,
+                    'owner_name' => $tenant['owner_name'] ?? null,
+                    'owner_phone' => $tenant['owner_phone'] ?? null,
+                ]
+            );
+        } catch (Exception $e) {
+            // Non-fatal - see this function's own doc comment.
+        }
+    }
+}
+
 if (!function_exists('syncTenantSuperAdminAcrossProperties')) {
     function syncTenantSuperAdminAcrossProperties(PDO $pdo, $tenantId) {
         try {
@@ -2288,6 +2361,42 @@ switch ($action) {
         $room_count = max(1, (int)($input['room_count'] ?? 1));
         $property_email = trim($input['email'] ?? '');
         $property_phone = trim($input['phone'] ?? '');
+        // status (26 Aug 2026): the owner-facing Property Setup Wizard creates the property
+        // immediately after its first (mandatory-fields) step, as 'draft' rather than 'active', so
+        // "Save & Exit" mid-wizard has something real to save - the property already exists, just
+        // incomplete, and every later step saves into it via the existing update_property action
+        // (which already accepts 'status' - see that case below - so publishing on the wizard's
+        // final step is just update_property({status: 'active'}), no new endpoint needed). Defaults
+        // to 'active' so every OTHER existing caller of this action (Root Admin's own flows, any
+        // direct API use) is completely unaffected.
+        $property_status = in_array($input['status'] ?? '', ['draft', 'active'], true) ? $input['status'] : 'active';
+        // Extended fields (26 Aug 2026) - the owner-facing Property Setup Wizard collects the same
+        // detail set as the Edit Property page up front, at creation time, rather than leaving a
+        // brand-new property with every one of these blank until the owner separately visits Edit
+        // Property later. All genuinely optional (only name/slug/type were ever required here) -
+        // see PropertyEditForm.tsx for the matching edit-time field set this mirrors.
+        $property_address = trim($input['address'] ?? '');
+        $property_maps_link = trim($input['google_maps_link'] ?? '');
+        $property_gstin = strtoupper(trim($input['gstin'] ?? ''));
+        $property_upi_id = trim($input['upi_id'] ?? '');
+        $property_upi_qr_url = trim($input['upi_qr_code_url'] ?? '');
+        $property_instructions = trim($input['instructions'] ?? '');
+        $property_checkin_time = trim($input['checkin_time'] ?? '') ?: '14:00';
+        $property_checkout_time = trim($input['checkout_time'] ?? '') ?: '11:00';
+        $property_walk_in_tables = isset($input['walk_in_table_count']) && $input['walk_in_table_count'] !== ''
+            ? max(1, (int)$input['walk_in_table_count']) : 10;
+        // Default tariff only meaningful for a SINGLE property/room-level pricing - a MULTI_KEY
+        // parent isn't itself bookable (see PropertyEditForm.tsx's identical gate), so this is
+        // simply never applied on that branch below regardless of what's sent.
+        $property_default_tariff = ($input['default_tariff'] ?? '') !== '' && is_numeric($input['default_tariff'])
+            ? (float)$input['default_tariff'] : null;
+        // Kitchen module (26 Aug 2026): collected as a mandatory Yes/No in the wizard's first step,
+        // applied via toggle_property_module AFTER creation (below) rather than a properties-table
+        // column - 'kitchen' is a property_modules row, same as every other module toggle (see
+        // module_manager.php's ALWAYS_ENABLED_MODULES_EXCEPT). Defaults true (kitchen ON) to match
+        // system_modules.default_enabled, so an old caller that never sends this (Root Admin's own
+        // create_multikey_property flow, for one) keeps today's behavior unchanged.
+        $property_has_kitchen = !array_key_exists('has_kitchen', $input) || !empty($input['has_kitchen']);
 
         if (!$tenant_id || !$property_name || !$property_slug) {
             http_response_code(400);
@@ -2347,8 +2456,8 @@ switch ($action) {
 
             $pdo->beginTransaction();
             if ($property_type === 'MULTI_KEY') {
-                $stmt = $pdo->prepare("INSERT INTO properties (tenant_id, name, slug, property_type, status, is_active, tailwind_color_scheme, email, phone) VALUES (?, ?, ?, 'MULTI_KEY', 'active', 1, 'blue', ?, ?)");
-                $stmt->execute([$tenant_id, $property_name, $property_slug, $property_email ?: null, $property_phone ?: null]);
+                $stmt = $pdo->prepare("INSERT INTO properties (tenant_id, name, slug, property_type, status, is_active, tailwind_color_scheme, email, phone) VALUES (?, ?, ?, 'MULTI_KEY', ?, 1, 'blue', ?, ?)");
+                $stmt->execute([$tenant_id, $property_name, $property_slug, $property_status, $property_email ?: null, $property_phone ?: null]);
                 $parentId = $pdo->lastInsertId();
                 for ($i = 1; $i <= $room_count; $i++) {
                     $roomSlug = $property_slug . '-room-' . $i;
@@ -2356,15 +2465,47 @@ switch ($action) {
                     $pdo->prepare("INSERT INTO properties (tenant_id, name, slug, property_type, parent_property_id, status, is_active, tailwind_color_scheme) VALUES (?, ?, ?, 'MULTI_KEY_ROOM', ?, 'active', 1, 'blue')")
                         ->execute([$tenant_id, $roomName, $roomSlug, $parentId]);
                 }
+                // Extended details apply to the PARENT row only - not default_tariff (a MULTI_KEY
+                // parent isn't itself bookable; each room gets its own tariff separately via
+                // RoomsManagement.tsx, outside this wizard's scope).
+                $pdo->prepare("
+                    UPDATE properties SET address = ?, google_maps_link = ?, gstin = ?, upi_id = ?,
+                        upi_qr_code_url = ?, instructions = ?, checkin_time = ?, checkout_time = ?,
+                        walk_in_table_count = ?
+                    WHERE id = ?
+                ")->execute([
+                    $property_address ?: null, $property_maps_link ?: null, $property_gstin ?: null,
+                    $property_upi_id ?: null, $property_upi_qr_url ?: null, $property_instructions ?: null,
+                    $property_checkin_time, $property_checkout_time, $property_walk_in_tables, $parentId,
+                ]);
                 syncTenantSuperAdminRow($pdo, $tenant_id, $parentId);
+                if (!$property_has_kitchen) {
+                    disableKitchenModuleForNewProperty($pdo, $parentId);
+                }
                 $pdo->commit();
+                notifyAdminOfNewProperty($pdo, $tenant_id, $parentId, $property_name, 'Multi-Key', $room_count);
                 echo json_encode(['success' => true, 'message' => "Multi-key property created with {$room_count} room(s)", 'property_id' => $parentId]);
             } else {
-                $stmt = $pdo->prepare("INSERT INTO properties (tenant_id, name, slug, property_type, status, is_active, tailwind_color_scheme, email, phone) VALUES (?, ?, ?, 'SINGLE', 'active', 1, 'blue', ?, ?)");
-                $stmt->execute([$tenant_id, $property_name, $property_slug, $property_email ?: null, $property_phone ?: null]);
+                $stmt = $pdo->prepare("INSERT INTO properties (tenant_id, name, slug, property_type, status, is_active, tailwind_color_scheme, email, phone) VALUES (?, ?, ?, 'SINGLE', ?, 1, 'blue', ?, ?)");
+                $stmt->execute([$tenant_id, $property_name, $property_slug, $property_status, $property_email ?: null, $property_phone ?: null]);
                 $propertyId = $pdo->lastInsertId();
+                $pdo->prepare("
+                    UPDATE properties SET address = ?, google_maps_link = ?, gstin = ?, upi_id = ?,
+                        upi_qr_code_url = ?, instructions = ?, checkin_time = ?, checkout_time = ?,
+                        walk_in_table_count = ?, default_tariff = ?
+                    WHERE id = ?
+                ")->execute([
+                    $property_address ?: null, $property_maps_link ?: null, $property_gstin ?: null,
+                    $property_upi_id ?: null, $property_upi_qr_url ?: null, $property_instructions ?: null,
+                    $property_checkin_time, $property_checkout_time, $property_walk_in_tables,
+                    $property_default_tariff, $propertyId,
+                ]);
                 syncTenantSuperAdminRow($pdo, $tenant_id, $propertyId);
+                if (!$property_has_kitchen) {
+                    disableKitchenModuleForNewProperty($pdo, $propertyId);
+                }
                 $pdo->commit();
+                notifyAdminOfNewProperty($pdo, $tenant_id, $propertyId, $property_name, 'Single', 1);
                 echo json_encode(['success' => true, 'message' => 'Property created successfully', 'property_id' => $propertyId]);
             }
         } catch (Exception $e) {

@@ -23,8 +23,6 @@ interface PettyCashManagementProps {
   onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin', replyMarkup?: any, templateKey?: string, mediaUrls?: string[]) => void;
   onlyForm?: boolean;
   onClose?: () => void;
-  initialAmount?: number | '';
-  initialDescription?: string;
   kitchenModuleEnabled?: boolean;
 }
 
@@ -112,8 +110,6 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   onDispatchTelegram,
   onlyForm,
   onClose,
-  initialAmount,
-  initialDescription,
   kitchenModuleEnabled = true,
 }) => {
   const { staff } = useStaff();
@@ -129,9 +125,9 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     expenseDate: new Date().toISOString().split('T')[0],
     expenseTime: new Date().toTimeString().slice(0, 5),
     category: 'Other',
-    description: initialDescription || '',
+    description: '',
     moreInfoNotes: '',
-    amount: initialAmount !== undefined && initialAmount !== null ? initialAmount : '',
+    amount: '',
     paymentMode: 'UPI / QR',
     paidBy: currentUserName,
     paymentSource: 'property',
@@ -146,14 +142,6 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     payToRegisteredVendor: false,
   }));
 
-  useEffect(() => {
-    if (initialAmount !== undefined && initialAmount !== null && initialAmount !== '') {
-      dispatch({ type: 'SET_FIELD', field: 'amount', value: initialAmount });
-    }
-    if (initialDescription) {
-      dispatch({ type: 'SET_FIELD', field: 'description', value: initialDescription });
-    }
-  }, [initialAmount, initialDescription]);
   const [financialHandlers, setFinancialHandlers] = useState<any[]>(staff.filter(u => u.isFinancialHandler));
   const { inventory } = useInventoryContext();
 

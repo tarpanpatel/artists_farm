@@ -52,7 +52,6 @@ interface HeaderProps {
   showInstallIcon?: boolean;
   onInstallIconClick?: () => void;
   onNavigate?: (tab: TabType, itemKey?: string) => void;
-  onToggleAIChat?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -71,7 +70,6 @@ export const Header: React.FC<HeaderProps> = ({
   showInstallIcon = false,
   onInstallIconClick,
   onNavigate,
-  onToggleAIChat,
 }) => {
   const { currentUser, activeRole, setActiveRole } = useAuth();
   // "View site as" (Root Admin only) - a pure frontend preview: it only
@@ -400,17 +398,6 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             </Popover>
           )}
-
-          {/* Help & AI Chatbot Button */}
-          <button
-            type="button"
-            onClick={() => onToggleAIChat?.()}
-            title={t('help_tooltip', 'Help & AI Assistant')}
-            aria-label={t('help_aria', 'Help & AI Assistant')}
-            className="btn-header-help appearance-none border-0 relative px-2.5 py-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer inline-flex items-center text-xs font-semibold"
-          >
-            <span>Help?</span>
-          </button>
 
           {/* Notification Bell Button */}
           <div className="header__notification relative" ref={notificationWrapperRef}>
