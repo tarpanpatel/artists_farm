@@ -830,11 +830,20 @@ function getIntentTable(): array {
         ],
 
         // --- VISITOR & PRODUCT SALES INTENT ---
+        // Named/framed for an anonymous pre-sales visitor, but this table has only ever had one
+        // real caller (php/api/ai_assistant.php - see this file's own top comment), which requires
+        // a real logged-in session (401s otherwise) - so there is no code path where an actual
+        // anonymous visitor ever reaches this. 'what is'/'tell me'/'about'/'how does' were removed
+        // 25 Aug 2026 (reported live: "offline ai not able reply to simple questions") - they're
+        // near-universal prefixes for genuine operational questions ("what is today's revenue",
+        // "tell me about room 5's booking", "how does the C-Form work"), so EVERY logged-in staff
+        // member's ordinary phrasing was getting hijacked into this sales pitch instead of a real
+        // answer (or the honest generic fallback). Kept only the phrases that are unambiguously
+        // about the product/company itself, never a real operational question.
         [
             'type' => 'visitor_product_info',
             'phrases' => [
-                'ground code', 'what is', 'features', 'pricing', 'price', 'cost', 'about', 'how does', 'tell me', 'demo', 'sales', 'license',
-                // Broadened 24 Aug 2026 (proactive coverage pass).
+                'ground code', 'features', 'pricing', 'price', 'cost', 'demo', 'sales', 'license',
                 'contact', 'contact us', 'signup', 'sign up', 'trial', 'free trial', 'get started',
             ],
             'handler' => function (string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array {
