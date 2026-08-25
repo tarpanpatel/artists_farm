@@ -44,6 +44,7 @@ require_once __DIR__ . '/../finance/petty_cash.php';
 require_once __DIR__ . '/../staff/staff.php';
 require_once __DIR__ . '/../audit/audit.php';
 require_once __DIR__ . '/../uploads/image_cleanup.php';
+require_once __DIR__ . '/../cron/cron_jobs.php';
 // Conditional (12 Aug 2026): this was an unconditional require - a malware
 // scanner quarantining this ONE file (a real, recurring event on the live
 // server) took down every action router.php handles, including login,
@@ -1451,6 +1452,16 @@ switch ($action) {
             http_response_code(500);
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
+        exit;
+
+    // --- CRON JOBS (Root Admin) ---
+    // See php/cron/cron_jobs.php - lets Root Admin view/toggle/reschedule/
+    // manually trigger every registered scheduled task without SSH.
+    case 'get_cron_jobs':
+    case 'update_cron_job':
+    case 'run_cron_job_now':
+    case 'get_cron_job_log':
+        handleCronJobsRequests($pdo, $request_method, $action);
         exit;
 
     // --- ROOT ADMIN ACCOUNT SETTINGS ---

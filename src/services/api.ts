@@ -2943,4 +2943,76 @@ export async function addStaffMealLogToDB(staffNames: string, foodDescription: s
   }
 }
 
+// --- Root Admin: Cron Jobs (see php/cron/cron_jobs.php) ---
+// Lets Root Admin view/toggle/reschedule/manually-trigger every registered
+// scheduled task (php/cron/*.php) without SSH - added 25 Aug 2026 after
+// discovering the server's real crontab only had one job registered despite
+// several existing in the codebase, fully working, just never invoked.
+export interface CronJob {
+  jobKey: string;
+  name: string;
+  description: string;
+  enabled: boolean;
+  scheduleType: 'interval_minutes' | 'daily_at';
+  intervalMinutes: number | null;
+  dailyAtTime: string | null;
+  lastRunAt: string | null;
+  lastRunStatus: string | null;
+  lastRunMessage: string | null;
+  lastRunDurationMs: number | null;
+  logFile: string | null;
+}
+
+export async function fetchCronJobsDB(): Promise<CronJob[]> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=get_cron_jobs`);
+    const json = await res.json();
+    return json.status === 'success' ? json.data : [];
+  } catch (err) {
+    console.error('Failed to fetch cron jobs:', err);
+    return [];
+  }
+}
+
+export async function updateCronJobDB(jobKey: string, changes: Partial<Pick<CronJob, 'enabled' | 'scheduleType' | 'intervalMinutes' | 'dailyAtTime'>>): Promise<boolean> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=update_cron_job`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jobKey, ...changes }),
+    });
+    const json = await res.json();
+    return json.status === 'success';
+  } catch (err) {
+    console.error('Failed to update cron job:', err);
+    return false;
+  }
+}
+
+export async function runCronJobNowDB(jobKey: string): Promise<{ status: string; message: string; durationMs: number } | null> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=run_cron_job_now`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jobKey }),
+    });
+    const json = await res.json();
+    return json.status === 'success' ? json.data : null;
+  } catch (err) {
+    console.error('Failed to run cron job:', err);
+    return null;
+  }
+}
+
+export async function fetchCronJobLogDB(jobKey: string): Promise<string> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=get_cron_job_log&jobKey=${encodeURIComponent(jobKey)}`);
+    const json = await res.json();
+    return json.status === 'success' ? (json.data.log || '') : '';
+  } catch (err) {
+    console.error('Failed to fetch cron job log:', err);
+    return '';
+  }
+}
+
 

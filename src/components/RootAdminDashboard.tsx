@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send, Mail, Bell, UserCog, Pencil, DatabaseBackup, Loader2, RefreshCw, AlertTriangle, UserRound, Receipt, Package, Bot } from './icons/FlowbiteIcons';
+import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send, Mail, Bell, UserCog, Pencil, DatabaseBackup, Loader2, RefreshCw, AlertTriangle, UserRound, Receipt, Package, Bot, Server } from './icons/FlowbiteIcons';
 import { Card } from 'flowbite-react';
 import { KpiCard } from './KpiCard';
 import { Button } from './Button';
@@ -10,6 +10,7 @@ import { PlatformPropertyManagement } from './PlatformPropertyManagement';
 import { NavMenuEditor } from './NavMenuEditor';
 import { DefaultExpensesManager } from './DefaultExpensesManager';
 import { SystemStockManager } from './SystemStockManager';
+import { CronJobsManager } from './CronJobsManager';
 import { DefaultBillsManager } from './DefaultBillsManager';
 import { ServiceRequestTypesManager } from './ServiceRequestTypesManager';
 import { TelegramNotificationModal } from './TelegramNotificationModal';
@@ -44,9 +45,9 @@ interface RootAdminDashboardProps {
   activeRole: string;
 }
 
-type SectionType = 'dashboard' | 'tenants_properties' | 'appearance' | 'edit_main_menu' | 'default_expenses' | 'default_bills' | 'service_request_types' | 'system_stock' | 'telegram_templates' | 'email_settings' | 'account_settings' | 'db_sync' | 'demo_data' | 'ai_services';
+type SectionType = 'dashboard' | 'tenants_properties' | 'appearance' | 'edit_main_menu' | 'default_expenses' | 'default_bills' | 'service_request_types' | 'system_stock' | 'telegram_templates' | 'email_settings' | 'account_settings' | 'db_sync' | 'demo_data' | 'ai_services' | 'cron_jobs';
 
-const VALID_SECTIONS: SectionType[] = ['dashboard', 'tenants_properties', 'appearance', 'edit_main_menu', 'default_expenses', 'default_bills', 'service_request_types', 'system_stock', 'telegram_templates', 'email_settings', 'account_settings', 'db_sync', 'demo_data', 'ai_services'];
+const VALID_SECTIONS: SectionType[] = ['dashboard', 'tenants_properties', 'appearance', 'edit_main_menu', 'default_expenses', 'default_bills', 'service_request_types', 'system_stock', 'telegram_templates', 'email_settings', 'account_settings', 'db_sync', 'demo_data', 'ai_services', 'cron_jobs'];
 
 export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
   username,
@@ -384,6 +385,12 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
       icon: Bot,
       section: 'ai_services' as SectionType,
     },
+    {
+      id: 'cron_jobs',
+      label: 'Cron Jobs',
+      icon: Server,
+      section: 'cron_jobs' as SectionType,
+    },
   ];
 
   const handleTelescopeOpen = () => {
@@ -518,6 +525,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                 {activeSection === 'demo_data' && t('root_demo_data_label', 'Reset Demo Data')}
                 {activeSection === 'system_stock' && t('root_system_stock_label', 'System Stock Catalog')}
                 {activeSection === 'ai_services' && 'AI Services & Provider Config'}
+                {activeSection === 'cron_jobs' && 'Cron Jobs'}
               </h2>
             </div>
             {/* The "Online AI API" toggle used to also render here, unconditionally,
@@ -584,6 +592,11 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
           {/* System Stock */}
           {activeSection === 'system_stock' && (
             <SystemStockManager onLogout={handleLogout} />
+          )}
+
+          {/* Cron Jobs */}
+          {activeSection === 'cron_jobs' && (
+            <CronJobsManager />
           )}
 
           {/* Service Request Types */}

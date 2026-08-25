@@ -3,7 +3,12 @@
  * iCal Sync Worker - Scheduled Task
  *
  * Run every 15 minutes:
- *   Linux/production cron:      /15 * * * * /usr/bin/php /path/to/artists_farm/php/cron/sync_all_icals.php
+ *   Linux/production cron:      0,15,30,45 * * * * /usr/bin/php /path/to/artists_farm/php/cron/sync_all_icals.php
+ *   (written as an explicit minute list, not "*\/15" - a literal "*" immediately
+ *   followed by "/" inside a /** *\/ PHP comment closes the comment early, which
+ *   is exactly what silently corrupted this line into invalid cron syntax -
+ *   "/15 * * * *" has no leading "*", not valid step syntax - until noticed
+ *   25 Aug 2026 while building php/cron/dispatcher.php)
  *   Windows/XAMPP Task Scheduler: schtasks /create /sc minute /mo 15 /tn "ArtistsFarm iCal Sync" ^
  *                                   /tr "C:\xampp\php\php.exe C:\xampp\htdocs\artists_farm\php\cron\sync_all_icals.php"
  *
