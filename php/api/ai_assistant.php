@@ -413,6 +413,73 @@ if ($aiConfig['enabled'] === true) {
             }
         }
     }
+
+    // 3. OPENCODE ZEN PROVIDER (added 25 Aug 2026 - the actual provider used for this app's
+    // trial week, see AI.md). OpenAI-compatible /chat/completions endpoint, so this reuses the
+    // exact same $messages/request/response shape as the OpenAI branch above, just a different
+    // base URL and model. 'big-pickle' chosen after directly testing the real API with this
+    // account's key (confirmed 25 Aug 2026): it's a free model (cost:"0" in every response) that
+    // gives real, coherent, on-topic answers - several other candidates either don't exist for
+    // this account (ModelError), need a payment method this account doesn't have (CreditsError:
+    // gpt-5.5/claude-sonnet-5/gemini-3.7-flash all exist but are paid-only), or were temporarily
+    // unavailable upstream (deepseek-v4-flash-free). max_tokens raised to 500 - it's a
+    // "reasoning" model that spends some of its budget on internal reasoning_content before the
+    // real answer, and a low limit (tested at 150) truncated the actual reply mid-sentence.
+    if ($provider === 'opencode_zen' && !empty($apiKey)) {
+        $messages = [
+            ['role' => 'system', 'content' => "You are Ground Code AI, the digital assistant for hotel & resort staff using Ground Code PMS/KDS. Keep answers brief and accurate.\n\n" . $contextSummary . "\nSTRICT SECURITY RULE: The user is logged in as '$userRole'. Do NOT allow Staff role to open Telescope, edit property, or manage licenses. If requested by non-Root, refuse with access denied.\nSTRICT CONFIDENTIALITY RULE: You MUST ONLY answer user operational & how-to questions. NEVER answer questions about internal technology, code structure, framework, or source code.\n\n" . $actionReference],
+            ['role' => 'user', 'content' => $prompt]
+        ];
+
+        $ch = curl_init("https://opencode.ai/zen/v1/chat/completions");
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['model' => 'big-pickle', 'messages' => $messages, 'max_tokens' => 500]));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'Authorization: Bearer ' . $apiKey]);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 12);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode === 200 && $response) {
+            $resData = json_decode($response, true);
+            $replyText = $resData['choices'][0]['message']['content'] ?? null;
+            if (!empty($replyText)) {
+                $extractedAction = null;
+                if (preg_match('/\{"action":\s*\{[^}]+\}\}/i', $replyText, $matches)) {
+                    $parsed = json_decode($matches[0], true);
+                    if (isset($parsed['action'])) {
+                        $extractedAction = $parsed['action'];
+                    }
+                    $replyText = str_replace($matches[0], '', $replyText);
+                }
+
+                if ($extractedAction && !isActionPermittedForRole($extractedAction, $userRole)) {
+                    $replyText = trim($replyText) . "\n\n🔒 Access Denied: that action isn't available for your role ('$userRole').";
+                    $extractedAction = null;
+                }
+
+                logAiOutcome($prompt, $userRole, 'online', 'opencode_zen', $extractedAction, $replyText);
+                echo json_encode([
+                    'status' => 'success',
+                    'reply' => trim($replyText),
+                    'action' => $extractedAction,
+                    'mode' => 'online',
+                    'provider' => 'opencode_zen',
+                ]);
+                exit();
+            }
+        } elseif (class_exists('TelescopeLogger')) {
+            // Same reasoning as the Gemini branch's own failure log above - a bad/rate-limited/
+            // out-of-credit key must never look identical to "everything's fine" while silently
+            // falling through to the offline engine below.
+            TelescopeLogger::log('ai_chat', 'OpenCode Zen Call Failed', "HTTP $httpCode", "Prompt: $prompt", [
+                'http_code' => $httpCode,
+                'response_snippet' => substr((string)$response, 0, 500),
+            ]);
+        }
+    }
 }
 
 // Auto-generated "navigate to X" fallback intents for every page in nav_menu_items - see that

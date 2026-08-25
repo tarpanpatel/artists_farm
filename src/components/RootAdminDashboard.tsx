@@ -798,6 +798,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                       options={[
                         { value: 'gemini', label: 'Google Gemini (gemini-1.5-flash) - Default' },
                         { value: 'openai', label: 'OpenAI (gpt-4o-mini / gpt-4o)' },
+                        { value: 'opencode_zen', label: 'OpenCode Zen (big-pickle, free) - Trial Week Provider' },
                         { value: 'claude', label: 'Anthropic Claude (claude-3-5-sonnet)' },
                         { value: 'custom_ollama', label: 'Custom Local LLM / Ollama (http://localhost:11434/v1)' },
                       ]}
@@ -805,6 +806,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                     <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
                       {aiConfig.provider === 'gemini' && 'Google Gemini 1.5 Flash offers high-speed responses and broad language understanding.'}
                       {aiConfig.provider === 'openai' && 'OpenAI GPT-4o-mini provides robust reasoning and structured JSON output.'}
+                      {aiConfig.provider === 'opencode_zen' && "OpenCode Zen's free big-pickle model - the provider actually running this app's trial week (see AI.md). Real, on-topic answers confirmed 25 Aug 2026, no billing required."}
                       {aiConfig.provider === 'claude' && 'Anthropic Claude 3.5 Sonnet delivers detailed, high-accuracy responses.'}
                       {aiConfig.provider === 'custom_ollama' && 'Connect to a local Ollama server running on your network.'}
                     </p>
