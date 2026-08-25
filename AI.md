@@ -59,17 +59,34 @@ key) still alerts correctly - see `php/errors/logger.php`'s `maybeSendWebPushAle
 3. Add one covering row to `php/tests/test_ai_intents.php` so the phrasing is locked in by the
    test suite, not just caught by the next live user who happens to try it again.
 
-## CURRENT STATUS (checked 25 Aug 2026): the trial week has not actually started
+## CURRENT STATUS (updated 25 Aug 2026): trial provider switched to OpenCode Zen, not Gemini
 
-`php/config/ai_config.json` on staging currently reads `"enabled": true, "provider": "gemini"` but
-`"api_key": ""` - and the `GEMINI_API_KEY` environment variable isn't set there either. Since
-`ai_assistant.php`'s Gemini branch only ever runs `if ($provider === 'gemini' && !empty($apiKey))`,
-this means **every single request is silently falling through to the offline engine already**,
-regardless of the config's `enabled` flag - which is exactly why the widget shows "Offline Engine
-Active" rather than actually running Gemini. Nothing is broken; there's just no real key in place
-yet. **To actually begin the trial week**: set a real Gemini API key, either in
-`php/config/ai_config.json`'s `api_key` field (via Root Admin → AI Services Config in the app) or
-as a `GEMINI_API_KEY` env var on the server.
+The trial week's actual provider ended up being **OpenCode Zen** (opencode.ai's model gateway),
+not Gemini - same plan, different provider, per explicit user decision. `php/api/ai_assistant.php`
+now has a real `'opencode_zen'` branch (OpenAI-compatible `/chat/completions` endpoint), and
+`'opencode_zen'` is selectable in Root Admin → AI Services Config's provider dropdown.
+
+**Model**: `big-pickle` - chosen after directly testing the real API with the account's own key
+(not guessed): it's free (`"cost":"0"` on every response, no payment method needed) and gives
+real, coherent, on-topic answers. Several other candidates either don't exist for this account
+(`ModelError`), exist but need a payment method the account doesn't have (`gpt-5.5`/
+`claude-sonnet-5`/`gemini-3.7-flash` all returned `CreditsError`), or were temporarily unavailable
+upstream (`deepseek-v4-flash-free`). `GET https://opencode.ai/zen/v1/models` (with a valid key)
+lists every model id actually available to a given account if a different one is wanted later.
+
+**The API key itself is deliberately never set by an AI session** - the user enters it directly
+into Root Admin → AI Services Config's own form (explicit instruction, 25 Aug 2026: "Can u not put
+it in root dashboard [i.e. in code/config], so that i can update api keys myself and add other LLM
+to replace this in future"). This is also just the correct security practice regardless - the key
+never needs to touch a git commit or an AI session's hands at all this way. Whoever manages this
+next should expect the config to already be self-service through that same form, no code change
+needed to swap providers/keys.
+
+The original Gemini plan's own historical blocker (documented before the provider switch, kept for
+reference): `php/config/ai_config.json` had `"enabled": true, "provider": "gemini"` but an empty
+`"api_key"` and no `GEMINI_API_KEY` env var - meaning it was silently falling through to the
+offline engine the whole time despite looking "on". If Gemini is ever revisited, that's still the
+first thing to check.
 
 `php/api/ai_assistant.php` also documents (24 Aug 2026) that `recordGeminiUsage()`/the
 `'usage_summary'` response field/AIChatWidget's matching usage display are all **temporary,
