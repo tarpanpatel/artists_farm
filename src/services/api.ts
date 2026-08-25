@@ -1394,7 +1394,6 @@ export async function fetchOrdersFromDB(): Promise<any[]> {
                   unitPrice: Math.max(0, Number(it.unit_price || it.price) || 0),
                   itemStatus: it.item_status || 'Pending',
                   readyAt: it.ready_at || null,
-                  lastReminderAt: it.last_reminder_at || null,
                 }))
             : [],
           status: o.status || 'Pending',
@@ -1543,42 +1542,6 @@ export async function updateOrderStatusDB(orderId: string, status: string): Prom
     console.error('Failed to update order status:', err);
     return false;
   }
-}
-
-export async function updateItemReminderTimestamp(itemId: number): Promise<boolean> {
-  try {
-    const res = await apiFetch(`${API_BASE}?action=update_item_reminder_timestamp`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ item_id: itemId }),
-    });
-    const json = await res.json();
-    return json.status === 'success';
-  } catch (err) {
-    console.error('Failed to update item reminder timestamp:', err);
-    return false;
-  }
-}
-
-export interface StaleReminderItem {
-  item_id: number;
-  order_id: string | number;
-  dish_name: string;
-  quantity: number;
-  room_no: string;
-  elapsed_minutes: number;
-  item_index?: number;
-}
-
-export async function checkStaleReminders(thresholdMinutes: number): Promise<{ pending: StaleReminderItem[]; ready: StaleReminderItem[] }> {
-  try {
-    const res = await apiFetch(`${API_BASE}?action=check_stale_reminders&threshold_minutes=${thresholdMinutes}`);
-    const json = await res.json();
-    if (json.status === 'success' && json.data) return json.data;
-  } catch (err) {
-    console.error('Failed to check stale reminders:', err);
-  }
-  return { pending: [], ready: [] };
 }
 
 export interface ServiceRequest {

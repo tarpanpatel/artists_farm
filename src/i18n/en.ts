@@ -1037,8 +1037,6 @@ export const strings: Record<string, string> = {
   how_to_create_bot_heading: "🤖 How to create a Telegram Bot:",
   hide_guide_button: "Hide Guide",
   show_botfather_guide_button: "Show BotFather setup guide",
-  auto_reminder_interval_label: "Auto-Reminder Interval (Minutes)",
-  auto_reminder_interval_description: "Minutes to wait before an unaddressed order/dish gets nudged again.",
   who_belongs_here_prefix: "Who belongs here: ",
   go_to_settings_button: "Go to Settings",
   successfully_connected_heading: "Successfully Connected!",

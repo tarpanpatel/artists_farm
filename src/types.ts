@@ -119,7 +119,6 @@ export interface OrderItem {
   price?: number;
   itemStatus?: string;
   readyAt?: string | null;
-  lastReminderAt?: string | null;
 }
 
 export interface Order {
@@ -387,7 +386,6 @@ export interface PropertyTelegramConfig {
   botToken: string | null;
   groups: TelegramGroup[];
   routing: Record<string, string>;
-  reminderThresholdMinutes?: number;
 }
 
 export interface TelegramDispatchLog {

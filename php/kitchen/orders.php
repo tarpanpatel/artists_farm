@@ -6,9 +6,10 @@
 
 // Self-healing column check (same pattern as router.php's login_user migration) so a
 // fresh install or an older DB snapshot picks these up automatically - no manual
-// migration step required. ready_at/last_reminder_at back the Reminder/Nudge Engine:
-// item_status already supports arbitrary VARCHAR values so 'Ready' needs no schema
-// change, but WHEN it became ready and WHEN it was last nudged both need a home.
+// migration step required. ready_at backs "Ready/Served items get a real
+// ready_at" (Analytics' Fastest/Slowest Prepared Dishes) - item_status already
+// supports arbitrary VARCHAR values so 'Ready' needs no schema change, but WHEN
+// it became ready still needs a home.
 require_once __DIR__ . '/../config/schema_cache.php';
 
 if (!function_exists('ensureOrderItemReminderColumns')) {
@@ -19,12 +20,30 @@ if (!function_exists('ensureOrderItemReminderColumns')) {
             if (!in_array('ready_at', $cols)) {
                 $pdo->exec("ALTER TABLE order_items ADD COLUMN ready_at DATETIME NULL DEFAULT NULL");
             }
-            if (!in_array('last_reminder_at', $cols)) {
-                $pdo->exec("ALTER TABLE order_items ADD COLUMN last_reminder_at DATETIME NULL DEFAULT NULL");
-            }
             markSchemaVerified('schema_order_item_reminders');
         } catch (Exception $e) {
             error_log("order_items reminder column migration error: " . $e->getMessage());
+        }
+    }
+}
+
+// One-time cleanup (25 Aug 2026): last_reminder_at backed the auto-nudge
+// engine (check_stale_reminders/update_item_reminder_timestamp), which was
+// removed entirely per explicit user request ("I never want auto nagging...
+// don't keep any dead or unwanted code"). Nothing reads or writes this column
+// any more anywhere in the codebase - dropped rather than left as an orphan,
+// same self-healing pattern as the ADD COLUMN blocks above, just in reverse.
+if (!function_exists('dropOrderItemReminderColumn')) {
+    function dropOrderItemReminderColumn($pdo) {
+        if (isSchemaVerified('schema_order_item_reminders_removed_v2')) return;
+        try {
+            $cols = $pdo->query("SHOW COLUMNS FROM order_items")->fetchAll(PDO::FETCH_COLUMN);
+            if (in_array('last_reminder_at', $cols)) {
+                $pdo->exec("ALTER TABLE order_items DROP COLUMN last_reminder_at");
+            }
+            markSchemaVerified('schema_order_item_reminders_removed_v2');
+        } catch (Exception $e) {
+            error_log("order_items last_reminder_at column removal error: " . $e->getMessage());
         }
     }
 }
@@ -108,6 +127,7 @@ function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
         case 'get_orders':
             try {
                 ensureOrderItemReminderColumns($pdo);
+                dropOrderItemReminderColumn($pdo);
                 ensureWalkInOrderColumns($pdo);
                 ensureWalkInTabSchema($pdo);
                 ensureOrderSpecialInstructionsColumn($pdo);
@@ -134,7 +154,7 @@ function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
                 foreach ($orders as &$order) {
                     try {
                         $itemStmt = $pdo->prepare("SELECT oi.id, oi.menu_item_id, m.name, oi.quantity, m.price as unit_price,
-                                                  oi.item_status, oi.ready_at, oi.last_reminder_at
+                                                  oi.item_status, oi.ready_at
                                                   FROM order_items oi
                                                   LEFT JOIN menu_items m ON oi.menu_item_id = m.id
                                                   WHERE oi.order_id = ?");
@@ -247,14 +267,15 @@ function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
                     $stmt->execute([$input['status'], $id, $propertyId]);
 
                     // Whole-order status changes (e.g. the "Cancel Order" button)
-                    // only ever touched orders.status - check_stale_reminders keys
-                    // off order_items.item_status instead, which this left
-                    // untouched. A cancelled order vanished from the Live Tickets
-                    // queue but any item still sitting at item_status='Pending'
-                    // kept matching that query forever, so the 60s reminder poll
-                    // in KitchenManagement.tsx just kept re-sending "still
-                    // pending" Telegram nudges for a ticket that no longer
-                    // existed anywhere in the UI. Mirror the item->order cascade
+                    // only ever touched orders.status, leaving each item's own
+                    // item_status untouched - a cancelled order vanished from the
+                    // Live Tickets queue but its items stayed stuck at
+                    // item_status='Pending' forever, an orphaned state nothing else
+                    // in the UI/Analytics expects for a ticket that no longer
+                    // exists. (Originally also motivated by the since-removed
+                    // 60s auto-reminder poll re-nudging a cancelled ticket forever
+                    // - that engine is gone, but this cascade is still correct on
+                    // its own merits.) Mirror the item->order cascade
                     // update_order_item_status already does, in this direction too.
                     if ($input['status'] === 'Cancelled') {
                         $pdo->prepare("UPDATE order_items SET item_status = 'Cancelled' WHERE order_id = ? AND (item_status IS NULL OR item_status NOT IN ('Served', 'Cancelled'))")
@@ -430,82 +451,6 @@ function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
                 } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
                 }
-            }
-            break;
-
-        // Called both by manual "Send Reminder" taps and by the auto-nudge poll below,
-        // so either path resets the same countdown - the next nudge (auto or manual)
-        // is always N minutes from whichever reminder fired most recently.
-        case 'update_item_reminder_timestamp':
-            if ($request_method === 'POST') {
-                $input = json_decode(file_get_contents('php://input'), true);
-                $itemId = $input['item_id'] ?? null;
-                if (!$itemId) {
-                    http_response_code(400);
-                    echo json_encode(['status' => 'error', 'message' => 'item_id is required']);
-                    break;
-                }
-                try {
-                    ensureOrderItemReminderColumns($pdo);
-                    $stmt = $pdo->prepare("UPDATE order_items SET last_reminder_at = NOW() WHERE id = ?");
-                    $stmt->execute([$itemId]);
-                    echo json_encode(['status' => 'success']);
-                } catch (PDOException $e) {
-                    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
-                }
-            }
-            break;
-
-        // Returns Pending items stuck too long and Ready items uncollected too long,
-        // measured from last_reminder_at if one exists, else from the original event
-        // (order_time / ready_at) - so the first auto-nudge still respects the
-        // threshold from when the item actually became stale, not from page load.
-        case 'check_stale_reminders':
-            $thresholdMinutes = max(1, (int)($_GET['threshold_minutes'] ?? 5));
-            try {
-                ensureOrderItemReminderColumns($pdo);
-
-                $pendingStmt = $pdo->prepare("
-                    SELECT oi.id as item_id, o.id as order_id, m.name as dish_name, oi.quantity,
-                           COALESCE(rp.name, 'N/A') as room_no, o.order_time,
-                           TIMESTAMPDIFF(MINUTE, o.order_time, NOW()) as elapsed_minutes
-                    FROM order_items oi
-                    JOIN orders o ON oi.order_id = o.id
-                    LEFT JOIN menu_items m ON oi.menu_item_id = m.id
-                    LEFT JOIN guests g ON o.guest_id = g.id
-                    LEFT JOIN properties rp ON g.room_id = rp.id
-                    WHERE o.property_id = ?
-                      AND (oi.item_status IS NULL OR oi.item_status = 'Pending')
-                      AND TIMESTAMPDIFF(MINUTE, COALESCE(oi.last_reminder_at, o.order_time), NOW()) >= ?
-                ");
-                $pendingStmt->execute([$propertyId, $thresholdMinutes]);
-                $pending = $pendingStmt->fetchAll(PDO::FETCH_ASSOC);
-
-                // item_index mirrors telegram_webhook.php's positional resolution
-                // (items ordered by id ASC within their order) so an auto-fired
-                // "Tap when Served" button's serve_item_{order}_{index} callback
-                // resolves to the same row the webhook would find.
-                $readyStmt = $pdo->prepare("
-                    SELECT oi.id as item_id, o.id as order_id, m.name as dish_name, oi.quantity,
-                           COALESCE(rp.name, 'N/A') as table_no, oi.ready_at,
-                           TIMESTAMPDIFF(MINUTE, oi.ready_at, NOW()) as elapsed_minutes,
-                           (ROW_NUMBER() OVER (PARTITION BY oi.order_id ORDER BY oi.id ASC) - 1) as item_index
-                    FROM order_items oi
-                    JOIN orders o ON oi.order_id = o.id
-                    LEFT JOIN menu_items m ON oi.menu_item_id = m.id
-                    LEFT JOIN guests g ON o.guest_id = g.id
-                    LEFT JOIN properties rp ON g.room_id = rp.id
-                    WHERE o.property_id = ?
-                      AND oi.item_status = 'Ready'
-                      AND oi.ready_at IS NOT NULL
-                      AND TIMESTAMPDIFF(MINUTE, COALESCE(oi.last_reminder_at, oi.ready_at), NOW()) >= ?
-                ");
-                $readyStmt->execute([$propertyId, $thresholdMinutes]);
-                $ready = $readyStmt->fetchAll(PDO::FETCH_ASSOC);
-
-                echo json_encode(['status' => 'success', 'data' => ['pending' => $pending, 'ready' => $ready]]);
-            } catch (PDOException $e) {
-                echo json_encode(['status' => 'success', 'data' => ['pending' => [], 'ready' => []]]);
             }
             break;
 

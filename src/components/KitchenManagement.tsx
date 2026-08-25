@@ -36,7 +36,7 @@ import {
 import { Guest, Order, OrderItem, MenuItem, Requisition, InventoryItem, WalkInTab } from '../types';
 import { GUEST_STATUS_CHECKED_IN, GUEST_STATUS_ACTIVE_LEGACY } from '../constants/guestStatus';
 import { recordTelescopeLog } from '../utils/telescopeLogger';
-import { resolveTelegramTemplate, fetchServedLogsFromDB, addServedLogToDB, fetchRecipesFromDB, saveRecipeToDB, deleteRecipeFromDB, depleteStockForDish, getPropertySlug, updateOrderItemStatus, updateOrderStatusDB, updateItemReminderTimestamp, fetchStaffMealOptionsFromDB, addStaffMealOptionToDB, fetchStaffMealLogsFromDB, addStaffMealLogToDB, addOrderToDB, fetchWalkInTabsFromDB, openWalkInTabDB } from '../services/api';
+import { resolveTelegramTemplate, fetchServedLogsFromDB, addServedLogToDB, fetchRecipesFromDB, saveRecipeToDB, deleteRecipeFromDB, depleteStockForDish, getPropertySlug, updateOrderItemStatus, updateOrderStatusDB, fetchStaffMealOptionsFromDB, addStaffMealOptionToDB, fetchStaffMealLogsFromDB, addStaffMealLogToDB, addOrderToDB, fetchWalkInTabsFromDB, openWalkInTabDB } from '../services/api';
 import { StyledSelect } from './StyledSelect';
 import { Popover } from './Popover';
 import { useToast } from './ToastContext';
@@ -661,10 +661,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       onDispatchTelegram('Kitchen Order Reminder', finalMsg, 'kitchen', undefined, 'kitchen_order_reminder');
     }
 
-    if (item.id) {
-      updateItemReminderTimestamp(item.id);
-    }
-
     showToast(`Reminder sent to kitchen: ${item.quantity}x ${item.name}`, { type: 'success' });
 
     recordTelescopeLog({
@@ -708,10 +704,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       onDispatchTelegram('Pickup Reminder', finalMsg, 'admin', inlineKeyboard, 'kitchen_pickup_reminder');
     }
 
-    if (item.id) {
-      updateItemReminderTimestamp(item.id);
-    }
-
     showToast(`Pickup reminder sent: ${item.quantity}x ${item.name}`, { type: 'success' });
 
     recordTelescopeLog({
@@ -732,9 +724,15 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   // automatically" after a single manual bell-icon tap. Reminders are now
   // ONLY ever sent by the manual "Send Reminder"/"Send Pickup Reminder"
   // buttons above (handleSendKitchenReminder/handleSendPickupReminder) - one
-  // tap, one message, no background engine. last_reminder_at/
-  // check_stale_reminders still exist server-side (harmless if unused) in
-  // case an opt-in version of this is wanted again later.
+  // tap, one message, no background engine. Per explicit follow-up ("remove
+  // it completely, don't keep any dead or unwanted code") the whole feature
+  // was fully purged, not just disabled: check_stale_reminders/
+  // update_item_reminder_timestamp (php/kitchen/orders.php), the frontend
+  // checkStaleReminders/updateItemReminderTimestamp bindings, the
+  // reminderThresholdMinutes Telegram-config setting (and its UI in
+  // TelegramSetupWizard.tsx/TelegramConnectionSettings.tsx), and the
+  // order_items.last_reminder_at column itself (dropped via a one-time
+  // self-heal-in-reverse in orders.php) are all gone.
 
   // Staff Meals State
   // Native <input type="datetime-local"> value format ("YYYY-MM-DDTHH:mm"),

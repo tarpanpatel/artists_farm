@@ -85,21 +85,6 @@ export const TelegramConnectionSettings: React.FC<TelegramConnectionSettingsProp
         />
       </div>
 
-      {/* Reminder nudge threshold */}
-      <div>
-        <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-          {t('auto_reminder_interval_label')}
-        </label>
-        <div className="w-32">
-          <Input
-            type="number"
-            min={1}
-            value={config.reminderThresholdMinutes ?? 5}
-            onChange={(e) => onChange({ reminderThresholdMinutes: Math.max(1, Number(e.target.value) || 5) })}
-          />
-        </div>
-      </div>
-
       {/* Groups */}
       <div>
         <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 block mb-2">

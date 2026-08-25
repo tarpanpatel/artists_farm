@@ -469,24 +469,6 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                   </button>
                 )}
               </div>
-
-              {/* Auto reminder interval */}
-              <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-1.5">
-                <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  {t('auto_reminder_interval_label', 'Auto-Reminder Interval (Minutes)')}
-                </label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={60}
-                  value={wizardConfig?.reminderThresholdMinutes ?? 5}
-                  onChange={(e) => handleUpdateConfigField('reminderThresholdMinutes', Math.max(1, Number(e.target.value) || 5))}
-                  className="w-32"
-                />
-                <p className="text-[10px] text-slate-400">
-                  {t('auto_reminder_interval_description', 'Minutes to wait before an unaddressed order/dish gets nudged again.')}
-                </p>
-              </div>
             </div>
           ) : (
             <>
