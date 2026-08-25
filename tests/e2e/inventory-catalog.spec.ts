@@ -11,7 +11,11 @@ test('Edit Kitchen Stock has a page title above the catalog tabs', async ({ page
   await page.goto(`${DEMO_PROPERTY_PATH}#edit_kitchen_stock`);
 
   await expect(page.getByRole('heading', { name: 'Edit Kitchen Stock' })).toBeVisible({ timeout: 15000 });
-  await expect(page.getByText('Master Materials Catalog')).toBeVisible();
+  // The first catalog tab's i18n key is still named
+  // master_materials_catalog_header, but its displayed value was renamed to
+  // "Stock Catalog" at some point after this assertion was written (found 25
+  // Aug 2026 - see src/i18n/en.ts).
+  await expect(page.getByText('Stock Catalog')).toBeVisible();
 
   expect(getErrors().map((e) => e.message), 'Unexpected JS console errors on Edit Kitchen Stock').toEqual([]);
 });

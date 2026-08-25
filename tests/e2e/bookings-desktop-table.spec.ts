@@ -15,7 +15,11 @@ test('desktop Upcoming tab renders the bookings table', async ({ page }) => {
   await page.goto(`${DEMO_PROPERTY_PATH}#all_bookings`);
   await expect(page.getByText('Luxe Stays').first()).toBeVisible({ timeout: 15000 });
 
-  await page.getByRole('button', { name: /^Upcoming/ }).click();
+  // flowbite-react's <TabItem> renders role="tab" (ARIA tablist pattern),
+  // not role="button" - the explicit role="tab" overrides the <button>
+  // element's implicit button role, so a 'button' locator here always
+  // resolved to zero elements and just timed out (found 25 Aug 2026).
+  await page.getByRole('tab', { name: /^Upcoming/ }).click();
 
   await expect(page.getByText('Guest Details')).toBeVisible({ timeout: 15000 });
   // The mobile card stack is still in the DOM (md:hidden) but must not be
