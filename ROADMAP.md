@@ -8,6 +8,23 @@ This document tracks identified bugs, pending backend API integrations, and upco
 ---top priority starts---
 :All buttons should be same tyled everywhere. For exampke edit button styling is different on different pages.
 
+### Root Admin Dashboard: page title overlaps platform title on scroll (reported 25 Aug 2026)
+
+On Root Admin pages (reported live on "Tenants & Properties"), scrolling
+up causes the page's own sticky topbar ("Tenants & Properties" -
+`RootAdminDashboard.tsx`'s `<header className="... sticky top-0 z-20 ...">`)
+to visually overlap the "Ground Code Platform / Administration Dashboard"
+banner that sits as the first element of that section's own scrollable
+content (`PlatformPropertyManagement.tsx` - only file matching that text).
+Not reproduced/diagnosed yet - two likely candidates worth checking first:
+(a) a z-index conflict if PlatformPropertyManagement's banner has its own
+sticky/fixed positioning competing with the topbar's `z-20`, or (b) the
+classic sticky-stacking issue where two sequential sticky elements need an
+explicit `top` offset on the second one (`top-[<first element's height>]`)
+or they occupy the same scroll-pinned position. Same general family of bug
+as this session's other safe-area/header fixes today, but a distinct root
+cause - not yet investigated.
+
 ### 🔭 Mobile-First Telescope Error Center & Diagnostic Console
 
 Complete mobile-first overhaul of the **Telescope Error Center** standalone PWA dashboard (`php/errors/index.php`), login screen (`php/errors/telescope_auth.php`), and push notification system (`php/errors/sw-telescope.js`) to provide an instant, smartphone-optimized debugging and error inspection console for resort developers and admins:
