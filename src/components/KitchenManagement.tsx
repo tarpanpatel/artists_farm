@@ -1520,7 +1520,17 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               const elapsedTotalSec = isNaN(orderTimeMs) ? 0 : Math.max(0, Math.floor((tickNow - orderTimeMs) / 1000));
               const elapsedMin = Math.floor(elapsedTotalSec / 60);
               const elapsedSec = elapsedTotalSec % 60;
-              const elapsedLabel = elapsedMin > 0
+              const elapsedHours = Math.floor(elapsedMin / 60);
+              const elapsedDays = Math.floor(elapsedHours / 24);
+              // Visual bug fix: a ticket left un-served for hours/days (never marked Fulfilled)
+              // was rendering as a raw, ever-growing minute count ("2640m 30s") with no hours/days
+              // tier - unreadable and looks broken, even though the underlying staleness itself
+              // is a separate (real) data issue this doesn't try to fix.
+              const elapsedLabel = elapsedDays > 0
+                ? `${elapsedDays}d ${elapsedHours % 24}h`
+                : elapsedHours > 0
+                ? `${elapsedHours}h ${elapsedMin % 60}m`
+                : elapsedMin > 0
                 ? `${elapsedMin}m ${String(elapsedSec).padStart(2, '0')}s`
                 : `${elapsedSec}s`;
               // Toast KDS "traffic light" border: neutral → amber → red as time ages
