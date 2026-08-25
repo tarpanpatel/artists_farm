@@ -2,7 +2,21 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <!-- viewport-fit=cover (added 25 Aug 2026, real bug found live): without it,
+         iOS treats the web content's viewport as excluding the top notch/Dynamic
+         Island and bottom home-indicator safe areas entirely - in standalone PWA
+         mode (installed to Home Screen, no Safari chrome to absorb the
+         difference) this leaves a visible gap between any `fixed`/`h-screen`
+         element and the true physical screen edge, with whatever is behind it in
+         the DOM showing through (reported as: the bottom nav bar not reaching
+         the true bottom edge, and separately the Root Admin sidebar/Telegram
+         template editor drawer both cutting off partway down with the page's
+         own content visible below, unblurred - three symptoms, one shared
+         cause). It also makes every `env(safe-area-inset-*)` value evaluate to
+         0px - MobileBottomNav.tsx's `pb-[env(safe-area-inset-bottom)]` was
+         already written expecting this to work and was silently inert without
+         this meta tag providing the safe-area geometry it reads from. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Ground Code Resort Management</title>
     <link rel="icon" type="image/png" href="/icons/favicon-32x32.png" />
     <link rel="manifest" href="/manifest.json" />
