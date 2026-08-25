@@ -156,6 +156,13 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
         setAiConfig((prev) => ({ ...prev, ...resData.data, api_key: '' }));
         setHasApiKey(!!resData.data?.has_api_key);
         showToast('AI Provider Settings saved successfully!', { type: 'success' });
+      } else if (res.status === 429) {
+        // RateLimiter.checkAndBlock() (rate_limiter.php) responds with {error, code}, not
+        // {status, message} - this branch used to fall through to the generic message below,
+        // which is actively misleading here (found live, 25 Aug 2026: several legitimate
+        // back-to-back provider-switch saves tripped ai_config_save's 5-per-5-min limit, and the
+        // toast gave no hint it was temporary/self-resolving rather than a real save failure).
+        showToast(resData?.error || 'Too many save attempts - please wait a few minutes and try again.', { type: 'error' });
       } else {
         showToast(resData?.message || 'Failed to save AI Settings', { type: 'error' });
       }
