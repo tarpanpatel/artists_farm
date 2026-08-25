@@ -89,7 +89,7 @@ export const strings: Record<string, string> = {
   kitchen_queue_label: "Kitchen Queue",
   tickets_suffix: "Tickets",
   active_kitchen_queue_label: "Live Order Queue",
-  requisitions_label: "Requisitions",
+  requisitions_label: "Inventory Alerts",
   items_low_suffix: "Items Low",
   low_stock_warnings_label: "Low Stock Warnings",
   current_resident_profile_heading: "Guest Currently Staying",

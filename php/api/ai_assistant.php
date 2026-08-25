@@ -458,6 +458,17 @@ if ($aiConfig['enabled'] === true) {
                 ]);
                 exit();
             }
+        } elseif (class_exists('TelescopeLogger')) {
+            // PARITY FIX (25 Aug 2026, found live): unlike the Gemini and OpenCode Zen branches,
+            // this one never logged a failure at all - a bad key, no billing/quota, or a network
+            // error all silently fell through to the offline engine with zero record anywhere.
+            // Confirmed live: a real saved OpenAI key returned HTTP 429 insufficient_quota (no
+            // payment method on that OpenAI account) and was completely invisible in Telescope
+            // until the key was tested directly against OpenAI's API by hand.
+            TelescopeLogger::log('ai_chat', 'OpenAI Call Failed', "HTTP $httpCode", "Prompt: $prompt", [
+                'http_code' => $httpCode,
+                'response_snippet' => substr((string)$response, 0, 500),
+            ]);
         }
     }
 
