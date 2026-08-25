@@ -938,53 +938,25 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
 
       {/* Booking Calendar Row - Flowbite Application UI Calendar Standard */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden space-y-0">
-        {/* Header Toolbar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-3 order-2 sm:order-1">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-500" />
-              <h3 className="operational-dashboard__subtitle font-bold text-gray-900 dark:text-white text-base">
+        {/* Header Toolbar - layout only (title/button/date-nav positioning),
+            NOT the calendar grid below (color-coding, blocked dates, OTA
+            conversion, edit modal - that stays untouched per the protected-
+            component rule). Restructured to 2 rows (25 Aug 2026, explicit
+            request - "Booking calendar and New booking in same top row"):
+            title + New Booking together on row 1 didn't fit next to the
+            Today/prev/date-picker/next controls too (~620px of content on a
+            ~390-430px phone) - the old single flex-wrap row solved that by
+            letting Today/prev/date-picker/next wrap below via order-2, but
+            that put New Booking ABOVE the title, not beside it as asked.
+            Date-nav controls now get their own row underneath instead. */}
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-500 shrink-0" />
+              <h3 className="operational-dashboard__subtitle font-bold text-gray-900 dark:text-white text-base truncate">
                 {roomName ? `${roomName} Calendar` : t('booking_calendar_heading', 'Booking Calendar')}
               </h3>
             </div>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setMonthOffset(0)}
-                className="px-2.5 py-1 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800/80 rounded-lg transition-colors cursor-pointer mr-1"
-              >
-                {t('today_button', 'Today')}
-              </button>
-              <button
-                type="button"
-                onClick={() => setMonthOffset((o) => o - 1)}
-                aria-label={t('previous_month_button', 'Previous month')}
-                className="p-1 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200 transition-colors cursor-pointer"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <Datepicker
-                value={viewDate}
-                onChange={handleMonthPickerChange}
-                readOnly
-                language="en"
-                showClearButton={false}
-                showTodayButton={false}
-                sizing="sm"
-                className="w-48 [&_input]:cursor-pointer [&_input]:text-center [&_input]:text-xs [&_input]:font-semibold"
-                title={t('jump_to_month_tooltip', 'Jump to any month/date')}
-              />
-              <button
-                type="button"
-                onClick={() => setMonthOffset((o) => o + 1)}
-                aria-label={t('next_month_button', 'Next month')}
-                className="p-1 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200 transition-colors cursor-pointer"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 ml-auto">
             <button
               type="button"
               // FIXED 25 Aug 2026 (live report: "New booking button over calendar not
@@ -997,10 +969,46 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               // coding, blocked dates, OTA conversion, edit modal - the protected logic),
               // only this toolbar button's destination.
               onClick={() => setShowAddGuestModal(true)}
-              className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-xs px-3 py-1.5 inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-xs px-3 py-1.5 inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>{t('new_booking_btn', 'New Booking')}</span>
+            </button>
+          </div>
+          <div className="flex items-center gap-1 overflow-x-auto">
+            <button
+              type="button"
+              onClick={() => setMonthOffset(0)}
+              className="px-2.5 py-1 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800/80 rounded-lg transition-colors cursor-pointer mr-1 shrink-0"
+            >
+              {t('today_button', 'Today')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setMonthOffset((o) => o - 1)}
+              aria-label={t('previous_month_button', 'Previous month')}
+              className="p-1 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200 transition-colors cursor-pointer shrink-0"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <Datepicker
+              value={viewDate}
+              onChange={handleMonthPickerChange}
+              readOnly
+              language="en"
+              showClearButton={false}
+              showTodayButton={false}
+              sizing="sm"
+              className="w-48 shrink-0 [&_input]:cursor-pointer [&_input]:text-center [&_input]:text-xs [&_input]:font-semibold"
+              title={t('jump_to_month_tooltip', 'Jump to any month/date')}
+            />
+            <button
+              type="button"
+              onClick={() => setMonthOffset((o) => o + 1)}
+              aria-label={t('next_month_button', 'Next month')}
+              className="p-1 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200 transition-colors cursor-pointer shrink-0"
+            >
+              <ChevronRight className="w-4 h-4" />
             </button>
           </div>
         </div>
