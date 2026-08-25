@@ -52,36 +52,65 @@ class RateLimiter {
         }
     }
 
+    // BUG FIX (25 Aug 2026, found live): `attempts` used to only ever increment
+    // (`ON DUPLICATE KEY UPDATE attempts = attempts + 1`), with no time decay at all. Once an
+    // identifier/endpoint pair crossed maxAttempts ONCE in its lifetime, `attempts >= maxAttempts`
+    // was permanently true forever after, so checkAndBlock()'s own "just crossed threshold" branch
+    // re-armed a brand-new blocked_until on every single subsequent attempt - no matter how long
+    // the gap since the last one - turning a "N attempts per window" limiter into a one-way
+    // permanent lock outside of a manual DB reset. Confirmed live on ai_config_save: a legitimate
+    // string of AI-provider-config saves over several hours tripped this once, and every attempt
+    // after that (even minutes apart, well past the block's own expiry) immediately re-blocked for
+    // another full window. Fixed by treating a `last_attempt` older than the window as a fresh
+    // window - reset to 1 instead of incrementing - matching the "N attempts per window" behavior
+    // this was always supposed to have. This class is shared by other endpoints (e.g. login) that
+    // have the identical flaw, not just this one caught live.
     public function recordAttempt($identifier, $endpoint) {
         try {
             $stmt = $this->pdo->prepare("
-                INSERT INTO rate_limit_attempts (identifier, endpoint, attempts)
-                VALUES (?, ?, 1)
-                ON DUPLICATE KEY UPDATE
-                attempts = attempts + 1,
-                last_attempt = NOW(),
-                blocked_until = IF(
-                    attempts >= ?,
-                    DATE_ADD(NOW(), INTERVAL ? MINUTE),
-                    blocked_until
-                )
-            ");
-
-            $stmt->execute([
-                $identifier,
-                $endpoint,
-                $this->maxAttempts,
-                intval($this->windowSeconds / 60)
-            ]);
-
-            // Get current attempt count
-            $checkStmt = $this->pdo->prepare("
-                SELECT attempts FROM rate_limit_attempts
+                SELECT attempts, last_attempt FROM rate_limit_attempts
                 WHERE identifier = ? AND endpoint = ?
             ");
-            $checkStmt->execute([$identifier, $endpoint]);
-            $row = $checkStmt->fetch();
-            return $row ? $row['attempts'] : 1;
+            $stmt->execute([$identifier, $endpoint]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$row) {
+                $this->pdo->prepare("
+                    INSERT INTO rate_limit_attempts (identifier, endpoint, attempts)
+                    VALUES (?, ?, 1)
+                ")->execute([$identifier, $endpoint]);
+                return 1;
+            }
+
+            $windowStale = strtotime($row['last_attempt']) < (time() - $this->windowSeconds);
+
+            if ($windowStale) {
+                // Fresh window: reset the counter and clear any (already-expired, since
+                // checkAndBlock()'s isBlocked() check above would have short-circuited otherwise)
+                // stale block, rather than compounding onto a lifetime total.
+                $this->pdo->prepare("
+                    UPDATE rate_limit_attempts
+                    SET attempts = 1, first_attempt = NOW(), last_attempt = NOW(), blocked_until = NULL
+                    WHERE identifier = ? AND endpoint = ?
+                ")->execute([$identifier, $endpoint]);
+                return 1;
+            }
+
+            $newAttempts = (int)$row['attempts'] + 1;
+            if ($newAttempts >= $this->maxAttempts) {
+                $this->pdo->prepare("
+                    UPDATE rate_limit_attempts
+                    SET attempts = ?, last_attempt = NOW(), blocked_until = DATE_ADD(NOW(), INTERVAL ? MINUTE)
+                    WHERE identifier = ? AND endpoint = ?
+                ")->execute([$newAttempts, intval($this->windowSeconds / 60), $identifier, $endpoint]);
+            } else {
+                $this->pdo->prepare("
+                    UPDATE rate_limit_attempts
+                    SET attempts = ?, last_attempt = NOW()
+                    WHERE identifier = ? AND endpoint = ?
+                ")->execute([$newAttempts, $identifier, $endpoint]);
+            }
+            return $newAttempts;
 
         } catch (PDOException $e) {
             error_log("Rate limiter record error: " . $e->getMessage());
