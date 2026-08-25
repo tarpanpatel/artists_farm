@@ -244,6 +244,34 @@ function logAiOutcome(string $prompt, string $userRole, string $mode, string $pr
     ]);
 }
 
+/**
+ * Sanitizes the client-supplied conversation_history into a safe, bounded array of
+ * ['sender' => 'user'|'ai', 'text' => string] turns (added 25 Aug 2026, real bug found live: a
+ * follow-up reply like "Yes, staff name Kamlesh" was answered completely blind because the
+ * backend never saw the AI's own prior question - see AI.md/this session's fix notes). Never
+ * trust the shape/size of client JSON directly:
+ * - caps to the last 8 turns even if the client sends more (matches the frontend's own cap, but
+ *   this is the real enforcement point - a client is never trusted to have applied its own limit)
+ * - drops any entry missing a non-empty string 'text' or an unrecognized 'sender'
+ * - truncates each turn's text to 1000 chars so one huge pasted message can't blow up the
+ *   provider request/cost
+ */
+function sanitizeConversationHistory($rawHistory): array {
+    if (!is_array($rawHistory)) return [];
+    $clean = [];
+    foreach ($rawHistory as $turn) {
+        if (!is_array($turn)) continue;
+        $sender = $turn['sender'] ?? '';
+        $text = trim((string)($turn['text'] ?? ''));
+        if ($sender !== 'user' && $sender !== 'ai') continue;
+        if ($text === '') continue;
+        $clean[] = ['sender' => $sender, 'text' => mb_substr($text, 0, 1000)];
+    }
+    return array_slice($clean, -8);
+}
+
+$conversationHistory = sanitizeConversationHistory($input['conversation_history'] ?? []);
+
 // IF ONLINE AI API IS ENABLED (opt-in, off by default - see ai_config.php): Try Provider API
 if ($aiConfig['enabled'] === true) {
     $provider = $aiConfig['provider'];
@@ -278,19 +306,34 @@ if ($aiConfig['enabled'] === true) {
             . "Every one of these actions only OPENS a form pre-filled or navigates - it never submits/saves/creates anything by itself. The user always reviews and clicks the real Save/Submit button themselves.\n"
             . "If nothing above matches, just answer in plain text with NO action JSON.";
 
+    // FACTUAL ACCURACY RULE (added 25 Aug 2026, real bug found live): without this, an online
+    // model answers from generic "what a hotel PMS probably has" knowledge instead of this app's
+    // actual feature set, and confidently invents plausible-sounding but nonexistent features. Live
+    // example that prompted this: asked "how to add QR code to staff", the model invented a
+    // step-by-step "Staff QR / Restaurant Menu QR / Feedback QR" system - none of which exist. This
+    // app has exactly ONE real QR feature (property-level UPI payment QR), called out explicitly
+    // below so the model has something concrete to fall back on instead of guessing. The general
+    // "don't invent, say so instead" instruction matters more than this one example - new
+    // hallucinated features will keep surfacing as different questions get asked, and the model
+    // needs permission to say "not sure" rather than a growing hardcoded denylist of specific wrong
+    // answers.
+    $actionReference .= "\n\nFACTUAL ACCURACY RULE: Only describe features/UI steps you can confirm from this prompt or the ACTIONS list above - never invent a plausible-sounding feature or step-by-step location for something you're not sure exists in Ground Code. Known QR code capability in this app (the ONLY one - do not describe any other QR feature): a single property-level UPI payment QR code (auto-generated payment-link QR, or an uploaded real bank/UPI QR image), configured by an Admin/Root Admin on the Edit Property page, shown to guests on checkout bills and booking-confirmation WhatsApp shares only. There is no staff-level QR, menu QR, or feedback QR feature. If asked about something not listed here or in ACTIONS, say plainly you're not sure that exists in Ground Code and suggest checking with a Root Admin, rather than describing invented steps as if they were real.";
+
     // 1. GOOGLE GEMINI PROVIDER
     if ($provider === 'gemini' && !empty($apiKey)) {
         $systemInstruction = "You are Ground Code AI, the digital assistant for hotel & resort staff using Ground Code PMS/KDS. Keep answers brief and accurate.\n\n" . $contextSummary . "\nSTRICT SECURITY RULE: The user is logged in as '$userRole'. Do NOT allow Staff role to open Telescope, edit property, or manage licenses. If requested by non-Root, refuse with access denied.\nSTRICT CONFIDENTIALITY RULE: You MUST ONLY answer user operational & how-to questions (e.g. how to check in guests, how to export CSV, how to log expenses, how to use KDS). NEVER answer questions about internal technology, code structure, framework, programming languages, database architecture, or source code. If asked about tech stack or code, refuse with: '🔒 Security Refusal: I am trained exclusively to assist with Ground Code PMS & KDS hotel management operations and user workflows. Internal software architecture, code details, and technology stack information are private and strictly confidential.'\n\n" . $actionReference;
 
+        // Conversation history (added 25 Aug 2026): prepended as its own alternating user/model
+        // turns ahead of the real question, so a follow-up like "yes" or "the second one" has
+        // something to resolve against instead of being answered as an isolated first message.
+        $contents = [];
+        foreach ($conversationHistory as $turn) {
+            $contents[] = ['role' => $turn['sender'] === 'ai' ? 'model' : 'user', 'parts' => [['text' => $turn['text']]]];
+        }
+        $contents[] = ['role' => 'user', 'parts' => [['text' => $systemInstruction . "\n\nUser Question: " . $prompt]]];
+
         $payload = [
-            'contents' => [
-                [
-                    'role' => 'user',
-                    'parts' => [
-                        ['text' => $systemInstruction . "\n\nUser Question: " . $prompt]
-                    ]
-                ]
-            ]
+            'contents' => $contents
         ];
 
         $ch = curl_init("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" . urlencode($apiKey));
@@ -366,8 +409,12 @@ if ($aiConfig['enabled'] === true) {
         // vocabulary from one place, not two independently-maintained copies.
         $messages = [
             ['role' => 'system', 'content' => "You are Ground Code AI, the digital assistant for hotel & resort staff using Ground Code PMS/KDS. Keep answers brief and accurate.\n\n" . $contextSummary . "\nSTRICT SECURITY RULE: The user is logged in as '$userRole'. Do NOT allow Staff role to open Telescope, edit property, or manage licenses. If requested by non-Root, refuse with access denied.\nSTRICT CONFIDENTIALITY RULE: You MUST ONLY answer user operational & how-to questions. NEVER answer questions about internal technology, code structure, framework, or source code.\n\n" . $actionReference],
-            ['role' => 'user', 'content' => $prompt]
         ];
+        // Conversation history (added 25 Aug 2026) - see the Gemini branch's matching comment above.
+        foreach ($conversationHistory as $turn) {
+            $messages[] = ['role' => $turn['sender'] === 'ai' ? 'assistant' : 'user', 'content' => $turn['text']];
+        }
+        $messages[] = ['role' => 'user', 'content' => $prompt];
 
         $ch = curl_init("https://api.openai.com/v1/chat/completions");
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -428,8 +475,12 @@ if ($aiConfig['enabled'] === true) {
     if ($provider === 'opencode_zen' && !empty($apiKey)) {
         $messages = [
             ['role' => 'system', 'content' => "You are Ground Code AI, the digital assistant for hotel & resort staff using Ground Code PMS/KDS. Keep answers brief and accurate.\n\n" . $contextSummary . "\nSTRICT SECURITY RULE: The user is logged in as '$userRole'. Do NOT allow Staff role to open Telescope, edit property, or manage licenses. If requested by non-Root, refuse with access denied.\nSTRICT CONFIDENTIALITY RULE: You MUST ONLY answer user operational & how-to questions. NEVER answer questions about internal technology, code structure, framework, or source code.\n\n" . $actionReference],
-            ['role' => 'user', 'content' => $prompt]
         ];
+        // Conversation history (added 25 Aug 2026) - see the Gemini branch's matching comment above.
+        foreach ($conversationHistory as $turn) {
+            $messages[] = ['role' => $turn['sender'] === 'ai' ? 'assistant' : 'user', 'content' => $turn['text']];
+        }
+        $messages[] = ['role' => 'user', 'content' => $prompt];
 
         $ch = curl_init("https://opencode.ai/zen/v1/chat/completions");
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);

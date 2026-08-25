@@ -142,12 +142,26 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({
       // has to attach it by hand instead. user_role/property_name are no longer sent - the backend
       // now derives both from the actual logged-in session, never from client input (24 Aug 2026
       // security fix: the old client-supplied user_role trivially bypassed every RBAC check below).
+      // conversation_history (added 25 Aug 2026, real bug found live): the backend used to see
+      // every message in total isolation - no memory of what it just said. A reply like "Yes,
+      // staff name Kamlesh" to the AI's own prior question was answered completely blind, with
+      // nothing to anchor "yes" to, and got matched to an unrelated action. Send the last few
+      // turns (excluding the static 'welcome' message, which isn't part of the real exchange) so
+      // an online provider can actually follow a multi-turn exchange. Capped to the last 8 - a
+      // trailing window is enough context for a short clarification exchange without unbounded
+      // request size/cost as a chat grows long.
+      const recentHistory = messages
+        .filter((m) => m.id !== 'welcome')
+        .slice(-8)
+        .map((m) => ({ sender: m.sender, text: m.text }));
+
       const response = await fetch(`/php/api/ai_assistant.php?property_slug=${encodeURIComponent(getPropertySlug())}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: userMsg.text,
           live_context: getLiveContext(),
+          conversation_history: recentHistory,
         }),
       });
       if (response.status === 401) {
