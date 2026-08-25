@@ -229,7 +229,17 @@ export const Header: React.FC<HeaderProps> = ({
     // toggle button stays usable while the drawer is open, and below real
     // page modals (bumped to z-[58] by that same CSS rule) and toasts/
     // confirm dialog (z-[9999]/[99999]).
-    <header className={`header fixed top-0 left-0 right-0 z-57 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 h-16 pt-[env(safe-area-inset-top,0px)] transition-transform duration-300 ${isHeaderVisible ? 'translate-y-0' : '-translate-y-full'}`}>
+    // h-16 + pt-[env(safe-area-inset-top)] used to fight each other (found 25
+    // Aug 2026): with a fixed h-16 total height, the safe-area padding ate
+    // into that same 64px instead of adding to it, squeezing the real
+    // content (logo/property name/icons) into a sliver a few px tall on a
+    // notched/Dynamic-Island phone - it overflowed below the header's own
+    // box into the page content underneath. Dormant until today's
+    // viewport-fit=cover fix (index.html) made env(safe-area-inset-top)
+    // stop evaluating to 0px. h-[calc(4rem+env(...))] grows the box instead
+    // of shrinking its content - App.tsx's pt-16/Navigation.tsx's sidebar
+    // pt-16 (both sized to clear this exact header) updated to match.
+    <header className={`header fixed top-0 left-0 right-0 z-57 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 h-[calc(4rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)] transition-transform duration-300 ${isHeaderVisible ? 'translate-y-0' : '-translate-y-full'}`}>
       <div className="header__inner px-3 py-2.5 lg:px-5 flex items-center justify-between h-full">
         {/* Left Section: Sidebar Toggle + Brand Logo */}
         <div className="header__left flex items-center gap-2">

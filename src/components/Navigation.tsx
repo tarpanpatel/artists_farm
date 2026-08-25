@@ -625,7 +625,11 @@ export const Navigation: React.FC<NavigationProps> = ({
       <aside
         id="mainSidebarNavigationContainer"
         aria-label="Sidebar Navigation"
-        className={`fixed top-0 left-0 h-screen pt-16 z-[56] border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 transition-all duration-200 ${
+        // pt-[calc(4rem+env(safe-area-inset-top))] matches Header.tsx's own
+        // height (see that file's 25 Aug 2026 comment) - a static pt-16 was
+        // too short to clear the header on a notched device once it grew to
+        // fit the safe-area padding it already had.
+        className={`fixed top-0 left-0 h-screen pt-[calc(4rem+env(safe-area-inset-top,0px))] z-[56] border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 transition-all duration-200 ${
           isIconOnly
             ? 'w-16 translate-x-0'
             : isSidebarOpen

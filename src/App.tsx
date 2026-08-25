@@ -1952,7 +1952,11 @@ ${itemsStr}
 
         {/* Main Dashboard Container */}
         {isAuthenticated && (
-          <div className={`${isIconOnly ? 'pl-16' : 'md:pl-64 pl-0'} pt-16 flex-1 flex flex-col min-h-screen transition-[padding] duration-200`}>
+          /* pt-[calc(4rem+env(safe-area-inset-top))] matches Header.tsx's own
+             height exactly (see that file's 25 Aug 2026 comment) - a static
+             pt-16 was too short to clear the header on a notched device once
+             it grew to fit the safe-area padding it already had. */
+          <div className={`${isIconOnly ? 'pl-16' : 'md:pl-64 pl-0'} pt-[calc(4rem+env(safe-area-inset-top,0px))] flex-1 flex flex-col min-h-screen transition-[padding] duration-200`}>
             <main className="flex-1 px-1 py-1 sm:px-6 sm:py-3 lg:px-8 lg:py-4 w-full space-y-2 sm:space-y-4 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] md:pb-4">
               <Suspense fallback={<TabContentFallback />}>
 
