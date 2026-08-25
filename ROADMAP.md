@@ -52,6 +52,34 @@ Complete mobile-first overhaul of the **Telescope Error Center** standalone PWA 
 
 ---top priority ends--- 
 
+### OTA double-booking conflicts are never detected or alerted (found 26 Aug 2026)
+
+**The gap**: `php/api/ical_sync.php` contains zero overlap/conflict logic. Two OTA feeds can both
+hold the same room on the same night and the app renders them as two silently stacked bars on the
+multi-room calendar - visually easy to mistake for a layout quirk rather than what it actually is:
+a guest who will arrive to an already-occupied room.
+
+**Why this can't be fixed the same way staff bookings are.** `add_guest`/`update_guest` hard-block
+overlaps with a 409 (verified working 26 Aug 2026 - see CLAUDE.md's strict rule), because those
+are stays *this app* is creating. An Airbnb hold overlapping a Booking.com hold is different: both
+were already sold on someone else's platform before the sync ever ran. Refusing to store the
+second one would only hide a real double-booking that has already happened. So the requirement is
+**detect + alert loudly**, never suppress.
+
+**Suggested shape** (not yet built): a cross-feed overlap scan per room (half-open comparison -
+`a.start < b.end && a.end > b.start`, so same-day turnover is correctly NOT a conflict), surfaced
+as a top-severity row in `OperationalDashboard.tsx`'s "System Alerts" panel alongside the existing
+unconverted-OTA alerts, plus a Telegram admin alert on the daily cron (same per-property routing
+convention as `check_unconverted_ota_bookings.php`). Treat as higher severity than an unconverted
+block - this one has a hard arrival date attached to it.
+
+**Note on the sighting that surfaced this** (26 Aug 2026): the live example on `luxe-stays`
+(Room 101, Airbnb 3-6 Sep vs Booking.com 5-7 Sep, both holding 5 Sep) turned out to be **stale
+demo data**, not a live generator bug - those demo configs were seeded 15 Aug 2026 12:13, while
+`demo_data.php`'s cross-feed overlap fix (sharing `$placedRanges` across both feeds of a room)
+landed 17 and 20 Aug. The generator is correct now; regenerating demo data clears it. The missing
+detection above is the real, still-open finding - it applies to genuine non-demo feeds too.
+
 ### Feature: Shareable availability + rates PNG for prospective guests (requested 25 Aug 2026)
 
 **The use case** (user's own framing): a staff member is talking to a prospective customer who
