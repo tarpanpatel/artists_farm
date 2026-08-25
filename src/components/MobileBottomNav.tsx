@@ -197,10 +197,22 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         </div>
       </div>
 
-      {/* Docked Mobile Bottom Navigation Bar - Flowbite Bottom Navigation pattern */}
+      {/* Docked Mobile Bottom Navigation Bar - Flowbite Bottom Navigation
+          pattern (flowbite's own reference markup is plain h-16 fixed
+          bottom-0, no safe-area handling at all - confirmed 25 Aug 2026
+          against their source: github.com/themesberg/flowbite/blob/main/
+          content/components/bottom-navigation.md - so this project's own
+          pb-[env(safe-area-inset-bottom)] addition on top of it was the
+          right idea, just wired the same way Header.tsx's top padding was:
+          a FIXED h-16 fighting its own safe-area padding, which ate into
+          that 64px instead of extending it - squeezing content up and
+          leaving the real bottom-inset gap unaccounted for, which is what
+          let scrolled page content sit partly behind this nav on a
+          notched-bottom (home indicator) device in standalone PWA mode. Same
+          fix as Header.tsx: grow the box instead of shrinking its content. */}
       <nav
         aria-label="Mobile Bottom Navigation"
-        className="mobile-bottom-nav fixed bottom-0 left-0 right-0 z-[54] md:hidden h-16 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 pb-[env(safe-area-inset-bottom)] transition-transform duration-200 shadow-lg"
+        className="mobile-bottom-nav fixed bottom-0 left-0 right-0 z-[54] md:hidden h-[calc(4rem+env(safe-area-inset-bottom,0px))] bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 pb-[env(safe-area-inset-bottom,0px)] transition-transform duration-200 shadow-lg"
       >
         <div className="grid h-full max-w-lg grid-cols-5 mx-auto font-medium">
           {/* 1. Home */}
