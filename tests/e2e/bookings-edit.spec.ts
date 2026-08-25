@@ -19,14 +19,30 @@ test('opens and closes the booking details modal from an upcoming booking card',
   // resolved to zero elements and just timed out (found 25 Aug 2026).
   await page.getByRole('tab', { name: /^Upcoming/ }).click();
 
-  const editBookingButton = page.getByRole('button', { name: 'Edit Booking' }).first();
+  // MobileBookingCardStack.tsx's per-guest action button is labeled just
+  // "Edit" (or "View" when canEdit is false), never "Edit Booking" - found
+  // 25 Aug 2026, another stale assertion.
+  const editBookingButton = page.getByRole('button', { name: 'Edit', exact: true }).first();
   await expect(editBookingButton).toBeVisible({ timeout: 15000 });
   await editBookingButton.click();
 
   await expect(page.locator('.booking-details-modal__title')).toBeVisible();
 
-  await page.locator('.booking-details-modal__close-btn').click();
-  await expect(page.locator('.booking-details-modal__content')).toHaveCount(0);
+  // '.booking-details-modal__close-btn' was never a real class - the close
+  // button has no class of its own, only aria-label="Close drawer" (found 25
+  // Aug 2026). That label also isn't unique (several other drawers share it),
+  // so scope to the drawer that actually contains this title, same fix as
+  // checkout.spec.ts/staff.spec.ts needed.
+  const drawer = page.locator('[data-testid="flowbite-drawer"]').filter({
+    has: page.locator('.booking-details-modal__title'),
+  });
+  await drawer.getByRole('button', { name: 'Close drawer' }).click();
+  // Unlike StaffManagement's Team Member drawer (which stays mounted with
+  // local isOpen state, needing a class-based check instead), this modal's
+  // <Drawer open={Boolean(guest)}> is driven by the parent's guest state -
+  // onClose() clears it there, so BookingDetailsModal's parent stops
+  // rendering it entirely and the title really does leave the DOM.
+  await expect(page.locator('.booking-details-modal__title')).toHaveCount(0);
 
   expect(getErrors(), 'Unexpected JS console errors during booking details flow').toEqual([]);
 });
