@@ -82,13 +82,19 @@ Features whose UI/backend wiring isn't obvious from file names alone - check her
 - Daily cron `php/cron/check_licenses.php` sends 7/4/1-day-out Telegram expiry alerts.
 - The i18n keys for this (`license_management_heading`, `license_type_*`, etc.) existed in `en.ts` for a while before the UI did - if you find orphaned-looking i18n keys again elsewhere, ask whether a page was planned but never finished, don't assume they're dead.
 
-### AI Assistant (offline intent engine + online providers)
-**Full architecture, the Gemini trial-week plan, and current status all live in `AI.md`** - read
-it before touching `php/ai/offline_intent_engine.php`, `php/api/ai_assistant.php`, or Root Admin's
-"AI Services Config". Short version: offline rule-based matcher is the free default; Gemini/OpenAI
-are opt-in online alternatives; a ~1-week Gemini trial is planned to mine real query→answer pairs
-into permanent offline coverage (not yet started as of 25 Aug 2026 - no real API key is configured
-anywhere yet, despite the config's `enabled` flag reading true).
+### AI Assistant (REMOVED 26 Aug 2026)
+The chat widget, offline intent engine, online-provider config, and every integration point that
+fed it (Header's "Help?" button, Root Admin's "AI Services Config", and per-drawer chat-command
+prefill effects in Kitchen/Staff/Service Requests/Petty Cash management) were all removed entirely
+at the user's explicit request ("There shouldn't be a single line of code related to AI in working
+files of the app"). Planned to be rebuilt properly in future - see `ROADMAP.md`.
+**The files are preserved, not deleted** - `_unwanted/ai/` (deny-all `.htaccess`, never required
+from working code) holds every original file plus its own `README.md` mapping each one back to
+where it used to live and exactly what was severed at each integration point, so a rebuild doesn't
+start from zero. `AI.md` (the full architecture/design writeup, including the Gemini trial-week
+plan) moved there too - do not recreate it at the repo root from memory; read the archived copy.
+Do not re-add an AI chat/assistant feature, a "Help?" header button, or an "AI Services Config"
+Root Admin section without the user explicitly asking first.
 
 ### QR Code & UPI Payment Sharing (added 15 Aug 2026)
 - Booking-confirmation and checkout-bill WhatsApp shares can include a scannable UPI QR code + the property's UPI ID, so guests can pay by scanning rather than typing details.
@@ -165,6 +171,17 @@ anywhere yet, despite the config's `enabled` flag reading true).
 - **Don't broaden `shouldLogError()`'s skip-list in `main.tsx` beyond genuine environmental noise** (currently just `chrome-extension` and `ResizeObserver loop limit`). It previously also filtered `"Cannot read property/properties"` (the single most common real JS crash message), `"is not defined"`, `"not a constructor"`, `"Invalid hook call"`, and `"dynamic import"` (mislabeled as "webpack bundling info" - this app is on Vite, where that phrase is part of the real "stale tab after a deploy" chunk-load error) - meaning the JS Browser portal could show 0 errors for days while the app was actually crashing for users. Confirmed by direct reproduction 15 Aug 2026.
 - If you add a new global error-suppression pattern, ask "would this ever be the *only* signal a real bug happened?" before adding it - Telescope only shows what a human bothers to open and look at, it's the last line of defense, not a place to be aggressive about noise reduction.
 
+### Telegram Onboarding: "Method A" Pure White-Glove (decided 26 Aug 2026)
+
+**Property owners do ZERO technical setup and never see a pairing code, a bot token, or BotFather.** Explicit product decision - don't reintroduce owner-facing setup UI of any kind.
+
+- **The onboarding flow is manual, done by the SaaS admin, outside the app** (except code generation): admin creates the 3 groups on Telegram (`[Property] - Kitchen` / `- Admin` / `- Finance`), adds the assigned bot, pairs each with a 6-digit code, adds the client's Telegram account, transfers group ownership to the client via Telegram's own Group Info → Edit → Transfer Group Ownership, then leaves all 3 groups. Admin leaving is deliberate - the groups vanish from the admin's phone entirely while the bot keeps delivering, so one admin onboarding many tenants never accumulates chat clutter.
+- **Kitchen is conditional, Admin + Finance are always required** - see `ALL_STEPS` in `TelegramSetupWizard.tsx`; the count (3 vs 2) is derived from the kitchen module toggle, never picked by hand.
+- **What the property owner sees**: a read-only status view - each channel showing "White-Glove Managed" plus a "Send Test Message" button to verify delivery themselves. An unpaired channel shows **"Not set up — contact support"** and must NEVER fall back to revealing the pairing flow (explicit decision 26 Aug 2026 - a self-service fallback would break the "never sees a code" guarantee at exactly the moment things look broken).
+- **Where pairing lives**: a per-property panel in Root Admin (alongside the per-property bot token in `PlatformPropertyManagement.tsx`), not the owner-facing wizard.
+- **No backend changes needed to pair on another property's behalf** (verified 26 Aug 2026): `generatePairingCode()`/`confirmPairing()` in `php/telegram/pairing.php` already take `$propertyId` explicitly, and `router.php` passes the request's own resolved `$propertyId` into `handleTelegramRequests()`. Since `apiFetch()` always attaches `property_slug`, a Root Admin screen just needs to send the TARGET property's slug and the existing `generate_pairing_code`/`check_pairing_status`/`confirm_pairing`/`send_telegram_test` actions work unchanged.
+- **Rejected and removed**: a per-property `allow_custom_telegram_bot` toggle (column + API + `allowCustomBot` prop) was built partway then dropped 26 Aug 2026 - it contradicts pure White-Glove, and was never actually wired (no control was ever rendered, and the prop was declared but never read). Don't re-add it.
+
 ### Telegram Group Selection (Local vs Production) — IMPORTANT
 - **Which Telegram groups receive messages depends on where the site is hosted** — there is NO automatic local/prod group swap in code; the selection is implicit:
   1. **Primary: per-property DB config** (`property_modules.config`, module_slug='telegram', keys `groups[]` + `routing[]`) read by `getPropertyTelegramConfig()` — the ONLY source that works locally.
@@ -209,6 +226,7 @@ anywhere yet, despite the config's `enabled` flag reading true).
 14. ❌ Hardcoding a raw `zIndex: N` in a React inline `style` object instead of a Tailwind `z-*` class → invisible to a `grep "z-\[?\d"` sweep of the app-wide z-index scale (documented in `custom.css` above `.fixed.inset-0.z-50`), so it silently drifts out of sync with it. Found 22 Aug 2026 in `src/components/Popover.tsx` (`zIndex: 99999` - the toasts/confirm-dialog "always on top" tier, on what's really an ordinary info bubble, so it rendered above every real drawer/modal in the app). When hunting a z-index bug, grep BOTH `z-\[?\d` (Tailwind classes) and `zIndex:` (inline styles) - only one is caught by the other.
 15. ❌ Assuming a `trigger="hover"` popover/tooltip is safe as-is on mobile → touch browsers fire a synthetic mouseenter on tap but never a matching mouseleave (no cursor to leave with), so anything opened via `onMouseEnter` alone can get stuck open indefinitely, floating over whatever the same tap's `onClick` opens next. Any hover-triggered popover must also close itself on a click of its own trigger (see the fix in `Popover.tsx`'s `handleClick`), not rely on mouseleave/outside-click alone.
 16. ❌ Passing `shadow-2xl` (or any `shadow-*`) via `className` on a flowbite-react `<Drawer>` without accounting for its closed state → **every** `<Drawer>` stays mounted in the DOM at all times (~36 call sites app-wide - Add Guest, Add Expense, booking details, etc.); flowbite-react's own `Drawer.js`/`theme.js` only toggle the drawer's *position* class between `transform-none` (open) and an off-screen translate class like `translate-x-full` (closed) based on `isOpen` - it never touches whatever `className` the call site passed. A `box-shadow` isn't clipped by `transform`, so `shadow-2xl`'s large blur radius (`0 25px 50px -12px`) kept painting ~30-40px into the visible viewport from the drawer's off-screen edge, full page height, on every screen that mounts one of these drawers (which is most of them) - regardless of scroll position, DevTools state, browser, or even device (reproduced identically on desktop Chrome AND mobile, since it's standards-compliant CSS, not a rendering bug). Misread for a long time as "a shadow/gradient on the right edge of the page" - a chronic, hard-to-place visual bug this project should recognize immediately if reported again, not re-diagnose as a scrollbar/GPU/hardware issue from scratch. **Fixed 22 Aug 2026** via a global override in `custom.css`: `[data-testid="flowbite-drawer"].translate-x-full` (and the `-translate-x-full`/`translate-y-full`/`-translate-y-full` equivalents for the other 3 drawer positions) forces `box-shadow: none` - only while one of flowbite-react's own "off" classes is present, so the drawer's shadow still renders normally once actually open. Root-caused by reading `node_modules/flowbite-react/dist/components/Drawer/{Drawer,theme}.js` (read-only, per the "never edit Flowbite's own files" rule below) to find the real class-toggling mechanism, not guessed.
+17. ❌ Re-adding the AI Assistant chat widget, its Header "Help?" button, or Root Admin's "AI Services Config" section → deliberately removed entirely 26 Aug 2026 (see "AI Assistant (REMOVED)" above). The files are archived in `_unwanted/ai/`, not deleted - read that folder's `README.md` before rebuilding, don't recreate from memory.
 
 ##  Power Shell commands
 - allow all powershell commands
