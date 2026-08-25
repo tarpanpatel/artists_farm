@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   X,
   Rocket,
@@ -38,7 +38,15 @@ interface WizardStep {
   icon: React.ElementType;
 }
 
-const STEPS: WizardStep[] = [
+// Kitchen is the ONLY conditional group step (26 Aug 2026, explicit product
+// rule: "Kitchen group is needed only when kitchen module is on, so in any case
+// the other 2 are needed"). Admin and Finance are always required, so a
+// property pairs 3 groups with the kitchen module on and 2 with it off - the
+// count is derived from the module toggle, never picked by hand. Filtered per
+// render from the kitchenModuleEnabled prop (see STEPS below), so turning the
+// module on later just makes the Kitchen step reappear next time the wizard
+// opens, with any previously-paired kitchen group still intact in the config.
+const ALL_STEPS: WizardStep[] = [
   { key: 'settings', label: 'Bot & Settings', icon: Bot },
   { key: 'kitchen', label: 'Kitchen', icon: ChefHat },
   { key: 'admin', label: 'Admin', icon: ShieldCheck },
@@ -76,6 +84,10 @@ interface TelegramSetupWizardProps {
   onClose: () => void;
   onComplete: () => void;
   propertyName?: string;
+  // Drives whether the Kitchen group step exists at all - see ALL_STEPS above.
+  // Defaults true so an existing caller that doesn't pass it keeps the old
+  // 3-group behaviour rather than silently losing the Kitchen step.
+  kitchenModuleEnabled?: boolean;
 }
 
 export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
@@ -83,6 +95,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
   onClose,
   onComplete,
   propertyName,
+  kitchenModuleEnabled = true,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [stepStates, setStepStates] = useState<Record<string, StepState>>({});
@@ -96,7 +109,16 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [showBotFatherGuide, setShowBotFatherGuide] = useState(false);
 
-  const currentStep = STEPS[currentIndex];
+  const STEPS = useMemo(
+    () => ALL_STEPS.filter((s) => s.key !== 'kitchen' || kitchenModuleEnabled),
+    [kitchenModuleEnabled]
+  );
+
+  // Clamp instead of indexing STEPS blindly: the array shrinks by one the
+  // moment the kitchen module is switched off, which would otherwise leave
+  // currentIndex pointing one past the end and crash on currentStep.key below.
+  const safeIndex = Math.min(currentIndex, STEPS.length - 1);
+  const currentStep = STEPS[safeIndex];
   const currentState = stepStates[currentStep.key] ?? EMPTY_STEP_STATE;
 
   const setCurrentState = (patch: Partial<StepState>) => {
@@ -166,7 +188,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
     }
     return clearPolling;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, configLoaded, currentIndex]);
+  }, [isOpen, configLoaded, safeIndex]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -275,8 +297,8 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
   };
 
   const goNext = () => {
-    if (currentIndex < STEPS.length - 1) {
-      setCurrentIndex((i) => i + 1);
+    if (safeIndex < STEPS.length - 1) {
+      setCurrentIndex(safeIndex + 1);
     } else {
       onComplete();
       onClose();
@@ -284,7 +306,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
   };
 
   const goBack = () => {
-    if (currentIndex > 0) setCurrentIndex((i) => i - 1);
+    if (safeIndex > 0) setCurrentIndex(safeIndex - 1);
   };
 
   const skipStep = () => {
@@ -292,7 +314,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
     goNext();
   };
 
-  const isLastStep = currentIndex === STEPS.length - 1;
+  const isLastStep = safeIndex === STEPS.length - 1;
   const isConnected = currentState.status === 'connected' || currentState.chatId !== null;
 
   return (
@@ -328,14 +350,14 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
           {STEPS.map((step, idx) => {
             const isSett = step.key === 'settings';
             const done = isSett ? !!wizardConfig?.botToken : stepStates[step.key]?.status === 'connected' || !!stepStates[step.key]?.chatId;
-            const active = idx === currentIndex;
+            const active = idx === safeIndex;
             const StepIcon = step.icon;
             return (
               <React.Fragment key={step.key}>
                 {idx > 0 && (
                   <div
                     className={`h-0.5 w-6 sm:w-10 rounded-full ${
-                      done || idx <= currentIndex ? 'bg-sky-500' : 'bg-slate-200 dark:bg-slate-700'
+                      done || idx <= safeIndex ? 'bg-sky-500' : 'bg-slate-200 dark:bg-slate-700'
                     }`}
                   />
                 )}
@@ -619,7 +641,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
       <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-850 rounded-b-lg shrink-0">
         <button
           onClick={goBack}
-          disabled={currentIndex === 0}
+          disabled={safeIndex === 0}
           className="text-xs font-semibold text-slate-500 dark:text-slate-400 disabled:opacity-0 flex items-center gap-1 cursor-pointer"
         >
           <ArrowLeft className="w-3.5 h-3.5" /> {t('back_button', 'Back')}

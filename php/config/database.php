@@ -34,7 +34,14 @@ header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-Testing-Mode');
 header('Content-Type: application/json; charset=UTF-8');
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+// Null-coalesced (26 Aug 2026): a CLI process has no REQUEST_METHOD at all, so
+// this emitted an "Undefined array key" warning on stdout for EVERY cron run -
+// every cron script requires this file. Same CLI-has-no-HTTP-request blind spot
+// as the SERVER_NAME fallback further down, and the same practical risk: warning
+// text printed ahead of a script's real output is exactly what breaks a caller
+// that parses that output. Line 55's own REQUEST_METHOD read already did this
+// correctly; this one was simply missed.
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
     http_response_code(200);
     exit();
 }

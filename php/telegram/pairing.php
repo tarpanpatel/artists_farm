@@ -50,6 +50,59 @@ if (!function_exists('generatePairingCode')) {
     }
 }
 
+// Matches ONE inbound Telegram message against any still-pending pairing code
+// and, on a hit, commits the discovered chat_id. Extracted from
+// pollAndMatchPairingCodes() below (26 Aug 2026) so the production WEBHOOK path
+// can run the identical matching logic - see telegram_webhook.php.
+//
+// Why this had to be shared: pairing previously only ever ran on the polling
+// path, which is unreachable on any HTTPS host. sender.php's
+// ensureTelegramWebhookSet() registers a webhook on EVERY send, and Telegram
+// refuses getUpdates with 409 Conflict while a webhook is active - which
+// pollAndMatchPairingCodes() swallows silently (`if (empty($data['ok'])) return;`).
+// telegram_webhook.php meanwhile only handled callback_query and dropped
+// message updates entirely, so nothing anywhere consumed the code. Net effect:
+// once a property had sent a single real notification, the Setup Wizard could
+// never pair another group - it just sat on "Waiting for the code to arrive..."
+// until the 15-minute expiry.
+//
+// $pending is optional so the polling loop can fetch the candidate list once for
+// a whole batch of updates rather than re-querying per message; the webhook path
+// (exactly one message per request) simply omits it.
+if (!function_exists('matchPairingCodeFromMessage')) {
+    function matchPairingCodeFromMessage($pdo, array $msg, ?array $pending = null) {
+        if (empty($msg['text']) || empty($msg['chat']['id'])) return false;
+        $text = trim($msg['text']);
+        if ($text === '') return false;
+
+        // Accept "/start FARM-KITCHEN-1234" (and the "/start@SomeBot <code>"
+        // form group chats produce) as well as the bare code on its own.
+        // Telegram delivers slash-commands to a bot even when its privacy mode
+        // is ENABLED, whereas a bare code only arrives once privacy is disabled
+        // - so the command form is what lets pairing work without the BotFather
+        // "/setprivacy -> Disable" step, and it's also the exact payload shape a
+        // t.me/<bot>?startgroup=<code> deep link delivers.
+        if (stripos($text, '/start') === 0) {
+            $parts = preg_split('/\s+/', $text, 2);
+            $text = isset($parts[1]) ? trim($parts[1]) : '';
+            if ($text === '') return false;
+        }
+
+        if ($pending === null) {
+            $pending = $pdo->query("SELECT id, code FROM telegram_pairing_codes WHERE status = 'pending' AND created_at > (NOW() - INTERVAL 15 MINUTE)")->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+        foreach ($pending as $p) {
+            if (strcasecmp($text, $p['code']) === 0) {
+                $upd = $pdo->prepare("UPDATE telegram_pairing_codes SET status = 'paired', chat_id = ?, paired_at = NOW() WHERE id = ? AND status = 'pending'");
+                $upd->execute([(string)$msg['chat']['id'], $p['id']]);
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
 // One-shot poll of the shared bot's getUpdates - the local/dev substitute for
 // Telegram's production webhook, since XAMPP has no public HTTPS endpoint for
 // Telegram to call. Matches any still-pending pairing codes against new
@@ -96,14 +149,8 @@ if (!function_exists('pollAndMatchPairingCodes')) {
             }
 
             $msg = $update['message'] ?? $update['channel_post'] ?? null;
-            if (!$msg || empty($msg['text']) || empty($msg['chat']['id'])) continue;
-            $text = trim($msg['text']);
-            foreach ($pending as $p) {
-                if (strcasecmp($text, $p['code']) === 0) {
-                    $upd = $pdo->prepare("UPDATE telegram_pairing_codes SET status = 'paired', chat_id = ?, paired_at = NOW() WHERE id = ? AND status = 'pending'");
-                    $upd->execute([(string)$msg['chat']['id'], $p['id']]);
-                }
-            }
+            if (!$msg) continue;
+            matchPairingCodeFromMessage($pdo, $msg, $pending);
         }
 
         if ($maxUpdateId > $offset) {
