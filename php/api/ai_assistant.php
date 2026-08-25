@@ -350,7 +350,13 @@ if ($aiConfig['enabled'] === true) {
             'contents' => $contents
         ];
 
-        $ch = curl_init("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" . urlencode($apiKey));
+        // Model id updated 25 Aug 2026 (real bug, caught live): 'gemini-1.5-flash' - which this
+        // exact line hardcoded before - is fully retired; a real key's own /v1beta/models listing
+        // confirmed it's no longer in the list at all (HTTP 404 "is not found for API version
+        // v1beta"). 'gemini-flash-latest' is Google's own "latest" alias rather than a pinned
+        // version, chosen specifically so this doesn't go stale the same way again the next time
+        // Google renames/retires a dated model id.
+        $ch = curl_init("https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=" . urlencode($apiKey));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
@@ -372,9 +378,10 @@ if ($aiConfig['enabled'] === true) {
             // silently fall through to the offline engine below with zero record anywhere - during
             // a trial period that's meant to be exercising the online path, that would look
             // identical to "everything's fine" while actually never calling Gemini at all. Logged
-            // here so a wrong/stale model id (this app hardcodes 'gemini-1.5-flash' - verify that's
-            // still current for your key/tier before trusting a trial's results) shows up instead
-            // of silently downgrading every single message for a week with nothing to show for it.
+            // here so a wrong/stale model id (this app hardcodes 'gemini-flash-latest' - it's an
+            // alias, but Google can still retire/rename what it points to; re-check via a real
+            // key's own /v1beta/models listing if this starts 404ing again) shows up instead of
+            // silently downgrading every single message for a week with nothing to show for it.
             TelescopeLogger::log('ai_chat', 'Gemini Call Failed', "HTTP $httpCode", "Prompt: $prompt", [
                 'http_code' => $httpCode,
                 'response_snippet' => substr((string)$response, 0, 500),
