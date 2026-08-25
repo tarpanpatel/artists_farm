@@ -1001,6 +1001,28 @@ html {
   box-shadow: none !important;
 }
 
+/* Drawer header colliding with the iOS status bar / Dynamic Island in
+   standalone PWA mode (25 Aug 2026, reported as "Add Guest" header text
+   overlapping the phone's own clock/battery icons). flowbite-react's
+   <Drawer> is `position: fixed` (see Drawer/theme.js's `base`) - before
+   index.html gained `viewport-fit=cover` (same day, a separate fix for a
+   bottom-edge gap - see that file's own comment), iOS excluded the notch
+   area from the web content's viewport entirely, so a fixed-position
+   drawer's own top edge always started safely below the status bar with no
+   extra padding needed. viewport-fit=cover makes the viewport genuinely
+   full-screen instead - correct for the bottom-edge fix it was added for,
+   but it also means every fixed-position drawer's first pixel is now the
+   true top of the physical screen, right under the status bar, and every
+   drawer's own custom header div (built per call site as a plain
+   `<div className="... p-4">`, not something flowbite's own Drawer
+   component wraps) sits flush against that edge with nothing reserving
+   room for it. `env(safe-area-inset-top)` evaluates to 0 on any
+   non-notched device or when viewport-fit=cover isn't active, so this is a
+   no-op everywhere else. */
+[data-testid="flowbite-drawer"] {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
 /* Flowbite <Table>'s decorative shadow layer painting OVER the table instead
    of behind it (found 22 Aug 2026, Team & Access staff table - the whole
    table rendered as a blank white/black rectangle, no row content visible).

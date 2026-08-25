@@ -48,7 +48,12 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, childre
   // column almost no room: min-w-0 flex-1 let it shrink indefinitely while
   // the shrink-0 buttons kept their full width, wrapping the title one or
   // two words per line instead of the buttons dropping to their own row.
-  <div className="gen_page_head flex flex-row items-center justify-between gap-3 pb-3 mb-4 page-header">
+  // RE-FIXED 25 Aug 2026: the 23 Aug "Help?" popover commit had silently
+  // reverted this back to unconditional flex-row (edited from a stale
+  // pre-21-Aug copy of this file) while this exact comment stayed put right
+  // above the regressed class - reported as the Dashboard header's title,
+  // "Help?" link, and action buttons all colliding on a real phone.
+  <div className="gen_page_head flex flex-col items-start sm:flex-row sm:items-center justify-between gap-3 pb-3 mb-4 page-header">
     <div className="min-w-0 flex-1 page-header__left">
       <div className="flex items-center flex-wrap gap-2 page-header__title-row">
         <h1 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight sm:text-2xl page-header__title">
