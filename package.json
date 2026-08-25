@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 3000",
     "build": "vite build",
+    "build:landing": "tailwindcss -i ./src/landing-pages.css -o ./assets/css/landing.css --minify",
     "preview": "vite preview --host 0.0.0.0 --port 3000",
     "monitor": "node browser-monitor.js",
     "test:e2e": "playwright test",

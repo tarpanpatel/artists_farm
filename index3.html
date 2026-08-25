@@ -15,10 +15,17 @@
     <!-- Custom Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563EB' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17 7V4h-3v2' /%3E%3Cpath d='M2 11l10-8 10 8' /%3E%3Cpath d='M4 10v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10' /%3E%3Cpath d='M10 22v-4a2 2 0 0 1 4 0v4' /%3E%3Cpolyline points='8 14 5.5 16 8 18' /%3E%3Cpolyline points='16 14 18.5 16 16 18' /%3E%3C/svg%3E">
     
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind CSS (real compiled build, 25 Aug 2026 - replaces
+         cdn.tailwindcss.com, the Play CDN. Tailwind's own docs say not to use
+         it in production: it ships a large JS runtime that recompiles the
+         page's CSS in every visitor's browser on every load, on top of being
+         a third-party render-blocking script - and this is the very first
+         page a prospective customer sees. Source: src/landing-pages.css
+         (mirrors the old inline tailwind.config's fontFamily/brand-color
+         extension via Tailwind v4 @theme). Regenerate after editing classes
+         here via `npm run build:landing`. -->
+    <link rel="stylesheet" href="/assets/css/landing.css">
 
-    
     <!-- Google Fonts (non-render-blocking, 25 Aug 2026 - see index.html for
          the full writeup: a plain stylesheet <link> here would hold this
          entire public landing page blank until fonts.googleapis.com
@@ -27,29 +34,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500;1,600&display=swap" rel="stylesheet" media="print" onload="this.media='all'; this.onload=null;">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500;1,600&display=swap" rel="stylesheet"></noscript>
-    
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        serif: ['Playfair Display', 'serif'],
-                    },
-                    colors: {
-                        brand: {
-                            50: '#eff6ff',
-                            100: '#dbeafe',
-                            500: '#3b82f6',
-                            600: '#2563eb',
-                            700: '#1d4ed8',
-                            900: '#1e3a8a',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
     <style>
         body { background-color: #FAFAFA; color: #0F172A; }
         .hover-lift { transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1); }

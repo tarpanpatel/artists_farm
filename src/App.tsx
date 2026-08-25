@@ -421,21 +421,15 @@ function AppBody({ preloadedData }: AppBodyProps) {
           el.textContent = savedCSS;
         }
 
-        // Also load Lucide settings
-        if (data.data?.lucide_settings) {
-          try {
-            const lucide = JSON.parse(data.data.lucide_settings);
-            let el = document.getElementById('artists-farm-lucide-global') as HTMLStyleElement | null;
-            if (!el) {
-              el = document.createElement('style');
-              el.id = 'artists-farm-lucide-global';
-              document.head.appendChild(el);
-            }
-            el.textContent = `.lucide { width: ${lucide.size}px; height: ${lucide.size}px; stroke-width: ${lucide.strokeWidth}; color: ${lucide.color}; }`;
-          } catch (e) {
-            console.error('Failed to parse lucide settings:', e);
-          }
-        }
+        // A "load Lucide settings" block used to live here too - injected a
+        // `.lucide { width/height/stroke-width/color }` global CSS rule from
+        // a DB-stored lucide_settings field. Removed 25 Aug 2026 as dead code
+        // in the site-wide lucide-react removal sweep: no icon anywhere in
+        // the app carries a "lucide" class any more (Flowbite icons don't
+        // use one), and nothing writes lucide_settings any more either - the
+        // admin control that used to set it was already gone, so this had
+        // been fetching a value and generating a CSS rule that could never
+        // match any element in the DOM.
       } catch (err) {
         console.error('Failed to load global CSS settings:', err);
       }

@@ -616,6 +616,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
           <button
             type="button"
             onClick={onClose}
+            aria-label={t('close_button', 'Close')}
             className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
           >
             <X className="w-5 h-5" />

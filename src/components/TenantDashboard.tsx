@@ -8,6 +8,7 @@ import {
 import { Input } from './Input';
 import { Textarea } from './Textarea';
 import { StyledSelect } from './StyledSelect';
+import { LoadingScreen } from './LoadingScreen';
 import { API_ROOT_BASE, apiFetch, getPropertySlug } from '../services/api';
 import { Button } from './Button';
 import { Alert as FlowbiteAlert, Drawer, Modal, Checkbox } from 'flowbite-react';
@@ -309,14 +310,9 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 dark:from-slate-950 dark:to-indigo-950 flex items-center justify-center tenant-dashboard__loader-container">
-        <div className="text-center space-y-3 tenant-dashboard__loader">
-          <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mx-auto tenant-dashboard__loader-icon" />
-          <p className="text-sm text-slate-500 dark:text-slate-400 tenant-dashboard__loader-text">{t('loading_tenant_dashboard_message', 'Loading tenant dashboard…')}</p>
-        </div>
-      </div>
-    );
+    // Shared branded splash (25 Aug 2026), replacing a one-off spinner+text
+    // block - see the same fix/comment in PlatformPropertyManagement.tsx.
+    return <LoadingScreen message={t('loading_tenant_dashboard_message', 'Loading tenant dashboard…')} />;
   }
 
   return (

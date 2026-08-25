@@ -675,14 +675,13 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-slate-600 dark:text-slate-400">Loading platform...</p>
-        </div>
-      </div>
-    );
+    // Uses the shared branded splash (25 Aug 2026) instead of a one-off
+    // spinner+text block - this screen and TenantDashboard.tsx had each
+    // rolled their own ad hoc "loading" UI instead of reusing LoadingScreen,
+    // the one component that's actually supposed to be the app's loading
+    // experience (previously only DataLoader.tsx used it) - reported as
+    // "different kinds of loading screens throughout the site".
+    return <LoadingScreen message="Loading platform..." />;
   }
 
   return (
