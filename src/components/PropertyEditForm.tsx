@@ -63,6 +63,12 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
   isRoom = false,
 }) => {
   const [name, setName] = useState(property.name || '');
+  // Live "required" feedback (26 Aug 2026, CLAUDE.md's "Real-Time Form Validation" sweep) -
+  // gated on `nameTouched` (set on blur) rather than length alone, since an EMPTY required
+  // field is invalid from the moment the form opens - without a touched gate it would show
+  // red before the user has done anything at all, unlike a format rule that's only "wrong"
+  // once something's actually been typed.
+  const [nameTouched, setNameTouched] = useState(false);
   const [email, setEmail] = useState(property.email || '');
   const [phone, setPhone] = useState(property.phone || '');
   const [gstin, setGstin] = useState(property.gstin || '');
@@ -127,7 +133,10 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
   });
 
   const handleSave = async () => {
-    if (!name.trim()) return;
+    if (!name.trim()) {
+      setNameTouched(true);
+      return;
+    }
     if (upiId.trim() && !isValidUpiIdSyntax(upiId)) {
       setError(t('upi_id_invalid_format_error', 'Enter a valid UPI ID, e.g. name@bank'));
       return;
@@ -205,6 +214,8 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
             label={isRoom ? t('room_name_label', 'Room Name') : t('tenant_property_name_label', 'Property Name')}
             value={name}
             onChange={(e) => setName(e.target.value)}
+            onBlur={() => setNameTouched(true)}
+            error={nameTouched && !name.trim() ? 'This field is required' : undefined}
           />
         </div>
         {!isRoom && (

@@ -64,6 +64,7 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [showAddRoomModal, setShowAddRoomModal] = useState(false);
   const [newRoom, setNewRoom] = useState({ name: '', slug: '', default_tariff: '' });
+  const [roomNameTouched, setRoomNameTouched] = useState(false);
   const [addingRoom, setAddingRoom] = useState(false);
   const [deletingRoom, setDeletingRoom] = useState<number | null>(null);
   const [slotUsage, setSlotUsage] = useState<{ total_slots: number; used_slots: number; remaining_slots: number } | null>(null);
@@ -111,6 +112,7 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
 
   const handleAddRoom = async () => {
     if (!newRoom.name || !newRoom.slug) {
+      setRoomNameTouched(true);
       setError('Room name and slug required');
       return;
     }
@@ -132,6 +134,7 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
       if (data.success) {
         setShowAddRoomModal(false);
         setNewRoom({ name: '', slug: '', default_tariff: '' });
+        setRoomNameTouched(false);
         await loadData();
         onUpdated?.();
       } else {
@@ -390,6 +393,7 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
           if (!addingRoom) {
             setShowAddRoomModal(false);
             setNewRoom({ name: '', slug: '', default_tariff: '' });
+        setRoomNameTouched(false);
           }
         }}
         position="right"
@@ -410,6 +414,7 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
               if (!addingRoom) {
                 setShowAddRoomModal(false);
                 setNewRoom({ name: '', slug: '', default_tariff: '' });
+        setRoomNameTouched(false);
               }
             }}
             className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
@@ -434,6 +439,8 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
                 .replace(/^-|-$/g, '');
               setNewRoom({ ...newRoom, name: e.target.value, slug });
             }}
+            onBlur={() => setRoomNameTouched(true)}
+            error={roomNameTouched && !newRoom.name.trim() ? 'This field is required' : undefined}
             placeholder={t('room_name_placeholder', 'e.g., Suite A')}
           />
 
@@ -460,6 +467,7 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
             onClick={() => {
               setShowAddRoomModal(false);
               setNewRoom({ name: '', slug: '', default_tariff: '' });
+        setRoomNameTouched(false);
             }}
             disabled={addingRoom}
           >

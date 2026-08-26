@@ -36,6 +36,7 @@ export const DefaultExpensesManager: React.FC<DefaultExpensesManagerProps> = ({ 
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [newItem, setNewItem] = useState({ label: '', category: '', default_amount: '', selected_icon: '' });
+  const [itemNameTouched, setItemNameTouched] = useState(false);
   const [editingItem, setEditingItem] = useState<ExpenseItem | null>(null);
   const [editForm, setEditForm] = useState({ label: '', default_amount: '', selected_icon: '' });
   const [saving, setSaving] = useState(false);
@@ -72,6 +73,7 @@ export const DefaultExpensesManager: React.FC<DefaultExpensesManagerProps> = ({ 
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItem.label || !newItem.category) {
+      setItemNameTouched(true);
       setError('Item name and category are required');
       return;
     }
@@ -93,6 +95,7 @@ export const DefaultExpensesManager: React.FC<DefaultExpensesManagerProps> = ({ 
       if (data.success || data.status === 'success') {
         setSuccess('Expense item added successfully!');
         setNewItem({ label: '', category: '', default_amount: '', selected_icon: '' });
+        setItemNameTouched(false);
         setIsAddingNew(false);
         loadExpenses();
       } else {
@@ -251,6 +254,8 @@ export const DefaultExpensesManager: React.FC<DefaultExpensesManagerProps> = ({ 
                 <Input
                   value={newItem.label}
                   onChange={(e) => setNewItem({ ...newItem, label: e.target.value })}
+                  onBlur={() => setItemNameTouched(true)}
+                  error={itemNameTouched && !newItem.label.trim() ? 'This field is required' : undefined}
                   placeholder={t('item_name_placeholder', 'e.g., Floor Cleaner')}
                 />
               </div>

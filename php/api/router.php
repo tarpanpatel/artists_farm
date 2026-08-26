@@ -263,6 +263,22 @@ if (!isSchemaVerified('schema_properties_table_v4')) {
     markSchemaVerified('schema_properties_table_v4');
 }
 
+// Self-healing column check for `properties.telegram_bot_token` (26 Aug 2026) - Root Admin's
+// "White-Glove Telegram Bot Token" field in PlatformPropertyManagement.tsx read/displayed this
+// column via `SELECT *` in get_all_properties, but NO action anywhere ever wrote to it -
+// edit_property's UPDATE never listed it, and update_property (this file) didn't recognize the
+// field either, so saving a token here silently did nothing. Fixed alongside this self-heal by
+// adding it to update_property's field list below - same self-healing pattern as upi_id etc.
+if (!isSchemaVerified('schema_properties_table_v5')) {
+    try {
+        $propertiesColsV5 = $pdo->query("SHOW COLUMNS FROM properties")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('telegram_bot_token', $propertiesColsV5)) {
+            $pdo->exec("ALTER TABLE properties ADD COLUMN `telegram_bot_token` VARCHAR(120) DEFAULT NULL AFTER `walk_in_table_count`");
+        }
+    } catch (Exception $e) {}
+    markSchemaVerified('schema_properties_table_v5');
+}
+
 /**
  * A property's "Super Admin" staff row is not an independent staff account -
  * it IS the tenant, and there is exactly one of them, always. This keeps
@@ -2767,6 +2783,10 @@ switch ($action) {
                 $sets[] = 'telegram_template_customization_enabled = ?';
                 $params[] = $input['telegram_template_customization_enabled'] ? 1 : 0;
             }
+            if (array_key_exists('telegram_bot_token', $input)) {
+                $sets[] = 'telegram_bot_token = ?';
+                $params[] = trim($input['telegram_bot_token']) ?: null;
+            }
             if (array_key_exists('google_maps_link', $input)) {
                 $sets[] = 'google_maps_link = ?';
                 $params[] = trim($input['google_maps_link']) ?: null;
@@ -2983,6 +3003,43 @@ switch ($action) {
                     $stmtAudit->execute([$property_id, $actionMsg, $auditUser, $ip, $ua]);
                 } catch (Exception $eAudit) {}
             }
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+
+    // Root Admin's "White-Glove Telegram Bot Token" field (PlatformPropertyManagement.tsx) used to
+    // write only to `properties.telegram_bot_token`, a column nothing else in the app ever read -
+    // the real source of truth pairing/sending actually uses is `property_modules.config.botToken`
+    // (see pairingBotToken()/getPropertyTelegramConfig() in php/telegram/pairing.php + sender.php),
+    // which this field never touched at all. Found live 26 Aug 2026: token showed as saved in Root
+    // Admin, but Telegram Group Pairing kept saying "No bot assigned yet" - two disconnected
+    // storage locations for what looked like one setting. Fixed by writing to the REAL location
+    // here (read-merge-write, so existing groups/routing already paired are never clobbered),
+    // while still mirroring into properties.telegram_bot_token too so Root Admin's own display
+    // field (and anything else that ever does SELECT * FROM properties) stays consistent.
+    case 'set_property_telegram_bot_token':
+        if (!($_SESSION['is_platform_admin'] ?? false)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Root admin access required']);
+            exit;
+        }
+        $input = json_decode(file_get_contents('php://input'), true);
+        $property_id = $input['property_id'] ?? '';
+        if (!$property_id) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'property_id required']);
+            exit;
+        }
+        try {
+            $token = trim($input['telegram_bot_token'] ?? '');
+            $config = getPropertyTelegramConfig($pdo, $property_id);
+            $config['botToken'] = $token !== '' ? $token : null;
+            $ok = updatePropertyModuleConfig($pdo, $property_id, 'telegram', $config);
+            $pdo->prepare("UPDATE properties SET telegram_bot_token = ? WHERE id = ?")
+                ->execute([$token !== '' ? $token : null, $property_id]);
+            echo json_encode(['success' => $ok, 'message' => $ok ? 'Bot token saved' : 'Failed to save bot token']);
         } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);

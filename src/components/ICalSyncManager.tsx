@@ -95,6 +95,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
   const [newServiceName, setNewServiceName] = useState('Airbnb Calendar');
   const [customServiceName, setCustomServiceName] = useState('');
   const [newImportUrl, setNewImportUrl] = useState('');
+  const [newImportUrlTouched, setNewImportUrlTouched] = useState(false);
   const [selectedRoomForImport, setSelectedRoomForImport] = useState<string>('all');
   const [isAdding, setIsAdding] = useState(false);
 
@@ -107,6 +108,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
   const [editingCalendar, setEditingCalendar] = useState<Calendar | null>(null);
   const [editServiceName, setEditServiceName] = useState('');
   const [editUrl, setEditUrl] = useState('');
+  const [editUrlTouched, setEditUrlTouched] = useState(false);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   // Per-room import form inputs
@@ -177,6 +179,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
     }
 
     if (!url.trim()) {
+      setNewImportUrlTouched(true);
       showToast('Please enter a valid iCal URL', { type: 'error' });
       return;
     }
@@ -211,6 +214,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
         }
         showToast(msg, { type: 'success', duration: 5000 });
         setNewImportUrl('');
+        setNewImportUrlTouched(false);
         setCustomServiceName('');
         setIsAddModalOpen(false);
         loadCalendars();
@@ -228,11 +232,13 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
     setEditingCalendar(cal);
     setEditServiceName(cal.service_name);
     setEditUrl(cal.ical_url);
+    setEditUrlTouched(false);
   };
 
   const handleUpdateCalendar = async () => {
     if (!editingCalendar) return;
     if (!editUrl.trim()) {
+      setEditUrlTouched(true);
       showToast('Please enter a valid iCal URL', { type: 'error' });
       return;
     }
@@ -1078,6 +1084,8 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
               type="url"
               value={newImportUrl}
               onChange={(e) => setNewImportUrl(e.target.value)}
+              onBlur={() => setNewImportUrlTouched(true)}
+              error={newImportUrlTouched && !newImportUrl.trim() ? 'This field is required' : undefined}
               placeholder={t('ical_url_example_placeholder', 'https://www.airbnb.com/calendar/ical/...')}
               className="font-mono"
             />
@@ -1166,6 +1174,8 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
               type="url"
               value={editUrl}
               onChange={(e) => setEditUrl(e.target.value)}
+              onBlur={() => setEditUrlTouched(true)}
+              error={editUrlTouched && !editUrl.trim() ? 'This field is required' : undefined}
               placeholder={t('ical_url_example_placeholder', 'https://www.airbnb.com/calendar/ical/...')}
               className="font-mono"
             />

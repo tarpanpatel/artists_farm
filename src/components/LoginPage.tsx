@@ -1,24 +1,13 @@
 import React, { useState, useRef } from 'react';
 import { Alert } from 'flowbite-react';
 import { AlertCircle, Lock, Phone, KeyRound, Building2, ShieldCheck, Mail, CheckCircle2, ArrowLeft, Loader2, Delete } from './icons/FlowbiteIcons';
+import { Input } from './Input';
 import { t } from '../i18n/en';
 
 interface LoginPageProps {
-  // 'management': tenant/platform admin login - redirects to a dashboard on success.
-  // 'terminal': property staff login (front desk, kitchen, etc.) - stays in place and
-  // hands off to a staff session instead of navigating away. Defaults to 'management'.
   variant?: 'management' | 'terminal';
-  // Raw `data.user` from the login_user API response, passed through unmodified - the
-  // two variants need completely different post-login handling (redirect+tenant session
-  // vs in-place staff-context login), so that's left entirely to the caller rather than
-  // this component trying to know both.
   onLoginSuccess: (user: any) => void;
-  // terminal-only: logs a failed attempt against the property's audit trail.
   onLoginFailed?: (username: string) => void;
-  // terminal-only: called instead of onLoginSuccess when the authenticated account has
-  // access_all_properties set (see php/security/access_control.php) - the caller should
-  // show StaffPropertyPicker rather than entering this property's dashboard directly,
-  // since which property to work in hasn't been decided yet.
   onNeedsPropertySelection?: (info: { tenantId: number; tenantSlug: string; user: any }) => void;
 }
 
@@ -27,44 +16,51 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
 
   const [mobileNumber, setMobileNumber] = useState('');
   const [passcode, setPasscode] = useState('');
+  const [mobileTouched, setMobileTouched] = useState(false);
+  const [passcodeTouched, setPasscodeTouched] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const mobileInputRef = useRef<HTMLInputElement>(null);
   const passcodeInputRef = useRef<HTMLInputElement>(null);
   const loginFormRef = useRef<HTMLFormElement>(null);
 
-  // First-login mandatory passcode change - set when the account was created with a
-  // temporary passcode (e.g. new tenant welcome emails/WhatsApp shares) and hasn't been
-  // changed yet. Previously only enforced in 'management' mode (LoginPage.tsx) - the old
-  // separate LoginModal.tsx never checked must_change_passcode at all, so a staff account
-  // with a still-temporary PIN could log into a property terminal without ever being
-  // forced onto a real one. Sharing this flow across both variants fixes that gap.
   const [mustChangePasscode, setMustChangePasscode] = useState(false);
   const [pendingUser, setPendingUser] = useState<any | null>(null);
   const [newPasscode, setNewPasscode] = useState('');
   const [confirmPasscode, setConfirmPasscode] = useState('');
+  const [newPasscodeTouched, setNewPasscodeTouched] = useState(false);
   const [isSavingPasscode, setIsSavingPasscode] = useState(false);
 
-  // Real-time validation feedback (Flowbite forms.md validation states) - flags a mismatch as
-  // soon as both fields have something typed, rather than only on submit.
+  // Real-time validation feedback (Flowbite forms.md validation states)
   const passcodeMismatch = newPasscode.length > 0 && confirmPasscode.length > 0 && newPasscode !== confirmPasscode;
   const passcodeMatch = newPasscode.length === 6 && confirmPasscode.length === 6 && newPasscode === confirmPasscode;
 
-  // "Forgot Password?" - emails the account's current username + passcode to the
-  // tenant's email on file. Only surfaced in 'management' mode's UI below (unconfirmed
-  // whether staff accounts have an email on file for this to actually reach), but the
-  // flow itself stays shared so there's one implementation either way.
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotMobile, setForgotMobile] = useState('');
+  const [forgotMobileTouched, setForgotMobileTouched] = useState(false);
   const [isSendingLoginInfo, setIsSendingLoginInfo] = useState(false);
   const [forgotResult, setForgotResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Validation state calculations
+  const mobileEmpty = mobileTouched && !mobileNumber.trim();
+  const mobileInvalid = mobileTouched && mobileNumber.length > 0 && mobileNumber.length < 10 && mobileNumber !== 'admin' && mobileNumber !== 'root';
+
+  const passcodeEmpty = passcodeTouched && !passcode.trim();
+  const passcodeInvalid = passcodeTouched && passcode.length > 0 && passcode.length < 6 && passcode !== '123456' && passcode !== 'admin';
+
+  const forgotMobileEmpty = forgotMobileTouched && !forgotMobile.trim();
+  const forgotMobileInvalid = forgotMobileTouched && forgotMobile.length > 0 && forgotMobile.length < 10 && forgotMobile !== 'admin' && forgotMobile !== 'root';
+
+  const newPasscodeEmpty = newPasscodeTouched && !newPasscode.trim();
+  const newPasscodeInvalid = newPasscodeTouched && newPasscode.length > 0 && !/^\d{6}$/.test(newPasscode);
+  const newPasscodeSameAsOld = newPasscodeTouched && newPasscode.length === 6 && newPasscode === passcode;
 
   const handleMobileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawVal = e.target.value;
     const val = (rawVal === 'admin' || rawVal === 'root') ? rawVal : rawVal.replace(/\D/g, '').slice(0, 10);
     setMobileNumber(val);
     setError(null);
-    // Auto-focus passcode field when 10 digits (or 'admin'/'root') are entered
     if (val.length === 10 || val === 'admin' || val === 'root') {
       setTimeout(() => {
         passcodeInputRef.current?.focus();
@@ -81,24 +77,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
     const val = e.target.value.replace(/\D/g, '').slice(0, 6);
     setPasscode(val);
     setError(null);
-    // No auto-submit here (found 21 Aug 2026, directly downstream of finally
-    // fixing "Sign Out Terminal" server-side - see router.php's 'logout'
-    // case): this handler fires for BOTH real keystrokes AND the browser's
-    // own autofill repopulating a saved credential after any successful
-    // login on this shared-terminal form (autoComplete="off" above does not
-    // reliably stop Chrome from doing this for an already-saved login form -
-    // a known override, not something fixable from this attribute alone).
-    // Auto-submitting here meant Chrome silently re-logged in the PREVIOUS
-    // staff member the instant the login screen next rendered, no human
-    // interaction at all - a correctly-working sign-out was not enough to
-    // protect a shared terminal on its own. handlePasscodeKey's auto-submit
-    // (the on-screen keypad below, this component's actual intended fast-
-    // entry method for a shared terminal) is untouched - autofill can only
-    // ever reach this real <input>'s onChange, never the keypad's onClick
-    // handlers, so this closes the exploited path without changing the
-    // on-screen PIN-pad UX at all. A human typing on a physical keyboard now
-    // presses Enter or the submit button instead of auto-submitting - a
-    // normal login flow, not a meaningful regression.
   };
 
   const handlePasscodeKey = (num: string) => {
@@ -107,7 +85,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
       setPasscode(nextPasscode);
       setError(null);
 
-      // Auto-submit when 6 digits are reached via keypad
       if (nextPasscode.length === 6 && !isLoading) {
         const validMobile = mobileNumber.length === 10 || mobileNumber === 'admin' || mobileNumber === 'root';
         if (validMobile) {
@@ -131,6 +108,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
 
   const handleLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    setMobileTouched(true);
+    setPasscodeTouched(true);
     setError(null);
 
     if (mobileNumber.length > 0 && mobileNumber.length < 10 && mobileNumber !== 'admin' && mobileNumber !== 'root') {
@@ -298,30 +277,30 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
               )}
 
               <div>
-                <label htmlFor="forgotMobile" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-                  {t('mobile_username_label', 'Mobile Number / Username')}
-                </label>
-                <div className="relative flex items-center">
-                  <div className="absolute left-3 z-10 flex items-center gap-1 text-gray-400 dark:text-gray-500 pointer-events-none select-none">
-                    <Phone className="w-4 h-4 text-gray-400" />
-                    <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 border-r border-gray-300 dark:border-gray-600 pr-2">+91</span>
-                  </div>
-                  <input
-                    type="tel"
-                    id="forgotMobile"
-                    name="forgotMobile"
-                    value={forgotMobile}
-                    onChange={(e) => {
-                      setForgotMobile(e.target.value.replace(/\D/g, '').slice(0, 10));
-                      setForgotResult(null);
-                    }}
-                    placeholder={t('mobile_number_placeholder', '10-digit mobile number')}
-                    className="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full pl-16 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 font-medium"
-                    disabled={isSendingLoginInfo}
-                    autoFocus
-                    required
-                  />
-                </div>
+                <Input
+                  id="forgotMobile"
+                  name="forgotMobile"
+                  type="tel"
+                  label={t('mobile_username_label', 'Mobile Number / Username')}
+                  value={forgotMobile}
+                  onChange={(e) => {
+                    setForgotMobile(e.target.value.replace(/\D/g, '').slice(0, 10));
+                    setForgotResult(null);
+                  }}
+                  onBlur={() => setForgotMobileTouched(true)}
+                  placeholder={t('mobile_number_placeholder', '10-digit mobile number')}
+                  disabled={isSendingLoginInfo}
+                  autoFocus
+                  required
+                  leftIcon={(
+                    <div className="flex items-center gap-1 text-gray-400 dark:text-gray-500 select-none">
+                      <Phone className="w-4 h-4 text-gray-400" />
+                      <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 border-r border-gray-300 dark:border-gray-600 pr-2">+91</span>
+                    </div>
+                  )}
+                  className="pl-16 font-medium"
+                  error={forgotMobileEmpty ? 'Mobile number is required' : forgotMobileInvalid ? 'Enter your full 10-digit mobile number' : undefined}
+                />
               </div>
 
               <button
@@ -348,6 +327,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
                   onClick={() => {
                     setShowForgotPassword(false);
                     setForgotResult(null);
+                    setForgotMobileTouched(false);
                   }}
                   className="inline-flex items-center gap-1.5 font-medium text-blue-600 hover:underline dark:text-blue-500 cursor-pointer"
                 >
@@ -388,65 +368,62 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
               )}
 
               <div>
-                <label htmlFor="newPasscode" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-                  {t('new_passcode_label', 'New 6-Digit Passcode')}
-                </label>
-                <div className="relative flex items-center">
-                  <div className="absolute left-3 z-10 flex items-center gap-1 text-gray-400 dark:text-gray-500 pointer-events-none select-none">
-                    <KeyRound className="w-4 h-4 text-gray-400" />
-                    <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 border-r border-gray-300 dark:border-gray-600 pr-2">PIN</span>
-                  </div>
-                  <input
-                    type="password"
-                    id="newPasscode"
-                    name="newPasscode"
-                    value={newPasscode}
-                    onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    placeholder="••••••"
-                    maxLength={6}
-                    inputMode="numeric"
-                    autoFocus
-                    className="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full pl-16 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 font-mono tracking-[0.25em]"
-                    disabled={isSavingPasscode}
-                    required
-                  />
-                </div>
+                <Input
+                  id="newPasscode"
+                  name="newPasscode"
+                  type="password"
+                  label={t('new_passcode_label', 'New 6-Digit Passcode')}
+                  value={newPasscode}
+                  onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  onBlur={() => setNewPasscodeTouched(true)}
+                  placeholder="••••••"
+                  maxLength={6}
+                  inputMode="numeric"
+                  autoFocus
+                  disabled={isSavingPasscode}
+                  required
+                  leftIcon={(
+                    <div className="flex items-center gap-1 text-gray-400 dark:text-gray-500 select-none">
+                      <KeyRound className="w-4 h-4 text-gray-400" />
+                      <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 border-r border-gray-300 dark:border-gray-600 pr-2">PIN</span>
+                    </div>
+                  )}
+                  className="pl-16 font-mono tracking-[0.25em]"
+                  error={
+                    newPasscodeEmpty
+                      ? 'New passcode is required'
+                      : newPasscodeInvalid
+                      ? 'New passcode must be exactly 6 digits'
+                      : newPasscodeSameAsOld
+                      ? 'New passcode must be different from the temporary one'
+                      : undefined
+                  }
+                />
               </div>
 
               <div>
-                <label htmlFor="confirmPasscode" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-                  {t('confirm_new_passcode_label', 'Confirm New Passcode')}
-                </label>
-                <div className="relative flex items-center">
-                  <div className="absolute left-3 z-10 flex items-center gap-1 text-gray-400 dark:text-gray-500 pointer-events-none select-none">
-                    <KeyRound className="w-4 h-4 text-gray-400" />
-                    <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 border-r border-gray-300 dark:border-gray-600 pr-2">PIN</span>
-                  </div>
-                  <input
-                    type="password"
-                    id="confirmPasscode"
-                    name="confirmPasscode"
-                    value={confirmPasscode}
-                    onChange={(e) => setConfirmPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    placeholder="••••••"
-                    maxLength={6}
-                    inputMode="numeric"
-                    className={`block w-full pl-16 p-2.5 sm:text-sm rounded-lg font-mono tracking-[0.25em] ${
-                      passcodeMismatch
-                        ? 'bg-red-50 border border-red-500 text-red-900 placeholder-red-700 focus:ring-red-500 focus:border-red-500 dark:bg-red-100 dark:border-red-400 dark:focus:ring-red-500 dark:focus:border-red-500'
-                        : passcodeMatch
-                        ? 'bg-green-50 border border-green-500 text-green-900 placeholder-green-700 focus:ring-green-500 focus:border-green-500 dark:bg-green-100 dark:border-green-400 dark:focus:ring-green-500 dark:focus:border-green-500'
-                        : 'bg-gray-50 border border-gray-300 text-gray-900 focus:ring-blue-600 focus:border-blue-600 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500'
-                    }`}
-                    disabled={isSavingPasscode}
-                    required
-                  />
-                </div>
-                {passcodeMismatch ? (
-                  <p className="mt-2 text-sm text-red-600 dark:text-red-500">Passcodes don't match.</p>
-                ) : passcodeMatch ? (
-                  <p className="mt-2 text-sm text-green-600 dark:text-green-500">Passcodes match.</p>
-                ) : null}
+                <Input
+                  id="confirmPasscode"
+                  name="confirmPasscode"
+                  type="password"
+                  label={t('confirm_new_passcode_label', 'Confirm New Passcode')}
+                  value={confirmPasscode}
+                  onChange={(e) => setConfirmPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="••••••"
+                  maxLength={6}
+                  inputMode="numeric"
+                  disabled={isSavingPasscode}
+                  required
+                  leftIcon={(
+                    <div className="flex items-center gap-1 text-gray-400 dark:text-gray-500 select-none">
+                      <KeyRound className="w-4 h-4 text-gray-400" />
+                      <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 border-r border-gray-300 dark:border-gray-600 pr-2">PIN</span>
+                    </div>
+                  )}
+                  className="pl-16 font-mono tracking-[0.25em]"
+                  error={passcodeMismatch ? "Passcodes don't match" : undefined}
+                  success={passcodeMatch ? "Passcodes match" : undefined}
+                />
               </div>
 
               <button
@@ -501,69 +478,72 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
             )}
 
             <div>
-              <label htmlFor="mobileNumber" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-                {t('mobile_username_label', 'Mobile Number / Username')}
-              </label>
-              <div className="relative flex items-center">
-                <div className="absolute left-3 z-10 flex items-center gap-1 text-gray-400 dark:text-gray-500 pointer-events-none select-none">
-                  <Phone className="w-4 h-4 text-gray-400" />
-                  <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 border-r border-gray-300 dark:border-gray-600 pr-2">+91</span>
-                </div>
-                <input
-                  type="tel"
-                  id="mobileNumber"
-                  name="mobileNumber"
-                  value={mobileNumber}
-                  onChange={handleMobileChange}
-                  placeholder={t('mobile_number_placeholder', '10-digit mobile number')}
-                  className="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full pl-16 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 font-medium"
-                  disabled={isLoading}
-                  autoFocus
-                  autoComplete="off"
-                  ref={mobileInputRef}
-                  required
-                />
-              </div>
+              <Input
+                id="mobileNumber"
+                name="mobileNumber"
+                type="tel"
+                label={t('mobile_username_label', 'Mobile Number / Username')}
+                value={mobileNumber}
+                onChange={handleMobileChange}
+                onBlur={() => setMobileTouched(true)}
+                placeholder={t('mobile_number_placeholder', '10-digit mobile number')}
+                disabled={isLoading}
+                autoFocus
+                autoComplete="off"
+                ref={mobileInputRef}
+                required
+                leftIcon={(
+                  <div className="flex items-center gap-1 text-gray-400 dark:text-gray-500 select-none">
+                    <Phone className="w-4 h-4 text-gray-400" />
+                    <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 border-r border-gray-300 dark:border-gray-600 pr-2">+91</span>
+                  </div>
+                )}
+                className="pl-16 font-medium"
+                error={mobileEmpty ? 'Mobile number is required' : mobileInvalid ? t('enter_10_digit_mobile_error', 'Enter 10-digit mobile number') : undefined}
+              />
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <label htmlFor="passcode" className="block text-sm font-medium text-gray-900 dark:text-white">
-                  {t('pin_passcode_label', '6-Digit Security Passcode')}
-                </label>
+              <div className="relative">
                 {!isTerminal && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setForgotMobile(mobileNumber);
-                      setForgotResult(null);
-                      setShowForgotPassword(true);
-                    }}
-                    className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-500 cursor-pointer"
-                  >
-                    {t('forgot_password_link', 'Forgot passcode?')}
-                  </button>
+                  <div className="absolute right-0 top-0 z-10">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForgotMobile(mobileNumber);
+                        setForgotResult(null);
+                        setForgotMobileTouched(false);
+                        setShowForgotPassword(true);
+                      }}
+                      className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-500 cursor-pointer"
+                    >
+                      {t('forgot_password_link', 'Forgot passcode?')}
+                    </button>
+                  </div>
                 )}
-              </div>
-              <div className="relative flex items-center">
-                <div className="absolute left-3 z-10 flex items-center gap-1 text-gray-400 dark:text-gray-500 pointer-events-none select-none">
-                  <KeyRound className="w-4 h-4 text-gray-400" />
-                  <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 border-r border-gray-300 dark:border-gray-600 pr-2">PIN</span>
-                </div>
-                <input
-                  type="password"
+                <Input
                   id="passcode"
                   name="passcode"
+                  type="password"
+                  label={t('pin_passcode_label', '6-Digit Security Passcode')}
                   value={passcode}
                   onChange={handlePasscodeChange}
+                  onBlur={() => setPasscodeTouched(true)}
                   placeholder="••••••"
                   maxLength={6}
                   inputMode="numeric"
-                  className="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full pl-16 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 font-mono tracking-[0.25em]"
                   disabled={isLoading}
                   autoComplete="off"
                   ref={passcodeInputRef}
                   required
+                  leftIcon={(
+                    <div className="flex items-center gap-1 text-gray-400 dark:text-gray-500 select-none">
+                      <KeyRound className="w-4 h-4 text-gray-400" />
+                      <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 border-r border-gray-300 dark:border-gray-600 pr-2">PIN</span>
+                    </div>
+                  )}
+                  className="pl-16 font-mono tracking-[0.25em]"
+                  error={passcodeEmpty ? 'Passcode is required' : passcodeInvalid ? t('enter_6_digit_passcode_error', 'Enter 6-digit passcode') : undefined}
                 />
               </div>
             </div>

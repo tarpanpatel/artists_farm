@@ -150,6 +150,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
   const [editingFoodItem, setEditingFoodItem] = useState<MenuItem | null>(null);
 
   // New/Edit Food Form State
+  const [foodNameTouched, setFoodNameTouched] = useState(false);
   const [foodForm, setFoodForm] = useState<{
     name: string;
     category: string;
@@ -275,6 +276,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
       available: true,
       imagePath: '',
     });
+    setFoodNameTouched(false);
     setIsAddFoodModalOpen(true);
   };
 
@@ -287,12 +289,16 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
       available: item.available,
       imagePath: item.imagePath || '',
     });
+    setFoodNameTouched(false);
     setIsAddFoodModalOpen(true);
   };
 
   const handleSaveFoodItem = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!foodForm.name.trim()) return;
+    if (!foodForm.name.trim()) {
+      setFoodNameTouched(true);
+      return;
+    }
 
     // Upload image if one is selected (base64 data URI)
     let savedImagePath = foodForm.imagePath;
@@ -1176,6 +1182,8 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                 required
                 value={foodForm.name}
                 onChange={(e) => setFoodForm({ ...foodForm, name: e.target.value })}
+                onBlur={() => setFoodNameTouched(true)}
+                error={foodNameTouched && !foodForm.name.trim() ? 'This field is required' : undefined}
                 placeholder={t('paneer_butter_masala_placeholder', 'e.g. Paneer Butter Masala')}
               />
             </div>

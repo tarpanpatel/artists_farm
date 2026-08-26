@@ -65,14 +65,25 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
   // Bot token starts greyed-out/read-only whenever one is already saved - "Edit" un-locks it.
   // Reset to false every time a (possibly different) property is opened for editing.
   const [isEditingBotToken, setIsEditingBotToken] = useState(false);
+  const [isSavingBotToken, setIsSavingBotToken] = useState(false);
+  // Bumped only on a successful token save (not on every keystroke) - used as part of
+  // TelegramPairingPanel's `key` below to force it to remount and re-fetch bot identity in real
+  // time the moment a token is actually persisted, instead of the old "reopen this panel" gap.
+  const [botTokenSaveCount, setBotTokenSaveCount] = useState(0);
   const [showDeletePropertyModal, setShowDeletePropertyModal] = useState<number | null>(null);
   const [showDeleteTenantModal, setShowDeleteTenantModal] = useState<number | null>(null);
   const [moduleToggleLoading, setModuleToggleLoading] = useState<string | null>(null);
   const [propertyModules, setPropertyModules] = useState<Record<number, { kitchen: boolean }>>({});
   const [propertyToggleLoading, setPropertyToggleLoading] = useState<number | null>(null);
-  const [selectedTenantForProperty, setSelectedTenantForProperty] = useState<number | null>(null);
+  // Setter unused now that the "Add Property" trigger button is gone (26 Aug 2026, see
+  // handleAddProperty's own now-unreachable-but-harmless callers below) - never removed the
+  // getter or handleAddProperty itself since they're still referenced by the shared modal's
+  // dead 'add'-mode branches, kept rather than partially unwound to limit risk in this file.
+  const [selectedTenantForProperty] = useState<number | null>(null);
   const [operationLoading, setOperationLoading] = useState(false);
   const [showAddTenantModal, setShowAddTenantModal] = useState(false);
+  const [newTenantNameTouched, setNewTenantNameTouched] = useState(false);
+  const [newTenantSlugTouched, setNewTenantSlugTouched] = useState(false);
   const [newTenant, setNewTenant] = useState<{ name: string; slug: string; email: string; phone: string }>({
     name: '',
     slug: '',
@@ -257,6 +268,49 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
       setError('Failed to create property');
     } finally {
       setOperationLoading(false);
+    }
+  };
+
+  /**
+   * Scoped, immediate save of just the bot token (26 Aug 2026, explicit request: "Add"/"Edit"
+   * buttons that save in real time without closing the drawer). Calls the dedicated
+   * `set_property_telegram_bot_token` action rather than `update_property`/`edit_property` -
+   * those only ever wrote to `properties.telegram_bot_token`, a column NOTHING actually reads for
+   * pairing/sending (real source of truth is `property_modules.config.botToken` - see
+   * pairingBotToken() in php/telegram/pairing.php). That mismatch is exactly why the token showed
+   * as "saved" here while Telegram Group Pairing kept saying "No bot assigned yet" - two
+   * disconnected storage locations for what looked like one setting. This action does a
+   * read-merge-write into the real config (never clobbers already-paired groups/routing) and
+   * mirrors into properties.telegram_bot_token too, so this field's own display stays correct.
+   */
+  const saveBotToken = async () => {
+    if (!editingProperty) return;
+    setIsSavingBotToken(true);
+    try {
+      const response = await fetch('/php/api/router.php?action=set_property_telegram_bot_token', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          property_id: editingProperty.id,
+          telegram_bot_token: editingProperty.telegram_bot_token || '',
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setProperties((prev) =>
+          prev.map((p) => (p.id === editingProperty.id ? { ...p, telegram_bot_token: editingProperty.telegram_bot_token } : p))
+        );
+        setIsEditingBotToken(false);
+        setBotTokenSaveCount((n) => n + 1);
+      } else {
+        setError(data.message || 'Failed to save bot token');
+      }
+    } catch (err) {
+      console.error('Failed to save bot token:', err);
+      setError('Failed to save bot token');
+    } finally {
+      setIsSavingBotToken(false);
     }
   };
 
@@ -619,8 +673,10 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
   };
 
   const handleAddTenant = async () => {
-    if (!newTenant.name || !newTenant.slug) {
-      setError('Name and slug are required');
+    setNewTenantNameTouched(true);
+    setNewTenantSlugTouched(true);
+
+    if (!newTenant.name.trim() || !newTenant.slug.trim()) {
       return;
     }
 
@@ -646,6 +702,8 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
         }]);
         setNewTenant({ name: '', slug: '', email: '', phone: '' });
         setSlugManuallyEdited(false);
+        setNewTenantNameTouched(false);
+        setNewTenantSlugTouched(false);
 
         if (data.login_credentials) {
           // Keep the modal open on a "credentials" view instead of closing -
@@ -1483,7 +1541,18 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                     className="w-full font-mono text-xs"
                     disabled={!!editingProperty.telegram_bot_token && !isEditingBotToken}
                   />
-                  {!!editingProperty.telegram_bot_token && !isEditingBotToken && (
+                  {!editingProperty.telegram_bot_token || isEditingBotToken ? (
+                    <Button
+                      type="button"
+                      variant="primary"
+                      size="sm"
+                      onClick={saveBotToken}
+                      disabled={isSavingBotToken || !editingProperty.telegram_bot_token?.trim()}
+                      className="shrink-0"
+                    >
+                      {isSavingBotToken ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                    </Button>
+                  ) : (
                     <Button
                       type="button"
                       variant="secondary"
@@ -1510,6 +1579,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                     Telegram Group Pairing
                   </label>
                   <TelegramPairingPanel
+                    key={`${editingProperty.slug}-${botTokenSaveCount}`}
                     propertySlug={editingProperty.slug}
                     propertyName={editingProperty.name}
                   />
@@ -1887,10 +1957,8 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
           ) : (
             <div className="space-y-4">
               <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-                  {t('tenant_name_label', 'Tenant Name')}
-                </label>
                 <Input
+                  label={t('tenant_name_label', 'Tenant Name *')}
                   type="text"
                   value={newTenant.name}
                   onChange={(e) => {
@@ -1901,34 +1969,34 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                       slug: slugManuallyEdited ? prev.slug : slugify(name),
                     }));
                   }}
+                  onBlur={() => setNewTenantNameTouched(true)}
                   placeholder={t('tenant_name_placeholder', 'e.g., Vrikshawan')}
+                  required
+                  error={newTenantNameTouched && !newTenant.name.trim() ? 'Tenant name is required' : undefined}
                 />
               </div>
 
               <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-                  {t('url_slug_label', 'URL Slug')}
-                </label>
                 <Input
+                  label={t('url_slug_label', 'URL Slug *')}
                   type="text"
                   value={newTenant.slug}
                   onChange={(e) => {
                     setSlugManuallyEdited(true);
                     setNewTenant({ ...newTenant, slug: slugify(e.target.value) });
                   }}
+                  onBlur={() => setNewTenantSlugTouched(true)}
                   className="font-mono"
                   placeholder={t('tenant_slug_placeholder', 'e.g., vrikshawan')}
+                  required
+                  error={newTenantSlugTouched && !newTenant.slug.trim() ? 'URL slug is required' : undefined}
+                  helperText={t('url_slug_hint', "Auto-filled from the name. Used in the property URL - not the login username (that's the phone number below).")}
                 />
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  {t('url_slug_hint', "Auto-filled from the name. Used in the property URL - not the login username (that's the phone number below).")}
-                </p>
               </div>
 
               <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-                  {t('email_label', 'Email')}
-                </label>
                 <Input
+                  label={t('email_label', 'Email')}
                   type="email"
                   value={newTenant.email}
                   onChange={(e) =>
@@ -1939,15 +2007,10 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
               </div>
 
               <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-                  {t('tenant_phone_login_username_label', 'Phone (also becomes their login username)')}
-                </label>
                 <Input
+                  label={t('tenant_phone_login_username_label', 'Phone (also becomes their login username)')}
                   type="tel"
                   value={newTenant.phone}
-                  // No maxLength - see GuestManagement.tsx's onChange comment (23 Aug 2026): it
-                  // truncates raw typed characters before digit-stripping runs, silently dropping
-                  // trailing digits from any formatted phone number.
                   onChange={(e) =>
                     setNewTenant({ ...newTenant, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })
                   }
@@ -1964,6 +2027,8 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
               onClick={() => {
                 setShowAddTenantModal(false);
                 setNewTenantCredentials(null);
+                setNewTenantNameTouched(false);
+                setNewTenantSlugTouched(false);
               }}
               variant="primary"
               size="sm"
@@ -1978,6 +2043,8 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                   setShowAddTenantModal(false);
                   setNewTenant({ name: '', slug: '', email: '', phone: '' });
                   setSlugManuallyEdited(false);
+                  setNewTenantNameTouched(false);
+                  setNewTenantSlugTouched(false);
                 }}
                 variant="secondary"
                 size="sm"

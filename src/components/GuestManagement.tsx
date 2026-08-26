@@ -147,6 +147,10 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const [guestName, setGuestName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [roomNumber, setRoomNumber] = useState('');
+  const [guestNameTouched, setGuestNameTouched] = useState(false);
+  const [phoneNumberTouched, setPhoneNumberTouched] = useState(false);
+  const [datesTouched, setDatesTouched] = useState(false);
+  const [roomTouched, setRoomTouched] = useState(false);
   const [bookingSourceLocal, setBookingSourceLocal] = useState('Offline');
   const [advanceReceivedBy, setAdvanceReceivedBy] = useState('');
   const [pendingReceivedBy, setPendingReceivedBy] = useState('');
@@ -466,6 +470,10 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     setBookingPending(0);
     setShowBookingExtraCharges(false);
     setBookingExtraChargesList([]);
+    setGuestNameTouched(false);
+    setPhoneNumberTouched(false);
+    setDatesTouched(false);
+    setRoomTouched(false);
     if (isMultiKeyProperty && rooms && rooms.length > 0) {
       setRoomNumber(rooms[0].name);
     }
@@ -490,6 +498,11 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
           
           <form noValidate className="app-form app-form--add-guest space-y-4" onSubmit={async (e) => {
             e.preventDefault();
+            setGuestNameTouched(true);
+            setPhoneNumberTouched(true);
+            setDatesTouched(true);
+            setRoomTouched(true);
+
             const newCheckinStr = checkinTime ? `${checkinDate} ${checkinTime}:00` : checkinDate;
             const newCheckoutStr = checkoutTime ? `${expectedCheckout} ${checkoutTime}:00` : expectedCheckout;
 
@@ -586,14 +599,6 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               extraCharges,
             };
 
-            // await + try/catch (23 Aug 2026, ROADMAP.md verification pass) - this used to fire
-            // onAddGuest without awaiting it at all, then unconditionally reset the form and show
-            // a hardcoded success toast regardless of whether the booking actually saved.
-            // Reproduced live: an invalid phone number got a real 400 from the backend, but the
-            // guest still showed up everywhere (Dashboard Alerts, calendar, Arrivals count) as a
-            // real booking, indistinguishable from one that actually saved, until the next reload
-            // silently dropped it. onAddGuest now throws with the real reason on failure (see
-            // App.tsx's handleAddGuest / api.ts's addGuestToDB) instead of masking it.
             try {
               await onAddGuest(guestObj);
               resetBookingForm();
@@ -610,8 +615,10 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 type="text"
                 value={guestName}
                 onChange={(e) => setGuestName(e.target.value)}
+                onBlur={() => setGuestNameTouched(true)}
                 placeholder="Enter guest's full name"
                 required
+                error={guestNameTouched && !guestName.trim() ? 'Guest name is required' : undefined}
               />
             </div>
 
@@ -620,23 +627,21 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               <>
                 <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    {/* No maxLength attribute (23 Aug 2026, ROADMAP.md verification pass) - a
-                        native maxLength counts RAW typed characters BEFORE this onChange's own
-                        digit-stripping ever runs, so a formatted number with any separator
-                        ("98765-43210", 11 chars) got truncated to 10 raw chars first ("98765-4321")
-                        and THEN stripped to digits, silently losing the trailing digit
-                        ("987654321", 9 digits) - reproduced live. The .slice(0, 10) below already
-                        caps to 10 real digits correctly on its own; maxLength was redundant on the
-                        happy path and actively wrong on this one. Same fix applied to every other
-                        "10-digit mobile number" input site-wide (grep this exact onChange pattern). */}
                     <Input
                       label={t('contact_phone_label', 'Contact Phone Number *')}
                       type="tel"
                       value={phoneNumber}
                       onChange={e => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      onBlur={() => setPhoneNumberTouched(true)}
                       placeholder="Enter 10-digit mobile number"
                       required
-                      error={duplicateBookingLive ? 'A reservation for this contact on this check-in date already exists' : undefined}
+                      error={
+                        phoneNumberTouched && !phoneNumber.trim()
+                          ? 'Phone number is required'
+                          : duplicateBookingLive
+                          ? 'A reservation for this contact on this check-in date already exists'
+                          : undefined
+                      }
                     />
                   </div>
 
@@ -644,8 +649,12 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     <StyledSelect
                       label={t('assigned_room_label', 'Assigned Room / Villa *')}
                       value={roomNumber}
-                      onChange={handleRoomChange}
+                      onChange={(val) => {
+                        handleRoomChange(val);
+                        setRoomTouched(true);
+                      }}
                       options={rooms.map((room) => ({ value: room.name, label: room.name }))}
+                      error={isMultiKeyProperty && roomTouched && (!roomNumber || !roomNumber.trim()) ? 'An assigned room/villa selection is required' : undefined}
                     />
                   </div>
                 </div>
@@ -677,23 +686,21 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               <>
                 <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    {/* No maxLength attribute (23 Aug 2026, ROADMAP.md verification pass) - a
-                        native maxLength counts RAW typed characters BEFORE this onChange's own
-                        digit-stripping ever runs, so a formatted number with any separator
-                        ("98765-43210", 11 chars) got truncated to 10 raw chars first ("98765-4321")
-                        and THEN stripped to digits, silently losing the trailing digit
-                        ("987654321", 9 digits) - reproduced live. The .slice(0, 10) below already
-                        caps to 10 real digits correctly on its own; maxLength was redundant on the
-                        happy path and actively wrong on this one. Same fix applied to every other
-                        "10-digit mobile number" input site-wide (grep this exact onChange pattern). */}
                     <Input
                       label={t('contact_phone_label', 'Contact Phone Number *')}
                       type="tel"
                       value={phoneNumber}
                       onChange={e => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      onBlur={() => setPhoneNumberTouched(true)}
                       placeholder="Enter 10-digit mobile number"
                       required
-                      error={duplicateBookingLive ? 'A reservation for this contact on this check-in date already exists' : undefined}
+                      error={
+                        phoneNumberTouched && !phoneNumber.trim()
+                          ? 'Phone number is required'
+                          : duplicateBookingLive
+                          ? 'A reservation for this contact on this check-in date already exists'
+                          : undefined
+                      }
                     />
                   </div>
                   <div>
@@ -738,10 +745,17 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 label="Booking Dates *"
                 checkinDate={checkinDate}
                 checkoutDate={expectedCheckout}
-                onCheckinChange={setCheckinDate}
-                onCheckoutChange={setExpectedCheckout}
+                onCheckinChange={(d) => {
+                  setCheckinDate(d);
+                  setDatesTouched(true);
+                }}
+                onCheckoutChange={(d) => {
+                  setExpectedCheckout(d);
+                  setDatesTouched(true);
+                }}
                 blockedDates={getBlockedDateStrings()}
                 disablePastDates
+                error={datesTouched && (!checkinDate || !expectedCheckout) ? 'Check-in and check-out dates are required' : undefined}
               />
             </div>
 

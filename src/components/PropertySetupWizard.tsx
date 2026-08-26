@@ -94,6 +94,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
 
   // --- Local editable copies, one per step (mirrors PropertyCreationWizard) ---
   const [editAddress, setEditAddress] = useState(address);
+  const [editAddressTouched, setEditAddressTouched] = useState(false);
   const [editMapsLink, setEditMapsLink] = useState(googleMapsLink);
   const [editEmail, setEditEmail] = useState(email);
   const [editPhone, setEditPhone] = useState(phone);
@@ -325,7 +326,14 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
               disabled
               helperText="Can't be renamed here - use Edit Property in the sidebar instead."
             />
-            <Input label="Address" value={editAddress} onChange={(e) => setEditAddress(e.target.value)} placeholder="Full property address" />
+            <Input
+              label="Address"
+              value={editAddress}
+              onChange={(e) => setEditAddress(e.target.value)}
+              onBlur={() => setEditAddressTouched(true)}
+              error={editAddressTouched && !editAddress.trim() ? 'This field is required' : undefined}
+              placeholder="Full property address"
+            />
             <Input label="Google Maps Link (optional)" value={editMapsLink} onChange={(e) => setEditMapsLink(e.target.value)} placeholder="https://maps.app.goo.gl/..." />
           </div>
         )}

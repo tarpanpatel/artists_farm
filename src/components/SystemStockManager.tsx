@@ -36,6 +36,7 @@ export const SystemStockManager: React.FC<SystemStockManagerProps> = ({ onLogout
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [dbCategories, setDbCategories] = useState<{ id: number; name: string }[]>([]);
   const [newItem, setNewItem] = useState({ name: '', categoryId: 1, unit: 'Kg' });
+  const [itemNameTouched, setItemNameTouched] = useState(false);
   const [editingItem, setEditingItem] = useState<StockItem | null>(null);
   const [editForm, setEditForm] = useState({ name: '', categoryId: 1, unit: 'Kg' });
   const [saving, setSaving] = useState(false);
@@ -94,6 +95,7 @@ export const SystemStockManager: React.FC<SystemStockManagerProps> = ({ onLogout
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItem.name) {
+      setItemNameTouched(true);
       setError('Item name is required');
       return;
     }
@@ -115,6 +117,7 @@ export const SystemStockManager: React.FC<SystemStockManagerProps> = ({ onLogout
       if (data.success || data.status === 'success') {
         setSuccess('Stock item added successfully!');
         setNewItem({ name: '', categoryId: 1, unit: 'Kg' });
+        setItemNameTouched(false);
         setIsAddingNew(false);
         loadStocks();
       } else {
@@ -304,6 +307,8 @@ export const SystemStockManager: React.FC<SystemStockManagerProps> = ({ onLogout
                 <Input
                   value={newItem.name}
                   onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
+                  onBlur={() => setItemNameTouched(true)}
+                  error={itemNameTouched && !newItem.name.trim() ? 'This field is required' : undefined}
                   placeholder={t('item_name_placeholder', 'e.g., Floor Cleaner')}
                 />
               </div>

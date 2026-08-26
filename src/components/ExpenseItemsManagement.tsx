@@ -28,6 +28,8 @@ export const ExpenseItemsManagement: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [newItem, setNewItem] = useState({ label: '', category: '', default_amount: '' });
+  const [itemNameTouched, setItemNameTouched] = useState(false);
+  const [categoryTouched, setCategoryTouched] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [mobilePage, setMobilePage] = useState(1);
@@ -71,12 +73,14 @@ export const ExpenseItemsManagement: React.FC = () => {
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItem.label.trim()) {
+      setItemNameTouched(true);
       showToast('Please enter an item name', { type: 'error' });
       return;
     }
 
     const finalCategory = isCreatingCategory ? newCategoryName.trim() : newItem.category.trim();
     if (!finalCategory) {
+      setCategoryTouched(true);
       showToast('Please select or enter a category', { type: 'error' });
       return;
     }
@@ -132,6 +136,8 @@ export const ExpenseItemsManagement: React.FC = () => {
     setNewItem({ label: '', category: '', default_amount: '' });
     setIsCreatingCategory(false);
     setNewCategoryName('');
+    setItemNameTouched(false);
+    setCategoryTouched(false);
   };
 
   const handleDeleteItem = async (itemId: number, itemLabel: string) => {
@@ -268,6 +274,8 @@ export const ExpenseItemsManagement: React.FC = () => {
                 <Input
                   value={newItem.label}
                   onChange={(e) => setNewItem({ ...newItem, label: e.target.value })}
+                  onBlur={() => setItemNameTouched(true)}
+                  error={itemNameTouched && !newItem.label.trim() ? 'This field is required' : undefined}
                   placeholder={t('item_name_placeholder', 'e.g., Floor Cleaner')}
                 />
               </div>
@@ -281,6 +289,8 @@ export const ExpenseItemsManagement: React.FC = () => {
                       autoFocus
                       value={newItem.category}
                       onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
+                      onBlur={() => setCategoryTouched(true)}
+                      error={categoryTouched && !newItem.category.trim() ? 'This field is required' : undefined}
                       placeholder={t('new_category_name_placeholder', 'New category name')}
                     />
                     <Button
@@ -362,6 +372,8 @@ export const ExpenseItemsManagement: React.FC = () => {
                     setNewItem({ label: '', category: '', default_amount: '' });
                     setIsCreatingCategory(false);
                     setIsAddingNew(true);
+                    setItemNameTouched(false);
+                    setCategoryTouched(false);
                   }
                 }}
                 leftIcon={<Plus className="w-4 h-4" />}

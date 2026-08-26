@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send, Mail, Bell, UserCog, Pencil, DatabaseBackup, Loader2, RefreshCw, AlertTriangle, UserRound, Receipt, Package, Server } from './icons/FlowbiteIcons';
-import { Card, Sidebar, SidebarItems, SidebarItemGroup, SidebarItem } from 'flowbite-react';
+import { Card, Sidebar, SidebarItems, SidebarItemGroup, SidebarItem, SidebarCollapse } from 'flowbite-react';
 import { KpiCard } from './KpiCard';
 import { Button } from './Button';
 import { t } from '../i18n/en';
@@ -232,7 +232,25 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
     }
   }, [activeSection]);
 
-  const menuItems = [
+  const EDIT_DEFAULTS_SECTIONS: SectionType[] = [
+    'default_expenses',
+    'default_bills',
+    'system_stock',
+    'service_request_types',
+    'edit_main_menu',
+  ];
+
+  const [isEditDefaultsOpen, setIsEditDefaultsOpen] = useState(
+    EDIT_DEFAULTS_SECTIONS.includes(activeSection)
+  );
+
+  useEffect(() => {
+    if (EDIT_DEFAULTS_SECTIONS.includes(activeSection)) {
+      setIsEditDefaultsOpen(true);
+    }
+  }, [activeSection]);
+
+  const topMenuItems = [
     {
       id: 'dashboard',
       label: t('root_dashboard_label', 'Dashboard'),
@@ -245,6 +263,9 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
       icon: Building2,
       section: 'tenants_properties' as SectionType,
     },
+  ];
+
+  const editDefaultsSubItems = [
     {
       id: 'default_expenses',
       label: t('root_default_expenses_menu_label', 'Default Expenses (MK)'),
@@ -275,6 +296,9 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
       icon: Pencil,
       section: 'edit_main_menu' as SectionType,
     },
+  ];
+
+  const bottomMenuItems = [
     {
       id: 'appearance',
       label: t('root_appearance_menu_label', 'Appearance'),
@@ -338,12 +362,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
         />
       )}
 
-      {/* Sidebar - real flowbite-react <Sidebar>, not a hand-rolled <aside>
-          (25 Aug 2026 - this whole dashboard barely used any flowbite-react
-          components before this, just Card). theme.root.inner override
-          supplies bg-white/no-rounding/safe-area-top padding in place of
-          Sidebar's own defaults (bg-gray-50, rounded), which don't fit a
-          full-height fixed sidebar sitting flush against the screen edge. */}
+      {/* Sidebar */}
       <Sidebar
         aria-label={t('root_admin_sidebar_aria', 'Root Admin Sidebar')}
         className={`root-admin-dashboard__sidebar fixed top-0 left-0 z-[55] h-screen w-64 border-r border-gray-200 dark:border-gray-700 transition-all duration-200 ${
@@ -368,7 +387,41 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
 
           <SidebarItems>
             <SidebarItemGroup>
-              {menuItems.map((item) => (
+              {topMenuItems.map((item) => (
+                <SidebarItem
+                  key={item.id}
+                  as="button"
+                  icon={item.icon}
+                  active={activeSection === item.section}
+                  onClick={() => goToSection(item.section)}
+                  className="w-full cursor-pointer text-left"
+                >
+                  {item.label}
+                </SidebarItem>
+              ))}
+
+              {/* Edit Defaults Parent Accordion Menu */}
+              <SidebarCollapse
+                label={t('edit_defaults_parent_menu_label', 'Edit Defaults')}
+                icon={Pencil}
+                open={isEditDefaultsOpen}
+                onClick={() => setIsEditDefaultsOpen(!isEditDefaultsOpen)}
+              >
+                {editDefaultsSubItems.map((subItem) => (
+                  <SidebarItem
+                    key={subItem.id}
+                    as="button"
+                    icon={subItem.icon}
+                    active={activeSection === subItem.section}
+                    onClick={() => goToSection(subItem.section)}
+                    className="w-full cursor-pointer text-left"
+                  >
+                    {subItem.label}
+                  </SidebarItem>
+                ))}
+              </SidebarCollapse>
+
+              {bottomMenuItems.map((item) => (
                 <SidebarItem
                   key={item.id}
                   as="button"

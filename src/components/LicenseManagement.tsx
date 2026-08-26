@@ -157,6 +157,7 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLicense, setEditingLicense] = useState<PropertyLicense | null>(null);
   const [form, setForm] = useState<LicenseFormState>(EMPTY_FORM);
+  const [licenseNumberTouched, setLicenseNumberTouched] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isUploadingDoc, setIsUploadingDoc] = useState(false);
@@ -185,6 +186,7 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
   const openAddModal = () => {
     setEditingLicense(null);
     setForm(EMPTY_FORM);
+    setLicenseNumberTouched(false);
     setIsModalOpen(true);
   };
 
@@ -208,6 +210,7 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
     setIsModalOpen(false);
     setEditingLicense(null);
     setForm(EMPTY_FORM);
+    setLicenseNumberTouched(false);
   };
 
   const handleDocumentSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -237,7 +240,10 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.license_number.trim() || !form.start_date || !form.end_date) return;
+    if (!form.license_number.trim() || !form.start_date || !form.end_date) {
+      setLicenseNumberTouched(true);
+      return;
+    }
 
     setIsSaving(true);
     const isEditing = !!editingLicense;
@@ -518,6 +524,8 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
                 required
                 value={form.license_number}
                 onChange={(e) => setForm({ ...form, license_number: e.target.value })}
+                onBlur={() => setLicenseNumberTouched(true)}
+                error={licenseNumberTouched && !form.license_number.trim() ? 'This field is required' : undefined}
                 placeholder={t('license_number_placeholder', 'e.g., HM/2024/00123')}
               />
             </div>

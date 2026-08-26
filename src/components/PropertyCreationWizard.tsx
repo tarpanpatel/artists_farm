@@ -95,6 +95,8 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
   const [roomCount, setRoomCount] = useState(existingProperty?.room_count || 1);
   const [name, setName] = useState(existingProperty?.name || '');
   const [address, setAddress] = useState(existingProperty?.address || '');
+  const [nameTouched, setNameTouched] = useState(false);
+  const [addressTouched, setAddressTouched] = useState(false);
   const [mapsLink, setMapsLink] = useState(existingProperty?.google_maps_link || '');
   // null = not yet answered (fresh property, forces an explicit choice - see step0Valid below).
   // When resuming a draft, this is NOT assumed true/on-by-default - it's fetched from the real
@@ -437,6 +439,8 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
               label="Property Name"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onBlur={() => setNameTouched(true)}
+              error={nameTouched && !name.trim() ? 'This field is required' : undefined}
               placeholder="e.g. Sea View Villa"
             />
             {name && !isResuming && (
@@ -447,6 +451,8 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
               label="Address"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
+              onBlur={() => setAddressTouched(true)}
+              error={addressTouched && !address.trim() ? 'This field is required' : undefined}
               placeholder="Full property address"
             />
 

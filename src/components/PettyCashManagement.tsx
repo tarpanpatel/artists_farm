@@ -142,6 +142,12 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     isStaffAdvanceChecked: true,
     payToRegisteredVendor: false,
   }));
+  // Live "required" feedback for the main expense form (26 Aug 2026, CLAUDE.md's
+  // "Real-Time Form Validation" sweep) - kept as plain local state rather than
+  // reducer fields since they're purely UI touched-tracking, not form data.
+  const [descriptionTouched, setDescriptionTouched] = useState(false);
+  const [amountTouched, setAmountTouched] = useState(false);
+  const [kitchenQtyTouched, setKitchenQtyTouched] = useState(false);
 
   const [financialHandlers, setFinancialHandlers] = useState<any[]>(staff.filter(u => u.isFinancialHandler));
   const { inventory } = useInventoryContext();
@@ -203,6 +209,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   const [isAddingNewPayee, setIsAddingNewPayee] = useState(false);
   const [searchPayeeQuery, setSearchPayeeQuery] = useState('');
   const [newPayeeForm, setNewPayeeForm] = useState({ name: '', upiId: '', qrCodeUrl: '' });
+  const [payeeNameTouched, setPayeeNameTouched] = useState(false);
   const [payeeLightboxUrl, setPayeeLightboxUrl] = useState<string | null>(null);
   const [isSavingPayee, setIsSavingPayee] = useState(false);
   const [costLogsPage, setCostLogsPage] = useState(1);
@@ -214,6 +221,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     const qrCodeUrl = editingPayee ? editingPayee.qrCodeUrl : newPayeeForm.qrCodeUrl;
 
     if (!name) {
+      setPayeeNameTouched(true);
       showToast('Payee name is required', { type: 'error' });
       return;
     }
@@ -233,6 +241,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
         setEditingPayee(null);
         setIsAddingNewPayee(false);
         setNewPayeeForm({ name: '', upiId: '', qrCodeUrl: '' });
+        setPayeeNameTouched(false);
         refreshPayees();
       } else {
         showToast('Failed to save payee to database', { type: 'error' });
@@ -278,6 +287,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   const [isAddingCustomItem, setIsAddingCustomItem] = useState(false);
   const [searchCustomQuery, setSearchCustomQuery] = useState('');
   const [newCustomItemForm, setNewCustomItemForm] = useState({ label: '', category: 'Other', defaultAmount: '0.00', description: '' });
+  const [customItemNameTouched, setCustomItemNameTouched] = useState(false);
   const [isSavingCustomItem, setIsSavingCustomItem] = useState(false);
 
   const handleSaveCustomItem = async (e: React.FormEvent) => {
@@ -288,6 +298,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     const description = editingCustomItem ? editingCustomItem.description : newCustomItemForm.description;
 
     if (!label) {
+      setCustomItemNameTouched(true);
       showToast('Item name is required', { type: 'error' });
       return;
     }
@@ -308,6 +319,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
         setEditingCustomItem(null);
         setIsAddingCustomItem(false);
         setNewCustomItemForm({ label: '', category: 'Other', defaultAmount: '0.00', description: '' });
+        setCustomItemNameTouched(false);
         refreshCustomExpenses();
       } else {
         showToast('Failed to save custom item', { type: 'error' });
@@ -634,14 +646,21 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   // Form submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formState.description || !formState.amount) return;
+    if (!formState.description || !formState.amount) {
+      setDescriptionTouched(true);
+      setAmountTouched(true);
+      return;
+    }
 
     // Kitchen & Supplies routes through create_kitchen_purchase instead of
     // add_petty_cash - unlike every other category, this one also has to
     // sync req_catalog stock and inventory_price_history (see
     // php/inventory/inventory.php), so it can't just be a plain ledger row.
     if (formState.category === 'Kitchen') {
-      if (!formState.kitchenQuantity || Number(formState.kitchenQuantity) <= 0) return;
+      if (!formState.kitchenQuantity || Number(formState.kitchenQuantity) <= 0) {
+        setKitchenQtyTouched(true);
+        return;
+      }
 
       const totalPrice = Number(formState.amount);
       const qty = Number(formState.kitchenQuantity);
@@ -695,6 +714,9 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
       showToast('Kitchen purchase recorded successfully!', { type: 'success' });
       dispatch({ type: 'RESET_FORM' });
+    setDescriptionTouched(false);
+    setAmountTouched(false);
+    setKitchenQtyTouched(false);
       if (onClose) onClose();
       return;
     }
@@ -801,6 +823,9 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     showToast('Expense recorded successfully!', { type: 'success' });
     // Reset Form
     dispatch({ type: 'RESET_FORM' });
+    setDescriptionTouched(false);
+    setAmountTouched(false);
+    setKitchenQtyTouched(false);
     if (onClose) onClose();
   };
 
@@ -1071,11 +1096,12 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                     required
                     value={formState.description}
                     onFocus={() => setShowSuggestions(true)}
-                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                    onBlur={() => { setTimeout(() => setShowSuggestions(false), 200); setDescriptionTouched(true); }}
                     onChange={e => {
                       handleDescriptionChange(e.target.value);
                       setShowSuggestions(true);
                     }}
+                    error={descriptionTouched && !formState.description.trim() ? 'This field is required' : undefined}
                     placeholder={t('description_search_placeholder', 'Type to search items... (e.g., MCB, Petrol, Water Bill)')}
                   />
 
@@ -1148,6 +1174,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 required
                 value={formState.amount}
                 onChange={e => dispatch({ type: 'SET_FIELD', field: 'amount', value: e.target.value === '' ? '' : Number(e.target.value) })}
+                onBlur={() => setAmountTouched(true)}
+                error={amountTouched && !formState.amount ? 'This field is required' : undefined}
                 placeholder={t('expense_amount_placeholder', 'e.g., 450')}
                 className="font-semibold"
               />
@@ -1172,6 +1200,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                     required
                     value={formState.kitchenQuantity}
                     onChange={e => dispatch({ type: 'SET_FIELD', field: 'kitchenQuantity', value: e.target.value === '' ? '' : Number(e.target.value) })}
+                    onBlur={() => setKitchenQtyTouched(true)}
+                    error={kitchenQtyTouched && (!formState.kitchenQuantity || Number(formState.kitchenQuantity) <= 0) ? 'Must be greater than 0' : undefined}
                     placeholder="1"
                   />
                 </div>
@@ -1999,6 +2029,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                           setNewPayeeForm({ ...newPayeeForm, name: e.target.value });
                         }
                       }}
+                      onBlur={() => setPayeeNameTouched(true)}
+                      error={payeeNameTouched && !(editingPayee ? editingPayee.name : newPayeeForm.name).trim() ? 'This field is required' : undefined}
                       placeholder="e.g. Raju Grocery, Pool Supplier"
                     />
                   </div>
@@ -2096,7 +2128,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               </div>
               <Button
                 variant="primary"
-                onClick={() => setIsAddingNewPayee(true)}
+                onClick={() => { setIsAddingNewPayee(true); setPayeeNameTouched(false); }}
               >
                 <Plus className="w-4 h-4 mr-1 inline-block" />
                 Register Account Payee
@@ -2218,6 +2250,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                           setNewCustomItemForm({ ...newCustomItemForm, label: e.target.value });
                         }
                       }}
+                      onBlur={() => setCustomItemNameTouched(true)}
+                      error={customItemNameTouched && !(editingCustomItem ? editingCustomItem.label : newCustomItemForm.label).trim() ? 'This field is required' : undefined}
                       placeholder="e.g. Pool Chlorine, Diesel Can"
                     />
                   </div>
@@ -2310,7 +2344,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               </div>
               <Button
                 variant="primary"
-                onClick={() => setIsAddingCustomItem(true)}
+                onClick={() => { setIsAddingCustomItem(true); setCustomItemNameTouched(false); }}
               >
                 <Plus className="w-4 h-4 mr-1 inline-block" />
                 Create Custom Item

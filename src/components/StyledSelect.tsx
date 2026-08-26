@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Check, ChevronDown, Search } from './icons/FlowbiteIcons';
+import { Check, ChevronDown, Search, AlertTriangle } from './icons/FlowbiteIcons';
 import { Dropdown, DropdownItem, DropdownHeader } from 'flowbite-react';
 import { t } from '../i18n/en';
 
@@ -20,7 +20,7 @@ interface StyledSelectProps {
   className?: string;
   buttonClassName?: string;
   disabled?: boolean;
-  error?: boolean;
+  error?: string | boolean;
   searchable?: boolean;
   id?: string;
 }
@@ -90,6 +90,8 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
   const filteredOptions = searchable && search
     ? options.filter((o) => (o.searchText ?? String(o.label)).toLowerCase().includes(search.toLowerCase()))
     : options;
+
+  const errorMessage = typeof error === 'string' ? error : undefined;
 
   return (
     <div className={`app-select-wrapper ${className} styled-select`}>
@@ -169,6 +171,11 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
           )}
         </div>
       </Dropdown>
+      {errorMessage && (
+        <p className="app-error-text mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {errorMessage}
+        </p>
+      )}
     </div>
   );
 };

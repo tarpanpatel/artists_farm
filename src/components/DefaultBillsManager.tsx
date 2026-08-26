@@ -27,6 +27,7 @@ export const DefaultBillsManager: React.FC<DefaultBillsManagerProps> = ({ onLogo
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [newItem, setNewItem] = useState({ label: '', description: '' });
+  const [billNameTouched, setBillNameTouched] = useState(false);
   const [editingItem, setEditingItem] = useState<BillItem | null>(null);
   const [editForm, setEditForm] = useState({ label: '', description: '' });
   const [saving, setSaving] = useState(false);
@@ -70,6 +71,7 @@ export const DefaultBillsManager: React.FC<DefaultBillsManagerProps> = ({ onLogo
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItem.label.trim()) {
+      setBillNameTouched(true);
       setError('Bill name is required');
       return;
     }
@@ -84,7 +86,7 @@ export const DefaultBillsManager: React.FC<DefaultBillsManagerProps> = ({ onLogo
       const data = await response.json();
       if (data.success || data.status === 'success') {
         setSuccess('Bill item added successfully!');
-        setNewItem({ label: '', description: '' });
+        setNewItem({ label: '', description: '' }); setBillNameTouched(false);
         setIsAddingNew(false);
         loadBills();
       } else {
@@ -227,6 +229,8 @@ export const DefaultBillsManager: React.FC<DefaultBillsManagerProps> = ({ onLogo
               <Input
                 value={newItem.label}
                 onChange={(e) => setNewItem({ ...newItem, label: e.target.value })}
+                onBlur={() => setBillNameTouched(true)}
+                error={billNameTouched && !newItem.label.trim() ? 'This field is required' : undefined}
                 placeholder="e.g., Electricity Bill"
                 autoFocus
               />
@@ -245,7 +249,7 @@ export const DefaultBillsManager: React.FC<DefaultBillsManagerProps> = ({ onLogo
               <Button type="submit" variant="primary" size="md" disabled={saving}>
                 {saving ? 'Saving...' : 'Add Bill'}
               </Button>
-              <Button type="button" variant="secondary" size="md" onClick={() => { setIsAddingNew(false); setNewItem({ label: '', description: '' }); }}>
+              <Button type="button" variant="secondary" size="md" onClick={() => { setIsAddingNew(false); setNewItem({ label: '', description: '' }); setBillNameTouched(false); }}>
                 Cancel
               </Button>
             </div>

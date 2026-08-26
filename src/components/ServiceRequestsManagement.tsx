@@ -69,6 +69,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
   const FULFILLED_PAGE_SIZE = 10;
 
   const [customRequestLabel, setCustomRequestLabel] = useState('');
+  const [customRequestLabelTouched, setCustomRequestLabelTouched] = useState(false);
   const [saveToCatalog, setSaveToCatalog] = useState(true);
 
   const getCurrentUserName = () => {
@@ -196,6 +197,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
     if (newRequestType === '__CUSTOM__') {
       const labelTrimmed = customRequestLabel.trim();
       if (!labelTrimmed) {
+        setCustomRequestLabelTouched(true);
         showToast('Please enter a name for the custom service or charge', { type: 'error' });
         setSaving(false);
         return;
@@ -243,6 +245,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
       setNewRoomId('');
       setNewRequestType(requestTypes[0]?.typeId ?? '');
       setCustomRequestLabel('');
+      setCustomRequestLabelTouched(false);
       setNewDescription('');
       setNewChargeAmount('');
       refreshRequests();
@@ -631,14 +634,15 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
             {newRequestType === '__CUSTOM__' && (
               <div className="service-requests-management__form-group p-3.5 bg-blue-50/70 dark:bg-blue-950/40 rounded-lg border border-blue-200 dark:border-blue-800 space-y-3">
                 <div>
-                  <div className="mb-1 block">
-                    <FlowbiteLabel htmlFor="customRequestLabel" className="text-xs font-semibold text-blue-900 dark:text-blue-200">Custom Service / Charge Name *</FlowbiteLabel>
-                  </div>
-                  <FlowbiteTextInput
+                  <Input
+                    label="Custom Service / Charge Name *"
+                    labelClassName="text-blue-900 dark:text-blue-200"
                     id="customRequestLabel"
                     type="text"
                     value={customRequestLabel}
                     onChange={(e) => setCustomRequestLabel(e.target.value)}
+                    onBlur={() => setCustomRequestLabelTouched(true)}
+                    error={customRequestLabelTouched && !customRequestLabel.trim() ? 'This field is required' : undefined}
                     placeholder="e.g. Bonfire & Setup, Pool Towel..."
                     required
                   />
