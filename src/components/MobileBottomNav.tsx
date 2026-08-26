@@ -164,7 +164,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 <Receipt className="w-5 h-5" />
               </div>
               <div className="min-w-0">
-                <span className="block text-sm font-semibold text-gray-900 dark:text-white truncate">Add Expense</span>
+                <span className="block text-xs font-semibold text-gray-900 dark:text-white truncate">Add Expense</span>
               </div>
             </button>
           )}
@@ -187,7 +187,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 <CalendarPlus className="w-5 h-5" />
               </div>
               <div className="min-w-0">
-                <span className="block text-sm font-semibold text-gray-900 dark:text-white truncate">Add Booking</span>
+                <span className="block text-xs font-semibold text-gray-900 dark:text-white truncate">Add Booking</span>
               </div>
             </button>
           )}
@@ -203,7 +203,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 <UtensilsCrossed className="w-5 h-5" />
               </div>
               <div className="min-w-0">
-                <span className="block text-sm font-semibold text-gray-900 dark:text-white truncate">Add Food Order</span>
+                <span className="block text-xs font-semibold text-gray-900 dark:text-white truncate">Add Food Order</span>
               </div>
             </button>
           )}
@@ -219,7 +219,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 <ChefHat className="w-5 h-5" />
               </div>
               <div className="min-w-0">
-                <span className="block text-sm font-semibold text-gray-900 dark:text-white truncate">View Live Kitchen Order</span>
+                <span className="block text-xs font-semibold text-gray-900 dark:text-white truncate">View Live Kitchen Order</span>
               </div>
             </button>
           )}
