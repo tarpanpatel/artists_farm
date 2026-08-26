@@ -357,7 +357,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
             value={walkInTableCount}
             onChange={(e) => setWalkInTableCount(e.target.value)}
             placeholder="10"
-            helperText={t('walk_in_table_count_help', "How many numbered tables (Table 1..N) the Kitchen walk-in order picker offers.")}
+            helperText={t('walk_in_table_count_help', "How many number of tables the Kitchen can serve.")}
           />
         </div>
       )}

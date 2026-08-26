@@ -58,7 +58,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     const resolvedIcon = icon || (leftIcon && React.isValidElement(leftIcon) ? () => leftIcon as React.ReactElement : undefined);
 
     return (
-      <div className={`app-input-wrapper ${fullWidth ? 'w-full' : 'inline-block'} input`}>
+      <div className={`app-input-wrapper ${fullWidth ? 'w-full min-w-0' : 'inline-block'} input`}>
         {label && (
           <div className="mb-1.5 block">
             <FlowbiteLabel

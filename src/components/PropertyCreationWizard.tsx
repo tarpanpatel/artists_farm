@@ -441,7 +441,7 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
                   label="Number of Rooms"
                   value={roomCount}
                   onChange={(e) => setRoomCount(Math.max(1, parseInt(e.target.value) || 1))}
-                  helperText={isResuming ? 'Add more rooms later from the property dashboard.' : `Max ${remainingSlots} slot(s) available`}
+                  helperText={isResuming ? 'Add or delete rooms later from the property dashboard.' : `Max ${remainingSlots} slot(s) available`}
                 />
               </div>
             )}
@@ -600,7 +600,7 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
               value={walkInTableCount}
               onChange={(e) => setWalkInTableCount(e.target.value)}
               placeholder="10"
-              helperText="How many numbered tables the Kitchen walk-in order picker offers."
+              helperText="How many number of tables the Kitchen can serve."
             />
           </div>
         )}

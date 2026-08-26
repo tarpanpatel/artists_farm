@@ -73,16 +73,18 @@
         width: 64px;
         height: 64px;
         border-radius: 1rem;
-        background: linear-gradient(to bottom right, #3b82f6, #4f46e5);
+        /* Matches the actual logo mark's own gradient (sampled from its corners:
+           #2296fd top-left -> #4e47ed bottom-right), not the old placeholder
+           blue/indigo - the icon and its background must use the same blue. */
+        background: linear-gradient(to bottom right, #2296fd, #4e47ed);
         display: flex;
         align-items: center;
         justify-content: center;
         animation: initial-loader-pulse 2s ease-in-out infinite;
       }
-      #initial-loader__logo svg {
+      #initial-loader__logo img {
         width: 32px;
         height: 32px;
-        color: #fff;
       }
       #initial-loader__spinner {
         width: 40px;
@@ -163,17 +165,19 @@
     <div id="root">
       <div id="initial-loader">
         <div id="initial-loader__logo">
-          <!-- Inline SVG, not <img src="apple-touch-icon.png"> (18 Aug -> fixed 26 Aug 2026): an
-               <img> here needs a real network round trip to paint anything, so on a slow/cold
-               connection this box sat as a flat glyph-less gradient square for a visible moment -
-               exactly the "jarring style change" this loader's own comment above says it exists to
-               avoid, since LoadingScreen.tsx's icon (Building2, inline SVG) never has that gap.
-               This is the same Building2 glyph (flowbite-react-icons "Building", outline set,
-               24x24 viewBox, strokeWidth 2) reproduced by hand so it paints with zero network
-               dependency, same as the rest of this static pre-React loader. -->
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M6 4h12M6 4v16M6 4H5m13 0v16m0-16h1m-1 16H6m12 0h1M6 20H5M9 7h1v1H9zm5 0h1v1h-1zm-5 4h1v1H9zm5 0h1v1h-1zm-3 4h2a1 1 0 0 1 1 1v4h-4v-4a1 1 0 0 1 1-1"/>
-          </svg>
+          <!-- Data URI, not a plain <img src="/icons/..."> (18 Aug -> fixed 26 Aug 2026, updated
+               26 Aug 2026 for the new brand mark): a normal <img> here needs a real network round
+               trip to paint anything, so on a slow/cold connection this box would sit as a flat
+               glyph-less gradient square for a visible moment - exactly the "jarring style change"
+               this loader's own comment above says it exists to avoid, since LoadingScreen.tsx's
+               icon never has that gap. Inlining the (small, ~1.4KB) transparent PNG as base64
+               keeps that same zero-network-dependency property without needing to hand-trace this
+               logo's curves as SVG path data. Source: icons/icon-mark-transparent.png, resized to
+               64x64 - regenerate this string from that file if the logo changes again. -->
+          <img
+            width="32" height="32" alt=""
+            src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAFQklEQVR4nO2aT2gdRRzHv7s8gxSREIqUUIqISCgS9CJBSggeRKSIf4oXpfSgHkS05iCFnqUgLZpDwD+gYCkRPBYRD6UoKimiSLXaSgtBrTaKii2mNmny8TCzybx5M/v2bd57+xLfF5aXnZ2Z/f2b7/zmt5H66KOPPvroo48++uijjz7+h0iqeCmQSrrVXqmks5J+SZJkpQp5ugZAwP3Al8Aya1gCPgbuAaoWszMAtgCvWmVjuAocAAaqlrdtsF4fsV4vipPAjqplXzeAFNgH/N2C8hnmgd1s1CUBDAIzOQpeAJ4BngcuRvosAUeAG6vWpyVgyOxcRKll4Cgw5PQfBj7KMdYp4M4qdSoEoAa8hCGzEP4CnsRsg6GxB3LGXsFETMPYngCwDTie48UvMGSYN0cWPd9H5siiZ7CLquXDCr2b+DpeBqaALS3MOQgcyzHmOWAiz5hdAYblDxHf238H9viCWqMNAENW2YFAnxR4DhP6IVzDLJlqloRV4uUcL32It5dbRR/HLJV5q8Q1TPS8j4mkmveOUQwJhrAMTFYSCcC9Ec9nnvEVGQO+yTFYhs+Ana5SrGWRy4H+/wC3V2GAowFhLgDjnvACHiAeyiH8Aezy3ifgUcyy8nGo28qnwBlPiHlgW6DvCGb7axUXge2B+UYxXndxkpLLoCyBpJKGvLavJF1yGzAE9Yak0LZ1WtLrkt6UdD7wfFjSERpJ7rSkH722IZXXpXVgkpZfPS98EOg3QeO6vQrsdRXDkON+DH+4WAJGvTlFY5Z5JmCoQui01R4JvONFSe+6xY8kSRYlvSbpFa9vTdLDnRSwYwawa/Iur/lnSW8nSWMhyrZNSVrwHt3dAfFWUWveJYimhkuSRMBxSQOSMm8fk7SYM+xPmfU94rQNAwoZrR0oawCpmBEOSzrcwpwrajRQkepQ6UjuxZNVVwuj64mAprDMvFWNhl6QdDkS1j+onjvmAn3OS7rDuT+rkobrmAEsCb4laV/g8YKkb4FpSe8lSXJdWuWNpyW9Y2VblDTrGsr2eULSLtvnX0mfd4ojgrD79nxeHoDJFn8KpXgepsvu4e1AJ1+cFpz/WUlPdVCOKICOGmBFZlsrgoN0sfBps0lJHeSAJElW7Fp9SNINzqObJe1V/Vliu6TbJH3XbF4r+Jikx2QirCZpJkmSWb+fzwttyyeKcECT8fsDXDBecKxorCucKsIjmefdqyryuRxoa+VzmN/3piKDQt5vpwEa6no5CB2PG87+EZSWOSRfWQ64LuPFW5y2MUl7gDl7HxN0q6QXAu0HgUsyxOmPTZ1rpwxfuAhFVB0izikfAOR/9uoWljDVpimaf2/w71OgVpoSgQlJJ1TdeeI3SZ/K7BwzSZJEdxAc9ncMke0g5WAtOFWJ303RdBq4D/NtoUYkAgh7PqtqrS/3sJNMWoHKKDGJ+ZYYqvTm4QTwIE7p3XFK6rWFlE+t7APrzgrsCwYljUvaobWwcgVJZTLDVIZA5yR9orVMcVDShMz/DNW8cRmy096ipFlJX9tSmi9LXbjbw1NIHtO3iJIbCYTXuxQ5m3S0HlAVqCc6aS36GtCLFaF1IZLrx/RMN40BXLLTWrjHqkSry2FTcUAO2bnGqHP6ZosAl+j8X/9vSRs4AmhMfFzlajIez36D3g82bFC4ns+U9neAkK5pz0aAu5/77Q5CYR56HkVPRwDeKc5DTPlmRqnr25OJkKu0k8qG7mN1g6JY6dkl4MLL6TPkRUBeDlDXt+cNEFE61tbqki5fEGkXCqxxqZ7VXZZ326PJTmQeSdJ/0e9bun7N83UAAAAASUVORK5CYII="
+          />
         </div>
         <div id="initial-loader__spinner"></div>
       </div>

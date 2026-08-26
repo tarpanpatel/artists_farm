@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, AlertCircle, Home } from './icons/FlowbiteIcons';
+import { AlertCircle, Home } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';
 
 interface LoadingScreenProps {
@@ -26,11 +26,18 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
           still announces what's actually happening. */}
       <span className="sr-only" role="status">{message}</span>
       <div className="flex flex-col items-center gap-8 loading-screen__container">
-        {/* Animated Logo */}
+        {/* Animated Logo - gradient matches the brand mark's own corners
+            (#2296fd -> #4e47ed) rather than the generic Tailwind blue/indigo
+            this used to use, so this box and icons/icon-source.png (the real
+            favicon/app-icon files generated from the same mark) read as the
+            same blue. */}
         <div className="relative w-16 h-16 loading-screen__logo">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg animate-pulse loading-screen__logo-bg" />
+          <div
+            className="absolute inset-0 rounded-lg animate-pulse loading-screen__logo-bg"
+            style={{ background: 'linear-gradient(to bottom right, #2296fd, #4e47ed)' }}
+          />
           <div className="absolute inset-0 flex items-center justify-center loading-screen__logo-icon">
-            <Building2 className="w-8 h-8 text-white" />
+            <img src="/icons/icon-mark-transparent.png" alt="" className="w-8 h-8" />
           </div>
         </div>
 

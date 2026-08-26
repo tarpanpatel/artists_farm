@@ -219,15 +219,20 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
 
   const handleToggleActive = async (property: Property) => {
     try {
+      const nextActive = property.is_active ? 0 : 1;
       const res = await fetch('/php/api/router.php?action=update_property', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ property_id: property.id, status: property.is_active ? 'inactive' : 'active' }),
+        body: JSON.stringify({
+          property_id: property.id,
+          status: nextActive ? 'active' : 'inactive',
+          is_active: nextActive,
+        }),
       });
       const data = await res.json();
       if (data.success) {
-        showSuccess(`Property ${property.is_active ? 'deactivated' : 'activated'}`);
+        showSuccess(`Property ${nextActive ? 'activated' : 'deactivated'}`);
         await loadData();
       }
     } catch {
@@ -341,17 +346,17 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
             </div>
             <button
               onClick={handleLogout}
-              className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors tenant-dashboard__logout-button"
+              className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors tenant-dashboard__logout-button"
               title={t('logout_tooltip', 'Logout')}
             >
-              <LogOut className="w-5 h-5" />
+              <LogOut className="w-5 h-5 text-red-600 dark:text-red-400" />
             </button>
           </div>
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-8 space-y-8 tenant-dashboard__main">
-        {/* â"ۉ"€ Success Toast â"ۉ"€ */}
+        {/* Success Toast */}
         {successMsg && (
           <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] bg-emerald-600 text-white px-5 py-3 rounded-lg shadow-2xl text-sm font-medium flex items-center gap-2 animate-pulse tenant-dashboard__success-toast">
             <CheckCircle className="w-4 h-4 tenant-dashboard__success-toast-icon" />
@@ -365,7 +370,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           </FlowbiteAlert>
         )}
 
-        {/* â"ۉ"€ Slot Usage Widget â"ۉ"€ */}
+        {/* Slot Usage Widget */}
         <section className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-4 shadow-sm tenant-dashboard__slot-widget">
           <div className="flex items-center justify-between tenant-dashboard__slot-widget-inner">
             <div className="flex items-center gap-3 tenant-dashboard__slot-widget-left">
@@ -374,7 +379,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
               </div>
               <div className="tenant-dashboard__slot-widget-text">
                 <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 tenant-dashboard__slot-widget-label">Slots</p>
-                <p className="text-[10px] text-slate-400 dark:text-slate-500 tenant-dashboard__slot-widget-remaining">{remaining > 0 ? `${remaining} remaining` : 'No slots left'}</p>
+                <p className="text-2xs text-slate-400 dark:text-slate-500 tenant-dashboard__slot-widget-remaining">{remaining > 0 ? `${remaining} remaining` : 'No slots left'}</p>
               </div>
             </div>
             <div className="w-24 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden tenant-dashboard__slot-widget-bar-bg">
@@ -392,63 +397,67 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           </div>
         </section>
 
-        {/* Metrics Grid */}
+        {/* Metrics Grid - 4 Individual Columns */}
         <section className="tenant-dashboard__metrics-section">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 tenant-dashboard__metrics-grid">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 tenant-dashboard__metrics-grid">
             <KpiCard
               label="Arrivals"
               icon={Calendar}
               badge={{ text: 'Today', color: 'info' }}
               value={todaysArrivalsCount}
+              layout="stacked"
             />
             <KpiCard
               label="Departures"
               icon={LogOut}
               badge={{ text: 'Today', color: 'warning' }}
               value={todaysDeparturesCount}
+              layout="stacked"
             />
             <KpiCard
               label="Guests In-House"
               icon={User}
               badge={{ text: 'Active', color: 'success' }}
               value={inHouseCount}
+              layout="stacked"
             />
             <KpiCard
               label="Service Requests"
               icon={Bell}
               badge={{ text: 'Active', color: 'failure' }}
               value={pendingRequestsCount}
+              layout="stacked"
             />
           </div>
         </section>
 
-          {/* â"ۉ"€ Properties Section â"ۉ"€ */}
-          <section className="tenant-dashboard__properties-section">
-            <div className="flex items-center justify-between mb-5 tenant-dashboard__properties-header">
-              <h2 className="text-xl font-semibold text-slate-900 dark:text-white tenant-dashboard__properties-title">{t('your_properties_heading', 'Your Properties')}</h2>
-              {remaining > 0 ? (
-                <Button
-                  id="tenant-add-property-btn"
-                  leftIcon={<Plus className="w-4 h-4" />}
-                  variant="primary"
-                  size="sm"
-                  onClick={() => setModal({ type: 'wizard' })}
-                  className="tenant-dashboard__properties-add-btn"
-                >
+        {/* Properties Section */}
+        <section className="tenant-dashboard__properties-section">
+          <div className="flex items-center justify-between mb-5 tenant-dashboard__properties-header">
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-white tenant-dashboard__properties-title">{t('your_properties_heading', 'Your Properties')}</h2>
+            {remaining > 0 ? (
+              <Button
+                id="tenant-add-property-btn"
+                leftIcon={<Plus className="w-4 h-4" />}
+                variant="primary"
+                size="sm"
+                onClick={() => setModal({ type: 'wizard' })}
+                className="tenant-dashboard__properties-add-btn"
+              >
+                {t('add_property_button', 'Add Property')}
+              </Button>
+            ) : (
+              <div className="flex flex-col items-end gap-1 tenant-dashboard__properties-no-slots">
+                <Button variant="dark" size="sm" disabled leftIcon={<Lock className="w-4 h-4" />} className="tenant-dashboard__properties-add-btn--disabled">
                   {t('add_property_button', 'Add Property')}
                 </Button>
-              ) : (
-                <div className="flex flex-col items-end gap-1 tenant-dashboard__properties-no-slots">
-                  <Button variant="dark" size="sm" disabled leftIcon={<Lock className="w-4 h-4" />} className="tenant-dashboard__properties-add-btn--disabled">
-                    {t('add_property_button', 'Add Property')}
-                  </Button>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 tenant-dashboard__properties-no-slots-text">{t('no_more_slots_available_message', 'No more slots available')}</p>
-                  <Button variant="secondary" size="xs" leftIcon={<Zap className="w-3.5 h-3.5" />} onClick={() => setModal({ type: 'upgrade' })} className="tenant-dashboard__properties-upgrade-btn">
-                    {t('upgrade_package_button', 'Upgrade Package')}
-                  </Button>
-                </div>
-              )}
-            </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 tenant-dashboard__properties-no-slots-text">{t('no_more_slots_available_message', 'No more slots available')}</p>
+                <Button variant="secondary" size="xs" leftIcon={<Zap className="w-3.5 h-3.5" />} onClick={() => setModal({ type: 'upgrade' })} className="tenant-dashboard__properties-upgrade-btn">
+                  {t('upgrade_package_button', 'Upgrade Package')}
+                </Button>
+              </div>
+            )}
+          </div>
 
           {properties.length === 0 ? (
             <div className="bg-white dark:bg-slate-900 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 p-12 text-center tenant-dashboard__properties-empty">
@@ -457,108 +466,192 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
               <p className="text-sm text-slate-400 dark:text-slate-500 mt-1 tenant-dashboard__properties-empty-subtext">{t('add_first_property_help_text', 'Add your first property to get started')}</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 tenant-dashboard__properties-grid">
-              {properties.map((property) => {
-                const isMultiKey = property.property_type === 'MULTI_KEY';
-                const roomCount = property.room_count ?? 0;
-                const tenantSlug = tenantInfo?.slug ?? '';
-                const dashboardUrl = tenantSlug
-                  ? `${API_ROOT_BASE}/${tenantSlug}/${property.slug}/#dashboard`
-                  : `${API_ROOT_BASE}/${property.slug}/#dashboard`;
+            <>
+              {/* Desktop View: Flowbite Standard DataTable */}
+              <div className="hidden md:block bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left text-slate-600 dark:text-slate-300">
+                    <thead className="text-2xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700">
+                      <tr>
+                        <th scope="col" className="px-4 py-3 whitespace-nowrap">Property Name</th>
+                        <th scope="col" className="px-4 py-3 whitespace-nowrap">Type</th>
+                        <th scope="col" className="px-4 py-3 whitespace-nowrap">Rooms & Slots</th>
+                        <th scope="col" className="px-4 py-3 whitespace-nowrap">Status</th>
+                        <th scope="col" className="px-4 py-3 whitespace-nowrap text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                      {properties.map((property) => {
+                        const isMultiKey = property.property_type === 'MULTI_KEY';
+                        const roomCount = property.room_count ?? 0;
+                        const tenantSlug = tenantInfo?.slug ?? '';
+                        const dashboardUrl = tenantSlug
+                          ? `${API_ROOT_BASE}/${tenantSlug}/${property.slug}/#dashboard`
+                          : `${API_ROOT_BASE}/${property.slug}/#dashboard`;
+                        const isDraft = property.status === 'draft';
 
-                // Draft properties (26 Aug 2026, "Save & Exit" mid-wizard) render a distinct card -
-                // incomplete, so no Open/Edit/Active-toggle actions (there's nothing real to open
-                // yet); Continue resumes the wizard exactly where it left off, Delete abandons it.
-                if (property.status === 'draft') {
-                  return (
-                    <div
-                      key={property.id}
-                      className="bg-amber-50 dark:bg-amber-950/20 rounded-lg border-2 border-dashed border-amber-300 dark:border-amber-800 p-4 sm:p-6 tenant-dashboard__property-card tenant-dashboard__property-card--draft"
-                    >
-                      <div className="flex items-center gap-2.5 mb-3">
-                        <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-800 flex items-center justify-center shadow-xs">
-                          {isMultiKey ? <Layers className="w-5 h-5 text-amber-600 dark:text-amber-400" /> : <Home className="w-5 h-5 text-amber-600 dark:text-amber-400" />}
+                        return (
+                          <tr key={property.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 shadow-2xs ${
+                                  isDraft
+                                    ? 'bg-amber-100 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-800'
+                                    : isMultiKey
+                                    ? 'bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800'
+                                    : 'bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800'
+                                }`}>
+                                  {isMultiKey ? (
+                                    <Layers className={`w-4.5 h-4.5 ${isDraft ? 'text-amber-600 dark:text-amber-400' : 'text-indigo-600 dark:text-indigo-400'}`} />
+                                  ) : (
+                                    <Home className={`w-4.5 h-4.5 ${isDraft ? 'text-amber-600 dark:text-amber-400' : 'text-teal-600 dark:text-teal-400'}`} />
+                                  )}
+                                </div>
+                                <div>
+                                  <div className="font-semibold text-slate-900 dark:text-white text-xs">{property.name || 'Untitled property'}</div>
+                                  <div className="text-2xs text-slate-400 dark:text-slate-500 font-mono">/{property.slug}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className={`text-2xs font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+                                isMultiKey
+                                  ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/40'
+                                  : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                              }`}>
+                                {isMultiKey ? 'Multi-Room Hotel' : 'Single Property'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              {isMultiKey ? (
+                                <span className="text-xs text-slate-600 dark:text-slate-300">
+                                  {roomCount > 0 ? `${roomCount} room${roomCount !== 1 ? 's' : ''} · ${roomCount} slot${roomCount !== 1 ? 's' : ''}` : '0 rooms'}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-slate-400 dark:text-slate-500">1 Slot</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              {isDraft ? (
+                                <span className="text-2xs font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300/60 dark:border-amber-800/40">
+                                  Draft
+                                </span>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-2xs font-bold uppercase tracking-wider ${property.is_active ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'}`}>
+                                    {property.is_active ? t('active_status_badge', 'Active') : t('tenant_inactive_status_badge', 'Inactive')}
+                                  </span>
+                                  <ToggleSwitch
+                                    enabled={!!property.is_active}
+                                    onChange={() => handleToggleActive(property)}
+                                  />
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                {isDraft ? (
+                                  <Button variant="primary" size="sm" onClick={() => setModal({ type: 'wizard', property })}>
+                                    Continue Setup
+                                  </Button>
+                                ) : (
+                                  <>
+                                    <Button variant="primary" size="sm" onClick={() => window.open(dashboardUrl, '_blank', 'noopener,noreferrer')} leftIcon={<ExternalLink className="w-3.5 h-3.5 shrink-0" />}>
+                                      {t('open_dashboard_link', 'Open Property')}
+                                    </Button>
+                                    <Button variant="secondary" size="sm" onClick={() => { setEditName(property.name); setEditGstin(property.gstin || ''); setEditTelegramTemplateCustomization(!!property.telegram_template_customization_enabled); setEditPhone(property.phone || ''); setEditMapsLink(property.google_maps_link || ''); setEditInstructions(property.instructions || ''); setModal({ type: 'edit', property }); }} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                                      Edit
+                                    </Button>
+                                  </>
+                                )}
+                                <Button variant="ghost" size="xs" onClick={() => setModal({ type: 'delete', property })} title={t('delete_tooltip', 'Delete')} className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
+                                  <Trash2 className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Mobile View: Small Screen Responsive Cards */}
+              <div className="block md:hidden space-y-3">
+                {properties.map((property) => {
+                  const isMultiKey = property.property_type === 'MULTI_KEY';
+                  const roomCount = property.room_count ?? 0;
+                  const tenantSlug = tenantInfo?.slug ?? '';
+                  const dashboardUrl = tenantSlug
+                    ? `${API_ROOT_BASE}/${tenantSlug}/${property.slug}/#dashboard`
+                    : `${API_ROOT_BASE}/${property.slug}/#dashboard`;
+                  const isDraft = property.status === 'draft';
+
+                  if (isDraft) {
+                    return (
+                      <div key={property.id} className="bg-amber-50 dark:bg-amber-950/20 rounded-lg border-2 border-dashed border-amber-300 dark:border-amber-800 p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-2xs font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300/60 dark:border-amber-800/40">
+                            Draft - Setup Incomplete
+                          </span>
                         </div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300/60 dark:border-amber-800/40">
-                          Draft - Setup Incomplete
-                        </span>
+                        <h3 className="font-semibold text-slate-900 dark:text-white text-sm">{property.name || 'Untitled property'}</h3>
+                        <div className="mt-3 pt-3 border-t border-amber-200 dark:border-amber-900 flex items-center justify-between">
+                          <Button variant="primary" size="sm" onClick={() => setModal({ type: 'wizard', property })}>
+                            Continue Setup
+                          </Button>
+                          <Button variant="ghost" size="xs" onClick={() => setModal({ type: 'delete', property })} className="text-red-600 dark:text-red-400">
+                            <Trash2 className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
+                          </Button>
+                        </div>
                       </div>
-                      <h3 className="font-semibold text-slate-900 dark:text-white mb-1">{property.name || 'Untitled property'}</h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">This property isn't live yet - finish setup to start taking bookings.</p>
-                      <div className="pt-4 border-t border-amber-200 dark:border-amber-900 flex items-center justify-between">
-                        <Button variant="primary" size="sm" onClick={() => setModal({ type: 'wizard', property })}>
-                          Continue Setup
+                    );
+                  }
+
+                  return (
+                    <div key={property.id} className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-4 shadow-xs space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isMultiKey ? 'bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200' : 'bg-teal-50 dark:bg-teal-950/60 border border-teal-200'}`}>
+                            {isMultiKey ? <Layers className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> : <Home className="w-4 h-4 text-teal-600 dark:text-teal-400" />}
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-slate-900 dark:text-white text-sm">{property.name}</h3>
+                            <p className="text-2xs text-slate-400 dark:text-slate-500 font-mono">/{property.slug}</p>
+                            {isMultiKey && (
+                              <p className="text-2xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                {roomCount > 0 ? `${roomCount} room${roomCount !== 1 ? 's' : ''} · ${roomCount} slot${roomCount !== 1 ? 's' : ''}` : '0 rooms'}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <ToggleSwitch
+                            enabled={!!property.is_active}
+                            onChange={() => handleToggleActive(property)}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                        <Button variant="primary" size="sm" onClick={() => window.open(dashboardUrl, '_blank', 'noopener,noreferrer')} leftIcon={<ExternalLink className="w-3.5 h-3.5 shrink-0" />}>
+                          {t('open_dashboard_link', 'Open Property')}
                         </Button>
-                        <Button variant="ghost" size="xs" onClick={() => setModal({ type: 'delete', property })} title={t('delete_tooltip', 'Delete')} className="text-slate-400 hover:text-red-600">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
+                        <div className="flex items-center gap-1.5">
+                          <Button variant="secondary" size="sm" onClick={() => { setEditName(property.name); setEditGstin(property.gstin || ''); setEditTelegramTemplateCustomization(!!property.telegram_template_customization_enabled); setEditPhone(property.phone || ''); setEditMapsLink(property.google_maps_link || ''); setEditInstructions(property.instructions || ''); setModal({ type: 'edit', property }); }} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                            Edit
+                          </Button>
+                          <Button variant="ghost" size="xs" onClick={() => setModal({ type: 'delete', property })} className="text-red-600 dark:text-red-400 hover:text-red-700">
+                            <Trash2 className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   );
-                }
-
-                return (
-                  <div
-                    key={property.id}
-                    className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-4 sm:p-6 shadow-sm hover:shadow-md transition-all group tenant-dashboard__property-card"
-                  >
-                    <div className="flex items-start justify-between mb-3 tenant-dashboard__property-card-header">
-                      <div className="flex items-center gap-2.5">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shadow-xs ${isMultiKey ? 'bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800' : 'bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800'} tenant-dashboard__property-card-icon-container`}>
-                          {isMultiKey ? (
-                            <Layers className="w-5 h-5 text-indigo-600 dark:text-indigo-400 tenant-dashboard__property-card-icon" />
-                          ) : (
-                            <Home className="w-5 h-5 text-teal-600 dark:text-teal-400 tenant-dashboard__property-card-icon" />
-                          )}
-                        </div>
-                        <div>
-                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${isMultiKey ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/40' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'} tenant-dashboard__property-type-badge`}>
-                            {isMultiKey ? 'Multi-Room Hotel' : 'Single Property'}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Active / Inactive Status Toggle Switch */}
-                      <div className="flex items-center gap-2">
-                        <span className={`text-xs font-semibold ${property.is_active ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'}`}>
-                          {property.is_active ? t('active_status_badge', 'Active') : t('tenant_inactive_status_badge', 'Inactive')}
-                        </span>
-                        <ToggleSwitch
-                          enabled={!!property.is_active}
-                          onChange={() => handleToggleActive(property)}
-                        />
-                      </div>
-                    </div>
-
-                    <h3 className="font-semibold text-slate-900 dark:text-white mb-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors tenant-dashboard__property-card-name">
-                      {property.name}
-                    </h3>
-                    <p className="text-xs text-slate-400 dark:text-slate-500 font-mono mb-1 tenant-dashboard__property-card-slug">/{property.slug}</p>
-                    {isMultiKey && (
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 tenant-dashboard__property-card-rooms">
-                        {roomCount > 0
-                          ? `${roomCount} room${roomCount !== 1 ? 's' : ''} · ${roomCount} slot${roomCount !== 1 ? 's' : ''}`
-                          : '0 rooms (No sub-rooms created yet)'}
-                      </p>
-                    )}
-
-                    <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between tenant-dashboard__property-card-actions">
-                      <Button variant="ghost" size="sm" onClick={() => window.open(dashboardUrl, '_blank', 'noopener,noreferrer')} className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 tenant-dashboard__property-card-open-btn">
-                        <ExternalLink className="w-3 h-3" /> {t('open_dashboard_link', 'Open Property')}
-                      </Button>
-                      <div className="flex items-center gap-1 tenant-dashboard__property-card-controls">
-                        <Button variant="primary" size="sm" onClick={() => { setEditName(property.name); setEditGstin(property.gstin || ''); setEditTelegramTemplateCustomization(!!property.telegram_template_customization_enabled); setEditPhone(property.phone || ''); setEditMapsLink(property.google_maps_link || ''); setEditInstructions(property.instructions || ''); setModal({ type: 'edit', property }); }} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
-                          Edit
-                        </Button>
-                        <Button variant="ghost" size="xs" onClick={() => setModal({ type: 'delete', property })} title={t('delete_tooltip', 'Delete')} className="text-slate-400 hover:text-red-600 tenant-dashboard__property-card-delete-btn">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                })}
+              </div>
+            </>
           )}
         </section>
 

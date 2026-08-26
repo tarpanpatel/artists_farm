@@ -29,7 +29,7 @@ import {
 } from './icons/FlowbiteIcons';
 import { TelegramConfig, TelegramDispatchLog, PropertyTelegramConfig } from '../types';
 import { invalidateTemplateCache, getPropertySlug, fetchTelegramConfigDB, saveTelegramConfigDB, fetchTemplatesFromDB, updateTemplateGroupInDB, DbTelegramTemplate } from '../services/api';
-import { TelegramSetupWizard } from './TelegramSetupWizard';
+import { TelegramConnectionStatus } from './TelegramConnectionStatus';
 import { ToggleSwitch } from './ToggleSwitch';
 import { StyledSelect } from './StyledSelect';
 import { Input } from './Input';
@@ -484,7 +484,6 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
   const [testSent, setTestSent] = useState(false);
   const [testSending, setTestSending] = useState(false);
   const [testError, setTestError] = useState<string | null>(null);
-  const [showSetupWizard, setShowSetupWizard] = useState(false);
   const [editorMode, setEditorMode] = useState<'wysiwyg' | 'html'>('wysiwyg');
   const [activeCategory, setActiveCategory] = useState<'Kitchen' | 'Admin' | 'Finances'>('Kitchen');
 
@@ -676,13 +675,6 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
     if (hideRoutingControls) return;
     fetchTelegramConfigDB().then((cfg) => {
       setTgSettings(cfg);
-      // Auto-open the setup wizard while any of the 3 core groups isn't connected
-      // yet, so a tenant lands straight in onboarding instead of a blank template
-      // manager. Once all 3 have a chat ID, stop auto-opening - the button stays
-      // available for anyone who wants to revisit it manually.
-      const requiredKeys = ['kitchen', 'admin', 'finance'];
-      const isComplete = requiredKeys.every((key) => cfg.groups.some((g) => g.key === key && g.chatId));
-      if (!isComplete) setShowSetupWizard(true);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hideRoutingControls]);
@@ -1144,6 +1136,14 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
             />
           </div>
         </div>
+      )}
+
+      {/* Read-only per-channel connection status (White-Glove, 26 Aug 2026) - replaces
+          the old self-service TelegramSetupWizard entirely. The property owner never
+          sees a pairing code here, only "connected" or "not set up - contact support";
+          actual pairing happens exclusively from Root Admin's TelegramPairingPanel. */}
+      {!hideRoutingControls && (
+        <TelegramConnectionStatus config={tgSettings} kitchenModuleEnabled={kitchenEnabled} />
       )}
 
       {/* Category Tabs - attached to the card below, same "sits directly on
@@ -1713,23 +1713,10 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
     </div>
   );
 
-  // No button opens this when hideRoutingControls is set, and showSetupWizard
-  // never gets auto-set true in that mode either (see the effect above) - but
-  // skip rendering it outright too, rather than relying on isOpen staying false.
-  const setupWizard = hideRoutingControls ? null : (
-    <TelegramSetupWizard
-      isOpen={showSetupWizard}
-      onClose={() => setShowSetupWizard(false)}
-      onComplete={() => fetchTelegramConfigDB().then(setTgSettings)}
-      kitchenModuleEnabled={kitchenEnabled}
-    />
-  );
-
   if (isEmbedded) {
     return (
       <>
         {contentBody}
-        {setupWizard}
       </>
     );
   }
@@ -1744,7 +1731,6 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
       <div className="flex-1 overflow-y-auto">
         {contentBody}
       </div>
-      {setupWizard}
     </Drawer>
   );
 };
