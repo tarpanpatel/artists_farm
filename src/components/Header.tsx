@@ -18,8 +18,9 @@ import {
   Eye,
   Check,
   Home as RoomIcon,
-  X
+  X,
 } from './icons/FlowbiteIcons';
+import { ContactSupportMenu } from './ContactSupportMenu';
 import { useAuth } from '../contexts/AuthContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
@@ -398,6 +399,11 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             </Popover>
           )}
+
+          {/* Contact Support (27 Aug 2026) - shared with TenantDashboard.tsx's
+              "Help" button, see ContactSupportMenu.tsx for why it's a
+              standalone component. */}
+          <ContactSupportMenu />
 
           {/* Notification Bell Button */}
           <div className="header__notification relative" ref={notificationWrapperRef}>

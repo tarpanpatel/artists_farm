@@ -24,7 +24,7 @@
          (mirrors the old inline tailwind.config's fontFamily/brand-color
          extension via Tailwind v4 @theme). Regenerate after editing classes
          here via `npm run build:landing`. -->
-    <link rel="stylesheet" href="/assets/css/landing.css">
+    <link rel="stylesheet" href="./assets/css/landing.css">
 
     <!-- Google Fonts (non-render-blocking, 25 Aug 2026 - see index.html for
          the full writeup: a plain stylesheet <link> here would hold this
@@ -48,12 +48,16 @@
 
     <!-- Top Announcement Banner -->
     <div class="bg-slate-900 text-slate-300 text-xs py-2 px-4 text-center border-b border-slate-800">
-        <span class="inline-flex items-center gap-1.5 font-medium">
+        <span class="inline-flex items-center gap-1.5 font-medium flex-wrap justify-center">
             <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>Try our live interactive demo</span>
+            <span class="text-emerald-400 font-bold">🎉 EVERY OWNER GETS 1 MONTH 100% FREE</span>
+            <span class="text-slate-500">•</span>
+            <span>No Credit Card Required</span>
+            <span class="text-slate-500">•</span>
+            <span class="text-slate-200 font-semibold">No Commitment</span>
             <span class="text-slate-500">•</span>
             <a href="https://ground-code.com/rivera-resorts/luxe-stays/" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 font-semibold underline underline-offset-2">
-                Click here to test drive &rarr;
+                Test Drive Live Demo &rarr;
             </a>
         </span>
     </div>
@@ -84,8 +88,8 @@
             <a href="#ota-savings" class="hover:text-blue-600 transition-colors">Save 15–25% OTA Fees</a>
             <a href="#features-overview" class="hover:text-blue-600 transition-colors">See App Screens</a>
             <a href="#telegram-ops" class="hover:text-blue-600 transition-colors">Telegram for Staff</a>
-            <a href="#daily-peace" class="hover:text-blue-600 transition-colors">Daily Peace of Mind</a>
             <a href="#who-its-for" class="hover:text-blue-600 transition-colors">Who It's For</a>
+            <a href="#pricing" class="hover:text-blue-600 transition-colors">Pricing & Trial</a>
         </div>
 
         <div class="flex items-center gap-3">
@@ -1234,6 +1238,115 @@
         </div>
     </section>
 
+    <!-- SECTION: PRICING & 30-DAY FREE TRIAL -->
+    <section id="pricing" class="max-w-7xl mx-auto px-6 py-16 border-t border-slate-200 scroll-mt-24">
+        <div class="text-center max-w-3xl mx-auto mb-12">
+            <div class="inline-flex items-center gap-2 px-3.5 py-1.5 bg-emerald-50 text-emerald-700 rounded-full text-xs font-bold uppercase tracking-wider mb-4 border border-emerald-200 shadow-2xs">
+                <span>🎉 1 MONTH 100% FREE FOR EVERY OWNER • NO CREDIT CARD • NO LOCK-IN</span>
+            </div>
+            <h2 class="text-3xl sm:text-4xl font-serif font-bold text-slate-900 mb-3">
+                One Simple Price. All Features Included.
+            </h2>
+            <p class="text-slate-600 text-sm sm:text-base leading-relaxed">
+                Try GroundCode completely free for 30 days. After your trial, pay just <strong>₹1,499/month</strong> for your main property. No hidden fees or tricky plans.
+            </p>
+        </div>
+
+        <div class="max-w-3xl mx-auto bg-white p-8 sm:p-10 rounded-3xl border-2 border-blue-600 shadow-2xl relative flex flex-col justify-between">
+            <div class="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-xs font-bold px-5 py-1 rounded-full uppercase tracking-wider shadow-md whitespace-nowrap">
+                Complete Property Operating Plan
+            </div>
+
+            <div>
+                <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-6 border-b border-slate-100 pb-6">
+                    <div>
+                        <h3 class="text-2xl font-bold text-slate-900">GroundCode Pro</h3>
+                        <p class="text-xs sm:text-sm text-slate-500 mt-1">For Homestays, Villas, Guest Houses & Boutique Resorts</p>
+                    </div>
+                    <span class="inline-flex items-center px-3.5 py-1.5 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full border border-emerald-300 w-fit">First 30 Days 100% FREE</span>
+                </div>
+
+                <div class="my-6">
+                    <div class="inline-flex items-center gap-2 px-3.5 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-bold mb-3 border border-emerald-200">
+                        <span>✨ Start Free Today • No Credit Card Required • Cancel Anytime</span>
+                    </div>
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-4xl sm:text-5xl font-extrabold text-slate-900">₹1,499</span>
+                        <span class="text-slate-500 text-sm font-medium">/ month (Includes 1st Villa or Room Key)</span>
+                    </div>
+                    <div class="mt-2 text-xs text-slate-600 space-y-1">
+                        <p class="font-semibold text-emerald-600">Save 2 Months Free: ₹14,990/year when billed annually</p>
+                    </div>
+                </div>
+
+                <!-- INTEGRATED ROOM EXPANSION BOX (MERGED INSIDE CARD) -->
+                <div class="my-6 p-4 sm:p-5 bg-slate-50 border border-slate-200/90 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xs">
+                    <div class="flex items-start gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0 mt-0.5 border border-blue-200">
+                            <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5m0 0v-5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v5m-4 0h4"/></svg>
+                        </div>
+                        <div>
+                            <h4 class="text-xs sm:text-sm font-bold text-slate-900 mb-0.5">Need extra rooms or expanding your resort?</h4>
+                            <p class="text-2xs sm:text-xs text-slate-600 leading-relaxed">
+                                Simply add more room keys anytime directly inside your app dashboard — zero contracts or setup delays!
+                            </p>
+                        </div>
+                    </div>
+                    <div class="shrink-0 w-full sm:w-auto">
+                        <span class="inline-flex items-center justify-center px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 shadow-2xs whitespace-nowrap">
+                            +₹350 / extra room / mo
+                        </span>
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-100 pt-6">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">Everything You Get In One Box:</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-slate-700">
+                        <div class="flex items-start gap-2.5 font-semibold text-slate-900">
+                            <svg class="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            <span>1 Month Free Trial (Includes 1-on-1 Setup Call)</span>
+                        </div>
+                        <div class="flex items-start gap-2.5">
+                            <svg class="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            <span>Booking Calendar with Standard iCal Sync (~15-30 min update window)</span>
+                        </div>
+                        <div class="flex items-start gap-2.5">
+                            <svg class="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            <span>Front-Desk PMS & Fast Guest Check-In</span>
+                        </div>
+                        <div class="flex items-start gap-2.5">
+                            <svg class="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            <span>Kitchen Order Screen for Cook & Staff</span>
+                        </div>
+                        <div class="flex items-start gap-2.5">
+                            <svg class="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            <span>Petty Cash Drawer & Expense Photo Receipts</span>
+                        </div>
+                        <div class="flex items-start gap-2.5">
+                            <svg class="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            <span>Grocery & Stock Low-Stock Alerts</span>
+                        </div>
+                        <div class="flex items-start gap-2.5">
+                            <svg class="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            <span>Digital Guest Bills & Telegram Phone Alerts</span>
+                        </div>
+                        <div class="flex items-start gap-2.5">
+                            <svg class="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            <span>Staff Shift Timings & Daily Cash Balance</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-8 pt-6 border-t border-slate-100 text-center">
+                <a href="https://ground-code.com/rivera-resorts/luxe-stays/" target="_blank" rel="noopener noreferrer" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 rounded-xl transition-all text-base flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25">
+                    <span>Start 1 Month Free Trial</span>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                </a>
+            </div>
+        </div>
+    </section>
+
     <!-- BOTTOM CTA BANNER -->
     <section class="max-w-7xl mx-auto px-6 py-14">
         <div class="bg-slate-900 rounded-3xl p-10 sm:p-14 text-center text-white relative overflow-hidden shadow-2xl border border-slate-800">
@@ -1282,8 +1395,8 @@
             <div class="flex items-center gap-6 text-xs font-semibold text-slate-600">
                 <a href="https://ground-code.com/rivera-resorts/luxe-stays/" target="_blank" rel="noopener noreferrer" class="hover:text-blue-600 transition-colors">Demo Sandbox</a>
                 <a href="/login" class="hover:text-blue-600 transition-colors">Staff Login</a>
-                <a href="#" class="hover:text-blue-600 transition-colors">Privacy</a>
-                <a href="#" class="hover:text-blue-600 transition-colors">Terms</a>
+                <a href="./TERMS_AND_PRIVACY.md" target="_blank" class="hover:text-blue-600 transition-colors">Privacy Policy</a>
+                <a href="./TERMS_AND_PRIVACY.md" target="_blank" class="hover:text-blue-600 transition-colors">Terms of Service</a>
             </div>
         </div>
     </footer>

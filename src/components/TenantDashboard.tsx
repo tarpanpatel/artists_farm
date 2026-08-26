@@ -5,6 +5,7 @@ import {
   Home, TrendingUp, ChevronRight, Lock, Zap, User,
   Calendar, Bell, ArrowRight,
 } from './icons/FlowbiteIcons';
+import { ContactSupportMenu } from './ContactSupportMenu';
 import { StyledSelect } from './StyledSelect';
 import { LoadingScreen } from './LoadingScreen';
 import { API_ROOT_BASE, apiFetch } from '../services/api';
@@ -14,6 +15,9 @@ import { X } from './icons/FlowbiteIcons';
 import { KpiCard } from './KpiCard';
 import { ToggleSwitch } from './ToggleSwitch';
 import { PropertyCreationWizard } from './PropertyCreationWizard';
+import { TermsAcceptanceModal } from './TermsAcceptanceModal';
+import { DashboardFooter } from './DashboardFooter';
+import { LegalDrawer, LegalTabType } from './LegalDrawer';
 import { t } from '../i18n/en';
 
 interface SlotBreakdownItem {
@@ -95,6 +99,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modal, setModal] = useState<ModalState>({ type: 'none' });
+  const [legalDrawerTab, setLegalDrawerTab] = useState<LegalTabType>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [guests, setGuests] = useState<any[]>([]);
   const [serviceRequests, setServiceRequests] = useState<any[]>([]);
@@ -324,13 +329,18 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
               </span>
             )}
           </div>
-          <div className="flex items-center gap-4 tenant-dashboard__header-right">
+          <div className="flex items-center gap-2 sm:gap-4 tenant-dashboard__header-right">
             <div className="text-right hidden sm:block tenant-dashboard__user-info">
               <p className="text-sm font-medium text-slate-800 dark:text-slate-200 tenant-dashboard__username">{username}</p>
               <p className="text-xs text-slate-500 dark:text-slate-400 tenant-dashboard__user-role">
                 {isPlatformAdmin ? t('root_admin_label', 'Root Admin') : t('tenant_manager_label', 'Property Owner')}
               </p>
             </div>
+            <ContactSupportMenu
+              showLabel
+              onOpenFaq={() => setLegalDrawerTab('faq')}
+              onOpenMoreSupport={() => setLegalDrawerTab('support')}
+            />
             <button
               onClick={handleLogout}
               className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors tenant-dashboard__logout-button"
@@ -729,6 +739,9 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
             </section>
           );
         })()}
+
+        {/* Client Dashboard Flowbite Footer */}
+        <DashboardFooter />
       </main>
 
       {/* Property Setup Wizard (26 Aug 2026) - multi-step, timeline-stepper flow replacing the old
@@ -958,6 +971,12 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           </Button>
         </div>
       </Modal>
+
+      {/* Mandatory Terms & Policy Acceptance Modal */}
+      <TermsAcceptanceModal tenantId={tenantId || 'default'} tenantName={tenantInfo?.name || propTenantInfo?.name || 'Your Property'} />
+
+      {/* Header Help & Support Drawer */}
+      <LegalDrawer activeTab={legalDrawerTab} onClose={() => setLegalDrawerTab(null)} />
     </div>
   );
 };

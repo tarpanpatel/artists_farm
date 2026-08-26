@@ -293,6 +293,30 @@ if (!isSchemaVerified('schema_tenants_table_v2')) {
     markSchemaVerified('schema_tenants_table_v2');
 }
 
+// Renewal history for manual/offline billing (27 Aug 2026, see PRODUCT_STRATEGY.md).
+// update_tenant's own UPDATE overwrites plan_type/subscription_expires_at in place -
+// there was no record anywhere of what the plan/expiry WAS before a Root Admin change,
+// or of the UPI/NEFT reference for a given renewal, only the current values. This table
+// is written to (never updated) by update_tenant below, purely additive, so it's safe to
+// self-heal with CREATE TABLE IF NOT EXISTS rather than an ALTER-based column check.
+if (!isSchemaVerified('schema_tenant_subscription_history')) {
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS tenant_subscription_history (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            tenant_id INT NOT NULL,
+            old_plan_type VARCHAR(50) DEFAULT NULL,
+            new_plan_type VARCHAR(50) DEFAULT NULL,
+            old_expires_at DATE DEFAULT NULL,
+            new_expires_at DATE DEFAULT NULL,
+            note VARCHAR(255) DEFAULT NULL,
+            recorded_by VARCHAR(100) DEFAULT NULL,
+            recorded_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            KEY idx_tenant_subscription_history_tenant (tenant_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    } catch (Exception $e) {}
+    markSchemaVerified('schema_tenant_subscription_history');
+}
+
 /**
  * A property's "Super Admin" staff row is not an independent staff account -
  * it IS the tenant, and there is exactly one of them, always. This keeps
@@ -2590,6 +2614,16 @@ switch ($action) {
                     exit;
                 }
             }
+
+            // Snapshot the plan/expiry BEFORE overwriting them, so the history row
+            // below can record what actually changed rather than just the new value.
+            $beforeStmt = $pdo->prepare("SELECT plan_type, subscription_expires_at FROM tenants WHERE id = ? LIMIT 1");
+            $beforeStmt->execute([$id]);
+            $before = $beforeStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+            $newPlanType = $input['plan_type'] ?? 'Growth';
+            $newExpiresAt = !empty($input['subscription_expires_at']) ? $input['subscription_expires_at'] : null;
+
             $stmt = $pdo->prepare("
                 UPDATE tenants
                 SET name = ?, slug = COALESCE(?, slug), email = ?, phone = ?, subscription_status = ?, is_active = ?, max_properties = COALESCE(?, max_properties), subscription_expires_at = ?, plan_type = ?
@@ -2603,11 +2637,34 @@ switch ($action) {
                 $input['subscription_status'] ?? 'trial',
                 $input['is_active'] ?? 0,
                 isset($input['max_properties']) ? (int)$input['max_properties'] : null,
-                !empty($input['subscription_expires_at']) ? $input['subscription_expires_at'] : null,
-                $input['plan_type'] ?? 'Growth',
+                $newExpiresAt,
+                $newPlanType,
                 $id
             ]);
             echo json_encode(['success' => true, 'message' => 'Tenant updated successfully']);
+
+            // Renewal history (27 Aug 2026, see PRODUCT_STRATEGY.md) - only write a row
+            // when the plan/expiry actually changed, or the caller explicitly attached a
+            // renewal_note (e.g. a UPI/NEFT reference for a payment just received), so
+            // routine unrelated edits (fixing a phone number, toggling is_active) don't
+            // pollute the renewal trail with no-op entries.
+            $renewalNote = isset($input['renewal_note']) ? trim((string)$input['renewal_note']) : '';
+            $planChanged = ($before['plan_type'] ?? null) !== $newPlanType;
+            $expiryChanged = ($before['subscription_expires_at'] ?? null) !== $newExpiresAt;
+            if ($planChanged || $expiryChanged || $renewalNote !== '') {
+                try {
+                    $histStmt = $pdo->prepare("INSERT INTO tenant_subscription_history (tenant_id, old_plan_type, new_plan_type, old_expires_at, new_expires_at, note, recorded_by) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                    $histStmt->execute([
+                        $id,
+                        $before['plan_type'] ?? null,
+                        $newPlanType,
+                        $before['subscription_expires_at'] ?? null,
+                        $newExpiresAt,
+                        $renewalNote !== '' ? $renewalNote : null,
+                        $_SESSION['username'] ?? 'Root Admin',
+                    ]);
+                } catch (Exception $eHist) {}
+            }
 
             // Audit trail (24 Aug 2026, extending the platform_admin sweep) -
             // includes is_active, since deactivating a tenant here blocks that
@@ -2623,6 +2680,25 @@ switch ($action) {
                 $stmtAudit = $pdo->prepare("INSERT INTO audit_logs (property_id, action, timestamp, user, ip_address, user_agent, status, module) VALUES (?, ?, NOW(), ?, ?, ?, 'Success', 'platform_admin')");
                 $stmtAudit->execute([1, $actionMsg, $auditUser, $ip, $ua]);
             } catch (Exception $eAudit) {}
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+
+    // Read-only renewal trail for the Edit Owner drawer (27 Aug 2026) - see the
+    // tenant_subscription_history self-heal and update_tenant's insert above.
+    case 'get_tenant_subscription_history':
+        $tenantId = $_GET['tenant_id'] ?? '';
+        if (!$tenantId) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'tenant_id required']);
+            exit;
+        }
+        try {
+            $stmt = $pdo->prepare("SELECT * FROM tenant_subscription_history WHERE tenant_id = ? ORDER BY recorded_at DESC LIMIT 50");
+            $stmt->execute([$tenantId]);
+            echo json_encode(['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
         } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -3548,6 +3624,25 @@ switch ($action) {
             http_response_code(404);
             echo json_encode(['status' => 'error', 'message' => 'Property not found or deleted', 'data' => null]);
         } else {
+            // Merge in the OWNING TENANT's own subscription fields (plan_type,
+            // subscription_status, subscription_expires_at) - these live on
+            // `tenants`, not `properties`, and were previously only ever read by
+            // Root Admin (PlatformPropertyManagement.tsx). The owner-facing app
+            // had no way to know its own trial/renewal state at all, so the
+            // PRODUCT_STRATEGY.md "Day 27: in-app warning toast" step had nothing
+            // to read from. Added 27 Aug 2026 - read-only, tiny (1 row by PK), and
+            // scoped strictly to this property's own tenant_id.
+            if (!empty($currentProperty['tenant_id'])) {
+                try {
+                    $tstmt = $pdo->prepare("SELECT plan_type, subscription_status, subscription_expires_at FROM tenants WHERE id = ? LIMIT 1");
+                    $tstmt->execute([$currentProperty['tenant_id']]);
+                    if ($trow = $tstmt->fetch(PDO::FETCH_ASSOC)) {
+                        $currentProperty['tenant_plan_type'] = $trow['plan_type'];
+                        $currentProperty['tenant_subscription_status'] = $trow['subscription_status'];
+                        $currentProperty['tenant_subscription_expires_at'] = $trow['subscription_expires_at'];
+                    }
+                } catch (Exception $eTenantSub) {}
+            }
             echo json_encode(['status' => 'success', 'data' => $currentProperty]);
         }
         break;

@@ -62,6 +62,12 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
   const [expandedTenant, setExpandedTenant] = useState<number | null>(null);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
   const [showEditTenantModal, setShowEditTenantModal] = useState(false);
+  // Renewal trail for manual/offline billing (27 Aug 2026, see PRODUCT_STRATEGY.md) -
+  // update_tenant overwrites plan_type/subscription_expires_at in place, so without this
+  // there was no record of what a renewal actually was (UPI/NEFT ref, prior plan/date).
+  const [renewalNote, setRenewalNote] = useState('');
+  const [renewalHistory, setRenewalHistory] = useState<any[]>([]);
+  const [renewalHistoryLoading, setRenewalHistoryLoading] = useState(false);
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
   const [showPropertyModal, setShowPropertyModal] = useState<'add' | 'edit' | null>(null);
   // Bot token starts greyed-out/read-only whenever one is already saved - "Edit" un-locks it.
@@ -207,6 +213,8 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
   const handleManageTenant = (tenant: Tenant) => {
     setEditingTenant(tenant);
     setShowEditTenantModal(true);
+    setRenewalNote('');
+    loadRenewalHistory(tenant.id);
   };
 
   const handleAddProperty = async () => {
@@ -496,6 +504,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
           subscription_expires_at: editingTenant.subscription_expires_at || null,
           max_properties: editingTenant.max_properties,
           is_active: editingTenant.is_active,
+          renewal_note: renewalNote.trim() || undefined,
         }),
       });
 
@@ -506,12 +515,31 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
         );
         setShowEditTenantModal(false);
         setEditingTenant(null);
+        setRenewalNote('');
       } else {
         setError(data.message || 'Failed to update tenant');
       }
     } catch (err) {
       console.error('Failed to save tenant:', err);
       setError('Failed to save tenant');
+    }
+  };
+
+  // Fetches the renewal trail whenever the Edit Owner drawer opens for a given tenant -
+  // read-only, so a plain fetch on open is enough (no need to keep it live/polling).
+  const loadRenewalHistory = async (tenantId: number) => {
+    setRenewalHistoryLoading(true);
+    try {
+      const response = await fetch(`/php/api/router.php?action=get_tenant_subscription_history&tenant_id=${tenantId}`, {
+        credentials: 'include',
+      });
+      const data = await response.json();
+      setRenewalHistory(data.success ? data.data : []);
+    } catch (err) {
+      console.error('Failed to load renewal history:', err);
+      setRenewalHistory([]);
+    } finally {
+      setRenewalHistoryLoading(false);
     }
   };
 
@@ -1252,6 +1280,61 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                     })
                   }
                 />
+              </div>
+
+              <div>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
+                  Renewal Note (optional)
+                </label>
+                <Input
+                  type="text"
+                  value={renewalNote}
+                  onChange={(e) => setRenewalNote(e.target.value)}
+                  placeholder="e.g. UPI Ref #302938291, ₹4,999 received via HDFC"
+                  helperText="Recorded in the renewal history below alongside whatever plan/date change you save."
+                />
+              </div>
+
+              <div className="rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <div className="px-3 py-2 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700">
+                  <span className="text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    Renewal History
+                  </span>
+                </div>
+                <div className="max-h-40 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+                  {renewalHistoryLoading ? (
+                    <p className="text-xs text-slate-500 dark:text-slate-400 px-3 py-3">Loading...</p>
+                  ) : renewalHistory.length === 0 ? (
+                    <p className="text-xs text-slate-500 dark:text-slate-400 px-3 py-3">
+                      No renewal changes recorded yet - the first plan/date change or note you save here starts the trail.
+                    </p>
+                  ) : (
+                    renewalHistory.map((h) => (
+                      <div key={h.id} className="px-3 py-2 text-xs">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-medium text-slate-700 dark:text-slate-200">
+                            {h.old_plan_type && h.old_plan_type !== h.new_plan_type
+                              ? `${h.old_plan_type} → ${h.new_plan_type}`
+                              : h.new_plan_type}
+                          </span>
+                          <span className="text-slate-400 dark:text-slate-500 shrink-0">
+                            {new Date(h.recorded_at).toLocaleDateString('en-GB')}
+                          </span>
+                        </div>
+                        {h.new_expires_at && (
+                          <p className="text-slate-500 dark:text-slate-400 mt-0.5">
+                            Renews: {new Date(h.new_expires_at).toLocaleDateString('en-GB')}
+                            {h.old_expires_at && h.old_expires_at !== h.new_expires_at
+                              ? ` (was ${new Date(h.old_expires_at).toLocaleDateString('en-GB')})`
+                              : ''}
+                          </p>
+                        )}
+                        {h.note && <p className="text-slate-500 dark:text-slate-400 mt-0.5 italic">"{h.note}"</p>}
+                        {h.recorded_by && <p className="text-slate-400 dark:text-slate-500 mt-0.5">by {h.recorded_by}</p>}
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
             <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
@@ -2028,10 +2111,12 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
             </div>
 
             <div className="max-h-[70vh] overflow-y-auto pr-1 space-y-4">
-              {/* White-Glove Telegram Bot Token Input */}
+              {/* Telegram Bot Token Input (Root Admin sets this centrally; see CLAUDE.md's
+                  Telegram Onboarding section - "white-glove" is internal terminology only,
+                  never shown in the UI since no client understands it, per 27 Aug 2026 request) */}
               <div className="bg-slate-50 dark:bg-slate-800/60 rounded-lg p-4 border border-slate-200 dark:border-slate-700 space-y-2">
                 <label className="block text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider">
-                  White-Glove Telegram Bot Token
+                  Telegram Bot Token
                 </label>
                 <div className="flex items-center gap-2">
                   <Input
@@ -2066,7 +2151,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                   )}
                 </div>
                 <p className="text-2xs text-slate-500 dark:text-slate-400">
-                  Custom White-Glove Bot Token for this property. Leave empty to use system default bot.
+                  Custom Bot Token for this property. Leave empty to use the system default bot.
                 </p>
               </div>
 

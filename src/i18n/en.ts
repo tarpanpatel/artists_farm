@@ -1030,7 +1030,7 @@ export const strings: Record<string, string> = {
   how_to_create_bot_heading: "🤖 How to create a Telegram Bot:",
   hide_guide_button: "Hide Guide",
   show_botfather_guide_button: "Show BotFather setup guide",
-  white_glove_managed_label: "White-Glove Managed",
+  white_glove_managed_label: "Fully Managed",
   telegram_channel_not_set_up_message: "Not set up — contact support",
   ping_failed_button: "Ping Failed",
   send_test_message_button: "Send Test Message",

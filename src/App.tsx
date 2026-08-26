@@ -806,6 +806,50 @@ function AppBody({ preloadedData }: AppBodyProps) {
     });
   }, [isModuleEnabled, preloadedData.currentProperty?.id, isAuthenticated]);
 
+  // PRODUCT_STRATEGY.md's 30-day trial playbook calls for a "Day 27: in-app
+  // warning toast reminding the owner their trial ends in 3 days" - this is
+  // the first thing that ever reads tenant_subscription_status/
+  // tenant_subscription_expires_at (added to get_current_property 27 Aug
+  // 2026 specifically for this). Manual/offline billing (owner pays via
+  // UPI/NEFT, Root Admin updates the renewal date by hand) has no other way
+  // to prompt the owner to pay before the trial actually lapses.
+  // Session-guarded by day + tenant so it surfaces once per calendar day
+  // rather than on every tab/navigation, but still reappears daily until
+  // resolved (renewed, or the trial genuinely ends).
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const status = (preloadedData.currentProperty as any)?.tenant_subscription_status;
+    const expiresAt = (preloadedData.currentProperty as any)?.tenant_subscription_expires_at;
+    if (status !== 'trial' || !expiresAt) return;
+
+    const msPerDay = 1000 * 60 * 60 * 24;
+    const daysRemaining = Math.ceil((new Date(`${expiresAt}T00:00:00`).getTime() - Date.now()) / msPerDay);
+    if (daysRemaining > 3) return; // Not in the reminder window yet.
+
+    const guardKey = `trial_expiry_toast_shown_${preloadedData.currentProperty?.id}_${new Date().toISOString().split('T')[0]}`;
+    try {
+      if (sessionStorage.getItem(guardKey)) return;
+      sessionStorage.setItem(guardKey, '1');
+    } catch {
+      // Storage unavailable (private browsing, etc.) - fall through and show
+      // it anyway rather than silently never warning the owner.
+    }
+
+    if (daysRemaining >= 0) {
+      showToast(
+        daysRemaining === 0
+          ? "Your free trial ends today. Renew now to keep using Ground Code without interruption."
+          : `Your free trial ends in ${daysRemaining} day${daysRemaining === 1 ? '' : 's'}. Renew now to avoid any interruption.`,
+        { type: 'warning', duration: 10000 }
+      );
+    } else {
+      showToast(
+        'Your free trial has ended. Please complete your subscription payment to continue using Ground Code.',
+        { type: 'error', duration: 10000 }
+      );
+    }
+  }, [isAuthenticated, preloadedData.currentProperty?.id, (preloadedData.currentProperty as any)?.tenant_subscription_status, (preloadedData.currentProperty as any)?.tenant_subscription_expires_at]);
+
 
 
   // Hydrate nav menu from DB on startup.
