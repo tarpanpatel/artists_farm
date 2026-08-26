@@ -396,7 +396,7 @@ function createMultiKeyProperty($pdo) {
 
         // Carry forward Super Admin user from tenant
         $stmt = $pdo->prepare("
-            SELECT su.id, su.username, su.full_name, su.phone, su.monthly_salary, su.is_financial_handler, su.passcode, su.qr_code_url
+            SELECT su.id, su.username, su.full_name, su.phone, su.monthly_salary, su.is_financial_handler, su.passcode, su.qr_code_url, su.upi_id
             FROM staff_users su
             JOIN properties p ON su.property_id = p.id
             WHERE p.tenant_id = ? AND su.role = 'Super Admin'
@@ -412,8 +412,8 @@ function createMultiKeyProperty($pdo) {
             if (!$check_stmt->fetch()) {
                 // Create Super Admin in new property
                 $sa_stmt = $pdo->prepare("
-                    INSERT INTO staff_users (id, property_id, username, full_name, role, phone, monthly_salary, status, is_financial_handler, passcode, qr_code_url)
-                    VALUES (?, ?, ?, ?, 'Super Admin', ?, ?, 'Active', ?, ?, ?)
+                    INSERT INTO staff_users (id, property_id, username, full_name, role, phone, monthly_salary, status, is_financial_handler, passcode, qr_code_url, upi_id)
+                    VALUES (?, ?, ?, ?, 'Super Admin', ?, ?, 'Active', ?, ?, ?, ?)
                 ");
                 $sa_stmt->execute([
                     'superadmin_' . $property_id,
@@ -424,7 +424,8 @@ function createMultiKeyProperty($pdo) {
                     $superadmin['monthly_salary'],
                     $superadmin['is_financial_handler'],
                     $superadmin['passcode'],
-                    $superadmin['qr_code_url']
+                    $superadmin['qr_code_url'],
+                    $superadmin['upi_id']
                 ]);
             }
         }

@@ -1,11 +1,19 @@
 import React, { forwardRef } from 'react';
-import { AlertTriangle } from './icons/FlowbiteIcons';
+import { AlertTriangle, CheckCircle2 } from './icons/FlowbiteIcons';
 import { TextInput as FlowbiteTextInput, Label as FlowbiteLabel } from 'flowbite-react';
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   labelClassName?: string;
   error?: string | boolean;
+  /**
+   * Real-time positive validation (Flowbite's success form-validation state - see
+   * https://github.com/themesberg/flowbite/blob/main/content/components/forms.md) - a green
+   * border/ring plus a green checkmark message, for confirming something is valid as the user
+   * types (e.g. "Passcodes match") rather than only ever flagging what's wrong. Ignored while
+   * `error` is also set - an error always wins visually.
+   */
+  success?: string | boolean;
   helperText?: string;
   leftIcon?: React.ReactNode;
   icon?: React.ComponentType<{ className?: string }>;
@@ -36,6 +44,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       label,
       labelClassName,
       error,
+      success,
       helperText,
       leftIcon,
       icon,
@@ -53,6 +62,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     const inputId = id || (label ? `input-${label.toLowerCase().replace(/[^a-z0-9]/g, '-')}` : undefined);
     const hasError = Boolean(error);
     const errorMessage = typeof error === 'string' ? error : undefined;
+    const hasSuccess = !hasError && Boolean(success);
+    const successMessage = typeof success === 'string' ? success : undefined;
 
     // Resolve icon component for Flowbite TextInput
     const resolvedIcon = icon || (leftIcon && React.isValidElement(leftIcon) ? () => leftIcon as React.ReactElement : undefined);
@@ -76,7 +87,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             disabled={disabled}
             placeholder={placeholder}
             icon={resolvedIcon}
-            color={hasError ? 'failure' : (color as any)}
+            color={hasError ? 'failure' : hasSuccess ? 'success' : (color as any)}
             theme={inputTheme as any}
             className={`w-full h-10 ${className}`}
             {...(props as any)}
@@ -90,6 +101,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         {errorMessage ? (
           <p id={`${inputId}-error`} className="app-error-text mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1 input__error">
             <AlertTriangle className="w-3.5 h-3.5" /> {errorMessage}
+          </p>
+        ) : successMessage ? (
+          <p id={`${inputId}-success`} className="app-success-text mt-1 text-xs text-green-600 dark:text-green-500 flex items-center gap-1 input__success">
+            <CheckCircle2 className="w-3.5 h-3.5" /> {successMessage}
           </p>
         ) : helperText ? (
           <p id={`${inputId}-helper`} className="app-helper-text mt-1 text-xs text-slate-500 dark:text-slate-400 input__helper">

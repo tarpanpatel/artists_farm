@@ -241,7 +241,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
     },
     {
       id: 'tenants_properties',
-      label: t('root_tenants_properties_label', 'Tenants & Properties'),
+      label: t('root_tenants_properties_label', 'Properties'),
       icon: Building2,
       section: 'tenants_properties' as SectionType,
     },
@@ -454,7 +454,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
             <div className="min-w-0">
               <h2 className="root-admin-dashboard__title text-lg lg:text-xl font-semibold text-gray-900 dark:text-white truncate">
                 {activeSection === 'dashboard' && t('root_dashboard_label', 'Dashboard')}
-                {activeSection === 'tenants_properties' && t('root_tenants_properties_label', 'Tenants & Properties')}
+                {activeSection === 'tenants_properties' && t('root_tenants_properties_label', 'Properties')}
                 {activeSection === 'edit_main_menu' && t('root_edit_main_menu_label', 'Edit Main Menu')}
                 {activeSection === 'default_expenses' && t('root_default_expenses_heading_label', 'Default Expenses (MultiKey)')}
                 {activeSection === 'default_bills' && 'Default Bills (MultiKey)'}
@@ -509,7 +509,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
               </div>
               <Card className="shadow-md">
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {t('root_dashboard_hint', 'Use the sidebar to navigate to any section. Select "Tenants & Properties" to manage all properties and tenants.')}
+                  {t('root_dashboard_hint', 'Use the sidebar to navigate to any section. Select "Properties" to manage all properties and tenants.')}
                 </p>
               </Card>
             </div>

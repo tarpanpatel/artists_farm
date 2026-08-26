@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Home, Hotel, Layers, Phone, Mail, IdCard, Wallet, QrCode, Upload, Trash2,
+  Home, Hotel, Layers, Phone, Mail, IdCard, Wallet, QrCode,
   Clock, IndianRupee, FileText, CheckCircle2, Loader2, ArrowRight, ArrowLeft, X,
   ChefHat, AlertCircle,
 } from './icons/FlowbiteIcons';
@@ -8,7 +8,7 @@ import { Drawer } from 'flowbite-react';
 import { Input } from './Input';
 import { Textarea } from './Textarea';
 import { Button } from './Button';
-import { uploadImageDBVerbose } from '../services/api';
+import { UpiPaymentBlock, isValidUpiIdSyntax } from '../utils/upiQrCode';
 
 /**
  * Owner-facing Property Setup Wizard (added 26 Aug 2026, explicit request) - replaces the old
@@ -66,10 +66,10 @@ type StepKey = 'basics' | 'contact' | 'payments' | 'operations' | 'notes';
 
 const STEP_DEFS: { key: StepKey; label: string; icon: React.ElementType }[] = [
   { key: 'basics', label: 'Basics', icon: Home },
-  { key: 'contact', label: 'Contact & Tax', icon: Phone },
+  { key: 'contact', label: 'Contact', icon: Phone },
   { key: 'payments', label: 'Payments', icon: Wallet },
   { key: 'operations', label: 'Operations', icon: Clock },
-  { key: 'notes', label: 'Notes & Finish', icon: FileText },
+  { key: 'notes', label: 'Notes', icon: FileText },
 ];
 
 export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
@@ -81,7 +81,6 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
   existingProperty = null,
 }) => {
   const isResuming = !!existingProperty;
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [stepIndex, setStepIndex] = useState(0);
   const [propertyId, setPropertyId] = useState<number | null>(existingProperty?.id ?? null);
@@ -131,9 +130,11 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
 
   // --- Step 2: Payments ---
   const [upiId, setUpiId] = useState(existingProperty?.upi_id || '');
-  const [upiQrCodeUrl, setUpiQrCodeUrl] = useState(existingProperty?.upi_qr_code_url || '');
-  const [isUploadingQr, setIsUploadingQr] = useState(false);
-  const [qrUploadError, setQrUploadError] = useState<string | null>(null);
+  // Read-only pass-through: no UI path sets this anymore (26 Aug 2026 - upload
+  // removed in favor of an always-on auto-generated QR, see UpiPaymentBlock
+  // below), but a property that already has a legacy uploaded QR on file
+  // still has it preserved on save and still takes precedence at checkout.
+  const [upiQrCodeUrl] = useState(existingProperty?.upi_qr_code_url || '');
 
   // --- Step 3: Operations ---
   const [checkinTime, setCheckinTime] = useState(existingProperty?.checkin_time || '14:00');
@@ -156,34 +157,6 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
   // FIRST save (property doesn't exist yet), never on later steps of the same draft.
   const step0Valid = !!name.trim() && !!address.trim() && hasKitchen !== null && kitchenAnswerLoaded;
 
-  const handleQrCodeSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const ALLOWED = ['image/jpeg', 'image/png', 'image/webp'];
-    if (!ALLOWED.includes(file.type)) {
-      setQrUploadError('Please upload a JPG, PNG, or WEBP image.');
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      setQrUploadError('File is too large (max 10MB).');
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      return;
-    }
-    setQrUploadError(null);
-    setIsUploadingQr(true);
-    try {
-      const { url, error: uploadErr } = await uploadImageDBVerbose(file, 'qr_code');
-      if (url) setUpiQrCodeUrl(url);
-      else setQrUploadError(uploadErr || 'Failed to upload QR code. Please try again.');
-    } catch (err: any) {
-      setQrUploadError(err?.message || 'Failed to upload QR code. Please try again.');
-    } finally {
-      setIsUploadingQr(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
   /**
    * Persists whatever the CURRENT step holds. Step 0 either creates the draft (first ever save)
    * or updates it (resuming/editing an already-created one); every later step is always an update
@@ -191,6 +164,10 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
    */
   const persistCurrentStep = async (publish = false): Promise<boolean> => {
     setError(null);
+    if (activeStep.key === 'payments' && upiId.trim() && !isValidUpiIdSyntax(upiId)) {
+      setError('Enter a valid UPI ID, e.g. name@bank');
+      return false;
+    }
     setSaving(true);
     try {
       if (activeStep.key === 'basics') {
@@ -259,10 +236,10 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
       if (activeStep.key === 'contact') {
         payload.email = email.trim();
         payload.phone = phone.trim();
-        payload.gstin = gstin.trim().toUpperCase();
       } else if (activeStep.key === 'payments') {
         payload.upi_id = upiId.trim();
         payload.upi_qr_code_url = upiQrCodeUrl.trim();
+        payload.gstin = gstin.trim().toUpperCase();
       } else if (activeStep.key === 'operations') {
         payload.checkin_time = checkinTime;
         payload.checkout_time = checkoutTime;
@@ -354,7 +331,7 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
       {/* Timeline stepper (https://flowbite.com/docs/components/stepper/#stepper-with-form) -
           small circular step icons connected by progress bars, current step highlighted, done
           steps checked. */}
-      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 overflow-x-auto shrink-0">
+      <div className="px-4 pt-3 pb-7 border-b border-gray-200 dark:border-gray-700 overflow-x-auto shrink-0">
         <ol className="flex items-center w-full">
           {steps.map((step, idx) => {
             const StepIcon = step.icon;
@@ -362,8 +339,14 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
             const isCurrent = idx === stepIndex && !finished;
             const isLast = idx === steps.length - 1;
             return (
-              <li key={step.key} className={`flex items-center ${!isLast ? 'w-full' : ''}`}>
-                <div className="flex flex-col items-center gap-1 shrink-0">
+              <li key={step.key} className={`flex items-center ${!isLast ? 'flex-1' : ''}`}>
+                {/* Column is sized by the icon alone (shrink-0, no label in flow) so every
+                    step's footprint is identical regardless of label length - the label is
+                    absolutely positioned below instead. This is what keeps the connecting
+                    lines between steps an equal length (previously each <li> sized itself
+                    around its own label text, so "Contact & Tax"/"Notes & Finish" squeezed
+                    their line shorter than "Basics"/"Payments" did - reported 26 Aug 2026). */}
+                <div className="relative flex items-center justify-center shrink-0">
                   <span
                     className={`flex items-center justify-center w-8 h-8 rounded-full shrink-0 transition-all ${
                       isDone
@@ -375,12 +358,16 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
                   >
                     {isDone ? <CheckCircle2 className="w-4 h-4" /> : <StepIcon className="w-4 h-4" />}
                   </span>
-                  <span className={`text-2xs font-semibold whitespace-nowrap ${isCurrent ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-500 dark:text-slate-400'}`}>
+                  <span
+                    className={`absolute top-full left-1/2 -translate-x-1/2 mt-1 text-2xs font-semibold whitespace-nowrap ${
+                      isCurrent ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-500 dark:text-slate-400'
+                    }`}
+                  >
                     {step.label}
                   </span>
                 </div>
                 {!isLast && (
-                  <div className={`flex-1 h-1 rounded-full mx-1.5 mb-4 ${idx < stepIndex ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700'}`} />
+                  <div className={`flex-1 h-1 rounded-full mx-1.5 ${idx < stepIndex ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700'}`} />
                 )}
               </li>
             );
@@ -420,7 +407,7 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
                   className={`flex flex-col items-start gap-1.5 p-3.5 rounded-lg border-2 text-left transition-all disabled:opacity-60 disabled:cursor-not-allowed ${propertyType === 'MULTI_KEY' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300'}`}
                 >
                   <Layers className={`w-5 h-5 ${propertyType === 'MULTI_KEY' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}`} />
-                  <span className={`text-xs font-semibold ${propertyType === 'MULTI_KEY' ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-700 dark:text-slate-300'}`}>Multi-Key Property</span>
+                  <span className={`text-xs font-semibold ${propertyType === 'MULTI_KEY' ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-700 dark:text-slate-300'}`}>Multi-Room Property</span>
                   <span className="text-2xs text-slate-500 dark:text-slate-400 leading-snug">
                     One address, several separately bookable rooms - like a small hotel or guesthouse. Different guests can be in different rooms at the same time.
                   </span>
@@ -512,19 +499,12 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
             <Input type="email" label="Email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="info@example.com" leftIcon={<Mail className="w-4 h-4" />} />
             <Input
               type="tel"
-              label="Contact Phone"
+              label="Property Phone Number"
               value={phone}
               onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
               placeholder="Enter 10-digit mobile number"
+              helperText="This is the phone number guests will be shown to contact the property."
               leftIcon={<Phone className="w-4 h-4" />}
-            />
-            <Input
-              label="GSTIN (optional)"
-              value={gstin}
-              onChange={(e) => setGstin(e.target.value.toUpperCase())}
-              placeholder="27ABCDE1234F1Z5"
-              helperText="Printed on GST tax invoices at checkout."
-              leftIcon={<IdCard className="w-4 h-4" />}
             />
           </div>
         )}
@@ -533,44 +513,26 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
           <div className="space-y-4">
             <p className="text-xs text-slate-500 dark:text-slate-400">All optional - skip if you'd rather add these later.</p>
             <Input
+              label="GSTIN (optional)"
+              value={gstin}
+              onChange={(e) => setGstin(e.target.value.toUpperCase())}
+              placeholder="27ABCDE1234F1Z5"
+              helperText="Printed on GST tax invoices at checkout."
+              leftIcon={<IdCard className="w-4 h-4" />}
+            />
+            <Input
               label="UPI ID (optional)"
               value={upiId}
               onChange={(e) => setUpiId(e.target.value)}
               placeholder="yourproperty@okicici"
-              helperText="A scannable UPI QR code and this ID are added to booking/bill messages shared over WhatsApp."
+              error={upiId.trim() && !isValidUpiIdSyntax(upiId) ? 'Enter a valid UPI ID, e.g. name@bank' : undefined}
+              success={upiId.trim() && isValidUpiIdSyntax(upiId) ? 'Valid UPI ID format' : undefined}
+              helperText="A scannable UPI QR code (generated automatically from this ID) and the ID itself are added to booking/bill messages shared over WhatsApp."
               leftIcon={<QrCode className="w-4 h-4" />}
             />
-            <div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                className="hidden"
-                onChange={handleQrCodeSelected}
-                disabled={isUploadingQr}
-              />
-              {upiQrCodeUrl ? (
-                <div className="flex items-center gap-3">
-                  <img src={upiQrCodeUrl} alt="UPI QR Code" className="w-16 h-16 object-contain rounded-md border border-slate-200 dark:border-slate-700 bg-white p-1 shrink-0" />
-                  <div className="flex flex-col gap-1">
-                    <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploadingQr} className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 cursor-pointer hover:underline w-fit disabled:opacity-50">
-                      {isUploadingQr ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                      {isUploadingQr ? 'Uploading...' : 'Replace QR Code'}
-                    </button>
-                    <button type="button" onClick={() => setUpiQrCodeUrl('')} disabled={isUploadingQr} className="inline-flex items-center gap-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:underline w-fit disabled:opacity-50 cursor-pointer">
-                      <Trash2 className="w-3.5 h-3.5" /> Remove
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploadingQr} className="inline-flex items-center gap-2 text-xs font-medium text-blue-600 dark:text-blue-400 border border-dashed border-blue-300 dark:border-blue-800 rounded-lg px-3 py-2 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950/30 w-fit disabled:opacity-50">
-                  {isUploadingQr ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                  {isUploadingQr ? 'Uploading...' : 'Upload QR Code'}
-                </button>
-              )}
-              {qrUploadError && <p className="text-xs text-red-600 dark:text-red-400 mt-1 font-medium">{qrUploadError}</p>}
-              <p className="text-2xs text-slate-400 dark:text-slate-500 mt-1">Optional - upload your bank/PhonePe/GPay QR code image instead of an auto-generated one.</p>
-            </div>
+            {upiId.trim() && isValidUpiIdSyntax(upiId) && (
+              <UpiPaymentBlock upiId={upiId.trim()} payeeName={name.trim() || 'Payment'} qrCodeImageUrl={upiQrCodeUrl} />
+            )}
           </div>
         )}
 

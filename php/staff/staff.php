@@ -36,6 +36,15 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
             // environment (production, a fresh local DB) doesn't hard-fail with a
             // raw "Unknown column 'upi_id'" SQL error on first payee fetch/save.
             "ALTER TABLE `payee_entities` ADD COLUMN IF NOT EXISTS `upi_id` VARCHAR(100) DEFAULT NULL",
+            // Staff's own payment QR code moved from a raw uploaded image to an
+            // auto-generated one built from a UPI ID (26 Aug 2026 - same reasoning
+            // as the property-level upi_id/upi_qr_code_url fields: reported as
+            // "QR thing is also not done here" on the staff Edit user form). Old
+            // qr_code_url column/value stays as a legacy fallback for whoever
+            // already had one uploaded before this change (see get_staff/add_user/
+            // update_user below) - self-heals the same way upi_id did for
+            // payee_entities above.
+            "ALTER TABLE `staff_users` ADD COLUMN IF NOT EXISTS `upi_id` VARCHAR(100) DEFAULT NULL",
         ];
         foreach ($alterCols as $sql) {
             try { $pdo->exec($sql); } catch (PDOException $e) {}
@@ -102,7 +111,7 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
         case 'get_staff':
         case 'get_users':
             try {
-                $stmt = $pdo->prepare("SELECT id, username, full_name as fullName, role, phone, monthly_salary as monthlySalary, daily_wage as dailyWage, status, is_financial_handler as isFinancialHandler, passcode, qr_code_url as qrCodeUrl, access_all_properties as accessAllProperties FROM staff_users WHERE property_id = ? ORDER BY CAST(id AS UNSIGNED) ASC, id ASC");
+                $stmt = $pdo->prepare("SELECT id, username, full_name as fullName, role, phone, monthly_salary as monthlySalary, daily_wage as dailyWage, status, is_financial_handler as isFinancialHandler, passcode, qr_code_url as qrCodeUrl, upi_id as upiId, access_all_properties as accessAllProperties FROM staff_users WHERE property_id = ? ORDER BY CAST(id AS UNSIGNED) ASC, id ASC");
                 $stmt->execute([$propertyId]);
                 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 $data = array_map(function($r) {
@@ -119,6 +128,7 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                         'isFinancialHandler' => (bool)$r['isFinancialHandler'],
                         'passcode'           => $r['passcode'],
                         'qrCodeUrl'          => $r['qrCodeUrl'],
+                        'upiId'              => $r['upiId'] ?? '',
                         'accessAllProperties' => (bool)($r['accessAllProperties'] ?? false),
                     ];
                 }, $rows);
@@ -146,8 +156,8 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                 try {
                     $newStaffId = $input['id'] ?? ('usr-' . time());
                     $accessAllProperties = !empty($input['accessAllProperties']) ? 1 : 0;
-                    $stmt = $pdo->prepare("INSERT INTO staff_users (id, property_id, username, full_name, role, phone, phone_number, monthly_salary, daily_wage, status, is_financial_handler, passcode, qr_code_url, access_all_properties)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    $stmt = $pdo->prepare("INSERT INTO staff_users (id, property_id, username, full_name, role, phone, phone_number, monthly_salary, daily_wage, status, is_financial_handler, passcode, qr_code_url, upi_id, access_all_properties)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ON DUPLICATE KEY UPDATE
                             username = VALUES(username),
                             full_name = VALUES(full_name),
@@ -160,6 +170,7 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                             is_financial_handler = VALUES(is_financial_handler),
                             passcode = VALUES(passcode),
                             qr_code_url = VALUES(qr_code_url),
+                            upi_id = VALUES(upi_id),
                             access_all_properties = VALUES(access_all_properties)");
                     $stmt->execute([
                         $newStaffId,
@@ -175,6 +186,7 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                         !empty($input['isFinancialHandler']) ? 1 : 0,
                         $passcode,
                         $input['qrCodeUrl'] ?? '',
+                        $input['upiId'] ?? '',
                         $accessAllProperties
                     ]);
                     // Keep the flag consistent across every property_id row this staff
@@ -235,6 +247,7 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                     }
                     $passcode         = !empty($input['passcode']) ? $input['passcode'] : ($existing['passcode'] ?? '1234');
                     $qrCodeUrl        = isset($input['qrCodeUrl']) && $input['qrCodeUrl'] !== '' ? $input['qrCodeUrl'] : ($existing['qr_code_url'] ?? '');
+                    $upiId            = isset($input['upiId']) ? trim($input['upiId']) : ($existing['upi_id'] ?? '');
                     $phoneNumber      = $input['username'] ?? ($existing['phone_number'] ?? $username);
                     // Only overwrite when the field is actually present in the payload -
                     // same "absent means leave alone" convention as the rest of this
@@ -244,8 +257,8 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                         ? ($input['accessAllProperties'] ? 1 : 0)
                         : (int)($existing['access_all_properties'] ?? 0);
 
-                    $stmt = $pdo->prepare("INSERT INTO staff_users (id, property_id, username, full_name, role, phone, phone_number, monthly_salary, daily_wage, status, is_financial_handler, passcode, qr_code_url, access_all_properties)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    $stmt = $pdo->prepare("INSERT INTO staff_users (id, property_id, username, full_name, role, phone, phone_number, monthly_salary, daily_wage, status, is_financial_handler, passcode, qr_code_url, upi_id, access_all_properties)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ON DUPLICATE KEY UPDATE
                             username = VALUES(username),
                             full_name = VALUES(full_name),
@@ -258,6 +271,7 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                             is_financial_handler = VALUES(is_financial_handler),
                             passcode = VALUES(passcode),
                             qr_code_url = VALUES(qr_code_url),
+                            upi_id = VALUES(upi_id),
                             access_all_properties = VALUES(access_all_properties)");
                     $stmt->execute([
                         $input['id'],
@@ -273,6 +287,7 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                         $isFinancialHandler,
                         $passcode,
                         $qrCodeUrl,
+                        $upiId,
                         $accessAllProperties
                     ]);
                     // Keep the flag consistent across every property_id row this staff
@@ -298,6 +313,7 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                             if ((int)($existing['access_all_properties'] ?? 0) !== (int)$accessAllProperties) $changedFields[] = 'Access All Properties';
                             if ((string)($existing['full_name'] ?? '') !== (string)$fullName) $changedFields[] = 'Full Name';
                             if ((string)($existing['username'] ?? '') !== (string)$username) $changedFields[] = 'Username/Phone';
+                            if ((string)($existing['upi_id'] ?? '') !== (string)$upiId) $changedFields[] = 'UPI ID';
                         }
                         if (!empty($input['passcode'])) $changedFields[] = 'Passcode';
 

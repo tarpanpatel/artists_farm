@@ -1,296 +1,466 @@
 import React, { useState } from 'react';
-import { Progress } from 'flowbite-react';
-import { MapPin, Users, DoorOpen, CheckCircle2, ArrowRight, Loader2 } from './icons/FlowbiteIcons';
+import { Drawer } from 'flowbite-react';
+import {
+  Home, Phone, Wallet, Clock, FileText, Mail, IdCard, QrCode,
+  IndianRupee, CheckCircle2, ArrowRight, ArrowLeft, Loader2, ClipboardList, X,
+} from './icons/FlowbiteIcons';
 import { Button } from './Button';
 import { Input } from './Input';
+import { Textarea } from './Textarea';
+import { UpiPaymentBlock, isValidUpiIdSyntax } from '../utils/upiQrCode';
 import { t } from '../i18n/en';
 
+/**
+ * Restyled 26 Aug 2026 (explicit request: "this property wizard should now
+ * replicate what we did on property owner dashboard") to match
+ * PropertyCreationWizard.tsx's visual language, its exact 5-step set
+ * (Basics/Contact & Tax/Payments/Operations/Notes & Finish - replacing the
+ * previous, unrelated Address/Team/Units concept), AND its exact footer
+ * button set/behavior (Back / Save & Exit / Skip / Next Step / Finish Setup -
+ * explicit follow-up: "it should have exactly same buttons... exactly same
+ * UI"). A property created via PropertyCreationWizard only requires step 0
+ * (Basics) to publish; steps 1-4 are explicitly skippable there - this
+ * checklist is the same 5 steps surfaced again on the property's own
+ * dashboard afterward, so whatever got skipped at creation still gets a
+ * nudge to come back and fill in, using the identical linear flow.
+ *
+ * Team/Units nudges from the old version are gone (explicit product
+ * decision, 26 Aug 2026: "same number of steps... which were shown while
+ * creating the property" - creation has no such steps, so this checklist no
+ * longer does either).
+ *
+ * Saves call update_property directly and reload on success - same
+ * established pattern EditPropertyPage.tsx already uses for these exact same
+ * fields (onSaved={() => window.location.reload()}).
+ */
+
 interface PropertySetupWizardProps {
+  propertyId: number;
+  propertyType?: string;
+  name: string;
   address: string;
   googleMapsLink: string;
-  staffCount: number; // total staff rows for this property, including the tenant's own auto-seeded row
-  isStaffLoading?: boolean;
-  showRoomsStep?: boolean;
-  roomCount?: number;
-  onSaveLocation: (address: string, googleMapsLink: string) => Promise<boolean>;
-  onGoToStaff: () => void;
-  onAddUnit?: () => void;
+  email?: string;
+  phone?: string;
+  gstin?: string;
+  upiId?: string;
+  upiQrCodeUrl?: string;
+  checkinTime?: string;
+  checkoutTime?: string;
+  defaultTariff?: number | string | null;
+  walkInTableCount?: number | string | null;
+  instructions?: string;
+  /** Called after any step saves successfully - reloads to pick up fresh data everywhere. */
+  onSaved: () => void;
 }
 
+type StepKey = 'basics' | 'contact' | 'payments' | 'operations' | 'notes';
+
+const STEP_DEFS: { key: StepKey; label: string; icon: React.ElementType }[] = [
+  { key: 'basics', label: 'Basics', icon: Home },
+  { key: 'contact', label: 'Contact', icon: Phone },
+  { key: 'payments', label: 'Payments', icon: Wallet },
+  { key: 'operations', label: 'Operations', icon: Clock },
+  { key: 'notes', label: 'Notes', icon: FileText },
+];
+
 export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
+  propertyId,
+  propertyType,
+  name,
   address,
   googleMapsLink,
-  staffCount,
-  isStaffLoading = false,
-  showRoomsStep = true,
-  roomCount,
-  onSaveLocation,
-  onGoToStaff,
-  onAddUnit,
+  email = '',
+  phone = '',
+  gstin = '',
+  upiId = '',
+  upiQrCodeUrl = '',
+  checkinTime = '14:00',
+  checkoutTime = '11:00',
+  defaultTariff,
+  walkInTableCount,
+  instructions = '',
+  onSaved,
 }) => {
+  const isMultiKey = propertyType === 'MULTI_KEY';
+
+  // Open by default (auto-surfaces the checklist the moment a property with
+  // incomplete setup loads) - dismissible via the Drawer's own X, at which
+  // point the slim strip below takes over as the way back in.
+  const [isOpen, setIsOpen] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [finished, setFinished] = useState(false);
+
+  // --- Local editable copies, one per step (mirrors PropertyCreationWizard) ---
   const [editAddress, setEditAddress] = useState(address);
   const [editMapsLink, setEditMapsLink] = useState(googleMapsLink);
-  const [isSavingLocation, setIsSavingLocation] = useState(false);
+  const [editEmail, setEditEmail] = useState(email);
+  const [editPhone, setEditPhone] = useState(phone);
+  const [editGstin, setEditGstin] = useState(gstin);
+  const [editUpiId, setEditUpiId] = useState(upiId);
+  const [editCheckinTime, setEditCheckinTime] = useState(checkinTime);
+  const [editCheckoutTime, setEditCheckoutTime] = useState(checkoutTime);
+  const [editDefaultTariff, setEditDefaultTariff] = useState(defaultTariff != null ? String(defaultTariff) : '');
+  const [editWalkInTableCount, setEditWalkInTableCount] = useState(walkInTableCount != null ? String(walkInTableCount) : '10');
+  const [editInstructions, setEditInstructions] = useState(instructions);
 
-  const step1Done = !!address.trim();
-  const step2Done = staffCount >= 1; // 1 user (owner) or more staff members
-  const step3Done = (roomCount ?? 0) > 0;
+  const basicsDone = !!name.trim() && !!address.trim();
+  const contactDone = !!(email || phone);
+  const paymentsDone = !!(upiId || upiQrCodeUrl || gstin);
+  const operationsDone = isMultiKey || (defaultTariff != null && String(defaultTariff).trim() !== '');
+  const notesDone = !!instructions?.trim();
 
-  // Initial active step index: first incomplete step (0: Address, 1: Staff, 2: Units)
-  const firstIncompleteIndex = !step1Done ? 0 : !step2Done ? 1 : 2;
-  const [activeStepIndex, setActiveStepIndex] = useState<number>(firstIncompleteIndex);
+  const doneMap: Record<StepKey, boolean> = {
+    basics: basicsDone,
+    contact: contactDone,
+    payments: paymentsDone,
+    operations: operationsDone,
+    notes: notesDone,
+  };
+
+  const steps = STEP_DEFS.map((s) => ({ ...s, isDone: doneMap[s.key] }));
+  const totalSteps = steps.length;
+  const stepsDone = steps.filter((s) => s.isDone).length;
+
+  const firstIncompleteIndex = Math.max(steps.findIndex((s) => !s.isDone), 0);
+  const [stepIndex, setStepIndex] = useState(firstIncompleteIndex);
+  const activeStep = steps[stepIndex];
+  const isLastStep = stepIndex === steps.length - 1;
+  const step0Valid = !!editAddress.trim();
 
   // If setup is already complete, return null IMMEDIATELY - no skeleton flash!
-  if (step1Done && step2Done && (!showRoomsStep || step3Done)) return null;
+  if (stepsDone === totalSteps) return null;
 
-  if (isStaffLoading) return null;
-
-  const applicableSteps = showRoomsStep ? [step1Done, step2Done, step3Done] : [step1Done, step2Done];
-  const totalSteps = applicableSteps.length;
-  const stepsDone = applicableSteps.filter(Boolean).length;
-
-  const handleSaveLocation = async () => {
-    setIsSavingLocation(true);
+  /** Persists whatever the CURRENT step holds. Returns true on success. */
+  const persistCurrentStep = async (): Promise<boolean> => {
+    setError(null);
+    if (activeStep.key === 'payments' && editUpiId.trim() && !isValidUpiIdSyntax(editUpiId)) {
+      setError('Enter a valid UPI ID, e.g. name@bank');
+      return false;
+    }
+    setSaving(true);
     try {
-      const ok = await onSaveLocation(editAddress, editMapsLink);
-      if (ok && activeStepIndex === 0) {
-        setActiveStepIndex(1);
+      const payload: Record<string, any> =
+        activeStep.key === 'basics'
+          ? { address: editAddress.trim(), google_maps_link: editMapsLink.trim() }
+          : activeStep.key === 'contact'
+          ? { email: editEmail.trim(), phone: editPhone.trim() }
+          : activeStep.key === 'payments'
+          ? { upi_id: editUpiId.trim(), gstin: editGstin.trim() }
+          : activeStep.key === 'operations'
+          ? {
+              checkin_time: editCheckinTime,
+              checkout_time: editCheckoutTime,
+              walk_in_table_count: editWalkInTableCount,
+              ...(isMultiKey ? {} : { default_tariff: editDefaultTariff }),
+            }
+          : { instructions: editInstructions };
+
+      const res = await fetch('/php/api/router.php?action=update_property', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ property_id: propertyId, ...payload }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        setError(data.message || 'Failed to save');
+        return false;
       }
+      return true;
+    } catch {
+      setError('Network error. Please try again.');
+      return false;
     } finally {
-      setIsSavingLocation(false);
+      setSaving(false);
     }
   };
 
-  const steps = [
-    {
-      id: 0,
-      title: t('add_property_address_heading', 'Add Property Address'),
-      shortLabel: 'Address',
-      icon: MapPin,
-      isDone: step1Done,
-    },
-    {
-      id: 1,
-      title: t('add_team_member_heading', 'Add Team Member'),
-      shortLabel: 'Team',
-      icon: Users,
-      isDone: step2Done,
-    },
-    ...(showRoomsStep
-      ? [
-          {
-            id: 2,
-            title: t('create_first_unit_heading', 'Create First Unit'),
-            shortLabel: 'Units',
-            icon: DoorOpen,
-            isDone: step3Done,
-          },
-        ]
-      : []),
-  ];
+  const handleNext = async () => {
+    const ok = await persistCurrentStep();
+    if (ok) setStepIndex((i) => Math.min(i + 1, steps.length - 1));
+  };
 
-  const activeStep = steps.find((s) => s.id === activeStepIndex) || steps[0];
+  const handleSkip = () => {
+    // Purely optional steps (1-3) can be skipped without even attempting a save of empty fields.
+    setStepIndex((i) => Math.min(i + 1, steps.length - 1));
+  };
+
+  const handleBack = () => setStepIndex((i) => Math.max(i - 1, 0));
+
+  const handleSaveAndExit = async () => {
+    const ok = await persistCurrentStep();
+    if (ok) {
+      onSaved();
+      setIsOpen(false);
+    }
+  };
+
+  const handleFinish = async () => {
+    const ok = await persistCurrentStep();
+    if (ok) {
+      setFinished(true);
+      setTimeout(() => {
+        onSaved();
+        setIsOpen(false);
+      }, 1200);
+    }
+  };
+
+  if (!isOpen) {
+    // Full-bleed notice bar (26 Aug 2026: "there should be a notice in top of
+    // the site") - edge-to-edge, no rounded corners/margin, sits directly
+    // under the fixed header as a site-wide notice rather than an inset card
+    // mixed among regular page content (see its render site in App.tsx).
+    return (
+      <button
+        type="button"
+        onClick={() => setIsOpen(true)}
+        className="w-full flex items-center justify-between gap-3 px-4 sm:px-6 py-2.5 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800 text-left cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors shrink-0"
+      >
+        <span className="flex items-center gap-2 text-xs font-semibold text-amber-900 dark:text-amber-200">
+          <ClipboardList className="w-4 h-4 shrink-0" />
+          {t('finish_setup_property_heading', 'Finish Setting Up This Property')}
+          <span className="font-normal text-amber-700 dark:text-amber-400">
+            ({stepsDone} {t('setup_steps_done_of_prefix', 'of')} {totalSteps} {t('setup_steps_done_suffix', 'steps done')})
+          </span>
+        </span>
+        <span className="text-xs font-semibold text-amber-700 dark:text-amber-300 flex items-center gap-1 shrink-0">
+          {t('continue_setup_button', 'Continue Setup')} <ArrowRight className="w-3.5 h-3.5" />
+        </span>
+      </button>
+    );
+  }
 
   return (
-    <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800 shadow-xs overflow-hidden property-setup-wizard transition-all duration-300 animate-in fade-in mb-6">
-      {/* Top Header Bar */}
-      <div className="px-5 py-3.5 bg-amber-100 dark:bg-amber-900/50 border-b border-amber-200 dark:border-amber-800 flex items-center justify-between">
-        <div>
-          <h2 className="property-setup-wizard__title text-xs sm:text-sm font-bold text-amber-900 dark:text-amber-200">
-            {t('finish_setup_property_heading', 'Finish Setting Up This Property')}
-          </h2>
-          <p className="text-[11px] text-amber-700 dark:text-amber-300 mt-0.5">
-            {stepsDone} {t('setup_steps_done_of_prefix', 'of')} {totalSteps} {t('setup_steps_done_suffix', 'steps done')}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="w-28 sm:w-32">
-            <Progress progress={Math.round((stepsDone / totalSteps) * 100)} color="yellow" size="sm" />
+    <Drawer
+      open={isOpen}
+      onClose={() => setIsOpen(false)}
+      position="right"
+      className="z-58 w-full sm:w-140 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between property-setup-wizard"
+    >
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 shrink-0">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+            <ClipboardList className="w-4 h-4" />
+          </div>
+          <div>
+            <h2 className="property-setup-wizard__title text-base font-semibold text-gray-900 dark:text-white m-0">
+              {t('finish_setup_property_heading', 'Finish Setting Up This Property')}
+            </h2>
+            <p className="text-2xs text-slate-500 dark:text-slate-400 m-0">
+              {stepsDone} {t('setup_steps_done_of_prefix', 'of')} {totalSteps} {t('setup_steps_done_suffix', 'steps done')}
+            </p>
           </div>
         </div>
+        <button
+          type="button"
+          onClick={() => setIsOpen(false)}
+          className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
 
-      {/* Flowbite Progress Stepper Bar (https://flowbite.com/docs/components/stepper/#progress-stepper) */}
-      <div className="p-4 bg-amber-100/40 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800 overflow-x-auto">
-        <ol className="flex items-center w-full text-xs font-medium text-center text-slate-500 dark:text-slate-400">
+      {/* Timeline stepper - identical shape and identical 5 steps to PropertyCreationWizard's,
+          purely a progress display (no click-to-jump) - navigation is via the footer only,
+          exactly matching that component. */}
+      <div className="px-4 pt-3 pb-7 border-b border-gray-200 dark:border-gray-700 overflow-x-auto shrink-0">
+        <ol className="flex items-center w-full">
           {steps.map((step, idx) => {
             const StepIcon = step.icon;
+            const isDone = idx < stepIndex || (idx === stepIndex && finished) || (step.isDone && idx !== stepIndex);
+            const isCurrent = idx === stepIndex && !finished;
             const isLast = idx === steps.length - 1;
-            const isActive = step.id === activeStep.id;
-
             return (
-              <li
-                key={step.id}
-                onClick={() => setActiveStepIndex(step.id)}
-                className={`flex items-center cursor-pointer ${
-                  !isLast
-                    ? 'w-full after:content-[\'\'] after:w-full after:h-1.5 after:rounded-full after:inline-block after:mx-2 sm:after:mx-4 ' +
-                      (step.isDone
-                        ? 'after:bg-emerald-500 dark:after:bg-emerald-600'
-                        : 'after:bg-slate-200 dark:after:bg-slate-700')
-                    : ''
-                }`}
-              >
-                <div className="flex items-center gap-2 shrink-0">
+              <li key={step.key} className={`flex items-center ${!isLast ? 'flex-1' : ''}`}>
+                {/* Column is sized by the icon alone (shrink-0, no label in flow) so every
+                    step's footprint is identical regardless of label length - the label is
+                    absolutely positioned below instead. This is what keeps the connecting
+                    lines between steps an equal length (previously each <li> sized itself
+                    around its own label text, so "Contact & Tax"/"Notes & Finish" squeezed
+                    their line shorter than "Basics"/"Payments" did - reported 26 Aug 2026). */}
+                <div className="relative flex items-center justify-center shrink-0">
                   <span
                     className={`flex items-center justify-center w-8 h-8 rounded-full shrink-0 transition-all ${
-                      step.isDone
+                      isDone
                         ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border-2 border-emerald-500'
-                        : isActive
-                        ? 'bg-amber-500 text-white shadow-xs ring-4 ring-amber-200 dark:ring-amber-900/60'
+                        : isCurrent
+                        ? 'bg-indigo-600 text-white shadow-xs ring-4 ring-indigo-100 dark:ring-indigo-900/60'
                         : 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-300 dark:border-slate-600'
                     }`}
                   >
-                    {step.isDone ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                    ) : (
-                      <StepIcon className="w-4 h-4" />
-                    )}
+                    {isDone ? <CheckCircle2 className="w-4 h-4" /> : <StepIcon className="w-4 h-4" />}
                   </span>
                   <span
-                    className={`text-xs font-semibold whitespace-nowrap ${
-                      isActive
-                        ? 'text-amber-900 dark:text-amber-200'
-                        : step.isDone
-                        ? 'text-emerald-800 dark:text-emerald-300'
-                        : 'text-slate-500 dark:text-slate-400'
+                    className={`absolute top-full left-1/2 -translate-x-1/2 mt-1 text-2xs font-semibold whitespace-nowrap ${
+                      isCurrent ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-500 dark:text-slate-400'
                     }`}
                   >
-                    {step.shortLabel}
+                    {step.label}
                   </span>
                 </div>
+                {!isLast && (
+                  <div className={`flex-1 h-1 rounded-full mx-1.5 ${idx < stepIndex ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700'}`} />
+                )}
               </li>
             );
           })}
         </ol>
       </div>
 
-      {/* Active Step Panel Content */}
-      <div className="p-5 bg-white dark:bg-slate-900">
-        {activeStep.id === 0 && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                <MapPin className={`w-4 h-4 ${step1Done ? 'text-emerald-500' : 'text-amber-500'}`} />
-                {t('add_property_address_heading', 'Add Property Address')}
-              </h3>
-              {step1Done && (
-                <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Saved
-                </span>
-              )}
-            </div>
-
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {t('property_address_step_description', 'Guests and staff need to know where this property actually is.')}
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl">
-              <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-                  {t('address_label', 'Address')}
-                </label>
-                <Input
-                  type="text"
-                  value={editAddress}
-                  onChange={(e) => setEditAddress(e.target.value)}
-                  placeholder={t('full_property_address_placeholder', 'Full property address')}
-                />
-              </div>
-              <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-                  {t('google_maps_link_optional_label', 'Google Maps Link (optional)')}
-                </label>
-                <Input
-                  type="text"
-                  value={editMapsLink}
-                  onChange={(e) => setEditMapsLink(e.target.value)}
-                  placeholder={t('google_maps_link_placeholder', 'https://maps.app.goo.gl/...')}
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 pt-1">
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleSaveLocation}
-                disabled={isSavingLocation || !editAddress.trim()}
-                leftIcon={isSavingLocation ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-              >
-                {t('save_address_button', 'Save Address')}
-              </Button>
-              {!step1Done && !isSavingLocation && (
-                <span className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                  Save address to continue <ArrowRight className="w-3.5 h-3.5 animate-bounce" />
-                </span>
-              )}
-            </div>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {error && (
+          <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-300">
+            {error}
           </div>
         )}
 
-        {activeStep.id === 1 && (
+        {activeStep.key === 'basics' && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                <Users className={`w-4 h-4 ${step2Done ? 'text-emerald-500' : 'text-amber-500'}`} />
-                {t('add_team_member_heading', 'Add at least one team member')}
-              </h3>
-              {step2Done && (
-                <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Staff Added
-                </span>
-              )}
-            </div>
-
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {t('add_team_member_description', "You're already registered as Super Admin. Add whoever else will run the front desk, kitchen, or bookings.")}
-            </p>
-
-            <div>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={onGoToStaff}
-                rightIcon={<ArrowRight className="w-3.5 h-3.5 animate-bounce" />}
-              >
-                {t('add_staff_button', 'Add Staff')}
-              </Button>
-            </div>
+            <Input
+              label="Property Name"
+              value={name}
+              disabled
+              helperText="Can't be renamed here - use Edit Property in the sidebar instead."
+            />
+            <Input label="Address" value={editAddress} onChange={(e) => setEditAddress(e.target.value)} placeholder="Full property address" />
+            <Input label="Google Maps Link (optional)" value={editMapsLink} onChange={(e) => setEditMapsLink(e.target.value)} placeholder="https://maps.app.goo.gl/..." />
           </div>
         )}
 
-        {activeStep.id === 2 && showRoomsStep && (
+        {activeStep.key === 'contact' && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                <DoorOpen className={`w-4 h-4 ${step3Done ? 'text-emerald-500' : 'text-amber-500'}`} />
-                {t('create_first_unit_heading', 'Create your first unit')}
-              </h3>
-              {step3Done && (
-                <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Rooms Added
-                </span>
-              )}
-            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">All optional - skip if you'd rather add these later.</p>
+            <Input type="email" label="Email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="info@example.com" leftIcon={<Mail className="w-4 h-4" />} />
+            <Input
+              type="tel"
+              label="Property Phone Number"
+              value={editPhone}
+              onChange={(e) => setEditPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+              placeholder="Enter 10-digit mobile number"
+              helperText="This is the phone number guests will be shown to contact the property."
+              leftIcon={<Phone className="w-4 h-4" />}
+            />
+          </div>
+        )}
 
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {t('create_first_unit_description', 'Rooms, cottages, or suites - whatever you rent out - each become a unit you can take bookings against.')}
-            </p>
+        {activeStep.key === 'payments' && (
+          <div className="space-y-4">
+            <p className="text-xs text-slate-500 dark:text-slate-400">All optional - skip if you'd rather add these later.</p>
+            <Input
+              label="GSTIN (optional)"
+              value={editGstin}
+              onChange={(e) => setEditGstin(e.target.value.toUpperCase())}
+              placeholder="27ABCDE1234F1Z5"
+              helperText="Printed on GST tax invoices at checkout."
+              leftIcon={<IdCard className="w-4 h-4" />}
+            />
+            <Input
+              label="UPI ID (optional)"
+              value={editUpiId}
+              onChange={(e) => setEditUpiId(e.target.value)}
+              placeholder="yourproperty@okicici"
+              error={editUpiId.trim() && !isValidUpiIdSyntax(editUpiId) ? 'Enter a valid UPI ID, e.g. name@bank' : undefined}
+              success={editUpiId.trim() && isValidUpiIdSyntax(editUpiId) ? 'Valid UPI ID format' : undefined}
+              helperText="A scannable UPI QR code (generated automatically from this ID) and the ID itself are added to booking/bill messages shared over WhatsApp."
+              leftIcon={<QrCode className="w-4 h-4" />}
+            />
+            {editUpiId.trim() && isValidUpiIdSyntax(editUpiId) && (
+              <UpiPaymentBlock upiId={editUpiId.trim()} payeeName={name} qrCodeImageUrl={upiQrCodeUrl} />
+            )}
+          </div>
+        )}
 
-            <div>
-              <Button
-                variant="primary"
-                size="md"
-                onClick={onAddUnit}
-                rightIcon={<ArrowRight className="w-4 h-4 animate-bounce" />}
-              >
-                {t('add_new_unit_button', 'Add New Unit')}
-              </Button>
+        {activeStep.key === 'operations' && (
+          <div className="space-y-4">
+            <p className="text-xs text-slate-500 dark:text-slate-400">Sensible defaults are already filled in - change only what's different for you.</p>
+            <div className="grid grid-cols-2 gap-4">
+              <Input type="time" label="Check-in Time" value={editCheckinTime} onChange={(e) => setEditCheckinTime(e.target.value)} leftIcon={<Clock className="w-4 h-4" />} />
+              <Input type="time" label="Check-out Time" value={editCheckoutTime} onChange={(e) => setEditCheckoutTime(e.target.value)} leftIcon={<Clock className="w-4 h-4" />} />
             </div>
+            {!isMultiKey && (
+              <Input
+                type="number"
+                label="Default Tariff / Night (₹, optional)"
+                value={editDefaultTariff}
+                onChange={(e) => setEditDefaultTariff(e.target.value)}
+                placeholder="e.g. 2000"
+                helperText="Pre-fills the rate when creating a new booking - still editable per booking."
+                leftIcon={<IndianRupee className="w-4 h-4" />}
+              />
+            )}
+            <Input
+              type="number"
+              min={1}
+              max={200}
+              label="Number of Tables (Walk-in Orders)"
+              value={editWalkInTableCount}
+              onChange={(e) => setEditWalkInTableCount(e.target.value)}
+              placeholder="10"
+            />
+          </div>
+        )}
+
+        {activeStep.key === 'notes' && (
+          <div className="space-y-4">
+            {finished ? (
+              <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+                <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+                <p className="text-sm font-semibold text-slate-900 dark:text-white">Setup saved!</p>
+              </div>
+            ) : (
+              <Textarea
+                label="Other Notes (optional)"
+                value={editInstructions}
+                onChange={(e) => setEditInstructions(e.target.value)}
+                placeholder="e.g. How to reach, check-in instructions, parking notes…"
+                rows={4}
+              />
+            )}
           </div>
         )}
       </div>
-    </div>
+
+      {/* Footer - exact same button set/behavior as PropertyCreationWizard's:
+          Back / Save & Exit on the left, Skip / Next Step / Finish Setup on the right. */}
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2 bg-gray-50 dark:bg-gray-850 shrink-0">
+        <div className="flex items-center gap-2">
+          {stepIndex > 0 && !finished && (
+            <Button type="button" variant="secondary" size="sm" onClick={handleBack} disabled={saving}>
+              <ArrowLeft className="w-3.5 h-3.5" />
+            </Button>
+          )}
+          {stepIndex > 0 && !isLastStep && !finished && (
+            <Button type="button" variant="secondary" size="sm" onClick={handleSaveAndExit} disabled={saving}>
+              Save &amp; Exit
+            </Button>
+          )}
+        </div>
+
+        {!finished && (
+          <div className="flex items-center gap-2">
+            {stepIndex > 0 && !isLastStep && (
+              <Button type="button" variant="secondary" size="sm" onClick={handleSkip} disabled={saving}>
+                Skip
+              </Button>
+            )}
+            {isLastStep ? (
+              <Button type="button" variant="primary" size="sm" onClick={handleFinish} disabled={saving}>
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                <span className="ml-1.5">Finish Setup</span>
+              </Button>
+            ) : (
+              <Button type="button" variant="primary" size="sm" onClick={handleNext} disabled={saving || (stepIndex === 0 && !step0Valid)}>
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                <span className={saving ? 'ml-1.5' : ''}>Next Step: {steps[stepIndex + 1]?.label}</span>
+                <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+    </Drawer>
   );
 };

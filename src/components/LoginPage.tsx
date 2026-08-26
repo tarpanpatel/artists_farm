@@ -45,6 +45,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
   const [confirmPasscode, setConfirmPasscode] = useState('');
   const [isSavingPasscode, setIsSavingPasscode] = useState(false);
 
+  // Real-time validation feedback (Flowbite forms.md validation states) - flags a mismatch as
+  // soon as both fields have something typed, rather than only on submit.
+  const passcodeMismatch = newPasscode.length > 0 && confirmPasscode.length > 0 && newPasscode !== confirmPasscode;
+  const passcodeMatch = newPasscode.length === 6 && confirmPasscode.length === 6 && newPasscode === confirmPasscode;
+
   // "Forgot Password?" - emails the account's current username + passcode to the
   // tenant's email on file. Only surfaced in 'management' mode's UI below (unconfirmed
   // whether staff accounts have an email on file for this to actually reach), but the
@@ -426,11 +431,22 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
                     placeholder="••••••"
                     maxLength={6}
                     inputMode="numeric"
-                    className="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full pl-16 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 font-mono tracking-[0.25em]"
+                    className={`block w-full pl-16 p-2.5 sm:text-sm rounded-lg font-mono tracking-[0.25em] ${
+                      passcodeMismatch
+                        ? 'bg-red-50 border border-red-500 text-red-900 placeholder-red-700 focus:ring-red-500 focus:border-red-500 dark:bg-red-100 dark:border-red-400 dark:focus:ring-red-500 dark:focus:border-red-500'
+                        : passcodeMatch
+                        ? 'bg-green-50 border border-green-500 text-green-900 placeholder-green-700 focus:ring-green-500 focus:border-green-500 dark:bg-green-100 dark:border-green-400 dark:focus:ring-green-500 dark:focus:border-green-500'
+                        : 'bg-gray-50 border border-gray-300 text-gray-900 focus:ring-blue-600 focus:border-blue-600 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500'
+                    }`}
                     disabled={isSavingPasscode}
                     required
                   />
                 </div>
+                {passcodeMismatch ? (
+                  <p className="mt-2 text-sm text-red-600 dark:text-red-500">Passcodes don't match.</p>
+                ) : passcodeMatch ? (
+                  <p className="mt-2 text-sm text-green-600 dark:text-green-500">Passcodes match.</p>
+                ) : null}
               </div>
 
               <button

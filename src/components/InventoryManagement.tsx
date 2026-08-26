@@ -5,7 +5,7 @@ import { Badge } from './Badge';
 import { Popover } from './Popover';
 import { TablePagination } from './TablePagination';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
-import { Boxes, PackagePlus, AlertTriangle, Plus, CheckCircle2, X, Upload, Search, ShoppingCart, Settings, Package, Check, ClipboardEdit, Edit2, Pencil, ChevronDown, ChevronUp, Loader2, FlaskConical, Coffee, Milk, Apple, Banana, Cake, Carrot, Wheat, SprayCan, Drumstick, UtensilsCrossed, Croissant, Soup, Droplet, Snowflake, Fish, Wrench, Balloon, Refrigerator, Microwave, Fan, Blend, Bean, HandPlatter, GlassWater, LeafyGreen, Trash2, Candy, Flame, Cherry, Grape, Citrus, Egg, CupSoda, Utensils, Sandwich, Cookie, Nut, Filter, Eye, type FlowbiteIconComponent } from './icons/FlowbiteIcons';
+import { Boxes, PackagePlus, AlertTriangle, Plus, CheckCircle2, X, Search, ShoppingCart, Settings, Package, Check, ClipboardEdit, Edit2, Pencil, ChevronDown, ChevronUp, Loader2, FlaskConical, Coffee, Milk, Apple, Banana, Cake, Carrot, Wheat, SprayCan, Drumstick, UtensilsCrossed, Croissant, Soup, Droplet, Snowflake, Fish, Wrench, Balloon, Refrigerator, Microwave, Fan, Blend, Bean, HandPlatter, GlassWater, LeafyGreen, Trash2, Candy, Flame, Cherry, Grape, Citrus, Egg, CupSoda, Utensils, Sandwich, Cookie, Nut, Filter, Eye, type FlowbiteIconComponent } from './icons/FlowbiteIcons';
 import { InventoryItem, CatalogItem } from '../types';
 import { t } from '../i18n/en';
 import { PageHeader, PageHeaderButton } from './PageHeader';
@@ -1759,11 +1759,20 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               </div>
 
               <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('upload_image_label')}</label>
-                <Input type="file" accept="image/*" onChange={handleImageUpload} className="w-full p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 rounded-lg text-slate-500 dark:text-slate-400" />
+                <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('upload_image_label', 'Upload Image')}</label>
+                <label htmlFor="cat-image-upload-input" className="block bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-2 rounded-lg text-slate-600 dark:text-slate-300 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                  <span>{catImagePath ? t('change_image_button', 'Change Image') : t('choose_image_button', 'Choose Image')}</span>
+                </label>
+                <input
+                  id="cat-image-upload-input"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
                 {catImagePath && (
                   <div className="mt-2">
-                    <p className="text-2xs text-slate-500 dark:text-slate-400 mb-1">{t('preview_label')}</p>
+                    <p className="text-2xs text-slate-500 dark:text-slate-400 mb-1">{t('preview_label', 'Preview:')}</p>
                     <img src={catImagePath} alt="Preview" className="w-[150px] h-[50px] object-cover border border-slate-200 dark:border-slate-700 rounded shadow-md" />
                   </div>
                 )}
@@ -2136,6 +2145,12 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                                     value={data.cost}
                                     onChange={(e) => updateFulfillData(namePart, 'cost', parseInt(e.target.value) || 0)}
                                     className="w-full text-center"
+                                    // Live (26 Aug 2026 - CLAUDE.md's "Real-Time Form Validation" sweep):
+                                    // mirrors handleSaveFulfillQuantities()'s own missingCost rule exactly -
+                                    // a delivered quantity with no cost price is invalid, but only once a
+                                    // real quantity has been entered (0 qty means nothing was delivered,
+                                    // so no cost is expected yet either).
+                                    error={data.qty > 0 && (!data.cost || Number(data.cost) <= 0) ? 'Required for delivered items' : undefined}
                                   />
                                 </div>
                                 <div>
@@ -2864,29 +2879,26 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             </div>
 
             <div>
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('item_image_label', 'Item Image')}</label>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <label className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-2 rounded-lg cursor-pointer flex items-center gap-1.5 shadow-md text-xs shrink-0 transition-all">
-                    <Upload className="w-4 h-4" />
-                    <span>{t('upload_image_button')}</span>
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            setImagePath(reader.result as string);
-                          };
-                          reader.readAsDataURL(file);
-                        }
-                      }}
-                    />
-                  </label>
-                </div>
+              <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('item_image_label', 'Item Image')}</label>
+              <label htmlFor="item-image-upload-input" className="block bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-2 rounded-lg text-slate-600 dark:text-slate-300 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                <span>{imagePath ? t('change_image_button', 'Change Image') : t('choose_image_button', 'Choose Image')}</span>
+              </label>
+              <input
+                id="item-image-upload-input"
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                      setImagePath(reader.result as string);
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+                className="hidden"
+              />
 
                 {/* Image Preview Box */}
                 {imagePath && (
@@ -2915,7 +2927,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     </Popover>
                   </div>
                 )}
-              </div>
             </div>
           </div>
           <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">

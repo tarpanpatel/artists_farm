@@ -2078,6 +2078,7 @@ export async function updateTenantSuperAdminDB(params: {
   fullName: string;
   passcode?: string;
   qrCodeUrl?: string;
+  upiId?: string;
 }): Promise<boolean> {
   try {
     const res = await apiFetch(`${API_BASE}?action=update_tenant_super_admin`, {
@@ -2089,6 +2090,7 @@ export async function updateTenantSuperAdminDB(params: {
         full_name: params.fullName,
         passcode: params.passcode || '',
         qr_code_url: params.qrCodeUrl || '',
+        upi_id: params.upiId || '',
       }),
     });
     const json = await res.json();

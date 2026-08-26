@@ -8,7 +8,6 @@ import {
   ChefHat,
   X,
   Boxes,
-  Upload,
   RefreshCw,
   Search,
   ShoppingCart,
@@ -50,6 +49,7 @@ import { useInventoryContext } from '../contexts/InventoryContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useStaff } from '../contexts/StaffContext';
 import { Input } from './Input';
+import { FileInput } from './FileInput';
 import { Button } from './Button';
 import { t } from '../i18n/en';
 import { formatDateTimeDDMMYYYY, toDatetimeLocalValue } from '../utils/dateUtils';
@@ -3661,29 +3661,21 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             </div>
 
             <div>
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('item_image_label', 'Item Image')}</label>
               <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition-colors border border-slate-300 dark:border-slate-600">
-                    <Upload className="w-4 h-4" />
-                    <span>{t('upload_image_button')}</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            setNewItemImagePath(reader.result as string);
-                          };
-                          reader.readAsDataURL(file);
-                        }
-                      }}
-                    />
-                  </label>
-                </div>
+                <FileInput
+                  label={t('item_image_label', 'Item Image')}
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        setNewItemImagePath(reader.result as string);
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
 
                 {/* Image Preview Box */}
                 {newItemImagePath && (

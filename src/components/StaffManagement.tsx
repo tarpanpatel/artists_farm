@@ -38,6 +38,7 @@ import { PageHeader } from './PageHeader';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import { t } from '../i18n/en';
 import { shareTextContent } from '../utils/shareText';
+import { UpiPaymentBlock, isValidUpiIdSyntax } from '../utils/upiQrCode';
 
 interface StaffManagementProps {
   activeMenuItemKey?: string;
@@ -109,10 +110,19 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const [newRole, setNewRole] = useState<UserAccount['role']>('');
   const [newIsFinancialHandler, setNewIsFinancialHandler] = useState(false);
   const [newAccessAllProperties, setNewAccessAllProperties] = useState(false);
-  const [newQrCodeUrl, setNewQrCodeUrl] = useState('');
+  const [newUpiId, setNewUpiId] = useState('');
   const [newDailyWage, setNewDailyWage] = useState('');
 
-
+  // Real-time validation feedback (Flowbite forms.md validation states, 26 Aug 2026 -
+  // explicit request: "it should show in real time if passcodes dont match, or any
+  // validation or logical error in any of the fields") - same pattern already proven in
+  // AccountSettings.tsx's passcode section: only flags a rule once there's something
+  // typed to judge (`.length > 0`), so an untouched/empty field never shows red before
+  // the user has done anything.
+  const newUsernameInvalid = newUsername.length > 0 && !/^\d{10}$/.test(newUsername);
+  const newPasscodeInvalid = newPasscode.length > 0 && !/^\d{6}$/.test(newPasscode);
+  const newPasscodeMismatch = newPasscode.length > 0 && newConfirmPasscode.length > 0 && newPasscode !== newConfirmPasscode;
+  const newPasscodeMatch = newPasscode.length > 0 && newConfirmPasscode.length > 0 && newPasscode === newConfirmPasscode;
 
   // 3. Update User
   const [selectedUpdateUserId, setSelectedUpdateUserId] = useState('');
@@ -125,6 +135,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const [updateIsFinancialHandler, setUpdateIsFinancialHandler] = useState(false);
   const [updateAccessAllProperties, setUpdateAccessAllProperties] = useState(false);
   const [updateQrCodeUrl, setUpdateQrCodeUrl] = useState('');
+  const [updateUpiId, setUpdateUpiId] = useState('');
   const [updateDailyWage, setUpdateDailyWage] = useState('');
   // Super Admin's role/username/cash-handling/access-all-properties are
   // permanently fixed (14 Aug 2026 - "no one can change Super Admin's role,
@@ -136,8 +147,18 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const isEditingSuperAdmin = updateRole === 'Super Admin';
   const updateTargetUser = users.find((u) => u.id === selectedUpdateUserId);
 
+  // Same live-validation treatment as the Create form's state above, for the Edit form.
+  const updateUsernameInvalid = updateUsername.length > 0 && !/^\d{10}$/.test(updateUsername);
+  const updatePasscodeInvalid = updatePasscode.length > 0 && !/^\d{6}$/.test(updatePasscode);
+  const updatePasscodeMismatch = updatePasscode.length > 0 && updateConfirmPasscode.length > 0 && updatePasscode !== updateConfirmPasscode;
+  const updatePasscodeMatch = updatePasscode.length > 0 && updateConfirmPasscode.length > 0 && updatePasscode === updateConfirmPasscode;
+
   // Modals / Lightboxes
-  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  // qrCodeUrl: legacy uploaded image (still shown as-is if that's all a staff
+  // member has). upiId present: render the generated UpiPaymentBlock instead
+  // (preferring qrCodeUrl as its background if both exist - same precedence
+  // as everywhere else this pattern is used).
+  const [lightboxTarget, setLightboxTarget] = useState<{ qrCodeUrl?: string; upiId?: string; payeeName?: string } | null>(null);
 
   const roleHelpPopoverContent = (
     <div className="w-80 sm:w-96 p-3.5 text-xs space-y-3.5 max-h-[460px] overflow-y-auto">
@@ -208,7 +229,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       setNewFullName('');
       setNewUsername('');
       setNewPasscode('');
-      setNewQrCodeUrl('');
+      setNewUpiId('');
       setNewIsFinancialHandler(false);
       setNewAccessAllProperties(false);
       setNewDailyWage('');
@@ -343,6 +364,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       showToast('Passcodes do not match! Please verify both passcode fields.', { type: 'error' });
       return;
     }
+    if (newUpiId.trim() && !isValidUpiIdSyntax(newUpiId)) {
+      showToast('Enter a valid UPI ID, e.g. name@bank', { type: 'error' });
+      return;
+    }
     const newUser: UserAccount = {
       id: `usr-${Date.now().toString().slice(-4)}`,
       fullName: newFullName.trim(),
@@ -350,7 +375,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       role: newRole,
       passcodePin: newPasscode,
       isFinancialHandler: newIsFinancialHandler,
-      qrCodeUrl: newQrCodeUrl || undefined,
+      upiId: newUpiId.trim() || undefined,
       status: 'Active',
       dailyWage: newDailyWage ? Number(newDailyWage) : 0,
     };
@@ -363,7 +388,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       phone: newUser.username,
       isFinancialHandler: newUser.isFinancialHandler,
       accessAllProperties: newUser.accessAllProperties,
-      qrCodeUrl: newUser.qrCodeUrl,
+      upiId: newUser.upiId,
       status: newUser.status,
       dailyWage: newUser.dailyWage,
     });
@@ -381,7 +406,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     setNewUsername('');
     setNewPasscode('');
     setNewConfirmPasscode('');
-    setNewQrCodeUrl('');
+    setNewUpiId('');
     setNewIsFinancialHandler(false);
     setNewAccessAllProperties(false);
     setNewDailyWage('');
@@ -412,6 +437,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
      setUpdateIsFinancialHandler(Boolean(user.isFinancialHandler));
      setUpdateAccessAllProperties(Boolean(user.accessAllProperties));
      setUpdateQrCodeUrl(user.qrCodeUrl || '');
+     setUpdateUpiId(user.upiId || '');
      setUpdateDailyWage(user.dailyWage ? String(user.dailyWage) : '');
      setUserFormTab('update');
      setIsTeamMemberModalOpen(true);
@@ -468,6 +494,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       showToast('Passcodes do not match! Please verify both passcode fields.', { type: 'error' });
       return;
     }
+    if (updateUpiId.trim() && !isValidUpiIdSyntax(updateUpiId)) {
+      showToast('Enter a valid UPI ID, e.g. name@bank', { type: 'error' });
+      return;
+    }
     // Super Admin IS the tenant's own login - route through the tenant-login
     // sync path (Name/Passcode/QR only) instead of the normal per-property
     // write, which would otherwise desync this property's copy from every
@@ -480,6 +510,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
           fullName: updateFullName.trim(),
           passcode: updatePasscode,
           qrCodeUrl: updateQrCodeUrl || targetUser.qrCodeUrl,
+          upiId: updateUpiId.trim(),
         })
       : await updateStaffUserDB(selectedUpdateUserId, {
           fullName: updateFullName.trim(),
@@ -490,6 +521,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
           isFinancialHandler: updateIsFinancialHandler,
           accessAllProperties: updateAccessAllProperties,
           qrCodeUrl: updateQrCodeUrl || targetUser.qrCodeUrl,
+          upiId: updateUpiId.trim(),
           dailyWage: updateDailyWage ? Number(updateDailyWage) : (targetUser.dailyWage ?? 0),
         });
     if (!saved) {
@@ -516,6 +548,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     setUpdateConfirmPasscode('');
     setUpdateRole('');
     setUpdateQrCodeUrl('');
+    setUpdateUpiId('');
     setUpdateDailyWage('');
     setIsTeamMemberModalOpen(false);
     showToast('User account updated successfully!', { type: 'success' });
@@ -665,7 +698,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 setNewFullName('');
                 setNewUsername('');
                 setNewPasscode('');
-                setNewQrCodeUrl('');
+                setNewUpiId('');
                 setNewIsFinancialHandler(false);
                 setNewAccessAllProperties(false);
                 setNewDailyWage('');
@@ -860,8 +893,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   {
                     name: 'UPI QR CODE',
                     align: 'center' as const,
-                    cell: (row: any) => row.qrCodeUrl ? (
-                      <Button onClick={() => setLightboxUrl(row.qrCodeUrl!)} variant="link" size="sm" leftIcon={<QrCode className="w-3.5 h-3.5" />} className="text-emerald-600 hover:text-emerald-700 font-semibold text-xs gap-1 mx-auto">{t('view_qr_button', 'View QR')}</Button>
+                    cell: (row: any) => (row.qrCodeUrl || row.upiId) ? (
+                      <Button onClick={() => setLightboxTarget({ qrCodeUrl: row.qrCodeUrl, upiId: row.upiId, payeeName: row.fullName || row.name })} variant="link" size="sm" leftIcon={<QrCode className="w-3.5 h-3.5" />} className="text-emerald-600 hover:text-emerald-700 font-semibold text-xs gap-1 mx-auto">{t('view_qr_button', 'View QR')}</Button>
                     ) : (
                       <span className="text-gray-400 italic text-xs">{t('none_label', 'None')}</span>
                     ),
@@ -1065,8 +1098,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         </div>
                         <div className="text-right">
                           <span className="text-[10px] text-slate-400 uppercase font-semibold block">UPI QR Code</span>
-                          {row.qrCodeUrl ? (
-                            <Button onClick={() => setLightboxUrl(row.qrCodeUrl!)} variant="link" size="sm" leftIcon={<QrCode className="w-3.5 h-3.5" />} className="text-emerald-600 hover:text-emerald-700 font-semibold text-[11px] p-0 h-auto">View QR</Button>
+                          {(row.qrCodeUrl || row.upiId) ? (
+                            <Button onClick={() => setLightboxTarget({ qrCodeUrl: row.qrCodeUrl, upiId: row.upiId, payeeName: row.fullName || row.name })} variant="link" size="sm" leftIcon={<QrCode className="w-3.5 h-3.5" />} className="text-emerald-600 hover:text-emerald-700 font-semibold text-[11px] p-0 h-auto">View QR</Button>
                           ) : (
                             <span className="text-slate-400 italic text-[11px]">None</span>
                           )}
@@ -1781,9 +1814,9 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       )}
 
       {/* LIGHTBOX MODAL FOR QR CODE VIEW */}
-      {lightboxUrl && (
+      {lightboxTarget && (
         <div
-          onClick={() => setLightboxUrl(null)}
+          onClick={() => setLightboxTarget(null)}
           className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in cursor-pointer"
         >
           <div
@@ -1791,15 +1824,24 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             className="bg-white rounded-lg max-w-xs w-full p-6 text-center space-y-3 border border-slate-200 shadow-2xl relative"
           >
             <button
-              onClick={() => setLightboxUrl(null)}
+              onClick={() => setLightboxTarget(null)}
               className="absolute top-3 right-3 text-slate-400 hover:text-slate-700 p-1"
             >
               <X className="w-5 h-5" />
             </button>
             <h4 className="staff-management__caption font-semibold text-slate-900 text-sm">{t('registered_qr_code_heading', 'Registered QR Code')}</h4>
-            <div className="rounded-lg overflow-hidden border border-slate-200 p-2 bg-slate-50">
-              <img src={lightboxUrl} alt="QR Code" className="w-full h-auto rounded-lg" />
-            </div>
+            {lightboxTarget.upiId ? (
+              <UpiPaymentBlock
+                upiId={lightboxTarget.upiId}
+                payeeName={lightboxTarget.payeeName || 'Staff Payment'}
+                qrCodeImageUrl={lightboxTarget.qrCodeUrl}
+                size={140}
+              />
+            ) : (
+              <div className="rounded-lg overflow-hidden border border-slate-200 p-2 bg-slate-50">
+                <img src={lightboxTarget.qrCodeUrl} alt="QR Code" className="w-full h-auto rounded-lg" />
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1956,39 +1998,45 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     // dropping trailing digits from any formatted phone number.
                     onChange={(e) => setNewUsername(e.target.value.replace(/\D/g, '').slice(0, 10))}
                     placeholder="10-digit mobile number"
+                    error={newUsernameInvalid ? 'Must be exactly 10 digits' : undefined}
                     className="text-slate-900 dark:text-white"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('six_digit_passcode_label', '6-Digit Passcode PIN')} *</label>
-                <Input
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  maxLength={6}
-                  value={newPasscode}
-                  onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="••••••"
-                  inputMode="numeric"
-                  className="text-slate-900 dark:text-white"
-                />
-              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('six_digit_passcode_label', '6-Digit Passcode PIN')} *</label>
+                  <Input
+                    type="password"
+                    autoComplete="new-password"
+                    required
+                    maxLength={6}
+                    value={newPasscode}
+                    onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="••••••"
+                    inputMode="numeric"
+                    error={newPasscodeInvalid ? 'Must be exactly 6 digits' : undefined}
+                    className="text-slate-900 dark:text-white"
+                  />
+                </div>
 
-              <div>
-                <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Confirm New Passcode PIN *</label>
-                <Input
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  maxLength={6}
-                  value={newConfirmPasscode}
-                  onChange={(e) => setNewConfirmPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="Re-enter new passcode"
-                  inputMode="numeric"
-                  className="text-slate-900 dark:text-white"
-                />
+                <div>
+                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Confirm New Passcode PIN *</label>
+                  <Input
+                    type="password"
+                    autoComplete="new-password"
+                    required
+                    maxLength={6}
+                    value={newConfirmPasscode}
+                    onChange={(e) => setNewConfirmPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="Re-enter new passcode"
+                    inputMode="numeric"
+                    error={newPasscodeMismatch ? "Passcodes don't match" : undefined}
+                    success={newPasscodeMatch ? 'Passcodes match' : undefined}
+                    className="text-slate-900 dark:text-white"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -2085,39 +2133,20 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               </div>
 
               <div>
-                <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('staff_qr_upload_label', 'Payment QR Code Image (Optional)')}</label>
-                {/* Flowbite-style hidden-input + styled-label pattern (24 Aug 2026,
-                    reported live: "file upload UI is not like flowbite") - the raw
-                    <Input type="file"> this used to be just forwards Tailwind
-                    classes onto a native file input, whose OS-drawn "Choose
-                    File"/"No file chosen" chrome can't be restyled that way at all
-                    (browsers don't expose it to CSS beyond ::file-selector-button,
-                    which this project doesn't use) - it just looked like a bare,
-                    unstyled browser control regardless of the classes passed in.
-                    Same pattern PettyCashManagement.tsx's invoice/screenshot
-                    uploads already use. */}
-                <label htmlFor="new-staff-qr-upload-input" className="block bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-2.5 rounded-lg text-slate-600 dark:text-slate-300 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer shadow-md hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                  <QrCode className="w-4 h-4 text-slate-400" />
-                  <span>{newQrCodeUrl ? t('change_qr_image_button', 'Change QR Code Image') : t('choose_qr_image_button', 'Choose QR Code Image')}</span>
-                </label>
-                <input
-                  id="new-staff-qr-upload-input"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      const reader = new FileReader();
-                      reader.onloadend = () => setNewQrCodeUrl(reader.result as string);
-                      reader.readAsDataURL(file);
-                    }
-                    e.target.value = '';
-                  }}
-                  className="hidden"
+                <Input
+                  label={t('staff_upi_id_label', 'Payment UPI ID (Optional)')}
+                  type="text"
+                  value={newUpiId}
+                  onChange={(e) => setNewUpiId(e.target.value)}
+                  placeholder="name@okicici"
+                  error={newUpiId.trim() && !isValidUpiIdSyntax(newUpiId) ? t('upi_id_invalid_format_error', 'Enter a valid UPI ID, e.g. name@bank') : undefined}
+                  success={newUpiId.trim() && isValidUpiIdSyntax(newUpiId) ? t('upi_id_valid_format_success', 'Valid UPI ID format') : undefined}
+                  helperText={t('staff_upi_id_help_text', 'A scannable QR code is generated automatically from this ID so this team member can be paid by scanning it.')}
+                  leftIcon={<QrCode className="w-4 h-4" />}
                 />
-                {newQrCodeUrl && (
-                  <div className="mt-2 flex justify-center">
-                    <img src={newQrCodeUrl} alt={t('qr_code_preview_alt', 'QR code preview')} className="h-16 w-16 object-contain border border-slate-200 dark:border-slate-700 rounded-lg shadow-md bg-white" />
+                {newUpiId.trim() && isValidUpiIdSyntax(newUpiId) && (
+                  <div className="mt-2">
+                    <UpiPaymentBlock upiId={newUpiId.trim()} payeeName={newFullName.trim() || 'Staff Payment'} />
                   </div>
                 )}
               </div>
@@ -2158,6 +2187,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     // dropping trailing digits from any formatted phone number.
                     onChange={(e) => setUpdateUsername(e.target.value.replace(/\D/g, '').slice(0, 10))}
                     placeholder="10-digit mobile number"
+                    error={updateUsernameInvalid ? 'Must be exactly 10 digits' : undefined}
                     className="text-slate-900 dark:text-white"
                   />
                   {isEditingSuperAdmin && (
@@ -2168,32 +2198,37 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 </div>
               </div>
 
-              <div>
-                <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('new_passcode_optional_label', 'New 6-Digit Passcode PIN (Leave blank to keep current)')}</label>
-                <Input
-                  type="password"
-                  autoComplete="new-password"
-                  maxLength={6}
-                  value={updatePasscode}
-                  onChange={(e) => setUpdatePasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="Leave blank to keep current"
-                  inputMode="numeric"
-                  className="text-slate-900 dark:text-white"
-                />
-              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('new_passcode_optional_label', 'New 6-Digit Passcode PIN')}</label>
+                  <Input
+                    type="password"
+                    autoComplete="new-password"
+                    maxLength={6}
+                    value={updatePasscode}
+                    onChange={(e) => setUpdatePasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="Leave blank to keep current"
+                    inputMode="numeric"
+                    error={updatePasscodeInvalid ? 'Must be exactly 6 digits' : undefined}
+                    className="text-slate-900 dark:text-white"
+                  />
+                </div>
 
-              <div>
-                <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Confirm New Passcode PIN</label>
-                <Input
-                  type="password"
-                  autoComplete="new-password"
-                  maxLength={6}
-                  value={updateConfirmPasscode}
-                  onChange={(e) => setUpdateConfirmPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="Re-enter new passcode"
-                  inputMode="numeric"
-                  className="text-slate-900 dark:text-white"
-                />
+                <div>
+                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Confirm New Passcode PIN</label>
+                  <Input
+                    type="password"
+                    autoComplete="new-password"
+                    maxLength={6}
+                    value={updateConfirmPasscode}
+                    onChange={(e) => setUpdateConfirmPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="Re-enter new passcode"
+                    inputMode="numeric"
+                    error={updatePasscodeMismatch ? "Passcodes don't match" : undefined}
+                    success={updatePasscodeMatch ? 'Passcodes match' : undefined}
+                    className="text-slate-900 dark:text-white"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -2328,40 +2363,37 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               )}
 
               <div>
-                <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('replace_qr_label', 'Replace Payment QR Code Image')}</label>
-                {/* Flowbite-style hidden-input + styled-label pattern (24 Aug 2026,
-                    reported live: "file upload UI is not like flowbite") - see the
-                    matching fix in the Add Staff form above for why the old raw
-                    <Input type="file"> could never actually look flowbite-styled
-                    regardless of classes passed to it. */}
-                <label htmlFor="update-staff-qr-upload-input" className="block bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-2.5 rounded-lg text-slate-600 dark:text-slate-300 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer shadow-md hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                  <QrCode className="w-4 h-4 text-slate-400" />
-                  <span>{updateQrCodeUrl ? t('change_qr_image_button', 'Change QR Code Image') : t('choose_qr_image_button', 'Choose QR Code Image')}</span>
-                </label>
-                <input
-                  id="update-staff-qr-upload-input"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      const reader = new FileReader();
-                      reader.onloadend = () => setUpdateQrCodeUrl(reader.result as string);
-                      reader.readAsDataURL(file);
-                    }
-                    e.target.value = '';
-                  }}
-                  className="hidden"
+                <Input
+                  label={t('staff_upi_id_label', 'Payment UPI ID (Optional)')}
+                  type="text"
+                  value={updateUpiId}
+                  onChange={(e) => setUpdateUpiId(e.target.value)}
+                  placeholder="name@okicici"
+                  error={updateUpiId.trim() && !isValidUpiIdSyntax(updateUpiId) ? t('upi_id_invalid_format_error', 'Enter a valid UPI ID, e.g. name@bank') : undefined}
+                  success={updateUpiId.trim() && isValidUpiIdSyntax(updateUpiId) ? t('upi_id_valid_format_success', 'Valid UPI ID format') : undefined}
+                  helperText={t('staff_upi_id_help_text', 'A scannable QR code is generated automatically from this ID so this team member can be paid by scanning it.')}
+                  leftIcon={<QrCode className="w-4 h-4" />}
                 />
-                {/* Preview the newly-chosen image if any, else fall back to
-                    whatever QR code is already saved for this staff member - the
-                    old plain file input gave no indication a QR code already
-                    existed at all. */}
-                {(updateQrCodeUrl || updateTargetUser?.qrCodeUrl) && (
+                {/* Legacy uploaded QR images (from before this became UPI-ID-driven,
+                    26 Aug 2026) are preserved and still shown here - as the
+                    generated block's own background if a valid UPI ID is also present
+                    (qrCodeImageUrl there takes precedence, same as everywhere else
+                    this pattern is used), or as the bare original image if this
+                    staff member has an old QR but hasn't entered a (valid) UPI ID yet,
+                    so nothing already-visible disappears out from under them. */}
+                {updateUpiId.trim() && isValidUpiIdSyntax(updateUpiId) ? (
+                  <div className="mt-2">
+                    <UpiPaymentBlock
+                      upiId={updateUpiId.trim()}
+                      payeeName={updateFullName.trim() || 'Staff Payment'}
+                      qrCodeImageUrl={updateQrCodeUrl || updateTargetUser?.qrCodeUrl}
+                    />
+                  </div>
+                ) : (updateQrCodeUrl || updateTargetUser?.qrCodeUrl) ? (
                   <div className="mt-2 flex justify-center">
                     <img src={updateQrCodeUrl || updateTargetUser?.qrCodeUrl} alt={t('qr_code_preview_alt', 'QR code preview')} className="h-16 w-16 object-contain border border-slate-200 dark:border-slate-700 rounded-lg shadow-md bg-white" />
                   </div>
-                )}
+                ) : null}
               </div>
 
               <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-100 dark:border-slate-700 flex-wrap">

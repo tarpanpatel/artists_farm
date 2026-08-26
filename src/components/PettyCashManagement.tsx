@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useReducer } from 'react';
 import { Drawer, Card, TextInput as FlowbiteTextInput, Label, Checkbox, Dropdown, DropdownItem, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell } from 'flowbite-react';
-import { X, Search, Pencil, Edit2, FileText, FileSpreadsheet, ImageIcon, Landmark, Loader2, Clock, User, Scale, Building2, FolderOpen, Camera, Plus, Trash2, Settings, Filter } from './icons/FlowbiteIcons';
+import { X, Search, Pencil, Edit2, FileText, FileSpreadsheet, ImageIcon, Landmark, Loader2, Clock, User, Scale, Building2, Camera, Plus, Trash2, Settings, Filter } from './icons/FlowbiteIcons';
 import { TablePagination } from './TablePagination';
 import { PettyCashEntry } from '../types';
 import { Button } from './Button';
@@ -16,6 +16,7 @@ import { PageHeader } from './PageHeader';
 import { t } from '../i18n/en';
 import { useConfirm } from './ConfirmDialogContext';
 import { Input } from './Input';
+import { FileInput } from './FileInput';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
 
 interface PettyCashManagementProps {
@@ -1363,15 +1364,10 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
           {/* Proof uploads */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800/50 p-4 rounded-lg text-center space-y-2 transition-colors">
-              <label className="app-label text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5 flex items-center justify-center gap-1.5"><FolderOpen className="w-3.5 h-3.5" /> {t('capture_upload_invoice_bill_label_plain', 'Capture / Upload Invoice Bill')}</label>
-              <label htmlFor="invoice-upload-input" className="block bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-2.5 rounded-lg text-slate-600 dark:text-slate-300 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer shadow-md hover:bg-slate-50">
-                <FileText className="w-4 h-4 text-slate-400" />
-                <span>{formState.invoiceBillUrls.length > 0 ? `+ Add Another (${formState.invoiceBillUrls.length} attached)` : t('choose_document_button', 'Choose Image or PDF')}</span>
-              </label>
-              <input
+            <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800/50 p-4 rounded-lg space-y-2 transition-colors">
+              <FileInput
                 id="invoice-upload-input"
-                type="file"
+                label={t('capture_upload_invoice_bill_label_plain', 'Capture / Upload Invoice Bill')}
                 accept="image/*,application/pdf"
                 multiple
                 onChange={e => {
@@ -1379,10 +1375,10 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                   files.forEach(f => handleCompressFile(f, 'invoice'));
                   e.target.value = '';
                 }}
-                className="hidden"
+                helperText={formState.invoiceBillUrls.length > 0 ? `${formState.invoiceBillUrls.length} attached - choosing more files adds to this list.` : undefined}
               />
               {formState.invoiceBillUrls.length > 0 && (
-                <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+                <div className="flex flex-wrap items-center gap-2 mt-2">
                   {formState.invoiceBillUrls.map((url, idx) => (
                     <div key={idx} className="relative">
                       {url.startsWith('data:application/pdf') ? (
@@ -1405,15 +1401,10 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               )}
             </div>
 
-            <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800/50 p-4 rounded-lg text-center space-y-2 transition-colors">
-              <label className="app-label text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5 flex items-center justify-center gap-1.5"><Camera className="w-3.5 h-3.5" /> {t('upload_payment_screenshot_label_plain', 'Upload Payment Screenshot')}</label>
-              <label htmlFor="screenshot-upload-input" className="block bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-2.5 rounded-lg text-slate-600 dark:text-slate-300 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer shadow-md hover:bg-slate-50">
-                <FileText className="w-4 h-4 text-slate-400" />
-                <span>{formState.paymentScreenshotUrls.length > 0 ? `+ Add Another (${formState.paymentScreenshotUrls.length} attached)` : t('select_screenshot_button', 'Select Screenshot')}</span>
-              </label>
-              <input
+            <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800/50 p-4 rounded-lg space-y-2 transition-colors">
+              <FileInput
                 id="screenshot-upload-input"
-                type="file"
+                label={t('upload_payment_screenshot_label_plain', 'Upload Payment Screenshot')}
                 accept="image/*"
                 multiple
                 onChange={e => {
@@ -1421,10 +1412,10 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                   files.forEach(f => handleCompressFile(f, 'screenshot'));
                   e.target.value = '';
                 }}
-                className="hidden"
+                helperText={formState.paymentScreenshotUrls.length > 0 ? `${formState.paymentScreenshotUrls.length} attached - choosing more files adds to this list.` : undefined}
               />
               {formState.paymentScreenshotUrls.length > 0 && (
-                <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+                <div className="flex flex-wrap items-center gap-2 mt-2">
                   {formState.paymentScreenshotUrls.map((url, idx) => (
                     <div key={idx} className="relative">
                       <img src={url} alt={t('screenshot_image_alt', 'Screenshot')} className="h-12 w-12 object-cover border rounded shadow-md" />
@@ -2029,9 +2020,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 </div>
 
                 <div>
-                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">UPI QR Code Graphic (Optional)</label>
-                  <Input
-                    type="file"
+                  <FileInput
+                    label="UPI QR Code Graphic (Optional)"
                     accept="image/*"
                     onChange={e => {
                       const file = e.target.files?.[0];

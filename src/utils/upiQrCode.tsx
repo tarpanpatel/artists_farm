@@ -2,6 +2,20 @@ import React from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 
 /**
+ * Syntax-only validation of a UPI ID / VPA (Virtual Payment Address) against
+ * the standard NPCI format: `<handle>@<bank/psp-code>` (e.g. "name@okicici",
+ * "9876543210@ybl"). This does NOT verify the VPA actually resolves to a real
+ * account - that requires a live NPCI lookup this app has no access to -
+ * it's the same "well-formed, not necessarily real" guarantee every UPI ID
+ * field in this app relies on before generating a QR from it (see
+ * PropertyEditForm.tsx / PropertyCreationWizard.tsx / PropertySetupWizard.tsx /
+ * StaffManagement.tsx for the live inline error/success wiring, 26 Aug 2026).
+ */
+export function isValidUpiIdSyntax(upiId: string): boolean {
+  return /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/.test(upiId.trim());
+}
+
+/**
  * Builds a standard UPI deep-link (`upi://pay?...`) that any UPI app resolves
  * into its own "confirm payment" screen when scanned - the same format a
  * printed/PhonePe/GPay merchant QR encodes. Amount is optional: omit it (or
@@ -29,13 +43,15 @@ interface UpiPaymentBlockProps {
   note?: string;
   amountLabel?: string;
   size?: number;
-  // Property's own uploaded QR code image (bank/PhonePe/GPay-issued), set via
-  // "Upload QR Code" next to UPI ID in PropertyEditForm.tsx. When present,
-  // this is shown instead of the auto-generated upi://pay deep-link QR below
-  // - some properties' bank accounts don't resolve correctly through a
-  // generated deep link (e.g. certain current-account UPI handles), so the
-  // property's own real QR code is the more reliable/trusted option once
-  // they've uploaded one. Falls back to the generated QR when absent.
+  // A previously-uploaded real QR code image (bank/PhonePe/GPay-issued).
+  // When present, shown instead of the auto-generated upi://pay deep-link QR
+  // below - some accounts don't resolve correctly through a generated deep
+  // link, so an already-uploaded real QR code is the more reliable/trusted
+  // option. No UI can upload a NEW one any more as of 26 Aug 2026 (properties'
+  // and staff's own "Upload QR Code" controls were both removed in favor of
+  // always generating from the ID instead) - this prop only exists now as a
+  // legacy fallback for whichever properties/staff already had one on file
+  // before that change. Falls back to the generated QR when absent.
   qrCodeImageUrl?: string;
 }
 

@@ -2105,6 +2105,7 @@ switch ($action) {
         $full_name = trim($input['full_name'] ?? '');
         $passcode = trim($input['passcode'] ?? '');
         $qr_code_url = $input['qr_code_url'] ?? '';
+        $upi_id = trim($input['upi_id'] ?? '');
         if (!$tenant_id) {
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'tenant_id required']);
@@ -2143,12 +2144,16 @@ switch ($action) {
             // Push the updated name/passcode out to every property's mirrored row.
             syncTenantSuperAdminAcrossProperties($pdo, $tenant_id);
 
-            // QR code is a per-property display field, not part of the tenant's
-            // login identity - the sync above deliberately never touches it, so
-            // apply it directly to the property actually being edited.
+            // QR code / UPI ID are per-property display fields, not part of the
+            // tenant's login identity - the sync above deliberately never touches
+            // them, so apply them directly to the property actually being edited.
             if ($qr_code_url !== '' && $property_id !== '') {
                 $pdo->prepare("UPDATE staff_users SET qr_code_url = ? WHERE property_id = ? AND role = 'Super Admin'")
                     ->execute([$qr_code_url, $property_id]);
+            }
+            if ($property_id !== '') {
+                $pdo->prepare("UPDATE staff_users SET upi_id = ? WHERE property_id = ? AND role = 'Super Admin'")
+                    ->execute([$upi_id ?: null, $property_id]);
             }
 
             echo json_encode(['success' => true, 'message' => 'Super Admin updated successfully']);

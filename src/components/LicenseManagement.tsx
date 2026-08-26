@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Plus,
   Edit2,
@@ -16,7 +16,6 @@ import {
   FileText,
   Image as ImageIcon,
   ExternalLink,
-  Upload,
 } from './icons/FlowbiteIcons';
 import { Drawer } from 'flowbite-react';
 import { apiFetch, API_ROOT_BASE, uploadDocumentDB } from '../services/api';
@@ -25,6 +24,7 @@ import { useConfirm } from './ConfirmDialogContext';
 import { useAuth } from '../contexts/AuthContext';
 import { PageHeader, PageHeaderButton } from './PageHeader';
 import { Input } from './Input';
+import { FileInput } from './FileInput';
 import { DateRangePicker } from './DateRangePicker';
 import { Button } from './Button';
 import { Badge } from './Badge';
@@ -160,7 +160,6 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
   const [isSaving, setIsSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isUploadingDoc, setIsUploadingDoc] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentUserName = currentUser?.name || 'Admin';
 
@@ -558,13 +557,6 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
               <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                 {t('license_document_label', 'License Document')}
               </label>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="application/pdf,image/jpeg,image/png,image/webp"
-                onChange={handleDocumentSelected}
-                className="hidden"
-              />
               {isUploadingDoc ? (
                 <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400 border border-dashed border-slate-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5">
                   <Loader2 className="w-4 h-4 animate-spin" /> {t('license_doc_uploading_label', 'Uploading...')}
@@ -591,14 +583,11 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
                   </button>
                 </div>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full flex items-center justify-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 border border-dashed border-slate-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
-                >
-                  <Upload className="w-4 h-4" />
-                  {t('upload_document_button', 'Upload PDF, JPG, or PNG')}
-                </button>
+                <FileInput
+                  accept="application/pdf,image/jpeg,image/png,image/webp"
+                  onChange={handleDocumentSelected}
+                  helperText={t('upload_document_button', 'PDF, JPG, or PNG')}
+                />
               )}
             </div>
           </div>

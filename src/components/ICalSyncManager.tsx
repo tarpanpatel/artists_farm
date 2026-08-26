@@ -444,37 +444,34 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
 
   return (
     <div className="space-y-6 text-slate-800 dark:text-slate-200 ical-sync-manager__root">
-      {/* Header Banner */}
-      <div className="bg-white dark:bg-slate-800 p-6 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md space-y-4 ical-sync-manager__header-banner">
-        {/* Breadcrumb Navigation */}
-        {!embedded && (
-          <nav className="flex text-slate-400 text-[11px] font-semibold gap-1.5 items-center ical-sync-manager__breadcrumb">
-            <span>{t('breadcrumb_dashboard_label', 'Dashboard')}</span>
-            <span>/</span>
-            <span>{t('breadcrumb_integrations_label', 'Integrations')}</span>
-            <span>/</span>
-            <span className="text-blue-600 dark:text-blue-400">{t('breadcrumb_ical_channel_api_label', 'iCal Channel API')}</span>
-          </nav>
-        )}
+      {/* Breadcrumb Navigation */}
+      {!embedded && (
+        <nav className="flex text-slate-400 text-[11px] font-semibold gap-1.5 items-center ical-sync-manager__breadcrumb">
+          <span>{t('breadcrumb_dashboard_label', 'Dashboard')}</span>
+          <span>/</span>
+          <span>{t('breadcrumb_integrations_label', 'Integrations')}</span>
+          <span>/</span>
+          <span className="text-blue-600 dark:text-blue-400">{t('breadcrumb_ical_channel_api_label', 'iCal Channel API')}</span>
+        </nav>
+      )}
 
-        <PageHeader
-          title={t('ical_ota_channel_integration_heading', 'iCal & OTA Channel Integration Keys')}
-          subtitle={t('ical_ota_channel_integration_subtitle', 'Synchronize availability feeds across Airbnb, Booking.com, VRBO, Agoda, and custom channel endpoints.')}
+      <PageHeader
+        title={t('ical_ota_channel_integration_heading', 'iCal & OTA Channel Integration Keys')}
+        subtitle={t('ical_ota_channel_integration_subtitle', 'Synchronize availability feeds across Airbnb, Booking.com, VRBO, Agoda, and custom channel endpoints.')}
+      >
+        <PageHeaderButton
+          onClick={handleSyncAll}
+          icon={RefreshCw}
+          iconClassName={isSyncingAll ? 'animate-spin' : ''}
+          variant="secondary"
+          disabled={isSyncingAll || calendars.length === 0}
         >
-          <PageHeaderButton
-            onClick={handleSyncAll}
-            icon={RefreshCw}
-            iconClassName={isSyncingAll ? 'animate-spin' : ''}
-            variant="secondary"
-            disabled={isSyncingAll || calendars.length === 0}
-          >
-            {isSyncingAll ? t('syncing_all_button', 'Syncing All...') : t('sync_all_feeds_button', 'Sync All Feeds')}
-          </PageHeaderButton>
-          <PageHeaderButton onClick={() => setIsAddModalOpen(true)} icon={Plus}>
-            {t('connect_ical_feed_button', 'Connect iCal Feed')}
-          </PageHeaderButton>
-        </PageHeader>
-      </div>
+          {isSyncingAll ? t('syncing_all_button', 'Syncing All...') : t('sync_all_feeds_button', 'Sync All Feeds')}
+        </PageHeaderButton>
+        <PageHeaderButton onClick={() => setIsAddModalOpen(true)} icon={Plus}>
+          {t('connect_ical_feed_button', 'Connect iCal Feed')}
+        </PageHeaderButton>
+      </PageHeader>
 
       {/* Top 3 Metric KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 ical-sync-manager__kpi-grid">

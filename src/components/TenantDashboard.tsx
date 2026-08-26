@@ -1,17 +1,15 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  Building2, LogOut, Plus, AlertCircle, Loader2,
+  Building2, LogOut, Plus, AlertCircle,
   Pencil, Trash2, ExternalLink, CheckCircle, Layers,
   Home, TrendingUp, ChevronRight, Lock, Zap, User,
   Calendar, Bell,
 } from './icons/FlowbiteIcons';
-import { Input } from './Input';
-import { Textarea } from './Textarea';
 import { StyledSelect } from './StyledSelect';
 import { LoadingScreen } from './LoadingScreen';
 import { API_ROOT_BASE, apiFetch } from '../services/api';
 import { Button } from './Button';
-import { Alert as FlowbiteAlert, Drawer, Modal, Checkbox } from 'flowbite-react';
+import { Alert as FlowbiteAlert, Modal } from 'flowbite-react';
 import { X } from './icons/FlowbiteIcons';
 import { KpiCard } from './KpiCard';
 import { ToggleSwitch } from './ToggleSwitch';
@@ -99,18 +97,47 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
   const [modal, setModal] = useState<ModalState>({ type: 'none' });
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [guests, setGuests] = useState<any[]>([]);
-  const [, setServiceRequests] = useState<any[]>([]);
-  const [todaysArrivalsCount, setTodaysArrivalsCount] = useState(0);
-  const [todaysDeparturesCount, setTodaysDeparturesCount] = useState(0);
-  const [inHouseCount, setInHouseCount] = useState(0);
-  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
+  const [serviceRequests, setServiceRequests] = useState<any[]>([]);
   const [selectedAnalyticsPropId, setSelectedAnalyticsPropId] = useState<string>('all');
 
-  // Computed Combined Analytics
+  // Computed Combined Analytics - the property dropdown above (`selectedAnalyticsPropId`)
+  // filters ALL of these, not just the bottom row (26 Aug 2026, reported live: "dropdown
+  // of property should filter data below also" - the top KPI row (Arrivals/Departures/
+  // Guests In-House/Service Requests) used to be plain useState counts computed ONCE from
+  // every property's data inside loadData(), so changing the dropdown never touched them;
+  // only the bottom row (Total Bookings/Revenue/Occupancy) was ever actually wired to the
+  // filter. Both rows now derive from the same filtered lists below.
   const filteredGuestsForAnalytics = useMemo(() => {
     if (selectedAnalyticsPropId === 'all') return guests;
     return guests.filter((g) => String(g.property_id || g.propertyId) === String(selectedAnalyticsPropId));
   }, [guests, selectedAnalyticsPropId]);
+
+  const filteredServiceRequestsForAnalytics = useMemo(() => {
+    if (selectedAnalyticsPropId === 'all') return serviceRequests;
+    return serviceRequests.filter((r) => String(r.property_id || r.propertyId) === String(selectedAnalyticsPropId));
+  }, [serviceRequests, selectedAnalyticsPropId]);
+
+  const todaysArrivalsCount = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    return filteredGuestsForAnalytics.filter((g: any) => (g.checkinDate || g.checkin_date || '').startsWith(today)).length;
+  }, [filteredGuestsForAnalytics]);
+
+  const todaysDeparturesCount = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    return filteredGuestsForAnalytics.filter((g: any) =>
+      (g.checkoutDate || g.checkout_date || '').startsWith(today) && (g.status || '').toLowerCase().includes('checkout')
+    ).length;
+  }, [filteredGuestsForAnalytics]);
+
+  const inHouseCount = useMemo(() => {
+    return filteredGuestsForAnalytics.filter((g: any) =>
+      ['checked in', 'checkedin', 'checked-in', 'active'].includes((g.status || '').toLowerCase())
+    ).length;
+  }, [filteredGuestsForAnalytics]);
+
+  const pendingRequestsCount = useMemo(() => {
+    return filteredServiceRequestsForAnalytics.filter((r: any) => (r.status || '').toLowerCase() === 'pending').length;
+  }, [filteredServiceRequestsForAnalytics]);
 
   const totalBookingsAnalytics = filteredGuestsForAnalytics.length;
 
@@ -125,24 +152,14 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
     const targetProps = selectedAnalyticsPropId === 'all'
       ? properties
       : properties.filter(p => String(p.id) === String(selectedAnalyticsPropId));
-    
+
     const totalSlotsOrRooms = targetProps.reduce((sum, p) => sum + (Number((p as any).room_count || (p as any).rooms) || 1), 0);
-    const activeInHouse = filteredGuestsForAnalytics.filter(g =>
-      ['checked in', 'checkedin', 'checked-in', 'active'].includes((g.status || '').toLowerCase())
-    ).length;
 
     if (totalSlotsOrRooms <= 0) return 0;
-    return Math.min(100, Math.round((activeInHouse / totalSlotsOrRooms) * 100));
-  }, [properties, selectedAnalyticsPropId, filteredGuestsForAnalytics]);
+    return Math.min(100, Math.round((inHouseCount / totalSlotsOrRooms) * 100));
+  }, [properties, selectedAnalyticsPropId, inHouseCount]);
 
-  // Edit form state
-  const [editName, setEditName] = useState('');
-  const [editGstin, setEditGstin] = useState('');
-  const [editTelegramTemplateCustomization, setEditTelegramTemplateCustomization] = useState(false);
-  const [editPhone, setEditPhone] = useState('');
-  const [editMapsLink, setEditMapsLink] = useState('');
-  const [editInstructions, setEditInstructions] = useState('');
-  const [editLoading, setEditLoading] = useState(false);
+
 
   const showSuccess = (msg: string) => {
     setSuccessMsg(msg);
@@ -189,16 +206,6 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
 
         setGuests(allGuestsList);
         setServiceRequests(allReqList);
-
-        const today = new Date().toISOString().split('T')[0];
-        const arrivals = allGuestsList.filter((g: any) => (g.checkinDate || g.checkin_date || '').startsWith(today));
-        const departures = allGuestsList.filter((g: any) => (g.checkoutDate || g.checkout_date || '').startsWith(today) && (g.status || '').toLowerCase().includes('checkout'));
-        const inHouse = allGuestsList.filter((g: any) => ['checked in', 'checkedin', 'checked-in', 'active'].includes((g.status || '').toLowerCase()));
-        const pending = allReqList.filter((r: any) => (r.status || '').toLowerCase() === 'pending');
-        setTodaysArrivalsCount(arrivals.length);
-        setTodaysDeparturesCount(departures.length);
-        setInHouseCount(inHouse.length);
-        setPendingRequestsCount(pending.length);
       }
     } catch (err) {
       setError('Failed to load dashboard data. Please refresh.');
@@ -217,9 +224,18 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
     window.location.href = '/login/';
   };
 
+  // Optimistic local update (26 Aug 2026, reported live: "activate toggle
+  // loads the page") - this used to call the full loadData() on success,
+  // which sets the page-level `loading` state back to true and unmounts the
+  // ENTIRE dashboard behind the branded splash screen (see the `if (loading)`
+  // early return below) just to reflect one row's toggle flipping. Patching
+  // `properties` in place gives the same instant visual feedback without the
+  // full-page flash, and reverts that one row (with an error toast) if the
+  // save itself fails - no reload needed either way.
   const handleToggleActive = async (property: Property) => {
+    const nextActive = property.is_active ? 0 : 1;
+    setProperties((prev) => prev.map((p) => (p.id === property.id ? { ...p, is_active: nextActive } : p)));
     try {
-      const nextActive = property.is_active ? 0 : 1;
       const res = await fetch('/php/api/router.php?action=update_property', {
         method: 'POST',
         credentials: 'include',
@@ -233,10 +249,13 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
       const data = await res.json();
       if (data.success) {
         showSuccess(`Property ${nextActive ? 'activated' : 'deactivated'}`);
-        await loadData();
+      } else {
+        setProperties((prev) => prev.map((p) => (p.id === property.id ? { ...p, is_active: property.is_active } : p)));
+        setError(data.message || 'Failed to update property status');
       }
     } catch {
-      /* ignore */
+      setProperties((prev) => prev.map((p) => (p.id === property.id ? { ...p, is_active: property.is_active } : p)));
+      setError('Failed to update property status');
     }
   };
 
@@ -263,38 +282,6 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
       }
     } catch {
       setError('Failed to delete property');
-    }
-  };
-
-  const handleEditProperty = async () => {
-    if (modal.type !== 'edit') return;
-    if (!editName.trim()) return;
-    setEditLoading(true);
-    try {
-      const res = await fetch('/php/api/router.php?action=update_property', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          property_id: modal.property.id,
-          name: editName.trim(),
-          gstin: editGstin.trim(),
-          telegram_template_customization_enabled: editTelegramTemplateCustomization,
-          phone: editPhone.trim(),
-          google_maps_link: editMapsLink.trim(),
-          instructions: editInstructions,
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setModal({ type: 'none' });
-        showSuccess('Property updated');
-        await loadData();
-      }
-    } catch {
-      /* ignore */
-    } finally {
-      setEditLoading(false);
     }
   };
 
@@ -341,7 +328,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
             <div className="text-right hidden sm:block tenant-dashboard__user-info">
               <p className="text-sm font-medium text-slate-800 dark:text-slate-200 tenant-dashboard__username">{username}</p>
               <p className="text-xs text-slate-500 dark:text-slate-400 tenant-dashboard__user-role">
-                {isPlatformAdmin ? t('root_admin_label', 'Root Admin') : t('tenant_manager_label', 'Tenant Manager')}
+                {isPlatformAdmin ? t('root_admin_label', 'Root Admin') : t('tenant_manager_label', 'Property Owner')}
               </p>
             </div>
             <button
@@ -394,40 +381,6 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 style={{ width: `${Math.min(slotPercent, 100)}%` }}
               />
             </div>
-          </div>
-        </section>
-
-        {/* Metrics Grid - 4 Individual Columns */}
-        <section className="tenant-dashboard__metrics-section">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 tenant-dashboard__metrics-grid">
-            <KpiCard
-              label="Arrivals"
-              icon={Calendar}
-              badge={{ text: 'Today', color: 'info' }}
-              value={todaysArrivalsCount}
-              layout="stacked"
-            />
-            <KpiCard
-              label="Departures"
-              icon={LogOut}
-              badge={{ text: 'Today', color: 'warning' }}
-              value={todaysDeparturesCount}
-              layout="stacked"
-            />
-            <KpiCard
-              label="Guests In-House"
-              icon={User}
-              badge={{ text: 'Active', color: 'success' }}
-              value={inHouseCount}
-              layout="stacked"
-            />
-            <KpiCard
-              label="Service Requests"
-              icon={Bell}
-              badge={{ text: 'Active', color: 'failure' }}
-              value={pendingRequestsCount}
-              layout="stacked"
-            />
           </div>
         </section>
 
@@ -519,7 +472,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                                   ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/40'
                                   : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
                               }`}>
-                                {isMultiKey ? 'Multi-Room Hotel' : 'Single Property'}
+                                {isMultiKey ? 'Multi-Room Property' : 'Single Property'}
                               </span>
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap">
@@ -537,15 +490,10 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                                   Draft
                                 </span>
                               ) : (
-                                <div className="flex items-center gap-2">
-                                  <span className={`text-2xs font-bold uppercase tracking-wider ${property.is_active ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'}`}>
-                                    {property.is_active ? t('active_status_badge', 'Active') : t('tenant_inactive_status_badge', 'Inactive')}
-                                  </span>
-                                  <ToggleSwitch
-                                    enabled={!!property.is_active}
-                                    onChange={() => handleToggleActive(property)}
-                                  />
-                                </div>
+                                <ToggleSwitch
+                                  enabled={!!property.is_active}
+                                  onChange={() => handleToggleActive(property)}
+                                />
                               )}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-right">
@@ -559,7 +507,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                                     <Button variant="primary" size="sm" onClick={() => window.open(dashboardUrl, '_blank', 'noopener,noreferrer')} leftIcon={<ExternalLink className="w-3.5 h-3.5 shrink-0" />}>
                                       {t('open_dashboard_link', 'Open Property')}
                                     </Button>
-                                    <Button variant="secondary" size="sm" onClick={() => { setEditName(property.name); setEditGstin(property.gstin || ''); setEditTelegramTemplateCustomization(!!property.telegram_template_customization_enabled); setEditPhone(property.phone || ''); setEditMapsLink(property.google_maps_link || ''); setEditInstructions(property.instructions || ''); setModal({ type: 'edit', property }); }} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                                    <Button variant="secondary" size="sm" onClick={() => setModal({ type: 'edit', property })} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
                                       Edit
                                     </Button>
                                   </>
@@ -639,7 +587,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                           {t('open_dashboard_link', 'Open Property')}
                         </Button>
                         <div className="flex items-center gap-1.5">
-                          <Button variant="secondary" size="sm" onClick={() => { setEditName(property.name); setEditGstin(property.gstin || ''); setEditTelegramTemplateCustomization(!!property.telegram_template_customization_enabled); setEditPhone(property.phone || ''); setEditMapsLink(property.google_maps_link || ''); setEditInstructions(property.instructions || ''); setModal({ type: 'edit', property }); }} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                          <Button variant="secondary" size="sm" onClick={() => setModal({ type: 'edit', property })} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
                             Edit
                           </Button>
                           <Button variant="ghost" size="xs" onClick={() => setModal({ type: 'delete', property })} className="text-red-600 dark:text-red-400 hover:text-red-700">
@@ -655,44 +603,103 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           )}
         </section>
 
-        {/* Combined Analytics */}
-        <section className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-6 shadow-sm tenant-dashboard__analytics">
-          <div className="flex items-center justify-between mb-6 tenant-dashboard__analytics-header">
-            <div className="tenant-dashboard__analytics-title-wrapper">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-white tenant-dashboard__analytics-title">{t('combined_analytics_heading', 'Combined Analytics')}</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 tenant-dashboard__analytics-subtitle">{t('across_all_properties_subtext', 'Across all your properties')}</p>
-            </div>
-            <div className="flex items-center gap-2 tenant-dashboard__analytics-filters">
-              <StyledSelect
-                value={selectedAnalyticsPropId}
-                onChange={(value) => setSelectedAnalyticsPropId(value)}
-                options={[
-                  { value: 'all', label: t('all_properties_option', 'All Properties') },
-                  ...properties.map(p => ({ value: String(p.id), label: p.name })),
-                ]}
-                placeholder={t('all_properties_option', 'All Properties')}
-                className="w-48"
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 tenant-dashboard__analytics-grid">
-            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-5 text-center border border-slate-100 dark:border-slate-700/50 tenant-dashboard__analytics-card">
-              <TrendingUp className="w-6 h-6 text-indigo-500 mx-auto mb-2 tenant-dashboard__analytics-card-icon" />
-              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 tenant-dashboard__analytics-card-label">{t('total_bookings_label', 'Total Bookings')}</p>
-              <p className="text-2xl font-bold text-slate-900 dark:text-white tenant-dashboard__analytics-card-value">{totalBookingsAnalytics}</p>
-            </div>
-            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-5 text-center border border-slate-100 dark:border-slate-700/50 tenant-dashboard__analytics-card">
-              <Building2 className="w-6 h-6 text-emerald-500 mx-auto mb-2 tenant-dashboard__analytics-card-icon" />
-              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 tenant-dashboard__analytics-card-label">{t('combined_revenue_label', 'Combined Revenue')}</p>
-              <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 tenant-dashboard__analytics-card-value">₹{combinedRevenueAnalytics.toLocaleString('en-IN')}</p>
-            </div>
-            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-5 text-center border border-slate-100 dark:border-slate-700/50 tenant-dashboard__analytics-card">
-              <Layers className="w-6 h-6 text-blue-500 mx-auto mb-2 tenant-dashboard__analytics-card-icon" />
-              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 tenant-dashboard__analytics-card-label">{t('avg_occupancy_label', 'Avg. Occupancy')}</p>
-              <p className="text-2xl font-bold text-slate-900 dark:text-white tenant-dashboard__analytics-card-value">{avgOccupancyAnalytics}%</p>
-            </div>
-          </div>
-        </section>
+        {/* Combined Analytics / Property at glance */}
+        {(() => {
+          const singleProp = properties.length === 1 ? properties[0] : null;
+          const selectedProp = selectedAnalyticsPropId !== 'all'
+            ? properties.find(p => String(p.id) === selectedAnalyticsPropId)
+            : null;
+          const activeDisplayProp = singleProp || selectedProp;
+
+          const analyticsTitle = activeDisplayProp
+            ? `${activeDisplayProp.name} at glance`
+            : t('combined_analytics_heading', 'Combined Analytics');
+
+          const analyticsSubtitle = activeDisplayProp
+            ? t('property_at_glance_subtitle', 'Property overview and live operational metrics')
+            : t('across_all_properties_subtext', 'Across all your properties');
+
+          const revenueLabel = activeDisplayProp
+            ? t('total_revenue_label', 'Total Revenue')
+            : t('combined_revenue_label', 'Combined Revenue');
+
+          return (
+            <section className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-6 shadow-sm tenant-dashboard__analytics">
+              <div className="flex items-center justify-between mb-6 tenant-dashboard__analytics-header">
+                <div className="tenant-dashboard__analytics-title-wrapper">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white tenant-dashboard__analytics-title">{analyticsTitle}</h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 tenant-dashboard__analytics-subtitle">{analyticsSubtitle}</p>
+                </div>
+                {properties.length > 1 && (
+                  <div className="flex items-center gap-2 tenant-dashboard__analytics-filters">
+                    <StyledSelect
+                      value={selectedAnalyticsPropId}
+                      onChange={(value) => setSelectedAnalyticsPropId(value)}
+                      options={[
+                        { value: 'all', label: t('all_properties_option', 'All Properties') },
+                        ...properties.map(p => ({ value: String(p.id), label: p.name })),
+                      ]}
+                      placeholder={t('all_properties_option', 'All Properties')}
+                      className="w-48"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Operational Overview Metrics - moved inside Combined Analytics, directly under
+                  the title (26 Aug 2026 explicit request), above the Total Bookings/Revenue/
+                  Occupancy summary cards below. */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 tenant-dashboard__metrics-grid">
+                <KpiCard
+                  label="Arrivals"
+                  icon={Calendar}
+                  badge={{ text: 'Today', color: 'info' }}
+                  value={todaysArrivalsCount}
+                  layout="stacked"
+                />
+                <KpiCard
+                  label="Departures"
+                  icon={LogOut}
+                  badge={{ text: 'Today', color: 'warning' }}
+                  value={todaysDeparturesCount}
+                  layout="stacked"
+                />
+                <KpiCard
+                  label="Guests In-House"
+                  icon={User}
+                  badge={{ text: 'Active', color: 'success' }}
+                  value={inHouseCount}
+                  layout="stacked"
+                />
+                <KpiCard
+                  label="Service Requests"
+                  icon={Bell}
+                  badge={{ text: 'Active', color: 'failure' }}
+                  value={pendingRequestsCount}
+                  layout="stacked"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 tenant-dashboard__analytics-grid">
+                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-5 text-center border border-slate-100 dark:border-slate-700/50 tenant-dashboard__analytics-card">
+                  <TrendingUp className="w-6 h-6 text-indigo-500 mx-auto mb-2 tenant-dashboard__analytics-card-icon" />
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 tenant-dashboard__analytics-card-label">{t('total_bookings_label', 'Total Bookings')}</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white tenant-dashboard__analytics-card-value">{totalBookingsAnalytics}</p>
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-5 text-center border border-slate-100 dark:border-slate-700/50 tenant-dashboard__analytics-card">
+                  <Building2 className="w-6 h-6 text-emerald-500 mx-auto mb-2 tenant-dashboard__analytics-card-icon" />
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 tenant-dashboard__analytics-card-label">{revenueLabel}</p>
+                  <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 tenant-dashboard__analytics-card-value">₹{combinedRevenueAnalytics.toLocaleString('en-IN')}</p>
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-5 text-center border border-slate-100 dark:border-slate-700/50 tenant-dashboard__analytics-card">
+                  <Layers className="w-6 h-6 text-blue-500 mx-auto mb-2 tenant-dashboard__analytics-card-icon" />
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 tenant-dashboard__analytics-card-label">{t('avg_occupancy_label', 'Avg. Occupancy')}</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white tenant-dashboard__analytics-card-value">{avgOccupancyAnalytics}%</p>
+                </div>
+              </div>
+            </section>
+          );
+        })()}
       </main>
 
       {/* Property Setup Wizard (26 Aug 2026) - multi-step, timeline-stepper flow replacing the old
@@ -709,14 +716,16 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
         />
       )}
 
-      {/* Edit Property Drawer */}
-      <Drawer
-        open={modal.type === 'edit'}
+      {/* Edit Property Redirect Modal */}
+      <Modal
+        show={modal.type === 'edit'}
         onClose={() => setModal({ type: 'none' })}
-        position="right"
-        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+        dismissible
+        size="lg"
+        popup
+        className="z-9999"
       >
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-850 rounded-t-lg">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-950 border border-sky-200 dark:border-sky-800 flex items-center justify-center text-sky-600 dark:text-sky-400">
               <Pencil className="w-4 h-4" />
@@ -733,95 +742,55 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
             <X className="w-5 h-5" />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 tenant-dashboard__modal-body">
-          <div className="tenant-dashboard__form-group">
-            <Input
-              label={t('tenant_property_name_label', 'Property Name')}
-              value={editName}
-              onChange={e => setEditName(e.target.value)}
-              className="tenant-dashboard__input"
-            />
-          </div>
-          <div className="tenant-dashboard__form-group">
-            <Input
-              label={t('gstin_optional_label', 'GSTIN (optional)')}
-              value={editGstin}
-              onChange={e => setEditGstin(e.target.value.toUpperCase())}
-              placeholder={t('gstin_placeholder', 'e.g. 27ABCDE1234F1Z5')}
-              helperText={t('gstin_help_text', 'Printed on GST tax invoices at checkout.')}
-              className="tenant-dashboard__input"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="editTelegramTemplateCustomizationCheck"
-              checked={editTelegramTemplateCustomization}
-              onChange={e => setEditTelegramTemplateCustomization(e.target.checked)}
-            />
-            <label htmlFor="editTelegramTemplateCustomizationCheck" className="text-sm font-medium text-slate-700 dark:text-slate-200 cursor-pointer">
-              {t('allow_telegram_template_customization_label', 'Enable Telegram Template Customization')}
-            </label>
-          </div>
 
-          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 tenant-dashboard__edit-section">
-            <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3 tenant-dashboard__edit-section-title">{t('whatsapp_booking_confirmation_heading', 'WhatsApp Booking Confirmation')}</p>
-            <div className="grid grid-cols-2 gap-3 mb-3 tenant-dashboard__edit-grid">
-              <div className="tenant-dashboard__form-group">
-                <Input
-                  label={t('tenant_contact_phone_label', 'Contact number of property')}
-                  labelClassName="text-xs"
-                  value={editPhone}
-                  onChange={e => setEditPhone(e.target.value)}
-                  placeholder={t('contact_phone_placeholder', '99999 99999')}
-                  className="tenant-dashboard__input"
-                />
+        {modal.type === 'edit' && modal.property && (() => {
+          const currentProp = modal.property;
+          const tenantSlug = tenantInfo?.slug ?? '';
+          const editPropertyUrl = tenantSlug
+            ? `${API_ROOT_BASE}/${tenantSlug}/${currentProp.slug}/#edit_property`
+            : `${API_ROOT_BASE}/${currentProp.slug}/#edit_property`;
+
+          return (
+            <div className="p-6 space-y-5">
+              <div className="bg-indigo-50 dark:bg-indigo-950/40 rounded-xl border border-indigo-200 dark:border-indigo-800 p-4 space-y-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-md bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                    <Pencil className="w-3.5 h-3.5" />
+                  </div>
+                  <h4 className="text-xs font-semibold text-slate-900 dark:text-white">
+                    Property Configuration & Settings
+                  </h4>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed pl-9">
+                  To modify room tariffs, check-in/checkout times, contact numbers, address, or iCal sync feeds for <strong className="font-semibold text-slate-900 dark:text-white">{currentProp.name}</strong>, please proceed to the Property Settings page.
+                </p>
               </div>
-              <div className="tenant-dashboard__form-group">
-                <Input
-                  label={t('google_maps_link_label', 'Google Maps Link')}
-                  labelClassName="text-xs"
-                  value={editMapsLink}
-                  onChange={e => setEditMapsLink(e.target.value)}
-                  placeholder={t('google_maps_link_placeholder', 'https://maps.app.goo.gl/...')}
-                  className="tenant-dashboard__input"
-                />
+
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setModal({ type: 'none' })}
+                >
+                  {t('cancel_button', 'Cancel')}
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => {
+                    setModal({ type: 'none' });
+                    window.open(editPropertyUrl, '_blank', 'noopener,noreferrer');
+                  }}
+                  leftIcon={<ExternalLink className="w-3.5 h-3.5 shrink-0" />}
+                >
+                  {t('open_edit_property_page_button', 'Go to Property Settings Page')}
+                </Button>
               </div>
             </div>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mb-3 tenant-dashboard__edit-help-text">
-              {t('whatsapp_share_help_text', 'Included in the "Share via WhatsApp" message on the booking voucher. Left blank, those lines are simply omitted.')}
-            </p>
-            <div className="tenant-dashboard__form-group">
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 tenant-dashboard__form-label">{t('other_notes_label', 'Other Notes')}</label>
-              <Textarea
-                value={editInstructions}
-                onChange={e => setEditInstructions(e.target.value)}
-                placeholder={t('other_notes_placeholder', 'e.g. How to reach, check-in instructions, parking notes…')}
-                rows={3}
-                className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y tenant-dashboard__textarea"
-              />
-            </div>
-          </div>
-        </div>
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => setModal({ type: 'none' })}
-          >
-            {t('cancel_button', 'Cancel')}
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            leftIcon={editLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}
-            onClick={handleEditProperty}
-            disabled={editLoading || !editName.trim()}
-          >
-            {t('save_changes_button', 'Save Changes')}
-          </Button>
-        </div>
-      </Drawer>
+          );
+        })()}
+      </Modal>
 
       {/* Delete Confirmation Modal - a centered flowbite-react <Modal>, not a
           right-side Drawer (23 Aug 2026: this is a confirmation prompt, not a

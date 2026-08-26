@@ -883,6 +883,12 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                       placeholder="0.00"
                       inputMode="decimal"
                       className="font-semibold"
+                      // Live (26 Aug 2026 - see CLAUDE.md's "Real-Time Form Validation" note) -
+                      // gated on adjType rather than "has anything been typed", since picking a
+                      // charge/discount type is the real signal the user has started this
+                      // sub-form; showing the amount field blank+red before that would flag an
+                      // error before they've engaged with it at all.
+                      error={adjType && (!adjAmount || Number(adjAmount) <= 0) ? 'Amount must be greater than 0' : undefined}
                     />
                   </div>
 

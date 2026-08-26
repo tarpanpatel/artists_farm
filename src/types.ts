@@ -259,6 +259,12 @@ export interface StaffMember {
   passcodePin?: string;
   isFinancialHandler?: boolean;
   qrCodeUrl?: string;
+  // UPI ID this staff member gets paid to - a QR is generated from it
+  // automatically (see UpiPaymentBlock) instead of uploading a QR image
+  // (26 Aug 2026 - upload removed in favor of this, same as the property-level
+  // UPI fields). qrCodeUrl above is preserved as a legacy fallback for
+  // whoever already had one uploaded before this change; no UI sets it anymore.
+  upiId?: string;
   avatarUrl?: string;
   // When true, this staff member can log into any property under their own
   // tenant instead of being locked to a single one - see php/security/access_control.php
@@ -340,6 +346,8 @@ export interface UserAccount {
   passcodePin: string;
   isFinancialHandler: boolean;
   qrCodeUrl?: string;
+  // See the identical field/comment on StaffMember above.
+  upiId?: string;
   status: string;
   // Flat day-rate for staff paid daily rather than a monthly salary -
   // independent figure, not derived from monthlySalary.

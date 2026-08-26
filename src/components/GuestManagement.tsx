@@ -161,6 +161,21 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const [isForeignGuest, setIsForeignGuest] = useState(false);
   const [noOfGuests, setNoOfGuests] = useState(1);
 
+  // Live duplicate-booking check (26 Aug 2026, part of the site-wide real-time
+  // validation sweep - see CLAUDE.md's "Real-Time Form Validation" note)
+  // - mirrors the submit-time `isDuplicate` guard inside the Add Guest form's
+  // onSubmit below exactly (same phone+check-in-date rule, same excluded
+  // statuses), just recomputed reactively so it's visible on the Contact
+  // Phone Number field as you type instead of only after clicking Save. Only
+  // judges once a full 10-digit number is entered - a partial number isn't
+  // "wrong", it's just unfinished, so it stays quiet until then.
+  const duplicateBookingLive = phoneNumber.length === 10 && guests.some((g) => {
+    if (g.status === 'CheckedOut' || (g.status as string) === GUEST_STATUS_CHECKED_OUT || (g.status as string) === 'Cancelled') return false;
+    const gPhone = (g.phoneNumber || '').trim();
+    const gCheckin = (g.checkinDate || '').split(' ')[0];
+    return gPhone === phoneNumber.trim() && gCheckin === checkinDate;
+  });
+
   // BillingCheckout's own effect (child, so it fires first within the same
   // commit) reads focusGuestId to jump to the right tab and pre-fill the
   // search box - clearing it here right after just resets App.tsx's state so
@@ -621,6 +636,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                       onChange={e => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
                       placeholder="Enter 10-digit mobile number"
                       required
+                      error={duplicateBookingLive ? 'A reservation for this contact on this check-in date already exists' : undefined}
                     />
                   </div>
 
@@ -677,6 +693,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                       onChange={e => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
                       placeholder="Enter 10-digit mobile number"
                       required
+                      error={duplicateBookingLive ? 'A reservation for this contact on this check-in date already exists' : undefined}
                     />
                   </div>
                   <div>

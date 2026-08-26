@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { IdCard, Upload, Trash2, CheckCircle2, AlertCircle, Loader2, Plus } from './icons/FlowbiteIcons';
+import { IdCard, Trash2, CheckCircle2, AlertCircle, Loader2, Plus } from './icons/FlowbiteIcons';
 import { Modal, Alert } from 'flowbite-react';
 import { X } from './icons/FlowbiteIcons';
 import { Guest } from '../types';
@@ -13,7 +13,7 @@ import {
   resizeImageFile,
 } from '../services/api';
 import { t } from '../i18n/en';
-import { Input } from './Input';
+import { FileInput } from './FileInput';
 
 // upload_image.php saves a small thumbnail alongside every id_documents
 // upload, at <same folder>/thumbs/<same filename> - derived here rather than
@@ -202,32 +202,13 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
                 const label = isExtra ? `${t('extra_photo_label')} ${index - requiredCount + 1}` : `${t('guest_id_label')} ${index + 1} ID`;
                 return (
                   <div key={index} className="space-y-1.5">
-                    <label
-                      className={`relative flex flex-col items-center justify-center aspect-square rounded-lg border-2 overflow-hidden cursor-pointer transition-colors ${
-                        doc
-                          ? 'border-emerald-300 dark:border-emerald-700'
-                          : 'border-dashed border-slate-300 dark:border-slate-600 hover:border-purple-400 dark:hover:border-purple-500 bg-slate-50 dark:bg-slate-700'
-                      }`}
-                    >
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        disabled={isUploading}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleFileSelected(index, file);
-                          e.target.value = '';
-                        }}
-                      />
-                      {isUploading ? (
-                        <Loader2 className="w-6 h-6 text-purple-500 animate-spin" />
-                      ) : doc ? (
+                    {doc ? (
+                      <div className="flex items-center gap-2 p-1.5 rounded-lg border border-emerald-300 dark:border-emerald-700 bg-emerald-50/40 dark:bg-emerald-950/20">
                         <img
                           src={idDocThumbUrl(doc.filePath)}
                           alt={label}
                           loading="lazy"
-                          className="w-full h-full object-cover"
+                          className="w-11 h-11 rounded-md object-cover shrink-0"
                           // Documents uploaded before thumbnails existed have
                           // no file at the thumbs/ path - fall back to the
                           // full-size image rather than show a broken icon.
@@ -236,26 +217,32 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
                             if (img.src !== doc.filePath) img.src = doc.filePath;
                           }}
                         />
-                      ) : (
-                        <>
-                          <Upload className="w-6 h-6 text-slate-400" />
-                          <span className="text-2xs text-slate-500 dark:text-slate-400 font-semibold mt-1 text-center px-1">
-                            {label}
-                          </span>
-                        </>
-                      )}
-                    </label>
-                    {doc && (
-                      <div className="flex items-center justify-between text-2xs text-slate-500 dark:text-slate-400">
-                        <span>{formatUploadedAt(doc.uploadedAt)}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-2xs font-semibold text-slate-700 dark:text-slate-200 truncate">{label}</p>
+                          <p className="text-2xs text-slate-500 dark:text-slate-400">{formatUploadedAt(doc.uploadedAt)}</p>
+                        </div>
                         <button
                           onClick={() => handleDelete(doc.id)}
-                          className="text-red-500 hover:text-red-700 p-0.5 rounded cursor-pointer"
+                          disabled={isUploading}
+                          className="text-red-500 hover:text-red-700 p-1 rounded cursor-pointer shrink-0 disabled:opacity-50"
                           title={t('remove_reupload_tooltip', 'Remove and re-upload')}
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          {isUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                         </button>
                       </div>
+                    ) : (
+                      <FileInput
+                        label={label}
+                        sizing="sm"
+                        accept="image/*"
+                        disabled={isUploading}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleFileSelected(index, file);
+                          e.target.value = '';
+                        }}
+                        helperText={isUploading ? t('uploading_label', 'Uploading...') : undefined}
+                      />
                     )}
                   </div>
                 );

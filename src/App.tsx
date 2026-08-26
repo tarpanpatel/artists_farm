@@ -657,7 +657,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // wrong-property) result once it resolves.
   const hydrationTokenRef = useRef(0);
   const { showToast } = useToast();
-  const { staff, staffLoading, refreshStaff, refreshAttendance } = useStaff();
+  const { refreshStaff, refreshAttendance } = useStaff();
 
   const { inventory, updateStock, addInventoryItem, updateInventoryItemImage, addRequisition } = useInventoryContext();
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
@@ -1950,32 +1950,39 @@ ${itemsStr}
              pt-16 was too short to clear the header on a notched device once
              it grew to fit the safe-area padding it already had. */
           <div className={`${isIconOnly ? 'pl-16' : 'md:pl-64 pl-0'} pt-[calc(4rem+env(safe-area-inset-top,0px))] flex-1 flex flex-col min-h-screen transition-[padding] duration-200`}>
+            {/* Property setup notice - full-bleed bar right under the fixed header (explicit
+                request, 26 Aug 2026: "there should be a notice in top of the site"), not inset
+                inside <main>'s own padding like a regular page banner. Same 5 steps as
+                PropertyCreationWizard - onSaved reloads to pick up fresh data, same established
+                pattern EditPropertyPage.tsx already uses for these exact same fields. */}
+            {preloadedData.currentProperty && (
+              <ErrorBoundary section="Property Setup Wizard">
+                <PropertySetupWizard
+                  propertyId={preloadedData.currentProperty.id}
+                  propertyType={preloadedData.currentProperty?.property_type}
+                  name={preloadedData.currentProperty?.name || ''}
+                  address={preloadedData.currentProperty?.address || ''}
+                  googleMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
+                  email={preloadedData.currentProperty?.email || ''}
+                  phone={preloadedData.currentProperty?.phone || ''}
+                  gstin={preloadedData.currentProperty?.gstin || ''}
+                  upiId={preloadedData.currentProperty?.upi_id || ''}
+                  upiQrCodeUrl={preloadedData.currentProperty?.upi_qr_code_url || ''}
+                  checkinTime={preloadedData.currentProperty?.checkin_time || ''}
+                  checkoutTime={preloadedData.currentProperty?.checkout_time || ''}
+                  defaultTariff={preloadedData.currentProperty?.default_tariff}
+                  walkInTableCount={preloadedData.currentProperty?.walk_in_table_count}
+                  instructions={preloadedData.currentProperty?.instructions || ''}
+                  onSaved={() => window.location.reload()}
+                />
+              </ErrorBoundary>
+            )}
             <main className="flex-1 px-1 py-1 sm:px-6 sm:py-3 lg:px-8 lg:py-4 w-full space-y-2 sm:space-y-4 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] md:pb-4">
               <Suspense fallback={<TabContentFallback />}>
 
-              {/* Property setup wizard - shown at the top when setup is incomplete */}
-              {preloadedData.currentProperty && (
-                <ErrorBoundary section="Property Setup Wizard">
-                  <PropertySetupWizard
-                    address={preloadedData.currentProperty?.address || ''}
-                    googleMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
-                    staffCount={staff.length}
-                    isStaffLoading={staffLoading}
-                    showRoomsStep={!!preloadedData.isMultiKeyProperty}
-                    roomCount={preloadedData.currentProperty?.rooms?.length || 0}
-                    onSaveLocation={handleSavePropertyLocation}
-                    onGoToStaff={() => {
-                      setAutoOpenAddStaffModal(true);
-                      handleNavigateTab('staff', 'staff_permissions');
-                    }}
-                    onAddUnit={() => handleNavigateTab('dashboard', 'dashboard')}
-                  />
-                </ErrorBoundary>
-              )}
-
               {/* MultiKey room view - takes priority over everything */}
               {preloadedData.isMultiKeyProperty && selectedRoomSlugOverride ? (
-                <ErrorBoundary section="Multi-Key Property Overview">
+                <ErrorBoundary section="Multi-Room Property Overview">
                   <MultiKeyPropertyOverview
                   propertyId={preloadedData.currentProperty?.id}
                   propertySlug={multiKeyPropertySlug}
@@ -2049,7 +2056,7 @@ ${itemsStr}
                         }}
                       />
                     </ErrorBoundary>
-                    <ErrorBoundary section="Multi-Key Property Overview">
+                    <ErrorBoundary section="Multi-Room Property Overview">
                       <MultiKeyPropertyOverview
                       propertyId={preloadedData.currentProperty?.id}
                       propertySlug={multiKeyPropertySlug}

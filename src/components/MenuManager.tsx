@@ -4,6 +4,7 @@ import { TablePagination } from './TablePagination';
 import { Button } from './Button';
 import { Badge } from './Badge';
 import { Input } from './Input';
+import { FileInput } from './FileInput';
 import { ToggleSwitch } from './ToggleSwitch';
 import {
   Utensils,
@@ -1203,29 +1204,21 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
             </div>
 
             <div>
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('item_image_label', 'Item Image')}</label>
               <div className="menu-manager__field space-y-2">
-                <div className="menu-manager__upload-row flex items-center gap-2">
-                  <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition-colors border border-slate-300 dark:border-slate-600">
-                    <Upload className="w-4 h-4" />
-                    <span>{t('upload_image_button', 'Upload Image')}</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            setFoodForm({ ...foodForm, imagePath: reader.result as string });
-                          };
-                          reader.readAsDataURL(file);
-                        }
-                      }}
-                    />
-                  </label>
-                </div>
+                <FileInput
+                  label={t('item_image_label', 'Item Image')}
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        setFoodForm({ ...foodForm, imagePath: reader.result as string });
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
 
                 {/* Image Preview Box */}
                 {foodForm.imagePath && (
@@ -1313,11 +1306,8 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
             placeholder={t('enter_passcode_placeholder', 'Enter passcode')}
             inputMode="numeric"
             className="text-center"
+            error={passcodeError || undefined}
           />
-
-          {passcodeError && (
-            <p className="menu-manager__passcode-error text-red-500 text-xs font-semibold text-center">{passcodeError}</p>
-          )}
         </div>
         <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
           <Button

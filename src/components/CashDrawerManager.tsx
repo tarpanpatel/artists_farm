@@ -412,12 +412,21 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                   value={handoverAmount}
                   onChange={e => setHandoverAmount(e.target.value === '' ? '' : Number(e.target.value))}
                   placeholder={t('enter_amount_placeholder', 'Enter amount')}
+                  // Live (26 Aug 2026 - CLAUDE.md's "Real-Time Form Validation" note) - the
+                  // exceeds-balance check already ran live before this date, just as a plain
+                  // <p> below the field rather than through Input's own colored-border
+                  // error state; folded into `error` here for visual consistency with every
+                  // other converted field, same message. The required/>0 case is new,
+                  // gated on a staff member already being picked (same "form actually
+                  // started" signal as the Give Advance modal above).
+                  error={
+                    handoverStaffId && (!handoverAmount || Number(handoverAmount) <= 0)
+                      ? 'Amount must be greater than 0'
+                      : selectedHandoverStaff && handoverAmount && Number(handoverAmount) > selectedHandoverStaff.netBalance
+                      ? `Exceeds current balance of ₹${selectedHandoverStaff.netBalance.toLocaleString('en-IN')}`
+                      : undefined
+                  }
                 />
-                {selectedHandoverStaff && handoverAmount && Number(handoverAmount) > selectedHandoverStaff.netBalance && (
-                  <p className="text-[10px] text-red-500 font-semibold mt-1 flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" /> Exceeds current balance of ₹{selectedHandoverStaff.netBalance.toLocaleString('en-IN')}
-                  </p>
-                )}
               </div>
             </div>
 
@@ -1098,6 +1107,11 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                   onChange={(e) => setAdvanceAmount(Number(e.target.value))}
                   placeholder="e.g. 2000"
                   className="text-sm font-semibold"
+                  // Live (26 Aug 2026 - CLAUDE.md's "Real-Time Form Validation" note) -
+                  // gated on a staff member already being picked, since that's the real
+                  // "I've started this form" signal; the amount starts at 0 by default,
+                  // so flagging it red before a staff selection would fire on open.
+                  error={advanceStaff && advanceAmount <= 0 ? 'Amount must be greater than 0' : undefined}
                 />
               </div>
 

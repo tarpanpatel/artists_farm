@@ -40,6 +40,12 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ username, onUs
   const [newPasscode, setNewPasscode] = useState('');
   const [confirmPasscode, setConfirmPasscode] = useState('');
 
+  // Real-time validation feedback (Flowbite forms.md validation states) - flags a mismatch as
+  // soon as both fields have something typed, rather than only on Save.
+  const newPasscodeInvalid = newPasscode.length > 0 && !/^\d{6}$/.test(newPasscode);
+  const passcodeMismatch = newPasscode.length > 0 && confirmPasscode.length > 0 && newPasscode !== confirmPasscode;
+  const passcodeMatch = newPasscode.length > 0 && confirmPasscode.length > 0 && newPasscode === confirmPasscode;
+
   useEffect(() => {
     (async () => {
       try {
@@ -231,6 +237,7 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ username, onUs
               onChange={(e) => setNewPasscode(e.target.value)}
               placeholder="6-digit passcode"
               inputMode="numeric"
+              error={newPasscodeInvalid ? 'Must be exactly 6 digits' : undefined}
             />
           </div>
           <div className="account-settings__field">
@@ -241,6 +248,8 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ username, onUs
               onChange={(e) => setConfirmPasscode(e.target.value)}
               placeholder="Repeat new passcode"
               inputMode="numeric"
+              error={passcodeMismatch ? "Passcodes don't match" : undefined}
+              success={passcodeMatch ? 'Passcodes match' : undefined}
             />
           </div>
         </div>

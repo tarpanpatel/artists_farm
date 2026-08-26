@@ -26,19 +26,13 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
           still announces what's actually happening. */}
       <span className="sr-only" role="status">{message}</span>
       <div className="flex flex-col items-center gap-8 loading-screen__container">
-        {/* Animated Logo - gradient matches the brand mark's own corners
-            (#2296fd -> #4e47ed) rather than the generic Tailwind blue/indigo
-            this used to use, so this box and icons/icon-source.png (the real
-            favicon/app-icon files generated from the same mark) read as the
-            same blue. */}
+        {/* Logo - the actual brand mark file (icons/icon-source.png, gradient +
+            glyph + rounded corners already baked in from gc_logo.png), shown
+            as-is rather than reconstructed as a separate CSS gradient badge
+            with the transparent glyph dropped inside it (26 Aug 2026: that
+            double-square look was reported and replaced with this). */}
         <div className="relative w-16 h-16 loading-screen__logo">
-          <div
-            className="absolute inset-0 rounded-lg animate-pulse loading-screen__logo-bg"
-            style={{ background: 'linear-gradient(to bottom right, #2296fd, #4e47ed)' }}
-          />
-          <div className="absolute inset-0 flex items-center justify-center loading-screen__logo-icon">
-            <img src="/icons/icon-mark-transparent.png" alt="" className="w-8 h-8" />
-          </div>
+          <img src="/icons/icon-source.png" alt="" className="w-full h-full rounded-lg loading-screen__logo-img" />
         </div>
 
         {/* Loading Spinner */}
@@ -47,13 +41,11 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
           <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-blue-500 border-r-indigo-500 animate-spin loading-screen__spinner-indicator" />
         </div>
 
-        {/* Brand - no visible routine "Loading..."/"Redirecting..." text on
-            purpose: this splash should read as an app launch, not a status
-            message. The sr-only span above still carries `message` for
-            assistive tech. */}
-        <h2 className="text-xl font-semibold text-slate-900 dark:text-white loading-screen__title">
-          {t('artists_farm_brand')}
-        </h2>
+        {/* Brand text label removed (26 Aug 2026, explicit request): the logo
+            mark itself is distinctive enough now to not need "Ground Code"
+            spelled out underneath it - this splash reads as an app launch
+            purely through the icon, gradient, and spinner. The sr-only span
+            above still carries `message` for assistive tech regardless. */}
 
         {/* Loading Dots */}
         <div className="flex gap-2 loading-screen__dots">
