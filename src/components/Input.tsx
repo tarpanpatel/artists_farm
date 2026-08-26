@@ -89,7 +89,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className={`app-input-wrapper ${fullWidth ? 'w-full min-w-0' : 'inline-block'} input`}>
         {label && (
-          <div className="mb-1.5 block">
+          // mb-2 matches Flowbite's own canonical form spacing (their real forms.md/
+          // application-ui examples all use `mb-2` between a label and its input, not the
+          // tighter mb-1.5 this used to have - found 27 Aug 2026, user report: "Form Label
+          // and instruction below fields look not in right padding, refer to flowbite forms").
+          <div className="mb-2 block">
             <FlowbiteLabel
               htmlFor={inputId}
               className={`app-label text-xs font-semibold text-slate-700 dark:text-slate-200 ${labelClassName || ''} input__label`}
@@ -120,16 +124,18 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             </div>
           )}
         </div>
+        {/* mt-2 matches Flowbite's own canonical helper-text spacing (mt-1 was tighter than
+            their real forms.md examples - same 27 Aug 2026 report as the label's mb-2 above). */}
         {errorMessage ? (
-          <p id={`${inputId}-error`} className="app-error-text mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1 input__error">
+          <p id={`${inputId}-error`} className="app-error-text mt-2 text-xs text-red-600 dark:text-red-400 flex items-center gap-1 input__error">
             <AlertTriangle className="w-3.5 h-3.5" /> {errorMessage}
           </p>
         ) : successMessage ? (
-          <p id={`${inputId}-success`} className="app-success-text mt-1 text-xs text-green-600 dark:text-green-500 flex items-center gap-1 input__success">
+          <p id={`${inputId}-success`} className="app-success-text mt-2 text-xs text-green-600 dark:text-green-500 flex items-center gap-1 input__success">
             <CheckCircle2 className="w-3.5 h-3.5" /> {successMessage}
           </p>
         ) : helperText ? (
-          <p id={`${inputId}-helper`} className="app-helper-text mt-1 text-xs text-slate-500 dark:text-slate-400 input__helper">
+          <p id={`${inputId}-helper`} className="app-helper-text mt-2 text-xs text-slate-500 dark:text-slate-400 input__helper">
             {helperText}
           </p>
         ) : null}

@@ -96,7 +96,9 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
   return (
     <div className={`app-select-wrapper ${className} styled-select`}>
       {label && (
-        <div className="mb-1 block">
+        // mb-2/mt-2 match Flowbite's own canonical form spacing (27 Aug 2026, same report
+        // as Input.tsx's identical fix - see that file's comment for the full why).
+        <div className="mb-2 block">
           <label
             htmlFor={id}
             className="app-label text-xs font-semibold text-slate-700 dark:text-slate-200"
@@ -172,7 +174,7 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
         </div>
       </Dropdown>
       {errorMessage && (
-        <p className="app-error-text mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+        <p className="app-error-text mt-2 text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
           <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {errorMessage}
         </p>
       )}

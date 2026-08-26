@@ -217,7 +217,11 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
           since nothing else in this range needs to pair with them. Room
           mode keeps Property Name (as "Room Name") alone - none of
           Email/Phone/GSTIN exist for a room. */}
-      <div className={`grid gap-4 ${isRoom ? 'grid-cols-1' : 'grid-cols-2'}`}>
+      {/* grid-cols-1 sm:grid-cols-2 (27 Aug 2026, user report + confirmed follow-up: these
+          rows forced 2 columns at every viewport width, unlike PropertySetupWizard's mobile-
+          first single-column fields - cramped on a ~380px phone screen). Stacks to one column
+          below sm, matching that wizard's own convention. */}
+      <div className={`grid gap-4 grid-cols-1 ${isRoom ? '' : 'sm:grid-cols-2'}`}>
         <div className="property-edit-form__field">
           <Input
             label={isRoom ? t('room_name_label', 'Room Name') : t('tenant_property_name_label', 'Property Name')}
@@ -241,7 +245,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
       </div>
 
       {!isRoom && (
-        <div className="property-edit-form__row grid grid-cols-2 gap-4">
+        <div className="property-edit-form__row grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="property-edit-form__field">
             <Input
               type="tel"
@@ -309,7 +313,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
       )}
 
       {!isRoom && (
-        <div className="property-edit-form__row grid grid-cols-2 gap-4">
+        <div className="property-edit-form__row grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="property-edit-form__field">
             <Input
               type="text"
@@ -331,7 +335,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
         </div>
       )}
 
-      <div className="property-edit-form__row grid grid-cols-2 gap-4">
+      <div className="property-edit-form__row grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="property-edit-form__field">
           <Input
             type="time"
@@ -355,7 +359,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
       {/* Multi-key parent properties aren't themselves bookable - each room has
           its own tariff, set here (in room mode) instead. */}
       {property.property_type !== 'MULTI_KEY' && (
-        <div className="property-edit-form__row grid grid-cols-2 gap-4">
+        <div className="property-edit-form__row grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="property-edit-form__field">
             <Input
               type="number"

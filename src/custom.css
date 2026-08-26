@@ -1023,6 +1023,21 @@ html {
   padding-top: env(safe-area-inset-top, 0px);
 }
 
+/* Same collision, same fix, different flowbite-react component (27 Aug 2026, reported live:
+   "Order Instructions" popup's close button sat right under the phone's status bar, hard to
+   tap). <Modal>'s root overlay (data-testid="modal-overlay" - see
+   node_modules/flowbite-react/dist/components/Modal/Modal.js) is ALSO `position: fixed` with
+   no safe-area awareness of its own, and on mobile (<md) its own theme pins content to
+   `top: 0` with no vertical centering fallback (theme.js's `content.base` is `h-full` below
+   md, not `h-auto`, so the popup's header/close button render at the very top edge of a
+   full-height box instead of being centered in it) - so unlike the Drawer fix above, this one
+   was never a size-dependent edge case, every popup Modal on mobile sits flush at the true top
+   of the screen. Padding the overlay (a flex container) pushes its single content child down
+   by the same amount without needing to touch flowbite's own centering classes. */
+[data-testid="modal-overlay"] {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
 /* Flowbite <Table>'s decorative shadow layer painting OVER the table instead
    of behind it (found 22 Aug 2026, Team & Access staff table - the whole
    table rendered as a blank white/black rectangle, no row content visible).

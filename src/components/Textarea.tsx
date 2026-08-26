@@ -40,7 +40,9 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     return (
       <div className={`${fullWidth ? 'w-full' : 'inline-block'} textarea`}>
         {label && (
-          <div className="mb-1 block">
+          // mb-2/mt-2 match Flowbite's own canonical form spacing (27 Aug 2026, same report
+          // as Input.tsx's identical fix - see that file's comment for the full why).
+          <div className="mb-2 block">
             <FlowbiteLabel
               htmlFor={textareaId}
               className="text-xs font-semibold text-slate-700 dark:text-slate-200 textarea__label"
@@ -59,11 +61,11 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           {...(props as any)}
         />
         {errorMessage ? (
-          <p id={`${textareaId}-error`} className="mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1 textarea__error">
+          <p id={`${textareaId}-error`} className="mt-2 text-xs text-red-600 dark:text-red-400 flex items-center gap-1 textarea__error">
             <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" /> {errorMessage}
           </p>
         ) : helperText ? (
-          <p id={`${textareaId}-helper`} className="mt-1 text-xs text-slate-500 dark:text-slate-400 textarea__helper">
+          <p id={`${textareaId}-helper`} className="mt-2 text-xs text-slate-500 dark:text-slate-400 textarea__helper">
             {helperText}
           </p>
         ) : null}
