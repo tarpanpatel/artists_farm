@@ -386,6 +386,28 @@ check('genuine gibberish still reports matched=false', 'asdkfjqpwoeiruty', 'Staf
     'replyContains' => 'Ground Code helps you manage',
 ]);
 
+// ============================================================================================
+// Live bug fix (27 Aug 2026): Gemini confidently told a user "no recipe module exists" - it does
+// (KitchenManagement.tsx's beta_recipe_builder tab). The offline engine had the same underlying
+// mistake: 'add recipe'/'new recipe' were wired to the plain sellable-item form (add_menu_item),
+// never to the real ingredient-level Recipe Builder. Moved to their own intent below.
+// ============================================================================================
+check('recipe intent navigates to Recipe Builder, not the menu item form', 'add recipe', 'Admin', null, [], [
+    'actionType' => 'navigate',
+    'actionField' => ['field' => 'itemKey', 'value' => 'beta_recipe_builder'],
+]);
+check('bare "recipes" also reaches the Recipe Builder', 'how do I manage recipes', 'Admin', null, [], [
+    'actionField' => ['field' => 'itemKey', 'value' => 'beta_recipe_builder'],
+]);
+check('recipe intent is Admin-gated like add_menu_item', 'add recipe', 'Staff', null, [], [
+    'actionType' => null,
+    'replyContains' => 'Access Denied',
+]);
+check('add_menu_item regression: non-recipe dish phrasing still works after the move', 'add new dish', 'Admin', null, [], [
+    'actionType' => 'navigate',
+    'actionField' => ['field' => 'itemKey', 'value' => 'edit_food_menu'],
+]);
+
 echo "Offline Intent Engine + Nav Menu Intents: $pass/" . ($pass + $fail) . " passed\n";
 if ($failures) {
     echo "\nFailures:\n";
