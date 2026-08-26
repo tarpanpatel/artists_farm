@@ -4,7 +4,22 @@
  * Provides endpoints for fetching UI configuration, roles, icons, and templates
  */
 
-require_once __DIR__ . '/../config/database.php';
+// Guarded (26 Aug 2026): when staging's router.php self-heal requires this
+// file directly from production's path (see that file's comment right above
+// its require of this one), __DIR__ resolves to PRODUCTION's php/api/ - a
+// different absolute path than staging's own config/database.php, already
+// required once at the very top of router.php. require_once's dedup is
+// per-resolved-path, not per-symbol, so without this guard database.php's
+// own body (CORS headers, the write-method CSRF check, the $pdo connection)
+// would run a second time in the same request. database.php already
+// double-guards every define() it makes in anticipation of exactly this kind
+// of cross-environment re-require, so that part alone wouldn't be fatal -
+// this guard just also skips the wasted second DB connection and duplicate
+// header() calls, same reasoning as module_manager.php's function_exists()
+// guard for telegram.php's identical situation.
+if (!defined('APP_IS_STAGING_ENV')) {
+    require_once __DIR__ . '/../config/database.php';
+}
 
 function handleConfigurationRequests($pdo, $request_method, $action, $propertyId) {
     switch ($action) {

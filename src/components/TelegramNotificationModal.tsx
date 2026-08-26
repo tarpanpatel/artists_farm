@@ -30,6 +30,7 @@ import {
 import { TelegramConfig, TelegramDispatchLog, PropertyTelegramConfig } from '../types';
 import { invalidateTemplateCache, getPropertySlug, fetchTelegramConfigDB, saveTelegramConfigDB, fetchTemplatesFromDB, updateTemplateGroupInDB, DbTelegramTemplate } from '../services/api';
 import { TelegramSetupWizard } from './TelegramSetupWizard';
+import { ToggleSwitch } from './ToggleSwitch';
 import { StyledSelect } from './StyledSelect';
 import { Input } from './Input';
 import { Textarea } from './Textarea';
@@ -700,6 +701,19 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
     setTgRoutingSaving(false);
   };
 
+  const handleToggleEnabled = async (val: boolean) => {
+    if (!tgSettings) return;
+    const next = { ...tgSettings, enabled: val };
+    setTgSettings(next);
+    await saveTelegramConfigDB(next);
+    showToast(
+      val
+        ? t('telegram_notifications_enabled_toast', 'Telegram notifications enabled')
+        : t('telegram_notifications_disabled_toast', 'Telegram notifications disabled'),
+      { type: 'success' }
+    );
+  };
+
   // Active Template
   const currentTpl = templatesList.find((t) => t.id === activeTemplateId) || templatesList[0];
 
@@ -1097,6 +1111,38 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
         <div className="flex items-start gap-2.5 p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-xs text-red-700 dark:text-red-300">
           <span className="font-semibold shrink-0">{t('test_ping_failed_label', 'Test ping failed:')}</span>
           <span>{testError}</span>
+        </div>
+      )}
+
+      {/* Enable Telegram Notifications Main Page Card */}
+      {!hideRoutingControls && (
+        <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-sky-50 dark:bg-sky-950/60 text-[#0088cc] flex items-center justify-center shrink-0 border border-sky-100 dark:border-sky-900">
+              <Send className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                <span>{t('enable_telegram_notifications_label', 'Enable Telegram Notifications')}</span>
+                <span className={`px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider ${
+                  tgSettings?.enabled ?? true
+                    ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                }`}>
+                  {tgSettings?.enabled ?? true ? t('active_status', 'Active') : t('disabled_status', 'Disabled')}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                {t('enable_telegram_description', 'Automatically send real-time alerts for orders, requisitions, and guest transactions to staff Telegram chat groups.')}
+              </p>
+            </div>
+          </div>
+          <div className="shrink-0 flex items-center gap-3 self-end sm:self-center">
+            <ToggleSwitch
+              enabled={tgSettings?.enabled ?? true}
+              onChange={handleToggleEnabled}
+            />
+          </div>
         </div>
       )}
 

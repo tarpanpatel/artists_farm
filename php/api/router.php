@@ -120,20 +120,31 @@ require_once __DIR__ . '/../theme/theme_settings.php';
 // like db_pass.php), so this wasn't a "forgot to deploy a secret" gap; the
 // far more likely cause, given CPGuard is already a confirmed, recurring
 // threat on this exact server (see the telegram.php block above), is the
-// same malware scanner quarantining this file too. Self-heals the same way.
+// same malware scanner quarantining this file too.
+//
+// Fixed 26 Aug 2026 (found live: get_system_settings/Telegram Notifications
+// 503ing with "Configuration module unavailable" on staging). Two separate
+// bugs in the original self-heal: (1) it COPIED production's bytes onto
+// staging's own path - the exact "hands the scanner a fresh target every
+// time, an unwinnable cycle" failure mode telegram.php's own fix above
+// already proved wrong for this same malware scanner; (2) its fallback path
+// still pointed at '/home/apartment/public_html/...', the PRE-migration
+// production docroot - CLAUDE.md documents that path as a stale,
+// no-longer-deployed checkout since the 25 Aug 2026 cutover to
+// ground-code.com's own docroot, so even the copy-back attempt was reading
+// from a dead location. Now requires configuration.php straight from the
+// current production path when staging's own copy is missing, same pattern
+// as telegram.php - safe here because configuration.php's own require of
+// config/database.php is now guarded (see that file) so re-running it from a
+// foreign __DIR__ is a harmless no-op rather than a redeclare collision.
 $__configuration_php_path = __DIR__ . '/configuration.php';
 if (!file_exists($__configuration_php_path) && defined('APP_IS_STAGING_ENV') && APP_IS_STAGING_ENV) {
-    $__prod_configuration_php_path = '/home/apartment/public_html/php/api/configuration.php';
-    if (file_exists($__prod_configuration_php_path)) {
-        @copy($__prod_configuration_php_path, $__configuration_php_path);
-        if (class_exists('TelescopeLogger')) {
-            TelescopeLogger::log('php', 'Warning', 'php/api/configuration.php was missing on staging - restored from production\'s copy', 'router.php:configuration self-heal');
-        }
-    }
-    unset($__prod_configuration_php_path);
+    $__configuration_php_path = '/home/apartment/ground-code.com/php/api/configuration.php';
 }
 if (file_exists($__configuration_php_path)) {
     require_once $__configuration_php_path;
+} elseif (class_exists('TelescopeLogger')) {
+    TelescopeLogger::log('php', 'Fatal Error', "php/api/configuration.php is missing from disk, and its whitelisted production fallback was also unreachable - every configuration action ('get_system_settings', 'get_telegram_templates', etc.) is failing", 'router.php:configuration dispatch');
 }
 unset($__configuration_php_path);
 
