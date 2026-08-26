@@ -17,6 +17,8 @@ interface Tenant {
   name: string;
   slug: string;
   subscription_status: string;
+  plan_type?: string;
+  subscription_expires_at?: string;
   max_properties: number;
   slots_used?: number;
   email?: string;
@@ -490,6 +492,9 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
           email: editingTenant.email,
           phone: editingTenant.phone,
           subscription_status: editingTenant.subscription_status,
+          plan_type: editingTenant.plan_type || 'Growth',
+          subscription_expires_at: editingTenant.subscription_expires_at || null,
+          max_properties: editingTenant.max_properties,
           is_active: editingTenant.is_active,
         }),
       });
@@ -950,8 +955,20 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                               <Building2 className="w-4.5 h-4.5" />
                             </div>
                             <div>
-                              <div className="font-semibold text-slate-900 dark:text-white text-xs">{tenant.name}</div>
-                              <div className="text-2xs text-slate-400 dark:text-slate-500 font-mono">/{tenant.slug} · ID: {tenant.id}</div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-slate-900 dark:text-white text-xs">{tenant.name}</span>
+                                <span className={`text-2xs font-semibold px-2 py-0.5 rounded ${
+                                  tenant.plan_type === 'Starter'
+                                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                                    : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
+                                }`}>
+                                  {tenant.plan_type || 'Growth'} Plan
+                                </span>
+                              </div>
+                              <div className="text-2xs text-slate-400 dark:text-slate-500 font-mono">
+                                /{tenant.slug} · ID: {tenant.id}
+                                {tenant.subscription_expires_at && ` · Renews: ${tenant.subscription_expires_at}`}
+                              </div>
                             </div>
                           </div>
                         </td>
@@ -1199,6 +1216,41 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                     { value: 'active', label: t('active_status_badge', 'Active') },
                     { value: 'suspended', label: t('suspended_label', 'Suspended') },
                   ]}
+                />
+              </div>
+
+              <div>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
+                  SaaS Plan Tier
+                </label>
+                <StyledSelect
+                  value={editingTenant.plan_type || 'Growth'}
+                  onChange={(val) =>
+                    setEditingTenant({
+                      ...editingTenant,
+                      plan_type: val,
+                    })
+                  }
+                  options={[
+                    { value: 'Starter', label: 'Starter Plan (₹1,499/mo - 1 Key)' },
+                    { value: 'Growth', label: 'Growth Plan (₹4,999/mo - Up to 10 Keys)' },
+                  ]}
+                />
+              </div>
+
+              <div>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
+                  Subscription Expiry / Renewal Date
+                </label>
+                <Input
+                  type="date"
+                  value={editingTenant.subscription_expires_at || ''}
+                  onChange={(e) =>
+                    setEditingTenant({
+                      ...editingTenant,
+                      subscription_expires_at: e.target.value,
+                    })
+                  }
                 />
               </div>
             </div>

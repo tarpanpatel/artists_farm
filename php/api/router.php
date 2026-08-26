@@ -279,6 +279,20 @@ if (!isSchemaVerified('schema_properties_table_v5')) {
     markSchemaVerified('schema_properties_table_v5');
 }
 
+// Self-healing column check for `tenants.subscription_expires_at` and `tenants.plan_type` (26 Aug 2026)
+if (!isSchemaVerified('schema_tenants_table_v2')) {
+    try {
+        $tenantsColsV2 = $pdo->query("SHOW COLUMNS FROM tenants")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('subscription_expires_at', $tenantsColsV2)) {
+            $pdo->exec("ALTER TABLE tenants ADD COLUMN `subscription_expires_at` DATE DEFAULT NULL AFTER `subscription_status`");
+        }
+        if (!in_array('plan_type', $tenantsColsV2)) {
+            $pdo->exec("ALTER TABLE tenants ADD COLUMN `plan_type` VARCHAR(50) DEFAULT 'Growth' AFTER `subscription_expires_at`");
+        }
+    } catch (Exception $e) {}
+    markSchemaVerified('schema_tenants_table_v2');
+}
+
 /**
  * A property's "Super Admin" staff row is not an independent staff account -
  * it IS the tenant, and there is exactly one of them, always. This keeps
@@ -1762,11 +1776,15 @@ switch ($action) {
         }
 
         try {
+            $maxProps = max(1, (int)($input['max_properties'] ?? 1));
+            $planType = $input['plan_type'] ?? 'Growth';
+            $expiryDate = !empty($input['subscription_expires_at']) ? $input['subscription_expires_at'] : date('Y-m-d', strtotime('+30 days'));
+
             $stmt = $pdo->prepare("
-                INSERT INTO tenants (name, slug, email, phone, subscription_plan, subscription_status, max_properties, is_active)
-                VALUES (?, ?, ?, ?, 'free', 'trial', 1, 1)
+                INSERT INTO tenants (name, slug, email, phone, subscription_plan, subscription_status, max_properties, is_active, subscription_expires_at, plan_type)
+                VALUES (?, ?, ?, ?, 'free', 'trial', ?, 1, ?, ?)
             ");
-            $stmt->execute([$name, $slug, $email ?: null, $phone ?: null]);
+            $stmt->execute([$name, $slug, $email ?: null, $phone ?: null, $maxProps, $expiryDate, $planType]);
             $tenant_id = $pdo->lastInsertId();
 
             $response = ['success' => true, 'message' => 'Tenant created successfully', 'tenant_id' => $tenant_id];
@@ -2574,7 +2592,7 @@ switch ($action) {
             }
             $stmt = $pdo->prepare("
                 UPDATE tenants
-                SET name = ?, slug = COALESCE(?, slug), email = ?, phone = ?, subscription_status = ?, is_active = ?
+                SET name = ?, slug = COALESCE(?, slug), email = ?, phone = ?, subscription_status = ?, is_active = ?, max_properties = COALESCE(?, max_properties), subscription_expires_at = ?, plan_type = ?
                 WHERE id = ?
             ");
             $stmt->execute([
@@ -2584,6 +2602,9 @@ switch ($action) {
                 $input['phone'] ?? null,
                 $input['subscription_status'] ?? 'trial',
                 $input['is_active'] ?? 0,
+                isset($input['max_properties']) ? (int)$input['max_properties'] : null,
+                !empty($input['subscription_expires_at']) ? $input['subscription_expires_at'] : null,
+                $input['plan_type'] ?? 'Growth',
                 $id
             ]);
             echo json_encode(['success' => true, 'message' => 'Tenant updated successfully']);
