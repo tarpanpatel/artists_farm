@@ -13,6 +13,7 @@
   - **Typography Consistency**: ID and data cells use `text-xs font-semibold text-gray-900 dark:text-white` (never `font-mono` or fake blue links unless clickable). Subtitles use `text-2xs text-gray-500`.
 - **Card Action Buttons & Secondary Edit Button Rule**: Edit buttons are secondary management actions and must **never** use primary button styling (e.g. solid filled primary blue). Primary actions on resource cards (e.g., "Open Property", "Manage") use `<Button variant="primary">`, while edit actions use `<Button variant="secondary">` (or `<Button variant="outline">`).
 - **Red Delete & Logout Action Icons Rule**: All delete action icons/buttons and logout action icons/buttons across the platform must strictly use red styling tokens (`text-red-600 dark:text-red-400` or `hover:text-red-600 dark:hover:text-red-400`) to clearly signify destructive or session-terminating actions.
+- **No Icon Swap on Mobile & Delete Trash Can Icon Rule**: Icons for actions (Delete, Edit, View, Settings, etc.) must NEVER change, swap, or degrade between desktop and mobile screen sizes. Specifically, Delete action buttons across all tables, cards, and drawers must ALWAYS use a standard Trash Can icon (`Trash2`), never a cross/close (`X`) icon.
 - **No Hindi Localization Rule**: No need to work on or update the Hindi version (`src/i18n/hi.ts`) unless explicitly asked for by the user. Focus exclusively on the default English implementation (`src/i18n/en.ts`) and direct English UI text.
 
 ---
