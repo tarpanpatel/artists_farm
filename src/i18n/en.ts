@@ -1160,7 +1160,7 @@ export const strings: Record<string, string> = {
   pin_passcode_label: "6-Digit Security Passcode",
   forgot_password_link: "Forgot Passcode?",
   authenticating_button: "Authenticating...",
-  login_button: "Sign In to Terminal",
+  login_button: "Sign In",
   login_footer_copyright: "© 2026 Ground Code. All rights reserved.",
   back_to_home_link: "Back to Home",
   forgot_passcode_title: "Forgot Your Passcode?",

@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Alert } from 'flowbite-react';
-import { AlertCircle, Lock, Phone, KeyRound, Building2, ShieldCheck, Mail, CheckCircle2, ArrowLeft, Loader2, Delete } from './icons/FlowbiteIcons';
+import { AlertCircle, Lock, Phone, KeyRound, ShieldCheck, Mail, CheckCircle2, ArrowLeft, Loader2, Delete } from './icons/FlowbiteIcons';
 import { Input } from './Input';
 import { t } from '../i18n/en';
 
@@ -453,10 +453,23 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
   return (
     <section className="bg-gray-50 dark:bg-gray-900 min-h-screen flex flex-col items-center justify-center px-6 py-8 mx-auto md:h-screen lg:py-0">
       <a href="/" className="flex items-center mb-6 text-2xl font-semibold text-gray-900 dark:text-white">
-        <div className="w-8 h-8 mr-2.5 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-xs">
-          {isTerminal ? <Lock className="w-5 h-5 text-white" /> : <Building2 className="w-5 h-5 text-white" />}
-        </div>
-        <span>{isTerminal ? t('login_modal_brand') : 'Ground Code'}</span>
+        {isTerminal ? (
+          <>
+            <div className="w-8 h-8 mr-2.5 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-xs">
+              <Lock className="w-5 h-5 text-white" />
+            </div>
+            <span>{t('login_modal_brand')}</span>
+          </>
+        ) : (
+          // Real brand mark (icons/icon-source.png) paired with the wordmark, matching
+          // Flowbite's own recommended sign-in block markup (img + text inside the same
+          // font-semibold anchor) rather than a generic icon-in-a-box placeholder - swapped
+          // in 27 Aug 2026 per explicit request.
+          <>
+            <img src="/icons/icon-source.png" alt="" className="w-8 h-8 mr-2 rounded-lg" />
+            <span>Ground Code</span>
+          </>
+        )}
       </a>
 
       <div className="w-full bg-white rounded-lg shadow-sm dark:border md:mt-0 sm:max-w-md xl:p-0 dark:bg-gray-800 dark:border-gray-700">
@@ -465,9 +478,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
             <h1 className="text-xl font-bold leading-tight tracking-tight text-gray-900 md:text-2xl dark:text-white">
               {isTerminal ? t('terminal_authorization_heading', 'Sign in to Terminal') : t('sign_in_heading', 'Sign in to your account')}
             </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {isTerminal ? t('terminal_authorization_subtitle') : t('login_subtitle', 'Hospitality & Resort Management Portal')}
-            </p>
+            {isTerminal && (
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {t('terminal_authorization_subtitle')}
+              </p>
+            )}
           </div>
 
           <form onSubmit={handleLogin} ref={loginFormRef} className="space-y-4 md:space-y-6">

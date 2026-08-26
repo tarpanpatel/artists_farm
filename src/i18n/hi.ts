@@ -1104,7 +1104,7 @@ export const strings: Record<string, string> = {
   pin_passcode_label: "6 अंकों का सिक्योरिटी पासकोड",
   forgot_password_link: "पासकोड भूल गए?",
   authenticating_button: "ऑथेंटिकेट हो रहा है...",
-  login_button: "टर्मिनल में लॉगिन करें",
+  login_button: "साइन इन करें",
   login_footer_copyright: "© 2026 Ground Code. सर्वाधिकार सुरक्षित।",
   back_to_home_link: "होम पर वापस जाएं",
   forgot_passcode_title: "पासकोड भूल गए?",
