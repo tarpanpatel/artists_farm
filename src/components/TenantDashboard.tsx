@@ -984,7 +984,12 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
       <TermsAcceptanceModal tenantId={tenantId || 'default'} tenantName={tenantInfo?.name || propTenantInfo?.name || 'Your Property'} />
 
       {/* Header Help & Support Drawer */}
-      <LegalDrawer activeTab={legalDrawerTab} onClose={() => setLegalDrawerTab(null)} />
+      <LegalDrawer
+        activeTab={legalDrawerTab}
+        onClose={() => setLegalDrawerTab(null)}
+        tenantSlug={tenantInfo?.slug ?? propTenantInfo?.slug ?? ''}
+        defaultPropertySlug={properties[0]?.slug ?? ''}
+      />
     </div>
   );
 };
