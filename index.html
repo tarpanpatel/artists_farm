@@ -79,10 +79,10 @@
         justify-content: center;
         animation: initial-loader-pulse 2s ease-in-out infinite;
       }
-      #initial-loader__logo img {
-        width: 36px;
-        height: 36px;
-        border-radius: 0.5rem;
+      #initial-loader__logo svg {
+        width: 32px;
+        height: 32px;
+        color: #fff;
       }
       #initial-loader__spinner {
         width: 40px;
@@ -162,7 +162,19 @@
   <body class="bg-slate-50 text-slate-900 antialiased min-h-screen">
     <div id="root">
       <div id="initial-loader">
-        <div id="initial-loader__logo"><img src="/icons/apple-touch-icon.png" alt="" width="36" height="36" /></div>
+        <div id="initial-loader__logo">
+          <!-- Inline SVG, not <img src="apple-touch-icon.png"> (18 Aug -> fixed 26 Aug 2026): an
+               <img> here needs a real network round trip to paint anything, so on a slow/cold
+               connection this box sat as a flat glyph-less gradient square for a visible moment -
+               exactly the "jarring style change" this loader's own comment above says it exists to
+               avoid, since LoadingScreen.tsx's icon (Building2, inline SVG) never has that gap.
+               This is the same Building2 glyph (flowbite-react-icons "Building", outline set,
+               24x24 viewBox, strokeWidth 2) reproduced by hand so it paints with zero network
+               dependency, same as the rest of this static pre-React loader. -->
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M6 4h12M6 4v16M6 4H5m13 0v16m0-16h1m-1 16H6m12 0h1M6 20H5M9 7h1v1H9zm5 0h1v1h-1zm-5 4h1v1H9zm5 0h1v1h-1zm-3 4h2a1 1 0 0 1 1 1v4h-4v-4a1 1 0 0 1 1-1"/>
+          </svg>
+        </div>
         <div id="initial-loader__spinner"></div>
       </div>
     </div>
