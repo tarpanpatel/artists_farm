@@ -8,27 +8,6 @@ This document tracks identified bugs, pending backend API integrations, and upco
 ---top priority starts---
 :All buttons should be same tyled everywhere. For exampke edit button styling is different on different pages.
 
-### Rebuild AI Assistant (removed 26 Aug 2026)
-
-The chat widget, offline intent engine, online-provider config (Gemini/OpenAI/Claude/OpenCode
-Zen/Ollama), and every integration point that fed it were removed entirely at the user's explicit
-request ("remove AI chat feature, and pull all its code from the app... There shouldn't be a
-single line of code related to AI in working files of the app"). Not a bug fix - a deliberate,
-full removal, planned to be rebuilt properly later rather than patched in place.
-
-**Everything needed to rebuild is preserved, not deleted** - `_unwanted/ai/README.md` maps every
-archived file back to where it used to live and lists exactly what was severed at each integration
-point (`App.tsx`'s widget mount + 7 deep-link-prefill state variables, Header's "Help?" button,
-Root Admin's "AI Services Config" section, and per-drawer chat-command prefill effects in
-KitchenManagement/StaffManagement/ServiceRequestsManagement/PettyCashManagement). `AI.md` (the
-full original architecture/design writeup, including the Gemini trial-week plan) moved to
-`_unwanted/ai/AI.md` alongside the code - read it before rebuilding, don't re-derive the design
-decisions from scratch.
-
-When this is picked back up: start from the archived `README.md`'s file-by-file map, not a fresh
-build - the offline-first/RBAC-per-intent/deep-link-prefill design choices took real iteration to
-get right the first time.
-
 ### Root Admin Dashboard: page title overlaps platform title on scroll (reported 25 Aug 2026)
 
 On Root Admin pages (reported live on "Tenants & Properties"), scrolling

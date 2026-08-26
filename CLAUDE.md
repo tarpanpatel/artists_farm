@@ -92,19 +92,48 @@ Features whose UI/backend wiring isn't obvious from file names alone - check her
 - Daily cron `php/cron/check_licenses.php` sends 7/4/1-day-out Telegram expiry alerts.
 - The i18n keys for this (`license_management_heading`, `license_type_*`, etc.) existed in `en.ts` for a while before the UI did - if you find orphaned-looking i18n keys again elsewhere, ask whether a page was planned but never finished, don't assume they're dead.
 
-### AI Assistant (REMOVED 26 Aug 2026)
-The chat widget, offline intent engine, online-provider config, and every integration point that
-fed it (Header's "Help?" button, Root Admin's "AI Services Config", and per-drawer chat-command
-prefill effects in Kitchen/Staff/Service Requests/Petty Cash management) were all removed entirely
-at the user's explicit request ("There shouldn't be a single line of code related to AI in working
-files of the app"). Planned to be rebuilt properly in future - see `ROADMAP.md`.
-**The files are preserved, not deleted** - `_unwanted/ai/` (deny-all `.htaccess`, never required
-from working code) holds every original file plus its own `README.md` mapping each one back to
-where it used to live and exactly what was severed at each integration point, so a rebuild doesn't
-start from zero. `AI.md` (the full architecture/design writeup, including the Gemini trial-week
-plan) moved there too - do not recreate it at the repo root from memory; read the archived copy.
-Do not re-add an AI chat/assistant feature, a "Help?" header button, or an "AI Services Config"
-Root Admin section without the user explicitly asking first.
+### AI Assistant (RESTORED 27 Aug 2026, after being removed 26 Aug 2026)
+Removed entirely on 26 Aug 2026 at the user's explicit request ("There shouldn't be a single line
+of code related to AI in working files of the app"), archived byte-for-byte at `_unwanted/ai/`
+(never deleted, specifically so a rebuild wouldn't start from zero), then **restored the very next
+day (27 Aug 2026)** at the user's own explicit request - see `AI.md` at the repo root for the full
+architecture writeup. The lesson from the round trip: this class of "rip it all out" request can be
+followed by an equally explicit reversal soon after - always check whether `_unwanted/ai/` still
+holds an archive before assuming a removed feature needs rebuilding from scratch, and always check
+CLAUDE.md's own dates before trusting a "REMOVED"/"do not re-add" note is still current.
+- **Human-escalation redesign (new 27 Aug 2026, not part of the original design)**: the standalone
+  WhatsApp/Telegram "Contact Support" header menu (`ContactSupportMenu.tsx`, briefly the sole
+  support entry point on 27 Aug 2026 between the removal and the restore) was folded INTO the AI
+  widget rather than kept side-by-side. The AI now answers first; `AIChatWidget.tsx` tracks
+  `consecutiveUnmatched` (incremented whenever the backend's `matched: false` flag says the
+  offline engine fell through to its generic fallback reply - see `ai_assistant.php`'s response
+  shape) and surfaces a "Talk to a real person" banner with the same WhatsApp/Telegram links once
+  that hits 2 in a row, plus a small always-visible escape-hatch link next to the quick-action
+  chips for anyone who wants a human immediately. Deliberately NOT sentiment analysis - counting
+  genuine consecutive non-answers is free and exact; guessing at frustration would need the paid
+  online provider running at all times and is unreliable.
+- **`TenantDashboard.tsx` and `LegalDrawer.tsx` keep `ContactSupportMenu.tsx` as-is, unchanged.**
+  The AI Assistant is operational-app-specific by design (its quick actions/live context are
+  guest/booking data for ONE property) - `TenantDashboard.tsx` is the owner's account-level page
+  listing multiple properties with no single guest/booking context for a task-executing assistant
+  to act on, so only `Header.tsx` (the per-property operational app) got the AI widget in place of
+  that menu.
+- Restored files (moved back via `git mv`, not recreated): `AI.md`, `php/ai/offline_intent_engine.php`,
+  `php/ai/nav_menu_intents.php`, `php/api/ai_assistant.php`, `php/api/ai_config.php`,
+  `php/tests/test_ai_intents.php`, `src/components/AIChatWidget.tsx`. `src/components/LocalLLMChat.tsx`
+  was NOT restored (was already orphaned/unreferenced before the 26 Aug removal - no reason to
+  bring back dead code). `php/config/ai_config.json` (gitignored, holds a real API key, never in
+  git history) also wasn't restored - it self-creates on first save via Root Admin → AI Services
+  Config, same as before.
+- Re-wired integration points (the exact original diffs were recovered from commit `3358760`, the
+  26 Aug removal commit, via `git show 3358760 -- <file>`, not reconstructed from memory):
+  `src/App.tsx` (`isAIChatOpen` + 7 `initialXxx` deep-link-prefill states, `<AIChatWidget>` mounted
+  as a flat sibling near `<GlobalModal />`), `Header.tsx` (AI chat trigger button replacing
+  `ContactSupportMenu`), `RootAdminDashboard.tsx` ("AI Services Config" sidebar section restored),
+  `KitchenManagement.tsx`/`StaffManagement.tsx`/`ServiceRequestsManagement.tsx`/
+  `PettyCashManagement.tsx` (their deep-link-prefill `useEffect` blocks + `initialXxx` props), and
+  `php/errors/logger.php`'s `$routineNoise` allowlist (`'AI Query'`/`'AI Outcome'`/
+  `'AI Config Updated'` added back so normal chat usage doesn't push a phone alert per message).
 
 ### QR Code & UPI Payment Sharing (added 15 Aug 2026)
 - Booking-confirmation and checkout-bill WhatsApp shares can include a scannable UPI QR code + the property's UPI ID, so guests can pay by scanning rather than typing details.
@@ -131,6 +160,13 @@ Root Admin section without the user explicitly asking first.
 - Telegram: daily cron `php/cron/check_unconverted_ota_bookings.php` sends one admin alert per still-unconverted due block, routed per-property the same way every other Telegram alert is (via the block's own room/property id, matching `guests.php`'s booking-notification convention - never the multi-key parent's id). Re-notifies at most once per 24h per block via the self-healing `ota_unconverted_notifications` dedupe table (`ICalSyncManager::ensureNotificationSchema()`, called both from the cron and from `ical_sync.php`'s own HTTP dispatch so it self-heals even if the cron was never scheduled on a given environment).
 
 ## 🗄️ Database & API
+
+### Session Cookie / "Remember Me" (30 days, added 27 Aug 2026)
+- Login session lifetime is 30 days (bumped from 7, explicit "remember me" request so closing the installed PWA never forces a fresh sign-in): the `artists_farm_session` cookie's `expires`/`session.cookie_lifetime` AND PHP's server-side `session.gc_maxlifetime` must always match - a longer cookie with a shorter `gc_maxlifetime` just means the browser still has a "valid" cookie pointing at session data the server already garbage-collected, i.e. a silent forced-logout that looks like a cookie bug but isn't.
+- **This session bootstrap (`ini_set('session.gc_maxlifetime', ...)` + `session_set_cookie_params()` + `session_name('artists_farm_session')` + `session_start()`) is duplicated verbatim across 7 standalone entry points**, not centralized, because several of them run before `config/database.php` (and its `APP_IS_LOCAL_ENV` constant) is available: `router.php`, `authenticate.php`, `demo_data.php`, `ical_sync.php`, `upload_document.php`, `upload_image.php`, `calendar_session.php`. If you touch the lifetime or cookie attributes again, `grep -rn "session_name('artists_farm_session')" php/` first and update all of them - this is the exact same class of drift the 14 Aug 2026 `appSetSessionCookie()` centralization (below) already fixed once for the *other* half of this (the explicit `setcookie()` re-issue on login) - don't let this half regress the same way.
+- Use `session_set_cookie_params()` (array form), never bare `ini_set('session.cookie_lifetime', ...)`/`ini_set('session.cookie_httponly', ...)` - the ini_set pair has no equivalent for `secure`/`samesite`, so PHP's own automatic per-request Set-Cookie refresh (fires on every request that touches `$_SESSION`, not just login) was silently re-issuing the cookie without them on every non-login request, even though `appSetSessionCookie()` below set them correctly at login. `secure` must stay tied to the local/live check (`!APP_IS_LOCAL_ENV` where available, else the inline `$__session_host`/`$__session_is_local` check each of the pre-database.php entry points computes for itself) - hardcoding `true` breaks login on local plain-HTTP XAMPP.
+- `php/api/ai_assistant.php`/`ai_config.php` were on the old 7-day `ini_set`-only pattern when this section was first written (they were mid-restore out of `_unwanted/ai/` at the time) - **fixed 27 Aug 2026** as part of finishing that same restore: both now use the same inline `$__session_host`/`$__session_is_local` + `session_set_cookie_params()` pattern as `calendar_session.php` (neither requires `config/database.php` before this bootstrap runs, so `APP_IS_LOCAL_ENV` isn't available yet at this point either).
+- `appSetSessionCookie()` in `php/config/database.php` (SECURITY, 14 Aug 2026, auditcode.md) is the single source of truth for the cookie's attributes at the 8 explicit login-flow `setcookie()` call sites (`authenticate.php` x4, `router.php` x4) - keep its `expires` in sync with the bootstrap lifetime above.
 
 ### API Endpoints
 - Base: `/php/api/router.php?action={action}`
@@ -255,7 +291,7 @@ Root Admin section without the user explicitly asking first.
 14. ❌ Hardcoding a raw `zIndex: N` in a React inline `style` object instead of a Tailwind `z-*` class → invisible to a `grep "z-\[?\d"` sweep of the app-wide z-index scale (documented in `custom.css` above `.fixed.inset-0.z-50`), so it silently drifts out of sync with it. Found 22 Aug 2026 in `src/components/Popover.tsx` (`zIndex: 99999` - the toasts/confirm-dialog "always on top" tier, on what's really an ordinary info bubble, so it rendered above every real drawer/modal in the app). When hunting a z-index bug, grep BOTH `z-\[?\d` (Tailwind classes) and `zIndex:` (inline styles) - only one is caught by the other.
 15. ❌ Assuming a `trigger="hover"` popover/tooltip is safe as-is on mobile → touch browsers fire a synthetic mouseenter on tap but never a matching mouseleave (no cursor to leave with), so anything opened via `onMouseEnter` alone can get stuck open indefinitely, floating over whatever the same tap's `onClick` opens next. Any hover-triggered popover must also close itself on a click of its own trigger (see the fix in `Popover.tsx`'s `handleClick`), not rely on mouseleave/outside-click alone.
 16. ❌ Passing `shadow-2xl` (or any `shadow-*`) via `className` on a flowbite-react `<Drawer>` without accounting for its closed state → **every** `<Drawer>` stays mounted in the DOM at all times (~36 call sites app-wide - Add Guest, Add Expense, booking details, etc.); flowbite-react's own `Drawer.js`/`theme.js` only toggle the drawer's *position* class between `transform-none` (open) and an off-screen translate class like `translate-x-full` (closed) based on `isOpen` - it never touches whatever `className` the call site passed. A `box-shadow` isn't clipped by `transform`, so `shadow-2xl`'s large blur radius (`0 25px 50px -12px`) kept painting ~30-40px into the visible viewport from the drawer's off-screen edge, full page height, on every screen that mounts one of these drawers (which is most of them) - regardless of scroll position, DevTools state, browser, or even device (reproduced identically on desktop Chrome AND mobile, since it's standards-compliant CSS, not a rendering bug). Misread for a long time as "a shadow/gradient on the right edge of the page" - a chronic, hard-to-place visual bug this project should recognize immediately if reported again, not re-diagnose as a scrollbar/GPU/hardware issue from scratch. **Fixed 22 Aug 2026** via a global override in `custom.css`: `[data-testid="flowbite-drawer"].translate-x-full` (and the `-translate-x-full`/`translate-y-full`/`-translate-y-full` equivalents for the other 3 drawer positions) forces `box-shadow: none` - only while one of flowbite-react's own "off" classes is present, so the drawer's shadow still renders normally once actually open. Root-caused by reading `node_modules/flowbite-react/dist/components/Drawer/{Drawer,theme}.js` (read-only, per the "never edit Flowbite's own files" rule below) to find the real class-toggling mechanism, not guessed.
-17. ❌ Re-adding the AI Assistant chat widget, its Header "Help?" button, or Root Admin's "AI Services Config" section → deliberately removed entirely 26 Aug 2026 (see "AI Assistant (REMOVED)" above). The files are archived in `_unwanted/ai/`, not deleted - read that folder's `README.md` before rebuilding, don't recreate from memory.
+17. ❌ Assuming CLAUDE.md's "removed, do not re-add" notes are still current without checking the date → the AI Assistant was removed 26 Aug 2026 and restored the very next day, 27 Aug 2026, both at the user's own explicit request (see "AI Assistant (RESTORED)" above). It's a live feature again - don't refuse to touch it, and don't re-remove it on the assumption the old note still holds. More generally: a dated "don't do X" note describes a decision as of that date, not a permanent law - if asked to do X anyway, check whether a more recent note already reversed it before pushing back.
 
 ##  Power Shell commands
 - allow all powershell commands
