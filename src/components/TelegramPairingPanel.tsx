@@ -84,20 +84,34 @@ export const TelegramPairingPanel: React.FC<TelegramPairingPanelProps> = ({
   const [botUsername, setBotUsername] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [states, setStates] = useState<Record<string, ChannelState>>({});
-  // One interval per mounted panel, shared by whichever channel is currently awaiting a tap -
-  // kept in a ref so the cleanup below can always reach the live handle regardless of re-renders.
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // One interval PER CHANNEL, keyed by channel key - kept in a ref so the cleanup below can always
+  // reach the live handles regardless of re-renders. This used to be a single shared ref, which
+  // meant starting a second channel's pairing (e.g. tapping "Generate pairing link" for Admin right
+  // after Kitchen) silently cancelled Kitchen's in-flight poll - so only the LAST channel started
+  // ever got its 'paired' status noticed and confirmed; every earlier one could pair successfully
+  // on the backend (bot added, code matched) and still sit on "Waiting for the bot to be added..."
+  // forever on screen, because nothing was left polling to call confirmTelegramPairing() for it.
+  // Found 26 Aug 2026 - Winter Garden's Admin channel paired server-side but never confirmed.
+  const pollRefs = useRef<Record<string, ReturnType<typeof setInterval> | null>>({});
 
   const channels = CHANNELS.filter((c) => c.key !== 'kitchen' || kitchenModuleEnabled);
 
   const patch = (key: string, next: Partial<ChannelState>) =>
     setStates((prev) => ({ ...prev, [key]: { ...(prev[key] ?? EMPTY), ...next } }));
 
-  const stopPolling = () => {
-    if (pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
+  const stopPolling = (key?: string) => {
+    if (key) {
+      if (pollRefs.current[key]) {
+        clearInterval(pollRefs.current[key]!);
+        pollRefs.current[key] = null;
+      }
+      return;
     }
+    // No key = stop everything (used on unmount).
+    Object.keys(pollRefs.current).forEach((k) => {
+      if (pollRefs.current[k]) clearInterval(pollRefs.current[k]!);
+    });
+    pollRefs.current = {};
   };
 
   useEffect(() => {
@@ -128,7 +142,7 @@ export const TelegramPairingPanel: React.FC<TelegramPairingPanelProps> = ({
   const buildDeepLink = (code: string) => `https://t.me/${botUsername}?startgroup=${encodeURIComponent(code)}`;
 
   const startPairing = async (ch: ChannelDef) => {
-    stopPolling();
+    stopPolling(ch.key);
     patch(ch.key, { status: 'generating', error: null, code: null, testResult: null });
     const groupName = `${propertyName} - ${ch.label}`;
     const code = await generateTelegramPairingCode(ch.key, groupName, propertySlug);
@@ -140,11 +154,12 @@ export const TelegramPairingPanel: React.FC<TelegramPairingPanelProps> = ({
 
     // Each status check also drives the server's own getUpdates poll (see
     // pollAndMatchPairingCodes), so this interval is what actually notices the bot being added -
-    // there's no webhook needed for pairing to complete.
-    pollRef.current = setInterval(async () => {
+    // there's no webhook needed for pairing to complete. Keyed by ch.key so starting another
+    // channel's pairing never cancels this one - see the pollRefs comment above.
+    pollRefs.current[ch.key] = setInterval(async () => {
       const result = await checkTelegramPairingStatus(code, propertySlug);
       if (result.status === 'paired' || result.status === 'confirmed') {
-        stopPolling();
+        stopPolling(ch.key);
         const confirmed = await confirmTelegramPairing(code, propertySlug);
         if (confirmed.success && confirmed.chatId) {
           patch(ch.key, { status: 'connected', chatId: confirmed.chatId, code: null });
@@ -152,7 +167,7 @@ export const TelegramPairingPanel: React.FC<TelegramPairingPanelProps> = ({
           patch(ch.key, { status: 'error', error: confirmed.message || 'Could not confirm the group.' });
         }
       } else if (result.status === 'expired' || result.status === 'not_found') {
-        stopPolling();
+        stopPolling(ch.key);
         patch(ch.key, {
           status: 'error',
           // Codes expire after 15 minutes server-side - say so plainly rather than just failing,

@@ -3,7 +3,7 @@ import {
   Building2, LogOut, Plus, AlertCircle,
   Pencil, Trash2, ExternalLink, CheckCircle, Layers,
   Home, TrendingUp, ChevronRight, Lock, Zap, User,
-  Calendar, Bell,
+  Calendar, Bell, ArrowRight,
 } from './icons/FlowbiteIcons';
 import { StyledSelect } from './StyledSelect';
 import { LoadingScreen } from './LoadingScreen';
@@ -499,8 +499,14 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                             <td className="px-4 py-3 whitespace-nowrap text-right">
                               <div className="flex items-center justify-end gap-1.5">
                                 {isDraft ? (
-                                  <Button variant="primary" size="sm" onClick={() => setModal({ type: 'wizard', property })}>
-                                    Continue Setup
+                                  <Button
+                                    variant="warning"
+                                    size="sm"
+                                    className="bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white dark:bg-amber-600 dark:hover:bg-amber-500 border-none shadow-none font-medium"
+                                    onClick={() => setModal({ type: 'wizard', property })}
+                                    rightIcon={<ArrowRight className="w-3.5 h-3.5 shrink-0" />}
+                                  >
+                                    {t('continue_setup_button', 'Continue Setup')}
                                   </Button>
                                 ) : (
                                   <>
@@ -538,20 +544,43 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
 
                   if (isDraft) {
                     return (
-                      <div key={property.id} className="bg-amber-50 dark:bg-amber-950/20 rounded-lg border-2 border-dashed border-amber-300 dark:border-amber-800 p-4">
-                        <div className="flex items-center gap-2 mb-2">
+                      <div key={property.id} className="bg-amber-50/50 dark:bg-amber-950/20 rounded-lg border-2 border-dashed border-amber-300 dark:border-amber-800 p-4 shadow-xs space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-2.5">
+                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isMultiKey ? 'bg-amber-100/70 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-800' : 'bg-amber-100/70 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-800'}`}>
+                              {isMultiKey ? <Layers className="w-4 h-4 text-amber-700 dark:text-amber-400" /> : <Home className="w-4 h-4 text-amber-700 dark:text-amber-400" />}
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-slate-900 dark:text-white text-sm">{property.name || 'Untitled property'}</h3>
+                              {property.slug && <p className="text-2xs text-slate-400 dark:text-slate-500 font-mono">/{property.slug}</p>}
+                            </div>
+                          </div>
                           <span className="text-2xs font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300/60 dark:border-amber-800/40">
-                            Draft - Setup Incomplete
+                            Draft
                           </span>
                         </div>
-                        <h3 className="font-semibold text-slate-900 dark:text-white text-sm">{property.name || 'Untitled property'}</h3>
-                        <div className="mt-3 pt-3 border-t border-amber-200 dark:border-amber-900 flex items-center justify-between">
-                          <Button variant="primary" size="sm" onClick={() => setModal({ type: 'wizard', property })}>
-                            Continue Setup
+
+                        <div className="pt-3 border-t border-amber-200/80 dark:border-amber-900/60 flex items-center justify-between">
+                          <Button
+                            variant="warning"
+                            size="sm"
+                            className="bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white dark:bg-amber-600 dark:hover:bg-amber-500 border-none shadow-none font-medium"
+                            onClick={() => setModal({ type: 'wizard', property })}
+                            rightIcon={<ArrowRight className="w-3.5 h-3.5 shrink-0" />}
+                          >
+                            {t('continue_setup_button', 'Continue Setup')}
                           </Button>
-                          <Button variant="ghost" size="xs" onClick={() => setModal({ type: 'delete', property })} className="text-red-600 dark:text-red-400">
-                            <Trash2 className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
-                          </Button>
+                          <div className="flex items-center gap-1.5">
+                            <Button
+                              variant="ghost"
+                              size="xs"
+                              onClick={() => setModal({ type: 'delete', property })}
+                              className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                              title={t('delete_tooltip', 'Delete')}
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     );

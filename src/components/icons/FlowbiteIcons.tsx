@@ -590,3 +590,4 @@ catalog['Wrench'] = Wrench;
 catalog['Zap'] = Zap;
 
 export const FLOWBITE_ICONS = catalog;
+export { TelegramIcon } from './TelegramIcon';

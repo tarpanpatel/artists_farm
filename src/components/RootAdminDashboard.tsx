@@ -77,6 +77,15 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
     }
   }, [activeSection]);
 
+  const isEditDefaultsActive = ['default_expenses', 'default_bills', 'system_stock', 'service_request_types', 'edit_main_menu', 'appearance'].includes(activeSection);
+  const [isEditDefaultsOpen, setIsEditDefaultsOpen] = useState(isEditDefaultsActive);
+
+  useEffect(() => {
+    if (isEditDefaultsActive) {
+      setIsEditDefaultsOpen(true);
+    }
+  }, [activeSection, isEditDefaultsActive]);
+
   const [navItems, setNavItems] = useState<any[]>([]);
   const [navItemsError, setNavItemsError] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -232,117 +241,6 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
     }
   }, [activeSection]);
 
-  const EDIT_DEFAULTS_SECTIONS: SectionType[] = [
-    'default_expenses',
-    'default_bills',
-    'system_stock',
-    'service_request_types',
-    'edit_main_menu',
-  ];
-
-  const [isEditDefaultsOpen, setIsEditDefaultsOpen] = useState(
-    EDIT_DEFAULTS_SECTIONS.includes(activeSection)
-  );
-
-  useEffect(() => {
-    if (EDIT_DEFAULTS_SECTIONS.includes(activeSection)) {
-      setIsEditDefaultsOpen(true);
-    }
-  }, [activeSection]);
-
-  const topMenuItems = [
-    {
-      id: 'dashboard',
-      label: t('root_dashboard_label', 'Dashboard'),
-      icon: BarChart3,
-      section: 'dashboard' as SectionType,
-    },
-    {
-      id: 'tenants_properties',
-      label: t('root_tenants_properties_label', 'Properties'),
-      icon: Building2,
-      section: 'tenants_properties' as SectionType,
-    },
-  ];
-
-  const editDefaultsSubItems = [
-    {
-      id: 'default_expenses',
-      label: t('root_default_expenses_menu_label', 'Default Expenses (MK)'),
-      icon: DollarSign,
-      section: 'default_expenses' as SectionType,
-    },
-    {
-      id: 'default_bills',
-      label: 'Default Bills (MK)',
-      icon: Receipt,
-      section: 'default_bills' as SectionType,
-    },
-    {
-      id: 'system_stock',
-      label: t('root_system_stock_label', 'System Stock Catalog'),
-      icon: Package,
-      section: 'system_stock' as SectionType,
-    },
-    {
-      id: 'service_request_types',
-      label: t('root_service_request_types_menu_label', 'Service Request Types'),
-      icon: Bell,
-      section: 'service_request_types' as SectionType,
-    },
-    {
-      id: 'edit_main_menu',
-      label: t('root_edit_main_menu_label', 'Edit Main Menu'),
-      icon: Pencil,
-      section: 'edit_main_menu' as SectionType,
-    },
-  ];
-
-  const bottomMenuItems = [
-    {
-      id: 'appearance',
-      label: t('root_appearance_menu_label', 'Appearance'),
-      icon: Palette,
-      section: 'appearance' as SectionType,
-    },
-    {
-      id: 'telegram_templates',
-      label: t('root_telegram_templates_label', 'Telegram Templates'),
-      icon: Send,
-      section: 'telegram_templates' as SectionType,
-    },
-    {
-      id: 'email_settings',
-      label: t('root_email_settings_label', 'Email Settings'),
-      icon: Mail,
-      section: 'email_settings' as SectionType,
-    },
-    {
-      id: 'account_settings',
-      label: t('root_account_settings_label', 'Account Settings'),
-      icon: UserCog,
-      section: 'account_settings' as SectionType,
-    },
-    {
-      id: 'db_sync',
-      label: t('root_db_sync_label', 'Sync to Local'),
-      icon: DatabaseBackup,
-      section: 'db_sync' as SectionType,
-    },
-    {
-      id: 'demo_data',
-      label: t('root_demo_data_label', 'Reset Demo Data'),
-      icon: RefreshCw,
-      section: 'demo_data' as SectionType,
-    },
-    {
-      id: 'cron_jobs',
-      label: 'Cron Jobs',
-      icon: Server,
-      section: 'cron_jobs' as SectionType,
-    },
-  ];
-
   const handleTelescopeOpen = () => {
     window.open('/php/errors/', '_blank');
   };
@@ -387,52 +285,153 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
 
           <SidebarItems>
             <SidebarItemGroup>
-              {topMenuItems.map((item) => (
-                <SidebarItem
-                  key={item.id}
-                  as="button"
-                  icon={item.icon}
-                  active={activeSection === item.section}
-                  onClick={() => goToSection(item.section)}
-                  className="w-full cursor-pointer text-left"
-                >
-                  {item.label}
-                </SidebarItem>
-              ))}
+              <SidebarItem
+                as="button"
+                icon={BarChart3}
+                active={activeSection === 'dashboard'}
+                onClick={() => goToSection('dashboard')}
+                className="w-full cursor-pointer text-left"
+              >
+                {t('root_dashboard_label', 'Dashboard')}
+              </SidebarItem>
 
-              {/* Edit Defaults Parent Accordion Menu */}
+              <SidebarItem
+                as="button"
+                icon={Building2}
+                active={activeSection === 'tenants_properties'}
+                onClick={() => goToSection('tenants_properties')}
+                className="w-full cursor-pointer text-left"
+              >
+                {t('root_tenants_properties_label', 'Properties')}
+              </SidebarItem>
+
               <SidebarCollapse
-                label={t('edit_defaults_parent_menu_label', 'Edit Defaults')}
                 icon={Pencil}
+                label="Edit Defaults"
                 open={isEditDefaultsOpen}
                 onClick={() => setIsEditDefaultsOpen(!isEditDefaultsOpen)}
+                className="w-full cursor-pointer"
               >
-                {editDefaultsSubItems.map((subItem) => (
-                  <SidebarItem
-                    key={subItem.id}
-                    as="button"
-                    icon={subItem.icon}
-                    active={activeSection === subItem.section}
-                    onClick={() => goToSection(subItem.section)}
-                    className="w-full cursor-pointer text-left"
-                  >
-                    {subItem.label}
-                  </SidebarItem>
-                ))}
+                <SidebarItem
+                  as="button"
+                  icon={DollarSign}
+                  active={activeSection === 'default_expenses'}
+                  onClick={() => goToSection('default_expenses')}
+                  className="w-full cursor-pointer text-left pl-6"
+                >
+                  {t('root_default_expenses_menu_label', 'Default Expenses (MK)')}
+                </SidebarItem>
+
+                <SidebarItem
+                  as="button"
+                  icon={Receipt}
+                  active={activeSection === 'default_bills'}
+                  onClick={() => goToSection('default_bills')}
+                  className="w-full cursor-pointer text-left pl-6"
+                >
+                  Default Bills (MK)
+                </SidebarItem>
+
+                <SidebarItem
+                  as="button"
+                  icon={Package}
+                  active={activeSection === 'system_stock'}
+                  onClick={() => goToSection('system_stock')}
+                  className="w-full cursor-pointer text-left pl-6"
+                >
+                  {t('root_system_stock_label', 'System Stock Catalog')}
+                </SidebarItem>
+
+                <SidebarItem
+                  as="button"
+                  icon={Bell}
+                  active={activeSection === 'service_request_types'}
+                  onClick={() => goToSection('service_request_types')}
+                  className="w-full cursor-pointer text-left pl-6"
+                >
+                  {t('root_service_request_types_menu_label', 'Service Request Types')}
+                </SidebarItem>
+
+                <SidebarItem
+                  as="button"
+                  icon={Pencil}
+                  active={activeSection === 'edit_main_menu'}
+                  onClick={() => goToSection('edit_main_menu')}
+                  className="w-full cursor-pointer text-left pl-6"
+                >
+                  {t('root_edit_main_menu_label', 'Edit Main Menu')}
+                </SidebarItem>
+
+                <SidebarItem
+                  as="button"
+                  icon={Palette}
+                  active={activeSection === 'appearance'}
+                  onClick={() => goToSection('appearance')}
+                  className="w-full cursor-pointer text-left pl-6"
+                >
+                  {t('root_appearance_menu_label', 'Appearance')}
+                </SidebarItem>
               </SidebarCollapse>
 
-              {bottomMenuItems.map((item) => (
-                <SidebarItem
-                  key={item.id}
-                  as="button"
-                  icon={item.icon}
-                  active={activeSection === item.section}
-                  onClick={() => goToSection(item.section)}
-                  className="w-full cursor-pointer text-left"
-                >
-                  {item.label}
-                </SidebarItem>
-              ))}
+              <SidebarItem
+                as="button"
+                icon={Send}
+                active={activeSection === 'telegram_templates'}
+                onClick={() => goToSection('telegram_templates')}
+                className="w-full cursor-pointer text-left"
+              >
+                {t('root_telegram_templates_label', 'Telegram Templates')}
+              </SidebarItem>
+
+              <SidebarItem
+                as="button"
+                icon={Mail}
+                active={activeSection === 'email_settings'}
+                onClick={() => goToSection('email_settings')}
+                className="w-full cursor-pointer text-left"
+              >
+                {t('root_email_settings_label', 'Email Settings')}
+              </SidebarItem>
+
+              <SidebarItem
+                as="button"
+                icon={UserCog}
+                active={activeSection === 'account_settings'}
+                onClick={() => goToSection('account_settings')}
+                className="w-full cursor-pointer text-left"
+              >
+                {t('root_account_settings_label', 'Account Settings')}
+              </SidebarItem>
+
+              <SidebarItem
+                as="button"
+                icon={DatabaseBackup}
+                active={activeSection === 'db_sync'}
+                onClick={() => goToSection('db_sync')}
+                className="w-full cursor-pointer text-left"
+              >
+                {t('root_db_sync_label', 'Sync to Local')}
+              </SidebarItem>
+
+              <SidebarItem
+                as="button"
+                icon={RefreshCw}
+                active={activeSection === 'demo_data'}
+                onClick={() => goToSection('demo_data')}
+                className="w-full cursor-pointer text-left"
+              >
+                {t('root_demo_data_label', 'Reset Demo Data')}
+              </SidebarItem>
+
+              <SidebarItem
+                as="button"
+                icon={Server}
+                active={activeSection === 'cron_jobs'}
+                onClick={() => goToSection('cron_jobs')}
+                className="w-full cursor-pointer text-left"
+              >
+                Cron Jobs
+              </SidebarItem>
 
               {/* Telescope Monitoring Link */}
               <SidebarItem

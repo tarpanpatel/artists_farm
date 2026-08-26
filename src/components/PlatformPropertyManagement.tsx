@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Plus, Loader2, AlertCircle, AlertTriangle, BarChart3, ChevronDown, ChevronRight, Pencil, Eye, CheckCircle2, Share2, Copy, XCircle, ExternalLink, KeyRound, X, DoorOpen, RotateCcw, Mail, MessageCircle } from './icons/FlowbiteIcons';
-import { Drawer, Alert, Checkbox } from 'flowbite-react';
+import { Building2, Plus, Loader2, AlertCircle, AlertTriangle, BarChart3, Pencil, Eye, CheckCircle2, Share2, Copy, XCircle, ExternalLink, X, TelegramIcon, Trash2 } from './icons/FlowbiteIcons';
+import { Drawer, Alert, Modal } from 'flowbite-react';
 import { ToggleSwitch } from './ToggleSwitch';
 import { StyledSelect } from './StyledSelect';
 import { Button } from './Button';
@@ -80,6 +80,8 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
   // getter or handleAddProperty itself since they're still referenced by the shared modal's
   // dead 'add'-mode branches, kept rather than partially unwound to limit risk in this file.
   const [selectedTenantForProperty] = useState<number | null>(null);
+  const [viewPropertiesTenant, setViewPropertiesTenant] = useState<Tenant | null>(null);
+  const [selectedTelegramProperty, setSelectedTelegramProperty] = useState<Property | null>(null);
   const [operationLoading, setOperationLoading] = useState(false);
   const [showAddTenantModal, setShowAddTenantModal] = useState(false);
   const [newTenantNameTouched, setNewTenantNameTouched] = useState(false);
@@ -283,8 +285,8 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
    * read-merge-write into the real config (never clobbers already-paired groups/routing) and
    * mirrors into properties.telegram_bot_token too, so this field's own display stays correct.
    */
-  const saveBotToken = async () => {
-    if (!editingProperty) return;
+  const saveBotTokenForProperty = async (targetProp: Property) => {
+    if (!targetProp) return;
     setIsSavingBotToken(true);
     try {
       const response = await fetch('/php/api/router.php?action=set_property_telegram_bot_token', {
@@ -292,14 +294,14 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          property_id: editingProperty.id,
-          telegram_bot_token: editingProperty.telegram_bot_token || '',
+          property_id: targetProp.id,
+          telegram_bot_token: targetProp.telegram_bot_token || '',
         }),
       });
       const data = await response.json();
       if (data.success) {
         setProperties((prev) =>
-          prev.map((p) => (p.id === editingProperty.id ? { ...p, telegram_bot_token: editingProperty.telegram_bot_token } : p))
+          prev.map((p) => (p.id === targetProp.id ? { ...p, telegram_bot_token: targetProp.telegram_bot_token } : p))
         );
         setIsEditingBotToken(false);
         setBotTokenSaveCount((n) => n + 1);
@@ -311,6 +313,39 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
       setError('Failed to save bot token');
     } finally {
       setIsSavingBotToken(false);
+    }
+  };
+
+  const toggleTelegramTemplateCustomization = async (targetProp: Property, enabled: boolean) => {
+    try {
+      const response = await fetch('/php/api/router.php?action=edit_property', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          property_id: targetProp.id,
+          name: targetProp.name,
+          slug: targetProp.slug,
+          color_scheme: targetProp.tailwind_color_scheme,
+          status: targetProp.status,
+          telegram_template_customization_enabled: enabled,
+          telegram_bot_token: targetProp.telegram_bot_token || '',
+          is_public_demo: !!targetProp.is_public_demo,
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        const updatedVal = enabled ? 1 : 0;
+        const updated = { ...targetProp, telegram_template_customization_enabled: updatedVal };
+        setSelectedTelegramProperty(updated);
+        setProperties((prev) =>
+          prev.map((p) => (p.id === targetProp.id ? updated : p))
+        );
+      } else {
+        setError(data.message || 'Failed to toggle template customization');
+      }
+    } catch (err) {
+      console.error('Failed to toggle template customization:', err);
     }
   };
 
@@ -448,6 +483,48 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
     } catch (err) {
       console.error('Failed to save tenant:', err);
       setError('Failed to save tenant');
+    }
+  };
+
+  const [tenantToggleLoading, setTenantToggleLoading] = useState<number | null>(null);
+
+  const toggleTenantStatus = async (tenantId: number, currentActiveState: boolean) => {
+    const tenantToUpdate = tenants.find((t) => t.id === tenantId);
+    if (!tenantToUpdate) return;
+    const newActiveState = !currentActiveState;
+
+    try {
+      setTenantToggleLoading(tenantId);
+      const response = await fetch('/php/api/router.php?action=update_tenant', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: tenantToUpdate.id,
+          name: tenantToUpdate.name,
+          slug: tenantToUpdate.slug,
+          email: tenantToUpdate.email,
+          phone: tenantToUpdate.phone,
+          subscription_status: tenantToUpdate.subscription_status,
+          is_active: newActiveState ? 1 : 0,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setTenants((prev) =>
+          prev.map((t) => (t.id === tenantId ? { ...t, is_active: newActiveState ? 1 : 0 } : t))
+        );
+      } else {
+        setError(data.message || 'Failed to toggle tenant status');
+      }
+    } catch (err) {
+      console.error('Failed to toggle tenant status:', err);
+      setError('Failed to toggle tenant status');
+    } finally {
+      setTenantToggleLoading(null);
     }
   };
 
@@ -745,7 +822,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 platform-property-management">
+    <div className="platform-property-management">
       {/* Success Toast */}
       {successMessage && (
         <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] bg-emerald-600 text-white px-6 py-3 rounded-lg shadow-2xl animate-pulse flex items-center gap-2">
@@ -753,10 +830,8 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
         </div>
       )}
 
-
-
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <div className="space-y-6">
         {error && (
           <div className="mb-6 flex gap-3 p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
             <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
@@ -843,389 +918,72 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                       const type = (p as any).property_type;
                       return type !== 'MULTI_KEY_ROOM';
                     });
-                    const isExpanded = expandedTenant === tenant.id;
-
                     return (
-                      <React.Fragment key={tenant.id}>
-                        <tr className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-3">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const nowExpanding = !isExpanded;
-                                  setExpandedTenant(nowExpanding ? tenant.id : null);
-                                  if (nowExpanding) loadTenantCredentials(tenant.id);
-                                }}
-                                className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
-                                title={isExpanded ? 'Collapse Details' : 'Expand Details'}
-                              >
-                                {isExpanded ? (
-                                  <ChevronDown className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                                ) : (
-                                  <ChevronRight className="w-4 h-4 text-slate-400 dark:text-slate-500 shrink-0" />
-                                )}
-                              </button>
-                              <div className="w-9 h-9 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
-                                <Building2 className="w-4.5 h-4.5" />
-                              </div>
-                              <div>
-                                <div className="font-semibold text-slate-900 dark:text-white text-xs">{tenant.name}</div>
-                                <div className="text-2xs text-slate-400 dark:text-slate-500 font-mono">/{tenant.slug} · ID: {tenant.id}</div>
-                              </div>
+                      <tr key={tenant.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+                              <Building2 className="w-4.5 h-4.5" />
                             </div>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <div className="text-xs text-slate-700 dark:text-slate-200 font-medium">
-                              {tenantProperties.length} {tenantProperties.length === 1 ? 'Property' : 'Properties'}
+                            <div>
+                              <div className="font-semibold text-slate-900 dark:text-white text-xs">{tenant.name}</div>
+                              <div className="text-2xs text-slate-400 dark:text-slate-500 font-mono">/{tenant.slug} · ID: {tenant.id}</div>
                             </div>
-                            <div className="text-2xs text-slate-400 dark:text-slate-500">
-                              Slots Used: {tenant.slots_used ?? tenantProperties.length}/{tenant.max_properties}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <span className={`text-2xs font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
-                              tenant.is_active
-                                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40'
-                                : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
-                            }`}>
-                              {tenant.is_active ? t('active_status_badge', 'Active') : t('inactive_status_badge', 'Inactive')}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              <Button
-                                variant="primary"
-                                size="sm"
-                                onClick={() => window.open(`/artists_farm/${tenant.slug}/#dashboard`, '_blank')}
-                                leftIcon={<ExternalLink className="w-3.5 h-3.5 shrink-0" />}
-                              >
-                                {t('visit_tenant_dashboard_tooltip', 'Open Business')}
-                              </Button>
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => handleManageTenant(tenant)}
-                                leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
-                              >
-                                Edit
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="xs"
-                                onClick={() => setShowDeleteTenantModal(tenant.id)}
-                                title={t('delete_tenant_tooltip', 'Delete Tenant')}
-                                className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
-                              >
-                                <X className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-
-                        {/* Expanded Details Row */}
-                        {isExpanded && (
-                          <tr className="bg-slate-50/80 dark:bg-slate-800/40 border-b border-slate-200 dark:border-slate-700">
-                            <td colSpan={4} className="p-4 sm:p-6 space-y-6">
-                              {/* Subscription & Login Credentials Section */}
-                              <div className="bg-white dark:bg-slate-900 rounded-lg p-4 border border-slate-200 dark:border-slate-700 space-y-4 shadow-2xs">
-                                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-                                  <h4 className="text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                                    <KeyRound className="w-4 h-4 text-indigo-500" />
-                                    {t('subscription_details_heading', 'Subscription & Credentials')}
-                                  </h4>
-                                  <span className="text-2xs font-semibold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                                    Plan: {tenant.subscription_status} · Email: {tenant.email || '-'} · Phone: {tenant.phone || '-'}
-                                  </span>
-                                </div>
-
-                                {credsLoadingId === tenant.id ? (
-                                  <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 py-2">
-                                    <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading credentials...
-                                  </p>
-                                ) : tenantCredsMap[tenant.id] === 'not_found' || !tenantCredsMap[tenant.id] ? (
-                                  <div className="flex items-center justify-between py-1">
-                                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                                      {t('no_login_exists_message', 'No login exists for this tenant yet.')}
-                                    </p>
-                                    <Button
-                                      onClick={() => handleCreateTenantLogin(tenant.id)}
-                                      disabled={creatingLoginId === tenant.id}
-                                      variant="secondary"
-                                      size="xs"
-                                      className="flex items-center gap-1.5"
-                                    >
-                                      {creatingLoginId === tenant.id ? (
-                                        <>
-                                          <Loader2 className="w-3.5 h-3.5 animate-spin" /> {t('creating_button', 'Creating...')}
-                                        </>
-                                      ) : (
-                                        <>
-                                          <Plus className="w-3.5 h-3.5" /> {t('create_login_button', 'Create Login')}
-                                        </>
-                                      )}
-                                    </Button>
-                                    {createLoginError?.tenantId === tenant.id && (
-                                      <p className="text-2xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1">
-                                        <AlertCircle className="w-3 h-3 shrink-0" /> {createLoginError.message}
-                                      </p>
-                                    )}
-                                  </div>
-                                ) : (
-                                  (() => {
-                                    const creds = tenantCredsMap[tenant.id] as { username: string; passcode: string; mustChangePasscode: boolean };
-                                    const isRevealed = revealedPasscodeId === tenant.id;
-                                    return (
-                                      <div className="flex flex-wrap items-center justify-between gap-4 pt-1">
-                                        <div className="flex items-center gap-6 text-xs">
-                                          <div>
-                                            <p className="text-2xs text-slate-400 dark:text-slate-500 uppercase">{t('username_column', 'Username')}</p>
-                                            <p className="font-mono font-semibold text-slate-900 dark:text-white">{creds.username}</p>
-                                          </div>
-                                          <div>
-                                            <p className="text-2xs text-slate-400 dark:text-slate-500 uppercase">{t('passcode_label', 'Passcode')}</p>
-                                            <div className="flex items-center gap-2">
-                                              <p className="font-mono font-semibold text-slate-900 dark:text-white tracking-widest">
-                                                {isRevealed ? creds.passcode : '\u2022'.repeat(creds.passcode.length || 6)}
-                                              </p>
-                                              <Button
-                                                onClick={() => setRevealedPasscodeId(isRevealed ? null : tenant.id)}
-                                                className="text-indigo-600 dark:text-indigo-400 font-semibold"
-                                                variant="link"
-                                              >
-                                                {isRevealed ? t('hide_button', 'Hide') : t('show_button', 'Show')}
-                                              </Button>
-                                              <Button
-                                                onClick={() => navigator.clipboard?.writeText(creds.passcode)}
-                                                className="text-indigo-600 dark:text-indigo-400"
-                                                title={t('copy_passcode_tooltip', 'Copy passcode')}
-                                                variant="ghost"
-                                                size="xs"
-                                              >
-                                                <Copy className="w-3.5 h-3.5" />
-                                              </Button>
-                                            </div>
-                                          </div>
-                                        </div>
-
-                                        <div className="flex items-center gap-2">
-                                          <div>
-                                            <Button
-                                              onClick={() => handleResetTenantLogin(tenant.id)}
-                                              disabled={resettingLoginId === tenant.id}
-                                              variant="secondary"
-                                              size="xs"
-                                              leftIcon={resettingLoginId === tenant.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
-                                            >
-                                              {resettingLoginId === tenant.id ? t('resetting_button', 'Resetting...') : t('reset_password_button', 'Reset Password')}
-                                            </Button>
-                                            {resetLoginError?.tenantId === tenant.id && (
-                                              <p className="text-2xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1">
-                                                <AlertCircle className="w-3 h-3 shrink-0" /> {resetLoginError.message}
-                                              </p>
-                                            )}
-                                          </div>
-
-                                          <Button
-                                            onClick={() => handleSendLoginInfoEmail(tenant.id, creds.username, tenant.email)}
-                                            disabled={sendingLoginId === tenant.id}
-                                            title={!tenant.email ? t('no_tenant_email_tooltip', 'No email on file for this tenant') : undefined}
-                                            variant="secondary"
-                                            size="xs"
-                                            leftIcon={sendingLoginId === tenant.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
-                                          >
-                                            {sendingLoginId === tenant.id ? t('sending_button', 'Sending...') : t('send_via_email_button', 'Send via Email')}
-                                          </Button>
-
-                                          {tenant.phone ? (
-                                            <a href={buildTenantWhatsAppShareUrl(tenant, creds)} target="_blank" rel="noopener noreferrer">
-                                              <Button variant="secondary" size="xs" leftIcon={<MessageCircle className="w-3.5 h-3.5 text-emerald-600" />}>
-                                                {t('send_via_whatsapp_button', 'Share via WhatsApp')}
-                                              </Button>
-                                            </a>
-                                          ) : (
-                                            <Button variant="secondary" size="xs" disabled leftIcon={<MessageCircle className="w-3.5 h-3.5 text-slate-400" />}>
-                                              {t('send_via_whatsapp_button', 'Share via WhatsApp')}
-                                            </Button>
-                                          )}
-                                        </div>
-                                      </div>
-                                    );
-                                  })()
-                                )}
-                              </div>
-
-                              {/* Properties Sub-Table. No "Add Property" trigger here (removed 26
-                                  Aug 2026, explicit request) - properties are added by the owner
-                                  themselves from their own Tenant Dashboard; if they haven't, Root
-                                  Admin creates it for them from there too, via "Visit Their
-                                  Dashboard" above, rather than maintaining a second, separate
-                                  add-property flow here. */}
-                              <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-4 space-y-3 shadow-2xs">
-                                <div className="flex items-center justify-between">
-                                  <h4 className="text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                                    <Building2 className="w-4 h-4 text-indigo-500" />
-                                    Properties ({tenantProperties.length})
-                                  </h4>
-                                </div>
-
-                                {tenantProperties.length === 0 ? (
-                                  <p className="text-xs text-slate-400 dark:text-slate-500 italic py-2">
-                                    {t('no_properties_yet_message', 'No properties yet')}
-                                  </p>
-                                ) : (
-                                  <div className="space-y-2">
-                                    {tenantProperties.map((prop) => {
-                                      const kitchenEnabled = propertyModules[prop.id]?.kitchen || false;
-                                      const isTogglingModule = moduleToggleLoading === `kitchen-${prop.id}`;
-                                      const isRoom = (prop as any).property_type === 'MULTI_KEY_ROOM';
-                                      const isMultiKey = (prop as any).property_type === 'MULTI_KEY';
-
-                                      const childRooms = isMultiKey
-                                        ? tenantProperties.filter(p => (p as any).parent_property_id === prop.id)
-                                        : [];
-
-                                      if (isRoom) return null;
-
-                                      return (
-                                        <div key={prop.id} className="space-y-1">
-                                          <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/60 rounded-lg border border-slate-200 dark:border-slate-700">
-                                            <div>
-                                              <div className="flex items-center gap-2">
-                                                <p className="text-xs font-semibold text-slate-900 dark:text-white">{prop.name}</p>
-                                                <span className={`text-2xs font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
-                                                  isMultiKey
-                                                    ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/40'
-                                                    : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
-                                                }`}>
-                                                  {isMultiKey ? t('multi_key_badge', 'Multi-Room') : t('single_badge', 'Single')}
-                                                </span>
-                                              </div>
-                                              <p className="text-2xs text-slate-400 dark:text-slate-500 font-mono">/{prop.slug}</p>
-                                            </div>
-
-                                            <div className="flex items-center gap-4">
-                                              <div className="flex items-center gap-3">
-                                                <div className="flex items-center gap-1.5">
-                                                  <span className="text-2xs text-slate-500 dark:text-slate-400">{t('active_toggle_label', 'Active:')}</span>
-                                                  <ToggleSwitch
-                                                    enabled={prop.status === 'active'}
-                                                    onChange={() => togglePropertyStatus(prop.id, prop.status)}
-                                                    disabled={propertyToggleLoading === prop.id}
-                                                  />
-                                                </div>
-                                                {!isRoom && (
-                                                  <div className="flex items-center gap-1.5">
-                                                    <span className="text-2xs text-slate-500 dark:text-slate-400">{t('kitchen_toggle_label', 'Kitchen:')}</span>
-                                                    <ToggleSwitch
-                                                      enabled={kitchenEnabled}
-                                                      onChange={() => toggleKitchenModule(prop.id, kitchenEnabled)}
-                                                      disabled={isTogglingModule}
-                                                    />
-                                                  </div>
-                                                )}
-                                              </div>
-
-                                              <div className="flex items-center gap-1">
-                                                <Button
-                                                  onClick={() => openPropertyWithAutoLogin(prop, tenant.slug)}
-                                                  variant="ghost"
-                                                  size="xs"
-                                                  title={t('open_property_tab_tooltip', 'Open Property in New Tab')}
-                                                  className="text-emerald-600 dark:text-emerald-400"
-                                                >
-                                                  <Eye className="w-3.5 h-3.5" />
-                                                </Button>
-                                                <Button
-                                                  onClick={() => {
-                                                    setEditingProperty(prop);
-                                                    setIsEditingBotToken(false);
-                                                    setShowPropertyModal('edit');
-                                                  }}
-                                                  variant="ghost"
-                                                  size="xs"
-                                                  title={t('edit_property_tooltip', 'Edit Property')}
-                                                  className="text-slate-600 dark:text-slate-300"
-                                                >
-                                                  <Pencil className="w-3.5 h-3.5" />
-                                                </Button>
-                                                <Button
-                                                  onClick={() => setShowDeletePropertyModal(prop.id)}
-                                                  variant="ghost"
-                                                  size="xs"
-                                                  title={t('delete_property_tooltip', 'Delete Property')}
-                                                  className="text-red-600 dark:text-red-400 hover:text-red-700"
-                                                >
-                                                  <X className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
-                                                </Button>
-                                              </div>
-                                            </div>
-                                          </div>
-
-                                          {/* Nested Child Rooms (if MultiKey) */}
-                                          {isMultiKey && childRooms.length > 0 && (
-                                            <div className="ml-5 space-y-1 border-l-2 border-slate-200 dark:border-slate-700 pl-3">
-                                              {childRooms.map((room) => (
-                                                <div
-                                                  key={room.id}
-                                                  className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-700"
-                                                >
-                                                  <div className="flex items-center gap-2">
-                                                    <DoorOpen className="w-3.5 h-3.5 text-slate-400" />
-                                                    <span className="text-xs font-medium text-slate-800 dark:text-slate-200">{room.name}</span>
-                                                    <span className="text-2xs text-slate-400 font-mono">/{room.slug}</span>
-                                                  </div>
-                                                  <div className="flex items-center gap-2">
-                                                    <ToggleSwitch
-                                                      enabled={room.status === 'active'}
-                                                      onChange={() => togglePropertyStatus(room.id, room.status)}
-                                                      disabled={propertyToggleLoading === room.id}
-                                                    />
-                                                    <Button
-                                                      onClick={() => openPropertyWithAutoLogin(room, tenant.slug)}
-                                                      variant="ghost"
-                                                      size="xs"
-                                                      className="text-emerald-600 dark:text-emerald-400"
-                                                    >
-                                                      <Eye className="w-3 h-3" />
-                                                    </Button>
-                                                    <Button
-                                                      onClick={() => {
-                                                        setPropertySlugManuallyEdited(false);
-                                                        const initialSlug = (room.slug && room.slug.trim() !== '') ? slugify(room.slug) : slugify(room.name || '');
-                                                        setEditingProperty({ ...room, slug: initialSlug });
-                                                        setIsEditingBotToken(false);
-                                                        setShowPropertyModal('edit');
-                                                      }}
-                                                      variant="ghost"
-                                                      size="xs"
-                                                      className="text-slate-600 dark:text-slate-300"
-                                                    >
-                                                      <Pencil className="w-3 h-3" />
-                                                    </Button>
-                                                    <Button
-                                                      onClick={() => setShowDeletePropertyModal(room.id)}
-                                                      variant="ghost"
-                                                      size="xs"
-                                                      className="text-red-600 dark:text-red-400"
-                                                    >
-                                                      <X className="w-3 h-3 text-red-600 dark:text-red-400" />
-                                                    </Button>
-                                                  </div>
-                                                </div>
-                                              ))}
-                                            </div>
-                                          )}
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </React.Fragment>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <div className="text-xs text-slate-700 dark:text-slate-200 font-medium">
+                            {tenantProperties.length} {tenantProperties.length === 1 ? 'Property' : 'Properties'}
+                          </div>
+                          <div className="text-2xs text-slate-400 dark:text-slate-500">
+                            Slots Used: {tenant.slots_used ?? tenantProperties.length}/{tenant.max_properties}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <ToggleSwitch
+                            enabled={!!tenant.is_active}
+                            onChange={() => toggleTenantStatus(tenant.id, !!tenant.is_active)}
+                            disabled={tenantToggleLoading === tenant.id}
+                          />
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => setViewPropertiesTenant(tenant)}
+                              leftIcon={<Building2 className="w-3.5 h-3.5 shrink-0 text-indigo-500" />}
+                            >
+                              View Properties
+                            </Button>
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={() => window.open(`/artists_farm/${tenant.slug}/#dashboard`, '_blank')}
+                              leftIcon={<ExternalLink className="w-3.5 h-3.5 shrink-0" />}
+                            >
+                              {t('visit_tenant_dashboard_tooltip', 'Open Business')}
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => handleManageTenant(tenant)}
+                              leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="xs"
+                              onClick={() => setShowDeleteTenantModal(tenant.id)}
+                              title={t('delete_tenant_tooltip', 'Delete Tenant')}
+                              className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
                     );
                   })}
                 </tbody>
@@ -1254,13 +1012,11 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                         <p className="text-2xs text-slate-400 dark:text-slate-500 font-mono">/{tenant.slug} · ID: {tenant.id}</p>
                       </div>
                     </div>
-                    <span className={`text-2xs font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
-                      tenant.is_active
-                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40'
-                        : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
-                    }`}>
-                      {tenant.is_active ? t('active_status_badge', 'Active') : t('inactive_status_badge', 'Inactive')}
-                    </span>
+                    <ToggleSwitch
+                      enabled={!!tenant.is_active}
+                      onChange={() => toggleTenantStatus(tenant.id, !!tenant.is_active)}
+                      disabled={tenantToggleLoading === tenant.id}
+                    />
                   </div>
 
                   <div className="text-xs text-slate-600 dark:text-slate-400 flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
@@ -1268,31 +1024,48 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                     <span>Slots: {tenant.slots_used ?? tenantProperties.length}/{tenant.max_properties}</span>
                   </div>
 
-                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => window.open(`/artists_farm/${tenant.slug}/#dashboard`, '_blank')}
-                      leftIcon={<ExternalLink className="w-3.5 h-3.5 shrink-0" />}
-                    >
-                      {t('visit_tenant_dashboard_tooltip', 'Open Business')}
-                    </Button>
-                    <div className="flex items-center gap-1.5">
+                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <Button
                         variant="secondary"
                         size="sm"
-                        onClick={() => handleManageTenant(tenant)}
-                        leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
+                        onClick={() => setViewPropertiesTenant(tenant)}
+                        leftIcon={<Building2 className="w-3.5 h-3.5 shrink-0 text-indigo-500" />}
+                        className="grow sm:grow-0 justify-center"
                       >
-                        Edit
+                        View Properties
                       </Button>
+
+                    </div>
+
+                    <div className="flex items-center justify-between gap-1.5 pt-1">
+                      <div className="flex items-center gap-1.5 grow flex-wrap">
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => window.open(`/artists_farm/${tenant.slug}/#dashboard`, '_blank')}
+                          leftIcon={<ExternalLink className="w-3.5 h-3.5 shrink-0" />}
+                          className="grow sm:grow-0 justify-center"
+                        >
+                          {t('visit_tenant_dashboard_tooltip', 'Open Business')}
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => handleManageTenant(tenant)}
+                          leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
+                        >
+                          Edit
+                        </Button>
+                      </div>
                       <Button
                         variant="ghost"
                         size="xs"
                         onClick={() => setShowDeleteTenantModal(tenant.id)}
-                        className="text-red-600 dark:text-red-400 hover:text-red-700"
+                        title={t('delete_tenant_tooltip', 'Delete Tenant')}
+                        className="text-red-600 dark:text-red-400 hover:text-red-700 shrink-0"
                       >
-                        <X className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
+                        <Trash2 className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
                       </Button>
                     </div>
                   </div>
@@ -1301,7 +1074,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
             })}
           </div>
         </div>
-      </main>
+      </div>
 
       {/* Edit Tenant Drawer */}
       <Drawer
@@ -1407,22 +1180,6 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                   ]}
                 />
               </div>
-
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="editTenantActiveCheck"
-                  checked={!!editingTenant.is_active}
-                  onChange={e =>
-                    setEditingTenant({
-                      ...editingTenant,
-                      is_active: e.target.checked ? 1 : 0,
-                    })
-                  }
-                />
-                <label htmlFor="editTenantActiveCheck" className="text-sm font-medium text-slate-700 dark:text-slate-200 cursor-pointer">
-                  {t('active_status_badge', 'Active')}
-                </label>
-              </div>
             </div>
             <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
               <Button
@@ -1513,78 +1270,6 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                   </p>
                 )}
               </div>
-
-              <div className="pt-2 border-t border-slate-300 dark:border-slate-600">
-                <label className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                    {t('allow_telegram_customization_label', 'Allow Telegram Template Customization')}
-                  </span>
-                  <ToggleSwitch
-                    enabled={!!editingProperty.telegram_template_customization_enabled}
-                    onChange={(enabled) =>
-                      setEditingProperty({ ...editingProperty, telegram_template_customization_enabled: enabled ? 1 : 0 })
-                    }
-                  />
-                </label>
-              </div>
-
-              <div className="pt-2 border-t border-slate-300 dark:border-slate-600 space-y-2">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                  White-Glove Telegram Bot Token
-                </label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="text"
-                    value={editingProperty.telegram_bot_token || ''}
-                    onChange={(e) => setEditingProperty({ ...editingProperty, telegram_bot_token: e.target.value })}
-                    placeholder="Enter Bot Token (e.g. 7182930491:AAH...)"
-                    className="w-full font-mono text-xs"
-                    disabled={!!editingProperty.telegram_bot_token && !isEditingBotToken}
-                  />
-                  {!editingProperty.telegram_bot_token || isEditingBotToken ? (
-                    <Button
-                      type="button"
-                      variant="primary"
-                      size="sm"
-                      onClick={saveBotToken}
-                      disabled={isSavingBotToken || !editingProperty.telegram_bot_token?.trim()}
-                      className="shrink-0"
-                    >
-                      {isSavingBotToken ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-                    </Button>
-                  ) : (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => setIsEditingBotToken(true)}
-                      className="shrink-0"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </Button>
-                  )}
-                </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  White-Glove Telegram Bot token for this property. Leave empty to use system default bot.
-                </p>
-              </div>
-
-              {/* Method A White-Glove pairing (see CLAUDE.md): property owners never pair their own
-                  groups, so the admin does it here, per property. Only rendered for a saved
-                  property - pairing targets the property by slug, so an unsaved/new one has
-                  nothing for the backend to resolve yet. */}
-              {editingProperty.slug && (
-                <div className="pt-2 border-t border-slate-300 dark:border-slate-600 space-y-2">
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                    Telegram Group Pairing
-                  </label>
-                  <TelegramPairingPanel
-                    key={`${editingProperty.slug}-${botTokenSaveCount}`}
-                    propertySlug={editingProperty.slug}
-                    propertyName={editingProperty.name}
-                  />
-                </div>
-              )}
 
               {/* Public Demo Mode toggle only ever shows on the ONE property that already has it
                   on (removed from every other property's edit form, 26 Aug 2026 explicit request)
@@ -2064,6 +1749,299 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
           )}
         </div>
       </Drawer>
+
+      {/* View Properties Right Drawer */}
+      <Drawer
+        position="right"
+        open={!!viewPropertiesTenant}
+        onClose={() => setViewPropertiesTenant(null)}
+        className="w-full max-w-xl md:max-w-2xl z-58 p-0 bg-white dark:bg-slate-900 shadow-2xl flex flex-col justify-between"
+      >
+        {viewPropertiesTenant && (() => {
+          const tenantProperties = properties.filter((p) => {
+            if (p.tenant_id !== viewPropertiesTenant.id) return false;
+            const type = (p as any).property_type;
+            return type !== 'MULTI_KEY_ROOM';
+          });
+          const slotsUsed = viewPropertiesTenant.slots_used ?? tenantProperties.length;
+
+          return (
+            <div className="flex flex-col h-full">
+              <div className="px-4 py-3 sm:p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-gray-50 dark:bg-gray-850 shrink-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+                    <Building2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base truncate">
+                      {viewPropertiesTenant.name} Properties
+                    </h3>
+                    <p className="text-2xs sm:text-xs text-gray-500 dark:text-gray-400 font-mono truncate">
+                      /{viewPropertiesTenant.slug} · {tenantProperties.length} {tenantProperties.length === 1 ? 'Property' : 'Properties'} · Slots: {slotsUsed}/{viewPropertiesTenant.max_properties}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setViewPropertiesTenant(null)}
+                  className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer shrink-0"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3">
+                {tenantProperties.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400 text-xs">
+                    No properties found for this tenant.
+                  </div>
+                ) : (
+                  tenantProperties.map((prop) => {
+                    const isRoom = (prop as any).property_type === 'MULTI_KEY_ROOM';
+                    const isMultiKey = (prop as any).property_type === 'MULTI_KEY';
+                    const modState = propertyModules[prop.id];
+                    const kitchenEnabled = modState ? modState.kitchen : (prop as any).kitchen_module_enabled !== false;
+                    const childRooms = isMultiKey
+                      ? properties.filter((r) => (r as any).property_type === 'MULTI_KEY_ROOM' && (r as any).parent_property_id === prop.id)
+                      : [];
+
+                    return (
+                      <div
+                        key={prop.id}
+                        className="bg-white dark:bg-slate-900 rounded-lg p-4 border border-slate-200 dark:border-slate-700 space-y-3 shadow-2xs"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-semibold text-slate-900 dark:text-white text-sm">{prop.name}</h4>
+                              <span className={`text-2xs font-semibold px-2 py-0.5 rounded ${
+                                isMultiKey
+                                  ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300'
+                                  : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
+                              }`}>
+                                {isMultiKey ? t('multi_key_badge', 'Multi-Room') : t('single_badge', 'Single')}
+                              </span>
+                              {isMultiKey && (
+                                <span className="text-2xs font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                  {childRooms.length} {childRooms.length === 1 ? 'Room' : 'Rooms'}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-2xs text-slate-400 dark:text-slate-500 font-mono">/{prop.slug} · ID: {prop.id}</p>
+                          </div>
+
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-2xs text-slate-500 dark:text-slate-400">{t('active_toggle_label', 'Active:')}</span>
+                              <ToggleSwitch
+                                enabled={prop.status === 'active'}
+                                onChange={() => togglePropertyStatus(prop.id, prop.status)}
+                                disabled={propertyToggleLoading === prop.id}
+                              />
+                            </div>
+                            {!isRoom && (
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-2xs text-slate-500 dark:text-slate-400">{t('kitchen_toggle_label', 'Kitchen:')}</span>
+                                <ToggleSwitch
+                                  enabled={kitchenEnabled}
+                                  onChange={() => toggleKitchenModule(prop.id, kitchenEnabled)}
+                                  disabled={moduleToggleLoading === `${prop.id}-kitchen`}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Actions row with explicit Telegram button */}
+                        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => setSelectedTelegramProperty(prop)}
+                            leftIcon={<TelegramIcon className="w-3.5 h-3.5 text-blue-500 shrink-0" />}
+                            className="border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 font-medium"
+                          >
+                            Telegram
+                          </Button>
+
+                          <div className="flex items-center gap-1.5">
+                            <Button
+                              onClick={() => openPropertyWithAutoLogin(prop, viewPropertiesTenant.slug)}
+                              variant="ghost"
+                              size="xs"
+                              title={t('open_property_tab_tooltip', 'Open Property in New Tab')}
+                              className="text-emerald-600 dark:text-emerald-400"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              onClick={() => {
+                                setEditingProperty(prop);
+                                setIsEditingBotToken(false);
+                                setShowPropertyModal('edit');
+                              }}
+                              variant="ghost"
+                              size="xs"
+                              title={t('edit_property_tooltip', 'Edit Property')}
+                              className="text-slate-600 dark:text-slate-300"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              onClick={() => setShowDeletePropertyModal(prop.id)}
+                              variant="ghost"
+                              size="xs"
+                              title={t('delete_property_tooltip', 'Delete Property')}
+                              className="text-red-600 dark:text-red-400 hover:text-red-700"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
+                            </Button>
+                          </div>
+                        </div>
+
+
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end bg-gray-50 dark:bg-gray-850">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setViewPropertiesTenant(null)}
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          );
+        })()}
+      </Drawer>
+
+      {/* Property Telegram Modal (Opens centered on top of drawer per Flowbite Modal nested dialog rule) */}
+      {selectedTelegramProperty && (
+        <Modal
+          show={!!selectedTelegramProperty}
+          onClose={() => setSelectedTelegramProperty(null)}
+          size="2xl"
+          popup
+          dismissible
+          className="z-9999"
+        >
+          <div className="p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
+                  <TelegramIcon className="w-4 h-4 text-blue-500" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+                    Telegram Setup — {selectedTelegramProperty.name}
+                  </h3>
+                  <p className="text-2xs text-gray-500 dark:text-gray-400 font-mono">
+                    /{selectedTelegramProperty.slug}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedTelegramProperty(null)}
+                className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="max-h-[70vh] overflow-y-auto pr-1 space-y-4">
+              {/* White-Glove Telegram Bot Token Input */}
+              <div className="bg-slate-50 dark:bg-slate-800/60 rounded-lg p-4 border border-slate-200 dark:border-slate-700 space-y-2">
+                <label className="block text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider">
+                  White-Glove Telegram Bot Token
+                </label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="text"
+                    value={selectedTelegramProperty.telegram_bot_token || ''}
+                    onChange={(e) => setSelectedTelegramProperty({ ...selectedTelegramProperty, telegram_bot_token: e.target.value })}
+                    placeholder="Enter Bot Token (e.g. 7182930491:AAH...)"
+                    className="w-full font-mono text-xs"
+                    disabled={!!selectedTelegramProperty.telegram_bot_token && !isEditingBotToken}
+                  />
+                  {!selectedTelegramProperty.telegram_bot_token || isEditingBotToken ? (
+                    <Button
+                      type="button"
+                      variant="primary"
+                      size="sm"
+                      onClick={() => saveBotTokenForProperty(selectedTelegramProperty)}
+                      disabled={isSavingBotToken || !selectedTelegramProperty.telegram_bot_token?.trim()}
+                      className="shrink-0"
+                    >
+                      {isSavingBotToken ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setIsEditingBotToken(true)}
+                      className="shrink-0"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+                </div>
+                <p className="text-2xs text-slate-500 dark:text-slate-400">
+                  Custom White-Glove Bot Token for this property. Leave empty to use system default bot.
+                </p>
+              </div>
+
+              {/* Telegram Custom Template Toggle */}
+              <div className="bg-slate-50 dark:bg-slate-800/60 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+                <label className="flex items-center justify-between gap-3">
+                  <div>
+                    <span className="text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider">
+                      Custom Telegram Template Messages
+                    </span>
+                    <p className="text-2xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      Enable property-specific customized notification templates for KOT orders, checkout vouchers & alerts.
+                    </p>
+                  </div>
+                  <ToggleSwitch
+                    enabled={!!selectedTelegramProperty.telegram_template_customization_enabled}
+                    onChange={(enabled) => toggleTelegramTemplateCustomization(selectedTelegramProperty, enabled)}
+                  />
+                </label>
+              </div>
+
+              {/* Group Pairing & Channel Panel */}
+              <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                <TelegramPairingPanel
+                  key={`${selectedTelegramProperty.slug}-${botTokenSaveCount}`}
+                  propertySlug={selectedTelegramProperty.slug}
+                  propertyName={selectedTelegramProperty.name}
+                  kitchenModuleEnabled={
+                    propertyModules[selectedTelegramProperty.id]
+                      ? propertyModules[selectedTelegramProperty.id].kitchen
+                      : (selectedTelegramProperty as any).kitchen_module_enabled !== false
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-3 border-t border-gray-200 dark:border-gray-700">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setSelectedTelegramProperty(null)}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };
