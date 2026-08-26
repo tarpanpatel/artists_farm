@@ -797,12 +797,18 @@ if (!in_array($action, $public_actions, true)) {
         exit;
     }
     if (!in_array($action, $tenant_scope_actions, true) && !isPropertyAccessAllowed($pdo, $propertyId)) {
-        TelescopeLogger::log(
+        // SECURITY (26 Aug 2026): throttled, not removed - a stray/stuck browser tab retrying the
+        // same denied property every few seconds used to log (and push-alert) every single hit.
+        // logThrottled() still logs the first attempt immediately and still re-logs every 10
+        // minutes if it's genuinely ongoing - it only suppresses exact repeats in between. See
+        // logThrottled()'s own comment in logger.php for the full incident this fixed.
+        TelescopeLogger::logThrottled(
             'security',
             'WARNING',
             "🔒 Property-scope violation: {$request_user} attempted {$action} on property #{$propertyId} without access",
             "Security Middleware [Property Access Denied]",
-            ['action' => $action, 'property_id' => $propertyId, 'user' => $request_user, 'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1']
+            ['action' => $action, 'property_id' => $propertyId, 'user' => $request_user, 'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1'],
+            "{$request_user}|{$propertyId}|{$action}"
         );
         http_response_code(403);
         echo json_encode(['status' => 'error', 'message' => 'Access denied for this property.']);

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Drawer, Dropdown, DropdownItem } from 'flowbite-react';
+import { Drawer, Dropdown, DropdownItem, Tabs, TabItem } from 'flowbite-react';
 import {
   Send,
   X,
@@ -35,6 +35,7 @@ import { Input } from './Input';
 import { Textarea } from './Textarea';
 import { PageHeader } from './PageHeader';
 import { Button } from './Button';
+import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
@@ -1099,101 +1100,95 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
         </div>
       )}
 
-      {/* Flowbite Toolbar Card: Category Tabs + Search Input */}
-      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-3 sm:p-4 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
-        {/* Category Tabs */}
-        <div className="flex items-center gap-1.5 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+      {/* Category Tabs - attached to the card below, same "sits directly on
+          the card" treatment as every other tab bar in the app (see
+          DESIGN.md's "Attached Tabs Specification" / utils/tabsTheme.ts). */}
+      <div>
+        <Tabs
+          aria-label="Telegram Notification Category Tabs"
+          variant="default"
+          theme={attachedTabsTheme}
+          clearTheme={attachedTabsClearTheme}
+          onActiveTabChange={(tabIndex: number) => {
+            const cats = ['Kitchen', 'Admin', 'Finances'] as const;
+            if (cats[tabIndex]) {
+              setTemplateSearch('');
+              setActiveCategory(cats[tabIndex]);
+            }
+          }}
+        >
           {(['Kitchen', 'Admin', 'Finances'] as const).map((cat) => {
-            const count = templatesList.filter(t => getTemplateGroup(t) === cat).length;
-            const isActiveTab = !templateSearch && activeCategory === cat;
+            const count = templatesList.filter((tpl) => getTemplateGroup(tpl) === cat).length;
             return (
-              <button
+              <TabItem
                 key={cat}
-                type="button"
-                onClick={() => {
-                  setTemplateSearch('');
-                  setActiveCategory(cat);
-                }}
-                className={`h-9 px-3.5 text-xs font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                  isActiveTab
-                    ? 'bg-[#0088cc] text-white shadow-xs'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                }`}
-              >
-                <span>{cat}</span>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isActiveTab ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>
-                  {count}
-                </span>
-              </button>
+                active={activeCategory === cat}
+                title={`${cat}${count > 0 ? ` (${count})` : ''}`}
+              />
             );
           })}
-        </div>
+        </Tabs>
 
-        {/* Keyword Search */}
-        <div className="relative w-full md:w-72 shrink-0">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-          <input
-            type="text"
-            value={templateSearch}
-            onChange={(e) => setTemplateSearch(e.target.value)}
-            placeholder={t('search_templates_placeholder', 'Search templates...')}
-            className="w-full h-9 text-xs font-medium pl-9 pr-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0088cc]"
-          />
-          {templateSearch && (
-            <button
-              type="button"
-              onClick={() => setTemplateSearch('')}
-              title={t('clear_search_tooltip', 'Clear search')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-md cursor-pointer"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Flowbite Template List Container */}
-      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden divide-y divide-slate-100 dark:divide-slate-800/80">
-        {displayedTemplates.map((tpl) => {
-          const isActive = tpl.id === activeTemplateId;
-          return (
-            <div
-              key={tpl.id}
-              className={`p-3.5 sm:p-4 transition-all flex items-center justify-between gap-4 hover:bg-slate-50/60 dark:hover:bg-slate-800/40 ${
-                isActive ? 'bg-sky-50/50 dark:bg-sky-950/20 border-l-4 border-[#0088cc]' : ''
-              }`}
-            >
-              <div className="flex items-center gap-3 min-w-0 flex-1">
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-                  isActive ? 'bg-[#0088cc] text-white' : 'bg-sky-50 dark:bg-sky-950/60 text-[#0088cc] border border-sky-100 dark:border-sky-900'
-                }`}>
-                  <Send className="w-4 h-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h4 className="font-semibold text-xs text-slate-900 dark:text-white truncate">
-                    {tpl.eventName}
-                  </h4>
-                  <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 truncate mt-0.5">
-                    {tpl.category}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                {/* View / Edit Action Button */}
-                <Button
-                  size="xs"
-                  variant={isActive ? 'primary' : 'secondary'}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setActiveTemplateId(tpl.id);
-                    setIsEditDrawerOpen(true);
-                  }}
-                  leftIcon={canEditTemplates ? <Pencil className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                  className={isActive ? 'bg-[#0088cc] hover:bg-[#0077b5] text-white' : ''}
+        <div className="bg-white dark:bg-slate-900 rounded-lg rounded-t-none border border-t-0 border-slate-200 dark:border-slate-800 shadow-xs -mt-px overflow-hidden">
+          {/* Keyword Search */}
+          <div className="p-3 sm:p-4 border-b border-slate-100 dark:border-slate-800">
+            <div className="relative w-full sm:w-72">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={templateSearch}
+                onChange={(e) => setTemplateSearch(e.target.value)}
+                placeholder={t('search_templates_placeholder', 'Search templates...')}
+                className="w-full h-9 text-xs font-medium pl-9 pr-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0088cc]"
+              />
+              {templateSearch && (
+                <button
+                  type="button"
+                  onClick={() => setTemplateSearch('')}
+                  title={t('clear_search_tooltip', 'Clear search')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-md cursor-pointer"
                 >
-                  {canEditTemplates ? t('edit_button', 'Edit') : t('view_button', 'View')}
-                </Button>
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Template List */}
+          <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
+            {displayedTemplates.map((tpl) => (
+              <div
+                key={tpl.id}
+                className="p-3.5 sm:p-4 transition-all flex items-center justify-between gap-4 hover:bg-slate-50/60 dark:hover:bg-slate-800/40"
+              >
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 bg-sky-50 dark:bg-sky-950/60 text-[#0088cc] border border-sky-100 dark:border-sky-900">
+                    <Send className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="font-semibold text-xs text-slate-900 dark:text-white truncate">
+                      {tpl.eventName}
+                    </h4>
+                    <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                      {tpl.category}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  {/* View / Edit Action Button */}
+                  <Button
+                    size="xs"
+                    variant="secondary"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveTemplateId(tpl.id);
+                      setIsEditDrawerOpen(true);
+                    }}
+                    leftIcon={canEditTemplates ? <Pencil className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  >
+                    {canEditTemplates ? t('edit_button', 'Edit') : t('view_button', 'View')}
+                  </Button>
 
                 {/* Move to Group Dropdown */}
                 <div onClick={(e) => e.stopPropagation()} className="shrink-0">
@@ -1231,8 +1226,9 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                 </div>
               </div>
             </div>
-          );
-        })}
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Active Template Editor & Live Preview - opens as its own Drawer
