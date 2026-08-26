@@ -64,6 +64,29 @@ const STEP_DEFS: { key: StepKey; label: string; icon: React.ElementType }[] = [
   { key: 'notes', label: 'Notes', icon: FileText },
 ];
 
+// "Do it later" (added 27 Aug 2026, explicit request): the drawer used to auto-reopen on
+// every single page load/navigation with no way to say "not now, but don't nag me again
+// today" - only the X/Save & Exit, which just collapse it to the slim strip for the rest of
+// THIS component instance's lifetime, not across a reload. Scoped per-property (not global)
+// since a multi-property tenant could have one property mid-setup and another finished.
+const SETUP_WIZARD_SNOOZE_KEY_PREFIX = 'ground_code_setup_wizard_snoozed_until_';
+const SETUP_WIZARD_SNOOZE_MS = 24 * 60 * 60 * 1000;
+
+function isSetupWizardSnoozed(propertyId: number): boolean {
+  try {
+    const raw = localStorage.getItem(`${SETUP_WIZARD_SNOOZE_KEY_PREFIX}${propertyId}`);
+    return raw !== null && Date.now() < Number(raw);
+  } catch {
+    return false;
+  }
+}
+
+function snoozeSetupWizard(propertyId: number): void {
+  try {
+    localStorage.setItem(`${SETUP_WIZARD_SNOOZE_KEY_PREFIX}${propertyId}`, String(Date.now() + SETUP_WIZARD_SNOOZE_MS));
+  } catch {}
+}
+
 export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
   propertyId,
   propertyType,
@@ -86,8 +109,11 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
 
   // Open by default (auto-surfaces the checklist the moment a property with
   // incomplete setup loads) - dismissible via the Drawer's own X, at which
-  // point the slim strip below takes over as the way back in.
-  const [isOpen, setIsOpen] = useState(true);
+  // point the slim strip below takes over as the way back in. Starts closed
+  // instead if "Do it later" was chosen within the last 24h (see
+  // snoozeSetupWizard above) - the slim strip still renders either way, so
+  // there's still a quiet way back in, it just won't force itself open.
+  const [isOpen, setIsOpen] = useState(() => !isSetupWizardSnoozed(propertyId));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [finished, setFinished] = useState(false);
@@ -189,6 +215,13 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
   };
 
   const handleBack = () => setStepIndex((i) => Math.max(i - 1, 0));
+
+  // Dismisses without saving (unlike Save & Exit) and suppresses the drawer's auto-open for
+  // 24h - a "not now" for the whole checklist, not just the current step (that's Skip's job).
+  const handleDoItLater = () => {
+    snoozeSetupWizard(propertyId);
+    setIsOpen(false);
+  };
 
   const handleSaveAndExit = async () => {
     const ok = await persistCurrentStep();
@@ -452,7 +485,11 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
       </div>
 
       {/* Footer - exact same button set/behavior as PropertyCreationWizard's:
-          Back / Save & Exit on the left, Skip / Next Step / Finish Setup on the right. */}
+          Back / Save & Exit on the left, Skip / Next Step / Finish Setup on the right. "Do it
+          later" (added 27 Aug 2026) sits alongside them unconditionally - unlike Skip (which
+          only advances past the current step) it dismisses the whole checklist and snoozes
+          its auto-open for 24h, so it needs to be reachable from step 0 too, not just once
+          Back/Save & Exit are already showing. */}
       <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2 bg-gray-50 dark:bg-gray-850 shrink-0">
         <div className="flex items-center gap-2">
           {stepIndex > 0 && !finished && (
@@ -463,6 +500,11 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
           {stepIndex > 0 && !isLastStep && !finished && (
             <Button type="button" variant="secondary" size="sm" onClick={handleSaveAndExit} disabled={saving}>
               Save &amp; Exit
+            </Button>
+          )}
+          {!finished && (
+            <Button type="button" variant="link" size="sm" onClick={handleDoItLater} disabled={saving}>
+              Do it later
             </Button>
           )}
         </div>

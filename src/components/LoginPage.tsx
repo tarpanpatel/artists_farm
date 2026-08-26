@@ -452,24 +452,15 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
 
   return (
     <section className="bg-gray-50 dark:bg-gray-900 min-h-screen flex flex-col items-center justify-center px-6 py-8 mx-auto md:h-screen lg:py-0">
+      {/* Real brand mark (icons/icon-source.png) paired with the wordmark, matching
+          Flowbite's own recommended sign-in block markup (img + text inside the same
+          font-semibold anchor) rather than a generic icon-in-a-box placeholder - swapped in
+          27 Aug 2026 per explicit request, extended to the terminal variant the same day (it
+          was still on the old Lock-icon-in-a-box treatment even after the management variant
+          was fixed). */}
       <a href="/" className="flex items-center mb-6 text-2xl font-semibold text-gray-900 dark:text-white">
-        {isTerminal ? (
-          <>
-            <div className="w-8 h-8 mr-2.5 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-xs">
-              <Lock className="w-5 h-5 text-white" />
-            </div>
-            <span>{t('login_modal_brand')}</span>
-          </>
-        ) : (
-          // Real brand mark (icons/icon-source.png) paired with the wordmark, matching
-          // Flowbite's own recommended sign-in block markup (img + text inside the same
-          // font-semibold anchor) rather than a generic icon-in-a-box placeholder - swapped
-          // in 27 Aug 2026 per explicit request.
-          <>
-            <img src="/icons/icon-source.png" alt="" className="w-8 h-8 mr-2 rounded-lg" />
-            <span>Ground Code</span>
-          </>
-        )}
+        <img src="/icons/icon-source.png" alt="" className="w-8 h-8 mr-2 rounded-lg" />
+        <span>{isTerminal ? t('login_modal_brand') : 'Ground Code'}</span>
       </a>
 
       <div className="w-full bg-white rounded-lg shadow-sm dark:border md:mt-0 sm:max-w-md xl:p-0 dark:bg-gray-800 dark:border-gray-700">
