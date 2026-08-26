@@ -875,14 +875,14 @@ export const LegalDrawer: React.FC<LegalDrawerProps> = ({ activeTab, onClose, te
                   <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
                     <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: How do I organize my kitchen menu into categories, like Starters or Beverages?</h4>
                     <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      From <FaqLink itemKey="edit_items_group">Menu &amp; Pricing</FaqLink>, every dish gets a category (Starters, Main Course, Beverages, Desserts, Farm Specials), so the KDS and ordering screens group them automatically.
+                      From <FaqLink itemKey="edit_food_menu">Menu &amp; Pricing</FaqLink>, every dish gets a category (Starters, Main Course, Beverages, Desserts, Farm Specials), so the KDS and ordering screens group them automatically.
                     </p>
                   </div>
 
                   <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
                     <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Can I change a menu item's price later without affecting old bills?</h4>
                     <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Yes, updating a price on <FaqLink itemKey="edit_items_group">Menu &amp; Pricing</FaqLink> only applies going forward — receipts and bills already generated keep the price that was charged at the time.
+                      Yes, updating a price on <FaqLink itemKey="edit_food_menu">Menu &amp; Pricing</FaqLink> only applies going forward — receipts and bills already generated keep the price that was charged at the time.
                     </p>
                   </div>
                 </div>

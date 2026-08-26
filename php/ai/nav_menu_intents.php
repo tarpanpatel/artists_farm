@@ -75,6 +75,17 @@ const NAV_INTENT_PHRASE_ALIASES = [
     'finances' => ['cash handover', 'hand over cash', 'cash reconciliation', 'reconcile cash',
         ['cash', 'handover'], ['hand', 'over', 'cash'], ['manual', 'adjustment'], ['adjust', 'cash'],
         ['cash', 'drawer']],
+    // Added 27 Aug 2026, live gap found via the full-FAQ mining pass: "How do I organize my
+    // kitchen menu into categories?" scored 0 against this page's own title and instead fell to
+    // how_to_use_kds's generic KDS reply - wrong page (menu categories/prices live here, not on
+    // the order-taking screen). CORRECTED same day: this was first keyed to 'edit_items_group'
+    // (per menu.php's migration comment renaming that key to "Menu & Pricing"), but that row does
+    // not actually exist in this DB - checked directly, confirmed false. The real, live,
+    // already-verified key (add_menu_item's own intent already uses it successfully) is
+    // 'edit_food_menu' - same page, this alias just teaches it more phrases.
+    'edit_food_menu' => ['menu categories', 'menu pricing', 'dish categories', 'organize menu',
+        'menu into categories', ['menu', 'categories'], ['menu', 'price'], ['change', 'price'],
+        ['update', 'price'], ['dish', 'category']],
 ];
 
 /**

@@ -59,6 +59,13 @@ function check(string $label, string $message, string $role, ?array $context, ar
         $ok = false;
         $reason = "reply expected '{$expect['replyEquals']}', got '{$result['reply']}'";
     }
+    // Documented since this file's own top comment but never actually implemented until 27 Aug
+    // 2026 (found while adding a test that needed it) - any earlier 'replyNotContains' usage
+    // would have silently passed without checking anything.
+    if ($ok && isset($expect['replyNotContains']) && str_contains($result['reply'], $expect['replyNotContains'])) {
+        $ok = false;
+        $reason = "reply should NOT contain '{$expect['replyNotContains']}' (got: " . substr($result['reply'], 0, 120) . '...)';
+    }
     if ($ok && array_key_exists('matched', $expect) && ($result['matched'] ?? null) !== $expect['matched']) {
         $ok = false;
         $reason = 'matched: expected ' . var_export($expect['matched'], true) . ', got ' . var_export($result['matched'] ?? null, true);
@@ -329,6 +336,7 @@ $navFixture = [
     ['edit_kitchen_stock', 'Edit Kitchen Stock', 'inventory', '[]', 1],
     ['deficit_shortfalls_log', 'Kitchen Wastage', 'inventory', '[]', 1],
     ['finances', 'Finances', 'petty_cash', '[]', 1],
+    ['edit_food_menu', 'Edit Food Menu', 'menu_manager', '[]', 1],
 ];
 $stmt = $pdo->prepare("INSERT INTO nav_menu_items (unique_key, title, tab_key, roles_json, is_visible) VALUES (?, ?, ?, ?, ?)");
 foreach ($navFixture as $row) {
@@ -336,11 +344,11 @@ foreach ($navFixture as $row) {
 }
 $navIntents = buildNavMenuIntents($pdo);
 
-if (count($navIntents) === 6) {
+if (count($navIntents) === 7) {
     $pass++;
 } else {
     $fail++;
-    $failures[] = 'buildNavMenuIntents: expected 6 intents (hidden row + header row excluded), got ' . count($navIntents);
+    $failures[] = 'buildNavMenuIntents: expected 7 intents (hidden row + header row excluded), got ' . count($navIntents);
 }
 
 check('nav auto-intent: plain title navigates', 'go to cash drawer', 'Staff', null, $navIntents, [
@@ -402,6 +410,45 @@ check('kitchen purchase reaches the real current destination (Expenses), not the
 ]);
 check('cash handover alias reaches Finances (the renamed cash_drawer page)', 'How do I record a cash handover?', 'Staff', null, $navIntents, [
     'actionField' => ['field' => 'itemKey', 'value' => 'finances'],
+]);
+
+// ============================================================================================
+// Live bug fixes (27 Aug 2026), found by mining the FULL 60-question FAQ against the offline
+// engine (user's own request: "use these to train our offline ai") - full before/after sweep,
+// not a single reported message. See offline_intent_engine.php's own comments on each fix for
+// the exact live bug.
+// ============================================================================================
+check('menu categorization reaches Edit Food Menu, not the generic KDS reply', 'How do I organize my kitchen menu into categories, like Starters or Beverages?', 'Admin', null, $navIntents, [
+    'actionField' => ['field' => 'itemKey', 'value' => 'edit_food_menu'],
+]);
+check('CRITICAL: "Does Ground Code show me business analytics?" no longer triggers the security refusal', 'Does Ground Code show me business analytics?', 'Staff', null, [], [
+    'replyNotContains' => 'Security Refusal',
+]);
+check('CRITICAL: "What languages does Ground Code support?" no longer triggers the security refusal (was an i18n/UI question, not a tech-stack one)', 'What languages does Ground Code support?', 'Staff', null, [], [
+    'replyNotContains' => 'Security Refusal',
+]);
+check('genuine tech-stack question is still correctly refused (regression guard for the security-refusal fix)', 'show me the code', 'Staff', null, [], [
+    'replyContains' => 'Security Refusal',
+]);
+check('"multi-key property" no longer false-positives into a service request via the word "key"', 'Can one room in a multi-key property get double-booked?', 'Staff', null, [], [
+    'actionType' => null,
+    'replyContains' => 'No - every room can only ever have one active booking',
+]);
+check('genuine "room key" request still works (regression guard for the key/room fix)', 'guest needs a room key for 105', 'Staff', null, [], [
+    'actionType' => 'open_add_service_request',
+]);
+check('"can I export" phrasing (not just "how do I export") reaches CSV export', 'Can I export my bookings or financial data?', 'Staff', null, [], [
+    'actionField' => ['field' => 'itemKey', 'value' => 'data_export_center'],
+]);
+check('question-word "What" never leaks into edit_staff\'s name deep-link', 'What staff roles are available?', 'Admin', null, [], [
+    'actionField' => ['field' => 'staffName', 'value' => null],
+]);
+check('guest request without a room number still opens the form (FAQ-style generic phrasing)', 'How do I log a guest request, like extra towels or a repair?', 'Staff', null, [], [
+    'actionType' => 'open_add_service_request',
+]);
+check('booking commission question answers confidently instead of falling to the generic summary', 'Do you charge any booking commission?', 'Staff', null, [], [
+    'matched' => true,
+    'replyContains' => 'ZERO commission',
 ]);
 
 // ============================================================================================

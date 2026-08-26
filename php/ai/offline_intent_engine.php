@@ -92,7 +92,13 @@ function scoreIntentMatch(string $lower, array $phrases): int {
  * (a stopword, correctly rejected), and never looked further to find "select Kinkar" at all.
  */
 function extractStaffNameFromQuery(string $q): ?string {
-    $stopWords = ['staff', 'food', 'meal', 'meals', 'lunch', 'dinner', 'thali', 'the', 'a', 'an', 'for', 'to', 'page', 'open', 'select', 'automatically', 'and', 'add', 'log'];
+    $stopWords = ['staff', 'food', 'meal', 'meals', 'lunch', 'dinner', 'thali', 'the', 'a', 'an', 'for', 'to', 'page', 'open', 'select', 'automatically', 'and', 'add', 'log',
+        // Question/sentence-starter words (added 27 Aug 2026, same class of bug as
+        // extractAddStaffDetails() - "What staff roles are available?" extracted 'What' as the
+        // staff member name to deep-link to, since this scan has no way to tell a sentence
+        // starter from a real name other than a stopword list).
+        'how', 'what', 'where', 'who', 'when', 'why', 'which', 'do', 'does', 'did', 'can', 'could',
+        'should', 'would', 'will', 'is', 'are', 'was', 'were', 'roles', 'role', 'available'];
 
     if (preg_match_all('/\b([A-Z][a-z]+)\b/', $q, $capMatches)) {
         foreach ($capMatches[1] as $candidate) {
@@ -355,9 +361,13 @@ function getIntentTable(): array {
             'type' => 'tech_stack_lockdown',
             'phrases' => [
                 'technology', 'tech stack', 'what code', 'source code', 'framework',
-                'programming language', 'database used', 'what language', 'react', 'tailwind',
+                'programming language', 'database used', 'react', 'tailwind',
+                // 'what language'/'which language' REMOVED 27 Aug 2026 (live bug): both are
+                // genuinely ambiguous with a totally different, benign question - "what languages
+                // does the app support" (UI/i18n) - which has nothing to do with the app's own
+                // programming language. 'programming language' below is unambiguous and stays.
                 'laravel', 'php version', 'backend code', 'frontend code', 'architecture',
-                'mysql', 'how is this built', 'coded in', 'built with', 'which language',
+                'mysql', 'how is this built', 'coded in', 'built with',
                 // Broadened 24 Aug 2026 (proactive coverage pass, not a live report) - more
                 // language/stack names plus credential-probing phrases, since "what's the API
                 // key" is the same class of internal-info request this intent already refuses.
@@ -366,7 +376,15 @@ function getIntentTable(): array {
                 'hosting provider', 'where is this hosted', 'sql injection', 'vulnerability',
                 'admin password', 'root password', 'database password', 'database credentials',
                 'db password', 'env file', '.env', 'secret key', 'api key',
-                ['show', 'code'], ['your', 'code'], ['app', 'architecture'], ['which', 'database'],
+                // ['show','code']/['your','code'] REMOVED 27 Aug 2026 (live bug, the most severe
+                // found this session): "Does Ground Code show me business analytics?" - a
+                // completely benign marketing question - triggered the SECURITY REFUSAL, because
+                // "Ground Code" (the product's own NAME) contains the word "code", and 'show'
+                // appears nearby. A user naming the product should never look like a request for
+                // internal source code. The already-present, adjacency-required literal phrases
+                // ('show me the code', 'view source', 'server code', etc.) still catch genuine
+                // code-disclosure requests without this collision risk.
+                ['app', 'architecture'], ['which', 'database'],
             ],
             'handler' => fn(string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array => [
                 'reply' => "🔒 Security Refusal: I am trained exclusively to assist with Ground Code PMS & KDS hotel management operations and user workflows. Internal software architecture, code details, and technology stack information are private and strictly confidential.",
@@ -384,6 +402,10 @@ function getIntentTable(): array {
                 'download report', 'export report', 'get csv', 'get excel', 'excel sheet',
                 'export bookings', 'download spreadsheet', 'export sheet',
                 ['how', 'spreadsheet'], ['how', 'report'],
+                // Added 27 Aug 2026, live gap: "Can I export my bookings or financial data?" -
+                // every existing phrase above requires 'export' adjacent to its target noun, but
+                // real phrasing often has 'my'/'the' in between. AND-groups don't need adjacency.
+                ['export', 'bookings'], ['export', 'financial'], ['export', 'data'], ['can', 'export'],
             ],
             'handler' => fn(string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array => [
                 'reply' => "📊 How to Export CSV & Financial Data:\n\n1. Go to the left sidebar menu and click 'Download Data & Excel' (or go to Finances / Reports).\n2. Click the 'Export CSV' button on top of any table.\n3. Choose your desired date range and click 'Download CSV File'.",
@@ -853,8 +875,21 @@ function getIntentTable(): array {
                 // "open a pre-filled service request" action as a supply request).
                 ['bedsheet', 'room'], ['bucket', 'room'], ['hanger', 'room'], ['iron', 'room'],
                 ['charger', 'room'], ['slipper', 'room'], ['tissue', 'room'], ['ac', 'room'],
-                ['fan', 'room'], ['light', 'room'], ['wifi', 'room'], ['key', 'room'], ['clean', 'room'],
+                ['fan', 'room'], ['light', 'room'], ['wifi', 'room'], ['clean', 'room'],
                 ['fix', 'room'], ['repair', 'room'], ['broken', 'room'],
+                // 'room key' (added 27 Aug 2026, replaces a loose ['key','room'] AND-group) - live
+                // bug: "Can one room in a multi-key property get double-booked?" scored 2 here
+                // ('room' present anywhere + 'key' present anywhere, matched inside "multi-KEY"
+                // itself, since a hyphen counts as a word boundary) and wrongly opened a service
+                // request. A literal adjacent phrase still catches the real request ("give room
+                // key to 105", "guest needs a room key") without matching "multi-key property...room"
+                // from opposite ends of an unrelated sentence.
+                'room key',
+                // Added 27 Aug 2026, live gap: "How do I log a guest request, like extra towels
+                // or a repair?" has no room number at all (a generic FAQ phrasing, not a real
+                // request) - these two literal phrases let it still open the right form even
+                // without a 'room' anchor nearby; the form itself has the room field to fill in.
+                'guest request', 'log a guest request',
             ],
             'handler' => function (string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array {
                 [$roomNumber, $item] = extractServiceRequestDetails($q);
@@ -962,6 +997,169 @@ function getIntentTable(): array {
                 'action' => ['type' => 'navigate', 'tab' => 'guests', 'itemKey' => 'all_bookings'],
             ],
         ],
+        [
+            // Added 27 Aug 2026, live gap found mining the full FAQ: "Do I have to complete every
+            // setup step before I can start taking bookings?" scored 0 against anything specific
+            // and got weakly picked up by all_bookings instead (wrong - the question isn't about
+            // the bookings list at all). Info-only, no action - there's no single settings page
+            // for this, it's the "Finish Setting Up This Property" banner shown on the dashboard.
+            'type' => 'property_setup_wizard',
+            'phrases' => [
+                'setup step', 'setup wizard', 'finish setting up', 'setup checklist',
+                ['complete', 'setup'], ['skip', 'setup'], ['finish', 'setup'], ['setup', 'later'],
+                ['setup', 'banner'], ['property', 'setup'],
+            ],
+            'handler' => fn(string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array => [
+                'reply' => "Only the Basics step is required to publish your property - the rest of the 5-step checklist (rooms, staff, Telegram, licenses, payments) is fully optional. Every step past Basics can be skipped or snoozed and finished later from the 'Finish Setting Up This Property' banner on your dashboard.",
+                'action' => null,
+            ],
+        ],
+        [
+            // Added 27 Aug 2026, live gap: financial pages are genuinely restricted to
+            // Admin-and-above already (see access_control.php) - this just answers the question
+            // confidently instead of falling through to the generic capability summary.
+            'type' => 'info_staff_financial_visibility',
+            'phrases' => [
+                'financial data from staff', 'restrict staff finance', 'hide financial data',
+                ['stop', 'staff', 'financial'], ['staff', 'seeing', 'financial'], ['staff', 'financial', 'data'],
+            ],
+            'handler' => fn(string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array => [
+                'reply' => "Yes - financial pages like Expenses and Finances are restricted to Admin and above by default, so a regular Staff or Kitchen login never sees them.",
+                'action' => null,
+            ],
+        ],
+        [
+            'type' => 'info_cash_correction',
+            'phrases' => [
+                'correct cash balance', 'fix cash balance', 'wrong cash balance', 'cash mistake',
+                ['correct', 'cash'], ['fix', 'cash'], ['mistake', 'cash', 'balance'],
+            ],
+            'handler' => fn(string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array => [
+                'reply' => "Yes - Manual Adjustment on the Finances page lets you add a correction with a note explaining why, so the balance stays accurate without deleting the original entry.",
+                'action' => ['type' => 'navigate', 'tab' => 'petty_cash', 'itemKey' => 'finances'],
+            ],
+        ],
+        [
+            'type' => 'info_service_request_status',
+            'phrases' => [
+                'request completed', 'track service request', 'service request status',
+                ['track', 'request'], ['request', 'status'], ['request', 'pending'],
+            ],
+            'handler' => fn(string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array => [
+                'reply' => "Yes, every service request has a status - Pending, In Progress, or Completed - so nothing gets forgotten.",
+                'action' => null,
+            ],
+        ],
+        [
+            'type' => 'info_guest_id_security',
+            'phrases' => [
+                'guest id secure', 'store id documents', 'id document safe', 'id proof secure',
+                ['store', 'id', 'document'], ['guest', 'id', 'secure'], ['id', 'documents', 'safe'],
+            ],
+            'handler' => fn(string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array => [
+                'reply' => "Yes, guest ID uploads (Aadhaar, Passport, Driving License) are stored encrypted and only accessible to your own property's authorized staff.",
+                'action' => null,
+            ],
+        ],
+        [
+            'type' => 'info_ai_escalation',
+            'phrases' => [
+                "ai doesn't understand", 'ai does not understand', 'ai cant answer', "ai can't answer",
+                ['ai', 'understand'], ['talk', 'real', 'person'], ['ai', 'stuck'],
+            ],
+            'handler' => fn(string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array => [
+                'reply' => "It says so honestly rather than guessing, and after a couple of unclear replies in a row it offers a direct link to talk to a real person on WhatsApp or Telegram.",
+                'action' => null,
+            ],
+        ],
+        [
+            'type' => 'info_checkin_id_verification',
+            'phrases' => [
+                'verify id at checkin', 'id verification checkin', 'verify guest id',
+                ['verify', 'id'], ['id', 'verification'], ['verify', 'document'],
+            ],
+            'handler' => fn(string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array => [
+                'reply' => "Yes - opening a booking's details from Bookings gives you an ID verification step right there, so uploading and confirming a guest's document doesn't need a separate page or app.",
+                'action' => ['type' => 'navigate', 'tab' => 'guests', 'itemKey' => 'all_bookings'],
+            ],
+        ],
+        [
+            'type' => 'info_double_booking_prevention',
+            'phrases' => [
+                'get double-booked', 'get double booked', 'room double booked', 'prevent double booking',
+                ['room', 'double', 'book'], ['double', 'booked'], ['double', 'booking'],
+            ],
+            'handler' => fn(string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array => [
+                'reply' => "No - every room can only ever have one active booking at a time. The system blocks it before it can happen, and the date picker greys out and strikes through any day that's already booked for that room.",
+                'action' => null,
+            ],
+        ],
+        [
+            'type' => 'info_multikey_difference',
+            'phrases' => [
+                'single property multi-key', 'difference single property', 'what is a multi-key',
+                ['difference', 'multi-key'], ['single', 'property', 'multi-key'],
+            ],
+            'handler' => fn(string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array => [
+                'reply' => "A single property has one bookable unit. A multi-key property - a villa with several independent rooms, or a resort with multiple cottages - lets each room keep its own booking calendar, while staff and settings are shared across the whole property.",
+                'action' => null,
+            ],
+        ],
+        [
+            'type' => 'info_upi_guest_payment',
+            'phrases' => [
+                'guests pay via upi', 'pay directly via upi', 'guest pay upi',
+                ['guest', 'pay', 'upi'], ['pay', 'directly', 'upi'],
+            ],
+            'handler' => fn(string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array => [
+                'reply' => "Yes. Add your UPI ID once in Edit Property and Ground Code automatically generates a scannable QR code that appears on checkout bills and WhatsApp booking confirmations - no separate QR app needed.",
+                'action' => ['type' => 'navigate', 'tab' => 'edit_property', 'itemKey' => 'edit_property'],
+            ],
+        ],
+        [
+            'type' => 'info_menu_profitability',
+            'phrases' => [
+                'menu items make me the most money', 'most profitable dish', 'most profitable menu item',
+                ['most', 'money', 'menu'], ['profit', 'per', 'dish'], ['which', 'dish', 'profit'],
+            ],
+            'handler' => fn(string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array => [
+                'reply' => "Yes, Reports & Earnings ranks dishes by actual revenue and factors in kitchen purchase cost, so you see real profit per dish, not just order counts.",
+                'action' => ['type' => 'navigate', 'tab' => 'analytics', 'itemKey' => 'dashboard_analytics'],
+            ],
+        ],
+        [
+            'type' => 'info_stuck_during_setup',
+            'phrases' => [
+                'stuck during setup', 'help during setup', 'need help setting up',
+                ['stuck', 'setup'], ['help', 'setup'],
+            ],
+            'handler' => fn(string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array => [
+                'reply' => "Ask the in-app AI assistant, check the FAQ, or reach a real person directly on WhatsApp or Telegram from the same support menu.",
+                'action' => null,
+            ],
+        ],
+        [
+            'type' => 'info_whatsapp_template_customization',
+            'phrases' => [
+                'customize whatsapp', 'whatsapp template', 'wording of whatsapp', 'whatsapp wording',
+                ['customize', 'whatsapp'], ['whatsapp', 'template'], ['edit', 'whatsapp', 'message'],
+            ],
+            'handler' => fn(string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array => [
+                'reply' => "Yes - the WhatsApp voucher template on Edit Property lets you edit the exact wording guests receive, with tokens like guest name, dates, and UPI ID that get filled in automatically.",
+                'action' => ['type' => 'navigate', 'tab' => 'edit_property', 'itemKey' => 'edit_property'],
+            ],
+        ],
+        [
+            'type' => 'info_no_tech_knowledge_needed',
+            'phrases' => [
+                'technical knowledge', 'need to be technical', 'am i technical enough',
+                ['need', 'technical'], ['technical', 'skill'],
+            ],
+            'handler' => fn(string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array => [
+                'reply' => "No. Ground Code is built for hotel and homestay staff, not developers - every setup step, including Telegram alerts, UPI QR, and licenses, is a simple form, never code or a config file.",
+                'action' => null,
+            ],
+        ],
 
         // --- VISITOR & PRODUCT SALES INTENT ---
         // Named/framed for an anonymous pre-sales visitor, but this table has only ever had one
@@ -979,8 +1177,38 @@ function getIntentTable(): array {
             'phrases' => [
                 'ground code', 'features', 'pricing', 'price', 'cost', 'demo', 'sales', 'license',
                 'contact', 'contact us', 'signup', 'sign up', 'trial', 'free trial', 'get started',
+                // Added 27 Aug 2026, live gaps found mining the full FAQ - each is a genuine
+                // marketing/capability question with a confident, specific answer, not something
+                // that should fall through to the generic capability-summary reply.
+                'commission', 'booking commission', 'data safe', 'data secure', 'data selling',
+                'multiple properties', 'more than one property', 'single account',
+                'different screens', 'separate screens', ['manage', 'properties'],
             ],
             'handler' => function (string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array {
+                if (str_contains($lower, 'commission')) {
+                    return [
+                        'reply' => "No, never! Ground Code charges ZERO commission on any booking. Unlike OTAs that take 15-25% per reservation, you keep 100% of your guest revenue.",
+                        'action' => null
+                    ];
+                }
+                if (str_contains($lower, 'data safe') || str_contains($lower, 'data secure') || str_contains($lower, 'data selling')) {
+                    return [
+                        'reply' => "100% safe. Ground Code enforces a strict Zero Data Selling Guarantee - your guest lists, ID proofs, and property income logs are private to your property and never shared or sold to third parties or OTAs.",
+                        'action' => null
+                    ];
+                }
+                if (str_contains($lower, 'multiple propert') || str_contains($lower, 'more than one property') || str_contains($lower, 'manage propert')) {
+                    return [
+                        'reply' => "Yes - Ground Code is built for owners with multiple properties. You can switch between them from the same login, and a Root Admin can see every property from one dashboard.",
+                        'action' => null
+                    ];
+                }
+                if (str_contains($lower, 'different screen') || str_contains($lower, 'separate screen')) {
+                    return [
+                        'reply' => "Yes! You can assign specific staff roles and PINs. Your cook gets a Kitchen Order Screen (KDS), front-desk staff get guest check-in & petty cash tools, while revenue reports remain private to the owner.",
+                        'action' => null
+                    ];
+                }
                 if (str_contains($lower, 'price') || str_contains($lower, 'cost') || str_contains($lower, 'license') || str_contains($lower, 'plan')) {
                     return [
                         'reply' => "💳 Ground Code PMS/KDS Pricing & Licenses:\n\n• Flexible property licensing per room / per month.\n• Zero setup fee or hidden charges.\n• Includes Front-Desk PMS, Kitchen KDS, Petty Cash, WhatsApp Vouchers, and Telegram Alerts.\n\nSign in above or contact sales to get a demo license for your property!",
