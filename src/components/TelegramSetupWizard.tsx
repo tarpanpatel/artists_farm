@@ -26,7 +26,6 @@ import {
 } from '../services/api';
 import { PropertyTelegramConfig } from '../types';
 import { t } from '../i18n/en';
-import { ToggleSwitch } from './ToggleSwitch';
 
 interface WizardStep {
   key: 'settings' | 'kitchen' | 'admin' | 'finance';
@@ -355,16 +354,6 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {currentStep.key === 'settings' ? (
             <div className="space-y-4">
-              {/* Enabled toggle */}
-              <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-                <div>
-                  <div className="text-sm font-semibold text-slate-900 dark:text-white">{t('enable_telegram_notifications_label', 'Enable Telegram Notifications')}</div>
-                </div>
-                <ToggleSwitch
-                  enabled={!!wizardConfig?.enabled}
-                  onChange={(val) => handleUpdateConfigField('enabled', val)}
-                />
-              </div>
 
               {/* White-Glove Bot Status Card */}
               <div className="bg-emerald-50 dark:bg-emerald-950/40 p-4 rounded-xl border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-900 dark:text-emerald-300 flex items-start gap-3 shadow-xs">

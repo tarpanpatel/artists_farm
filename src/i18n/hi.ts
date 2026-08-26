@@ -353,7 +353,7 @@ export const strings: Record<string, string> = {
   tenant_phone_login_username_label: "फोन नंबर (यही उनका लॉगिन यूज़रनेम भी बनेगा)",
   phone_placeholder: "10 अंकों का मोबाइल नंबर",
   create_button: "बनाएं",
-  telegram_template_manager_heading: "📡 टेलीग्राम टेम्पलेट मैनेजर",
+  telegram_template_manager_heading: "टेलीग्राम टेम्पलेट मैनेजर",
   bot_connected_badge: "बॉट कनेक्टेड",
   telegram_manager_subtitle: "टेलीग्राम नोटिफिकेशन के फॉर्मेट, वेरिएबल और लाइव प्रीव्यू यहां से बदलें",
   send_test_ping_button: "टेस्ट टेलीग्राम पिंग भेजें",

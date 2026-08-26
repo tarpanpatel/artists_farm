@@ -374,7 +374,7 @@ export const strings: Record<string, string> = {
   create_button: "Create",
 
   // Telegram Notification Modal
-  telegram_template_manager_heading: "📡 Telegram Notifications",
+  telegram_template_manager_heading: "Telegram Notifications",
   bot_connected_badge: "Bot Connected",
   send_test_ping_button: "Send Test Telegram Ping",
   ping_sent_button: "Ping Sent Successfully!",
