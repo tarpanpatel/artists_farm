@@ -126,6 +126,18 @@ if (is_array($liveContext)) {
 
     $activeStr = !empty($activeGuests) ? implode(', ', $activeGuests) : 'None';
     $contextSummary = "Current Property Live Status ($propertyName):\n- Active/Today Bookings: $todayCount (Guests: $activeStr)\n- Upcoming Bookings: $upcomingCount\n- Past Bookings: $pastCount\n- Logged-In User Role: $userRole\n";
+
+    // Staff summary (added 27 Aug 2026 - live bug: asked "how many team members / what are their
+    // names", the model had nothing to answer from beyond booking counts and could only punt to
+    // the Staff Directory page, even though this data was one query away). Sent as name + role
+    // ONLY (see AIChatWidget.tsx's getLiveContext() - phone/salary are deliberately never
+    // included), active staff only.
+    if (isset($liveContext['staff_count']) || isset($liveContext['staff_names'])) {
+        $staffCount = (int)($liveContext['staff_count'] ?? 0);
+        $staffNames = $liveContext['staff_names'] ?? [];
+        $staffStr = !empty($staffNames) ? implode(', ', $staffNames) : 'None';
+        $contextSummary .= "- Active Team Members: $staffCount ($staffStr)\n";
+    }
 }
 
 // SECURITY (24 Aug 2026): the ONLY real access-control backstop for actions an ONLINE AI

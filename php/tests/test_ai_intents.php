@@ -325,6 +325,10 @@ $navFixture = [
     ['purchase_analytics', 'Purchase Analytics', 'analytics', '["Super Admin","Admin"]', 1],
     ['hidden_page', 'Hidden Internal Page', 'internal', '[]', 0],
     ['header_row', 'Financials', '', '[]', 1],
+    ['attendance_calendar', 'Attendance Calendar', 'staff', '["Super Admin","Admin","Staff Supervisor"]', 1],
+    ['edit_kitchen_stock', 'Edit Kitchen Stock', 'inventory', '[]', 1],
+    ['deficit_shortfalls_log', 'Kitchen Wastage', 'inventory', '[]', 1],
+    ['kitchen_purchases', 'Kitchen Purchases', 'inventory', '[]', 1],
 ];
 $stmt = $pdo->prepare("INSERT INTO nav_menu_items (unique_key, title, tab_key, roles_json, is_visible) VALUES (?, ?, ?, ?, ?)");
 foreach ($navFixture as $row) {
@@ -332,11 +336,11 @@ foreach ($navFixture as $row) {
 }
 $navIntents = buildNavMenuIntents($pdo);
 
-if (count($navIntents) === 2) {
+if (count($navIntents) === 6) {
     $pass++;
 } else {
     $fail++;
-    $failures[] = 'buildNavMenuIntents: expected 2 intents (hidden row + header row excluded), got ' . count($navIntents);
+    $failures[] = 'buildNavMenuIntents: expected 6 intents (hidden row + header row excluded), got ' . count($navIntents);
 }
 
 check('nav auto-intent: plain title navigates', 'go to cash drawer', 'Staff', null, $navIntents, [
@@ -351,6 +355,78 @@ check('nav auto-intent: role-restricted page allowed for Admin', 'open purchase 
 ]);
 check('nav auto-intent: hand-written intent still wins on overlap', 'add booking', 'Staff', null, $navIntents, [
     'actionType' => 'open_add_booking',
+]);
+
+// ============================================================================================
+// Live bug fix (27 Aug 2026), graduated from a real trial transcript per AI.md's mining plan:
+// "How to mark attendance" scored 0 offline (the auto-generated nav intent only matched the
+// literal title "attendance calendar") and, separately, got a confident WRONG denial from Gemini
+// ("attendance tracking doesn't exist") before the online known-pages fix earlier tonight. Fixed
+// generically via NAV_INTENT_PHRASE_ALIASES rather than a one-off hand-written intent, since the
+// real role gate (Super Admin/Admin/Staff Supervisor - NOT a clean "isAdmin" boolean) already
+// lives correctly in roles_json and shouldn't be duplicated/guessed at in a hardcoded check.
+// ============================================================================================
+check('attendance alias reaches the real page for an allowed role', 'how to mark attendance', 'Admin', null, $navIntents, [
+    'actionField' => ['field' => 'itemKey', 'value' => 'attendance_calendar'],
+]);
+check('attendance alias respects the real (non-isAdmin) role gate for Staff Supervisor', 'mark attendance', 'Staff Supervisor', null, $navIntents, [
+    'actionField' => ['field' => 'itemKey', 'value' => 'attendance_calendar'],
+]);
+check('attendance alias denies a plain Staff role', 'mark attendance', 'Staff', null, $navIntents, [
+    'actionType' => null,
+    'replyContains' => 'Access Denied',
+]);
+check('kitchen stock alias reaches Edit Kitchen Stock, not KDS', 'How do I add or update kitchen inventory/stock items?', 'Admin', null, $navIntents, [
+    'actionField' => ['field' => 'itemKey', 'value' => 'edit_kitchen_stock'],
+]);
+
+// ============================================================================================
+// Live coverage additions (27 Aug 2026), same broad FAQ-expansion pass: walk-in tabs, kitchen
+// wastage, and kitchen purchases are all real features that had zero offline phrase coverage.
+// ============================================================================================
+check('walk-in tab reaches take_food_order, distinct from open_add_booking\'s "walk in guest"', 'How do I open a walk-in tab for a table?', 'Staff', null, [], [
+    'actionField' => ['field' => 'itemKey', 'value' => 'take_food_order'],
+]);
+check('"walk in guest" (a booking, not a tab) is unaffected by the new walk_in_tab intent', 'walk in guest wants a room', 'Staff', null, [], [
+    'actionType' => 'open_add_booking',
+]);
+check('kitchen wastage alias reaches the real page', 'How do I record kitchen wastage?', 'Staff', null, $navIntents, [
+    'actionField' => ['field' => 'itemKey', 'value' => 'deficit_shortfalls_log'],
+]);
+check('kitchen purchases alias reaches the real page', 'How do I log a kitchen purchase from a vendor?', 'Staff', null, $navIntents, [
+    'actionField' => ['field' => 'itemKey', 'value' => 'kitchen_purchases'],
+]);
+
+// ============================================================================================
+// Live bug fixes (27 Aug 2026), found by testing a batch of realistic, well-formed English
+// questions (user's own suggestion, rather than continuing to find gaps one broken-English
+// message at a time) - see the batch script's real output for the full before/after. Several
+// full, natural sentences were losing to how_to_use_kds's loose ['how','kitchen'] AND-group
+// (any message containing both "how" and "kitchen" ANYWHERE, even as an incidental aside)
+// purely because nothing else scored high enough to compete - fixed by giving the CORRECT
+// intents real, on-topic phrases rather than narrowing the KDS intent itself.
+// ============================================================================================
+check('realistic sentence: connect Telegram does not get hijacked by "kitchen orders" aside', "How do I connect Telegram so I get alerts for new bookings and kitchen orders?", 'Admin', null, [], [
+    'actionType' => 'open_telegram_modal',
+]);
+check('realistic sentence: OTA calendar sync reaches Edit Property (ICalSyncManager lives there)', "How do I sync my Airbnb/Booking.com calendar so rooms don't get double-booked?", 'Admin', null, [], [
+    'actionField' => ['field' => 'itemKey', 'value' => 'edit_property'],
+]);
+check('realistic sentence: UPI/QR setup reaches Edit Property', 'How do I set up my UPI ID so guests can pay by scanning a QR code?', 'Admin', null, [], [
+    'actionField' => ['field' => 'itemKey', 'value' => 'edit_property'],
+]);
+check('realistic sentence: multi-key room add correctly reaches Edit Property (RoomsManagement is embedded there, not a bug)', 'How do I add a new room to my multi-key property?', 'Admin', null, [], [
+    'actionField' => ['field' => 'itemKey', 'value' => 'edit_property'],
+]);
+
+// ============================================================================================
+// Live bug fix (27 Aug 2026): extractAddStaffDetails()'s capitalized-word name scan had no
+// question-word stopwords, so "How do I add a new staff member and set what they're allowed to
+// access?" - a real, correctly-formed question - extracted 'How' as the new staff member's name.
+// ============================================================================================
+check('question-word "How" is never extracted as a staff name', "How do I add a new staff member and set what they're allowed to access?", 'Admin', null, [], [
+    'actionType' => 'navigate',
+    'actionField' => ['field' => 'addStaffName', 'value' => null],
 ]);
 
 // ============================================================================================
@@ -406,6 +482,30 @@ check('recipe intent is Admin-gated like add_menu_item', 'add recipe', 'Staff', 
 check('add_menu_item regression: non-recipe dish phrasing still works after the move', 'add new dish', 'Admin', null, [], [
     'actionType' => 'navigate',
     'actionField' => ['field' => 'itemKey', 'value' => 'edit_food_menu'],
+]);
+
+// ============================================================================================
+// Live bug fix (27 Aug 2026): "how many team members / what are their names" had nothing to
+// answer from - live_context never carried staff data, so the bot could only punt to the Staff
+// Directory page. Now answers directly from staffCount/staffNames when the frontend provides them.
+// ============================================================================================
+check('team roster answers directly when staff context is provided', 'how many team members do I have', 'Staff', [
+    'staff_count' => 3,
+    'staff_names' => ['Arjun Mehta (Manager)', 'Priya Sharma (Chef)', 'Rahul Verma (Front Desk)'],
+], [], [
+    'actionType' => null,
+    'matched' => true,
+    'replyContains' => 'Arjun Mehta (Manager)',
+]);
+check('team roster count-only phrasing also matches', 'how many staff do we have', 'Staff', [
+    'staff_count' => 2,
+    'staff_names' => ['A (Chef)', 'B (Manager)'],
+], [], [
+    'replyContains' => 'You have 2 active team members',
+]);
+check('team roster falls back gracefully with no staff context at all', 'list staff', 'Staff', null, [], [
+    'actionType' => 'navigate',
+    'actionField' => ['field' => 'itemKey', 'value' => 'staff_directory_salaries'],
 ]);
 
 echo "Offline Intent Engine + Nav Menu Intents: $pass/" . ($pass + $fail) . " passed\n";

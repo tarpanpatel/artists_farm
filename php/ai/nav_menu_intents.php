@@ -43,6 +43,31 @@ function isNavItemVisibleForRole(array $allowedRoles, string $userRole): bool {
 }
 
 /**
+ * Extra phrase aliases for specific nav pages, keyed by unique_key (added 27 Aug 2026 - see
+ * AI.md's "Gemini trial-week plan": mining real trial transcripts and graduating findings into
+ * permanent coverage). Each auto-generated nav intent below only ever gets ONE literal phrase -
+ * the page's own title, cleaned up - which misses common real phrasings that don't literally
+ * contain the title text ("mark attendance" doesn't contain "attendance calendar" as a substring,
+ * so a real trial user asking exactly that got the generic fallback instead of navigating there).
+ * Deliberately NOT a hardcoded role check anywhere near this - isNavItemVisibleForRole() below
+ * still reads the real, live roles_json for whichever unique_key the alias points at, so this
+ * only ever adds phrasing, never duplicates or risks drifting from the DB's own permission state.
+ */
+const NAV_INTENT_PHRASE_ALIASES = [
+    'attendance_calendar' => ['attendance', 'mark attendance', 'staff attendance', ['mark', 'attendance'], ['staff', 'attendance']],
+    // Added 27 Aug 2026, live gap: "How do I add or update kitchen inventory/stock items?" scored
+    // 0 against this page's own auto-title phrase ("edit kitchen stock") and instead got hijacked
+    // by how_to_use_kds's loose ['how','kitchen'] AND-group (same class of over-broad-match risk
+    // documented on that intent - fixed here by outscoring it with real, on-topic phrases rather
+    // than narrowing the KDS intent and risking a regression on genuine KDS questions).
+    'edit_kitchen_stock' => ['kitchen inventory', 'kitchen stock', 'update inventory', 'add inventory', 'stock items', ['update', 'stock'], ['add', 'stock'], ['kitchen', 'inventory']],
+    // Added 27 Aug 2026, same FAQ-expansion pass - both are real inventory pages that had zero
+    // phrase coverage beyond their own literal title.
+    'deficit_shortfalls_log' => ['kitchen wastage', 'stock wastage', 'spoiled stock', 'stock shortfall', ['record', 'wastage'], ['log', 'wastage'], ['stock', 'spoiled']],
+    'kitchen_purchases' => ['kitchen purchase', 'vendor purchase', 'buy stock', 'purchase stock', ['record', 'purchase'], ['log', 'purchase'], ['vendor', 'purchase']],
+];
+
+/**
  * @return array<int, array{type: string, phrases: array, handler: callable}> in the same shape
  *         getIntentTable() (offline_intent_engine.php) returns, ready to be merged onto the end
  *         of it - hand-written intents are checked first by the caller, so a hand-written phrase
@@ -82,7 +107,7 @@ function buildNavMenuIntents(PDO $pdo): array {
 
         $intents[] = [
             'type' => 'nav_auto_' . $uniqueKey,
-            'phrases' => [$cleanPhrase],
+            'phrases' => array_merge([$cleanPhrase], NAV_INTENT_PHRASE_ALIASES[$uniqueKey] ?? []),
             'handler' => function (string $q, string $lower, array $ctx, string $userRole, array $roleFlags) use ($title, $tabKey, $uniqueKey, $allowedRoles): array {
                 if (!isNavItemVisibleForRole($allowedRoles, $userRole)) {
                     return ['reply' => "🔒 Access Denied: '$title' isn't available for your role ('$userRole').", 'action' => null];

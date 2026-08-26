@@ -670,7 +670,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // wrong-property) result once it resolves.
   const hydrationTokenRef = useRef(0);
   const { showToast } = useToast();
-  const { refreshStaff, refreshAttendance } = useStaff();
+  const { staff, refreshStaff, refreshAttendance } = useStaff();
 
   const { inventory, updateStock, addInventoryItem, updateInventoryItemImage, addRequisition } = useInventoryContext();
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
@@ -2639,6 +2639,7 @@ ${itemsStr}
           userRole={activeRole}
           propertyName={preloadedData.currentProperty?.name}
           guests={guests}
+          staff={staff}
           onNavigate={(tab, itemKey, extraData) => {
             setIsAIChatOpen(false);
             setActiveTab(tab as any);

@@ -147,7 +147,15 @@ function extractAddStaffDetails(string $q, string $lower): array {
 
     $stopWords = ['add', 'new', 'staff', 'team', 'member', 'as', 'a', 'an', 'the', 'phone', 'number',
         'salary', 'role', 'onboard', 'hire', 'register', 'create', 'account', 'for', 'with', 'kitchen',
-        'supervisor', 'admin'];
+        'supervisor', 'admin',
+        // Question/sentence-starter words (added 27 Aug 2026, live bug: "How do I add a new staff
+        // member and set what they're allowed to access?" extracted 'How' as the staff member's
+        // NAME - a real, well-formed question, not broken phrasing. The capitalized-word scan
+        // below has no way to tell a sentence-starter from a real proper noun other than a
+        // stopword list, and this one never accounted for question words being capitalized too.
+        'how', 'what', 'where', 'who', 'when', 'why', 'which', 'do', 'does', 'did', 'can', 'could',
+        'should', 'would', 'will', 'is', 'are', 'was', 'were', 'set', 'allowed', 'access', 'permission',
+        'permissions', 'they', 'them', 'their'];
     $name = null;
     if (preg_match_all('/\b([A-Z][a-z]+)\b/', $q, $capMatches)) {
         foreach ($capMatches[1] as $candidate) {
@@ -199,7 +207,12 @@ function extractAddMenuItemDetails(string $q, string $lower): array {
     $stopWords = ['add', 'new', 'menu', 'item', 'food', 'dish', 'create', 'for', 'at', 'price',
         'rs', 'rupees', 'inr', 'the', 'a', 'an', 'to', 'starter', 'starters', 'main', 'course',
         'beverage', 'beverages', 'drink', 'farm', 'special', 'specials', 'dessert', 'desserts', 'sweet', 'category', 'in',
-        'recipe', 'recipes'];
+        'recipe', 'recipes',
+        // Same class of bug as extractAddStaffDetails() above, added 27 Aug 2026 - this function
+        // joins every non-stopword word into the name, so a real question ("How do I add a new
+        // dish...") would leak 'how'/'do'/'i' straight into the extracted item name unless they're
+        // explicitly excluded here too.
+        'how', 'do', 'does', 'i', 'we', 'you', 'set', 'up', 'called', 'named'];
     $words = preg_split('/[\s,]+/', $q);
     $filteredWords = [];
     foreach ($words as $w) {
@@ -512,6 +525,12 @@ function getIntentTable(): array {
                 'telegram bot', 'telegram group', 'telegram channel', 'telegram config',
                 'telegram notification', ['telegram', 'group'], ['telegram', 'channel'],
                 ['telegram', 'bot'], ['configure', 'telegram'], ['setup', 'telegram'],
+                // Bare 'telegram' + loose AND-groups (added 27 Aug 2026, live gap: "How do I
+                // connect Telegram so I get alerts for new bookings and kitchen orders?" scored 0
+                // here - every existing phrase required a SECOND telegram-specific word adjacent
+                // to it, but a real user just says "connect"/"get alerts" in between. 'telegram'
+                // alone is a distinctive enough word that this is safe to add unqualified.
+                'telegram', ['connect', 'telegram'], ['telegram', 'alert'],
             ],
             'handler' => function (string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array {
                 if (!$roleFlags['isAdmin']) {
@@ -538,6 +557,18 @@ function getIntentTable(): array {
                 'change resort', ['property', 'name'], ['property', 'logo'], ['property', 'checkin'],
                 ['property', 'checkout'], ['property', 'wifi'], ['resort', 'phone'], ['resort', 'address'],
                 ['hotel', 'phone'], ['hotel', 'address'],
+                // OTA/channel calendar sync (added 27 Aug 2026, live gap: "sync my Airbnb/
+                // Booking.com calendar so rooms don't get double-booked" scored 0 everywhere -
+                // ICalSyncManager.tsx is embedded directly on THIS page (see EditPropertyPage.tsx),
+                // there's no separate nav destination for it.
+                'airbnb', 'booking.com', 'ical sync', 'ota sync', 'channel manager', 'sync calendar',
+                'double booking', 'double-booked', ['sync', 'calendar'], ['sync', 'airbnb'],
+                ['airbnb', 'calendar'], ['ota', 'calendar'], ['calendar', 'sync'],
+                // UPI ID / payment QR setup (added 27 Aug 2026, live gap: "set up my UPI ID so
+                // guests can pay by scanning a QR code" scored 0 - the upi_id field and its
+                // auto-generated QR preview both live on this same page, see upiQrCode.tsx).
+                'upi id', 'qr code', 'payment qr', 'scan qr', ['setup', 'upi'], ['add', 'upi'],
+                ['guest', 'scan'], ['qr', 'code'],
             ],
             'handler' => function (string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array {
                 if (!$roleFlags['isAdmin']) {
@@ -613,6 +644,41 @@ function getIntentTable(): array {
                 return [
                     'reply' => $replyMsg,
                     'action' => ['type' => 'navigate', 'tab' => 'staff', 'itemKey' => 'staff_directory_salaries', 'addStaffName' => $name, 'addStaffPhone' => $phone, 'addStaffRole' => $role, 'addStaffSalary' => $salary],
+                ];
+            },
+        ],
+        [
+            // Added 27 Aug 2026 - live bug: asked "how many team members / what are their names",
+            // this app had NOTHING to answer from beyond "go look at the Staff Directory" - the
+            // live context passed in only ever carried booking/guest data, never staff, even
+            // though the frontend already has the roster loaded via StaffContext. Answers directly
+            // from $ctx['staffCount']/$ctx['staffNames'] (see AIChatWidget.tsx's getLiveContext())
+            // instead of just deep-linking - a real answer, not just a faster way to go look.
+            // Deliberately a DIFFERENT intent from add_staff_member/edit_staff above: those CHANGE
+            // the roster, this only READS a summary of it (open to all roles, same as "who's
+            // checked in today" - no salary/phone in the reply, just name + role).
+            'type' => 'team_roster',
+            'phrases' => [
+                'how many staff', 'how many team members', 'how many employees', 'list staff',
+                'staff names', 'team member names', 'who works here', 'staff roster', 'team roster',
+                'who is on staff', 'who are my staff', 'staff list', 'employee list', 'team list',
+                ['how', 'many', 'staff'], ['how', 'many', 'team'], ['how', 'many', 'employees'],
+                ['list', 'staff'], ['list', 'team'], ['staff', 'names'], ['team', 'names'],
+                ['who', 'works'], ['staff', 'roster'], ['team', 'roster'], ['who', 'staff'],
+            ],
+            'handler' => function (string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array {
+                $count = $ctx['staffCount'] ?? 0;
+                $names = $ctx['staffNames'] ?? [];
+                if ($count === 0 && empty($names)) {
+                    return [
+                        'reply' => "I don't have your team roster loaded right now - open the Staff Directory to see the full list.",
+                        'action' => ['type' => 'navigate', 'tab' => 'staff', 'itemKey' => 'staff_directory_salaries'],
+                    ];
+                }
+                $namesStr = !empty($names) ? implode(', ', $names) : 'none listed';
+                return [
+                    'reply' => "You have $count active team member" . ($count === 1 ? '' : 's') . ": $namesStr.",
+                    'action' => null,
                 ];
             },
         ],
@@ -849,6 +915,25 @@ function getIntentTable(): array {
             ],
         ],
         [
+            // Added 27 Aug 2026, same FAQ-expansion pass that surfaced Recipe Builder/Attendance -
+            // walk-in tabs (billing a restaurant/kitchen customer who isn't a hotel guest, see
+            // WalkInTabBillModal.tsx) live on this SAME take_food_order tab, but had zero phrase
+            // coverage of their own. Deliberately distinct from open_add_booking's 'walk in guest'
+            // phrasing (a walk-in wanting a ROOM) by requiring 'tab'/'table'/'bill', not just
+            // 'walk-in' alone - those are two different real features, not a collision to fix.
+            'type' => 'walk_in_tab',
+            'phrases' => [
+                'walk-in tab', 'walkin tab', 'walk in tab', 'walk-in table', 'walk in table',
+                'restaurant tab', 'table bill', 'walk-in customer bill', 'walk-in restaurant customer',
+                ['walk', 'in', 'tab'], ['walk', 'in', 'table'], ['table', 'bill'], ['restaurant', 'customer'],
+                ['bill', 'walk', 'in'],
+            ],
+            'handler' => fn(string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array => [
+                'reply' => "Open a Walk-In Tab from Kitchen ➔ Take Order, assign it to a numbered table, add items throughout their visit, and bill the whole tab at once when they're ready to pay - no room booking needed.",
+                'action' => ['type' => 'navigate', 'tab' => 'kitchen', 'itemKey' => 'take_food_order'],
+            ],
+        ],
+        [
             'type' => 'all_bookings',
             'phrases' => [
                 'all booking', 'guest list', 'show booking', 'go to booking',
@@ -1033,6 +1118,10 @@ function runOfflineIntentEngine(string $q, ?array $context, string $userRole, ar
         'upcomingCount' => (int)($context['upcoming_count'] ?? 0),
         'pastCount' => (int)($context['past_count'] ?? 0),
         'activeGuests' => $context['active_guests'] ?? [],
+        // Added 27 Aug 2026 alongside the 'team_roster' intent below - see AIChatWidget.tsx's
+        // getLiveContext() for what feeds this (name + role only, active staff only).
+        'staffCount' => (int)($context['staff_count'] ?? 0),
+        'staffNames' => $context['staff_names'] ?? [],
     ];
 
     $roleLower = strtolower(trim($userRole));

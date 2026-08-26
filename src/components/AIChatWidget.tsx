@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Bot, Send, X, Loader2 } from './icons/FlowbiteIcons';
 import { WhatsappIcon } from './icons/WhatsappIcon';
 import { TelegramIcon } from './icons/TelegramIcon';
-import { Guest } from '../types';
+import { Guest, StaffMember } from '../types';
 import { t } from '../i18n/en';
 import { getPropertySlug } from '../services/api';
 
@@ -27,6 +27,7 @@ interface AIChatWidgetProps {
   isOpen?: boolean;
   onClose?: () => void;
   guests?: Guest[];
+  staff?: StaffMember[];
   onNavigate?: (tab: string, itemKey?: string, extraData?: {
     staffName?: string; reqItemName?: string; reqQty?: number; reqUnit?: string;
     addStaffName?: string; addStaffPhone?: string; addStaffRole?: string; addStaffSalary?: number;
@@ -44,6 +45,7 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({
   isOpen: externalIsOpen,
   onClose,
   guests = [],
+  staff = [],
   onNavigate,
   onOpenAddBooking,
   onOpenAddExpense,
@@ -128,11 +130,22 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({
       }
     });
 
+    // Staff summary (added 27 Aug 2026 - live bug: asked "how many team members / what are their
+    // names", both online and offline modes had nothing to answer from and could only punt to the
+    // Staff Directory page). Deliberately name + role ONLY, never phone/salary - this app already
+    // sends this same live_context to a third-party online provider (Gemini/OpenAI/OpenCode Zen)
+    // when online mode is enabled, and this question doesn't need anything more than that to
+    // answer. Active only, matching what a user actually means by "my team" (excludes anyone
+    // marked Inactive/terminated).
+    const activeStaff = (staff || []).filter((s) => (s.status || 'Active') === 'Active');
+
     return {
       today_count: todayCount,
       upcoming_count: upcomingCount,
       past_count: pastCount,
       active_guests: activeGuestsList,
+      staff_count: activeStaff.length,
+      staff_names: activeStaff.map((s) => `${s.name || 'Unnamed'} (${s.role || 'Staff'})`),
     };
   };
 
