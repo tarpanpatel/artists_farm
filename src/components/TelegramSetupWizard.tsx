@@ -239,17 +239,6 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
     startPairing();
   };
 
-  const handleUpdateConfigField = async (field: keyof PropertyTelegramConfig, value: any) => {
-    if (!wizardConfig) return;
-    const updated = { ...wizardConfig, [field]: value };
-    setWizardConfig(updated);
-    try {
-      await saveTelegramConfigDB(updated);
-    } catch (e) {
-      console.error('Failed to save updated config field:', e);
-    }
-  };
-
   const handleCopyCode = () => {
     if (currentState.code) navigator.clipboard.writeText(currentState.code);
   };

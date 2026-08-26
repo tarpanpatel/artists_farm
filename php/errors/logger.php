@@ -44,40 +44,14 @@ if (!class_exists('TelescopeLogger')) {
             self::maybeSendWebPushAlert($portal, $severity, $msg, $origin);
         }
 
-        /**
-         * Same as log(), but suppresses repeats of the same event within a cooldown window.
-         * Added 26 Aug 2026: a single stray cross-tenant browser tab (an authenticated user's
-         * old/reloaded tab, stuck retrying a property it was correctly denied) generated 200+
-         * near-identical 'security' portal entries in one sitting - on its own eating most of
-         * that portal's 300-entry cap (see the per-portal cap comment in appendLog(), which could
-         * evict genuinely rare prior security entries) and re-firing the push alert on every one
-         * of its own 60s cooldown cycles for 10+ minutes straight. The underlying access-control
-         * check/403 is unaffected by this - it's purely about not spamming the log for something
-         * already confirmed and blocked. $dedupeKey scopes what counts as "the same event" -
-         * callers should key it narrowly (e.g. user+property+action) so a genuinely different
-         * violation still logs immediately; only exact repeats of the same key are throttled, and
-         * the first occurrence of any key always logs right away.
-         */
-        public static function logThrottled($portal, $severity, $msg, $origin, $extraData, $dedupeKey, $cooldownSeconds = 600) {
-            $cooldownFile = __DIR__ . '/dedupe_cooldowns.json';
-            $now = time();
-            $cooldowns = [];
-            if (file_exists($cooldownFile)) {
-                $decoded = @json_decode((string) @file_get_contents($cooldownFile), true);
-                if (is_array($decoded)) $cooldowns = $decoded;
-            }
-            $key = md5($dedupeKey);
-            // Opportunistically prune stale keys so this file doesn't grow forever.
-            foreach ($cooldowns as $k => $ts) {
-                if ($now - (int) $ts > 3600) unset($cooldowns[$k]);
-            }
-            if (isset($cooldowns[$key]) && ($now - (int) $cooldowns[$key]) < $cooldownSeconds) {
-                return; // same event logged too recently - suppressed
-            }
-            $cooldowns[$key] = $now;
-            @file_put_contents($cooldownFile, json_encode($cooldowns), LOCK_EX);
-            self::log($portal, $severity, $msg, $origin, $extraData);
-        }
+        // NOTE (26 Aug 2026): a logThrottled() method briefly lived here - same as log() but
+        // suppressing repeats of the same event within a 10-min cooldown, built after a stray
+        // cross-tenant browser tab generated 200+ near-identical 'security' portal entries in one
+        // sitting. Removed again the same day at the user's explicit request: they didn't want
+        // that class of event logged AT ALL, not just throttled (the router.php property-scope
+        // gate's own comment has the full context). The underlying 403/access-denial this was
+        // logging was never affected either time - only what Telescope records changed. See git
+        // history if a future repeat-prone security event needs the throttling approach instead.
 
         // NOTE (22 Aug 2026): Telegram used to also get a best-effort ping here
         // for Fatal Error/Exception/SQL Error, direct to the Telegram Bot API.
