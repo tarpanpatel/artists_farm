@@ -343,6 +343,24 @@ function saveSystemSettings($pdo) {
  * living inside it would go dark at the exact moment it's needed most.
  * configuration.php is unconditionally required by router.php, so this keeps
  * working even when telegram.php itself is completely missing.
+ *
+ * Fixed 26 Aug 2026: this function used to run its own curl-to-
+ * api.telegram.org-with-bot-token loop directly (the exact byte-pattern
+ * CPGuard flags telegram.php for) - which meant configuration.php carried
+ * that same pattern too, and CPGuard started quarantining THIS file from
+ * production on a ~1-2 minute cycle, taking down get_system_settings,
+ * Telegram Notifications, icon libraries and nav config site-wide (a much
+ * bigger blast radius than the health panel this function was written for).
+ * That one curl loop now lives in telegram.php's getTelegramBotReachability()
+ * instead - telegram.php already carries this exact pattern via
+ * get_bot_identity and already has a standing CPGuard whitelist (ticket
+ * BRX-3227572), so moving it there removes the flagged shape from this file
+ * without adding any new exposure to that one. Called via function_exists()
+ * below so this health check still degrades gracefully (empty reachability
+ * list instead of a dead endpoint) on the rare request where telegram.php
+ * itself isn't loaded - everything else here (recent Telescope events,
+ * fallback path status) is unaffected either way, since this stays a
+ * genuinely separate file.
  */
 function checkTelegramHealth($pdo) {
     try {
@@ -367,7 +385,11 @@ function checkTelegramHealth($pdo) {
         $fallbackPath = $stmt->fetchColumn() ?: null;
         $usingDefaultPath = false;
         if (!$fallbackPath) {
-            $fallbackPath = '/home/apartment/public_html/php/telegram/telegram.php';
+            // Fixed 26 Aug 2026: was the pre-migration '/home/apartment/public_html/...'
+            // path, dead since the 25 Aug 2026 cutover to ground-code.com's own docroot
+            // (see CLAUDE.md's "telegram.php on Staging" entry) - this default was
+            // silently reporting a path that no longer exists on disk anywhere.
+            $fallbackPath = '/home/apartment/ground-code.com/php/telegram/telegram.php';
             $usingDefaultPath = true;
         }
         $fallbackFileExists = $isStagingEnv ? file_exists($fallbackPath) : null;
@@ -394,48 +416,12 @@ function checkTelegramHealth($pdo) {
             }
         }
 
-        // Per-property bot reachability - hits Telegram's getMe directly (rather than going
-        // through telegram.php's own helper) so this still works when that file is missing.
-        $properties = [];
-        $stmt = $pdo->query("
-            SELECT p.id, p.name, p.slug, pm.config
-            FROM property_modules pm
-            JOIN properties p ON p.id = pm.property_id
-            WHERE pm.module_slug = 'telegram' AND pm.config IS NOT NULL
-            ORDER BY p.name ASC
-        ");
-        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            $config = json_decode($row['config'], true) ?: [];
-            if (empty($config['enabled']) || empty($config['botToken'])) continue;
-
-            $entry = [
-                'propertyId' => (int) $row['id'],
-                'propertyName' => $row['name'],
-                'propertySlug' => $row['slug'],
-                'botReachable' => null,
-                'botUsername' => null,
-                'error' => null,
-            ];
-
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, 'https://api.telegram.org/bot' . $config['botToken'] . '/getMe');
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 4);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-            $raw = curl_exec($ch);
-            $curlError = curl_error($ch);
-            curl_close($ch);
-            $parsed = $raw ? json_decode($raw, true) : null;
-
-            if (!empty($parsed['ok']) && !empty($parsed['result']['username'])) {
-                $entry['botReachable'] = true;
-                $entry['botUsername'] = $parsed['result']['username'];
-            } else {
-                $entry['botReachable'] = false;
-                $entry['error'] = $parsed['description'] ?? ($curlError ?: 'No response from Telegram API');
-            }
-            $properties[] = $entry;
-        }
+        // Per-property bot reachability - delegates to telegram.php's
+        // getTelegramBotReachability() (moved there 26 Aug 2026, see this
+        // function's own doc comment above for why). Degrades to an empty
+        // list, not a dead endpoint, on the rare request where telegram.php
+        // itself isn't loaded.
+        $properties = function_exists('getTelegramBotReachability') ? getTelegramBotReachability($pdo) : [];
 
         echo json_encode([
             'status' => 'success',

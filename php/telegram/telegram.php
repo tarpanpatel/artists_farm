@@ -197,3 +197,69 @@ function handleTelegramRequests($pdo, $request_method, $action, $propertyId) {
     }
 }
 
+/**
+ * Per-property Telegram bot reachability (getMe ping) - the ONE piece of
+ * configuration.php's checkTelegramHealth() that was moved here 26 Aug 2026.
+ *
+ * Not moved because of what it does, but because of what it LOOKS like to a
+ * scanner: configuration.php had its own copy of this exact curl-to-
+ * api.telegram.org-with-bot-token-in-the-URL shape, and CPGuard started
+ * quarantining configuration.php from PRODUCTION on a ~1-2 minute cycle for
+ * it - taking down get_system_settings, Telegram Notifications, icon
+ * libraries and nav config site-wide, not just the health panel. telegram.php
+ * already carries this identical pattern (see get_bot_identity above) and
+ * already has a standing CPGuard whitelist (support ticket BRX-3227572), so
+ * moving just this one function here removes the pattern from configuration.php
+ * entirely without duplicating exposure - telegram.php isn't any MORE flagged
+ * than it already was.
+ *
+ * configuration.php's checkTelegramHealth() calls this via function_exists(),
+ * degrading gracefully (empty reachability list, not a dead endpoint) if
+ * telegram.php itself is ever missing - unlike a full-file merge, the rest of
+ * the health check (recent Telescope events, fallback path status, etc.)
+ * keeps working either way, since it lives in a genuinely separate file.
+ */
+function getTelegramBotReachability($pdo) {
+    $properties = [];
+    $stmt = $pdo->query("
+        SELECT p.id, p.name, p.slug, pm.config
+        FROM property_modules pm
+        JOIN properties p ON p.id = pm.property_id
+        WHERE pm.module_slug = 'telegram' AND pm.config IS NOT NULL
+        ORDER BY p.name ASC
+    ");
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $config = json_decode($row['config'], true) ?: [];
+        if (empty($config['enabled']) || empty($config['botToken'])) continue;
+
+        $entry = [
+            'propertyId' => (int) $row['id'],
+            'propertyName' => $row['name'],
+            'propertySlug' => $row['slug'],
+            'botReachable' => null,
+            'botUsername' => null,
+            'error' => null,
+        ];
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, 'https://api.telegram.org/bot' . $config['botToken'] . '/getMe');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 4);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        $raw = curl_exec($ch);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+        $parsed = $raw ? json_decode($raw, true) : null;
+
+        if (!empty($parsed['ok']) && !empty($parsed['result']['username'])) {
+            $entry['botReachable'] = true;
+            $entry['botUsername'] = $parsed['result']['username'];
+        } else {
+            $entry['botReachable'] = false;
+            $entry['error'] = $parsed['description'] ?? ($curlError ?: 'No response from Telegram API');
+        }
+        $properties[] = $entry;
+    }
+    return $properties;
+}
+
