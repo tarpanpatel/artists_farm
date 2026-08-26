@@ -59,3 +59,11 @@ This workspace is a **Multi-Tenant Hospitality & Resort Management SaaS (PMS & K
   - **Use:** Hotel/Resort domain expertise: guest folios, ID document uploads, room tariffs, meal logs, petty cash drawers, and housekeeping service requests.
 - **`agency-product-manager`**
   - **Use:** SaaS feature roadmapping, tenant module toggles (`property_modules`), user onboarding, and operational prioritization.
+
+## 5. Legal, QA & Infrastructure
+- **`agency-legal-counsel`**
+  - **Use:** SaaS Terms of Service, Privacy Policies, data protection compliance, FSSAI/police register regulations, and contract templates.
+- **`agency-qa-automation-engineer`**
+  - **Use:** End-to-end automated testing, regression test suites for reservation booking grids, KDS kitchen orders, and petty cash reconciliations.
+- **`agency-devops-engineer`**
+  - **Use:** Local server architecture, Apache/MySQL performance tuning, SSL security configuration, database backup routines, and environment management.
