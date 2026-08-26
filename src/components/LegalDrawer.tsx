@@ -459,7 +459,14 @@ export const LegalDrawer: React.FC<LegalDrawerProps> = ({ activeTab, onClose }) 
                   <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
                     <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Does Ground Code show me business analytics?</h4>
                     <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Yes, the Analytics dashboard shows occupancy trends, revenue, and expense breakdowns so you can see how your property is performing over time, not just what's happening today.
+                      Yes — Reports &amp; Earnings shows occupancy rate, average room rate, average length of stay, profit per room-night, and room vs. kitchen revenue, so you see how your property is performing over time, not just what's happening today.
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
+                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Can I see which menu items make me the most money, not just which sell the most?</h4>
+                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                      Yes, Reports &amp; Earnings ranks dishes by actual revenue and factors in kitchen purchase cost, so you see real profit per dish, not just order counts.
                     </p>
                   </div>
 
@@ -677,6 +684,69 @@ export const LegalDrawer: React.FC<LegalDrawerProps> = ({ activeTab, onClose }) 
                     <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: What languages does Ground Code support?</h4>
                     <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
                       English by default, with additional languages available on request.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Category 17: Cash Management & Reconciliation (added 27 Aug 2026) */}
+              <div className="pt-2">
+                <span className="text-2xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">Cash Management &amp; Reconciliation</span>
+
+                <div className="space-y-2.5">
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
+                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: How do I hand over cash from one staff member to another?</h4>
+                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                      From Finances, use Cash Handover to record the amount, who received it, and any notes — it automatically posts a Telegram alert to your Finance group and updates the running balance.
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
+                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Can I correct a mistake in the cash balance?</h4>
+                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                      Yes, Manual Adjustment on the same Finances page lets you add a correction with a note explaining why, so the balance stays accurate without deleting the original entry.
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
+                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Where do I log a kitchen purchase from a vendor?</h4>
+                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                      Under Expenses, category Kitchen — vendor purchases used to have their own page, but that's now unified into the same Expenses list as every other cost, so all your spending is in one place.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Category 18: Booking Extras & Charges (added 27 Aug 2026) */}
+              <div className="pt-2">
+                <span className="text-2xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">Booking Extras &amp; Charges</span>
+
+                <div className="space-y-2.5">
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
+                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Can I add extra charges to a guest's bill, like a late checkout fee?</h4>
+                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                      Yes — set up reusable charge templates (late checkout, laundry, extra bed, etc.) under Extra Charges &amp; Fees, then add any of them to a guest's bill in one click at checkout.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Category 19: Property Setup Wizard (added 27 Aug 2026) */}
+              <div className="pt-2">
+                <span className="text-2xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">Property Setup Wizard</span>
+
+                <div className="space-y-2.5">
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
+                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Do I have to complete every setup step before I can start taking bookings?</h4>
+                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                      No — only the Basics step is required to publish your property. The rest of the 5-step checklist (rooms, staff, Telegram, licenses, payments) is fully optional and can be finished later from the "Finish Setting Up This Property" banner.
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
+                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Can I skip a setup step and come back to it later?</h4>
+                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                      Yes, every step past Basics can be skipped or snoozed, and the banner keeps track of how many of the 5 steps you've completed.
                     </p>
                   </div>
                 </div>

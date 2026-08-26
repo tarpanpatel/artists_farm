@@ -61,10 +61,20 @@ const NAV_INTENT_PHRASE_ALIASES = [
     // documented on that intent - fixed here by outscoring it with real, on-topic phrases rather
     // than narrowing the KDS intent and risking a regression on genuine KDS questions).
     'edit_kitchen_stock' => ['kitchen inventory', 'kitchen stock', 'update inventory', 'add inventory', 'stock items', ['update', 'stock'], ['add', 'stock'], ['kitchen', 'inventory']],
-    // Added 27 Aug 2026, same FAQ-expansion pass - both are real inventory pages that had zero
-    // phrase coverage beyond their own literal title.
+    // Added 27 Aug 2026, same FAQ-expansion pass - real inventory page that had zero phrase
+    // coverage beyond its own literal title.
     'deficit_shortfalls_log' => ['kitchen wastage', 'stock wastage', 'spoiled stock', 'stock shortfall', ['record', 'wastage'], ['log', 'wastage'], ['stock', 'spoiled']],
-    'kitchen_purchases' => ['kitchen purchase', 'vendor purchase', 'buy stock', 'purchase stock', ['record', 'purchase'], ['log', 'purchase'], ['vendor', 'purchase']],
+    // CORRECTED same day: a 'kitchen_purchases' alias briefly lived here, but that unique_key was
+    // deleted from nav_menu_items entirely (menu.php's migration: "kitchen_purchases folded into
+    // the unified Expenses page" - App.tsx's own routeMap redirects the old key to
+    // tab=petty_cash/key=expenses). This mechanism only augments an EXISTING live row's phrases -
+    // with no row left for this unique_key, the alias was dead code that could never actually
+    // fire, caught only because the test used a synthetic fixture row instead of real data. See
+    // the hand-written 'kitchen_purchase_expense' intent in offline_intent_engine.php instead,
+    // which points straight at the real current destination.
+    'finances' => ['cash handover', 'hand over cash', 'cash reconciliation', 'reconcile cash',
+        ['cash', 'handover'], ['hand', 'over', 'cash'], ['manual', 'adjustment'], ['adjust', 'cash'],
+        ['cash', 'drawer']],
 ];
 
 /**

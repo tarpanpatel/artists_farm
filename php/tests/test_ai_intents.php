@@ -328,7 +328,7 @@ $navFixture = [
     ['attendance_calendar', 'Attendance Calendar', 'staff', '["Super Admin","Admin","Staff Supervisor"]', 1],
     ['edit_kitchen_stock', 'Edit Kitchen Stock', 'inventory', '[]', 1],
     ['deficit_shortfalls_log', 'Kitchen Wastage', 'inventory', '[]', 1],
-    ['kitchen_purchases', 'Kitchen Purchases', 'inventory', '[]', 1],
+    ['finances', 'Finances', 'petty_cash', '[]', 1],
 ];
 $stmt = $pdo->prepare("INSERT INTO nav_menu_items (unique_key, title, tab_key, roles_json, is_visible) VALUES (?, ?, ?, ?, ?)");
 foreach ($navFixture as $row) {
@@ -393,8 +393,15 @@ check('"walk in guest" (a booking, not a tab) is unaffected by the new walk_in_t
 check('kitchen wastage alias reaches the real page', 'How do I record kitchen wastage?', 'Staff', null, $navIntents, [
     'actionField' => ['field' => 'itemKey', 'value' => 'deficit_shortfalls_log'],
 ]);
-check('kitchen purchases alias reaches the real page', 'How do I log a kitchen purchase from a vendor?', 'Staff', null, $navIntents, [
-    'actionField' => ['field' => 'itemKey', 'value' => 'kitchen_purchases'],
+// CORRECTED same day: 'kitchen_purchases' has no live nav_menu_items row any more (deleted,
+// folded into Expenses - see nav_menu_intents.php's comment). The hand-written
+// 'kitchen_purchase_expense' intent below points at the real current destination instead.
+check('kitchen purchase reaches the real current destination (Expenses), not the deleted page', 'How do I log a kitchen purchase from a vendor?', 'Staff', null, [], [
+    'actionType' => 'navigate',
+    'actionField' => ['field' => 'itemKey', 'value' => 'expenses'],
+]);
+check('cash handover alias reaches Finances (the renamed cash_drawer page)', 'How do I record a cash handover?', 'Staff', null, $navIntents, [
+    'actionField' => ['field' => 'itemKey', 'value' => 'finances'],
 ]);
 
 // ============================================================================================

@@ -934,6 +934,22 @@ function getIntentTable(): array {
             ],
         ],
         [
+            // Added 27 Aug 2026, corrected same day - see nav_menu_intents.php's own comment on
+            // why this is a hand-written intent rather than a NAV_INTENT_PHRASE_ALIASES entry:
+            // 'kitchen_purchases' has no live nav_menu_items row to attach to any more (deleted,
+            // folded into Expenses - menu.php's migration comment has the full history). Points
+            // straight at the real current destination, matching App.tsx's own routeMap redirect.
+            'type' => 'kitchen_purchase_expense',
+            'phrases' => [
+                'kitchen purchase', 'vendor purchase', 'buy stock', 'purchase stock', 'stock purchase',
+                ['record', 'purchase'], ['log', 'purchase'], ['vendor', 'purchase'], ['kitchen', 'purchase'],
+            ],
+            'handler' => fn(string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array => [
+                'reply' => "Log it as an expense under Expenses (category: Kitchen) - vendor purchases used to have their own page, but that's now unified into the same Expenses list as every other cost.",
+                'action' => ['type' => 'navigate', 'tab' => 'petty_cash', 'itemKey' => 'expenses'],
+            ],
+        ],
+        [
             'type' => 'all_bookings',
             'phrases' => [
                 'all booking', 'guest list', 'show booking', 'go to booking',
