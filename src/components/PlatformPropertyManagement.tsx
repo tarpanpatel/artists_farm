@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Plus, Loader2, AlertCircle, AlertTriangle, BarChart3, Pencil, Eye, CheckCircle2, Share2, Copy, XCircle, ExternalLink, X, TelegramIcon, Trash2 } from './icons/FlowbiteIcons';
+import { Building2, Plus, Loader2, AlertCircle, AlertTriangle, BarChart3, Pencil, CheckCircle2, Share2, Copy, XCircle, ExternalLink, X, TelegramIcon, Trash2 } from './icons/FlowbiteIcons';
 import { Drawer, Alert, Modal } from 'flowbite-react';
 import { ToggleSwitch } from './ToggleSwitch';
 import { StyledSelect } from './StyledSelect';
@@ -391,6 +391,15 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
   };
 
   const handleDeleteProperty = async (propertyId: number) => {
+    const prop = properties.find((p) => p.id === propertyId);
+    const confirmed = await confirm({
+      title: t('delete_property_confirm_title', 'Delete Property?'),
+      message: prop ? `Are you sure you want to delete "${prop.name}"? This action cannot be undone.` : 'Are you sure you want to delete this property?',
+      confirmText: t('delete_property_confirm_button', 'Delete Property'),
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+
     setOperationLoading(true);
     setError(null);
     try {
@@ -407,11 +416,15 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
       if (data.success) {
         setProperties((prev) => prev.filter((p) => p.id !== propertyId));
         setShowDeletePropertyModal(null);
+        showToast(t('property_deleted_success', 'Property deleted successfully'), { type: 'success' });
       } else {
-        setError(data.message || 'Failed to delete property');
+        const errorMsg = data.message || 'Failed to delete property';
+        showToast(errorMsg, { type: 'error' });
+        setError(errorMsg);
       }
     } catch (err) {
       console.error('Failed to delete property:', err);
+      showToast('Failed to delete property', { type: 'error' });
       setError('Failed to delete property');
     } finally {
       setOperationLoading(false);
@@ -419,6 +432,15 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
   };
 
   const handleDeleteTenant = async (tenantId: number) => {
+    const tenant = tenants.find((t) => t.id === tenantId);
+    const confirmed = await confirm({
+      title: t('delete_tenant_confirm_title', 'Delete Owner?'),
+      message: tenant ? `Are you sure you want to delete "${tenant.name}" and all associated properties? This action cannot be undone.` : 'Are you sure you want to delete this owner?',
+      confirmText: t('delete_tenant_confirm_button', 'Delete Owner'),
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+
     setOperationLoading(true);
     setError(null);
     try {
@@ -433,17 +455,19 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
 
       const data = await response.json();
       if (data.success) {
-        // Deleting a tenant cascades to every property under it - drop both
-        // from local state, not just the tenant row.
         setTenants((prev) => prev.filter((t) => t.id !== tenantId));
         setProperties((prev) => prev.filter((p) => p.tenant_id !== tenantId));
         setShowDeleteTenantModal(null);
+        showToast(t('tenant_deleted_success', 'Owner deleted successfully'), { type: 'success' });
       } else {
-        setError(data.message || 'Failed to delete tenant');
+        const errorMsg = data.message || 'Failed to delete owner';
+        showToast(errorMsg, { type: 'error' });
+        setError(errorMsg);
       }
     } catch (err) {
       console.error('Failed to delete tenant:', err);
-      setError('Failed to delete tenant');
+      showToast('Failed to delete owner', { type: 'error' });
+      setError('Failed to delete owner');
     } finally {
       setOperationLoading(false);
     }
@@ -905,7 +929,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
               <table className="w-full text-xs text-left text-slate-600 dark:text-slate-300">
                 <thead className="text-2xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700">
                   <tr>
-                    <th scope="col" className="px-4 py-3 whitespace-nowrap">Business Name</th>
+                    <th scope="col" className="px-4 py-3 whitespace-nowrap">Owner Name</th>
                     <th scope="col" className="px-4 py-3 whitespace-nowrap">Properties & Slots</th>
                     <th scope="col" className="px-4 py-3 whitespace-nowrap">Status</th>
                     <th scope="col" className="px-4 py-3 whitespace-nowrap text-right">Actions</th>
@@ -949,15 +973,15 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                         <td className="px-4 py-3 whitespace-nowrap text-right">
                           <div className="flex items-center justify-end gap-1.5">
                             <Button
-                              variant="secondary"
+                              variant="primary"
                               size="sm"
                               onClick={() => setViewPropertiesTenant(tenant)}
-                              leftIcon={<Building2 className="w-3.5 h-3.5 shrink-0 text-indigo-500" />}
+                              leftIcon={<Building2 className="w-3.5 h-3.5 shrink-0" />}
                             >
                               View Properties
                             </Button>
                             <Button
-                              variant="primary"
+                              variant="secondary"
                               size="sm"
                               onClick={() => window.open(`/artists_farm/${tenant.slug}/#dashboard`, '_blank')}
                               leftIcon={<ExternalLink className="w-3.5 h-3.5 shrink-0" />}
@@ -975,7 +999,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                             <Button
                               variant="ghost"
                               size="xs"
-                              onClick={() => setShowDeleteTenantModal(tenant.id)}
+                              onClick={() => handleDeleteTenant(tenant.id)}
                               title={t('delete_tenant_tooltip', 'Delete Tenant')}
                               className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                             >
@@ -1025,23 +1049,20 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                   </div>
 
                   <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => setViewPropertiesTenant(tenant)}
-                        leftIcon={<Building2 className="w-3.5 h-3.5 shrink-0 text-indigo-500" />}
-                        className="grow sm:grow-0 justify-center"
-                      >
-                        View Properties
-                      </Button>
-
-                    </div>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => setViewPropertiesTenant(tenant)}
+                      leftIcon={<Building2 className="w-3.5 h-3.5 shrink-0" />}
+                      className="w-full justify-center"
+                    >
+                      View Properties
+                    </Button>
 
                     <div className="flex items-center justify-between gap-1.5 pt-1">
                       <div className="flex items-center gap-1.5 grow flex-wrap">
                         <Button
-                          variant="primary"
+                          variant="secondary"
                           size="sm"
                           onClick={() => window.open(`/artists_farm/${tenant.slug}/#dashboard`, '_blank')}
                           leftIcon={<ExternalLink className="w-3.5 h-3.5 shrink-0" />}
@@ -1867,12 +1888,12 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                           <div className="flex items-center gap-1.5">
                             <Button
                               onClick={() => openPropertyWithAutoLogin(prop, viewPropertiesTenant.slug)}
-                              variant="ghost"
-                              size="xs"
+                              variant="secondary"
+                              size="sm"
                               title={t('open_property_tab_tooltip', 'Open Property in New Tab')}
-                              className="text-emerald-600 dark:text-emerald-400"
+                              leftIcon={<ExternalLink className="w-3.5 h-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />}
                             >
-                              <Eye className="w-3.5 h-3.5" />
+                              Open Property
                             </Button>
                             <Button
                               onClick={() => {
@@ -1880,15 +1901,15 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                                 setIsEditingBotToken(false);
                                 setShowPropertyModal('edit');
                               }}
-                              variant="ghost"
-                              size="xs"
+                              variant="secondary"
+                              size="sm"
                               title={t('edit_property_tooltip', 'Edit Property')}
-                              className="text-slate-600 dark:text-slate-300"
+                              leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
                             >
-                              <Pencil className="w-3.5 h-3.5" />
+                              Edit
                             </Button>
                             <Button
-                              onClick={() => setShowDeletePropertyModal(prop.id)}
+                              onClick={() => handleDeleteProperty(prop.id)}
                               variant="ghost"
                               size="xs"
                               title={t('delete_property_tooltip', 'Delete Property')}

@@ -302,7 +302,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                 onClick={() => goToSection('tenants_properties')}
                 className="w-full cursor-pointer text-left"
               >
-                {t('root_tenants_properties_label', 'Properties')}
+                {t('root_tenants_properties_label', 'Owners')}
               </SidebarItem>
 
               <SidebarCollapse
@@ -506,7 +506,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
             <div className="min-w-0">
               <h2 className="root-admin-dashboard__title text-lg lg:text-xl font-semibold text-gray-900 dark:text-white truncate">
                 {activeSection === 'dashboard' && t('root_dashboard_label', 'Dashboard')}
-                {activeSection === 'tenants_properties' && t('root_tenants_properties_label', 'Properties')}
+                {activeSection === 'tenants_properties' && t('root_tenants_properties_label', 'Owners')}
                 {activeSection === 'edit_main_menu' && t('root_edit_main_menu_label', 'Edit Main Menu')}
                 {activeSection === 'default_expenses' && t('root_default_expenses_heading_label', 'Default Expenses (MultiKey)')}
                 {activeSection === 'default_bills' && 'Default Bills (MultiKey)'}
