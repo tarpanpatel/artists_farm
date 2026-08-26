@@ -1,4 +1,5 @@
 import React, { forwardRef } from 'react';
+import { twMerge } from 'tailwind-merge';
 import { AlertTriangle, CheckCircle2 } from './icons/FlowbiteIcons';
 import { TextInput as FlowbiteTextInput, Label as FlowbiteLabel } from 'flowbite-react';
 
@@ -16,27 +17,46 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   success?: string | boolean;
   helperText?: string;
   leftIcon?: React.ReactNode;
-  icon?: React.ComponentType<{ className?: string }>;
   rightIcon?: React.ReactNode;
   fullWidth?: boolean;
 }
 
-const inputTheme = {
+// BUG (found 27 Aug 2026, live on the login screen's phone field): flowbite-react's own
+// <TextInput> applies its `className` prop to the OUTER WRAPPER <div>, never to the actual
+// <input> element - the input's classes come ENTIRELY from the `theme` prop
+// (node_modules/flowbite-react/dist/components/TextInput/TextInput.js: `twMerge(theme.base,
+// className)` on the wrapper div; the <input> itself is built from `theme.field.input.*` with
+// no `className` folded in at all). So every custom className every caller of this shared Input
+// ever passed - `pl-16` to clear a wide custom leftIcon, `font-mono tracking-[0.25em]`, etc. -
+// was silently landing on the wrong DOM node. Confirmed live: the login screen's phone field
+// couldn't clear its own "+91" badge because `pl-16` never reached the input, which stayed
+// stuck at this file's old fixed `ps-10` with no way for a caller to override it.
+// Fixed by building the input's `theme.field.input.base` per-render (buildInputTheme below),
+// folding the caller's className into it via `twMerge` so a caller's own `pl-16` correctly wins
+// over the `pl-10`/`pr-10` defaults applied here when leftIcon/rightIcon are present, instead of
+// both classes existing simultaneously with the winner left to arbitrary Tailwind generation
+// order. leftIcon is also rendered as a manually-positioned overlay now (mirroring rightIcon,
+// just below) instead of being routed through Flowbite's own `icon` prop slot - that slot is
+// sized for one small icon and is exactly what was clamping every caller to a fixed `ps-10`
+// with no way out. The unused `icon` prop (nothing in this app ever passed it - checked) was
+// dropped along with that routing rather than left declared-but-dead.
+const buildInputTheme = (className: string, hasLeftIcon: boolean, hasRightIcon: boolean) => ({
   field: {
     input: {
-      base: "block w-full border text-sm rounded-lg disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:text-gray-500 dark:disabled:text-gray-400 disabled:border-gray-300 dark:disabled:border-gray-600 disabled:opacity-100 transition-colors",
+      base: twMerge(
+        "block w-full border text-sm rounded-lg disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:text-gray-500 dark:disabled:text-gray-400 disabled:border-gray-300 dark:disabled:border-gray-600 disabled:opacity-100 transition-colors",
+        hasLeftIcon ? "pl-10" : "",
+        hasRightIcon ? "pr-10" : "",
+        className
+      ),
       colors: {
         gray: "bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500",
         failure: "border-red-500 bg-red-50 text-red-900 placeholder-red-700 focus:border-red-500 focus:ring-red-500 dark:border-red-400 dark:bg-red-100 dark:focus:border-red-500 dark:focus:ring-red-500",
         success: "border-green-500 bg-green-50 text-green-900 placeholder-green-700 focus:border-green-500 focus:ring-green-500 dark:border-green-400 dark:bg-green-100 dark:focus:border-green-500 dark:focus:ring-green-500",
       },
-      withIcon: {
-        on: "ps-10",
-        off: "",
-      },
     },
   },
-};
+});
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   (
@@ -47,7 +67,6 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       success,
       helperText,
       leftIcon,
-      icon,
       rightIcon,
       fullWidth = true,
       className = '',
@@ -65,8 +84,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     const hasSuccess = !hasError && Boolean(success);
     const successMessage = typeof success === 'string' ? success : undefined;
 
-    // Resolve icon component for Flowbite TextInput
-    const resolvedIcon = icon || (leftIcon && React.isValidElement(leftIcon) ? () => leftIcon as React.ReactElement : undefined);
+    const dynamicTheme = buildInputTheme(className, Boolean(leftIcon), Boolean(rightIcon));
 
     return (
       <div className={`app-input-wrapper ${fullWidth ? 'w-full min-w-0' : 'inline-block'} input`}>
@@ -81,15 +99,19 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           </div>
         )}
         <div className="input__field-wrapper relative flex items-center">
+          {leftIcon && (
+            <div className="input__icon input__icon--left absolute left-3 flex items-center pointer-events-none text-slate-400 dark:text-slate-500 z-10">
+              {leftIcon}
+            </div>
+          )}
           <FlowbiteTextInput
             ref={ref}
             id={inputId}
             disabled={disabled}
             placeholder={placeholder}
-            icon={resolvedIcon}
             color={hasError ? 'failure' : hasSuccess ? 'success' : (color as any)}
-            theme={inputTheme as any}
-            className={`w-full h-10 ${className}`}
+            theme={dynamicTheme as any}
+            className="w-full h-10"
             {...(props as any)}
           />
           {rightIcon && (

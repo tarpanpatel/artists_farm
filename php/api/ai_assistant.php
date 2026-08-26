@@ -307,11 +307,43 @@ if ($aiConfig['enabled'] === true) {
     // table (24 Aug 2026) - without this, an online provider only ever knew about
     // open_add_booking (the one example baked into the old prompt), so it could never demonstrate
     // any of the newer parameterized actions (staff meals, service requests, material requests,
-    // staff/menu adding, edit flows) even when asked directly. Deliberately does NOT enumerate the
-    // auto-generated nav_menu_items pages (buildNavMenuIntents()) - that list is large and
-    // dynamic, and the offline engine already covers plain "go to X" navigation unconditionally,
-    // so there's nothing to gain teaching an online provider that subset too. Shared by BOTH
-    // provider branches below (Gemini and OpenAI), not duplicated, so there's one place to update.
+    // staff/menu adding, edit flows) even when asked directly. Shared by BOTH provider branches
+    // below (Gemini and OpenAI), not duplicated, so there's one place to update.
+    //
+    // REVERSED 27 Aug 2026 (this comment previously said the opposite - kept here so the mistake
+    // isn't repeated): this used to deliberately NOT enumerate the auto-generated nav_menu_items
+    // pages, reasoning "the offline engine already covers plain go-to-X navigation, nothing to
+    // gain teaching an online provider that subset too." That reasoning only accounted for
+    // NAVIGATION. Live bug, twice in one sitting: asked "process of adding recipes" then "how to
+    // mark attendance", Gemini confidently answered "that feature doesn't exist" for BOTH -
+    // Recipe Builder (beta_recipe_builder) and Attendance Calendar (attendance_calendar) are both
+    // real, live nav_menu_items pages, just never in this hand-curated list. The online provider
+    // isn't only asked "take me there" - it's asked "does X exist", and the FACTUAL ACCURACY RULE
+    // below actively instructs it to deny/hedge on anything not in this prompt. An incomplete
+    // list there doesn't cost nothing, it manufactures false negatives. Fixed by appending the
+    // real, always-current nav_menu_items list below, same source buildNavMenuIntents() already
+    // uses for the offline engine - so this can't drift out of sync with the real app again.
+    $knownPagesList = "";
+    try {
+        $navStmt = $pdo->query("SELECT unique_key, title, tab_key, roles_json FROM nav_menu_items WHERE is_visible = 1");
+        $navRows = $navStmt->fetchAll();
+        $pageLines = [];
+        foreach ($navRows as $navRow) {
+            $navTitle = trim((string)($navRow['title'] ?? ''));
+            $navTabKey = trim((string)($navRow['tab_key'] ?? ''));
+            $navUniqueKey = trim((string)($navRow['unique_key'] ?? ''));
+            if ($navTitle === '' || $navTabKey === '' || $navUniqueKey === '') continue; // header/group rows
+            $navRoles = json_decode((string)($navRow['roles_json'] ?? ''), true);
+            if (!isNavItemVisibleForRole(is_array($navRoles) ? $navRoles : [], $userRole)) continue;
+            $pageLines[] = "$navTitle (tab=$navTabKey, itemKey=$navUniqueKey)";
+        }
+        if (!empty($pageLines)) {
+            $knownPagesList = "\n\nKNOWN REAL PAGES/FEATURES IN THIS APP (this list is authoritative and complete for this user's role - if asked whether something exists, check here first; these can be reached via the navigate action above using the tab/itemKey shown):\n" . implode(', ', $pageLines);
+        }
+    } catch (Exception $eNavList) {
+        // nav_menu_items unreachable - degrade to the hand-written ACTIONS list only, same as
+        // buildNavMenuIntents()'s own fallback for the offline engine.
+    }
     $actionReference = "AVAILABLE ACTIONS - emit AT MOST ONE as a JSON block at the very end of your reply, exact shape shown, only when the user's message clearly asks for one of these (never invent a different type or field):\n"
             . "- Open blank Add Booking form: {\"action\":{\"type\":\"open_add_booking\"}}\n"
             . "- Open Add Expense form pre-filled: {\"action\":{\"type\":\"open_add_expense\",\"amount\":500,\"description\":\"vegetables\",\"category\":\"Kitchen\"}} (category one of: Bills, Staff Advance, Kitchen, Staff Meals, Other)\n"
@@ -324,13 +356,15 @@ if ($aiConfig['enabled'] === true) {
             . "  - Edit an EXISTING staff member (Admin only): tab=staff, itemKey=staff_directory_salaries, staffName\n"
             . "  - Add a NEW staff member (Admin only): tab=staff, itemKey=staff_directory_salaries, addStaffName, addStaffPhone, addStaffRole, addStaffSalary\n"
             . "  - Add a new menu item (Admin only): tab=kitchen, itemKey=edit_food_menu, newMenuItemName, newMenuItemPrice, newMenuItemCategory\n"
+            . "  - Recipe Builder (Admin only) - a REAL, separate feature from the menu item form above: set per-dish ingredients, yield factor, and servings so raw stock auto-depletes whenever that dish sells: tab=kitchen, itemKey=beta_recipe_builder\n"
             . "  - Kitchen KDS / live orders: tab=kitchen, itemKey=take_food_order\n"
             . "  - All bookings: tab=guests, itemKey=all_bookings\n"
             . "  - Edit property settings (Admin only): tab=edit_property, itemKey=edit_property\n"
             . "  - License management (Admin only): tab=licenses, itemKey=license_management\n"
             . "  - AI provider settings (Root Admin only): tab=admin_control, itemKey=ai_services\n"
             . "Every one of these actions only OPENS a form pre-filled or navigates - it never submits/saves/creates anything by itself. The user always reviews and clicks the real Save/Submit button themselves.\n"
-            . "If nothing above matches, just answer in plain text with NO action JSON.";
+            . "If nothing above matches, just answer in plain text with NO action JSON."
+            . $knownPagesList;
 
     // FACTUAL ACCURACY RULE (added 25 Aug 2026, real bug found live): without this, an online
     // model answers from generic "what a hotel PMS probably has" knowledge instead of this app's
@@ -343,7 +377,7 @@ if ($aiConfig['enabled'] === true) {
     // hallucinated features will keep surfacing as different questions get asked, and the model
     // needs permission to say "not sure" rather than a growing hardcoded denylist of specific wrong
     // answers.
-    $actionReference .= "\n\nFACTUAL ACCURACY RULE: Only describe features/UI steps you can confirm from this prompt or the ACTIONS list above - never invent a plausible-sounding feature or step-by-step location for something you're not sure exists in Ground Code. Known QR code capability in this app (the ONLY one - do not describe any other QR feature): a single property-level UPI payment QR code (auto-generated payment-link QR, or an uploaded real bank/UPI QR image), configured by an Admin/Root Admin on the Edit Property page, shown to guests on checkout bills and booking-confirmation WhatsApp shares only. There is no staff-level QR, menu QR, or feedback QR feature. If asked about something not listed here or in ACTIONS, say plainly you're not sure that exists in Ground Code and suggest checking with a Root Admin, rather than describing invented steps as if they were real.";
+    $actionReference .= "\n\nFACTUAL ACCURACY RULE: Only describe features/UI steps you can confirm from this prompt, the ACTIONS list above, or the KNOWN REAL PAGES/FEATURES list above (that list is the complete, always-current set of real pages in this app for this user's role - before saying a feature doesn't exist, check it there first) - never invent a plausible-sounding feature or step-by-step location for something you're not sure exists in Ground Code. Known QR code capability in this app (the ONLY one - do not describe any other QR feature): a single property-level UPI payment QR code (auto-generated payment-link QR, or an uploaded real bank/UPI QR image), configured by an Admin/Root Admin on the Edit Property page, shown to guests on checkout bills and booking-confirmation WhatsApp shares only. There is no staff-level QR, menu QR, or feedback QR feature. If asked about something not listed anywhere above, say plainly you're not sure that exists in Ground Code and suggest checking with a Root Admin, rather than describing invented steps as if they were real.";
 
     // 1. GOOGLE GEMINI PROVIDER
     if ($provider === 'gemini' && !empty($apiKey)) {

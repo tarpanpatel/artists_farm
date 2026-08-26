@@ -624,9 +624,14 @@ function getIntentTable(): array {
                 ['add', 'menu', 'item'], ['new', 'menu', 'item'], ['add', 'food', 'item'], ['add', 'new', 'dish'],
                 ['create', 'new', 'dish'], ['add', 'dish'], ['new', 'dish'],
                 // Broadened 24 Aug 2026 (proactive coverage pass).
-                'add new food', 'new food', 'add recipe', 'new recipe', 'create menu item', 'add starter',
+                'add new food', 'new food', 'create menu item', 'add starter',
                 'add main course', 'add beverage', 'add dessert',
-                ['add', 'new', 'food'], ['create', 'menu'], ['add', 'recipe'], ['new', 'recipe'],
+                ['add', 'new', 'food'], ['create', 'menu'],
+                // 'add recipe'/'new recipe' REMOVED 27 Aug 2026 (live bug, found via Gemini
+                // confidently denying the Recipe Builder exists at all - same underlying gap on
+                // the offline side): those phrases lived here and routed straight to the plain
+                // sellable-item form (name/price/category), never to the real ingredient-level
+                // Recipe Builder tab. See the 'recipe_builder' intent below, which now owns them.
             ],
             'handler' => function (string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array {
                 if (!$roleFlags['isAdmin']) {
@@ -641,6 +646,34 @@ function getIntentTable(): array {
                 return [
                     'reply' => $replyMsg,
                     'action' => ['type' => 'navigate', 'tab' => 'kitchen', 'itemKey' => 'edit_food_menu', 'newMenuItemName' => $name, 'newMenuItemPrice' => $price, 'newMenuItemCategory' => $category],
+                ];
+            },
+        ],
+        [
+            // Added 27 Aug 2026 - live bug found via Gemini's own (incorrect) "no recipe module
+            // exists" answer: this app HAS a real, DB-backed, ingredient-level Recipe Builder
+            // (KitchenManagement.tsx's 'beta_recipe_builder' tab - recipe name, yield factor,
+            // servings, per-ingredient stock, auto-depletes raw stock per dish sold via
+            // depleteStockForDish()). It's a genuinely different destination from add_menu_item
+            // (which only sets a sellable item's name/price/category) - 'add recipe'/'new recipe'
+            // previously lived in THAT intent's phrase list and opened the wrong form entirely.
+            'type' => 'recipe_builder',
+            'phrases' => [
+                'recipe', 'recipes', 'dish recipe', 'recipe builder', 'ingredient list',
+                ['add', 'recipe'], ['new', 'recipe'], ['edit', 'recipe'], ['dish', 'recipe'],
+                ['recipe', 'ingredients'], ['stock', 'deduction'], ['auto', 'stock'],
+            ],
+            'handler' => function (string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array {
+                // KitchenManagement.tsx forces the Staff role's kitchen view back to 'kds'
+                // regardless of the requested tab (isRestrictedStaffKitchenView) - Staff can never
+                // actually land on beta_recipe_builder, so match add_menu_item's own Admin gate
+                // rather than emitting a navigate action that silently does nothing for them.
+                if (!$roleFlags['isAdmin']) {
+                    return ['reply' => "🔒 Access Denied: The Recipe Builder is restricted to Admin users. Your current logged-in role is '$userRole'.", 'action' => null];
+                }
+                return [
+                    'reply' => "Opening the Recipe Builder - set ingredients, yield factor, and servings per dish, so raw stock auto-depletes whenever that dish is sold.",
+                    'action' => ['type' => 'navigate', 'tab' => 'kitchen', 'itemKey' => 'beta_recipe_builder'],
                 ];
             },
         ],
