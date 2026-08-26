@@ -2713,6 +2713,18 @@ switch ($action) {
             if (isset($input['status'])) {
                 $sets[] = 'status = ?';
                 $params[] = $input['status'];
+                if ($input['status'] === 'active' || $input['status'] === 'inactive') {
+                    $sets[] = 'is_active = ?';
+                    $params[] = ($input['status'] === 'active') ? 1 : 0;
+                }
+            }
+            if (array_key_exists('is_active', $input)) {
+                $sets[] = 'is_active = ?';
+                $params[] = $input['is_active'] ? 1 : 0;
+                if (!isset($input['status'])) {
+                    $sets[] = 'status = ?';
+                    $params[] = $input['is_active'] ? 'active' : 'inactive';
+                }
             }
             if (isset($input['name'])) {
                 $sets[] = 'name = ?';

@@ -60,6 +60,12 @@ with plain Tailwind utility classes matching Flowbite's general visual language 
 palette, `rounded-lg`, `shadow-md`, the spacing scale already visible throughout
 `node_modules/flowbite-react/dist/components/*/theme.js`) rather than inventing a new one-off style.
 
+## Card Action Buttons & Secondary Edit Button Rules
+
+- **Primary Action Primacy**: Main primary action buttons on cards (e.g. "Open Property", "Manage", "Create") must use `<Button variant="primary">`.
+- **Secondary Edit Buttons**: Edit buttons are secondary maintenance actions and must **never** use primary button styling (e.g. solid filled primary blue). Everywhere across the site, edit actions on cards or headers must strictly use `<Button variant="secondary">` (or `<Button variant="outline">` where appropriate) to maintain visual hierarchy.
+- **Red Delete & Logout Action Icons Rule**: All delete action icons/buttons and logout action icons/buttons across the platform must strictly use red styling tokens (`text-red-600 dark:text-red-400` or `hover:text-red-600 dark:hover:text-red-400` / `hover:bg-red-50 dark:hover:bg-red-950/40`) to clearly signify destructive or session-terminating actions.
+
 ## Category Filter Toggle Pattern (Search & Filter Bar)
 
 On screens with search and category filtering (e.g. `MenuManager.tsx`, `InventoryManagement.tsx`, `KitchenManagement.tsx`):

@@ -11,7 +11,8 @@
   - **Content & Sort Icon Clearance Widths**: Column widths must fit cell content AND uppercase header titles with sort icons (~20px) and cell padding (IDs: 130–140px, Dates/Timestamps: 150–170px, Currency/Totals: 135–160px, Status/Method: 140–160px, Actions: 120–240px). Fluid description/name columns use `grow: 2` with `minWidth: '180px–220px'`.
   - **Header Text Whitespace**: Header cells enforce `white-space: nowrap !important; overflow: hidden; text-overflow: ellipsis; line-height: 1.3 !important;`. Header labels must never wrap character-by-character into single vertical letters.
   - **Typography Consistency**: ID and data cells use `text-xs font-semibold text-gray-900 dark:text-white` (never `font-mono` or fake blue links unless clickable). Subtitles use `text-2xs text-gray-500`.
-  - **Action Button Sizing**: Action cell buttons must use `<Button size="sm">` (`h-8`, `text-xs font-medium`, `whitespace-nowrap shrink-0`) to prevent multi-line button label wrapping.
+- **Card Action Buttons & Secondary Edit Button Rule**: Edit buttons are secondary management actions and must **never** use primary button styling (e.g. solid filled primary blue). Primary actions on resource cards (e.g., "Open Property", "Manage") use `<Button variant="primary">`, while edit actions use `<Button variant="secondary">` (or `<Button variant="outline">`).
+- **Red Delete & Logout Action Icons Rule**: All delete action icons/buttons and logout action icons/buttons across the platform must strictly use red styling tokens (`text-red-600 dark:text-red-400` or `hover:text-red-600 dark:hover:text-red-400`) to clearly signify destructive or session-terminating actions.
 - **No Hindi Localization Rule**: No need to work on or update the Hindi version (`src/i18n/hi.ts`) unless explicitly asked for by the user. Focus exclusively on the default English implementation (`src/i18n/en.ts`) and direct English UI text.
 
 ---
