@@ -59,6 +59,10 @@ function check(string $label, string $message, string $role, ?array $context, ar
         $ok = false;
         $reason = "reply expected '{$expect['replyEquals']}', got '{$result['reply']}'";
     }
+    if ($ok && array_key_exists('matched', $expect) && ($result['matched'] ?? null) !== $expect['matched']) {
+        $ok = false;
+        $reason = 'matched: expected ' . var_export($expect['matched'], true) . ', got ' . var_export($result['matched'] ?? null, true);
+    }
 
     if ($ok) {
         $pass++;
@@ -347,6 +351,39 @@ check('nav auto-intent: role-restricted page allowed for Admin', 'open purchase 
 ]);
 check('nav auto-intent: hand-written intent still wins on overlap', 'add booking', 'Staff', null, $navIntents, [
     'actionType' => 'open_add_booking',
+]);
+
+// ============================================================================================
+// Live bug fix (27 Aug 2026): "hi" scored 0 against every real intent and fell through to the
+// generic capability-summary fallback - not wrong, but reads as ignoring a greeting. Also covers
+// the 'matched' flag fix: info-only intents (action:null) must report matched=true, since
+// AIChatWidget.tsx's human-escalation counter would otherwise treat a correctly-answered "what's
+// the tariff" the same as the bot genuinely not understanding the message.
+// ============================================================================================
+check('bare hi gets a greeting, not the capability dump', 'hi', 'Staff', null, [], [
+    'actionType' => null,
+    'matched' => true,
+    'replyContains' => 'Ground Code Assistant',
+]);
+check('hello variant also greets', 'hello', 'Staff', null, [], [
+    'matched' => true,
+    'replyContains' => 'Ground Code Assistant',
+]);
+check('good morning AND-group greets', 'good morning!', 'Staff', null, [], [
+    'matched' => true,
+    'replyContains' => 'Ground Code Assistant',
+]);
+check('greeting loses to a real request in the same message', 'hi, add booking', 'Staff', null, [], [
+    'actionType' => 'open_add_booking',
+]);
+check('info-only intent (tariff) still reports matched=true', 'what is the room tariff', 'Staff', null, [], [
+    'actionType' => null,
+    'matched' => true,
+]);
+check('genuine gibberish still reports matched=false', 'asdkfjqpwoeiruty', 'Staff', null, [], [
+    'actionType' => null,
+    'matched' => false,
+    'replyContains' => 'Ground Code helps you manage',
 ]);
 
 echo "Offline Intent Engine + Nav Menu Intents: $pass/" . ($pass + $fail) . " passed\n";

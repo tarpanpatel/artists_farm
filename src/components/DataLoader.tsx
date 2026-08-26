@@ -114,6 +114,15 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
           return null;
         });
 
+        // Resolved here (rather than only later, right before the 5 nav/telegram/guests/
+        // receipts/menu fetches) so it can ALSO gate the two authenticated-only fetches
+        // right below (27 Aug 2026 - found via a wall of 401s in a logged-out console: this
+        // component already skips the 5 fetches below for a logged-out visitor per the 18
+        // Aug 2026 fix, but get_multikey_property/get_property_modules were still firing
+        // unconditionally, guaranteed to 401 every time with no session - same class of bug,
+        // just missed here).
+        const isAuthenticated = await sessionCheckPromise;
+
         // BUG (found 15 Aug 2026, still reproducing live after the 13 Aug fixes below):
         // this rooms fetch had its own try/catch that silently swallowed failures with
         // NO retry at all - unlike the realDataPromise fetches further down, it isn't even
@@ -140,7 +149,7 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
             });
 
         let roomsFetchFailed = false;
-        if (property && property.property_type === 'MULTI_KEY') {
+        if (isAuthenticated && property && property.property_type === 'MULTI_KEY') {
           try {
             property = await fetchMultiKeyRooms(property.id);
           } catch (err) {
@@ -151,11 +160,13 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
 
         // Fetch property modules first to check feature toggles (kitchen, etc.)
         let modulesFetchFailed = false;
-        const modules = await fetchPropertyModulesFromDB().catch(err => {
-          console.error('Failed to fetch modules:', err);
-          modulesFetchFailed = true;
-          return [];
-        });
+        const modules = isAuthenticated
+          ? await fetchPropertyModulesFromDB().catch(err => {
+              console.error('Failed to fetch modules:', err);
+              modulesFetchFailed = true;
+              return [];
+            })
+          : [];
 
         const isKitchenEnabled = modules.length === 0 || modules.some((m: any) =>
           (m.module_slug === 'kitchen' || m.slug === 'kitchen') &&
@@ -240,7 +251,8 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
             : Promise.resolve({ value: [] as any[], failed: false }),
         ]);
 
-        const isAuthenticated = await sessionCheckPromise;
+        // isAuthenticated already resolved further up (see the comment there) so it could
+        // also gate the property-rooms/modules fetches above.
 
         // No valid session - none of the 5 fetches above will ever succeed
         // (see the note by sessionCheckPromise), so skip them entirely

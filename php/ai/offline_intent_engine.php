@@ -943,6 +943,23 @@ function getIntentTable(): array {
                 'action' => null,
             ],
         ],
+        // Greeting (added 27 Aug 2026, live bug: a bare "hi" scored 0 against every real intent
+        // below and fell through to the generic capability-summary fallback - technically correct
+        // but reads like a canned corporate blurb in response to a hello, not an answer to
+        // anything the user actually asked. Kept as its own single-word-scoring intent rather than
+        // added to any info_* block so a real "hi, what's the tariff for room 2" still lets the
+        // higher-scoring tariff intent win (2+ words beats this intent's 1).
+        [
+            'type' => 'greeting',
+            'phrases' => [
+                'hi', 'hii', 'hello', 'hey', 'hola', 'namaste',
+                ['good', 'morning'], ['good', 'afternoon'], ['good', 'evening'],
+            ],
+            'handler' => fn(string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array => [
+                'reply' => "Hi! I'm the Ground Code Assistant. Ask me to add a booking, log an expense, check kitchen orders, or anything else you need help with - or tap one of the quick actions below.",
+                'action' => null,
+            ],
+        ],
     ];
 }
 
@@ -993,11 +1010,18 @@ function runOfflineIntentEngine(string $q, ?array $context, string $userRole, ar
 
     $intent = matchBestIntent($lower, array_merge(getIntentTable(), $extraIntents));
     if ($intent !== null) {
-        return ($intent['handler'])($q, $lower, $ctx, $userRole, $roleFlags);
+        // 'matched' (added 27 Aug 2026, see AI.md's human-escalation section): true whenever a
+        // real intent scored - regardless of whether its handler set a UI action. This must NOT be
+        // derived from action.type (as ai_assistant.php's response briefly was) - plenty of real,
+        // correctly-answered intents (info_tariff, info_cform, greeting) are informational and
+        // always set action:null, so that derivation misclassified every one of them as "the bot
+        // didn't understand you" and would have counted them toward the human-escalation trigger.
+        return array_merge(['matched' => true], ($intent['handler'])($q, $lower, $ctx, $userRole, $roleFlags));
     }
 
     return [
         'reply' => "Ground Code helps you manage room bookings, live kitchen orders (KDS), room tariffs, petty cash expenses, and guest billing. You currently have {$ctx['todayCount']} active booking(s) today, {$ctx['upcomingCount']} upcoming, and {$ctx['pastCount']} past.",
         'action' => null,
+        'matched' => false,
     ];
 }

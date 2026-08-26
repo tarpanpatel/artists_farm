@@ -82,15 +82,21 @@ if (!class_exists('TelescopeLogger')) {
          * someone remembers to add it to a list.
          */
         private static function maybeSendWebPushAlert($portal, $severity, $msg, $origin) {
-            // 'AI Query'/'AI Outcome' (php/api/ai_assistant.php, portal 'ai_chat') log every
-            // single AI Chat Widget message - normal usage, not an error - and were pushing a
-            // phone notification for each one. Added here rather than widened to "skip the whole
-            // ai_chat portal", so 'Gemini Call Failed' (a real provider-call failure, same
-            // portal) still alerts correctly. 'AI Config Updated' (php/api/ai_config.php, portal
-            // 'system') is a routine admin settings-change audit entry, not an error - same
-            // reasoning as the ai_chat entries. Restored 27 Aug 2026 alongside the AI Assistant
-            // feature itself (see AI.md) - see git history if this needs removing again.
-            $routineNoise = ['INFO', 'SUCCESS', 'Notice', 'Deprecated', 'AI Query', 'AI Outcome', 'AI Config Updated'];
+            // Whole 'ai_chat' portal never pushes (27 Aug 2026, explicit user request: "I am ok
+            // with these logs, I just don't want push notifications for them"). Previously this
+            // only denylisted the routine severities ('AI Query'/'AI Outcome'/'AI Config
+            // Updated'), which still let 'Gemini Call Failed'/'OpenAI Call Failed'/'OpenCode Zen
+            // Call Failed' (php/api/ai_assistant.php) push through - the user's ask was for the
+            // whole category to be silent, not just the routine chat turns, so gating on portal
+            // is simpler and matches that intent exactly. 'AI Config Updated'
+            // (php/api/ai_config.php) was moved onto this same 'ai_chat' portal (was 'system')
+            // so it's covered here too, and so it shows up under the same "AI Assistant" sidebar
+            // category in index.php instead of being uncounted/search-only.
+            if ($portal === 'ai_chat') {
+                return;
+            }
+
+            $routineNoise = ['INFO', 'SUCCESS', 'Notice', 'Deprecated'];
             if ($portal !== 'security' && in_array($severity, $routineNoise, true)) {
                 return;
             }
@@ -206,7 +212,8 @@ if (!class_exists('TelescopeLogger')) {
                 '404' => 0,
                 'audit' => 0,
                 'staff_activity' => 0,
-                'login' => 0
+                'login' => 0,
+                'ai_chat' => 0
             ];
 
             $now = time();
@@ -292,7 +299,8 @@ if (!class_exists('TelescopeLogger')) {
                 '404' => 0,
                 'audit' => 0,
                 'staff_activity' => 0,
-                'login' => 0
+                'login' => 0,
+                'ai_chat' => 0
             ];
         }
     }

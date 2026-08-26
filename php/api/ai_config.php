@@ -168,7 +168,10 @@ if ($method === 'POST') {
     file_put_contents($configFilePath, json_encode($currentConfig, JSON_PRETTY_PRINT));
 
     if (class_exists('TelescopeLogger')) {
-        TelescopeLogger::log('system', 'AI Config Updated', "AI Enabled: " . ($currentConfig['enabled'] ? 'YES' : 'NO'), "Provider: {$currentConfig['provider']}", [
+        // Portal 'ai_chat' (was 'system' - the only other thing ever logged there), so this
+        // shares the "AI Assistant" Telescope category + push-mute with ai_assistant.php's own
+        // entries (27 Aug 2026, see logger.php's maybeSendWebPushAlert() comment).
+        TelescopeLogger::log('ai_chat', 'AI Config Updated', "AI Enabled: " . ($currentConfig['enabled'] ? 'YES' : 'NO'), "Provider: {$currentConfig['provider']}", [
             'enabled' => $currentConfig['enabled'],
             'provider' => $currentConfig['provider']
         ]);

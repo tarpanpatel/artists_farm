@@ -476,6 +476,19 @@ if ($wantsJson) {
                             <span id="unseen-login" class="hidden px-2 py-0.5 text-[10px] rounded-full bg-red-500/90 text-white font-mono">0</span>
                         </span>
                     </button>
+
+                    <!-- AI Assistant portal (added 27 Aug 2026): previously ai_assistant.php/
+                         ai_config.php logged under 'ai_chat'/'system' with no sidebar home at
+                         all - findable only by searching, uncounted in every badge. Gets its own
+                         tab now, and (see logger.php's maybeSendWebPushAlert()) never pushes a
+                         phone notification, per explicit request. -->
+                    <button onclick="switchPortal('ai_chat', this)" class="nav-portal-item w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800/60 transition">
+                        <span class="flex items-center gap-2.5"><svg class="icon text-fuchsia-400 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>AI Assistant</span>
+                        <span class="flex items-center gap-1">
+                            <span id="badge-ai_chat" class="px-2 py-0.5 text-[10px] rounded-full bg-gray-800 text-gray-300 font-mono">0</span>
+                            <span id="unseen-ai_chat" class="hidden px-2 py-0.5 text-[10px] rounded-full bg-red-500/90 text-white font-mono">0</span>
+                        </span>
+                    </button>
                 </nav>
             </div>
         </aside>
@@ -574,7 +587,7 @@ if ($wantsJson) {
     }
 
         function getUnseenCounts(logs) {
-            const counts = { requests: 0, php: 0, sql: 0, js: 0, telegram: 0, whatsapp: 0, security: 0, 404: 0, staff_activity: 0, login: 0 };
+            const counts = { requests: 0, php: 0, sql: 0, js: 0, telegram: 0, whatsapp: 0, security: 0, 404: 0, staff_activity: 0, login: 0, ai_chat: 0 };
         logs.forEach(l => {
             const p = (l.portal || '').toLowerCase();
             if (!counts.hasOwnProperty(p)) return;
@@ -784,7 +797,7 @@ if ($wantsJson) {
             }
         } else {
             // Fallback: count only if server didn't provide counts
-            const counts = { requests: 0, php: 0, sql: 0, js: 0, telegram: 0, whatsapp: 0, security: 0, 404: 0, staff_activity: 0, login: 0 };
+            const counts = { requests: 0, php: 0, sql: 0, js: 0, telegram: 0, whatsapp: 0, security: 0, 404: 0, staff_activity: 0, login: 0, ai_chat: 0 };
             allLogs.forEach(l => {
                 const p = (l.portal || '').toLowerCase();
                 if (counts[p] !== undefined) counts[p]++;

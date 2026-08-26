@@ -377,6 +377,13 @@ if ($aiConfig['enabled'] === true) {
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        // curl_errno/curl_error (added 27 Aug 2026, found live): HTTP 0 with an empty response
+        // means curl never got a reply at all (DNS/TLS/timeout/connection-level failure) - the
+        // 'response_snippet' below is always empty in that case, which made a real live "HTTP 0"
+        // failure undiagnosable from Telescope alone and needed a manual SSH re-test to explain.
+        // Must be read BEFORE curl_close() - both return empty/0 once the handle is closed.
+        $curlErrno = curl_errno($ch);
+        $curlError = curl_error($ch);
         curl_close($ch);
 
         // 429 = rate limit exceeded - the one ground-truth signal for "we actually hit the quota
@@ -394,8 +401,12 @@ if ($aiConfig['enabled'] === true) {
             // alias, but Google can still retire/rename what it points to; re-check via a real
             // key's own /v1beta/models listing if this starts 404ing again) shows up instead of
             // silently downgrading every single message for a week with nothing to show for it.
+            // A 503 specifically means Google's own "model temporarily overloaded, retry later" -
+            // confirmed live 27 Aug 2026, not a key/config problem on this app's side at all.
             TelescopeLogger::log('ai_chat', 'Gemini Call Failed', "HTTP $httpCode", "Prompt: $prompt", [
                 'http_code' => $httpCode,
+                'curl_errno' => $curlErrno,
+                'curl_error' => $curlError,
                 'response_snippet' => substr((string)$response, 0, 500),
             ]);
         }
@@ -461,6 +472,8 @@ if ($aiConfig['enabled'] === true) {
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlErrno = curl_errno($ch);
+        $curlError = curl_error($ch);
         curl_close($ch);
 
         if ($httpCode === 200 && $response) {
@@ -504,6 +517,8 @@ if ($aiConfig['enabled'] === true) {
             // until the key was tested directly against OpenAI's API by hand.
             TelescopeLogger::log('ai_chat', 'OpenAI Call Failed', "HTTP $httpCode", "Prompt: $prompt", [
                 'http_code' => $httpCode,
+                'curl_errno' => $curlErrno,
+                'curl_error' => $curlError,
                 'response_snippet' => substr((string)$response, 0, 500),
             ]);
         }
@@ -539,6 +554,8 @@ if ($aiConfig['enabled'] === true) {
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlErrno = curl_errno($ch);
+        $curlError = curl_error($ch);
         curl_close($ch);
 
         if ($httpCode === 200 && $response) {
@@ -576,6 +593,8 @@ if ($aiConfig['enabled'] === true) {
             // falling through to the offline engine below.
             TelescopeLogger::log('ai_chat', 'OpenCode Zen Call Failed', "HTTP $httpCode", "Prompt: $prompt", [
                 'http_code' => $httpCode,
+                'curl_errno' => $curlErrno,
+                'curl_error' => $curlError,
                 'response_snippet' => substr((string)$response, 0, 500),
             ]);
         }
@@ -593,11 +612,12 @@ echo json_encode([
     'action' => $result['action'],
     'mode' => 'offline',
     'provider' => 'offline',
-    // Human-escalation signal (added 27 Aug 2026 - see AI.md's human-escalation section): the
-    // offline engine's own $actionType is 'NONE' whenever nothing scored confidently enough to
-    // match, meaning the reply is the generic capability-summary fallback, not a real answer.
-    // AIChatWidget.tsx counts consecutive false values here to offer a "talk to a real person"
-    // path instead of guessing at sentiment.
-    'matched' => ($result['action']['type'] ?? 'NONE') !== 'NONE',
+    // Human-escalation signal (added 27 Aug 2026, corrected same day - see AI.md's
+    // human-escalation section and offline_intent_engine.php's runOfflineIntentEngine() doc
+    // comment): must read the engine's own 'matched' flag, not re-derive it from action.type -
+    // an earlier version of this line treated every info-only intent (tariff, C-Form, greeting -
+    // anything that answers correctly but sets no UI action) as "unmatched," which would have
+    // pushed a user toward the "talk to a real person" banner after two perfectly good answers.
+    'matched' => $result['matched'] ?? true,
     'usage_summary' => str_contains(strtolower(trim($userRole)), 'root') ? getGeminiUsageSummary() : null,
 ]);
