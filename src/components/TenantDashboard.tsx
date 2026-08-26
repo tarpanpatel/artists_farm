@@ -311,7 +311,15 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 dark:from-slate-950 dark:to-indigo-950 tenant-dashboard__container">
       {/* â"ۉ"€ Header â"ۉ"€ */}
-      <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/70 dark:border-slate-700/70 sticky top-0 z-40 tenant-dashboard__header">
+      {/* pt-[env(safe-area-inset-top)] (27 Aug 2026, user report + screenshot: header content
+          overlapped by the phone's status bar/notch) - every other top-level dashboard header
+          (RootAdminDashboard.tsx's topbar, Header.tsx) already grows its own box by the safe-
+          area inset instead of sitting flush at the viewport's true top edge; this sticky
+          header had never gotten that same treatment. Added as extra top padding on top of the
+          existing py-4 (inner div below) rather than switching to a fixed h-[calc(...)] scheme
+          like those two - this header's height is already just "however tall its content is",
+          no restructuring needed, just more room above it. */}
+      <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/70 dark:border-slate-700/70 sticky top-0 z-40 pt-[env(safe-area-inset-top,0px)] tenant-dashboard__header">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between tenant-dashboard__header-inner">
           <div className="flex items-center gap-3 tenant-dashboard__header-left">
             <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md tenant-dashboard__header-icon-container">

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Drawer } from 'flowbite-react';
 import {
   LayoutDashboard,
   Users,
@@ -12,6 +13,47 @@ import {
   X
 } from './icons/FlowbiteIcons';
 import { TabType } from './Navigation';
+
+// Overrides the backdrop's z-index/reach and the bottom position's offset (27 Aug 2026 -
+// previously a fully hand-rolled sheet, not flowbite-react's own <Drawer>, per user report:
+// "not in alignment with flowbite" - see https://github.com/themesberg/flowbite/blob/main/
+// content/components/drawer.md). Three things the real <Drawer> doesn't support out of the
+// box, all needed to keep this sheet behaving exactly as intended:
+// - backdrop z-index: rendered by <Drawer> straight from this theme value, never merged with
+//   the `className` prop, so its z-index can't be bumped the way the panel's can. Needs to be
+//   above the docked bottom nav's z-[54] tier and the z-[55] mobile cart drawer tier (see the
+//   z-index scale in custom.css) - was z-59 in the old hand-rolled version for exactly that
+//   reason (a mobile cart left open elsewhere used to swallow taps on this sheet).
+// - backdrop reach: stops at `bottom-16` instead of the default `inset-0` (added 27 Aug 2026,
+//   explicit request) - the panel already floats above the docked nav bar so it stays visible,
+//   but a full-screen backdrop was dimming AND swallowing taps on it anyway, leaving it
+//   visible but dead. Matching the panel's own `bottom-16` offset here means the dock reads as
+//   "still part of the live page", not "covered by the modal" - tapping a dock icon while this
+//   sheet is open just navigates (handleNavClick already closes the sheet on any nav tap).
+// - position.bottom: <Drawer>'s own default anchors flush to `bottom-0`, which would sit
+//   underneath/cover the docked bottom nav bar. `bottom-16` floats it just above the dock
+//   instead, matching the original layout.
+const quickActionDrawerTheme = {
+  root: {
+    backdrop: 'fixed inset-x-0 top-0 bottom-16 z-59 bg-gray-900/50 dark:bg-gray-900/80',
+    position: {
+      bottom: {
+        on: 'bottom-16 left-0 right-0 w-full transform-none',
+        off: 'bottom-16 left-0 right-0 w-full translate-y-full',
+      },
+    },
+  },
+};
+
+// Icon badges (added 27 Aug 2026, replacing a solid-fill-plus-white-icon look that didn't
+// match the rest of the site - e.g. StaffPropertyPicker.tsx's/PropertySetupWizard.tsx's own
+// icon badges, which are all a light tint + colored icon, never a saturated fill).
+const QUICK_ACTION_ICON_CLASSES = {
+  emerald: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400',
+  blue: 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400',
+  amber: 'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400',
+  purple: 'bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400',
+} as const;
 
 // Which tab buttons / Quick Actions sheet buttons the current role is
 // actually allowed to use (23 Aug 2026 - "if something is not accessible to
@@ -78,45 +120,32 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 
   return (
     <>
-      {/* Backdrop */}
-      {isQuickActionOpen && (
-        <div
-          onClick={() => setIsQuickActionOpen(false)}
-          // z-59: was z-40 (the "ordinary popover" tier per the z-index
-          // scale note in src/index.css), which sat BELOW a mobile cart
-          // drawer left open elsewhere (e.g. KitchenManagement's Take Order
-          // cart at z-[55]) - tapping the FAB rotated into an "X" (state did
-          // toggle) but the sheet rendered invisibly behind the already-open
-          // cart. A deliberate tap on this global control should always
-          // surface it, so it now joins the z-60/70/100 "secondary modal
-          // meant to stack above already-open content" tier documented
-          // there (found 20 Aug 2026).
-          className="fixed inset-0 z-59 bg-slate-900/60 backdrop-blur-xs transition-opacity animate-in fade-in"
-        />
-      )}
-
-      {/* Quick Action Drawer */}
-      <div
-        className={`fixed left-0 right-0 z-60 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 rounded-t-2xl shadow-2xl transition-all duration-300 ease-out transform ${
-          isQuickActionOpen
-            ? 'bottom-16 translate-y-0 opacity-100'
-            : 'bottom-0 translate-y-full opacity-0 pointer-events-none'
-        } p-4 max-h-[80vh] overflow-y-auto`}
+      {/* Quick Action sheet - flowbite-react's own <Drawer position="bottom"> (27 Aug 2026,
+          replacing a fully hand-rolled backdrop+sliding-div pair per user report: "not in
+          alignment with flowbite" - see quickActionDrawerTheme above for the two theme
+          overrides that reproduce this sheet's original stacking/position behavior via the
+          real component instead of custom CSS). */}
+      <Drawer
+        open={isQuickActionOpen}
+        onClose={() => setIsQuickActionOpen(false)}
+        position="bottom"
+        theme={quickActionDrawerTheme}
+        className="z-60 rounded-t-2xl p-0 shadow-2xl max-h-[80vh] overflow-y-auto"
       >
         {/* Handle bar with Close Button */}
-        <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100 dark:border-slate-800">
-          <div className="w-12 h-1 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto" />
+        <div className="flex items-center justify-between px-4 pt-3 pb-3 border-b border-gray-100 dark:border-gray-800">
+          <div className="w-12 h-1 bg-gray-300 dark:bg-gray-700 rounded-full mx-auto" />
           <button
             type="button"
             onClick={() => setIsQuickActionOpen(false)}
-            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg transition-colors cursor-pointer"
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1 rounded-lg transition-colors cursor-pointer"
             aria-label="Close"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 p-4">
           {/* 1. Add Expense */}
           {permissions.addExpense && (
             <button
@@ -129,13 +158,13 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                   handleNavClick('petty_cash', 'expenses');
                 }
               }}
-              className="flex items-center gap-3 p-3.5 rounded-xl bg-emerald-50 hover:bg-emerald-100/80 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 font-semibold text-xs text-left transition-all active:scale-95 cursor-pointer shadow-xs"
+              className="flex items-center gap-3 p-3.5 rounded-xl bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 text-left transition-all active:scale-95 cursor-pointer"
             >
-              <div className="w-10 h-10 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${QUICK_ACTION_ICON_CLASSES.emerald}`}>
                 <Receipt className="w-5 h-5" />
               </div>
               <div className="min-w-0">
-                <span className="block font-bold text-slate-900 dark:text-white truncate">Add Expense</span>
+                <span className="block text-sm font-semibold text-gray-900 dark:text-white truncate">Add Expense</span>
               </div>
             </button>
           )}
@@ -152,13 +181,13 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                   handleNavClick('guests', 'guest_registration');
                 }
               }}
-              className="flex items-center gap-3 p-3.5 rounded-xl bg-blue-50 hover:bg-blue-100/80 dark:bg-blue-950/40 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300 font-semibold text-xs text-left transition-all active:scale-95 cursor-pointer shadow-xs"
+              className="flex items-center gap-3 p-3.5 rounded-xl bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 text-left transition-all active:scale-95 cursor-pointer"
             >
-              <div className="w-10 h-10 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${QUICK_ACTION_ICON_CLASSES.blue}`}>
                 <CalendarPlus className="w-5 h-5" />
               </div>
               <div className="min-w-0">
-                <span className="block font-bold text-slate-900 dark:text-white truncate">Add Booking</span>
+                <span className="block text-sm font-semibold text-gray-900 dark:text-white truncate">Add Booking</span>
               </div>
             </button>
           )}
@@ -168,13 +197,13 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             <button
               type="button"
               onClick={() => handleNavClick('kitchen', 'take_food_order')}
-              className="flex items-center gap-3 p-3.5 rounded-xl bg-amber-50 hover:bg-amber-100/80 dark:bg-amber-950/40 dark:hover:bg-amber-900/50 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 font-semibold text-xs text-left transition-all active:scale-95 cursor-pointer shadow-xs"
+              className="flex items-center gap-3 p-3.5 rounded-xl bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 text-left transition-all active:scale-95 cursor-pointer"
             >
-              <div className="w-10 h-10 rounded-lg bg-amber-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${QUICK_ACTION_ICON_CLASSES.amber}`}>
                 <UtensilsCrossed className="w-5 h-5" />
               </div>
               <div className="min-w-0">
-                <span className="block font-bold text-slate-900 dark:text-white truncate">Add Food Order</span>
+                <span className="block text-sm font-semibold text-gray-900 dark:text-white truncate">Add Food Order</span>
               </div>
             </button>
           )}
@@ -184,18 +213,18 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             <button
               type="button"
               onClick={() => handleNavClick('kitchen', 'kitchen_orders')}
-              className="flex items-center gap-3 p-3.5 rounded-xl bg-purple-50 hover:bg-purple-100/80 dark:bg-purple-950/40 dark:hover:bg-purple-900/50 border border-purple-200 dark:border-purple-800 text-purple-800 dark:text-purple-300 font-semibold text-xs text-left transition-all active:scale-95 cursor-pointer shadow-xs"
+              className="flex items-center gap-3 p-3.5 rounded-xl bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 text-left transition-all active:scale-95 cursor-pointer"
             >
-              <div className="w-10 h-10 rounded-lg bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${QUICK_ACTION_ICON_CLASSES.purple}`}>
                 <ChefHat className="w-5 h-5" />
               </div>
               <div className="min-w-0">
-                <span className="block font-bold text-slate-900 dark:text-white truncate">View Live Kitchen Order</span>
+                <span className="block text-sm font-semibold text-gray-900 dark:text-white truncate">View Live Kitchen Order</span>
               </div>
             </button>
           )}
         </div>
-      </div>
+      </Drawer>
 
       {/* Docked Mobile Bottom Navigation Bar - Flowbite Bottom Navigation
           pattern (flowbite's own reference markup is plain h-16 fixed

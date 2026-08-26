@@ -1,63 +1,57 @@
 import React, { useState } from 'react';
+import { Footer, FooterLinkGroup, FooterLink } from 'flowbite-react';
 import { LegalDrawer, LegalTabType } from './LegalDrawer';
+
+// Rebuilt 27 Aug 2026 on flowbite-react's own <Footer>/<FooterLinkGroup>/<FooterLink>
+// (previously hand-rolled <footer>/<ul>/<li> markup - user report: "check flowbite" +
+// linked https://github.com/themesberg/flowbite/blob/main/content/components/footer.md).
+//
+// FooterLink's own className prop lands on its <li> wrapper, never the actual <button> it
+// renders (confirmed in node_modules/flowbite-react/dist/components/Footer/FooterLink.js -
+// `className` is destructured off before building the real element, which only ever gets
+// `theme.href`) - the same "className reaches the wrong DOM node" class of bug already found
+// in Input.tsx's TextInput usage. So per-link visual differences (FAQ's bold purple accent)
+// go through a `theme` override instead, the same mechanism used there and in
+// MobileBottomNav.tsx's Quick Action Drawer, not through className.
+const footerLinkTheme = { href: 'hover:underline cursor-pointer' };
+const footerFaqLinkTheme = { href: 'hover:underline cursor-pointer font-semibold text-purple-600 dark:text-purple-400' };
 
 export const DashboardFooter: React.FC = () => {
   const [activeTab, setActiveTab] = useState<LegalTabType>(null);
 
   return (
     <>
-      <footer className="mt-8 p-4 bg-white rounded-lg shadow-2xs md:flex md:items-center md:justify-between md:p-6 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
-        <span className="text-2xs text-gray-500 sm:text-center dark:text-gray-400">
-          © 2026 <a href="https://ground-code.com" target="_blank" rel="noopener noreferrer" className="hover:underline font-semibold text-gray-700 dark:text-gray-200">Ground Code™</a>. All Rights Reserved.
+      <Footer container className="mt-8 border border-gray-200 dark:border-gray-700">
+        <span className="text-sm text-gray-500 sm:text-center dark:text-gray-400">
+          © 2026{' '}
+          <a
+            href="https://ground-code.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-1 hover:underline font-semibold text-gray-700 dark:text-gray-200"
+          >
+            Ground Code™
+          </a>
+          . All Rights Reserved.
         </span>
-        <ul className="flex flex-wrap items-center mt-3 text-2xs font-medium text-gray-500 dark:text-gray-400 sm:mt-0 gap-4">
-          <li>
-            <button
-              type="button"
-              onClick={() => setActiveTab('terms')}
-              className="hover:underline hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
-            >
-              Terms of Service
-            </button>
-          </li>
-          <li>
-            <button
-              type="button"
-              onClick={() => setActiveTab('privacy')}
-              className="hover:underline hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
-            >
-              Privacy Policy
-            </button>
-          </li>
-          <li>
-            <button
-              type="button"
-              onClick={() => setActiveTab('cookies')}
-              className="hover:underline hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
-            >
-              Cookie Policy
-            </button>
-          </li>
-          <li>
-            <button
-              type="button"
-              onClick={() => setActiveTab('faq')}
-              className="hover:underline hover:text-purple-600 dark:hover:text-purple-400 font-semibold cursor-pointer"
-            >
-              FAQ
-            </button>
-          </li>
-          <li>
-            <button
-              type="button"
-              onClick={() => setActiveTab('support')}
-              className="hover:underline hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
-            >
-              Contact Support
-            </button>
-          </li>
-        </ul>
-      </footer>
+        <FooterLinkGroup>
+          <FooterLink as="button" href={undefined} type="button" theme={footerLinkTheme} onClick={() => setActiveTab('terms')}>
+            Terms of Service
+          </FooterLink>
+          <FooterLink as="button" href={undefined} type="button" theme={footerLinkTheme} onClick={() => setActiveTab('privacy')}>
+            Privacy Policy
+          </FooterLink>
+          <FooterLink as="button" href={undefined} type="button" theme={footerLinkTheme} onClick={() => setActiveTab('cookies')}>
+            Cookie Policy
+          </FooterLink>
+          <FooterLink as="button" href={undefined} type="button" theme={footerFaqLinkTheme} onClick={() => setActiveTab('faq')}>
+            FAQ
+          </FooterLink>
+          <FooterLink as="button" href={undefined} type="button" theme={footerLinkTheme} onClick={() => setActiveTab('support')}>
+            Contact Support
+          </FooterLink>
+        </FooterLinkGroup>
+      </Footer>
 
       {/* Slide-Out Drawer for Terms, Privacy, Cookies & Support */}
       <LegalDrawer activeTab={activeTab} onClose={() => setActiveTab(null)} />
