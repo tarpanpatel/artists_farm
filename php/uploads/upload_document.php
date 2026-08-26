@@ -17,9 +17,20 @@
  * see that file's comments for why each piece is there.
  */
 
-ini_set('session.gc_maxlifetime', 86400 * 7);
-ini_set('session.cookie_lifetime', 86400 * 7);
-ini_set('session.cookie_httponly', 1);
+// session_set_cookie_params() (27 Aug 2026, "remember me" fix - see router.php's fuller
+// comment) computed inline since this runs before config/database.php is required below,
+// so APP_IS_LOCAL_ENV isn't defined yet.
+$__session_host = $_SERVER['SERVER_NAME'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost';
+$__session_is_local = $__session_host === 'localhost' || $__session_host === '127.0.0.1' || str_contains($__session_host, '192.168.');
+ini_set('session.gc_maxlifetime', 86400 * 30);
+session_set_cookie_params([
+    'lifetime' => 86400 * 30,
+    'path' => '/',
+    'domain' => '',
+    'secure' => !$__session_is_local,
+    'httponly' => true,
+    'samesite' => 'Lax',
+]);
 session_name('artists_farm_session');
 session_start();
 

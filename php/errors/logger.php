@@ -82,14 +82,15 @@ if (!class_exists('TelescopeLogger')) {
          * someone remembers to add it to a list.
          */
         private static function maybeSendWebPushAlert($portal, $severity, $msg, $origin) {
-            // AI Assistant feature removed entirely 26 Aug 2026 (see ROADMAP.md) - its
-            // 'ai_chat'/'AI Query'/'AI Outcome'/'AI Config Updated' noise-suppression entries,
-            // which used to live in $routineNoise below, were removed along with it since
-            // php/api/ai_assistant.php and ai_config.php (the only sources of those severities)
-            // are archived to _unwanted/ai/ and can no longer log anything here. If this feature
-            // is ever rebuilt, re-add whatever its routine (non-error) severities are here rather
-            // than letting them alert on every normal use - see git history for the exact strings.
-            $routineNoise = ['INFO', 'SUCCESS', 'Notice', 'Deprecated'];
+            // 'AI Query'/'AI Outcome' (php/api/ai_assistant.php, portal 'ai_chat') log every
+            // single AI Chat Widget message - normal usage, not an error - and were pushing a
+            // phone notification for each one. Added here rather than widened to "skip the whole
+            // ai_chat portal", so 'Gemini Call Failed' (a real provider-call failure, same
+            // portal) still alerts correctly. 'AI Config Updated' (php/api/ai_config.php, portal
+            // 'system') is a routine admin settings-change audit entry, not an error - same
+            // reasoning as the ai_chat entries. Restored 27 Aug 2026 alongside the AI Assistant
+            // feature itself (see AI.md) - see git history if this needs removing again.
+            $routineNoise = ['INFO', 'SUCCESS', 'Notice', 'Deprecated', 'AI Query', 'AI Outcome', 'AI Config Updated'];
             if ($portal !== 'security' && in_array($severity, $routineNoise, true)) {
                 return;
             }

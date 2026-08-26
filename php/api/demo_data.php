@@ -12,8 +12,20 @@ require_once __DIR__ . '/../finance/ledger.php';
 
 // The router starts the session when this file is require_once'd; a direct hit
 // needs its own boot so the auth gate below can see $_SESSION['username'].
+// Uses session_set_cookie_params() (27 Aug 2026, "remember me" fix - see
+// router.php's fuller comment) rather than a bare session_start() - this file
+// requires config/database.php above, so APP_IS_LOCAL_ENV is already defined,
+// unlike router.php/authenticate.php which have to compute it inline.
 if (session_status() === PHP_SESSION_NONE) {
-    ini_set('session.cookie_httponly', 1);
+    ini_set('session.gc_maxlifetime', 86400 * 30);
+    session_set_cookie_params([
+        'lifetime' => 86400 * 30,
+        'path' => '/',
+        'domain' => '',
+        'secure' => !APP_IS_LOCAL_ENV,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
     session_name('artists_farm_session');
     session_start();
 }

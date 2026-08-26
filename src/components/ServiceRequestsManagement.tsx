@@ -37,6 +37,12 @@ interface ServiceRequestsManagementProps {
   rooms?: Room[];
   isMultiKeyProperty?: boolean;
   onDispatchTelegram?: (eventType: string, message: string, category?: 'kitchen' | 'admin' | 'finance' | 'all', replyMarkup?: any, templateKey?: string) => void;
+  // AI Assistant deep-link (restored 27 Aug 2026, mirrors StaffManagement.tsx's
+  // initialEditStaffName) - "send towels to room 102" lands on this page with the New Service
+  // Request drawer already open, room + best-guess request type pre-filled - the user still
+  // reviews and clicks 'Log Request' themselves, this never creates the request on its own.
+  initialRoomNumber?: string;
+  initialRequestItem?: string;
 }
 
 const REMINDER_THRESHOLD_MINUTES = 15;
@@ -45,6 +51,8 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
   rooms = [],
   isMultiKeyProperty = false,
   onDispatchTelegram,
+  initialRoomNumber,
+  initialRequestItem,
 }) => {
   const { currentUser } = useAuth();
   const { showToast } = useToast();
@@ -118,6 +126,46 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
       setNewRequestType(requestTypes[0].typeId);
     }
   }, [requestTypes]);
+
+  // AI Assistant deep-link pre-fill (restored 27 Aug 2026). Runs after the default-selection
+  // effect above (so it can override that default), once request types have loaded - the room
+  // selector only needs `rooms` (already available on mount), but request types load async, so
+  // this waits for both. Guarded to run once per distinct (roomNumber, item) pair - doesn't keep
+  // reopening/reapplying if the staff member closes the drawer or edits a field afterward.
+  const [appliedServiceRequestPrefill, setAppliedServiceRequestPrefill] = useState<string | null>(null);
+  useEffect(() => {
+    if (!initialRoomNumber && !initialRequestItem) return;
+    const prefillKey = `${initialRoomNumber || ''}|${initialRequestItem || ''}`;
+    if (appliedServiceRequestPrefill === prefillKey) return;
+    if (requestTypes.length === 0) return; // wait for the type catalog before guessing a match
+
+    if (initialRoomNumber && isMultiKeyProperty && rooms.length > 0) {
+      const target = initialRoomNumber.toLowerCase().trim();
+      const matchedRoom = rooms.find((r) => r.name.toLowerCase().includes(target));
+      if (matchedRoom) setNewRoomId(String(matchedRoom.id));
+    }
+
+    if (initialRequestItem) {
+      const itemLower = initialRequestItem.toLowerCase().trim();
+      // Crude singular/plural tolerance ("towels" should still find a "Towel"/"Extra Towel" type)
+      const stem = itemLower.length > 3 && itemLower.endsWith('s') ? itemLower.slice(0, -1) : itemLower;
+      const matchedType = requestTypes.find((rt) => {
+        const labelLower = rt.label.toLowerCase();
+        return labelLower.includes(itemLower) || labelLower.includes(stem);
+      });
+      if (matchedType) {
+        setNewRequestType(matchedType.typeId);
+      } else {
+        // No catalog match - fall back to Custom, pre-filling its required label with the
+        // AI-extracted text so the staff member only has to confirm/adjust it, not retype it.
+        setNewRequestType('__CUSTOM__');
+        setCustomRequestLabel(initialRequestItem);
+      }
+    }
+
+    setIsAddModalOpen(true);
+    setAppliedServiceRequestPrefill(prefillKey);
+  }, [initialRoomNumber, initialRequestItem, requestTypes, rooms, isMultiKeyProperty, appliedServiceRequestPrefill]);
 
   // Auto-prefill charge amount when request type changes
   useEffect(() => {

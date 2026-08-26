@@ -4,10 +4,12 @@ import { Button } from './Button';
 import { Save, RotateCcw, Loader2, Palette, Moon, Type, Box, Sparkles } from './icons/FlowbiteIcons';
 import { fetchThemeSettings, saveThemeSettings, applyThemeSettings, getDefaultTheme, ThemeSettings } from '../services/themeService';
 import { useConfirm } from './ConfirmDialogContext';
+import { useToast } from './ToastContext';
 import { t } from '../i18n/en';
 
 export const ThemeManagement: React.FC = () => {
   const { confirm } = useConfirm();
+  const { showToast } = useToast();
   const [settings, setSettings] = useState<ThemeSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -68,12 +70,18 @@ export const ThemeManagement: React.FC = () => {
 
       if (success) {
         applyThemeSettings(settings);
-        setMessage({ type: 'success', text: 'Theme settings saved and applied successfully!' });
+        const msg = 'Theme settings saved and applied successfully!';
+        setMessage({ type: 'success', text: msg });
+        showToast(msg, { type: 'success' });
       } else {
-        setMessage({ type: 'error', text: 'Failed to save theme settings' });
+        const msg = 'Failed to save theme settings';
+        setMessage({ type: 'error', text: msg });
+        showToast(msg, { type: 'error' });
       }
     } catch {
-      setMessage({ type: 'error', text: 'Error saving theme settings' });
+      const msg = 'Error saving theme settings';
+      setMessage({ type: 'error', text: msg });
+      showToast(msg, { type: 'error' });
     } finally {
       setIsSaving(false);
     }

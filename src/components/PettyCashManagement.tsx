@@ -24,6 +24,11 @@ interface PettyCashManagementProps {
   onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin', replyMarkup?: any, templateKey?: string, mediaUrls?: string[]) => void;
   onlyForm?: boolean;
   onClose?: () => void;
+  // AI Assistant deep-link (restored 27 Aug 2026) - pre-fills the Add Expense drawer's
+  // amount/description from a chat command; the user still reviews and clicks the real submit
+  // button themselves, same rule every other AI-prefilled form in this app follows.
+  initialAmount?: number | '';
+  initialDescription?: string;
   kitchenModuleEnabled?: boolean;
 }
 
@@ -111,6 +116,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   onDispatchTelegram,
   onlyForm,
   onClose,
+  initialAmount,
+  initialDescription,
   kitchenModuleEnabled = true,
 }) => {
   const { staff } = useStaff();
@@ -126,9 +133,9 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     expenseDate: new Date().toISOString().split('T')[0],
     expenseTime: new Date().toTimeString().slice(0, 5),
     category: 'Other',
-    description: '',
+    description: initialDescription || '',
     moreInfoNotes: '',
-    amount: '',
+    amount: initialAmount !== undefined && initialAmount !== null ? initialAmount : '',
     paymentMode: 'UPI / QR',
     paidBy: currentUserName,
     paymentSource: 'property',
@@ -142,6 +149,18 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     isStaffAdvanceChecked: true,
     payToRegisteredVendor: false,
   }));
+
+  // AI Assistant deep-link (restored 27 Aug 2026): the reducer's own initializer above only
+  // ever runs once at mount, so this effect catches the case where the chat command's data
+  // arrives/changes while this drawer instance is already mounted.
+  useEffect(() => {
+    if (initialAmount !== undefined && initialAmount !== null && initialAmount !== '') {
+      dispatch({ type: 'SET_FIELD', field: 'amount', value: initialAmount });
+    }
+    if (initialDescription) {
+      dispatch({ type: 'SET_FIELD', field: 'description', value: initialDescription });
+    }
+  }, [initialAmount, initialDescription]);
   // Live "required" feedback for the main expense form (26 Aug 2026, CLAUDE.md's
   // "Real-Time Form Validation" sweep) - kept as plain local state rather than
   // reducer fields since they're purely UI touched-tracking, not form data.

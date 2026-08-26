@@ -8,7 +8,7 @@
 // too short for an admin tool where reading/deciding between actions
 // routinely exceeds it - the session silently expires mid-task, and the
 // next write comes back as a false "Unauthorized" error even though the
-// user never logged out. The login flows also set a 7-day
+// user never logged out. The login flows also set a persistent
 // `artists_farm_session` cookie holding the session id, but PHP only
 // resumes a session from the cookie named by session.name (default
 // PHPSESSID, a browser-session cookie that is lost on browser close).
@@ -16,10 +16,35 @@
 // localStorage login while the server has no session, so every write API
 // call fails with "Unauthorized. Valid API key required for write
 // operations." Point PHP at the persistent cookie and keep both the cookie
-// and the server-side session file alive for 7 days.
-ini_set('session.gc_maxlifetime', 86400 * 7);
-ini_set('session.cookie_lifetime', 86400 * 7);
-ini_set('session.cookie_httponly', 1);
+// and the server-side session file alive for 30 days.
+//
+// session_set_cookie_params() (added 27 Aug 2026, "remember me" request for
+// the installed PWA/terminal - closing the app shouldn't force a fresh sign-
+// in) rather than the old ini_set('session.cookie_lifetime', ...)/
+// ('session.cookie_httponly', ...) pair: those two ini_set calls only cover
+// lifetime/httponly, so PHP's OWN automatic Set-Cookie refresh - which fires
+// on every request that touches $_SESSION, not just login - carried no
+// 'secure'/'samesite' attributes at all (confirmed: php.ini's own defaults
+// are cookie_secure=Off, cookie_samesite=unset). config/database.php's
+// appSetSessionCookie() already sets those correctly, but only login
+// endpoints call it - every OTHER request was silently re-issuing the same
+// cookie with weaker attributes right behind it. session_set_cookie_params()
+// makes PHP's native auto-refresh use the exact same attributes as login,
+// on every request, so the two mechanisms can't drift apart. Computed
+// inline rather than via config/database.php's APP_IS_LOCAL_ENV because this
+// must run before that file is required (mirrors its own $server_name/
+// local-env check below).
+$__session_host = $_SERVER['SERVER_NAME'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost';
+$__session_is_local = $__session_host === 'localhost' || $__session_host === '127.0.0.1' || str_contains($__session_host, '192.168.');
+ini_set('session.gc_maxlifetime', 86400 * 30);
+session_set_cookie_params([
+    'lifetime' => 86400 * 30,
+    'path' => '/',
+    'domain' => '',
+    'secure' => !$__session_is_local,
+    'httponly' => true,
+    'samesite' => 'Lax',
+]);
 session_name('artists_farm_session');
 session_start();
 header('Cache-Control: no-store, no-cache, must-revalidate');

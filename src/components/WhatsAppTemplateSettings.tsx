@@ -3,6 +3,7 @@ import { Card, Alert, Checkbox } from 'flowbite-react';
 import { Loader2, CheckCircle2, AlertCircle } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';
 import { Button } from './Button';
+import { useToast } from './ToastContext';
 
 /**
  * The Telegram template-customization permission toggle - whether THIS
@@ -34,6 +35,7 @@ interface WhatsAppTemplateSettingsProps {
 }
 
 export const WhatsAppTemplateSettings: React.FC<WhatsAppTemplateSettingsProps> = ({ property, onSaved }) => {
+  const { showToast } = useToast();
   const [telegramCustomization, setTelegramCustomization] = useState(
     !!property.telegram_template_customization_enabled
   );
@@ -58,12 +60,17 @@ export const WhatsAppTemplateSettings: React.FC<WhatsAppTemplateSettingsProps> =
       const data = await res.json();
       if (data.status === 'success') {
         setSuccess(true);
+        showToast('Settings saved successfully!', { type: 'success' });
         if (onSaved) onSaved();
       } else {
-        setError(data.message || 'Failed to save template');
+        const msg = data.message || 'Failed to save template';
+        setError(msg);
+        showToast(msg, { type: 'error' });
       }
     } catch (err: any) {
-      setError(err?.message || 'Error saving template');
+      const msg = err?.message || 'Error saving template';
+      setError(msg);
+      showToast(msg, { type: 'error' });
     } finally {
       setIsSaving(false);
     }

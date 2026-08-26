@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell } from 'flowbite-react';
 import { ShieldCheck, RefreshCw, Save, Loader2, CheckCircle2, XCircle, HelpCircle, FolderCog, AlertTriangle } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';
+import { useToast } from './ToastContext';
 import { Input } from './Input';
 
 interface TelegramPropertyStatus {
@@ -55,6 +56,7 @@ const StatusRow: React.FC<{ ok: boolean | null; label: string; detail: string }>
 );
 
 export const TelegramHealthPanel: React.FC = () => {
+  const { showToast } = useToast();
   const [fallbackPath, setFallbackPath] = useState('');
   const [savedFallbackPath, setSavedFallbackPath] = useState('');
   const [loadingSettings, setLoadingSettings] = useState(true);
@@ -138,12 +140,17 @@ export const TelegramHealthPanel: React.FC = () => {
       const data = await res.json();
       if (data.status === 'success') {
         setSavedFallbackPath(fallbackPath.trim());
-        setToast(t('telegram_fallback_path_saved', 'Fallback path saved successfully.'));
+        const msg = t('telegram_fallback_path_saved', 'Fallback path saved successfully.');
+        setToast(msg);
+        showToast(msg, { type: 'success' });
         setTimeout(() => setToast(null), 3000);
         runHealthCheck();
+      } else {
+        showToast(data.message || 'Failed to save fallback path.', { type: 'error' });
       }
     } catch (err) {
       console.error('Failed to save fallback path:', err);
+      showToast('Error saving fallback path.', { type: 'error' });
     } finally {
       setSaving(false);
     }
@@ -152,19 +159,13 @@ export const TelegramHealthPanel: React.FC = () => {
   const hasPathChanges = fallbackPath.trim() !== savedFallbackPath.trim();
 
   return (
-    <Card className="border-gray-200 dark:border-gray-700 telegram-health-panel">
+    <Card className="border-gray-200 dark:border-gray-700 telegram-health-panel max-w-full overflow-hidden">
       <div className="pb-4 border-b border-gray-200 dark:border-gray-700 flex items-start justify-between flex-wrap gap-3">
         <div className="min-w-0">
           <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <ShieldCheck className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             {t('telegram_platform_health_title', 'Telegram Platform Health')}
           </h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-2xl">
-            {t(
-              'telegram_platform_health_subtitle',
-              "This server's malware scanner has quarantined php/telegram/telegram.php before - if it happens again, only the whitelisted copy at the path below can be trusted to still exist. Check status here before assuming a broken \"Save\" button on a property's Telegram Setup is a code bug."
-            )}
-          </p>
         </div>
         <button
           onClick={runHealthCheck}
@@ -185,18 +186,20 @@ export const TelegramHealthPanel: React.FC = () => {
           {loadingSettings ? (
             <p className="text-xs text-gray-400">{t('loading_message', 'Loading...')}</p>
           ) : (
-            <div className="flex items-center gap-2">
-              <Input
-                type="text"
-                value={fallbackPath}
-                onChange={(e) => setFallbackPath(e.target.value)}
-                placeholder="/home/apartment/public_html/php/telegram/telegram.php"
-                className="flex-1 font-mono text-xs"
-              />
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 min-w-0">
+              <div className="flex-1 min-w-0">
+                <Input
+                  type="text"
+                  value={fallbackPath}
+                  onChange={(e) => setFallbackPath(e.target.value)}
+                  placeholder="/home/apartment/public_html/php/telegram/telegram.php"
+                  className="w-full font-mono text-xs"
+                />
+              </div>
               <button
                 onClick={handleSavePath}
                 disabled={!hasPathChanges || saving}
-                className={`px-4 py-2 text-xs font-semibold rounded-lg cursor-pointer transition-colors flex items-center gap-1.5 shrink-0 ${
+                className={`px-4 py-2 text-xs font-semibold rounded-lg cursor-pointer transition-colors flex items-center justify-center gap-1.5 shrink-0 ${
                   hasPathChanges
                     ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
                     : 'bg-gray-200 dark:bg-slate-700 text-gray-400 cursor-not-allowed'
@@ -207,12 +210,6 @@ export const TelegramHealthPanel: React.FC = () => {
               </button>
             </div>
           )}
-          <p className="text-[11px] text-gray-400 mt-1.5">
-            {t(
-              'telegram_fallback_path_hint',
-              "Staging always loads telegram.php directly from this whitelisted path - it deliberately never keeps its own local copy any more (the malware scanner was re-quarantining that copy every few minutes; the fix was to stop giving it a target)."
-            )}
-          </p>
         </div>
 
         {healthCheckError && !checking && (

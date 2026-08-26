@@ -975,6 +975,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
       .then((resData) => {
         if (resData.success || resData.status === 'ok') {
           setSaveStatus('Saved to Database!');
+          showToast('Telegram template saved to database!', { type: 'success' });
           invalidateTemplateCache();
           fetchTemplatesFromDB().then(setDbTemplates);
           if (onLogAudit) {
@@ -983,11 +984,13 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
           }
         } else {
           setSaveStatus('Saved locally!');
+          showToast('Telegram template saved locally!', { type: 'success' });
         }
         setTimeout(() => setSaveStatus(null), 2500);
       })
       .catch(() => {
         setSaveStatus('Saved locally!');
+        showToast('Telegram template saved locally!', { type: 'success' });
         setTimeout(() => setSaveStatus(null), 2500);
       });
   };

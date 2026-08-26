@@ -1,8 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Bot, Send, X, Loader2 } from './icons/FlowbiteIcons';
+import { WhatsappIcon } from './icons/WhatsappIcon';
+import { TelegramIcon } from './icons/TelegramIcon';
 import { Guest } from '../types';
 import { t } from '../i18n/en';
 import { getPropertySlug } from '../services/api';
+
+// Support contact links (added 27 Aug 2026, human-escalation feature) - Ground Code's own
+// support contact, not a per-property/tenant value, so fixed constants rather than threaded
+// down as props. Same numbers as the WhatsApp/Telegram links this replaced in Header.tsx.
+const SUPPORT_WHATSAPP_URL = 'https://wa.me/919571263474';
+const SUPPORT_TELEGRAM_URL = 'https://t.me/GroundCodeCom';
 
 interface ChatMessage {
   id: string;
@@ -56,6 +64,15 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({
     today: { requests: number; tokens: number; rate_limited: number };
     last_7_days: { requests: number; tokens: number; rate_limited: number };
   } | null>(null);
+
+  // Human-escalation trigger (added 27 Aug 2026, replaces the standalone WhatsApp/Telegram
+  // header menu - see AI.md). Counts consecutive replies the backend flagged as `matched: false`
+  // (the offline engine's own "nothing scored confidently, this is the generic fallback" signal -
+  // see ai_assistant.php). Deliberately NOT sentiment analysis: this is a free, deterministic
+  // signal already computed server-side, whereas guessing at frustration would need the paid
+  // online provider running at all times and is inherently unreliable. Resets to 0 on any
+  // matched reply - this is "2 in a row", not a lifetime total.
+  const [consecutiveUnmatched, setConsecutiveUnmatched] = useState(0);
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -193,6 +210,11 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({
         setCurrentModeBadge('Offline Engine Active');
       }
       if (res.usage_summary) setGeminiUsage(res.usage_summary);
+
+      // Human-escalation counter - see consecutiveUnmatched's own doc comment above.
+      // res.matched is only absent on a malformed/unexpected response shape; treat that the same
+      // as "answered" rather than nudging toward escalation over a shape we don't recognize.
+      setConsecutiveUnmatched((prev) => (res.matched === false ? prev + 1 : 0));
 
       // Execute Action Command if authorized by backend RBAC
       if (res.action) {
@@ -363,6 +385,38 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({
           <div ref={messagesEndRef} />
         </div>
 
+        {/* Human escalation banner (added 27 Aug 2026) - surfaces once the offline engine has
+            given 2 replies in a row it couldn't actually match (see consecutiveUnmatched's own
+            doc comment). Reuses the same WhatsApp/Telegram links that used to be a standalone
+            Header.tsx menu - now they're the escalation path instead of the front door. */}
+        {consecutiveUnmatched >= 2 && (
+          <div className="px-3 py-2.5 border-t border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 shrink-0 space-y-1.5">
+            <p className="text-2xs font-semibold text-amber-900 dark:text-amber-200 m-0">
+              Still stuck? Talk to a real person instead.
+            </p>
+            <div className="flex items-center gap-1.5">
+              <a
+                href={SUPPORT_WHATSAPP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-2xs font-semibold whitespace-nowrap transition-colors cursor-pointer no-underline"
+              >
+                <WhatsappIcon className="w-3.5 h-3.5" />
+                WhatsApp
+              </a>
+              <a
+                href={SUPPORT_TELEGRAM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-sky-600 hover:bg-sky-700 text-white rounded-full text-2xs font-semibold whitespace-nowrap transition-colors cursor-pointer no-underline"
+              >
+                <TelegramIcon className="w-3.5 h-3.5" />
+                Telegram
+              </a>
+            </div>
+          </div>
+        )}
+
         {/* Quick Suggested Action Chips */}
         <div className="px-3 py-2 flex gap-1.5 overflow-x-auto border-t border-gray-100 dark:border-gray-700/80 bg-white dark:bg-gray-800 shrink-0 scrollbar-none">
           <button
@@ -386,6 +440,16 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({
           >
             ⚡ KDS Kitchen
           </button>
+          {/* Always-visible escape hatch (not just after 2 unmatched replies) - for anyone who
+              wants a human immediately without arguing with the bot first. */}
+          <a
+            href={SUPPORT_WHATSAPP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-2.5 py-1 bg-gray-50 hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 rounded-full text-2xs font-semibold whitespace-nowrap transition-colors cursor-pointer no-underline ml-auto"
+          >
+            Talk to a person
+          </a>
         </div>
 
         {/* Input Footer */}

@@ -18,9 +18,21 @@
 // RULE"/RBAC checks below were trivially bypassed by sending user_role: "Root Admin" in the POST
 // body. Session bootstrap must match router.php/ical_sync.php exactly so the same login cookie
 // is recognized (see access_control.php's own doc comment for this contract).
-ini_set('session.gc_maxlifetime', 86400 * 7);
-ini_set('session.cookie_lifetime', 86400 * 7);
-ini_set('session.cookie_httponly', 1);
+// session_set_cookie_params() (restored 27 Aug 2026 alongside this file itself - see AI.md and
+// CLAUDE.md's "Session Cookie / Remember Me" section) computed inline, same as
+// calendar_session.php - this bootstrap runs before config/database.php is required below, so
+// APP_IS_LOCAL_ENV isn't defined yet at this point.
+$__session_host = $_SERVER['SERVER_NAME'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost';
+$__session_is_local = $__session_host === 'localhost' || $__session_host === '127.0.0.1' || str_contains($__session_host, '192.168.');
+ini_set('session.gc_maxlifetime', 86400 * 30);
+session_set_cookie_params([
+    'lifetime' => 86400 * 30,
+    'path' => '/',
+    'domain' => '',
+    'secure' => !$__session_is_local,
+    'httponly' => true,
+    'samesite' => 'Lax',
+]);
 session_name('artists_farm_session');
 session_start();
 
@@ -414,6 +426,9 @@ if ($aiConfig['enabled'] === true) {
                     'action' => $extractedAction,
                     'mode' => 'online',
                     'provider' => 'gemini',
+                    // A real LLM call, not a phrase miss - always treated as "answered" for the
+                    // human-escalation banner (see AIChatWidget.tsx's consecutiveUnmatched).
+                    'matched' => true,
                     'usage_summary' => str_contains(strtolower(trim($userRole)), 'root') ? getGeminiUsageSummary() : null,
                 ]);
                 exit();
@@ -473,6 +488,7 @@ if ($aiConfig['enabled'] === true) {
                     'action' => $extractedAction,
                     'mode' => 'online',
                     'provider' => 'openai',
+                    'matched' => true,
                     // Gemini-only usage log (this app's trial provider) - still surfaced here since
                     // Root Admin should see it regardless of which provider handled THIS message.
                     'usage_summary' => str_contains(strtolower(trim($userRole)), 'root') ? getGeminiUsageSummary() : null,
@@ -550,6 +566,7 @@ if ($aiConfig['enabled'] === true) {
                     'action' => $extractedAction,
                     'mode' => 'online',
                     'provider' => 'opencode_zen',
+                    'matched' => true,
                 ]);
                 exit();
             }
@@ -576,5 +593,11 @@ echo json_encode([
     'action' => $result['action'],
     'mode' => 'offline',
     'provider' => 'offline',
+    // Human-escalation signal (added 27 Aug 2026 - see AI.md's human-escalation section): the
+    // offline engine's own $actionType is 'NONE' whenever nothing scored confidently enough to
+    // match, meaning the reply is the generic capability-summary fallback, not a real answer.
+    // AIChatWidget.tsx counts consecutive false values here to offer a "talk to a real person"
+    // path instead of guessing at sentiment.
+    'matched' => ($result['action']['type'] ?? 'NONE') !== 'NONE',
     'usage_summary' => str_contains(strtolower(trim($userRole)), 'root') ? getGeminiUsageSummary() : null,
 ]);

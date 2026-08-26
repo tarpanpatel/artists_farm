@@ -214,10 +214,15 @@ if ($__is_local_env) {
 // Centralized here (rather than fixed at each call site) so all 8 stay in sync automatically.
 // 'secure' must stay false on local plain-HTTP XAMPP or the cookie is silently dropped by the
 // browser and login breaks - hence tying it to the same local/live check as the DB credentials.
+// Lifetime bumped 7 -> 30 days (27 Aug 2026, "remember me" request for the installed PWA/
+// terminal - staff/owners shouldn't have to sign in again just because they closed the app).
+// Must stay equal to router.php's session_set_cookie_params() lifetime and gc_maxlifetime -
+// see that file's own comment for why a shorter server-side gc_maxlifetime would silently
+// undo this (cookie still valid, but the session data it points to already garbage-collected).
 if (!function_exists('appSetSessionCookie')) {
     function appSetSessionCookie(string $sessionId): void {
         setcookie('artists_farm_session', $sessionId, [
-            'expires' => time() + 86400 * 7,
+            'expires' => time() + 86400 * 30,
             'path' => '/',
             'domain' => '',
             'secure' => !APP_IS_LOCAL_ENV,

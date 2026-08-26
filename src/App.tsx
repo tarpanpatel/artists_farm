@@ -32,6 +32,7 @@ import { Smartphone, Download, X as CloseIcon, Share, PlusSquare, MoreVertical, 
 import { LoadingScreen } from './components/LoadingScreen';
 import { LoginPage } from './components/LoginPage';
 import { MultiKeyPropertyOverview } from './components/MultiKeyPropertyOverview';
+import { AIChatWidget } from './components/AIChatWidget';
 import { getPropertyAndRoomSlugs } from './services/api';
 
 // Code-split: everything below is either a secondary/admin tab that most
@@ -292,6 +293,17 @@ function AppBody({ preloadedData }: AppBodyProps) {
   const [activeTab, setActiveTab] = useState<TabType>(initialActive.tab);
   const [activeMenuItemKey, setActiveMenuItemKey] = useState<string>(initialActive.key);
   const [autoOpenAddStaffModal, setAutoOpenAddStaffModal] = useState<boolean>(false);
+  // AI Assistant deep-link-prefill state (restored 27 Aug 2026 - see AI.md). Each holds
+  // whatever a chat command extracted, fed to the matching management screen's own
+  // initialXxx props; the screen pre-fills its form and opens it, but a human always still
+  // clicks the real "Save"/"Log Request" button themselves - see AIChatWidget.tsx's callback wiring below.
+  const [initialExpenseData, setInitialExpenseData] = useState<{ amount?: number; description?: string } | null>(null);
+  const [initialStaffMealName, setInitialStaffMealName] = useState<string | null>(null);
+  const [initialEditStaffName, setInitialEditStaffName] = useState<string | null>(null);
+  const [initialReqData, setInitialReqData] = useState<{ itemName?: string; qty?: number; unit?: string } | null>(null);
+  const [initialServiceRequestData, setInitialServiceRequestData] = useState<{ roomNumber?: string; item?: string } | null>(null);
+  const [initialAddStaffData, setInitialAddStaffData] = useState<{ name?: string; phone?: string; role?: string; salary?: number } | null>(null);
+  const [initialNewMenuItemData, setInitialNewMenuItemData] = useState<{ name?: string; price?: number; category?: string } | null>(null);
   const [propertyName] = useState<string>(
     preloadedData.currentProperty?.name || getPropertySlug().charAt(0).toUpperCase() + getPropertySlug().slice(1).replace(/-/g, ' ') || 'Property'
   );
@@ -645,6 +657,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
   const [isIconOnly, setIsIconOnly] = useState(false);
   const [isAddBookingModalOpen, setIsAddBookingModalOpen] = useState(false);
   const [isAddExpenseModalOpen, setIsAddExpenseModalOpen] = useState(false);
+  const [isAIChatOpen, setIsAIChatOpen] = useState(false);
 
   const [guests, setGuests] = useState<Guest[]>(() => preloadedData.initialGuests || []);
   const [receipts, setReceipts] = useState<BillingReceipt[]>(() => preloadedData.initialReceipts || []);
@@ -1926,6 +1939,7 @@ ${itemsStr}
             showInstallIcon={canShowInstallIcon}
             onInstallIconClick={handleHeaderInstallClick}
             onNavigate={(tab, itemKey) => handleNavigateTab(tab, itemKey)}
+            onToggleAIChat={() => setIsAIChatOpen((prev) => !prev)}
           />
         )}
 
@@ -2246,6 +2260,13 @@ ${itemsStr}
                     propertyUpiId={preloadedData.currentProperty?.upi_id || ''}
                     propertyUpiQrCodeUrl={preloadedData.currentProperty?.upi_qr_code_url || ''}
                     propertyWalkInTableCount={preloadedData.currentProperty?.walk_in_table_count || 10}
+                    initialStaffName={initialStaffMealName || undefined}
+                    initialReqItemName={initialReqData?.itemName}
+                    initialReqQty={initialReqData?.qty}
+                    initialReqUnit={initialReqData?.unit}
+                    initialNewMenuItemName={initialNewMenuItemData?.name}
+                    initialNewMenuItemPrice={initialNewMenuItemData?.price}
+                    initialNewMenuItemCategory={initialNewMenuItemData?.category}
                   />
                 </ErrorBoundary>
               )}
@@ -2306,6 +2327,11 @@ ${itemsStr}
                     propertyId={preloadedData.currentProperty?.id}
                     autoOpenAddModal={autoOpenAddStaffModal}
                     onClearAutoOpenAddModal={() => setAutoOpenAddStaffModal(false)}
+                    initialEditStaffName={initialEditStaffName || undefined}
+                    initialAddStaffName={initialAddStaffData?.name}
+                    initialAddStaffPhone={initialAddStaffData?.phone}
+                    initialAddStaffRole={initialAddStaffData?.role}
+                    initialAddStaffSalary={initialAddStaffData?.salary}
                   />
                 </ErrorBoundary>
               )}
@@ -2356,6 +2382,8 @@ ${itemsStr}
                     rooms={preloadedData.currentProperty?.rooms || []}
                     isMultiKeyProperty={preloadedData.isMultiKeyProperty}
                     onDispatchTelegram={dispatchTelegramAlert}
+                    initialRoomNumber={initialServiceRequestData?.roomNumber}
+                    initialRequestItem={initialServiceRequestData?.item}
                   />
                 </ErrorBoundary>
               )}
@@ -2508,6 +2536,8 @@ ${itemsStr}
                 onDispatchTelegram={dispatchTelegramAlert}
                 onlyForm={true}
                 onClose={() => setIsAddExpenseModalOpen(false)}
+                initialAmount={initialExpenseData?.amount}
+                initialDescription={initialExpenseData?.description}
                 kitchenModuleEnabled={isModuleEnabled('kitchen')}
               />
             </Suspense>
@@ -2603,6 +2633,57 @@ ${itemsStr}
         )}
 
         <GlobalModal />
+        <AIChatWidget
+          isOpen={isAIChatOpen}
+          onClose={() => setIsAIChatOpen(false)}
+          userRole={activeRole}
+          propertyName={preloadedData.currentProperty?.name}
+          guests={guests}
+          onNavigate={(tab, itemKey, extraData) => {
+            setIsAIChatOpen(false);
+            setActiveTab(tab as any);
+            if (itemKey) setActiveMenuItemKey(itemKey);
+            if (extraData?.staffName) {
+              if (itemKey === 'staff_directory_salaries') {
+                setInitialEditStaffName(extraData.staffName);
+              } else {
+                setInitialStaffMealName(extraData.staffName);
+              }
+            }
+            if (extraData?.reqItemName || extraData?.reqQty) {
+              setInitialReqData({ itemName: extraData.reqItemName, qty: extraData.reqQty, unit: extraData.reqUnit });
+            }
+            if (extraData?.addStaffName || extraData?.addStaffPhone || extraData?.addStaffRole || extraData?.addStaffSalary) {
+              setInitialAddStaffData({ name: extraData.addStaffName, phone: extraData.addStaffPhone, role: extraData.addStaffRole, salary: extraData.addStaffSalary });
+            }
+            if (extraData?.newMenuItemName || extraData?.newMenuItemPrice || extraData?.newMenuItemCategory) {
+              setInitialNewMenuItemData({ name: extraData.newMenuItemName, price: extraData.newMenuItemPrice, category: extraData.newMenuItemCategory });
+            }
+          }}
+          onOpenAddBooking={() => {
+            setIsAIChatOpen(false);
+            setIsAddBookingModalOpen(true);
+          }}
+          onOpenAddExpense={(data) => {
+            setInitialExpenseData(data || null);
+            setIsAIChatOpen(false);
+            setIsAddExpenseModalOpen(true);
+          }}
+          onOpenTelegramModal={() => {
+            setIsAIChatOpen(false);
+            setIsTelegramModalOpen(true);
+          }}
+          onOpenAddServiceRequest={(data) => {
+            // Unlike Add Booking/Expense (globally-mounted modals), the New Service Request
+            // drawer lives inside ServiceRequestsManagement itself, only mounted when that tab
+            // is active - so this has to switch tabs too, same as the staff_meals/edit_staff
+            // navigate flow, not just set data and expect a hidden component to react to it.
+            setInitialServiceRequestData(data || null);
+            setIsAIChatOpen(false);
+            setActiveTab('service_requests' as any);
+            setActiveMenuItemKey('service_requests');
+          }}
+        />
     </div>
   );
 }

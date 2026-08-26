@@ -108,6 +108,20 @@ interface KitchenManagementProps {
   // tenant with e.g. 20 tables would otherwise have no way to name half of
   // them (found 20 Aug 2026).
   propertyWalkInTableCount?: number;
+  initialStaffName?: string;
+  // AI Assistant deep-link (restored 27 Aug 2026, live report: "Request 100gm besan") - lands
+  // on the Raw Material Requisitions tab with the New Requisition drawer already open,
+  // item/qty/unit pre-filled. Never submits the requisition itself - the user still reviews and
+  // clicks 'Request Material' themselves, same rule every other AI-prefilled form follows.
+  initialReqItemName?: string;
+  initialReqQty?: number;
+  initialReqUnit?: string;
+  // AI Assistant deep-link (restored 27 Aug 2026) - lands on the Edit Food Menu tab with the
+  // "Add New Food Menu Item" drawer already open, name/price/category pre-filled. Never submits
+  // itself - same "user reviews and clicks Save" rule every other AI-prefilled form follows.
+  initialNewMenuItemName?: string;
+  initialNewMenuItemPrice?: number;
+  initialNewMenuItemCategory?: string;
 }
 
 // Sentinel dropdown value for the "New Customer" row in the walk-in tab
@@ -128,6 +142,13 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   propertyUpiId = '',
   propertyUpiQrCodeUrl = '',
   propertyWalkInTableCount = 10,
+  initialStaffName,
+  initialReqItemName,
+  initialReqQty,
+  initialReqUnit,
+  initialNewMenuItemName,
+  initialNewMenuItemPrice,
+  initialNewMenuItemCategory,
 }) => {
   const { showToast, removeToast } = useToast();
   const { confirm } = useConfirm();
@@ -747,6 +768,18 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
   const smStaffList = useMemo(() => staff.filter(s => s.status === 'Active').map(s => s.name), [staff]);
 
+  // AI Assistant deep-link (restored 27 Aug 2026): auto-selects the named staff member on the
+  // Staff Meals tab once the roster has loaded, mirroring StaffManagement.tsx's edit-staff match.
+  useEffect(() => {
+    if (initialStaffName && smStaffList.length > 0) {
+      const target = initialStaffName.toLowerCase().trim();
+      const matched = smStaffList.find((s) => s.toLowerCase().trim() === target || s.toLowerCase().trim().includes(target));
+      if (matched) {
+        setSmSelectedStaff([matched]);
+      }
+    }
+  }, [initialStaffName, smStaffList]);
+
   const handleSaveCustomMeal = () => {
     if (!newMealName) return;
     const cost = parseFloat(newMealCost) || 0;
@@ -1133,6 +1166,40 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const [reqSearch, setReqSearch] = useState('');
   const [reqDesktopPage, setReqDesktopPage] = useState(1);
   const REQ_DESKTOP_PAGE_SIZE = 15;
+
+  // AI Assistant deep-link pre-fill (restored 27 Aug 2026, live report: "Request 100gm besan").
+  // Guarded to run once per distinct value so it doesn't keep reopening the drawer if the staff
+  // member closes it or edits a field afterward.
+  const [appliedReqPrefill, setAppliedReqPrefill] = useState<string | null>(null);
+  useEffect(() => {
+    if (activeTab !== 'requisitions') return;
+    if (!initialReqItemName && !initialReqQty) return;
+    const prefillKey = `${initialReqItemName || ''}|${initialReqQty || ''}|${initialReqUnit || ''}`;
+    if (appliedReqPrefill === prefillKey) return;
+
+    if (initialReqItemName) setReqItemName(initialReqItemName);
+    if (initialReqQty) setReqQty(initialReqQty);
+    if (initialReqUnit) setReqUnit(initialReqUnit);
+    setIsReqModalOpen(true);
+    setAppliedReqPrefill(prefillKey);
+  }, [activeTab, initialReqItemName, initialReqQty, initialReqUnit, appliedReqPrefill]);
+
+  // AI Assistant deep-link (restored 27 Aug 2026) - opens the blank "Add New Food Menu Item"
+  // drawer pre-filled once the Edit Food Menu tab is active. Same guarded once-per-value pattern
+  // as the requisition prefill effect above.
+  const [appliedNewMenuItemPrefill, setAppliedNewMenuItemPrefill] = useState<string | null>(null);
+  useEffect(() => {
+    if (activeTab !== 'menu_catalog') return;
+    if (!initialNewMenuItemName && !initialNewMenuItemPrice && !initialNewMenuItemCategory) return;
+    const prefillKey = `${initialNewMenuItemName || ''}|${initialNewMenuItemPrice || ''}|${initialNewMenuItemCategory || ''}`;
+    if (appliedNewMenuItemPrefill === prefillKey) return;
+
+    if (initialNewMenuItemName) setNewItemName(initialNewMenuItemName);
+    if (initialNewMenuItemPrice) setNewItemPrice(initialNewMenuItemPrice);
+    if (initialNewMenuItemCategory) setNewItemCategory(initialNewMenuItemCategory as MenuItem['category']);
+    setIsNewMenuModalOpen(true);
+    setAppliedNewMenuItemPrefill(prefillKey);
+  }, [activeTab, initialNewMenuItemName, initialNewMenuItemPrice, initialNewMenuItemCategory, appliedNewMenuItemPrefill]);
 
   // Add Item to Order Cart
   const handleAddToCart = (item: MenuItem) => {
@@ -1952,29 +2019,26 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               {orderMode === 'guest' && (
                 <div className="flex items-center gap-2 text-xs">
                   {checkedInGuests.length > 0 ? (
-                    isMultiKeyProperty ? (
+                    (isMultiKeyProperty || checkedInGuests.length > 1) ? (
                       <StyledSelect
                         value={selectedGuestId}
                         onChange={(val) => setManuallyPickedGuestId(val)}
                         searchable
-                        options={checkedInGuests.map((g) => ({
-                          value: g.id,
-                          label: `${g.guestName}${g.roomNumber ? ` (${g.roomNumber})` : ''}`,
-                          searchText: `${g.guestName} ${g.roomNumber || ''}`,
-                        }))}
+                        options={checkedInGuests.map((g) => {
+                          const roomPrefix = g.roomNumber ? `Room ${g.roomNumber} · ` : '';
+                          return {
+                            value: g.id,
+                            label: `${roomPrefix}${g.guestName}`,
+                            searchText: `${g.roomNumber || ''} ${g.guestName}`,
+                          };
+                        })}
                         buttonClassName="!h-8 !px-3 !py-1.5 !rounded-lg !bg-blue-50 dark:!bg-blue-900/30 !text-blue-700 dark:!text-blue-300 !font-semibold !border-blue-200 dark:!border-blue-800 !text-xs"
-                        className="min-w-[190px]"
+                        className="min-w-[220px] max-w-full"
                       />
                     ) : (
-                      // Single property: at most one checked-in guest can ever
-                      // exist here (see isMultiKeyProperty's own doc comment
-                      // above), so a picker has nothing to actually pick among -
-                      // just name who this order targets, no dropdown/room
-                      // suffix at all. selectedGuestId already falls back to
-                      // checkedInGuests[0] with no picker needed for that to work.
-                      <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold border border-blue-200 dark:border-blue-800">
+                      <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold border border-blue-200 dark:border-blue-800 text-xs">
                         <User className="w-3.5 h-3.5 shrink-0" />
-                        {checkedInGuests[0]?.guestName}
+                        {checkedInGuests[0]?.roomNumber ? `Room ${checkedInGuests[0].roomNumber} · ` : ''}{checkedInGuests[0]?.guestName}
                       </span>
                     )
                   ) : (

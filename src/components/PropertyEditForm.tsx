@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useToast } from './ToastContext';
 import { Loader2, CheckCircle2, AlertCircle, MessageCircle } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';
 import { Button } from './Button';
@@ -62,6 +63,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
   submitLabel,
   isRoom = false,
 }) => {
+  const { showToast } = useToast();
   const [name, setName] = useState(property.name || '');
   // Live "required" feedback (26 Aug 2026, CLAUDE.md's "Real-Time Form Validation" sweep) -
   // gated on `nameTouched` (set on blur) rather than length alone, since an EMPTY required
@@ -138,7 +140,9 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
       return;
     }
     if (upiId.trim() && !isValidUpiIdSyntax(upiId)) {
-      setError(t('upi_id_invalid_format_error', 'Enter a valid UPI ID, e.g. name@bank'));
+      const errMsg = t('upi_id_invalid_format_error', 'Enter a valid UPI ID, e.g. name@bank');
+      setError(errMsg);
+      showToast(errMsg, { type: 'error' });
       return;
     }
     setError(null);
@@ -172,12 +176,17 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
       const data = await res.json();
       if (data.success) {
         setSuccess(true);
+        showToast(t('property_updated_success_message', 'Property details saved'), { type: 'success' });
         if (onSaved) onSaved();
       } else {
-        setError(data.message || 'Failed to save property details');
+        const msg = data.message || 'Failed to save property details';
+        setError(msg);
+        showToast(msg, { type: 'error' });
       }
     } catch {
-      setError('Network error. Please try again.');
+      const msg = 'Network error. Please try again.';
+      setError(msg);
+      showToast(msg, { type: 'error' });
     } finally {
       setIsSaving(false);
     }

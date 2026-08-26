@@ -48,6 +48,19 @@ interface StaffManagementProps {
   propertyId?: number | string;
   autoOpenAddModal?: boolean;
   onClearAutoOpenAddModal?: () => void;
+  // AI Assistant deep-link (restored 27 Aug 2026, mirrors KitchenManagement.tsx's
+  // initialStaffName for staff meals) - lets "change phone number for staff Kamlesh" land
+  // straight on that person's roster row already in edit mode, instead of just the Team page.
+  initialEditStaffName?: string;
+  // AI Assistant deep-link (restored 27 Aug 2026) - pre-fills the blank "Add New Staff Member"
+  // roster drawer (isModalOpen, name/role/phone/monthlySalary) for onboarding someone new.
+  // Deliberately NOT the same drawer as autoOpenAddModal above (isTeamMemberModalOpen) - that
+  // one creates a system LOGIN account (username/passcode/permissions), a more sensitive action
+  // this intentionally leaves untouched; this one is the roster/attendance/payroll record.
+  initialAddStaffName?: string;
+  initialAddStaffPhone?: string;
+  initialAddStaffRole?: string;
+  initialAddStaffSalary?: number;
 }
 
 export const StaffManagement: React.FC<StaffManagementProps> = ({
@@ -58,6 +71,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   propertyId,
   autoOpenAddModal,
   onClearAutoOpenAddModal,
+  initialEditStaffName,
+  initialAddStaffName,
+  initialAddStaffPhone,
+  initialAddStaffRole,
+  initialAddStaffSalary,
 }) => {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
@@ -267,6 +285,46 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const [editStaffPhone, setEditStaffPhone] = useState('');
   const [editStaffSalary, setEditStaffSalary] = useState(0);
   const [editStaffStatus, setEditStaffStatus] = useState('Active');
+
+  // AI Assistant deep-link (restored 27 Aug 2026): once the roster sub-tab is active and staff
+  // have loaded, find the named person and open their row in edit mode the same way the "Edit
+  // Details" button does. Case-insensitive partial match (same rule as KitchenManagement's
+  // staff-meal auto-select) - "Kamlesh" matches "Kamlesh Verma". Only runs once per name
+  // (guarded below) so it doesn't keep re-opening the row if the admin closes it again after editing.
+  const [appliedEditStaffName, setAppliedEditStaffName] = useState<string | null>(null);
+  useEffect(() => {
+    if (!initialEditStaffName || activeSubTab !== 'roster' || staff.length === 0) return;
+    if (appliedEditStaffName === initialEditStaffName) return;
+    const target = initialEditStaffName.toLowerCase().trim();
+    const matched = staff.find((s) => s.name.toLowerCase().trim() === target || s.name.toLowerCase().trim().includes(target));
+    if (matched) {
+      setEditingStaffId(matched.id);
+      setEditStaffRole(matched.role);
+      setEditStaffPhone(matched.phone);
+      setEditStaffSalary(matched.monthlySalary);
+      setEditStaffStatus(matched.status);
+    }
+    setAppliedEditStaffName(initialEditStaffName);
+  }, [initialEditStaffName, activeSubTab, staff, appliedEditStaffName]);
+
+  // AI Assistant deep-link (restored 27 Aug 2026): opens the blank "Add New Staff Member"
+  // roster drawer pre-filled with whatever the chat message extracted. Guarded to run once per
+  // distinct value, same pattern as the edit-staff effect above and KitchenManagement.tsx's
+  // requisition prefill.
+  const [appliedAddStaffPrefill, setAppliedAddStaffPrefill] = useState<string | null>(null);
+  useEffect(() => {
+    if (activeSubTab !== 'roster') return;
+    if (!initialAddStaffName && !initialAddStaffPhone && !initialAddStaffRole && !initialAddStaffSalary) return;
+    const prefillKey = `${initialAddStaffName || ''}|${initialAddStaffPhone || ''}|${initialAddStaffRole || ''}|${initialAddStaffSalary || ''}`;
+    if (appliedAddStaffPrefill === prefillKey) return;
+
+    if (initialAddStaffName) setName(initialAddStaffName);
+    if (initialAddStaffPhone) setPhone(initialAddStaffPhone);
+    if (initialAddStaffRole) setRole(initialAddStaffRole as StaffMember['role']);
+    if (initialAddStaffSalary) setMonthlySalary(initialAddStaffSalary);
+    setIsModalOpen(true);
+    setAppliedAddStaffPrefill(prefillKey);
+  }, [activeSubTab, initialAddStaffName, initialAddStaffPhone, initialAddStaffRole, initialAddStaffSalary, appliedAddStaffPrefill]);
 
   // Mobile UI State
   const [mobileAttMode, setMobileAttMode] = useState<'daily' | 'summary'>('daily');

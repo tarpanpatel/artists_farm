@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, Home } from './icons/FlowbiteIcons';
+import { AlertCircle, Home, Loader2 } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';
 
 interface LoadingScreenProps {
@@ -35,24 +35,14 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
           <img src="/icons/icon-source.png" alt="" className="w-full h-full rounded-lg loading-screen__logo-img" />
         </div>
 
-        {/* Loading Spinner */}
-        <div className="relative w-12 h-12 loading-screen__spinner">
-          <div className="absolute inset-0 rounded-full border-4 border-slate-200 dark:border-slate-700 loading-screen__spinner-track" />
-          <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-blue-500 border-r-indigo-500 animate-spin loading-screen__spinner-indicator" />
-        </div>
+        {/* Standard Loading Spinner Ring */}
+        <Loader2 className="w-10 h-10 text-blue-600 dark:text-blue-400 animate-spin loading-screen__spinner" />
 
         {/* Brand text label removed (26 Aug 2026, explicit request): the logo
             mark itself is distinctive enough now to not need "Ground Code"
             spelled out underneath it - this splash reads as an app launch
             purely through the icon, gradient, and spinner. The sr-only span
             above still carries `message` for assistive tech regardless. */}
-
-        {/* Loading Dots */}
-        <div className="flex gap-2 loading-screen__dots">
-          <div className="w-2 h-2 rounded-full bg-blue-500 animate-bounce loading-screen__dot" style={{ animationDelay: '0s' }} />
-          <div className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce loading-screen__dot" style={{ animationDelay: '0.2s' }} />
-          <div className="w-2 h-2 rounded-full bg-purple-500 animate-bounce loading-screen__dot" style={{ animationDelay: '0.4s' }} />
-        </div>
 
         {/* Timeout Notice & Cancel Button */}
         {showTimeout && (

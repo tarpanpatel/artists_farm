@@ -5,6 +5,7 @@ import { t } from '../i18n/en';
 import { Button } from './Button';
 import { Input } from './Input';
 import { useConfirm } from './ConfirmDialogContext';
+import { useToast } from './ToastContext';
 import { apiFetch } from '../services/api';
 
 interface Room {
@@ -58,6 +59,7 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
   onUpdated,
   onNavigateToRoom,
 }) => {
+  const { showToast } = useToast();
   const [property, setProperty] = useState<Property | null>(null);
   const [overview, setOverview] = useState<OverviewData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -164,14 +166,19 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
       const data = await response.json();
       if (data.success) {
         setEditingTariffRoomId(null);
+        showToast('Room tariff saved successfully!', { type: 'success' });
         await loadData();
         onUpdated?.();
       } else {
-        setError(data.message || 'Failed to update tariff');
+        const msg = data.message || 'Failed to update tariff';
+        setError(msg);
+        showToast(msg, { type: 'error' });
       }
     } catch (err) {
       console.error('Failed to update tariff:', err);
-      setError('Failed to update tariff');
+      const msg = 'Failed to update tariff';
+      setError(msg);
+      showToast(msg, { type: 'error' });
     } finally {
       setSavingTariff(false);
     }

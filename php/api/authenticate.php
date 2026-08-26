@@ -4,9 +4,24 @@
  * Supports Platform Admins, Tenant Owners, and Property Staff
  */
 
-ini_set('session.gc_maxlifetime', 86400 * 7);
-ini_set('session.cookie_lifetime', 86400 * 7);
-ini_set('session.cookie_httponly', 1);
+// Kept in sync with php/api/router.php's session bootstrap (27 Aug 2026,
+// "remember me" fix) - this is a separate entry point that never goes
+// through router.php, so it needs the identical session_set_cookie_params()
+// treatment rather than the old ini_set-only pair (see router.php's comment
+// for why: no ini_set equivalent for 'secure'/'samesite', so PHP's own
+// automatic per-request Set-Cookie refresh silently dropped those on every
+// non-login request otherwise).
+$__session_host = $_SERVER['SERVER_NAME'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost';
+$__session_is_local = $__session_host === 'localhost' || $__session_host === '127.0.0.1' || str_contains($__session_host, '192.168.');
+ini_set('session.gc_maxlifetime', 86400 * 30);
+session_set_cookie_params([
+    'lifetime' => 86400 * 30,
+    'path' => '/',
+    'domain' => '',
+    'secure' => !$__session_is_local,
+    'httponly' => true,
+    'samesite' => 'Lax',
+]);
 session_name('artists_farm_session');
 session_start();
 header('Content-Type: application/json; charset=UTF-8');

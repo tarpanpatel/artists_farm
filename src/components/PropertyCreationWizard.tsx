@@ -337,39 +337,66 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
         <ol className="flex items-center w-full">
           {steps.map((step, idx) => {
             const StepIcon = step.icon;
-            const isDone = idx < stepIndex || (idx === stepIndex && finished);
+            const step0Done = !!name.trim() && !!address.trim();
+            const step1Done = !!(email.trim() || phone.trim());
+            const step2Done = !!(upiId.trim() || gstin.trim());
+            const step3Done = propertyType === 'MULTI_KEY' || !!checkinTime || (defaultTariff != null && String(defaultTariff).trim() !== '');
+            const step4Done = !!instructions.trim();
+            const stepDoneFlags = [step0Done, step1Done, step2Done, step3Done, step4Done];
+
+            const isStepComplete = stepDoneFlags[idx] ?? false;
             const isCurrent = idx === stepIndex && !finished;
+            const isPassedOrVisited = idx < stepIndex || (idx === stepIndex && finished);
+            const isPassedIncomplete = isPassedOrVisited && !isStepComplete;
+            const isFullyComplete = isStepComplete && (idx !== stepIndex || finished);
             const isLast = idx === steps.length - 1;
+
             return (
               <li key={step.key} className={`flex items-center ${!isLast ? 'flex-1' : ''}`}>
-                {/* Column is sized by the icon alone (shrink-0, no label in flow) so every
-                    step's footprint is identical regardless of label length - the label is
-                    absolutely positioned below instead. This is what keeps the connecting
-                    lines between steps an equal length (previously each <li> sized itself
-                    around its own label text, so "Contact & Tax"/"Notes & Finish" squeezed
-                    their line shorter than "Basics"/"Payments" did - reported 26 Aug 2026). */}
                 <div className="relative flex items-center justify-center shrink-0">
                   <span
                     className={`flex items-center justify-center w-8 h-8 rounded-full shrink-0 transition-all ${
-                      isDone
-                        ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border-2 border-emerald-500'
-                        : isCurrent
+                      isCurrent
                         ? 'bg-indigo-600 text-white shadow-xs ring-4 ring-indigo-100 dark:ring-indigo-900/60'
+                        : isFullyComplete
+                        ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border-2 border-emerald-500'
+                        : isPassedIncomplete
+                        ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-2 border-amber-500'
                         : 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-300 dark:border-slate-600'
                     }`}
                   >
-                    {isDone ? <CheckCircle2 className="w-4 h-4" /> : <StepIcon className="w-4 h-4" />}
+                    {isFullyComplete ? (
+                      <CheckCircle2 className="w-4 h-4" />
+                    ) : isPassedIncomplete ? (
+                      <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                    ) : (
+                      <StepIcon className="w-4 h-4" />
+                    )}
                   </span>
                   <span
                     className={`absolute top-full left-1/2 -translate-x-1/2 mt-1 text-2xs font-semibold whitespace-nowrap ${
-                      isCurrent ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-500 dark:text-slate-400'
+                      isCurrent
+                        ? 'text-indigo-700 dark:text-indigo-300'
+                        : isPassedIncomplete
+                        ? 'text-amber-700 dark:text-amber-400 font-bold'
+                        : isFullyComplete
+                        ? 'text-emerald-700 dark:text-emerald-400'
+                        : 'text-slate-500 dark:text-slate-400'
                     }`}
                   >
                     {step.label}
                   </span>
                 </div>
                 {!isLast && (
-                  <div className={`flex-1 h-1 rounded-full mx-1.5 ${idx < stepIndex ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700'}`} />
+                  <div
+                    className={`flex-1 h-1 rounded-full mx-1.5 ${
+                      stepDoneFlags[idx] && idx < stepIndex
+                        ? 'bg-emerald-500'
+                        : idx < stepIndex
+                        ? 'bg-amber-400 dark:bg-amber-600'
+                        : 'bg-slate-200 dark:bg-slate-700'
+                    }`}
+                  />
                 )}
               </li>
             );

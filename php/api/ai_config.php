@@ -13,9 +13,21 @@
 // gets the same session bootstrap + root-admin gate router.php uses for its own platform-admin
 // actions, not just the ordinary logged-in-user check other endpoints (ai_assistant.php,
 // ical_sync.php) use.
-ini_set('session.gc_maxlifetime', 86400 * 7);
-ini_set('session.cookie_lifetime', 86400 * 7);
-ini_set('session.cookie_httponly', 1);
+// session_set_cookie_params() (restored 27 Aug 2026 alongside this file itself - see AI.md and
+// CLAUDE.md's "Session Cookie / Remember Me" section) computed inline, same as
+// calendar_session.php - this bootstrap runs before config/database.php is required below, so
+// APP_IS_LOCAL_ENV isn't defined yet at this point.
+$__session_host = $_SERVER['SERVER_NAME'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost';
+$__session_is_local = $__session_host === 'localhost' || $__session_host === '127.0.0.1' || str_contains($__session_host, '192.168.');
+ini_set('session.gc_maxlifetime', 86400 * 30);
+session_set_cookie_params([
+    'lifetime' => 86400 * 30,
+    'path' => '/',
+    'domain' => '',
+    'secure' => !$__session_is_local,
+    'httponly' => true,
+    'samesite' => 'Lax',
+]);
 session_name('artists_farm_session');
 session_start();
 

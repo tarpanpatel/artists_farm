@@ -1561,7 +1561,7 @@ export const strings: Record<string, string> = {
   saved_badge: "सेव हो गया",
   saving_ellipsis_text: "सेव हो रहा है…",
   save_connection_settings_button: "सेव करें Connection Settings",
-  login_modal_brand: "Artists' Farm",
+  login_modal_brand: "Ground Code",
   terminal_authorization_subtitle: "टर्मिनल मोबाइल और पासकोड ऑथराइजेशन",
   enter_10_digit_mobile_error: "कृपया 10 अंकों का मोबाइल नंबर डालें",
   enter_6_digit_passcode_error: "कृपया 6 अंकों का पासकोड डालें",

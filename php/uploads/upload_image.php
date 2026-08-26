@@ -24,9 +24,19 @@
 // database.php doesn't start the session itself - every other entry point (router.php,
 // ical_sync.php, authenticate.php) does its own session_name()+session_start() before requiring
 // it, so this needs the same bootstrap or $_SESSION reads below always come back empty.
-ini_set('session.gc_maxlifetime', 86400 * 7);
-ini_set('session.cookie_lifetime', 86400 * 7);
-ini_set('session.cookie_httponly', 1);
+// session_set_cookie_params() (27 Aug 2026, "remember me" fix - see router.php's fuller
+// comment) computed inline since APP_IS_LOCAL_ENV isn't defined until database.php loads.
+$__session_host = $_SERVER['SERVER_NAME'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost';
+$__session_is_local = $__session_host === 'localhost' || $__session_host === '127.0.0.1' || str_contains($__session_host, '192.168.');
+ini_set('session.gc_maxlifetime', 86400 * 30);
+session_set_cookie_params([
+    'lifetime' => 86400 * 30,
+    'path' => '/',
+    'domain' => '',
+    'secure' => !$__session_is_local,
+    'httponly' => true,
+    'samesite' => 'Lax',
+]);
 session_name('artists_farm_session');
 session_start();
 

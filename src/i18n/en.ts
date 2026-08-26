@@ -1671,7 +1671,7 @@ export const strings: Record<string, string> = {
   log_request_button: "Log Request",
 
   saved_badge: "Saved",
-  login_modal_brand: "Artists' Farm",
+  login_modal_brand: "Ground Code",
   terminal_authorization_subtitle: "Terminal Mobile & Passcode Authorization",
   enter_10_digit_mobile_error: "Please enter your 10-digit mobile number",
   enter_6_digit_passcode_error: "Please enter a 6-digit passcode",

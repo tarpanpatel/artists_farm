@@ -516,12 +516,17 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
         setShowEditTenantModal(false);
         setEditingTenant(null);
         setRenewalNote('');
+        showToast('Owner details updated successfully!', { type: 'success' });
       } else {
-        setError(data.message || 'Failed to update tenant');
+        const msg = data.message || 'Failed to update tenant';
+        setError(msg);
+        showToast(msg, { type: 'error' });
       }
     } catch (err) {
       console.error('Failed to save tenant:', err);
-      setError('Failed to save tenant');
+      const msg = 'Failed to save tenant';
+      setError(msg);
+      showToast(msg, { type: 'error' });
     }
   };
 

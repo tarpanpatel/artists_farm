@@ -19,8 +19,8 @@ import {
   Check,
   Home as RoomIcon,
   X,
+  Bot,
 } from './icons/FlowbiteIcons';
-import { ContactSupportMenu } from './ContactSupportMenu';
 import { useAuth } from '../contexts/AuthContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
@@ -53,6 +53,12 @@ interface HeaderProps {
   showInstallIcon?: boolean;
   onInstallIconClick?: () => void;
   onNavigate?: (tab: TabType, itemKey?: string) => void;
+  // Opens the AI Assistant chat widget (restored 27 Aug 2026 - see AI.md). Replaces the
+  // WhatsApp/Telegram ContactSupportMenu that briefly lived in this slot: the AI now answers
+  // first, and only surfaces those same WhatsApp/Telegram links as an in-chat escalation once it
+  // can't help (see AIChatWidget.tsx's consecutiveUnmatched banner) - TenantDashboard.tsx keeps
+  // ContactSupportMenu as-is since it has no per-property operational context for the bot to act on.
+  onToggleAIChat?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -71,6 +77,7 @@ export const Header: React.FC<HeaderProps> = ({
   showInstallIcon = false,
   onInstallIconClick,
   onNavigate,
+  onToggleAIChat,
 }) => {
   const { currentUser, activeRole, setActiveRole } = useAuth();
   // "View site as" (Root Admin only) - a pure frontend preview: it only
@@ -400,10 +407,18 @@ export const Header: React.FC<HeaderProps> = ({
             </Popover>
           )}
 
-          {/* Contact Support (27 Aug 2026) - shared with TenantDashboard.tsx's
-              "Help" button, see ContactSupportMenu.tsx for why it's a
-              standalone component. */}
-          <ContactSupportMenu />
+          {/* AI Assistant chat trigger (restored 27 Aug 2026 - see AI.md). Opens the offline-first
+              chat widget mounted in App.tsx; WhatsApp/Telegram live inside it now as the
+              escalation path, not as a separate header entry (see HeaderProps.onToggleAIChat). */}
+          <button
+            type="button"
+            onClick={() => onToggleAIChat?.()}
+            title={t('help_tooltip', 'Help & AI Assistant')}
+            aria-label={t('help_aria', 'Help & AI Assistant')}
+            className="header__ai-chat-toggle p-2 rounded-lg text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+          >
+            <Bot className="w-5 h-5" />
+          </button>
 
           {/* Notification Bell Button */}
           <div className="header__notification relative" ref={notificationWrapperRef}>

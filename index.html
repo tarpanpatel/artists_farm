@@ -137,6 +137,27 @@
       // sessionStorage so a genuinely offline device (no network at all,
       // reload would fail the same way) gets exactly one retry, not a
       // reload loop.
+      //
+      // Pre-warm before navigating (added 27 Aug 2026, reported live: a
+      // solid black screen for a moment between the login screen and the
+      // app actually loading, on a device whose network was mid-reconnect -
+      // LTE to 5G in the same screenshot sequence). A bare
+      // `window.location.href = ...` here makes the browser tear down this
+      // document and wait on a live network round-trip for the next one -
+      // in an installed iOS PWA (standalone mode, no browser chrome to mask
+      // the gap) that wait renders as solid black, and is exactly as long as
+      // whatever that round trip takes, which is worst-case right as a
+      // cold/reconnecting radio is involved. Fetching the fresh URL first
+      // (with an explicit `Accept: text/html` so sw.js's fetch handler takes
+      // its HTML branch and caches the response) means that by the time the
+      // real navigation fires, sw.js's cache-match for that exact URL is
+      // already warm and answers instantly instead of hitting the network
+      // again - shrinking the black window to whatever this fetch actually
+      // took, not adding a second wait on top of it. Falls back to
+      // navigating immediately if the warm-up fetch fails, and a hard
+      // 2.5s timeout guarantees the recovery still fires even if the fetch
+      // itself hangs - this can only make the existing recovery faster, never
+      // less reliable.
       (function () {
         var alreadyRetried = sessionStorage.getItem('sw_stale_reload_attempted');
         window.addEventListener('error', function (event) {
@@ -149,8 +170,18 @@
             !alreadyRetried
           ) {
             sessionStorage.setItem('sw_stale_reload_attempted', '1');
-            window.location.href = window.location.pathname + window.location.search +
+            var freshUrl = window.location.pathname + window.location.search +
               (window.location.search ? '&' : '?') + '_r=' + Date.now() + window.location.hash;
+            var navigated = false;
+            var go = function () {
+              if (navigated) return;
+              navigated = true;
+              window.location.href = freshUrl;
+            };
+            fetch(freshUrl, { credentials: 'include', headers: { 'Accept': 'text/html' } })
+              .then(go)
+              .catch(go);
+            setTimeout(go, 2500);
           }
         }, true);
       })();

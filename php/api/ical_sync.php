@@ -622,10 +622,17 @@ if (php_sapi_name() === 'cli') {
 // property-ownership gate added there - it had ZERO auth check at all (confirmed live: a plain,
 // cookie-less request returned another property's connected calendar feeds, including OTA sync
 // config, in full). Session bootstrap must match router.php exactly so the same login cookie is
-// recognized.
-ini_set('session.gc_maxlifetime', 86400 * 7);
-ini_set('session.cookie_lifetime', 86400 * 7);
-ini_set('session.cookie_httponly', 1);
+// recognized. Uses session_set_cookie_params() (27 Aug 2026, "remember me" fix - see router.php's
+// fuller comment); database.php is already required above so APP_IS_LOCAL_ENV is available here.
+ini_set('session.gc_maxlifetime', 86400 * 30);
+session_set_cookie_params([
+    'lifetime' => 86400 * 30,
+    'path' => '/',
+    'domain' => '',
+    'secure' => !APP_IS_LOCAL_ENV,
+    'httponly' => true,
+    'samesite' => 'Lax',
+]);
 session_name('artists_farm_session');
 session_start();
 require_once __DIR__ . '/../security/access_control.php';
