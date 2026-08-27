@@ -438,8 +438,8 @@ export const OnboardingManager: React.FC = () => {
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end pt-1">
-            <div className="md:col-span-4">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-end pt-1">
+            <div className="md:col-span-3">
               <label className="block text-2xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 Template to Test
               </label>
@@ -478,13 +478,26 @@ export const OnboardingManager: React.FC = () => {
               />
             </div>
 
-            <div className="md:col-span-5 flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            <div className="md:col-span-2">
+              <label className="block text-2xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Test WhatsApp Number
+              </label>
+              <input
+                type="tel"
+                value={testPhone}
+                onChange={(e) => setTestPhone(e.target.value)}
+                placeholder="9571263474"
+                className="w-full bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-300 dark:border-slate-700 text-xs rounded-lg p-2 focus:ring-1 focus:ring-blue-500 font-mono"
+              />
+            </div>
+
+            <div className="md:col-span-4 flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
               <Button
                 variant="primary"
                 size="sm"
                 onClick={() => handleSendTest('email')}
                 disabled={isSendingTest}
-                className="flex-1"
+                className="flex-1 px-2"
                 leftIcon={isSendingTest ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
               >
                 Send Email
@@ -495,7 +508,7 @@ export const OnboardingManager: React.FC = () => {
                 size="sm"
                 onClick={() => handleSendTest('telegram')}
                 disabled={isSendingTest}
-                className="flex-1"
+                className="flex-1 px-2"
                 leftIcon={<Send className="w-3.5 h-3.5 text-blue-500" />}
               >
                 Send Telegram
@@ -506,7 +519,7 @@ export const OnboardingManager: React.FC = () => {
                 size="sm"
                 onClick={() => handleSendTest('whatsapp')}
                 disabled={isSendingTest}
-                className="flex-1"
+                className="flex-1 px-2"
                 leftIcon={<MessageSquare className="w-3.5 h-3.5 text-emerald-500" />}
               >
                 Test WhatsApp
