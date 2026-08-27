@@ -67,6 +67,7 @@ interface TenantInfo {
   max_properties: number;
   subscription_plan: string;
   subscription_status: string;
+  is_demo?: number | boolean;
 }
 
 interface TenantDashboardProps {
@@ -985,7 +986,13 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
       </Modal>
 
       {/* Mandatory Terms & Policy Acceptance Modal */}
-      <TermsAcceptanceModal tenantId={tenantId || 'default'} tenantName={tenantInfo?.name || propTenantInfo?.name || 'Your Property'} />
+      {/* Demo/sales tenants (tenants.is_demo) never see this - see the schema_tenants_table_v3
+          self-heal in router.php. A prospect being walked through the app, or a QA/staging
+          demo account, shouldn't be asked to accept Ground Code's live billing/ToS agreement
+          the way a real onboarding customer must. */}
+      {!(tenantInfo?.is_demo || propTenantInfo?.is_demo) && (
+        <TermsAcceptanceModal tenantId={tenantId || 'default'} tenantName={tenantInfo?.name || propTenantInfo?.name || 'Your Property'} />
+      )}
 
       {/* Header Help & Support Drawer */}
       <LegalDrawer

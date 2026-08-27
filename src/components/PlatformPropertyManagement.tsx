@@ -24,6 +24,7 @@ interface Tenant {
   email?: string;
   phone?: string;
   is_active: number;
+  is_demo?: number;
 }
 
 interface Property {
@@ -504,6 +505,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
           subscription_expires_at: editingTenant.subscription_expires_at || null,
           max_properties: editingTenant.max_properties,
           is_active: editingTenant.is_active,
+          is_demo: editingTenant.is_demo,
           renewal_note: renewalNote.trim() || undefined,
         }),
       });
@@ -1250,6 +1252,26 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                     { value: 'suspended', label: t('suspended_label', 'Suspended') },
                   ]}
                 />
+              </div>
+
+              <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                <label className="flex items-center justify-between gap-3">
+                  <span>
+                    <span className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                      Demo / Sales Tenant
+                    </span>
+                    <span className="block text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      Skips the Terms of Service acceptance gate - use for prospect walkthroughs
+                      or QA/staging accounts, never a real onboarding customer.
+                    </span>
+                  </span>
+                  <ToggleSwitch
+                    enabled={!!editingTenant.is_demo}
+                    onChange={(enabled) =>
+                      setEditingTenant({ ...editingTenant, is_demo: enabled ? 1 : 0 })
+                    }
+                  />
+                </label>
               </div>
 
               <div>

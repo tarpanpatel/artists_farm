@@ -318,6 +318,21 @@ if (!isSchemaVerified('schema_tenants_table_v2')) {
     markSchemaVerified('schema_tenants_table_v2');
 }
 
+// Self-healing column check for `tenants.is_demo` (27 Aug 2026) - lets a Root Admin mark a
+// tenant as a sales/demo account rather than a real paying customer. First (only) consumer:
+// TenantDashboard.tsx skips TermsAcceptanceModal entirely for a demo tenant - a prospect being
+// walked through the app, or a QA/staging demo account, shouldn't be asked to accept Ground
+// Code's live Terms of Service/billing agreement the way a real onboarding customer must.
+if (!isSchemaVerified('schema_tenants_table_v3')) {
+    try {
+        $tenantsColsV3 = $pdo->query("SHOW COLUMNS FROM tenants")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('is_demo', $tenantsColsV3)) {
+            $pdo->exec("ALTER TABLE tenants ADD COLUMN `is_demo` TINYINT(1) NOT NULL DEFAULT 0 AFTER `is_active`");
+        }
+    } catch (Exception $e) {}
+    markSchemaVerified('schema_tenants_table_v3');
+}
+
 // Renewal history for manual/offline billing (27 Aug 2026, see PRODUCT_STRATEGY.md).
 // update_tenant's own UPDATE overwrites plan_type/subscription_expires_at in place -
 // there was no record anywhere of what the plan/expiry WAS before a Root Admin change,
@@ -2304,7 +2319,7 @@ switch ($action) {
         }
         try {
             $stmt = $pdo->prepare("
-                SELECT id, name, slug, max_properties, subscription_plan, subscription_status, is_active
+                SELECT id, name, slug, max_properties, subscription_plan, subscription_status, is_active, is_demo
                 FROM tenants
                 WHERE (slug = ? OR REPLACE(slug, '_', '-') = ? OR REPLACE(slug, '-', '_') = ?)
                   AND is_active = 1
@@ -2651,7 +2666,7 @@ switch ($action) {
 
             $stmt = $pdo->prepare("
                 UPDATE tenants
-                SET name = ?, slug = COALESCE(?, slug), email = ?, phone = ?, subscription_status = ?, is_active = ?, max_properties = COALESCE(?, max_properties), subscription_expires_at = ?, plan_type = ?
+                SET name = ?, slug = COALESCE(?, slug), email = ?, phone = ?, subscription_status = ?, is_active = ?, is_demo = ?, max_properties = COALESCE(?, max_properties), subscription_expires_at = ?, plan_type = ?
                 WHERE id = ?
             ");
             $stmt->execute([
@@ -2661,6 +2676,7 @@ switch ($action) {
                 $input['phone'] ?? null,
                 $input['subscription_status'] ?? 'trial',
                 $input['is_active'] ?? 0,
+                !empty($input['is_demo']) ? 1 : 0,
                 isset($input['max_properties']) ? (int)$input['max_properties'] : null,
                 $newExpiresAt,
                 $newPlanType,
