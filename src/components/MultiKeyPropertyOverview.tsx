@@ -362,7 +362,13 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                  {/* Calendar preview removed from this page (28 Aug 2026, explicit request) - a
+                      room's own live booking calendar already lives one click away on its
+                      Dashboard tab (see the OperationalDashboard render above, gated on
+                      activeTab === 'dashboard'); showing a second read-only copy of it here,
+                      next to a form that's purely about the room's name/times/tariff, was
+                      redundant. Single-column now that there's no calendar card to pair with. */}
+                  <div className="max-w-2xl">
                     <div className="edit-room-page__form-card bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 sm:p-6">
                       <h2 className="edit-room-page__heading text-base font-semibold text-slate-900 dark:text-white mb-4">
                         {t('edit_room_page_heading', 'Edit Room')}
@@ -378,43 +384,6 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                         }}
                         onSaved={() => window.location.reload()}
                         isRoom
-                      />
-                    </div>
-                    <div className="edit-room-page__calendar-card">
-                      <OperationalDashboard
-                        guests={roomGuests}
-                        receipts={receipts}
-                        menu={menu}
-                        rooms={property.rooms}
-                        roomName={selectedRoom.name}
-                        roomId={selectedRoom.id}
-                        propertySlug={propertySlug}
-                        onNavigate={(tab, menuItemKey) => { setActiveTab?.(tab); if (menuItemKey) onSetActiveMenuItemKey?.(menuItemKey); }}
-                        onOpenCheckin={() => setActiveTab?.('guests')}
-                        onAddGuest={onAddGuest}
-                        onCheckoutGuest={onCheckoutGuest}
-                        onUpdateBooking={onUpdateBooking}
-                        onDeleteBooking={onDeleteBooking}
-                        onGuestVerificationUpdated={onGuestVerificationUpdated}
-                        onCFormFiledUpdated={onCFormFiledUpdated}
-                        onGuestCheckedIn={onGuestCheckedIn}
-                        onDispatchTelegram={onDispatchTelegram}
-                        activeMenuItemKey={activeMenuItemKey}
-                        propertyName={property.name}
-                        propertyMapsLink={property.google_maps_link || ''}
-                        propertyPhone={property.phone || ''}
-                        propertyWhatsappTemplate={property.whatsapp_voucher_template || ''}
-                        propertyUpiId={property.upi_id || ''}
-                        propertyUpiQrCodeUrl={property.upi_qr_code_url || ''}
-                        propertyAddress={property.address || ''}
-                        propertyInstructions={property.instructions || ''}
-                        propertyCheckinTime={property.checkin_time || ''}
-                        propertyCheckoutTime={property.checkout_time || ''}
-                        kitchenModuleEnabled={kitchenModuleEnabled}
-                        kitchenAccessAllowed={kitchenAccessAllowed}
-                        serviceRequestsAccessAllowed={serviceRequestsAccessAllowed}
-                        serviceRequests={serviceRequests}
-                        minimalMode
                       />
                     </div>
                   </div>
