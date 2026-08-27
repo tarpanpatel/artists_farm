@@ -19,6 +19,28 @@ interface ChatMessage {
   timestamp: string;
   actionText?: string;
   modeBadge?: string;
+  // Every action type is confirm-first now (27 Aug 2026, explicit request: "ai should always
+  // ask that" - extended from an earlier pass that only covered `navigate`). Stores whatever
+  // the backend's `res.action` carried, plus a human label for the button; handleConfirmAction
+  // below is the single place that actually dispatches on `type` and runs the real side
+  // effect, so the "ask first" behavior can't drift out of sync between action types again.
+  pendingAction?: {
+    type: string;
+    label: string;
+    tab?: string;
+    itemKey?: string;
+    route?: string;
+    amount?: number;
+    description?: string;
+    category?: string;
+    roomNumber?: string;
+    item?: string;
+    extraData?: {
+      staffName?: string; reqItemName?: string; reqQty?: number; reqUnit?: string;
+      addStaffName?: string; addStaffPhone?: string; addStaffRole?: string; addStaffSalary?: number;
+      newMenuItemName?: string; newMenuItemPrice?: number; newMenuItemCategory?: string;
+    };
+  };
 }
 
 interface AIChatWidgetProps {
@@ -103,6 +125,70 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({
     } else {
       setInternalIsOpen(false);
     }
+  };
+
+  // Fires the actual side effect once the user taps the confirm button in the chat bubble
+  // (see ChatMessage.pendingAction's own comment for why nothing runs automatically). The
+  // widget deliberately does NOT close afterward (27 Aug 2026, explicit request: "once it
+  // takes me to that page the ai should keep chat box open and ask if that's where I want to
+  // be" - previously every action closed the widget the instant it fired, on the assumption
+  // the user was "done"; now the chat stays open and follows up instead, so a wrong guess or a
+  // multi-step task doesn't mean reopening the widget from scratch). `open_root_dashboard_route`
+  // is the one exception - it's a full `window.location.href` navigation to an entirely
+  // separate app shell, not a same-page action, so the whole React tree (including this
+  // widget) is about to unmount anyway; nothing to keep open or follow up on.
+  const handleConfirmAction = (messageId: string, action: NonNullable<ChatMessage['pendingAction']>) => {
+    let notice = '';
+    let followUpText = "Done! Let me know if you need anything else.";
+
+    switch (action.type) {
+      case 'open_telescope':
+        window.open('/php/errors/', '_blank');
+        notice = '⚡ Executed: Opened Telescope Error Monitor';
+        followUpText = 'Opened Telescope in a new tab. Let me know if you need anything else.';
+        break;
+      case 'open_root_dashboard_route':
+        window.location.href = '/root_dashboard/' + (action.route || '');
+        return; // page is navigating away entirely - no state left to update
+      case 'open_add_booking':
+        onOpenAddBooking?.();
+        notice = '⚡ Executed: Add Booking form opened';
+        break;
+      case 'open_add_expense':
+        onOpenAddExpense?.({ amount: action.amount, description: action.description, category: action.category });
+        notice = '⚡ Executed: Add Expense form opened';
+        break;
+      case 'open_add_service_request':
+        onOpenAddServiceRequest?.({ roomNumber: action.roomNumber, item: action.item });
+        notice = '⚡ Executed: New Service Request form opened';
+        break;
+      case 'open_telegram_modal':
+        onOpenTelegramModal?.();
+        notice = '⚡ Executed: Telegram Settings modal opened';
+        break;
+      case 'navigate':
+        if (action.tab) {
+          onNavigate?.(action.tab, action.itemKey, action.extraData);
+          notice = `⚡ Executed: Navigated to ${action.tab}`;
+          followUpText = "Is that where you wanted to be? Let me know if you need anything else.";
+        }
+        break;
+      default:
+        return;
+    }
+
+    setMessages((prev) => [
+      ...prev.map((msg) =>
+        msg.id === messageId ? { ...msg, pendingAction: undefined, actionText: notice } : msg
+      ),
+      {
+        id: `ai-followup-${Date.now()}`,
+        sender: 'ai',
+        text: followUpText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      },
+    ]);
+    // Deliberately no handleClose() here - see this function's own comment above.
   };
 
   const getLiveContext = () => {
@@ -217,6 +303,7 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({
       const res = await response.json();
 
       let actionNotice = '';
+      let pendingAction: ChatMessage['pendingAction'] = undefined;
       if (res.mode === 'online') {
         setCurrentModeBadge(`Online AI (${res.provider || 'API'})`);
       } else {
@@ -229,51 +316,51 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({
       // as "answered" rather than nudging toward escalation over a shape we don't recognize.
       setConsecutiveUnmatched((prev) => (res.matched === false ? prev + 1 : 0));
 
-      // Execute Action Command if authorized by backend RBAC
+      // Build a pending action instead of executing immediately - every action type is
+      // confirm-first now (27 Aug 2026, explicit request: "ai should always ask that", extended
+      // from an earlier pass that only covered `navigate`). handleConfirmAction is the single
+      // place that actually runs the side effect, once the user taps the button this renders.
       if (res.action) {
         const type = res.action.type;
-        if (type === 'open_telescope') {
-          window.open('/php/errors/', '_blank');
-          actionNotice = '⚡ Executed: Opened Telescope Error Monitor';
-          handleClose();
-        } else if (type === 'open_root_dashboard_route') {
-          // Same-tab, not a new tab (unlike Telescope above) - this is the SAME logged-in
-          // session just switching to the separate Root Admin dashboard shell, not an
-          // independent tool with its own login.
-          window.location.href = '/root_dashboard/' + (res.action.route || '');
-          actionNotice = '⚡ Executed: Opened Account Settings';
-          handleClose();
-        } else if (type === 'open_add_booking' && onOpenAddBooking) {
-          onOpenAddBooking();
-          actionNotice = '⚡ Executed: Add Booking form opened';
-          handleClose();
-        } else if (type === 'open_add_expense' && onOpenAddExpense) {
-          onOpenAddExpense({ amount: res.action.amount, description: res.action.description, category: res.action.category });
-          actionNotice = '⚡ Executed: Add Expense form opened';
-          handleClose();
-        } else if (type === 'open_add_service_request' && onOpenAddServiceRequest) {
-          onOpenAddServiceRequest({ roomNumber: res.action.roomNumber, item: res.action.item });
-          actionNotice = '⚡ Executed: New Service Request form opened';
-          handleClose();
-        } else if (type === 'open_telegram_modal' && onOpenTelegramModal) {
-          onOpenTelegramModal();
-          actionNotice = '⚡ Executed: Telegram Settings modal opened';
-          handleClose();
-        } else if (type === 'navigate' && onNavigate && res.action.tab) {
-          onNavigate(res.action.tab, res.action.itemKey, {
-            staffName: res.action.staffName,
-            reqItemName: res.action.reqItemName,
-            reqQty: res.action.reqQty,
-            reqUnit: res.action.reqUnit,
-            addStaffName: res.action.addStaffName,
-            addStaffPhone: res.action.addStaffPhone,
-            addStaffRole: res.action.addStaffRole,
-            addStaffSalary: res.action.addStaffSalary,
-            newMenuItemName: res.action.newMenuItemName,
-            newMenuItemPrice: res.action.newMenuItemPrice,
-            newMenuItemCategory: res.action.newMenuItemCategory,
-          });
-          actionNotice = `⚡ Executed: Navigated to ${res.action.tab}`;
+        const actionLabels: Record<string, string> = {
+          open_telescope: 'Open Telescope Error Monitor',
+          open_root_dashboard_route: 'Open Account Settings',
+          open_add_booking: 'Open Add Booking form',
+          open_add_expense: 'Open Add Expense form',
+          open_add_service_request: 'Open New Service Request form',
+          open_telegram_modal: 'Open Telegram Settings',
+        };
+        if (type === 'navigate' && res.action.tab) {
+          pendingAction = {
+            type,
+            label: `Take me to ${res.action.tab.replace(/_/g, ' ')}`,
+            tab: res.action.tab,
+            itemKey: res.action.itemKey,
+            extraData: {
+              staffName: res.action.staffName,
+              reqItemName: res.action.reqItemName,
+              reqQty: res.action.reqQty,
+              reqUnit: res.action.reqUnit,
+              addStaffName: res.action.addStaffName,
+              addStaffPhone: res.action.addStaffPhone,
+              addStaffRole: res.action.addStaffRole,
+              addStaffSalary: res.action.addStaffSalary,
+              newMenuItemName: res.action.newMenuItemName,
+              newMenuItemPrice: res.action.newMenuItemPrice,
+              newMenuItemCategory: res.action.newMenuItemCategory,
+            },
+          };
+        } else if (actionLabels[type]) {
+          pendingAction = {
+            type,
+            label: actionLabels[type],
+            route: res.action.route,
+            amount: res.action.amount,
+            description: res.action.description,
+            category: res.action.category,
+            roomNumber: res.action.roomNumber,
+            item: res.action.item,
+          };
         }
       }
 
@@ -283,6 +370,7 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({
         text: res.reply || t('ai_no_response', 'No response received. Please try again.'),
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         actionText: actionNotice,
+        pendingAction,
         modeBadge: res.mode === 'online' ? `Online: ${res.provider || 'API'}` : 'Offline Engine',
       };
 
@@ -366,6 +454,15 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({
                   <span className="block mt-1.5 px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 text-2xs font-semibold text-emerald-700 dark:text-emerald-300">
                     {m.actionText}
                   </span>
+                )}
+                {m.pendingAction && (
+                  <button
+                    type="button"
+                    onClick={() => handleConfirmAction(m.id, m.pendingAction!)}
+                    className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-2xs font-semibold cursor-pointer transition-colors active:scale-95"
+                  >
+                    {m.pendingAction.label} →
+                  </button>
                 )}
                 <div className="flex items-center justify-between gap-2 mt-1">
                   {m.modeBadge && (
