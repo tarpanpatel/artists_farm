@@ -2,7 +2,6 @@ import React, { useRef, useCallback, useEffect } from 'react';
 import { driver, type Driver } from 'driver.js';
 import 'driver.js/dist/driver.css';
 import { Sparkles } from './icons/FlowbiteIcons';
-import { t } from '../i18n/en';
 import type { TabType } from './Navigation';
 
 // Rebuilt 28 Aug 2026 - the previous version rendered a fixed bottom-right popover that never
@@ -290,6 +289,10 @@ export const DemoOnboardingTour: React.FC<DemoOnboardingTourProps> = ({
   onNavigateToRoom,
   firstChildRoomSlug,
 }) => {
+  const [hasCompletedOnce, setHasCompletedOnce] = React.useState<boolean>(() => {
+    return localStorage.getItem('demo_tour_completed') === 'true';
+  });
+
   const driverRef = useRef<Driver | null>(null);
 
   // Refs so the driver.js config (built once, on tour start) always reads current values without
@@ -304,11 +307,13 @@ export const DemoOnboardingTour: React.FC<DemoOnboardingTourProps> = ({
   }, [handleNavigateTab, onNavigateToRoom, firstChildRoomSlug]);
 
   const handleComplete = useCallback(() => {
+    setHasCompletedOnce(true);
     localStorage.setItem('demo_tour_completed', 'true');
     onStartTrialRequested?.();
   }, [onStartTrialRequested]);
 
   const handleSkip = useCallback(() => {
+    setHasCompletedOnce(true);
     localStorage.setItem('demo_tour_completed', 'true');
   }, []);
 
@@ -419,14 +424,16 @@ export const DemoOnboardingTour: React.FC<DemoOnboardingTourProps> = ({
   }, []);
 
   return (
-    <div className="fixed bottom-20 right-6 z-40 flex items-center gap-2">
+    <div className="fixed bottom-20 right-6 z-50 flex items-center gap-2">
       <button
         type="button"
         onClick={startTour}
-        className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-full shadow-2xl transition-all hover:scale-105 cursor-pointer ring-4 ring-blue-600/20"
+        className="flex items-center gap-2 px-4 py-2.5 bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold rounded-full shadow-2xl transition-all hover:scale-105 cursor-pointer ring-4 ring-blue-600/20 active:scale-95"
       >
         <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
-        <span>✨ {t('explore_full_app_tour_button', 'Explore Full App Tour')} ({ALL_STEPS.length} {t('tour_modules_label', 'steps')})</span>
+        <span>
+          {hasCompletedOnce ? '✨ Restart App Tour' : '✨ Explore Full App Tour'} ({ALL_STEPS.length} steps)
+        </span>
       </button>
     </div>
   );
