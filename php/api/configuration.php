@@ -858,7 +858,8 @@ function saveSaasPlatformConfig(PDO $pdo) {
  * Test Trigger for a Cadence Stage Nudge
  */
 function sendTestCadenceNudge(PDO $pdo) {
-    if (!($_SESSION['is_platform_admin'] ?? false)) {
+    $isRoot = !empty($_SESSION['is_platform_admin']) || strtolower($_SESSION['role'] ?? '') === 'root_admin' || strtolower($_SESSION['role'] ?? '') === 'root admin';
+    if (!$isRoot) {
         http_response_code(403);
         echo json_encode(['status' => 'error', 'message' => 'Root Admin access required']);
         exit;
@@ -868,57 +869,110 @@ function sendTestCadenceNudge(PDO $pdo) {
         $input = json_decode(file_get_contents('php://input'), true);
         $stageKey = $input['stageKey'] ?? 'day_1_welcome';
         $testEmail = trim($input['testEmail'] ?? '');
-        $testPropertyId = (int)($input['testPropertyId'] ?? 0);
+        $channel = $input['channel'] ?? 'all'; // 'email', 'telegram', 'whatsapp', 'all'
+        $customPhone = trim($input['testPhone'] ?? '');
 
-        $results = ['email' => null, 'telegram' => null];
-
-        // Fetch stage data
-        $stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'saas_trial_cadence_config' LIMIT 1");
-        $stmt->execute();
-        $customCadence = json_decode($stmt->fetchColumn() ?: '[]', true);
-        $defaults = getDefaultTrialCadenceStages();
-        $stageInfo = $customCadence[$stageKey] ?? $defaults[$stageKey] ?? null;
-
-        if (!$stageInfo) {
-            http_response_code(400);
-            echo json_encode(['status' => 'error', 'message' => 'Unknown cadence stage']);
-            exit;
-        }
+        $results = ['email' => null, 'telegram' => null, 'whatsapp_url' => null];
 
         $sampleVars = [
             'tenant_name' => 'Demo Resort Owner',
-            'property_name' => 'Mountain View Villa',
+            'property_name' => 'Mountain View Resort',
+            'username' => '9571263474',
+            'temp_passcode' => 'DEMO-8842',
             'plan_type' => 'Growth',
-            'expires_at' => date('Y-m-d', strtotime('+30 days')),
+            'expires_at' => date('d M Y', strtotime('+30 days')),
+            'expiry_date' => date('d M Y', strtotime('+30 days')),
             'days_left' => 30,
             'login_url' => 'https://staging.ground-code.com/demo',
             'support_phone' => '+91 95712 63474',
         ];
 
-        // 1. Email Test
-        if ($testEmail && filter_var($testEmail, FILTER_VALIDATE_EMAIL) && function_exists('sendSmtpEmail')) {
-            $subj = $stageInfo['email_subject'];
-            $body = $stageInfo['email_body'];
-            foreach ($sampleVars as $k => $v) {
-                $subj = str_replace('{' . $k . '}', (string)$v, $subj);
-                $body = str_replace('{' . $k . '}', (string)$v, $body);
+        // Fetch settings from DB
+        $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'saas_%' OR setting_key = 'tenant_welcome_template'");
+        $rows = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+        $emailSubject = '';
+        $emailBody = '';
+        $tgMessage = '';
+        $waMessage = '';
+
+        if ($stageKey === 'welcome_whatsapp' || $stageKey === 'welcome_email') {
+            $defaultWhatsapp = "🎉 Welcome to Ground Code, {tenant_name} ji!\n\nYour 30-Day Free Trial for *{property_name}* is now LIVE!\n\n🔐 *Your Login Credentials:*\n• Dashboard URL: {login_url}\n• Username (Mobile): {username}\n• Passcode: {temp_passcode}\n• Trial Expiry Date: {expiry_date}\n\n📱 *IMPORTANT: Add to Phone Home Screen*\n1️⃣ Open link: {login_url}\n2️⃣ iPhone: Share → 'Add to Home Screen'\n3️⃣ Android: 3-Dots Menu → 'Install App' / 'Add to Home Screen'\n\nHappy Managing!\nGround Code Support: {support_phone}";
+            $defaultSubject = "Welcome to Ground Code, {tenant_name}! Your 30-Day Free Trial is Live";
+            $defaultBody = "Hello {tenant_name},\n\nWelcome to Ground Code! Your 30-day full-access trial for {property_name} has been activated.\n\nYour Login Credentials:\n• Dashboard URL: {login_url}\n• Username: {username}\n• Temporary Passcode: {temp_passcode}\n• Trial Expiration: {expiry_date}\n\nOpen your dashboard to set up your rooms, staff, and food menu:\n{login_url}\n\nNeed help? Contact support at {support_phone} or reply directly to this email.";
+
+            $waMessage = !empty($rows['saas_welcome_whatsapp']) ? $rows['saas_welcome_whatsapp'] : (!empty($rows['tenant_welcome_template']) ? $rows['tenant_welcome_template'] : $defaultWhatsapp);
+            $emailSubject = !empty($rows['saas_welcome_email_subject']) ? $rows['saas_welcome_email_subject'] : $defaultSubject;
+            $emailBody = !empty($rows['saas_welcome_email_body']) ? $rows['saas_welcome_email_body'] : $defaultBody;
+            $tgMessage = "🎉 <b>[WELCOME PREVIEW]</b>\n\n" . $waMessage;
+        } else {
+            $customCadence = !empty($rows['saas_trial_cadence_config']) ? json_decode($rows['saas_trial_cadence_config'], true) : [];
+            $defaults = getDefaultTrialCadenceStages();
+            $stageInfo = $customCadence[$stageKey] ?? $defaults[$stageKey] ?? null;
+
+            if (!$stageInfo) {
+                http_response_code(400);
+                echo json_encode(['status' => 'error', 'message' => 'Unknown cadence stage']);
+                exit;
             }
-            $html = "<div style='font-family: Arial, sans-serif; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;'><h3 style='color: #2563eb;'>[TEST] {$stageInfo['title']}</h3><p style='white-space: pre-line; color: #334155;'>{$body}</p></div>";
-            $results['email'] = sendSmtpEmail($pdo, $testEmail, "[TEST] " . $subj, $html);
+
+            $emailSubject = $stageInfo['email_subject'] ?? '';
+            $emailBody = $stageInfo['email_body'] ?? '';
+            $tgMessage = $stageInfo['telegram_message'] ?? $stageInfo['title'] ?? '';
+            $waMessage = $emailBody;
         }
 
-        // 2. Telegram Test
-        if ($testPropertyId > 0 && function_exists('sendPropertyTelegramMessage')) {
-            $tgMsg = $stageInfo['telegram_message'] ?? $stageInfo['title'];
-            foreach ($sampleVars as $k => $v) {
-                $tgMsg = str_replace('{' . $k . '}', (string)$v, $tgMsg);
-            }
-            $results['telegram'] = sendPropertyTelegramMessage($pdo, $testPropertyId, 'admin', "🧪 <b>[TEST CADENCE DISPATCH]</b>\n\n" . $tgMsg);
+        // Interpolate sample variables
+        foreach ($sampleVars as $k => $v) {
+            $emailSubject = str_replace('{' . $k . '}', (string)$v, $emailSubject);
+            $emailBody = str_replace('{' . $k . '}', (string)$v, $emailBody);
+            $tgMessage = str_replace('{' . $k . '}', (string)$v, $tgMessage);
+            $waMessage = str_replace('{' . $k . '}', (string)$v, $waMessage);
         }
+
+        // 1. Email Test Dispatch
+        if (($channel === 'email' || $channel === 'all') && $testEmail && filter_var($testEmail, FILTER_VALIDATE_EMAIL)) {
+            if (function_exists('sendSmtpEmail')) {
+                $html = "<div style='font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;'>
+                    <div style='background: #2563eb; color: #ffffff; padding: 12px 18px; border-radius: 8px; font-weight: bold; margin-bottom: 16px;'>🧪 [TEST NOTIFICATION DISPATCH]</div>
+                    <div style='white-space: pre-line; color: #1e293b; line-height: 1.6;'>{$emailBody}</div>
+                    <hr style='border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;' />
+                    <p style='font-size: 11px; color: #94a3b8;'>This is a test notification generated from Ground Code Root Admin Onboarding Manager.</p>
+                </div>";
+                $emailSent = sendSmtpEmail($pdo, $testEmail, "[TEST] " . $emailSubject, $html);
+                $results['email'] = $emailSent ? 'sent' : 'failed';
+            } else {
+                $results['email'] = 'smtp_unavailable';
+            }
+        }
+
+        // 2. Telegram Test Dispatch
+        if ($channel === 'telegram' || $channel === 'all') {
+            if (file_exists(__DIR__ . '/../telegram/sender.php')) {
+                require_once __DIR__ . '/../telegram/sender.php';
+            }
+            if (function_exists('sendAdminTelegramMessage')) {
+                $tgFormatted = "🧪 <b>[TEST CADENCE DISPATCH]</b>\n━━━━━━━━━━━━━━━━━━\n" . $tgMessage;
+                $tgSent = sendAdminTelegramMessage($tgFormatted);
+                $results['telegram'] = $tgSent ? 'sent' : 'failed';
+            } else {
+                $results['telegram'] = 'telegram_function_missing';
+            }
+        }
+
+        // 3. WhatsApp Link Generation
+        $phoneParam = preg_replace('/[^0-9]/', '', $customPhone ?: '919571263474');
+        $results['whatsapp_url'] = 'https://wa.me/' . $phoneParam . '?text=' . rawurlencode($waMessage);
+        $results['interpolated_text'] = [
+            'subject' => $emailSubject,
+            'email_body' => $emailBody,
+            'telegram_message' => $tgMessage,
+            'whatsapp_message' => $waMessage,
+        ];
 
         echo json_encode([
             'status' => 'success',
-            'message' => 'Test nudge dispatched',
+            'message' => 'Test notification processed',
             'results' => $results,
         ]);
     } catch (Exception $e) {

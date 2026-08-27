@@ -218,8 +218,11 @@ export const OnboardingManager: React.FC = () => {
   });
 
   // Test dispatch state
+  const [selectedTestStage, setSelectedTestStage] = useState('welcome_whatsapp');
   const [testEmail, setTestEmail] = useState('');
+  const [testPhone, setTestPhone] = useState('+919571263474');
   const [isSendingTest, setIsSendingTest] = useState(false);
+  const [testResult, setTestResult] = useState<{ email?: string; telegram?: string; whatsapp_url?: string } | null>(null);
 
   const fetchConfig = async () => {
     setIsLoading(true);
@@ -233,7 +236,11 @@ export const OnboardingManager: React.FC = () => {
         if (resJson.data.pricing) setPricing(resJson.data.pricing);
         if (resJson.data.cadence) setCadence(resJson.data.cadence);
         if (resJson.data.pwa) setPwa(resJson.data.pwa);
-        if (resJson.data.support) setSupport(resJson.data.support);
+        if (resJson.data.support) {
+          setSupport(resJson.data.support);
+          if (resJson.data.support.support_email) setTestEmail(resJson.data.support.support_email);
+          if (resJson.data.support.support_phone) setTestPhone(resJson.data.support.support_phone);
+        }
       }
     } catch (err: any) {
       showToast(err.message || 'Failed to load SaaS onboarding configuration', { type: 'error' });
@@ -278,23 +285,39 @@ export const OnboardingManager: React.FC = () => {
     }
   };
 
-  const handleSendTestNudge = async (stageKey: string) => {
-    if (!testEmail || !testEmail.includes('@')) {
+  const handleSendTest = async (channel: 'email' | 'telegram' | 'whatsapp' | 'all') => {
+    if (channel === 'email' && (!testEmail || !testEmail.includes('@'))) {
       showToast('Enter a valid test email address first', { type: 'error' });
       return;
     }
 
     setIsSendingTest(true);
+    setTestResult(null);
     try {
       const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=send_test_cadence_nudge`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stageKey, testEmail }),
+        body: JSON.stringify({
+          stageKey: selectedTestStage,
+          testEmail,
+          testPhone,
+          channel,
+        }),
       });
       const resJson = await res.json();
 
       if (resJson && resJson.status === 'success') {
-        showToast(`Test nudge dispatched to ${testEmail}! Check your inbox.`, { type: 'success' });
+        setTestResult(resJson.results);
+        if (channel === 'whatsapp' && resJson.results?.whatsapp_url) {
+          window.open(resJson.results.whatsapp_url, '_blank');
+          showToast('Opened WhatsApp test message in new tab!', { type: 'success' });
+        } else if (channel === 'telegram') {
+          showToast('Telegram test dispatch sent to Admin channel!', { type: 'success' });
+        } else if (channel === 'email') {
+          showToast(`Email test sent to ${testEmail}! Check your inbox.`, { type: 'success' });
+        } else {
+          showToast('Test notifications processed successfully!', { type: 'success' });
+        }
       } else {
         throw new Error(resJson?.message || 'Test dispatch failed');
       }
@@ -381,6 +404,117 @@ export const OnboardingManager: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      {/* 🧪 Live Notification Testing Station */}
+      <Card className="p-4 bg-linear-to-r from-blue-50/70 via-indigo-50/40 to-slate-50 dark:from-slate-900/90 dark:via-blue-950/20 dark:to-slate-900 border-blue-200 dark:border-blue-900/50 shadow-sm">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 rounded-md bg-blue-600 text-white shadow-xs">
+                <Send className="w-4 h-4" />
+              </span>
+              <div>
+                <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                  Live Notification Testing Station
+                </h3>
+                <p className="text-2xs text-slate-500 dark:text-slate-400">
+                  Select any onboarding or cadence template to dispatch a live test to your email, Telegram, or WhatsApp.
+                </p>
+              </div>
+            </div>
+            {testResult && (
+              <div className="flex items-center gap-2 text-2xs font-semibold">
+                {testResult.email && (
+                  <span className={`px-2 py-0.5 rounded ${testResult.email === 'sent' ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300' : 'bg-red-100 text-red-700'}`}>
+                    ✉️ Email: {testResult.email}
+                  </span>
+                )}
+                {testResult.telegram && (
+                  <span className={`px-2 py-0.5 rounded ${testResult.telegram === 'sent' ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300' : 'bg-amber-100 text-amber-700'}`}>
+                    ✈️ Telegram: {testResult.telegram}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end pt-1">
+            <div className="md:col-span-4">
+              <label className="block text-2xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Template to Test
+              </label>
+              <select
+                value={selectedTestStage}
+                onChange={(e) => setSelectedTestStage(e.target.value)}
+                className="w-full bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-300 dark:border-slate-700 text-xs rounded-lg p-2 focus:ring-1 focus:ring-blue-500"
+              >
+                <optgroup label="Welcome Messaging">
+                  <option value="welcome_whatsapp">💬 Welcome WhatsApp Message</option>
+                  <option value="welcome_email">✉️ Welcome HTML Email</option>
+                </optgroup>
+                <optgroup label="30-Day Trial Cadence Stages">
+                  <option value="day_1_welcome">Day 1 — Welcome & Quick Setup Checklist</option>
+                  <option value="day_3_features">Day 3 — Cash Drawer & Petty Cash Control</option>
+                  <option value="day_7_milestone">Day 7 — 1-Week Operations Milestone</option>
+                  <option value="day_14_halfway">Day 14 — Halfway Check-in & iCal Sync</option>
+                  <option value="day_21_renewal_plan">Day 21 — 9 Days Left: Subscription Plan</option>
+                  <option value="day_23_7d_notice">Day 23 — ⚠️ 7-Day Expiry Notice</option>
+                  <option value="day_28_2d_notice">Day 28 — 🚨 48-Hour Urgent Notice</option>
+                  <option value="day_30_expired">Day 30+ — Subscription Expired Notice</option>
+                </optgroup>
+              </select>
+            </div>
+
+            <div className="md:col-span-3">
+              <label className="block text-2xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Test Recipient Email
+              </label>
+              <input
+                type="email"
+                value={testEmail}
+                onChange={(e) => setTestEmail(e.target.value)}
+                placeholder="admin@ground-code.com"
+                className="w-full bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-300 dark:border-slate-700 text-xs rounded-lg p-2 focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="md:col-span-5 flex items-center gap-2 flex-wrap sm:flex-nowrap">
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => handleSendTest('email')}
+                disabled={isSendingTest}
+                className="flex-1"
+                leftIcon={isSendingTest ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
+              >
+                Send Email
+              </Button>
+
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => handleSendTest('telegram')}
+                disabled={isSendingTest}
+                className="flex-1"
+                leftIcon={<Send className="w-3.5 h-3.5 text-blue-500" />}
+              >
+                Send Telegram
+              </Button>
+
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => handleSendTest('whatsapp')}
+                disabled={isSendingTest}
+                className="flex-1"
+                leftIcon={<MessageSquare className="w-3.5 h-3.5 text-emerald-500" />}
+              >
+                Test WhatsApp
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Card>
 
       {/* Tabs Navigation */}
       <div className="flex overflow-x-auto border-b border-slate-200 dark:border-slate-800 gap-2 pb-px">
@@ -628,7 +762,10 @@ export const OnboardingManager: React.FC = () => {
                       <Button
                         variant="secondary"
                         size="xs"
-                        onClick={() => handleSendTestNudge(stageKey)}
+                        onClick={() => {
+                          setSelectedTestStage(stageKey);
+                          handleSendTest('email');
+                        }}
                         disabled={isSendingTest}
                         leftIcon={<Send className="w-3 h-3 text-blue-600" />}
                       >
