@@ -68,9 +68,12 @@ const RootAdminDashboard = lazyWithRetry(() => import('./components/RootAdminDas
 // NOT LoadingScreen (that's a fixed-inset-0 full-page overlay meant for app
 // boot; using it here would blank out the still-loaded header/sidebar every
 // time someone switches to a not-yet-downloaded tab).
+// Same spinner identity as LoadingScreen.tsx/index.html's #initial-loader__spinner (28 Aug 2026,
+// see CLAUDE.md's "One Loading Spinner Identity, App-Wide" rule) - smaller for this in-page
+// context, but same border style/colors/spin speed, not a third distinct look.
 const TabContentFallback: React.FC = () => (
   <div className="flex items-center justify-center py-24">
-    <div className="w-8 h-8 rounded-full border-4 border-slate-200 dark:border-slate-700 border-t-blue-500 animate-spin" />
+    <div className="w-8 h-8 rounded-full border-[3px] border-blue-100 border-t-blue-500 dark:border-slate-800 dark:border-t-blue-400 loading-screen-spinner-spin" />
   </div>
 );
 

@@ -419,7 +419,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                     </div>
                   </div>
 
-                  <div className="edit-room-page__ical-card bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 sm:p-6">
+                  <div data-tour="ota-sync" className="edit-room-page__ical-card bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 sm:p-6">
                     <ICalSyncManager propertyId={selectedRoom.id} propertySlug={selectedRoom.slug} parentPropertySlug={propertySlug} embedded />
                   </div>
                 </div>

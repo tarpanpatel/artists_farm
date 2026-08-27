@@ -1358,6 +1358,36 @@ html.dark .payees-registry-table tr:hover {
   text-align: center;
 }
 
+/* Shared with index.html's inline #initial-loader__logo (28 Aug 2026, live report: "2 different
+   loaders" - a recurring complaint. The spinner shape was already unified 27 Aug 2026 (see
+   LoadingScreen.tsx's own comment), but the logo itself still differed: index.html renders the
+   raw 64x64 logo image directly, no wrapper, while LoadingScreen.tsx wrapped it in a glass-morphism
+   box (bg-white/10, border, shadow, padding) that visibly shrank and re-framed it the instant React
+   mounted and handed off from the static loader. Named identically to index.html's own
+   @keyframes initial-loader-pulse so a future edit to one is easy to find and mirror to the other -
+   they can't literally share one declaration across an inline <style> and a bundled stylesheet, but
+   the values must always match exactly. */
+@keyframes initial-loader-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.loading-screen-logo-pulse {
+  animation: initial-loader-pulse 2s ease-in-out infinite;
+}
+
+/* Same handoff bug as above, one layer deeper: shape/color were unified 27 Aug 2026, but the
+   spin SPEED wasn't - index.html's spinner runs @keyframes initial-loader-spin at a fixed 0.8s
+   linear, while Tailwind's built-in `animate-spin` utility defaults to 1s. Matching the name to
+   index.html's own keyframe for the same reason as .loading-screen-logo-pulse above. */
+@keyframes initial-loader-spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-screen-spinner-spin {
+  animation: initial-loader-spin 0.8s linear infinite;
+}
+
 @keyframes toast-in {
   0% {
     opacity: 0;

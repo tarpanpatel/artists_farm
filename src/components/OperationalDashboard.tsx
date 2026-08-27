@@ -1349,6 +1349,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                                     <div className="px-3 py-2 border-t border-gray-100 dark:border-gray-700/60 bg-gray-50/50 dark:bg-gray-800/50">
                                       <button
                                         type="button"
+                                        data-tour="checkin-view-more"
                                         onClick={() => {
                                           setSelectedBookingFocusSection(null);
                                           setSelectedBooking(dayBooking);
@@ -1362,8 +1363,12 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                                   </div>
                                 }
                               >
+                                {/* data-tour (28 Aug 2026): additive-only attribute for the driver.js
+                                    feature tour rebuild - no logic/styling change to this protected
+                                    booking-calendar file, see CLAUDE.md's Protected Components note. */}
                                 <button
                                   type="button"
+                                  data-tour="checkin-open-booking-bar"
                                   className={`w-full rounded-md px-2 py-1 ${isDayBookingCheckedOut ? checkedOutColor : isOtaBooking ? otaBookingColor : directBookingColor} text-xs font-medium flex items-center gap-1.5 shadow-2xs hover:opacity-90 transition-opacity cursor-pointer truncate text-left`}
                                 >
                                   {hasDayPending && (

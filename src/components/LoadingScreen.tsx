@@ -30,10 +30,21 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
             glyph + rounded corners already baked in from gc_logo.png), shown
             as-is rather than reconstructed as a separate CSS gradient badge
             with the transparent glyph dropped inside it (26 Aug 2026: that
-            double-square look was reported and replaced with this). */}
-        <div className="w-14 h-14 rounded-2xl bg-white/10 dark:bg-white/5 border border-white/20 p-2.5 shadow-xl flex items-center justify-center relative loading-screen__logo-container">
-          <img src="/app-icons/icon-source.png" alt="" className="w-full h-full rounded-lg loading-screen__logo-img" />
-        </div>
+            double-square look was reported and replaced with this).
+            Rendered plain at 64x64 with no wrapping box (fixed 28 Aug 2026, live report:
+            "2 different loaders" - this used to sit inside a glass-morphism frame
+            - bg-white/10, border, shadow, padding - that visibly shrank and re-framed
+            the logo the instant React mounted and handed off from index.html's own
+            #initial-loader, which renders the same file plain at 64x64 with no wrapper
+            at all. Pulse animation now matches that file's @keyframes initial-loader-pulse
+            exactly too (see custom.css's .loading-screen-logo-pulse), not just the shape. */}
+        <img
+          src="/app-icons/icon-source.png"
+          alt=""
+          width={64}
+          height={64}
+          className="w-16 h-16 rounded-2xl loading-screen-logo-pulse loading-screen__logo-img"
+        />
 
         {/* Standard Loading Spinner Ring - a plain CSS border-ring div, NOT an icon component
             (fixed 27 Aug 2026, live report: "why still 2 types of loading", raised multiple
@@ -50,7 +61,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
             and no dependency on Flowbite ever adding a "Spinner" icon. */}
         <div
           role="presentation"
-          className="w-10 h-10 rounded-full border-[3px] border-blue-100 border-t-blue-500 dark:border-slate-800 dark:border-t-blue-400 animate-spin loading-screen__spinner"
+          className="w-10 h-10 rounded-full border-[3px] border-blue-100 border-t-blue-500 dark:border-slate-800 dark:border-t-blue-400 loading-screen-spinner-spin loading-screen__spinner"
         />
 
         {/* Brand text label removed (26 Aug 2026, explicit request): the logo
