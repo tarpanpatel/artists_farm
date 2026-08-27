@@ -344,7 +344,12 @@ export const DemoOnboardingTour: React.FC<DemoOnboardingTourProps> = ({
   // needs to handle the app-navigation side.
   const runBeforeShow = useCallback(async (index: number) => {
     if (index < 0 || index >= ALL_STEPS.length) return;
-    await ALL_STEPS[index].beforeShow?.(navRef.current);
+    const step = ALL_STEPS[index];
+    if (step.id !== 'checkin-folio' && step.id !== 'whatsapp-invoicing') {
+      const closeBtn = document.querySelector('.booking-details-drawer [data-testid="flowbite-drawer-close-button"], [data-testid="modal-close-button"], [aria-label="Close drawer"]') as HTMLElement | null;
+      if (closeBtn) closeBtn.click();
+    }
+    await step.beforeShow?.(navRef.current);
   }, []);
 
   const navigatingRef = useRef(false);

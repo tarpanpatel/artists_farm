@@ -1321,8 +1321,9 @@ function AppBody({ preloadedData }: AppBodyProps) {
         license_management: { tab: 'licenses', key: 'license_management' },
       };
 
-      // 404 or Invalid Route -> Try dynamic nav items from DB, then check if it's a room slug
+      // 404 or Invalid Route -> Try dynamic nav items from DB, then check if it's a room slug (with optional /subtab)
       if (!routeMap[hash]) {
+        const [roomPart, tabPart] = hash.split('/');
         // urlSlug first - that's what a renamed item's link actually points at now;
         // uniqueKey/tabKey stay as fallbacks for items that were never renamed.
         const dynamicItem = visibleNavItems.find((n) => n.urlSlug === hash || n.uniqueKey === hash || n.tabKey === hash);
@@ -1330,20 +1331,18 @@ function AppBody({ preloadedData }: AppBodyProps) {
           setActiveTab(dynamicItem.tabKey as any || 'dashboard');
           setActiveMenuItemKey(dynamicItem.uniqueKey || hash);
         } else {
-          // Check if hash is a room slug from multi-key property
-          const isRoomSlug = multiKeyRoomsRef.current?.some((r: any) => r.slug === hash);
+          // Check if hash is a room slug from multi-key property (supports #room-101/edit_property)
+          const targetRoomSlug = roomPart || hash;
+          const isRoomSlug = multiKeyRoomsRef.current?.some((r: any) => r.slug === targetRoomSlug);
           if (isRoomSlug) {
-            // Restore room view. This fires on EVERY hashchange to a bare
-            // room-slug hash, including the one handleNavigateToRoom itself
-            // triggers right after already setting activeTab explicitly
-            // (e.g. 'edit_property' when "Manage" jumps straight to editing
-            // a room) - defaulting to 'dashboard' unconditionally here was
-            // clobbering that back every time. Only default to 'dashboard'
-            // when landing on this hash fresh (typed/bookmarked URL, no
-            // prior in-app navigation already picked a valid in-room tab).
-            setActiveTab((prev) => (['dashboard', 'guests', 'edit_property'].includes(prev) ? prev : 'dashboard'));
-            setActiveMenuItemKey(hash);
-            setSelectedRoomSlugOverride(hash);
+            // Restore room view. If subtab is provided in hash (e.g. #room-101/edit_property),
+            // activate that subtab directly.
+            const resolvedSubTab: TabType | null = (tabPart && ['dashboard', 'guests', 'edit_property'].includes(tabPart) ? (tabPart as TabType) : null)
+              || (tabPart && routeMap[tabPart]?.tab)
+              || null;
+            setActiveTab((prev) => (resolvedSubTab || (['dashboard', 'guests', 'edit_property'].includes(prev) ? prev : 'dashboard')));
+            setActiveMenuItemKey(targetRoomSlug);
+            setSelectedRoomSlugOverride(targetRoomSlug);
           } else {
             // Not a valid route or room, fallback to dashboard
             setActiveTab('dashboard');
