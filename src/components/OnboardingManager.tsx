@@ -66,17 +66,127 @@ interface SaasSupportContact {
   default_modules: string[];
 }
 
+const DEFAULT_WELCOME_WHATSAPP = `🎉 Welcome to Ground Code, {tenant_name} ji!
+
+Your 30-Day Free Trial for *{property_name}* is now LIVE!
+
+🔐 *Your Login Credentials:*
+• Dashboard URL: {login_url}
+• Username (Mobile): {username}
+• Passcode: {temp_passcode}
+• Trial Expiry Date: {expiry_date}
+
+📱 *IMPORTANT: Add to Phone Home Screen*
+1️⃣ Open link: {login_url}
+2️⃣ iPhone: Share → 'Add to Home Screen'
+3️⃣ Android: 3-Dots Menu → 'Install App' / 'Add to Home Screen'
+
+Happy Managing!
+Ground Code Support: {support_phone}`;
+
+const DEFAULT_WELCOME_EMAIL_SUBJECT = "Welcome to Ground Code, {tenant_name}! Your 30-Day Free Trial is Live";
+
+const DEFAULT_WELCOME_EMAIL_BODY = `Hello {tenant_name},
+
+Welcome to Ground Code! Your 30-day full-access trial for {property_name} has been activated.
+
+Your Login Credentials:
+• Dashboard URL: {login_url}
+• Username: {username}
+• Temporary Passcode: {temp_passcode}
+• Trial Expiration: {expiry_date}
+
+Open your dashboard to set up your rooms, staff, and food menu:
+{login_url}
+
+Need help? Contact support at {support_phone} or reply directly to this email.`;
+
+const DEFAULT_CADENCE_STAGES: Record<string, CadenceStageConfig> = {
+  day_1_welcome: {
+    enabled: true,
+    day_number: 1,
+    stage_type: 'day_age',
+    title: 'Welcome to Ground Code — Day 1 Checklist',
+    email_subject: 'Welcome to Ground Code, {tenant_name}! Day 1 Setup Checklist',
+    email_body: "Hello {tenant_name},\n\nWelcome to Ground Code! Your 30-day full-access trial for {property_name} is now live.\n\nHere is your Day 1 Quickstart:\n1. Open your property dashboard ({login_url})\n2. Add your team members in Staff Management\n3. Connect Telegram to get live notifications for check-ins, food orders, and expenses\n\nNeed help getting started? Reply directly to this email or call {support_phone}.",
+    telegram_message: "🏢 <b>GROUND CODE TRIAL STARTED</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Property:</b> {property_name}\n🎉 Welcome! Your 30-day full-access trial is active.\n👉 Finish your setup: Add staff, set room rates, and connect payment QR.",
+  },
+  day_3_features: {
+    enabled: true,
+    day_number: 3,
+    stage_type: 'day_age',
+    title: 'Ground Code Tip: Cash Drawer & Petty Cash',
+    email_subject: 'Day 3 on Ground Code: Stop Petty Cash & Cash Leakage',
+    email_body: "Hello {tenant_name},\n\nAre you tracking your daily property expenses on Ground Code yet?\n\nKey features for your first week:\n• Petty Cash Drawer: Log cash-in and cash-out with photo proof\n• Kitchen & Food POS: Instantly add meals and drinks to guest bills\n• Service Requests: Assign room cleaning and maintenance to staff\n\nLog in to explore: {login_url}",
+    telegram_message: "💰 <b>GROUND CODE TIP: CASH CONTROL</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Property:</b> {property_name}\n📌 Track petty cash expenses and front-desk drawer balances with receipt photos.\n👉 Tap Petty Cash & Cash Drawer in your dashboard.",
+  },
+  day_7_milestone: {
+    enabled: true,
+    day_number: 7,
+    stage_type: 'day_age',
+    title: '1 Week on Ground Code — How is it going?',
+    email_subject: '1 Week on Ground Code — Your Operations Summary',
+    email_body: "Hello {tenant_name},\n\nCongratulations on completing your first week on Ground Code!\n\nCheck your Analytics Dashboard to see live metrics on occupancy, direct vs OTA revenue, and expense summaries.\n\nIf you have any questions or want a quick 10-minute walkthrough for your team, we're here to help.",
+    telegram_message: "📊 <b>1-WEEK MILESTONE REACHED</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Property:</b> {property_name}\n✨ You've completed 1 week on Ground Code! Check your live revenue analytics.",
+  },
+  day_14_halfway: {
+    enabled: true,
+    day_number: 14,
+    stage_type: 'day_age',
+    title: '14 Days Remaining in Your Trial',
+    email_subject: 'Halfway through your Ground Code Trial — 14 Days Remaining',
+    email_body: "Hello {tenant_name},\n\nYou are halfway through your 30-day trial of Ground Code for {property_name}.\n\nMake sure to connect your Airbnb and Booking.com iCal feeds in Settings → Calendar Sync to prevent double-bookings automatically.\n\nYour trial remains active until {expires_at}.",
+    telegram_message: "⏳ <b>HALFWAY TRIAL CHECK-IN</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Property:</b> {property_name}\n📅 14 days remaining in your trial (Expires: {expires_at}).\n💡 Tip: Sync your Airbnb / OTA calendars in Settings.",
+  },
+  day_21_renewal_plan: {
+    enabled: true,
+    day_number: 21,
+    stage_type: 'day_age',
+    title: '9 Days Left in Your Free Trial — Plan Your Subscription',
+    email_subject: 'Ground Code Trial: 9 Days Left on {tenant_name}',
+    email_body: "Hello {tenant_name},\n\nYour 30-day trial on Ground Code is entering its final week (ending on {expires_at}).\n\nTo ensure uninterrupted access for your staff, kitchen, and booking systems, please review your subscription options:\n• Current Plan: {plan_type}\n• Expiry Date: {expires_at}\n\nContact your account manager or reply to this email to activate regular billing.",
+    telegram_message: "📋 <b>UPCOMING TRIAL RENEWAL</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Property:</b> {property_name}\n⏳ 9 days left on your free trial (Expires: {expires_at}).\n👉 Contact your account manager to activate subscription.",
+  },
+  day_23_7d_notice: {
+    enabled: true,
+    day_number: 23,
+    stage_type: 'days_left',
+    title: '⚠️ 7-Day Subscription Expiry Notice',
+    email_subject: 'URGENT: Your Ground Code Subscription Expires in 7 Days ({tenant_name})',
+    email_body: "Hello {tenant_name},\n\nThis is a courtesy reminder that your Ground Code subscription for {tenant_name} will expire in 7 days on {expires_at}.\n\nRenew now to avoid service interruption for your front-desk and staff.\n\nPlan: {plan_type}\nExpiry: {expires_at}",
+    telegram_message: "⚠️ <b>7-DAY EXPIRATION NOTICE</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Property:</b> {property_name}\n🚨 Your subscription expires in 7 days on {expires_at}.\n👉 Renew to maintain uninterrupted operations.",
+  },
+  day_28_2d_notice: {
+    enabled: true,
+    day_number: 28,
+    stage_type: 'days_left',
+    title: '🚨 Final Notice: 48 Hours Until Subscription Expiry',
+    email_subject: 'FINAL NOTICE: 48 Hours Left on Ground Code ({tenant_name})',
+    email_body: "Hello {tenant_name},\n\nYour Ground Code subscription expires in 48 hours on {expires_at}.\n\nPlease renew immediately to prevent staff logout and booking synchronization pauses.\n\nContact support ({support_phone}) to complete renewal.",
+    telegram_message: "🚨 <b>URGENT: 48 HOURS LEFT</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Property:</b> {property_name}\n⏳ 2 days remaining until subscription expires ({expires_at}).\n👉 Action required immediately.",
+  },
+  day_30_expired: {
+    enabled: true,
+    day_number: 30,
+    stage_type: 'days_left',
+    title: 'Subscription Expired — Reactivate Ground Code',
+    email_subject: 'Your Ground Code Subscription for {tenant_name} Has Expired',
+    email_body: "Hello {tenant_name},\n\nYour Ground Code subscription for {tenant_name} expired on {expires_at}.\n\nYour property data, bookings, and guest records are safely stored. To reactivate full access for your team, please contact support to renew your subscription.\n\nThank you for using Ground Code!",
+    telegram_message: "🔒 <b>SUBSCRIPTION EXPIRED</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Property:</b> {property_name}\n⚠️ Trial/Subscription expired on {expires_at}.\n👉 Contact support ({support_phone}) to reactivate account.",
+  },
+};
+
 export const OnboardingManager: React.FC = () => {
   const { showToast } = useToast();
 
   const [activeTab, setActiveTab] = useState<'welcome' | 'cadence' | 'pricing' | 'pwa' | 'support'>('welcome');
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   // Form states
-  const [welcomeWhatsapp, setWelcomeWhatsapp] = useState('');
-  const [welcomeEmailSubject, setWelcomeEmailSubject] = useState('');
-  const [welcomeEmailBody, setWelcomeEmailBody] = useState('');
+  const [welcomeWhatsapp, setWelcomeWhatsapp] = useState(DEFAULT_WELCOME_WHATSAPP);
+  const [welcomeEmailSubject, setWelcomeEmailSubject] = useState(DEFAULT_WELCOME_EMAIL_SUBJECT);
+  const [welcomeEmailBody, setWelcomeEmailBody] = useState(DEFAULT_WELCOME_EMAIL_BODY);
 
   const [pricing, setPricing] = useState<SaasPricingConfig>({
     base_monthly_fee: 1499,
@@ -87,7 +197,7 @@ export const OnboardingManager: React.FC = () => {
     currency_symbol: '₹',
   });
 
-  const [cadence, setCadence] = useState<Record<string, CadenceStageConfig>>({});
+  const [cadence, setCadence] = useState<Record<string, CadenceStageConfig>>(DEFAULT_CADENCE_STAGES);
   const [expandedCadenceStage, setExpandedCadenceStage] = useState<string | null>('day_1_welcome');
 
   const [pwa, setPwa] = useState<SaasPwaBranding>({
@@ -114,18 +224,19 @@ export const OnboardingManager: React.FC = () => {
   const fetchConfig = async () => {
     setIsLoading(true);
     try {
-      const res = await apiFetch<any>(`${API_ROOT_BASE}/php/api/router.php?action=get_saas_platform_config`);
-      if (res && res.status === 'success' && res.data) {
-        setWelcomeWhatsapp(res.data.welcome_whatsapp || '');
-        setWelcomeEmailSubject(res.data.welcome_email_subject || '');
-        setWelcomeEmailBody(res.data.welcome_email_body || '');
-        if (res.data.pricing) setPricing(res.data.pricing);
-        if (res.data.cadence) setCadence(res.data.cadence);
-        if (res.data.pwa) setPwa(res.data.pwa);
-        if (res.data.support) setSupport(res.data.support);
+      const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=get_saas_platform_config`);
+      const resJson = await res.json();
+      if (resJson && resJson.status === 'success' && resJson.data) {
+        if (resJson.data.welcome_whatsapp) setWelcomeWhatsapp(resJson.data.welcome_whatsapp);
+        if (resJson.data.welcome_email_subject) setWelcomeEmailSubject(resJson.data.welcome_email_subject);
+        if (resJson.data.welcome_email_body) setWelcomeEmailBody(resJson.data.welcome_email_body);
+        if (resJson.data.pricing) setPricing(resJson.data.pricing);
+        if (resJson.data.cadence) setCadence(resJson.data.cadence);
+        if (resJson.data.pwa) setPwa(resJson.data.pwa);
+        if (resJson.data.support) setSupport(resJson.data.support);
       }
     } catch (err: any) {
-      showToast(err.message || 'Failed to load SaaS onboarding configuration', 'error');
+      showToast(err.message || 'Failed to load SaaS onboarding configuration', { type: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -148,19 +259,20 @@ export const OnboardingManager: React.FC = () => {
         support,
       };
 
-      const res = await apiFetch<any>(`${API_ROOT_BASE}/php/api/router.php?action=save_saas_platform_config`, {
+      const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=save_saas_platform_config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
+      const resJson = await res.json();
 
-      if (res && res.status === 'success') {
-        showToast('Onboarding & Platform settings saved successfully!', 'success');
+      if (resJson && resJson.status === 'success') {
+        showToast('Onboarding & Platform settings saved successfully!', { type: 'success' });
       } else {
-        throw new Error(res?.message || 'Failed to save settings');
+        throw new Error(resJson?.message || 'Failed to save settings');
       }
     } catch (err: any) {
-      showToast(err.message || 'Error saving settings', 'error');
+      showToast(err.message || 'Error saving settings', { type: 'error' });
     } finally {
       setIsSaving(false);
     }
@@ -168,25 +280,26 @@ export const OnboardingManager: React.FC = () => {
 
   const handleSendTestNudge = async (stageKey: string) => {
     if (!testEmail || !testEmail.includes('@')) {
-      showToast('Enter a valid test email address first', 'error');
+      showToast('Enter a valid test email address first', { type: 'error' });
       return;
     }
 
     setIsSendingTest(true);
     try {
-      const res = await apiFetch<any>(`${API_ROOT_BASE}/php/api/router.php?action=send_test_cadence_nudge`, {
+      const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=send_test_cadence_nudge`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ stageKey, testEmail }),
       });
+      const resJson = await res.json();
 
-      if (res && res.status === 'success') {
-        showToast(`Test nudge dispatched to ${testEmail}! Check your inbox.`, 'success');
+      if (resJson && resJson.status === 'success') {
+        showToast(`Test nudge dispatched to ${testEmail}! Check your inbox.`, { type: 'success' });
       } else {
-        throw new Error(res?.message || 'Test dispatch failed');
+        throw new Error(resJson?.message || 'Test dispatch failed');
       }
     } catch (err: any) {
-      showToast(err.message || 'Test send failed', 'error');
+      showToast(err.message || 'Test send failed', { type: 'error' });
     } finally {
       setIsSendingTest(false);
     }
@@ -194,7 +307,7 @@ export const OnboardingManager: React.FC = () => {
 
   const copyTag = (tag: string) => {
     navigator.clipboard.writeText(tag);
-    showToast(`Copied ${tag} to clipboard`, 'info');
+    showToast(`Copied ${tag} to clipboard`, { type: 'info' });
   };
 
   // Mock template substitution for live preview
@@ -485,7 +598,7 @@ export const OnboardingManager: React.FC = () => {
                   <div className="p-3.5 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <ToggleSwitch
-                        checked={stage.enabled}
+                        enabled={stage.enabled}
                         onChange={(checked) => {
                           setCadence((prev) => ({
                             ...prev,
@@ -881,7 +994,7 @@ export const OnboardingManager: React.FC = () => {
                         <p className="text-2xs text-slate-500 dark:text-slate-400">{mod.desc}</p>
                       </div>
                       <ToggleSwitch
-                        checked={isChecked}
+                        enabled={isChecked}
                         onChange={(checked) => {
                           const updated = checked
                             ? [...support.default_modules, mod.key]

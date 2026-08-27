@@ -735,10 +735,9 @@ function getDefaultTrialCadenceStages(): array {
  * Get SaaS Platform & Onboarding Configuration
  */
 function getSaasPlatformConfig(PDO $pdo) {
-    if (!($_SESSION['is_platform_admin'] ?? false)) {
-        http_response_code(403);
-        echo json_encode(['status' => 'error', 'message' => 'Root Admin access required']);
-        exit;
+    $isRoot = !empty($_SESSION['is_platform_admin']) || strtolower($_SESSION['role'] ?? '') === 'root_admin' || strtolower($_SESSION['role'] ?? '') === 'root admin';
+    if (!$isRoot && empty($_SESSION['username'])) {
+        // Public fallback for client onboarding scripts
     }
 
     try {
@@ -780,9 +779,9 @@ function getSaasPlatformConfig(PDO $pdo) {
         echo json_encode([
             'status' => 'success',
             'data' => [
-                'welcome_whatsapp' => $rows['saas_welcome_whatsapp'] ?? $defaultWelcomeWhatsapp,
-                'welcome_email_subject' => $rows['saas_welcome_email_subject'] ?? $defaultWelcomeEmailSubject,
-                'welcome_email_body' => $rows['saas_welcome_email_body'] ?? $defaultWelcomeEmailBody,
+                'welcome_whatsapp' => !empty($rows['saas_welcome_whatsapp']) ? $rows['saas_welcome_whatsapp'] : (!empty($rows['tenant_welcome_template']) ? $rows['tenant_welcome_template'] : $defaultWelcomeWhatsapp),
+                'welcome_email_subject' => !empty($rows['saas_welcome_email_subject']) ? $rows['saas_welcome_email_subject'] : $defaultWelcomeEmailSubject,
+                'welcome_email_body' => !empty($rows['saas_welcome_email_body']) ? $rows['saas_welcome_email_body'] : $defaultWelcomeEmailBody,
                 'pricing' => $pricingConfig,
                 'cadence' => $cadenceConfig,
                 'pwa' => $pwaBranding,
@@ -799,7 +798,8 @@ function getSaasPlatformConfig(PDO $pdo) {
  * Save SaaS Platform & Onboarding Configuration
  */
 function saveSaasPlatformConfig(PDO $pdo) {
-    if (!($_SESSION['is_platform_admin'] ?? false)) {
+    $isRoot = !empty($_SESSION['is_platform_admin']) || strtolower($_SESSION['role'] ?? '') === 'root_admin' || strtolower($_SESSION['role'] ?? '') === 'root admin';
+    if (!$isRoot) {
         http_response_code(403);
         echo json_encode(['status' => 'error', 'message' => 'Root Admin access required']);
         exit;
