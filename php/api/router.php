@@ -3725,6 +3725,9 @@ switch ($action) {
     case 'save_system_settings':
     case 'check_telegram_health':
     case 'register_tenant_trial':
+    case 'get_saas_platform_config':
+    case 'save_saas_platform_config':
+    case 'send_test_cadence_nudge':
         if (function_exists('handleConfigurationRequests')) {
             handleConfigurationRequests($pdo, $request_method, $action, $propertyId);
         } else {

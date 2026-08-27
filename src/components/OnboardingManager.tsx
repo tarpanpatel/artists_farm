@@ -114,7 +114,7 @@ export const OnboardingManager: React.FC = () => {
   const fetchConfig = async () => {
     setIsLoading(true);
     try {
-      const res = await apiFetch<any>(`${API_ROOT_BASE}/configuration.php?action=get_saas_platform_config`);
+      const res = await apiFetch<any>(`${API_ROOT_BASE}/php/api/router.php?action=get_saas_platform_config`);
       if (res && res.status === 'success' && res.data) {
         setWelcomeWhatsapp(res.data.welcome_whatsapp || '');
         setWelcomeEmailSubject(res.data.welcome_email_subject || '');
@@ -148,7 +148,7 @@ export const OnboardingManager: React.FC = () => {
         support,
       };
 
-      const res = await apiFetch<any>(`${API_ROOT_BASE}/configuration.php?action=save_saas_platform_config`, {
+      const res = await apiFetch<any>(`${API_ROOT_BASE}/php/api/router.php?action=save_saas_platform_config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -174,7 +174,7 @@ export const OnboardingManager: React.FC = () => {
 
     setIsSendingTest(true);
     try {
-      const res = await apiFetch<any>(`${API_ROOT_BASE}/configuration.php?action=send_test_cadence_nudge`, {
+      const res = await apiFetch<any>(`${API_ROOT_BASE}/php/api/router.php?action=send_test_cadence_nudge`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ stageKey, testEmail }),
