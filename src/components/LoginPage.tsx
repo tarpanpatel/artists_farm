@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Alert } from 'flowbite-react';
-import { AlertCircle, Lock, Phone, KeyRound, ShieldCheck, Mail, CheckCircle2, ArrowLeft, Loader2, Delete } from './icons/FlowbiteIcons';
+import { AlertCircle, Lock, ShieldCheck, Mail, CheckCircle2, ArrowLeft, Loader2, Delete } from './icons/FlowbiteIcons';
 import { Input } from './Input';
 import { t } from '../i18n/en';
 
@@ -292,13 +292,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
                   disabled={isSendingLoginInfo}
                   autoFocus
                   required
-                  leftIcon={(
-                    <div className="flex items-center gap-1 text-gray-400 dark:text-gray-500 select-none">
-                      <Phone className="w-4 h-4 text-gray-400" />
-                      <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 border-r border-gray-300 dark:border-gray-600 pr-2">+91</span>
-                    </div>
-                  )}
-                  className="pl-16 font-medium"
+                  className="font-medium"
                   error={forgotMobileEmpty ? 'Mobile number is required' : forgotMobileInvalid ? 'Enter your full 10-digit mobile number' : undefined}
                 />
               </div>
@@ -382,13 +376,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
                   autoFocus
                   disabled={isSavingPasscode}
                   required
-                  leftIcon={(
-                    <div className="flex items-center gap-1 text-gray-400 dark:text-gray-500 select-none">
-                      <KeyRound className="w-4 h-4 text-gray-400" />
-                      <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 border-r border-gray-300 dark:border-gray-600 pr-2">PIN</span>
-                    </div>
-                  )}
-                  className="pl-16 font-mono tracking-[0.25em]"
+                  className="font-mono tracking-[0.25em]"
                   error={
                     newPasscodeEmpty
                       ? 'New passcode is required'
@@ -414,13 +402,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
                   inputMode="numeric"
                   disabled={isSavingPasscode}
                   required
-                  leftIcon={(
-                    <div className="flex items-center gap-1 text-gray-400 dark:text-gray-500 select-none">
-                      <KeyRound className="w-4 h-4 text-gray-400" />
-                      <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 border-r border-gray-300 dark:border-gray-600 pr-2">PIN</span>
-                    </div>
-                  )}
-                  className="pl-16 font-mono tracking-[0.25em]"
+                  className="font-mono tracking-[0.25em]"
                   error={passcodeMismatch ? "Passcodes don't match" : undefined}
                   success={passcodeMatch ? "Passcodes match" : undefined}
                 />
@@ -498,13 +480,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
                 autoComplete="off"
                 ref={mobileInputRef}
                 required
-                leftIcon={(
-                  <div className="flex items-center gap-1 text-gray-400 dark:text-gray-500 select-none">
-                    <Phone className="w-4 h-4 text-gray-400" />
-                    <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 border-r border-gray-300 dark:border-gray-600 pr-2">+91</span>
-                  </div>
-                )}
-                className="pl-16 font-medium"
+                className="font-medium"
                 error={mobileEmpty ? 'Mobile number is required' : mobileInvalid ? t('enter_10_digit_mobile_error', 'Enter 10-digit mobile number') : undefined}
               />
             </div>
@@ -542,13 +518,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
                   autoComplete="off"
                   ref={passcodeInputRef}
                   required
-                  leftIcon={(
-                    <div className="flex items-center gap-1 text-gray-400 dark:text-gray-500 select-none">
-                      <KeyRound className="w-4 h-4 text-gray-400" />
-                      <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 border-r border-gray-300 dark:border-gray-600 pr-2">PIN</span>
-                    </div>
-                  )}
-                  className="pl-16 font-mono tracking-[0.25em]"
+                  className="font-mono tracking-[0.25em]"
                   error={passcodeEmpty ? 'Passcode is required' : passcodeInvalid ? t('enter_6_digit_passcode_error', 'Enter 6-digit passcode') : undefined}
                 />
               </div>
