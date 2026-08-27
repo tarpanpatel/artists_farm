@@ -10,7 +10,13 @@
 
 require_once __DIR__ . '/sender.php';
 require_once __DIR__ . '/webhook_handler.php';
-require_once __DIR__ . '/../modules/module_manager.php';
+// Guarded (27 Aug 2026) - same cross-environment __DIR__ collision as demo_data.php's identical
+// fix (see that file's comment for the full writeup): staging loads telegram.php straight from
+// production's path, whose own require_once of module_manager.php resolves to a different
+// absolute path than this one - fatals with "Cannot redeclare" without this guard.
+if (!function_exists('isModuleAvailable')) {
+    require_once __DIR__ . '/../modules/module_manager.php';
+}
 require_once __DIR__ . '/../config/schema_cache.php';
 
 if (!function_exists('ensurePairingTables')) {

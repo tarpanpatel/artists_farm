@@ -65,7 +65,23 @@ export const ModulesProvider: React.FC<ModulesProviderProps> = ({ children, init
         modulesList.forEach((mod: any) => {
           moduleMap[mod.slug] = mod.is_enabled;
         });
-        setModules(moduleMap);
+        // Preserve referential stability when nothing actually changed (27 Aug 2026, live
+        // report: dashboard stuck re-fetching guests/menu/staff/attendance/audit-logs/receipts
+        // in a loop for 6+ minutes). isEnabled below is useCallback'd on [modules], so a brand
+        // new object here on every refetchModules() call - even one that changes zero values -
+        // gave every consumer of isModuleEnabled a fresh function identity each time. App.tsx's
+        // two hydration effects depend on isModuleEnabled, so each identity change re-fired
+        // their whole fetch batch. refetchModules() itself runs on mount, hashchange, popstate,
+        // AND visibilitychange - any one of those (a tab regaining focus, a hash-based nav
+        // guard correcting a route) was enough to kick off another full re-fetch round.
+        setModules((prev) => {
+          const prevKeys = Object.keys(prev);
+          const nextKeys = Object.keys(moduleMap);
+          const unchanged =
+            prevKeys.length === nextKeys.length &&
+            prevKeys.every((key) => prev[key] === moduleMap[key]);
+          return unchanged ? prev : moduleMap;
+        });
       }
     } catch (err) {
       console.error('Failed to fetch property modules:', err);

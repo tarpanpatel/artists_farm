@@ -7,7 +7,18 @@
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/guest_status.php';
-require_once __DIR__ . '/../modules/module_manager.php';
+// Guarded (27 Aug 2026, live crash: "Reset Demo Data" fataled with an empty JSON body on
+// staging) - same cross-environment __DIR__ collision router.php's own require already guards
+// against (see that file's comment): staging requires telegram.php straight from production's
+// path to dodge CPGuard, and telegram.php's own require_once of module_manager.php resolves
+// via __DIR__ to PRODUCTION's copy - a different absolute path than this file's own require
+// below, which resolves to staging's copy. module_manager.php's functions aren't
+// function_exists()-guarded internally, so loading both paths in one request fatals with
+// "Cannot redeclare isModuleAvailable()". router.php's guard only covered its own require -
+// this one needed the same treatment.
+if (!function_exists('isModuleAvailable')) {
+    require_once __DIR__ . '/../modules/module_manager.php';
+}
 require_once __DIR__ . '/../finance/ledger.php';
 
 // The router starts the session when this file is require_once'd; a direct hit
