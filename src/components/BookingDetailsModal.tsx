@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2, Share2, LogOut, Upload, CreditCard, Globe, AlertTriangle, X, IndianRupee, ScanLine } from './icons/FlowbiteIcons';
-import { Drawer as FlowbiteDrawer, DrawerItems, Checkbox } from 'flowbite-react';
+import { Drawer as FlowbiteDrawer, DrawerItems, Checkbox, Modal } from 'flowbite-react';
 import { Badge } from './Badge';
 import { Popover } from './Popover';
 import { Guest } from '../types';
@@ -131,6 +131,8 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const [isIdModalOpen, setIsIdModalOpen] = useState(false);
   const [isSharePreviewOpen, setIsSharePreviewOpen] = useState(false);
   const [sharePreviewMessage, setSharePreviewMessage] = useState('');
+  const [isEditingSharePreview, setIsEditingSharePreview] = useState(false);
+  const [editableSharePreview, setEditableSharePreview] = useState('');
 
   const handleOpenId = () => {
     if (onOpenIdVerification) {
@@ -485,10 +487,13 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
 
   // 28 Aug 2026, explicit request: Share used to fire navigator.share()/clipboard-copy
   // immediately with no way to see the actual message first. Now Share just opens a
-  // preview drawer of the exact text that will go out; the preview's own Send button
-  // is what actually triggers shareTextContent() below.
+  // preview of the exact text that will go out; the preview's own Send button is what
+  // actually triggers shareTextContent() below. This is a Modal, not a second Drawer,
+  // per DESIGN.md's "nested dialogs never stack a second Drawer" rule - it opens from
+  // inside the already-open Booking Details Drawer.
   const handleShareBooking = () => {
     setSharePreviewMessage(buildShareMessage());
+    setIsEditingSharePreview(false);
     setIsSharePreviewOpen(true);
   };
 
@@ -501,6 +506,19 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
       'Could not share or copy booking details.',
     );
     setIsSharePreviewOpen(false);
+  };
+
+  // Edit/Save (28 Aug 2026, explicit request) - lets staff tweak the generated message
+  // (e.g. add a personal note) before sending, without a separate editable-by-default
+  // textarea always being in the way of the plain preview.
+  const handleEditSharePreview = () => {
+    setEditableSharePreview(sharePreviewMessage);
+    setIsEditingSharePreview(true);
+  };
+
+  const handleSaveSharePreview = () => {
+    setSharePreviewMessage(editableSharePreview);
+    setIsEditingSharePreview(false);
   };
 
   const financialHandlers = staff.filter((s) => s.isFinancialHandler).map((s) => ({ value: s.name, label: s.name }));
@@ -1207,48 +1225,79 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         />
       )}
 
-      {/* Share Preview (28 Aug 2026) - z-70, one tier above this file's own main
-          drawer (z-60), same "secondary drawer stacked above an already-open drawer"
-          tier the OTA-badge Popover above already uses (zIndex=70). */}
+      {/* Share Preview (28 Aug 2026) - centered Modal, not a Drawer, since this opens
+          from inside the already-open Booking Details Drawer (DESIGN.md's "nested
+          dialogs never stack a second Drawer" rule - same reason CheckinVerificationModal
+          above is a Modal). z-70 matches that same "secondary dialog over an already-open
+          page modal" tier. */}
       {isSharePreviewOpen && (
-        <FlowbiteDrawer
-          open={isSharePreviewOpen}
-          onClose={() => setIsSharePreviewOpen(false)}
-          position="right"
-          className="z-70 w-full sm:max-w-md h-full bg-white dark:bg-gray-800 p-0 flex flex-col shadow-2xl transition-transform border-l border-gray-200 dark:border-gray-700"
-        >
-          <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 dark:border-gray-700 shrink-0 bg-white dark:bg-gray-800">
-            <h2 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">
-              {t('share_preview_heading', 'Share Preview')}
-            </h2>
-            <button
-              type="button"
-              onClick={() => setIsSharePreviewOpen(false)}
-              className="text-gray-400 bg-transparent hover:bg-gray-100 hover:text-gray-900 rounded-lg text-sm w-8 h-8 inline-flex items-center justify-center dark:hover:bg-gray-700 dark:hover:text-white cursor-pointer transition-colors shrink-0"
-              aria-label="Close share preview"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          <DrawerItems className="flex-1 overflow-y-auto p-4 sm:p-5">
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
-              {t('share_preview_subheading', "This is exactly what will be sent - review it before sending.")}
-            </p>
-            <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-lg p-4 text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">
-              {sharePreviewMessage}
+        <Modal show onClose={() => setIsSharePreviewOpen(false)} dismissible size="lg" popup className="z-70">
+          <div className="flex flex-col max-h-[85vh]">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-t-lg shrink-0">
+              <h2 className="text-base font-semibold text-slate-900 dark:text-white m-0">
+                {t('share_preview_heading', 'Share Preview')}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setIsSharePreviewOpen(false)}
+                className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                aria-label="Close share preview"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
-          </DrawerItems>
-          <div className="p-4 sm:p-5 border-t border-gray-200 dark:border-gray-700 shrink-0">
-            <button
-              type="button"
-              onClick={handleConfirmSendBooking}
-              className="w-full h-10 px-4 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 active:scale-98"
-            >
-              <Share2 className="w-4 h-4 shrink-0" />
-              <span>{t('share_preview_send_button', 'Send')}</span>
-            </button>
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs text-slate-500 dark:text-slate-400 m-0">
+                  {t('share_preview_subheading', "This is exactly what will be sent - review it before sending.")}
+                </p>
+                {!isEditingSharePreview ? (
+                  <button
+                    type="button"
+                    onClick={handleEditSharePreview}
+                    className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    <span>{t('edit_button', 'Edit')}</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleSaveSharePreview}
+                    className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg cursor-pointer transition-colors"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>{t('save_button', 'Save')}</span>
+                  </button>
+                )}
+              </div>
+              {isEditingSharePreview ? (
+                <Textarea
+                  value={editableSharePreview}
+                  onChange={(e) => setEditableSharePreview(e.target.value)}
+                  rows={14}
+                  className="font-mono text-xs"
+                />
+              ) : (
+                <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-lg p-4 text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">
+                  {sharePreviewMessage}
+                </div>
+              )}
+            </div>
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700 shrink-0">
+              <button
+                type="button"
+                onClick={handleConfirmSendBooking}
+                disabled={isEditingSharePreview}
+                title={isEditingSharePreview ? t('save_changes_before_sending_tooltip', 'Save your changes first') : undefined}
+                className="w-full h-10 px-4 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Share2 className="w-4 h-4 shrink-0" />
+                <span>{t('share_preview_send_button', 'Send')}</span>
+              </button>
+            </div>
           </div>
-        </FlowbiteDrawer>
+        </Modal>
       )}
     </>
   );
