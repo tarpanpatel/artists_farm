@@ -444,7 +444,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
         )}
       </div>
 
-      <div className="today-overview__calendar bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 space-y-4">
+      <div data-tour="booking-grid" className="today-overview__calendar bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 space-y-4">
         <div className="flex justify-between items-center">
           <h2 className="today-overview__title text-base font-semibold text-slate-900 dark:text-white">{visibleMonthLabel}</h2>
           <div className="flex items-center gap-2">
@@ -778,6 +778,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                             }
                           >
                             <div
+                              data-tour="checkin-open-booking-bar"
                               className={`px-2.5 rounded-md font-semibold cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all absolute ${
                                 isOtaBooking && !isCheckedOut
                                   ? 'bg-amber-600 dark:bg-amber-700 hover:bg-amber-700 text-white border border-amber-700/30'

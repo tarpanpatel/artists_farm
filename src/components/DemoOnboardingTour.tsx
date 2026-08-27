@@ -72,13 +72,27 @@ function goToFirstRoomDashboard(nav: TourNavContext): void {
 // opens the real modal). Demo data guarantees at least one real booking per room for a MULTI_KEY
 // property, so this is safe to assume.
 async function openFirstBookingModal(nav: TourNavContext): Promise<void> {
-  goToFirstRoomDashboard(nav);
-  const bar = await waitForElement('[data-tour="checkin-open-booking-bar"]');
+  // If modal is already open with data-tour="checkin-folio", return early
+  if (document.querySelector('[data-tour="checkin-folio"]')) return;
+
+  // Try to find a booking capsule on the current page (e.g. TodayOverview or room OperationalDashboard)
+  let bar = document.querySelector('[data-tour="checkin-open-booking-bar"]') as HTMLElement | null;
+  if (!bar) {
+    goToFirstRoomDashboard(nav);
+    bar = (await waitForElement('[data-tour="checkin-open-booking-bar"]', 3000)) as HTMLElement | null;
+  }
   if (!bar) return;
-  (bar as HTMLElement).click();
-  const viewMore = await waitForElement('[data-tour="checkin-view-more"]');
-  if (!viewMore) return;
-  (viewMore as HTMLElement).click();
+
+  bar.click();
+
+  // If a preview popover with "View More" appears (on single room OperationalDashboard), click it
+  const viewMore = (await waitForElement('[data-tour="checkin-view-more"]', 800)) as HTMLElement | null;
+  if (viewMore) {
+    viewMore.click();
+  }
+
+  // Wait for the modal content to finish mounting
+  await waitForElement('[data-tour="checkin-folio"]', 3000);
 }
 
 // Polls (rAF loop) rather than a fixed setTimeout - tab content in this app is React.lazy/Suspense
@@ -339,7 +353,7 @@ export const DemoOnboardingTour: React.FC<DemoOnboardingTourProps> = ({
     const d = driver({
       showProgress: true,
       allowClose: true,
-      overlayOpacity: 0.65,
+      overlayOpacity: 0.50,
       popoverClass: 'app-tour-popover',
       // driver.js's own built-in wait: after moveTo() targets a step, it polls (MutationObserver
       // + timeout, verified in node_modules/driver.js source) for that step's element to appear
