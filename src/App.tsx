@@ -2022,8 +2022,18 @@ ${itemsStr}
                 currentProperty.tenant_is_demo by get_current_property) - a prospect being
                 walked through the app, or a QA/staging demo account, shouldn't be nagged to
                 finish setting up a property nobody's actually running, same reasoning as
-                skipping TermsAcceptanceModal for these tenants in TenantDashboard.tsx. */}
-            {preloadedData.currentProperty && !preloadedData.currentProperty?.tenant_is_demo && (
+                skipping TermsAcceptanceModal for these tenants in TenantDashboard.tsx.
+                ALSO checks currentProperty.is_public_demo (28 Aug 2026, live report: this still
+                showed on the public demo property despite tenant_is_demo genuinely being true in
+                the API response for that load) - is_public_demo is a plain properties column
+                get_current_property always returns directly, unlike tenant_is_demo, which is
+                merged in afterward via a second query wrapped in a silent try/catch (router.php)
+                and can come back missing on a transient failure. Checking both makes this
+                belt-and-suspenders: the public demo property is never shown this nudge even if
+                the tenant-level lookup happens to fail on a given request. */}
+            {preloadedData.currentProperty &&
+              !preloadedData.currentProperty?.tenant_is_demo &&
+              !preloadedData.currentProperty?.is_public_demo && (
               <ErrorBoundary section="Property Setup Wizard">
                 <PropertySetupWizard
                   propertyId={preloadedData.currentProperty.id}
