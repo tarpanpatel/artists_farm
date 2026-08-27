@@ -79,7 +79,7 @@ export const Header: React.FC<HeaderProps> = ({
   onNavigate,
   onToggleAIChat,
 }) => {
-  const { currentUser, activeRole, setActiveRole } = useAuth();
+  const { currentUser, activeRole, setActiveRole, isAuthenticated, authChecked } = useAuth();
   // "View site as" (Root Admin only) - a pure frontend preview: it only
   // changes what activeRole-gated UI shows/hides, never the real backend
   // session, so nothing about actual permissions is gained or lost. Gated
@@ -176,9 +176,10 @@ export const Header: React.FC<HeaderProps> = ({
   const { propertySlug: icalPropertySlug } = getPropertyAndRoomSlugs();
 
   useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
     fetchIcalCalendarsFromDB(icalPropertySlug).then(setIcalCalendars);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [icalPropertySlug]);
+  }, [isAuthenticated, authChecked, icalPropertySlug]);
 
   const handleSyncAllCalendars = async () => {
     if (icalCalendars.length === 0 || isSyncingIcal) return;

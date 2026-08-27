@@ -26,7 +26,7 @@ export const useKitchenContext = (): KitchenContextValue => {
 };
 
 export const KitchenProvider: React.FC<KitchenProviderProps> = ({ children }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, authChecked } = useAuth();
   const { isEnabled } = useModules();
   const [orders, setOrders] = useState<Order[]>([]);
   // Same fix as InventoryContext (14 Aug 2026): downstream empty states
@@ -42,12 +42,12 @@ export const KitchenProvider: React.FC<KitchenProviderProps> = ({ children }) =>
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated && isEnabled('kitchen')) {
+    if (authChecked && isAuthenticated && isEnabled('kitchen')) {
       refreshOrders();
     } else {
       setOrdersLoading(false);
     }
-  }, [refreshOrders, isAuthenticated, isEnabled]);
+  }, [refreshOrders, isAuthenticated, authChecked, isEnabled]);
 
   const pendingOrdersCount = orders.filter((o) => o.status === 'Pending' || o.status === 'Preparing').length;
 

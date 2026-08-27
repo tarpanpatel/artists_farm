@@ -59,6 +59,10 @@ function handleConfigurationRequests($pdo, $request_method, $action, $propertyId
             checkTelegramHealth($pdo);
             break;
 
+        case 'register_tenant_trial':
+            registerTenantTrial($pdo);
+            break;
+
         default:
             http_response_code(400);
             echo json_encode(['error' => 'Unknown configuration action']);
@@ -487,50 +491,63 @@ function registerTenantTrial($pdo) {
             return;
         }
 
-        $pdo->beginTransaction();
-
-        // 1. Create Tenant
-        $tenantStmt = $pdo->prepare("
-            INSERT INTO tenants (name, owner_name, owner_phone, email, status, plan, created_at)
-            VALUES (?, ?, ?, ?, 'active', 'trial', NOW())
-        ");
-        $tenantStmt->execute([$propertyName, $fullName, $phone, $email]);
-        $tenantId = (int)$pdo->lastInsertId();
-
-        // 2. Create Master Owner User
-        $userStmt = $pdo->prepare("
-            INSERT INTO users (username, full_name, phone_number, email, passcode, role, is_platform_admin, default_tenant_id, created_at)
-            VALUES (?, ?, ?, ?, ?, 'admin', 0, ?, NOW())
-        ");
-        $userStmt->execute([$phone, $fullName, $phone, $email, $passcode, $tenantId]);
-        $userId = (int)$pdo->lastInsertId();
-
-        // Generate property slug
+        // Generate tenant + property slug up front - tenants.slug and properties.slug are
+        // both NOT NULL UNIQUE, so these have to exist before either insert, not after.
         $baseSlug = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', $propertyName));
         $baseSlug = trim($baseSlug, '-');
         if (!$baseSlug) $baseSlug = 'property-' . time();
         $propertySlug = $baseSlug;
+        $tenantSlug = $baseSlug;
 
-        // Ensure unique slug
         $slugCheck = $pdo->prepare("SELECT id FROM properties WHERE slug = ? LIMIT 1");
         $slugCheck->execute([$propertySlug]);
         if ($slugCheck->fetch()) {
             $propertySlug .= '-' . rand(100, 999);
         }
+        $tenantSlugCheck = $pdo->prepare("SELECT id FROM tenants WHERE slug = ? LIMIT 1");
+        $tenantSlugCheck->execute([$tenantSlug]);
+        if ($tenantSlugCheck->fetch()) {
+            $tenantSlug .= '-' . rand(100, 999);
+        }
 
-        // 3. Create Property
+        $pdo->beginTransaction();
+
+        // 1. Create Tenant. The 30-day trial itself is tracked via subscription_status/
+        // subscription_expires_at - the same columns router.php's existing create_tenant
+        // flow already uses for this - not a separate license/trial table.
+        $expiryDate = date('Y-m-d', strtotime('+30 days'));
+        $tenantStmt = $pdo->prepare("
+            INSERT INTO tenants (name, slug, email, phone, subscription_plan, subscription_status, subscription_expires_at, plan_type, is_active)
+            VALUES (?, ?, ?, ?, 'free', 'trial', ?, 'Trial', 1)
+        ");
+        $tenantStmt->execute([$fullName, $tenantSlug, $email, $phone, $expiryDate]);
+        $tenantId = (int)$pdo->lastInsertId();
+
+        // 2. Create Property - before the owner user, since users.property_id is NOT NULL
+        // and must point at this property, not silently default to property #1 (a
+        // different tenant's property).
         $propStmt = $pdo->prepare("
-            INSERT INTO properties (tenant_id, name, slug, property_type, room_count, checkin_time, checkout_time, status, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'active', NOW())
+            INSERT INTO properties (tenant_id, name, slug, property_type, unit_count, checkin_time, checkout_time, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'active')
         ");
         $propStmt->execute([$tenantId, $propertyName, $propertySlug, $propertyType, $roomCount, $checkinTime, $checkoutTime]);
         $propertyId = (int)$pdo->lastInsertId();
 
+        // 3. Create Master Owner User. 'Admin' (capitalized) matches the role string every
+        // other admin-permission check in the app compares against exactly
+        // (MenuManager.tsx etc.) - 'admin' lowercase would silently fail those checks.
+        $userStmt = $pdo->prepare("
+            INSERT INTO users (property_id, username, full_name, phone_number, email, password, passcode, role, is_platform_admin, default_tenant_id)
+            VALUES (?, ?, ?, ?, ?, '', ?, 'Admin', 0, ?)
+        ");
+        $userStmt->execute([$propertyId, $phone, $fullName, $phone, $email, $passcode, $tenantId]);
+        $userId = (int)$pdo->lastInsertId();
+
         // Provision child rooms for Multi-Key property
         if ($propertyType === 'MULTI_KEY' && $roomCount > 1) {
             $roomStmt = $pdo->prepare("
-                INSERT INTO properties (tenant_id, parent_property_id, name, slug, property_type, room_order, is_active, created_at)
-                VALUES (?, ?, ?, ?, 'MULTI_KEY_ROOM', ?, 1, NOW())
+                INSERT INTO properties (tenant_id, parent_property_id, name, slug, property_type, room_order, is_active)
+                VALUES (?, ?, ?, ?, 'MULTI_KEY_ROOM', ?, 1)
             ");
             for ($i = 1; $i <= $roomCount; $i++) {
                 $roomName = "Room " . sprintf("%02d", $i);
@@ -544,22 +561,13 @@ function registerTenantTrial($pdo) {
             disableKitchenModuleForNewProperty($pdo, $propertyId);
         }
 
-        // 4. Create 30-Day Trial License
-        $startDate = date('Y-m-d');
-        $expiryDate = date('Y-m-d', strtotime('+30 days'));
-        $licStmt = $pdo->prepare("
-            INSERT INTO property_licenses (property_id, tenant_id, license_type, start_date, expiry_date, status, created_at)
-            VALUES (?, ?, 'trial', ?, ?, 'active', NOW())
-        ");
-        $licStmt->execute([$propertyId, $tenantId, $startDate, $expiryDate]);
-
         $pdo->commit();
 
         // Set session state
         $_SESSION['user_id'] = $userId;
         $_SESSION['username'] = $phone;
         $_SESSION['full_name'] = $fullName;
-        $_SESSION['role'] = 'admin';
+        $_SESSION['role'] = 'Admin';
         $_SESSION['tenant_id'] = $tenantId;
         $_SESSION['property_id'] = $propertyId;
 
@@ -568,7 +576,9 @@ function registerTenantTrial($pdo) {
             try {
                 sendWhatsAppTemplateMessage($phone, 'welcome_onboarding', [$fullName, $propertySlug, $phone, $passcode]);
             } catch (Exception $waErr) {
-                // Log and continue gracefully
+                if (class_exists('TelescopeLogger')) {
+                    TelescopeLogger::log('whatsapp', 'WARNING', 'Onboarding welcome WhatsApp send threw: ' . $waErr->getMessage(), 'registerTenantTrial');
+                }
             }
         }
 

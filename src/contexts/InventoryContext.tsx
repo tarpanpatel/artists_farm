@@ -43,7 +43,7 @@ export const InventoryProvider: React.FC<InventoryProviderProps> = ({
   onLogAudit,
   currentUser,
 }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, authChecked } = useAuth();
   const { isEnabled } = useModules();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [requisitions, setRequisitions] = useState<Requisition[]>([]);
@@ -66,13 +66,13 @@ export const InventoryProvider: React.FC<InventoryProviderProps> = ({
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated && isEnabled('kitchen')) {
+    if (authChecked && isAuthenticated && isEnabled('kitchen')) {
       refreshInventory();
       refreshStockRequests();
     } else {
       setInventoryLoading(false);
     }
-  }, [refreshInventory, refreshStockRequests, isAuthenticated, isEnabled]);
+  }, [refreshInventory, refreshStockRequests, isAuthenticated, authChecked, isEnabled]);
 
   const updateStock = (itemId: string, newStock: number) => {
     const item = inventory.find((i) => i.id === itemId);

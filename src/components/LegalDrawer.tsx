@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Drawer as FlowbiteDrawer, DrawerItems } from 'flowbite-react';
-import { Scale, Lock as ShieldCheck, Cookie, Phone as Headset, X, CheckCircle as CheckCircle2, Mail, Phone, MessageSquare, AlertCircle as HelpCircle, Search } from './icons/FlowbiteIcons';
+import { Scale, ShieldCheck, Cookie, Headset, X, CheckCircle2, Mail, Phone, MessageSquare, HelpCircle, Search } from './icons/FlowbiteIcons';
 import { WhatsappIcon } from './icons/WhatsappIcon';
 import { TelegramIcon } from './icons/TelegramIcon';
 import { Button } from './Button';

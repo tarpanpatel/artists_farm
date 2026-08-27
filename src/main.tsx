@@ -98,7 +98,9 @@ window.addEventListener('click', (e) => {
 // (not inside any tenant/property path), so it must be registered with an
 // absolute path - a path built from the current URL (e.g.
 // /artists_farm/vrikshawan/goa-homes/sw.js) doesn't correspond to a real
-// file and 404s through the SPA fallback instead.
+// file and 404s through the SPA fallback instead. This app is always served
+// from the domain root (see src/services/api.ts's own comment), so a plain
+// absolute path is correct - not computed per-request.
 if ('serviceWorker' in navigator) {
   if (import.meta.env.PROD) {
     window.addEventListener('load', () => {

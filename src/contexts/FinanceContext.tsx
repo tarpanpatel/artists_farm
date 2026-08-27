@@ -36,7 +36,7 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({
   onLogAudit,
   currentUser,
 }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, authChecked } = useAuth();
   const [pettyCash, setPettyCash] = useState<PettyCashEntry[]>([]);
   // Same fix as InventoryContext/KitchenContext (14 Aug 2026): PettyCashManagement's
   // "No expenses recorded for this month." rendered off `pettyCash.length === 0`
@@ -50,12 +50,12 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (authChecked && isAuthenticated) {
       refreshPettyCash();
     } else {
       setPettyCashLoading(false);
     }
-  }, [refreshPettyCash, isAuthenticated]);
+  }, [refreshPettyCash, isAuthenticated, authChecked]);
 
   const addPettyCash = (entry: PettyCashEntry) => {
     setPettyCash((prev) => [entry, ...prev]);

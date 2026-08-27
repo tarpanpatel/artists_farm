@@ -148,7 +148,7 @@ interface LicenseManagementProps {
 export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit }) => {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
-  const { currentUser } = useAuth();
+  const { currentUser, isAuthenticated, authChecked } = useAuth();
 
   const [licenses, setLicenses] = useState<PropertyLicense[]>([]);
   const [loading, setLoading] = useState(true);
@@ -180,8 +180,9 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
   };
 
   useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
     loadLicenses();
-  }, []);
+  }, [isAuthenticated, authChecked]);
 
   const openAddModal = () => {
     setEditingLicense(null);

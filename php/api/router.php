@@ -35,7 +35,7 @@
 // must run before that file is required (mirrors its own $server_name/
 // local-env check below).
 $__session_host = $_SERVER['SERVER_NAME'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost';
-$__session_is_local = $__session_host === 'localhost' || $__session_host === '127.0.0.1' || str_contains($__session_host, '192.168.');
+$__session_is_local = $__session_host === 'localhost' || $__session_host === '127.0.0.1' || str_contains($__session_host, '192.168.') || $__session_host === 'dev.ground-code.com';
 ini_set('session.gc_maxlifetime', 86400 * 30);
 session_set_cookie_params([
     'lifetime' => 86400 * 30,
@@ -47,6 +47,26 @@ session_set_cookie_params([
 ]);
 session_name('artists_farm_session');
 session_start();
+// Session-fixation race (found 27 Aug 2026 chasing a "wall of 401s that never
+// clears, even after a reload" report): session_start() unconditionally queues a
+// Set-Cookie on EVERY request that touches $_SESSION - not just a brand-new
+// session, but also PHP's own automatic refresh of an already-existing one (see
+// this file's own "remember me" comment above about that auto-refresh). On a
+// first-ever page load, a dozen+ authenticated-only fetches fire in parallel
+// alongside the actual login POST, all starting with no cookie - each mints its
+// own throwaway Set-Cookie, and the browser just keeps whichever response's
+// header happens to arrive LAST, with total disregard for which one was the
+// real login. Worse, if a stale/invalid cookie is already sitting in the
+// browser, every one of those same anonymous requests still auto-refreshes
+// THAT cookie too, so the race persists even across reloads once a bad cookie
+// has already won once - which is exactly why "just reload" didn't fix it.
+// The only correct fix is to never let this implicit, automatic Set-Cookie out
+// the door at all: appSetSessionCookie() (config/database.php) explicitly
+// (re-)issues the cookie itself the moment a request actually authenticates, at
+// all 8 real login call sites, so removing PHP's own implicit one here,
+// unconditionally, on every request, doesn't affect a real login - it only
+// silences the one PHP sends on its own that this app never wants.
+header_remove('Set-Cookie');
 header('Cache-Control: no-store, no-cache, must-revalidate');
 
 require_once __DIR__ . '/../config/database.php';
@@ -603,7 +623,7 @@ $provided_key = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
 // non-sensitive branding/config columns (name, slug, type, currency,
 // colors, ...) - no guest, financial, or staff data - so this is exactly
 // the same "safe to read before login" class as the settings above.
-$public_actions = ['login_user', 'verify_admin_passcode', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token', 'check_session', 'logout', 'get_tenant_by_slug', 'get_demo_login_credentials', 'get_system_settings', 'get_theme_settings', 'get_current_property'];
+$public_actions = ['login_user', 'verify_admin_passcode', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token', 'check_session', 'logout', 'get_tenant_by_slug', 'get_demo_login_credentials', 'get_system_settings', 'get_theme_settings', 'get_current_property', 'register_tenant_trial'];
 
 
 $request_method = $_SERVER['REQUEST_METHOD'];
@@ -3675,12 +3695,18 @@ switch ($action) {
             // scoped strictly to this property's own tenant_id.
             if (!empty($currentProperty['tenant_id'])) {
                 try {
-                    $tstmt = $pdo->prepare("SELECT plan_type, subscription_status, subscription_expires_at FROM tenants WHERE id = ? LIMIT 1");
+                    $tstmt = $pdo->prepare("SELECT plan_type, subscription_status, subscription_expires_at, is_demo FROM tenants WHERE id = ? LIMIT 1");
                     $tstmt->execute([$currentProperty['tenant_id']]);
                     if ($trow = $tstmt->fetch(PDO::FETCH_ASSOC)) {
                         $currentProperty['tenant_plan_type'] = $trow['plan_type'];
                         $currentProperty['tenant_subscription_status'] = $trow['subscription_status'];
                         $currentProperty['tenant_subscription_expires_at'] = $trow['subscription_expires_at'];
+                        // Named tenant_is_demo (not is_demo) so it can never be confused with the
+                        // pre-existing, unrelated properties.is_public_demo flag (the anonymous-
+                        // visitor auto-login demo property) - this one means "this property's whole
+                        // OWNER account is a sales/QA demo tenant" (see tenants.is_demo /
+                        // schema_tenants_table_v3), a tenant-level concept, not a property-level one.
+                        $currentProperty['tenant_is_demo'] = !empty($trow['is_demo']);
                     }
                 } catch (Exception $eTenantSub) {}
             }
@@ -3698,6 +3724,7 @@ switch ($action) {
     case 'get_system_settings':
     case 'save_system_settings':
     case 'check_telegram_health':
+    case 'register_tenant_trial':
         if (function_exists('handleConfigurationRequests')) {
             handleConfigurationRequests($pdo, $request_method, $action, $propertyId);
         } else {

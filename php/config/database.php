@@ -27,6 +27,11 @@ $allowed_origins = [
     // real CORS 403 instead of silently still being treated as a trusted origin.
     'https://ground-code.com', 'https://www.ground-code.com',
     'https://staging.ground-code.com',
+    // Local domain-root vhost (27 Aug 2026) - a hosts-file entry pointing dev.ground-code.com
+    // at 127.0.0.1, with an Apache vhost serving this exact checkout as that host's own
+    // document root, so local testing has a real domain-root URL to use now that the app
+    // no longer supports being served from a subfolder (see index.php/api.ts history).
+    'http://dev.ground-code.com',
 ];
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 header('Access-Control-Allow-Origin: ' . (in_array($origin, $allowed_origins) ? $origin : 'https://ground-code.com'));
@@ -111,8 +116,13 @@ if ($server_name === null && php_sapi_name() === 'cli') {
 }
 $server_name = $server_name ?? 'localhost';
 
-// Check if running on local environment (localhost or 127.0.0.1)
-$__is_local_env = $server_name === 'localhost' || $server_name === '127.0.0.1' || str_contains($server_name, '192.168.');
+// Check if running on local environment (localhost or 127.0.0.1). dev.ground-code.com
+// (27 Aug 2026) is a hosts-file entry pointing back at 127.0.0.1 for local domain-root
+// testing - it must be checked here explicitly, exact-match only, never as a
+// str_contains/wildcard - the real production check right below matches on
+// "ground-code.com" too, and this local-only hostname must never fall through to that
+// branch and connect to the real production database using local dev credentials.
+$__is_local_env = $server_name === 'localhost' || $server_name === '127.0.0.1' || str_contains($server_name, '192.168.') || $server_name === 'dev.ground-code.com';
 // Staging is deployed from the exact same codebase as production (see deploy-staging.ps1's
 // git-pull step), so without this check it fell into the same "anything that isn't local"
 // branch as real production and connected to the SAME `groundcode` database - every test

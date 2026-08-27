@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Tenant welcome message: shown to Root Admin as a live preview when editing
  * the template, and used to build the WhatsApp share link after a tenant is
  * created. The actual rendering for the *email* itself happens server-side
@@ -21,13 +21,13 @@ export const TENANT_WELCOME_VARIABLES: WelcomeTemplateVariable[] = [
 ];
 
 export const DEFAULT_TENANT_WELCOME_TEMPLATE =
-  `🎉 Welcome to Ground Code, {tenant_name}!
+  `?? Welcome to Ground Code, {tenant_name}!
 
 Your property management account is ready.
 
-🔗 Login: {login_url}
-📱 Username (your phone number): {username}
-🔑 Temporary Passcode: {temp_passcode}
+?? Login: {login_url}
+?? Username (your phone number): {username}
+?? Temporary Passcode: {temp_passcode}
 
 You'll be asked to set a new 6-digit passcode the first time you log in.
 

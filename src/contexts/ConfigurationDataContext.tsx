@@ -35,7 +35,7 @@ export const useConfigurationData = (): ConfigurationDataContextValue => {
 
 export const ConfigurationDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isEnabled } = useModules();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, authChecked } = useAuth();
   const [miscCharges, setMiscCharges] = useState<MiscChargeTemplate[]>([]);
   const [materialCategories, setMaterialCategories] = useState<MaterialCategory[]>([]);
   // Default true, not false (14 Aug 2026 fix): both start an unconditional
@@ -75,7 +75,7 @@ export const ConfigurationDataProvider: React.FC<{ children: React.ReactNode }> 
   };
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!authChecked || !isAuthenticated) return;
     fetchMiscCharges();
     if (isEnabled('kitchen')) {
       fetchMaterialCategories();
@@ -84,7 +84,7 @@ export const ConfigurationDataProvider: React.FC<{ children: React.ReactNode }> 
       // stuck true forever now that it defaults true.
       setIsLoadingCategories(false);
     }
-  }, [isEnabled, isAuthenticated]);
+  }, [isEnabled, isAuthenticated, authChecked]);
 
   return (
     <ConfigurationDataContext.Provider

@@ -38,7 +38,7 @@ export const StaffProvider: React.FC<StaffProviderProps> = ({
   onLogAudit,
   currentUser,
 }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, authChecked } = useAuth();
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [staffLoading, setStaffLoading] = useState(true);
@@ -153,7 +153,7 @@ export const StaffProvider: React.FC<StaffProviderProps> = ({
   }, [loadStaff]);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!authChecked || !isAuthenticated) return;
     loadStaff();
     let cancelled = false;
     fetchAttendanceFromDB().then((data) => {
@@ -161,7 +161,7 @@ export const StaffProvider: React.FC<StaffProviderProps> = ({
       if (data && data.length > 0) setAttendance(data);
     });
     return () => { cancelled = true; };
-  }, [loadStaff, isAuthenticated]);
+  }, [loadStaff, isAuthenticated, authChecked]);
 
   const refreshAttendance = useCallback(() => {
     fetchAttendanceFromDB().then((data) => {

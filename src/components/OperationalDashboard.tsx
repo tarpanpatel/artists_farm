@@ -20,6 +20,7 @@ import {
 import { Guest } from '../types';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
+import { useAuth } from '../contexts/AuthContext';
 import { ConvertOtaBookingModal } from './ConvertOtaBookingModal';
 import {
   GUEST_STATUS_CHECKED_IN,
@@ -142,6 +143,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   minimalMode = false,
 }) => {
   const { showToast } = useToast();
+  const { isAuthenticated, authChecked } = useAuth();
   const { orders } = useKitchenContext();
   const pendingOrders = orders.filter((o) => o.status === 'Pending' || o.status === 'Preparing');
   const recentOrders = orders.slice(0, 5);
@@ -263,10 +265,15 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       console.error('Failed to fetch blocked dates:', error);
     }
   };
+  // isAuthenticated guard added 27 Aug 2026 (app-wide sweep, same root cause as
+  // KitchenManagement.tsx's identical fix) - this data-fetch only, no change to
+  // the booking-calendar rendering/coloring/OTA-conversion logic below, which
+  // stays untouched per the protected-component rule.
   useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
     fetchBlockedDates();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isAuthenticated, authChecked]);
   // Low stock alerts where currentStock <= minThreshold
   const stockAlerts = inventory.filter((item) => item.currentStock <= item.minThreshold);
 
@@ -829,7 +836,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             to every role regardless of Kitchen permission, since it only
             ever checked the module toggle). */}
         {kitchenModuleEnabled && kitchenAccessAllowed ? (
-          <div className="operational-dashboard__col-kitchen bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 flex flex-col justify-between">
+          <div data-tour="kds-kitchen" className="operational-dashboard__col-kitchen bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 flex flex-col justify-between">
             <div className="operational-dashboard__col-kitchen-inner">
               <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
                 <h3 className="operational-dashboard__subtitle font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2">
@@ -956,7 +963,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           Grid + Legend below instead (see rounded-b-lg overflow-hidden
           further down) - the header toolbar above that, where the
           Datepicker actually lives, is no longer clipped at all. */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm space-y-0">
+      <div data-tour="booking-grid" className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm space-y-0">
         {/* Header Toolbar - layout only (title/button/date-nav positioning),
             NOT the calendar grid below (color-coding, blocked dates, OTA
             conversion, edit modal - that stays untouched per the protected-

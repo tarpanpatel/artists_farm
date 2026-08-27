@@ -159,7 +159,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   onLogAudit,
 }) => {
   const { staff } = useStaff();
-  const { currentUser, activeRole } = useAuth();
+  const { currentUser, activeRole, isAuthenticated, authChecked } = useAuth();
   const normalizedRole = (currentUser?.role || activeRole || '').toLowerCase().replace(/_/g, ' ').trim();
   const canDeleteCatalogItem = normalizedRole.includes('admin');
   const { inventory, inventoryLoading } = useInventoryContext();
@@ -259,6 +259,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   const [, setLiveCashHandlers] = useState<any[]>(staff.filter(u => u.isFinancialHandler));
 
   useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
     fetchStaffUsersFromDB().then((users) => {
       if (users && users.length > 0) {
         const handlers = users.filter((u: any) => u.isFinancialHandler);
@@ -267,19 +268,20 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         }
       }
     });
-  }, []);
+  }, [isAuthenticated, authChecked]);
 
   // Material categories from database (for CRUD operations)
   // TODO: dbCategories should be passed as props from a central context instead of being fetched locally
   const [dbCategories, setDbCategories] = useState<{ id: number; name: string }[]>([]);
 
   useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
     fetchMaterialCategoriesFromDB().then((cats) => {
       if (cats && cats.length > 0) {
         setDbCategories(cats);
       }
     });
-  }, []);
+  }, [isAuthenticated, authChecked]);
 
   // Category filter pills derived from actual catalog items (always in sync with data)
   const catalogCategories = React.useMemo(() => {
@@ -708,6 +710,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
 
   useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
     fetchStockRequestsFromDB().then((data) => {
       if (data && data.length > 0) {
         setRecentSheets(data);
@@ -735,7 +738,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       }
       setStockRequestsLoading(false);
     });
-  }, []);
+  }, [isAuthenticated, authChecked]);
 
   const stockCatalog = catalogItems.map(item => ({
     id: item.id.toString(),
@@ -869,13 +872,14 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   const [wastedNotes, setWastedNotes] = useState('');
 
   useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
     fetchWastageLogsFromDB().then((logs) => {
       if (logs && logs.length > 0) {
         setWastageLogs(logs);
       }
       setWastageLoading(false);
     });
-  }, []);
+  }, [isAuthenticated, authChecked]);
 
   const handleRecordWastage = (e: React.FormEvent) => {
     e.preventDefault();

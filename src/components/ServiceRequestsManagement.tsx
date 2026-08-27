@@ -54,7 +54,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
   initialRoomNumber,
   initialRequestItem,
 }) => {
-  const { currentUser } = useAuth();
+  const { currentUser, isAuthenticated, authChecked } = useAuth();
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const { miscCharges } = useConfigurationData();
@@ -101,8 +101,9 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
   };
 
   useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
     loadTypes();
-  }, []);
+  }, [isAuthenticated, authChecked]);
 
   // DB-driven merged list with Custom option AT THE VERY TOP
   const typeOptions = [
@@ -318,6 +319,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
   // Auto-nudge follow-up for requests left unfulfilled too long - same shared
   // nudge engine pattern as KitchenManagement's stale-order poll.
   useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
     const pollStale = async () => {
       const stale = await checkStaleServiceRequests(REMINDER_THRESHOLD_MINUTES);
       for (const item of stale) {
@@ -337,7 +339,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
     const interval = setInterval(pollStale, 60000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isAuthenticated, authChecked]);
 
   const parseTimestampToMs = (str?: string | null): number => {
     if (!str) return 0;

@@ -154,7 +154,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const { confirm } = useConfirm();
   const { orders, addOrder, refreshOrders, updateOrderStatus, pendingOrdersCount } = useKitchenContext();
   const { inventory, requisitions } = useInventoryContext();
-  const { currentUser, activeRole } = useAuth();
+  const { currentUser, activeRole, isAuthenticated, authChecked } = useAuth();
   // ROLES.md (24 Aug 2026, corrected same day - see git history/comments in
   // php/kitchen/menu.php's nav_menu_self_heal_v5 for why): generic `Staff`
   // gets a scoped-down order-status view only - live orders + served orders +
@@ -278,18 +278,31 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     const data = await fetchWalkInTabsFromDB();
     setWalkInTabs(data.map(mapWalkInTabFromApi));
   };
-  useEffect(() => { refreshWalkInTabs(); }, []);
+  // Gated on isAuthenticated (27 Aug 2026, found via a wall of 401s that
+  // persisted even after a reload): this used to fire unconditionally on
+  // mount, well before the async public-demo auto-login (check_session ->
+  // get_demo_login_credentials -> login_user, three sequential round-trips)
+  // had any chance to complete - guaranteed 401 on every cold load, with no
+  // retry once auth actually landed. Depending on [isAuthenticated] means it
+  // re-fires the moment auth resolves, same pattern as every other
+  // authenticated-only effect in App.tsx.
+  useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
+    refreshWalkInTabs();
+  }, [isAuthenticated, authChecked]);
 
   const [billingTab, setBillingTab] = useState<WalkInTab | null>(null);
 
   const [servedLogs, setServedLogs] = useState<Array<{ id: string; orderId: string; itemName: string; quantity: number; servedBy: string; guestName: string; roomNumber: string; servedAt: string; readyAt: string | null }>>([]);
 
-  // Load served logs from DB on mount
+  // Load served logs from DB once authenticated (see the isAuthenticated note
+  // on refreshWalkInTabs's effect above - same fix, same reason).
   useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
     fetchServedLogsFromDB().then((logs) => {
       if (Array.isArray(logs)) setServedLogs(logs);
     });
-  }, []);
+  }, [isAuthenticated, authChecked]);
 
   // Sync Ready/Served UI state from the DB-persisted item_status on every orders
   // refresh, so a page reload (or another device/tab) reflects reality instead of
@@ -745,11 +758,15 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const [newMealName, setNewMealName] = useState('');
   const [newMealCost, setNewMealCost] = useState('');
   const [smMealOptions, setSmMealOptions] = useState<{ name: string; cost: number }[]>([]);
+  // Gated on isAuthenticated - see refreshWalkInTabs's effect above for why
+  // (same 27 Aug 2026 fix, same reason: fires before the async demo auto-login
+  // can complete otherwise, guaranteed 401 with no retry).
   useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
     fetchStaffMealOptionsFromDB().then((options) => {
       setSmMealOptions(options.map((o) => ({ name: o.name, cost: o.cost })));
     });
-  }, []);
+  }, [isAuthenticated, authChecked]);
   const [smLogs, setSmLogs] = useState<{ date: string; staff: string; food: string; hasTag: boolean }[]>([]);
   // 14 Aug 2026: "No meal logs this month" used to render off smLogs.length
   // === 0 before this fetch resolved. Defaults true.
@@ -758,11 +775,12 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const [smDesktopPage, setSmDesktopPage] = useState(1);
   const SM_DESKTOP_PAGE_SIZE = 10;
   useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
     fetchStaffMealLogsFromDB().then((data) => {
       setSmLogs(data);
       setSmLogsLoading(false);
     });
-  }, []);
+  }, [isAuthenticated, authChecked]);
 
   const { staff } = useStaff();
 
@@ -901,8 +919,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const [recipeIngredientsDesktopPage, setRecipeIngredientsDesktopPage] = useState(1);
   const RECIPE_INGREDIENTS_PAGE_SIZE = 10;
 
-  // Load recipes from DB on mount
+  // Load recipes from DB once authenticated - see refreshWalkInTabs's effect
+  // above for why (same 27 Aug 2026 fix, same reason).
   useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
     fetchRecipesFromDB().then((recipes) => {
       const map: Record<number, DishRecipe> = {};
       for (const r of recipes) {
@@ -915,7 +935,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       }
       setAllRecipes(map);
     });
-  }, []);
+  }, [isAuthenticated, authChecked]);
 
   // Load recipe when switching dishes
   useEffect(() => {

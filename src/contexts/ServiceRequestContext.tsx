@@ -27,7 +27,7 @@ export const useServiceRequestContext = (): ServiceRequestContextValue => {
  * occur. One shared list, refreshed by whichever screen mutated it.
  */
 export const ServiceRequestProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, authChecked } = useAuth();
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -38,10 +38,10 @@ export const ServiceRequestProvider: React.FC<{ children: React.ReactNode }> = (
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (authChecked && isAuthenticated) {
       refreshRequests();
     }
-  }, [isAuthenticated, refreshRequests]);
+  }, [isAuthenticated, authChecked, refreshRequests]);
 
   const pendingRequests = requests.filter((r) => r.status === 'Pending');
 

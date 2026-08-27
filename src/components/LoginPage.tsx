@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Alert } from 'flowbite-react';
-import { AlertCircle, Lock, ShieldCheck, Mail, CheckCircle2, ArrowLeft, Loader2, Delete } from './icons/FlowbiteIcons';
+import { AlertCircle, Lock, ShieldCheck, Mail, CheckCircle2, ArrowLeft, Loader2, Delete, Sparkles } from './icons/FlowbiteIcons';
 import { Input } from './Input';
 import { t } from '../i18n/en';
 
@@ -9,9 +9,10 @@ interface LoginPageProps {
   onLoginSuccess: (user: any) => void;
   onLoginFailed?: (username: string) => void;
   onNeedsPropertySelection?: (info: { tenantId: number; tenantSlug: string; user: any }) => void;
+  onStartTrial?: () => void;
 }
 
-export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', onLoginSuccess, onLoginFailed, onNeedsPropertySelection }) => {
+export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', onLoginSuccess, onLoginFailed, onNeedsPropertySelection, onStartTrial }) => {
   const isTerminal = variant === 'terminal';
 
   const [mobileNumber, setMobileNumber] = useState('');
@@ -434,14 +435,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
 
   return (
     <section className="bg-gray-50 dark:bg-gray-900 min-h-screen flex flex-col items-center justify-center px-6 py-8 mx-auto md:h-screen lg:py-0">
-      {/* Real brand mark (icons/icon-source.png) paired with the wordmark, matching
+      {/* Real brand mark (app-icons/icon-source.png) paired with the wordmark, matching
           Flowbite's own recommended sign-in block markup (img + text inside the same
           font-semibold anchor) rather than a generic icon-in-a-box placeholder - swapped in
           27 Aug 2026 per explicit request, extended to the terminal variant the same day (it
           was still on the old Lock-icon-in-a-box treatment even after the management variant
           was fixed). */}
       <a href="/" className="flex items-center mb-6 text-2xl font-semibold text-gray-900 dark:text-white">
-        <img src="/icons/icon-source.png" alt="" className="w-8 h-8 mr-2 rounded-lg" />
+        <img src="app-icons/icon-source.png" alt="" className="w-8 h-8 mr-2 rounded-lg" />
         <span>{isTerminal ? t('login_modal_brand') : 'Ground Code'}</span>
       </a>
 
@@ -589,6 +590,20 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
                   {t('back_to_home_link', 'Back to Home')}
                 </a>
               </p>
+            )}
+
+            {onStartTrial && (
+              <div className="pt-3 border-t border-slate-200 dark:border-slate-700 text-center space-y-2">
+                <p className="text-2xs font-medium text-slate-500 dark:text-slate-400">New resort or hotel owner?</p>
+                <button
+                  type="button"
+                  onClick={onStartTrial}
+                  className="w-full py-2.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs rounded-lg shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all hover:scale-[1.01]"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+                  <span>Start 30-Day Free Trial (No Credit Card Needed)</span>
+                </button>
+              </div>
             )}
           </form>
         </div>

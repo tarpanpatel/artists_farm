@@ -13,6 +13,7 @@ import { TablePagination } from './TablePagination';
 import { useStaff } from '../contexts/StaffContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { useToast } from './ToastContext';
+import { useAuth } from '../contexts/AuthContext';
 import { StyledSelect } from './StyledSelect';
 import { Input } from './Input';
 import { Button } from './Button';
@@ -78,13 +79,19 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
     setIsLoading(false);
   };
 
-  useEffect(() => { loadAll(); }, []);
+  const { isAuthenticated, authChecked } = useAuth();
 
   useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
+    loadAll();
+  }, [isAuthenticated, authChecked]);
+
+  useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
     fetchStaffAdvancesFromDB().then(data => {
       if (Array.isArray(data)) setAdvances(data);
     }).catch(() => {});
-  }, []);
+  }, [isAuthenticated, authChecked]);
 
   const selectedHandoverStaff = summaries.find(s => s.staffId === handoverStaffId);
   const selectedAdjustmentStaff = summaries.find(s => s.staffId === adjustmentStaffId);

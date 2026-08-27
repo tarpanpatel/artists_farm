@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from 'flowbite-react';
-import { Lock, CheckCircle as CheckCircle2, ExternalLink, FileText, Scale, Lock as ShieldCheck, AlertTriangle } from './icons/FlowbiteIcons';
+import { Lock, CheckCircle as CheckCircle2, ExternalLink, FileText, Scale, ShieldCheck, AlertTriangle } from './icons/FlowbiteIcons';
 import { Button } from './Button';
 import { useToast } from './ToastContext';
 import termsDocRaw from '../../TERMS_AND_PRIVACY.md?raw';
@@ -53,10 +53,6 @@ const HIGHLIGHT_SECTIONS: { title: string; icon: React.FC<any>; points: string[]
   },
 ];
 
-// Minimal markdown -> JSX renderer covering exactly the subset TERMS_AND_PRIVACY.md actually
-// uses (#/##/### headings, ---, * bullets, 1. numbered lists, **bold**, *italic*, plain
-// paragraphs). Not a general-purpose parser - deliberately small rather than pulling in a
-// markdown dependency for one document.
 function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
   const regex = /(\*\*.+?\*\*|\*[^*]+\*)/g;
@@ -67,9 +63,9 @@ function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
     if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index));
     const token = match[0];
     if (token.startsWith('**')) {
-      parts.push(<strong key={`${keyPrefix}-b-${i++}`}>{token.slice(2, -2)}</strong>);
+      parts.push(<strong key={`${keyPrefix}-b-${i++}`} className="font-bold text-slate-900 dark:text-white">{token.slice(2, -2)}</strong>);
     } else {
-      parts.push(<em key={`${keyPrefix}-i-${i++}`}>{token.slice(1, -1)}</em>);
+      parts.push(<em key={`${keyPrefix}-i-${i++}`} className="italic text-slate-700 dark:text-slate-300">{token.slice(1, -1)}</em>);
     }
     lastIndex = regex.lastIndex;
   }
@@ -80,55 +76,77 @@ function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
 function renderMarkdownLite(md: string): React.ReactNode[] {
   const lines = md.split('\n');
   const nodes: React.ReactNode[] = [];
-  let listBuffer: string[] = [];
-  let listType: 'ul' | 'ol' | null = null;
   let key = 0;
 
-  const flushList = () => {
-    if (listBuffer.length && listType) {
-      const items = listBuffer.map((item, idx) => <li key={idx}>{renderInline(item, `li-${key}-${idx}`)}</li>);
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i];
+    const trimmed = rawLine.trim();
+    if (!trimmed) continue;
+
+    if (trimmed === '---') {
+      nodes.push(<hr key={`hr-${key++}`} className="my-4 border-slate-200 dark:border-slate-800" />);
+      continue;
+    }
+    if (trimmed.startsWith('### ')) {
       nodes.push(
-        listType === 'ul'
-          ? <ul key={`list-${key++}`} className="list-disc pl-5 space-y-1 mb-3">{items}</ul>
-          : <ol key={`list-${key++}`} className="list-decimal pl-5 space-y-1 mb-3">{items}</ol>
+        <h4 key={`h4-${key++}`} className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white mt-4 mb-2 flex items-center gap-2">
+          {renderInline(trimmed.slice(4), `h4-${key}`)}
+        </h4>
       );
-    }
-    listBuffer = [];
-    listType = null;
-  };
-
-  for (const rawLine of lines) {
-    const line = rawLine.trim();
-    if (!line) { flushList(); continue; }
-    if (line === '---') { flushList(); nodes.push(<hr key={`hr-${key++}`} className="my-3 border-slate-200 dark:border-slate-700" />); continue; }
-    if (line.startsWith('### ')) { flushList(); nodes.push(<h4 key={`h4-${key++}`} className="text-sm font-bold text-slate-900 dark:text-white mt-4 mb-1.5">{renderInline(line.slice(4), `h4-${key}`)}</h4>); continue; }
-    if (line.startsWith('## ')) { flushList(); nodes.push(<h3 key={`h3-${key++}`} className="text-base font-bold text-slate-900 dark:text-white mt-5 mb-2">{renderInline(line.slice(3), `h3-${key}`)}</h3>); continue; }
-    if (line.startsWith('# ')) { flushList(); nodes.push(<h2 key={`h2-${key++}`} className="text-lg font-extrabold text-slate-900 dark:text-white mb-2">{renderInline(line.slice(2), `h2-${key}`)}</h2>); continue; }
-
-    const bulletMatch = line.match(/^\*\s+(.*)$/);
-    const numberedMatch = line.match(/^\d+\.\s+(.*)$/);
-    if (bulletMatch) {
-      if (listType !== 'ul') flushList();
-      listType = 'ul';
-      listBuffer.push(bulletMatch[1]);
       continue;
     }
-    if (numberedMatch) {
-      if (listType !== 'ol') flushList();
-      listType = 'ol';
-      listBuffer.push(numberedMatch[1]);
+    if (trimmed.startsWith('## ')) {
+      nodes.push(
+        <h3 key={`h3-${key++}`} className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mt-6 mb-3 pb-1 border-b border-slate-200 dark:border-slate-800">
+          {renderInline(trimmed.slice(3), `h3-${key}`)}
+        </h3>
+      );
       continue;
     }
-    flushList();
+    if (trimmed.startsWith('# ')) {
+      nodes.push(
+        <h2 key={`h2-${key++}`} className="text-base sm:text-lg font-bold text-slate-900 dark:text-white mb-3">
+          {renderInline(trimmed.slice(2), `h2-${key}`)}
+        </h2>
+      );
+      continue;
+    }
 
-    // Whole-line italic, e.g. *Last Updated: August 27, 2026*
-    if (/^\*[^*].*[^*]\*$/.test(line)) {
-      nodes.push(<p key={`p-${key++}`} className="text-xs italic text-slate-500 dark:text-slate-400 mb-2">{line.slice(1, -1)}</p>);
+    // List item (level 1 or indented level 2)
+    const indentLevel = rawLine.search(/\S/);
+    const bulletMatch = trimmed.match(/^[\*\-•]\s+(.*)$/);
+    const numberedMatch = trimmed.match(/^(\d+)\.\s+(.*)$/);
+
+    if (bulletMatch || numberedMatch) {
+      const content = bulletMatch ? bulletMatch[1] : numberedMatch![2];
+      const isIndented = indentLevel > 0;
+      nodes.push(
+        <div key={`li-${key++}`} className={`flex items-start gap-2 text-2xs sm:text-xs text-slate-700 dark:text-slate-300 my-1 ${isIndented ? 'ml-5 pl-2 border-l-2 border-slate-200 dark:border-slate-700' : 'ml-1'}`}>
+          <span className="text-blue-600 dark:text-blue-400 font-bold select-none mt-0.5">•</span>
+          <div className="flex-1 leading-relaxed">{renderInline(content, `lic-${key}`)}</div>
+        </div>
+      );
       continue;
     }
-    nodes.push(<p key={`p-${key++}`} className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed mb-2">{renderInline(line, `p-${key}`)}</p>);
+
+    // Whole-line italic
+    if (/^\*[^*].*[^*]\*$/.test(trimmed)) {
+      nodes.push(
+        <p key={`p-${key++}`} className="text-2xs italic text-slate-500 dark:text-slate-400 mb-2">
+          {trimmed.slice(1, -1)}
+        </p>
+      );
+      continue;
+    }
+
+    // Paragraph
+    nodes.push(
+      <p key={`p-${key++}`} className="text-2xs sm:text-xs text-slate-700 dark:text-slate-300 leading-relaxed mb-2.5">
+        {renderInline(trimmed, `p-${key}`)}
+      </p>
+    );
   }
-  flushList();
+
   return nodes;
 }
 

@@ -15,6 +15,11 @@ interface AuthContextValue {
   currentUser: StaffMember | null;
   activeRole: string;
   isAuthenticated: boolean;
+  /** True once the backend check_session call has resolved (success or fail).
+   *  Use `authChecked && isAuthenticated` as the guard for data-fetching effects
+   *  so they wait for the real session result, not just the optimistic
+   *  localStorage snapshot. */
+  authChecked: boolean;
   setActiveRole: (role: string) => void;
   login: (staff: StaffMember) => void;
   logout: () => void;
@@ -42,6 +47,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     return false;
   });
+
+  // authChecked starts false and flips to true ONLY once check_session (or the
+  // demo-login fallback) has actually resolved. This is the reliable gate for
+  // all data-fetching useEffects — isAuthenticated on its own is NOT enough
+  // because it initialises optimistically from localStorage (for a fast first
+  // paint) and can be true BEFORE the server confirms the session is still
+  // valid, causing all the data-fetching effects to fire and get 401s.
+  // Gating on `authChecked && isAuthenticated` means: "we have confirmed with
+  // the backend that we are actually logged in right now."
+  const [authChecked, setAuthChecked] = useState(false);
 
   const [currentUser, setCurrentUser] = useState<StaffMember | null>(() => {
     if (typeof window !== 'undefined') {
@@ -71,19 +86,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // but this effect is what actually decides isAuthenticated - always by
   // asking the real backend session (check_session), never by trusting
   // localStorage alone.
-  //
-  // Previously, an "auto-login root admins to any property" shortcut (and
-  // a similar one for any cached login) set isAuthenticated=true directly
-  // from a localStorage snapshot of a PAST login response, without ever
-  // confirming the CURRENT backend session was still valid for THIS
-  // property. Once that snapshot went stale (expired session, browser
-  // profile with an old/unrelated session cookie, etc.) the frontend kept
-  // believing it was logged in while every real data call 401/403'd
-  // against the actual backend - the exact "Access Denied on a page that
-  // claims you're logged in" report this was rewritten to fix. This
-  // mirrors the same class of bug already fixed once for the public-demo
-  // anonymous-visitor path (see git history) - same fix, applied
-  // consistently instead of leaving this one shortcut behind.
   useEffect(() => {
     const checkAuthState = async () => {
       try {
@@ -105,43 +107,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setIsAuthenticated(true);
           setCurrentUser(user);
           setActiveRole(normalizeRole(user.role));
+          setAuthChecked(true);
           return;
         }
 
         // SECURITY/CORRECTNESS (18 Aug 2026): a real session already exists
         // for this browser but just isn't authorized for THIS property
         // (session_property_mismatch) - do NOT fall through to demo
-        // auto-login below. PHP session cookies are shared across every tab
-        // on the same domain; login_user (which the demo path calls) issues
-        // a fresh cookie, silently overwriting whatever real session was
-        // active - including a root/tenant admin session open in a
-        // completely different tab. This is exactly how a tab sitting on the
-        // public-demo property could silently kick a Root Dashboard session
-        // in another tab back to "logged in as the demo account," making the
-        // dashboard show 0 tenants/properties and "session expired" even
-        // right after a fresh, correct root-admin login elsewhere. Only
-        // attempt demo auto-login when there's truly no session at all.
+        // auto-login below.
         if (data?.session_property_mismatch) {
           localStorage.removeItem(authKey());
           localStorage.removeItem(userKey());
           setIsAuthenticated(false);
           setCurrentUser(null);
+          setAuthChecked(true);
           return;
         }
 
-        // Public demo mode (12 Aug 2026, replaced with this simpler design
-        // later the same day): a designated property (see
-        // properties.is_public_demo) lets anonymous visitors in without a
-        // real login. The first version of this auto-created/overwrote the
-        // session server-side on arbitrary GET requests - three rounds of
-        // fixes there still left visitors intermittently stuck on "Access
-        // Denied" for reasons that never reproduced in direct testing.
-        // Replaced with a completely normal login_user POST using this
-        // property's demo credentials (fetched from a public endpoint that
-        // only ever returns a designated demo-only account, never a real
-        // tenant's) - the exact same, thousands-of-times-a-day-tested code
-        // path every real staff login uses, instead of a bespoke path only
-        // demo visitors ever hit.
+        // Public demo mode: a designated property lets anonymous visitors in
+        // without a real login via demo credentials.
         const propertySlug = getPropertySlug();
         const credsRes = await apiFetch(
           `${API_ROOT_BASE}/php/api/router.php?action=get_demo_login_credentials&property_slug=${encodeURIComponent(propertySlug)}`
@@ -171,6 +155,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setIsAuthenticated(true);
             setCurrentUser(user);
             setActiveRole(normalizeRole(user.role));
+            setAuthChecked(true);
             return;
           }
         }
@@ -178,26 +163,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('check_session/demo login failed:', e);
       }
 
-      // No real backend session, and not a public demo property either -
-      // clear any stale optimistic state from a previous, now-invalid
-      // session so the login screen shows instead of a broken "logged in"
-      // shell.
+      // No real backend session, and not a public demo property either.
       localStorage.removeItem(authKey());
       localStorage.removeItem(userKey());
       setIsAuthenticated(false);
       setCurrentUser(null);
+      setAuthChecked(true);
     };
 
     checkAuthState();
 
-    // Listen for storage changes (e.g., from other tabs)
     window.addEventListener('storage', checkAuthState);
-    // Same-tab equivalent (found 21 Aug 2026): 'storage' only fires in OTHER
-    // tabs, never the one that made the change, so a real session ending
-    // mid-session in THIS tab (session expired, or just-fixed Sign Out
-    // Terminal - see router.php's 'logout' case) had nothing telling this
-    // tab to re-check. apiFetch() in services/api.ts dispatches this event
-    // on any 401 that isn't login_user/check_session itself.
+    // Same-tab equivalent: 'storage' only fires in OTHER tabs, never the one
+    // that made the change. apiFetch() dispatches this event on any 401 that
+    // isn't login_user/check_session itself.
     window.addEventListener('artists_farm_session_expired', checkAuthState);
     return () => {
       window.removeEventListener('storage', checkAuthState);
@@ -207,6 +186,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = useCallback((staff: StaffMember) => {
     setIsAuthenticated(true);
+    setAuthChecked(true);
     setCurrentUser(staff);
     setActiveRole(normalizeRole(staff.role || 'Staff'));
     localStorage.setItem(authKey(), 'true');
@@ -214,22 +194,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const logout = useCallback(() => {
-    // Best-effort server-side invalidation (found 21 Aug 2026: this used to
-    // be client-state-only - PHP session cookie stayed valid, so a plain
-    // navigation silently re-authenticated the same user even after
-    // "signing out". See router.php's 'logout' case for the full story).
-    // Fire-and-forget: client-side state below still clears either way, so
-    // a failed request here doesn't block the sign-out UX.
+    // Best-effort server-side invalidation. Fire-and-forget: client-side
+    // state below still clears either way, so a failed request here doesn't
+    // block the sign-out UX.
     apiFetch('/php/api/router.php?action=logout', { method: 'POST' }).catch(() => {});
     setIsAuthenticated(false);
     setCurrentUser(null);
     localStorage.removeItem(authKey());
     localStorage.removeItem(userKey());
-    // Also clear generic session for consistency
     localStorage.removeItem('artists_farm_user_session');
   }, []);
+
   return (
-    <AuthContext.Provider value={{ currentUser, activeRole, isAuthenticated, setActiveRole, login, logout }}>
+    <AuthContext.Provider value={{ currentUser, activeRole, isAuthenticated, authChecked, setActiveRole, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

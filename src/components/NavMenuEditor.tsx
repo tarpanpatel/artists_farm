@@ -16,6 +16,7 @@ import { Input } from './Input';
 import { Checkbox } from 'flowbite-react';
 import { t } from '../i18n/en';
 import { useToast } from './ToastContext';
+import { useAuth } from '../contexts/AuthContext';
 
 interface NavMenuEditorProps {
   navItems: NavMenuItem[];
@@ -130,6 +131,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
   });
 
   const { showToast } = useToast();
+  const { isAuthenticated, authChecked } = useAuth();
 
   const sortableInstances = useRef<Sortable[]>([]);
   const sortableContainerRef = useRef<HTMLDivElement>(null);
@@ -142,6 +144,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
   }, [navItems]);
 
   useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
     const fetchConfiguration = async () => {
       try {
         // apiFetch returns the raw Response - .status here was the HTTP status
@@ -170,7 +173,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
     };
 
     fetchConfiguration();
-  }, []);
+  }, [isAuthenticated, authChecked]);
 
   const markDirty = () => setHasUnsaved(true);
 

@@ -26,13 +26,13 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
           still announces what's actually happening. */}
       <span className="sr-only" role="status">{message}</span>
       <div className="flex flex-col items-center gap-8 loading-screen__container">
-        {/* Logo - the actual brand mark file (icons/icon-source.png, gradient +
+        {/* Logo - the actual brand mark file (app-icons/icon-source.png, gradient +
             glyph + rounded corners already baked in from gc_logo.png), shown
             as-is rather than reconstructed as a separate CSS gradient badge
             with the transparent glyph dropped inside it (26 Aug 2026: that
             double-square look was reported and replaced with this). */}
-        <div className="relative w-16 h-16 loading-screen__logo">
-          <img src="/icons/icon-source.png" alt="" className="w-full h-full rounded-lg loading-screen__logo-img" />
+        <div className="w-14 h-14 rounded-2xl bg-white/10 dark:bg-white/5 border border-white/20 p-2.5 shadow-xl flex items-center justify-center relative loading-screen__logo-container">
+          <img src="app-icons/icon-source.png" alt="" className="w-full h-full rounded-lg loading-screen__logo-img" />
         </div>
 
         {/* Standard Loading Spinner Ring - a plain CSS border-ring div, NOT an icon component

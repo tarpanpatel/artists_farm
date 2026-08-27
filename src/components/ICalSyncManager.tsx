@@ -20,6 +20,7 @@ import { getPropertySlug, getPropertyAndRoomSlugs, API_ROOT_BASE } from '../serv
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
 import { useToast } from './ToastContext';
+import { useAuth } from '../contexts/AuthContext';
 import { PageHeader, PageHeaderButton } from './PageHeader';
 import { t } from '../i18n/en';
 import { Input } from './Input';
@@ -116,10 +117,12 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
   const [roomCustomNames, setRoomCustomNames] = useState<{ [roomId: number]: string }>({});
   const [roomImportUrls, setRoomImportUrls] = useState<{ [roomId: number]: string }>({});
 
+  const { isAuthenticated, authChecked } = useAuth();
   const { confirm } = useConfirm();
   const { showToast } = useToast();
 
   useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
     const { roomSlug } = getPropertyAndRoomSlugs();
     setCurrentRoomSlug(roomSlug || null);
     loadCalendars();
@@ -128,7 +131,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
       fetchPropertyRooms(propertyId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [propertyId, effectivePropertySlug]);
+  }, [isAuthenticated, authChecked, propertyId, effectivePropertySlug]);
 
   const fetchPropertyRooms = async (id: number) => {
     try {

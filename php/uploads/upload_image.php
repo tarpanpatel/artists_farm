@@ -27,7 +27,7 @@
 // session_set_cookie_params() (27 Aug 2026, "remember me" fix - see router.php's fuller
 // comment) computed inline since APP_IS_LOCAL_ENV isn't defined until database.php loads.
 $__session_host = $_SERVER['SERVER_NAME'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost';
-$__session_is_local = $__session_host === 'localhost' || $__session_host === '127.0.0.1' || str_contains($__session_host, '192.168.');
+$__session_is_local = $__session_host === 'localhost' || $__session_host === '127.0.0.1' || str_contains($__session_host, '192.168.') || $__session_host === 'dev.ground-code.com';
 ini_set('session.gc_maxlifetime', 86400 * 30);
 session_set_cookie_params([
     'lifetime' => 86400 * 30,
@@ -39,6 +39,14 @@ session_set_cookie_params([
 ]);
 session_name('artists_farm_session');
 session_start();
+// Unconditionally suppresses PHP's own implicit Set-Cookie (session_start()
+// queues one on every request that touches $_SESSION, new session or a refresh
+// of an existing one) - see router.php's full explanation next to its own copy
+// of this fix (session-fixation race between concurrent logged-out requests and
+// a real login, found 27 Aug 2026, where even "just reload" didn't self-correct
+// once a bad cookie had already won). appSetSessionCookie() explicitly
+// (re-)issues the cookie on an actual successful login, so this is safe.
+header_remove('Set-Cookie');
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../security/access_control.php';

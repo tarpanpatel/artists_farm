@@ -8,6 +8,7 @@ import { Guest, BillingReceipt, MiscChargeTemplate, MenuItem } from '../types';
 import { Popover } from './Popover';
 import { useToast } from './ToastContext';
 import { useStaff } from '../contexts/StaffContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useConfigurationData } from '../contexts/ConfigurationDataContext';
 import {
   GUEST_STATUS_CHECKED_IN,
@@ -141,6 +142,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 }) => {
   const { showToast } = useToast();
   const { staff } = useStaff();
+  const { isAuthenticated, authChecked } = useAuth();
   const { miscCharges } = useConfigurationData();
 
   // Form Checkin State
@@ -323,8 +325,10 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     setMiscChargesList(miscCharges as MiscChargeTemplate[]);
   }, [miscCharges]);
 
-  // Fetch blocked dates from iCal
+  // Fetch blocked dates from iCal, once authenticated (27 Aug 2026, app-wide
+  // sweep - see KitchenManagement.tsx's identical fix for the full writeup).
   useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
     const fetchBlockedDates = async () => {
       try {
         const propertySlug = getPropertySlug();
@@ -341,7 +345,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       }
     };
     fetchBlockedDates();
-  }, []);
+  }, [isAuthenticated, authChecked]);
 
   // Get all blocked date strings for DatePicker
   const getBlockedDateStrings = (): string[] => {

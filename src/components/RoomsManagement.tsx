@@ -6,6 +6,7 @@ import { Button } from './Button';
 import { Input } from './Input';
 import { useConfirm } from './ConfirmDialogContext';
 import { useToast } from './ToastContext';
+import { useAuth } from '../contexts/AuthContext';
 import { apiFetch } from '../services/api';
 
 interface Room {
@@ -76,6 +77,7 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
   const [tariffDraft, setTariffDraft] = useState('');
   const [savingTariff, setSavingTariff] = useState(false);
 
+  const { isAuthenticated, authChecked } = useAuth();
   const { confirm } = useConfirm();
 
   const loadData = async () => {
@@ -108,9 +110,9 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
   };
 
   useEffect(() => {
-    if (!propertyId) return;
+    if (!authChecked || !isAuthenticated || !propertyId) return;
     loadData();
-  }, [propertyId]);
+  }, [isAuthenticated, authChecked, propertyId]);
 
   const handleAddRoom = async () => {
     if (!newRoom.name || !newRoom.slug) {

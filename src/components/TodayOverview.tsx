@@ -7,6 +7,7 @@ import { ConvertOtaBookingModal } from './ConvertOtaBookingModal';
 import { KpiCard } from './KpiCard';
 import { getPropertySlug } from '../services/api';
 import { useToast } from './ToastContext';
+import { useAuth } from '../contexts/AuthContext';
 import { shareTextContent } from '../utils/shareText';
 import { isCFormGenuinelyFiled } from '../utils/cFormStatus';
 import { t } from '../i18n/en';
@@ -70,6 +71,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   serviceRequestsAccessAllowed = true,
 }) => {
   const { showToast } = useToast();
+  const { isAuthenticated, authChecked } = useAuth();
 
   const today = useMemo(() => {
     const d = new Date();
@@ -133,9 +135,10 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     }
   };
   useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
     fetchBlockedDates();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isAuthenticated, authChecked]);
 
   // Rolling window instead of a fixed calendar month (14 Aug 2026 fix): this
   // used to be locked to whichever single calendar month currentMonth/

@@ -435,7 +435,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
   templateCustomizationEnabled = false,
   hideRoutingControls = false,
 }) => {
-  const { activeRole } = useAuth();
+  const { activeRole, isAuthenticated } = useAuth();
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const normalizedRole = activeRole?.toLowerCase().trim() || '';
@@ -623,9 +623,12 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
   useEffect(() => {
     // This modal is always mounted in the background (visibility toggled via
     // isOpen), so gate on it actually being open rather than fetching the
-    // whole templates catalog on every single page load.
-    if (isOpen) fetchTemplatesFromDB().then(setDbTemplates);
-  }, [isOpen]);
+    // whole templates catalog on every single page load. Also gated on
+    // isAuthenticated (27 Aug 2026, app-wide sweep) - this component is itself
+    // mounted at App.tsx completely outside any auth gate, so isOpen alone
+    // wasn't enough to stop this from firing (and 401ing) before login.
+    if (isOpen && isAuthenticated) fetchTemplatesFromDB().then(setDbTemplates);
+  }, [isOpen, isAuthenticated]);
 
   // Filter templates based on enabled modules, merged with live DB content/
   // metadata. FALLBACK_TEMPLATES stays the source of truth for inline button
@@ -672,12 +675,16 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
     // (there's no real property context to resolve it against anyway) and,
     // critically, skip the auto-open-setup-wizard side effect below, which
     // would otherwise pop the wizard open with no property behind it.
-    if (hideRoutingControls) return;
+    // isAuthenticated added 27 Aug 2026 (app-wide sweep): this component is
+    // mounted at App.tsx completely outside any auth gate, and
+    // hideRoutingControls isn't passed at that render site - meaning this
+    // fired unconditionally, well before the async login could complete.
+    if (hideRoutingControls || !isAuthenticated) return;
     fetchTelegramConfigDB().then((cfg) => {
       setTgSettings(cfg);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hideRoutingControls]);
+  }, [hideRoutingControls, isAuthenticated]);
 
   // Routing changes save immediately — no separate "did you remember to click
   // Save?" step for picking a notification's destination group.

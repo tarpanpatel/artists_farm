@@ -28,13 +28,14 @@ header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Cache-Control: post-check=0, pre-check=0", false);
 header("Pragma: no-cache");
 
-// Get tenant and property slugs from URL (for React)
+// Get tenant, property, app, and onboarding parameters from URL (for React)
 $tenantSlug = isset($_GET['tenant_slug']) ? htmlspecialchars($_GET['tenant_slug']) : '';
 $propertySlug = isset($_GET['property_slug']) ? htmlspecialchars($_GET['property_slug']) : '';
 $app = isset($_GET['app']) ? htmlspecialchars($_GET['app']) : '';
+$onboarding = isset($_GET['onboarding']) ? htmlspecialchars($_GET['onboarding']) : '';
 
-// If visiting the bare root URL (no tenant/property/app specified), serve the marketing landing page
-if (empty($tenantSlug) && empty($propertySlug) && empty($app)) {
+// If visiting the bare root URL (no tenant/property/app/onboarding specified), serve the marketing landing page
+if (empty($tenantSlug) && empty($propertySlug) && empty($app) && empty($onboarding)) {
     $landing_page = file_exists(__DIR__ . '/home.html') ? (__DIR__ . '/home.html') : (__DIR__ . '/index3.html');
     if (file_exists($landing_page)) {
         readfile($landing_page);
@@ -46,12 +47,10 @@ if (file_exists($dist_index)) {
     // Serve the production single-page application built from React
     $html = file_get_contents($dist_index);
 
-    // Fix all relative asset paths to be absolute from /dist/ - needed because
-    // the app is reachable at nested URLs (/{tenant}/{property}/...), where a
-    // relative "./assets/" would resolve relative to THAT path instead of the
-    // real location. Was hardcoded to "/artists_farm/dist/..." - a subfolder
-    // this site has never actually been deployed under (it's served from the
-    // domain root) - so every asset 404'd before this fix.
+    // Fix all relative asset paths to be absolute from the domain root - this app is
+    // always served from the domain root (see .htaccess's RewriteBase and
+    // src/services/api.ts's own comment - never deployed under a subfolder like
+    // /artists_farm/), so these are plain absolute paths, not computed per-request.
     $html = str_replace('href="./assets/', 'href="/dist/assets/', $html);
     $html = str_replace('src="./assets/', 'src="/dist/assets/', $html);
     $html = str_replace('./assets/', '/dist/assets/', $html);
@@ -60,16 +59,15 @@ if (file_exists($dist_index)) {
     $html = str_replace('="/assets/', '="/dist/assets/', $html);
 
     // Point the manifest link at the dynamic per-request generator (php/manifest.php)
-    // instead of the static bundled manifest.json, so a PWA installed from THIS
-    // page's tenant/property reopens to the same place instead of the bare domain
-    // root (which has no tenant/property context and breaks things like the
-    // Public Demo Mode auto-login). Replaces whatever href is already there,
-    // static or Vite-hashed.
     $manifestUrl = '/php/manifest.php?tenant_slug=' . urlencode($tenantSlug) . '&property_slug=' . urlencode($propertySlug);
     $html = preg_replace('/<link rel="manifest" href="[^"]*"\s*\/?>/', '<link rel="manifest" href="' . $manifestUrl . '" />', $html);
 
-    // Inject tenant and property slugs into the page so React can access them
-    $html = str_replace('</head>', "<script>window.__TENANT_SLUG__ = '$tenantSlug'; window.__PROPERTY_SLUG__ = '$propertySlug';</script>\n</head>", $html);
+    // Inject tenant and property slugs into the page so React can access them.
+    // preg_replace with a limit of 1 (not str_replace, which replaces every match) -
+    // dist/index.html's own inline scripts contain code comments that mention the
+    // head element by name, and a global replace would corrupt those comments by
+    // splicing a real <script> tag into the middle of them.
+    $html = preg_replace('/<head>/', "<head>\n<script>window.__TENANT_SLUG__ = '$tenantSlug'; window.__PROPERTY_SLUG__ = '$propertySlug';</script>", $html, 1);
 
     echo $html;
     exit();

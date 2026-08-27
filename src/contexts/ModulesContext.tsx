@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { fetchPropertyModulesFromDB, getPropertySlug } from '../services/api';
+import { useAuth } from './AuthContext';
 
 interface ModuleStatus {
   [moduleSlug: string]: boolean;
@@ -32,6 +33,7 @@ export const ModulesProvider: React.FC<ModulesProviderProps> = ({ children, init
   });
   const [loading, setLoading] = useState(!initialData);
   const [currentSlug, setCurrentSlug] = useState(() => getPropertySlug());
+  const { isAuthenticated, authChecked } = useAuth();
 
   // Update modules state whenever initialData changes from parent
   useEffect(() => {
@@ -45,7 +47,16 @@ export const ModulesProvider: React.FC<ModulesProviderProps> = ({ children, init
     }
   }, [initialData]);
 
+  // isAuthenticated guard (27 Aug 2026, app-wide sweep): ModulesProvider wraps
+  // the whole app unconditionally, well before AuthContext's own async login
+  // sequence resolves - unlike its sibling providers (StaffContext,
+  // FinanceContext, etc.), which all already gate on isAuthenticated. Guarding
+  // inside the shared refetchModules() itself (rather than each of its 3 call
+  // sites below) covers all of them at once, and since isAuthenticated is a
+  // dependency here, the "Initial load check" effect re-runs and correctly
+  // retries the moment auth resolves.
   const refetchModules = useCallback(async () => {
+    if (!authChecked || !isAuthenticated) return;
     try {
       setLoading(true);
       const modulesList = await fetchPropertyModulesFromDB();
@@ -61,7 +72,7 @@ export const ModulesProvider: React.FC<ModulesProviderProps> = ({ children, init
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isAuthenticated, authChecked]);
 
   // Listen to route/hash/location changes & property slug changes
   useEffect(() => {

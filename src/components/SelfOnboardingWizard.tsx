@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Drawer } from 'flowbite-react';
 import {
-  User, Mail, Phone, Lock, Home, Layers, Clock, ChefHat,
+  User, Home, Layers, ChefHat,
   CheckCircle2, ArrowRight, ArrowLeft, Loader2, Sparkles, ShieldCheck, X, AlertCircle,
+  Smartphone, Share, PlusSquare, MoreVertical,
 } from './icons/FlowbiteIcons';
 import { Button } from './Button';
 import { Input } from './Input';
@@ -14,7 +15,7 @@ interface SelfOnboardingWizardProps {
   onSuccess: (redirectUrl: string) => void;
 }
 
-type Step = 1 | 2 | 3;
+type Step = 1 | 2 | 3 | 4;
 
 export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
   isOpen,
@@ -25,6 +26,7 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
   const [step, setStep] = useState<Step>(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [registeredRedirectUrl, setRegisteredRedirectUrl] = useState<string | null>(null);
 
   // --- Step 1: Owner Credentials ---
   const [fullName, setFullName] = useState('');
@@ -80,8 +82,10 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
       const data = await response.json();
 
       if (data.success) {
+        const targetUrl = data.redirect_url || `/${data.property_slug}`;
+        setRegisteredRedirectUrl(targetUrl);
         showToast('Account & Property created successfully! 30-Day trial active.', { type: 'success' });
-        onSuccess(data.redirect_url || `/${data.property_slug}`);
+        setStep(4);
       } else {
         const msg = data.message || 'Failed to complete registration';
         setError(msg);
@@ -128,19 +132,22 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
       <div className="px-4 py-3 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shrink-0">
         <div className="flex items-center justify-between text-2xs font-semibold text-slate-500 dark:text-slate-400">
           <span className={step === 1 ? 'text-indigo-600 dark:text-indigo-400 font-bold' : step > 1 ? 'text-emerald-600 dark:text-emerald-400' : ''}>
-            1. Account & Security
+            1. Account
           </span>
           <span className={step === 2 ? 'text-indigo-600 dark:text-indigo-400 font-bold' : step > 2 ? 'text-emerald-600 dark:text-emerald-400' : ''}>
-            2. 30-Day Trial License
+            2. License
           </span>
-          <span className={step === 3 ? 'text-indigo-600 dark:text-indigo-400 font-bold' : ''}>
-            3. Property Setup
+          <span className={step === 3 ? 'text-indigo-600 dark:text-indigo-400 font-bold' : step > 3 ? 'text-emerald-600 dark:text-emerald-400' : ''}>
+            3. Add Property
+          </span>
+          <span className={step === 4 ? 'text-indigo-600 dark:text-indigo-400 font-bold' : ''}>
+            4. Add App
           </span>
         </div>
         <div className="w-full bg-slate-100 dark:bg-slate-700 h-1.5 rounded-full mt-2 overflow-hidden">
           <div
             className="bg-indigo-600 h-full transition-all duration-300 rounded-full"
-            style={{ width: `${(step / 3) * 100}%` }}
+            style={{ width: `${(step / 4) * 100}%` }}
           />
         </div>
       </div>
@@ -166,8 +173,7 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
               label="Full Name"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              placeholder="e.g. Rajesh Sharma"
-              leftIcon={<User className="w-4 h-4" />}
+              helperText="e.g. Rajesh Sharma"
             />
 
             <Input
@@ -175,9 +181,7 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
               label="Email Address"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="e.g. rajesh@vrikshawanresort.com"
-              helperText="Official tax bills & invoices will be sent to this email."
-              leftIcon={<Mail className="w-4 h-4" />}
+              helperText="e.g. rajesh@vrikshawanresort.com - official tax bills & invoices will be sent here."
             />
 
             <Input
@@ -185,9 +189,7 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
               label="Mobile Number (Login Username)"
               value={phone}
               onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-              placeholder="Enter 10-digit mobile number"
-              helperText="This mobile number is your login username."
-              leftIcon={<Phone className="w-4 h-4" />}
+              helperText="10-digit mobile number - this is your login username."
             />
 
             <Input
@@ -196,9 +198,7 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
               label="6-Digit Passcode (PIN)"
               value={passcode}
               onChange={(e) => setPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              placeholder="e.g. 123456"
-              helperText="Enter a 6-digit numeric PIN for quick login."
-              leftIcon={<Lock className="w-4 h-4" />}
+              helperText="e.g. 123456 - a 6-digit numeric PIN for quick login."
             />
           </div>
         )}
@@ -254,12 +254,19 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
         {/* STEP 3: Property Setup */}
         {step === 3 && (
           <div className="space-y-4">
+            <div className="pb-2 border-b border-slate-200 dark:border-slate-700">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Home className="w-4 h-4 text-indigo-600" />
+                <span>Add Your First Property</span>
+              </h3>
+              <p className="text-2xs text-slate-500 dark:text-slate-400 mt-0.5">Enter details for your homestay, villa, or hotel.</p>
+            </div>
+
             <Input
               label="Property Name"
               value={propertyName}
               onChange={(e) => setPropertyName(e.target.value)}
-              placeholder="e.g. Vrikshawan Resort Hut"
-              leftIcon={<Home className="w-4 h-4" />}
+              helperText="e.g. Vrikshawan Resort Hut"
             />
 
             <div>
@@ -298,12 +305,12 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
             )}
 
             <div className="grid grid-cols-2 gap-3">
-              <Input type="time" label="Check-in Time" value={checkinTime} onChange={(e) => setCheckinTime(e.target.value)} leftIcon={<Clock className="w-4 h-4" />} />
-              <Input type="time" label="Check-out Time" value={checkoutTime} onChange={(e) => setCheckoutTime(e.target.value)} leftIcon={<Clock className="w-4 h-4" />} />
+              <Input type="time" label="Check-in Time" value={checkinTime} onChange={(e) => setCheckinTime(e.target.value)} />
+              <Input type="time" label="Check-out Time" value={checkoutTime} onChange={(e) => setCheckoutTime(e.target.value)} />
             </div>
 
             <div>
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Does this property have a kitchen?</label>
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Does this property serve food?</label>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
@@ -311,7 +318,7 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
                   className={`flex items-center gap-2 p-3 rounded-lg border-2 transition-all ${hasKitchen === true ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30' : 'border-slate-200 dark:border-slate-700'}`}
                 >
                   <ChefHat className="w-4 h-4 text-emerald-600" />
-                  <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Yes (KDS & Food)</span>
+                  <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Yes (Kitchen & Food)</span>
                 </button>
                 <button
                   type="button"
@@ -325,12 +332,55 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
             </div>
           </div>
         )}
+
+        {/* STEP 4: Add App to Mobile Guidance */}
+        {step === 4 && (
+          <div className="space-y-4">
+            <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-xl text-center space-y-2">
+              <CheckCircle2 className="w-8 h-8 text-emerald-600 dark:text-emerald-400 mx-auto" />
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">Account Created Successfully!</h3>
+              <p className="text-2xs text-slate-600 dark:text-slate-300">
+                Your 30-day trial for <strong>{propertyName}</strong> is active. We sent login details to your WhatsApp & Email.
+              </p>
+            </div>
+
+            <div className="p-4 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-xl space-y-3">
+              <div className="flex items-center gap-2 font-bold text-xs text-indigo-900 dark:text-indigo-200">
+                <Smartphone className="w-4 h-4 text-indigo-600" />
+                <span>📱 Add Dashboard as an App on Your Mobile</span>
+              </div>
+              <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                Add this resort dashboard to your phone's home screen for 1-tap instant access, push notifications, and fast offline load times!
+              </p>
+
+              <div className="space-y-2 pt-2 border-t border-indigo-100 dark:border-indigo-900 text-2xs">
+                <div className="p-2.5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                  <div className="font-semibold text-slate-900 dark:text-white mb-1">🍏 On iPhone (Safari):</div>
+                  <ol className="list-decimal pl-4 space-y-0.5 text-slate-600 dark:text-slate-300">
+                    <li>Tap <Share className="w-3 h-3 inline text-indigo-600" /> <strong>Share</strong> in Safari's bottom bar</li>
+                    <li>Scroll down & tap <PlusSquare className="w-3 h-3 inline text-indigo-600" /> <strong>Add to Home Screen</strong></li>
+                    <li>Tap <strong>Add</strong> in top-right corner</li>
+                  </ol>
+                </div>
+
+                <div className="p-2.5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                  <div className="font-semibold text-slate-900 dark:text-white mb-1">🤖 On Android (Chrome):</div>
+                  <ol className="list-decimal pl-4 space-y-0.5 text-slate-600 dark:text-slate-300">
+                    <li>Tap <MoreVertical className="w-3 h-3 inline text-indigo-600" /> <strong>3 Dots Menu</strong> in top-right</li>
+                    <li>Tap <strong>Install App</strong> or <strong>Add to Home screen</strong></li>
+                    <li>Tap <strong>Install</strong> to confirm</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Footer Navigation Buttons */}
       <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between shrink-0 bg-slate-50 dark:bg-slate-900">
-        {step > 1 ? (
-          <Button variant="outline" onClick={() => setStep((s) => (s - 1) as Step)} disabled={loading}>
+        {step > 1 && step < 4 ? (
+          <Button variant="secondary" onClick={() => setStep((s) => (s - 1) as Step)} disabled={loading}>
             <ArrowLeft className="w-4 h-4 mr-1" /> Back
           </Button>
         ) : (
@@ -346,7 +396,7 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
             <span>Next Step</span>
             <ArrowRight className="w-4 h-4 ml-1" />
           </Button>
-        ) : (
+        ) : step === 3 ? (
           <Button
             variant="primary"
             onClick={handleSubmit}
@@ -362,6 +412,15 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
                 <CheckCircle2 className="w-4 h-4 ml-1" />
               </>
             )}
+          </Button>
+        ) : (
+          <Button
+            variant="primary"
+            onClick={() => onSuccess(registeredRedirectUrl || '/')}
+            className="w-full justify-center"
+          >
+            <span>Launch Property Dashboard Now</span>
+            <ArrowRight className="w-4 h-4 ml-1" />
           </Button>
         )}
       </div>

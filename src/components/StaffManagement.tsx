@@ -79,7 +79,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 }) => {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
-  const { currentUser } = useAuth();
+  const { currentUser, isAuthenticated } = useAuth();
   const { staff, staffLoading, attendance, addStaff, updateStaff, recordAttendance, refreshStaff } = useStaff();
   const [activeSubTab, setActiveSubTab] = useState<'control_center' | 'calendar' | 'roster'>('control_center');
   const isAttendancePage = activeMenuItemKey === 'attendance_calendar' || activeMenuItemKey === 'attendance_salaries';
@@ -96,7 +96,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const [tenantPropertyCount, setTenantPropertyCount] = useState<number>(1);
 
   useEffect(() => {
-    if (!tenantId) return;
+    if (!isAuthenticated || !tenantId) return;
     fetch(`/php/api/router.php?action=get_tenant_properties&tenant_id=${tenantId}`, { credentials: 'include' })
       .then((r) => r.json())
       .then((data) => {
@@ -105,7 +105,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
         }
       })
       .catch(() => {});
-  }, [tenantId]);
+  }, [isAuthenticated, tenantId]);
 
   const hasMultipleProperties = tenantPropertyCount > 1 || users.some((u) => u.accessAllProperties);
 

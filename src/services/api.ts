@@ -18,7 +18,7 @@ import { PropertyTelegramConfig } from '../types';
 // JSON (surfacing as "Unexpected token '<'... is not valid JSON", and, for
 // the CSRF token fetch specifically, a silently-empty token that made every
 // write from that page fail with "CSRF token missing" instead).
-const _base = '';
+const _base = (typeof window !== 'undefined' && window.location.pathname.startsWith('/artists_farm')) ? '/artists_farm' : '';
 const API_BASE = `${_base}/php/api/router.php`;
 const UPLOAD_BASE = `${_base}/php/uploads/upload_image.php`;
 const DOCUMENT_UPLOAD_BASE = `${_base}/php/uploads/upload_document.php`;

@@ -124,7 +124,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   const { pettyCash, pettyCashLoading, addPettyCash, updatePettyCash, deletePettyCash } = useFinance();
   const { showToast } = useToast();
   const { confirm } = useConfirm();
-  const { activeRole: authRole, currentUser } = useAuth();
+  const { activeRole: authRole, currentUser, isAuthenticated, authChecked } = useAuth();
   const currentUserName = currentUser?.name || currentUser?.username || 'Staff';
 
   const effectiveRole = (activeRole || authRole || '').toLowerCase().trim();
@@ -183,9 +183,14 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     });
   };
 
+  // Gated on isAuthenticated (27 Aug 2026, part of an app-wide sweep after a
+  // "wall of 401s" report) - fetches unconditionally on mount used to race
+  // ahead of the async login flow with no retry once auth landed. See
+  // KitchenManagement.tsx's identical fix, same day, for the full writeup.
   useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
     refreshPayees();
-  }, []);
+  }, [isAuthenticated, authChecked]);
 
   // Root Admin's "Default Expenses (MultiKey)" catalog (system_expenses table,
   // DefaultExpensesManager.tsx) - curated reference items grouped into ~20
@@ -197,20 +202,22 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   // its own.
   const [systemExpenseCatalog, setSystemExpenseCatalog] = useState<Record<string, { label: string }[]>>({});
   useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
     fetchSystemExpenseCatalogFromDB().then((data) => {
       if (data && Object.keys(data).length > 0) setSystemExpenseCatalog(data);
     });
-  }, []);
+  }, [isAuthenticated, authChecked]);
 
   // Dedicated Bills Catalog managed by Root Admin â†’ Default Bills (MK).
   // Items here surface directly as Bills autocomplete suggestions without
   // needing any category-mapping step.
   const [billsCatalog, setBillsCatalog] = useState<{ label: string }[]>([]);
   useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
     fetchBillsCatalogFromDB().then((data) => {
       if (Array.isArray(data) && data.length > 0) setBillsCatalog(data);
     });
-  }, []);
+  }, [isAuthenticated, authChecked]);
 
   const [customExpenses, setCustomExpenses] = useState<{ id: number; label: string; default_amount: number; category: string; description?: string }[]>([]);
   const refreshCustomExpenses = () => {
@@ -219,8 +226,9 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     });
   };
   useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
     refreshCustomExpenses();
-  }, []);
+  }, [isAuthenticated, authChecked]);
 
   // Payee Manager Modal & CRUD state
   const [isPayeeManagerOpen, setIsPayeeManagerOpen] = useState(false);
@@ -386,13 +394,15 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   const [kitchenPurchases, setKitchenPurchases] = useState<any[]>([]);
   const [kitchenPurchasesLoading, setKitchenPurchasesLoading] = useState(true);
   useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
     fetchKitchenPurchasesFromDB().then((data) => {
       setKitchenPurchases(data || []);
       setKitchenPurchasesLoading(false);
     });
-  }, []);
+  }, [isAuthenticated, authChecked]);
 
   useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
     fetchStaffUsersFromDB().then((users) => {
       if (users && users.length > 0) {
         const handlers = users.filter((u: any) => u.isFinancialHandler);
@@ -401,7 +411,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
         }
       }
     });
-  }, []);
+  }, [isAuthenticated, authChecked]);
 
   useEffect(() => {
     if (currentUserName && (!formState.paidBy || formState.paidBy === 'Tarpan')) {
@@ -470,14 +480,15 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   const [desktopPage, setDesktopPage] = useState<number>(1);
   const DESKTOP_PAGE_SIZE = 15;
 
-  // Fetch prices from DB on mount
+  // Fetch prices from DB once authenticated
   useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
     fetchExpenseItemPricesFromDB().then((prices) => {
       if (prices && Object.keys(prices).length > 0) {
         setItemPrices(prices);
       }
     });
-  }, []);
+  }, [isAuthenticated, authChecked]);
 
   // Description autocomplete, grouped by this form's own Cost Category
   // Group ('Other'/'Bills'/'Staff Advance'/'Kitchen') and derived from this

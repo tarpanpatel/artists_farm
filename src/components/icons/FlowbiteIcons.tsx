@@ -164,6 +164,7 @@ export const Moon = wrap(getOutline('Moon'));
 export const Sun = wrap(getOutline('Sun'));
 export const Globe = wrap(getOutline('Globe'));
 export const Phone = wrap(getOutline('Phone'));
+export const Headset = wrap(getOutline('Headphone') || getOutline('Phone') || getOutline('Messages'));
 export const HelpCircle = wrap(getOutline('QuestionCircle'));
 export const ScrollText = wrap(getOutline('FileLines') || getOutline('FileCode'));
 export const Bot = wrap(getOutline('CodeFork') || getOutline('WandMagicSparkles'));

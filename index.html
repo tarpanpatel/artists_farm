@@ -18,7 +18,7 @@
          this meta tag providing the safe-area geometry it reads from. -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Ground Code Resort Management</title>
-    <link rel="icon" type="image/png" href="/icons/favicon-32x32.png" />
+    <link rel="icon" type="image/png" href="/app-icons/favicon-32x32.png" />
     <link rel="manifest" href="/manifest.json" />
     <!-- Mirrors manifest.php's background_color/theme_color (#0B84FF) here
          in the HTML head - without this, the OS's pre-paint transition frame
@@ -34,7 +34,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="AF POS" />
-    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" href="/app-icons/apple-touch-icon.png" />
     <!-- Inter used to load from fonts.googleapis.com here as a plain
          render-blocking <link rel="stylesheet"> - the browser withheld ALL
          painting, including the "instant" #initial-loader below (whose
@@ -197,7 +197,7 @@
                the "jarring style change" this loader's own comment above says it exists to
                avoid, since LoadingScreen.tsx's icon never has that gap. Inlining the PNG as
                base64 keeps that zero-network-dependency property.
-               Updated 26 Aug 2026: this now inlines the FULL logo (icons/icon-source.png -
+               Updated 26 Aug 2026: this now inlines the FULL logo (app-icons/icon-source.png -
                gradient + glyph + rounded corners already baked in), not the gradient-square
                CSS badge + transparent-glyph-only image combo used before - that recreated the
                logo as a separate colored box rather than showing the actual logo file, which

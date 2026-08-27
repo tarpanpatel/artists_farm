@@ -4,6 +4,7 @@ import { TablePagination } from './TablePagination';
 import { Plus, Trash2, RefreshCw, Loader2, Lock, Pencil, ArrowLeft } from './icons/FlowbiteIcons';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
+import { useAuth } from '../contexts/AuthContext';
 import { StyledSelect } from './StyledSelect';
 import { Button } from './Button';
 import { Input } from './Input';
@@ -39,6 +40,7 @@ export const ExpenseItemsManagement: React.FC = () => {
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
 
+  const { isAuthenticated, authChecked } = useAuth();
   const { showToast } = useToast();
   const { confirm } = useConfirm();
 
@@ -67,8 +69,9 @@ export const ExpenseItemsManagement: React.FC = () => {
   };
 
   useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
     loadItems();
-  }, []);
+  }, [isAuthenticated, authChecked]);
 
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();

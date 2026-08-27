@@ -21,8 +21,8 @@ self.addEventListener('push', (event) => {
     event.waitUntil(
         self.registration.showNotification(data.title, {
             body: data.body,
-            icon: '/icons/android-chrome-192x192.png',
-            badge: '/icons/favicon-32x32.png',
+            icon: '/app-icons/android-chrome-192x192.png',
+            badge: '/app-icons/favicon-32x32.png',
             tag: data.tag || 'telescope-alert',
             renotify: true,
             data: { url: data.url || '/php/errors/' },

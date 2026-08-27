@@ -33,6 +33,7 @@ import {
 } from '../services/api';
 import { useFinance } from '../contexts/FinanceContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
+import { useAuth } from '../contexts/AuthContext';
 import { StyledSelect } from './StyledSelect';
 import { Input } from './Input';
 import { PageHeader } from './PageHeader';
@@ -67,6 +68,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 }) => {
   const { orders } = useKitchenContext();
   const { pettyCash } = useFinance();
+  const { isAuthenticated, authChecked } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'pace' | 'kitchen' | 'expenses' | 'profit_loss' | 'fluctuations'>(() => {
     return activeMenuItemKey === 'purchase_analytics' ? 'expenses' : 'overview';
   });
@@ -105,6 +107,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   });
 
   useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
     fetchKitchenPurchasesFromDB().then((data) => {
       if (Array.isArray(data)) {
         setKitchenPurchases(data);
@@ -135,7 +138,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         setRecipes(data);
       }
     });
-  }, []);
+  }, [isAuthenticated, authChecked]);
 
   useEffect(() => {
     if (activeMenuItemKey === 'purchase_analytics') setActiveTab('expenses');
@@ -161,6 +164,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   }, [activeTab, kitchenModuleEnabled]);
 
   useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
     // Also fires on 'bookings': Profit per Room Night moved there and reads
     // from this same ledgerMonth-scoped fetch (17 Aug 2026).
     if (activeTab === 'profit_loss' || activeTab === 'bookings') {
@@ -173,7 +177,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         setLedgerLoading(false);
       });
     }
-  }, [activeTab, ledgerMonth]);
+  }, [isAuthenticated, authChecked, activeTab, ledgerMonth]);
 
   const now = new Date();
   const getDateBounds = () => {

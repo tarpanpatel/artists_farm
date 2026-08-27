@@ -112,7 +112,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const { staff } = useStaff();
   const { showToast } = useToast();
   const { confirm } = useConfirm();
-  const { activeRole } = useAuth();
+  const { activeRole, isAuthenticated, authChecked } = useAuth();
   // ROLES.md (23 Aug 2026): Staff Kitchen is view-only on bookings - no
   // upload ID, C-Form, check-in, checkout, edit, or delete. Plain Staff keeps
   // all of those except checkout specifically. Read directly from AuthContext
@@ -137,6 +137,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   }>({});
 
   useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
     fetch('/php/api/router.php?action=get_property', { credentials: 'include' })
       .then((res) => res.json())
       .then((data) => {
@@ -145,7 +146,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         }
       })
       .catch(() => {});
-  }, []);
+  }, [isAuthenticated, authChecked]);
 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);

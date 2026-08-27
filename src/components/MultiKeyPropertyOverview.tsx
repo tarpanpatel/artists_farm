@@ -7,6 +7,7 @@ import { OperationalDashboard } from './OperationalDashboard';
 import { GuestManagement } from './GuestManagement';
 import { PropertyEditForm } from './PropertyEditForm';
 import { ICalSyncManager } from './ICalSyncManager';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Room {
   id: number;
@@ -145,6 +146,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
   const [error, setError] = useState<string | null>(null);
   const [, setStaffCount] = useState<number>(0);
   const [, setSlotUsage] = useState<any>(null);
+  const { isAuthenticated, authChecked } = useAuth();
 
   // Guards against firing a duplicate/overlapping load for the same
   // propertyId - StrictMode's dev-only double-invoke and rapid re-renders
@@ -152,11 +154,19 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
   // each kick off their own pair of requests.
   const loadedForRef = useRef<number | null>(null);
 
+  // isAuthenticated added to the guard (27 Aug 2026, found via a wall of 401s
+  // that persisted even after a reload): this used to fire the moment
+  // propertyId was available, well before the async public-demo auto-login
+  // had any chance to complete - guaranteed 401 on every cold load, with no
+  // retry once auth actually landed. Deliberately does NOT mark
+  // loadedForRef.current until isAuthenticated is true, so bailing here
+  // doesn't burn the "already loaded" guard - once auth resolves, this effect
+  // re-runs and actually fetches.
   useEffect(() => {
-    if (!propertyId || loadedForRef.current === propertyId) return;
+    if (!propertyId || !authChecked || !isAuthenticated || loadedForRef.current === propertyId) return;
     loadedForRef.current = propertyId;
     loadData();
-  }, [propertyId]);
+  }, [propertyId, isAuthenticated, authChecked]);
 
   const loadData = async () => {
     try {

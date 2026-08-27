@@ -33,6 +33,8 @@ import { LoadingScreen } from './components/LoadingScreen';
 import { LoginPage } from './components/LoginPage';
 import { MultiKeyPropertyOverview } from './components/MultiKeyPropertyOverview';
 import { AIChatWidget } from './components/AIChatWidget';
+import { DemoOnboardingTour } from './components/DemoOnboardingTour';
+import { SelfOnboardingWizard } from './components/SelfOnboardingWizard';
 import { getPropertyAndRoomSlugs } from './services/api';
 
 // Code-split: everything below is either a secondary/admin tab that most
@@ -499,7 +501,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
     }
   };
 
-  const { currentUser, activeRole, isAuthenticated, login, logout } = useAuth();
+  const { currentUser, activeRole, isAuthenticated, authChecked, login, logout } = useAuth();
 
   // Reshapes the raw login_user API response into a StaffMember - moved here from the
   // old LoginModal.tsx when LoginPage/LoginModal merged into one component (15 Aug
@@ -674,6 +676,9 @@ function AppBody({ preloadedData }: AppBodyProps) {
 
   const { inventory, updateStock, addInventoryItem, updateInventoryItemImage, addRequisition } = useInventoryContext();
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [isSelfOnboardingOpen, setIsSelfOnboardingOpen] = useState<boolean>(() => {
+    return typeof window !== 'undefined' && (window.location.search.includes('onboarding=true') || window.location.hash === '#onboarding');
+  });
 
   // PWA Install Prompt State
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -792,7 +797,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // below so whichever fetch cycle started last wins, regardless of which
   // effect it belongs to.
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!authChecked || !isAuthenticated) return;
     hydrationTokenRef.current += 1;
     const myToken = hydrationTokenRef.current;
     const isStale = () => hydrationTokenRef.current !== myToken;
@@ -817,7 +822,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
       if (isStale()) return;
       if (data && data.length > 0) setReceipts(data); else setReceipts([]);
     });
-  }, [isModuleEnabled, preloadedData.currentProperty?.id, isAuthenticated]);
+  }, [isModuleEnabled, preloadedData.currentProperty?.id, isAuthenticated, authChecked]);
 
   // PRODUCT_STRATEGY.md's 30-day trial playbook calls for a "Day 27: in-app
   // warning toast reminding the owner their trial ends in 3 days" - this is
@@ -830,7 +835,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // rather than on every tab/navigation, but still reappears daily until
   // resolved (renewed, or the trial genuinely ends).
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!authChecked || !isAuthenticated) return;
     const status = (preloadedData.currentProperty as any)?.tenant_subscription_status;
     const expiresAt = (preloadedData.currentProperty as any)?.tenant_subscription_expires_at;
     if (status !== 'trial' || !expiresAt) return;
@@ -861,7 +866,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         { type: 'error', duration: 10000 }
       );
     }
-  }, [isAuthenticated, preloadedData.currentProperty?.id, (preloadedData.currentProperty as any)?.tenant_subscription_status, (preloadedData.currentProperty as any)?.tenant_subscription_expires_at]);
+  }, [isAuthenticated, authChecked, preloadedData.currentProperty?.id, (preloadedData.currentProperty as any)?.tenant_subscription_status, (preloadedData.currentProperty as any)?.tenant_subscription_expires_at]);
 
 
 
@@ -877,7 +882,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // result here is reliably a transient failure, not real data - safe to
   // retry a few times rather than accept it as final.
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!authChecked || !isAuthenticated) return;
     refreshStaff();
     let cancelled = false;
     const applyNavItems = (data: any[]) => {
@@ -922,7 +927,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
     loadWithRetry(3);
 
     return () => { cancelled = true; };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, authChecked]);
 
   // Apply property color scheme to document.documentElement using CSS variables
   useEffect(() => {
@@ -967,7 +972,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // data. The token below discards any resolution that isn't from the most
   // recently started fetch cycle.
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!authChecked || !isAuthenticated) return;
     hydrationTokenRef.current += 1;
     const myToken = hydrationTokenRef.current;
     const isStale = () => hydrationTokenRef.current !== myToken;
@@ -1004,15 +1009,15 @@ function AppBody({ preloadedData }: AppBodyProps) {
       if (isStale()) return;
       setServiceRequests(data || []);
     });
-  }, [isModuleEnabled, preloadedData.currentProperty?.id, isAuthenticated]);
+  }, [isModuleEnabled, preloadedData.currentProperty?.id, isAuthenticated, authChecked]);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!authChecked || !isAuthenticated) return;
     if (activeTab === 'dashboard') {
       fetchGuestsFromDB().then((data) => setGuests(data || []));
       fetchServiceRequestsFromDB().then((data) => setServiceRequests(data || []));
     }
-  }, [activeTab, isAuthenticated]);
+  }, [activeTab, isAuthenticated, authChecked]);
 
   // Helper to check if a route key is allowed for current activeRole
   const isRouteAllowed = (key: string, role: string, items: NavMenuItem[]) => {
@@ -1159,7 +1164,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
 
   // Guard Effect 1: Trigger whenever activeRole, activeMenuItemKey, or visibleNavItems update
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!authChecked || !isAuthenticated) return;
     if (visibleNavItems.length === 0) return;
     // Skip RBAC check if viewing a room, property overview, or editing property configuration
     if (selectedRoomSlugOverride || activeMenuItemKey === 'multikey_property_overview' || activeMenuItemKey === 'edit_property') return;
@@ -1177,13 +1182,13 @@ function AppBody({ preloadedData }: AppBodyProps) {
       setActiveMenuItemKey(fallbackKey);
       window.location.hash = `#${fallbackKey}`;
     }
-  }, [activeRole, activeMenuItemKey, visibleNavItems, isAuthenticated, selectedRoomSlugOverride]);
+  }, [activeRole, activeMenuItemKey, visibleNavItems, isAuthenticated, authChecked, selectedRoomSlugOverride]);
 
   // Guard Effect 2: Trigger whenever user types a URL hash in the browser bar
   useEffect(() => {
     const handleUrlChange = (event?: Event) => {
       if (typeof window === 'undefined') return;
-      if (!isAuthenticated) return;
+      if (!authChecked || !isAuthenticated) return;
 
       const hash = window.location.hash.replace('#', '').trim();
       if (!hash) return;
@@ -1372,7 +1377,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
       window.removeEventListener('popstate', handleUrlChange);
       window.removeEventListener('hashchange', handleUrlChange);
     };
-  }, [activeRole, visibleNavItems, isAuthenticated]);
+  }, [activeRole, visibleNavItems, isAuthenticated, authChecked]);
 
   // Helper to dispatch real Telegram Notifications via Secure PHP Proxy API
   const dispatchTelegramAlert = async (
@@ -2013,7 +2018,12 @@ ${itemsStr}
                 inside <main>'s own padding like a regular page banner. Same 5 steps as
                 PropertyCreationWizard - onSaved reloads to pick up fresh data, same established
                 pattern EditPropertyPage.tsx already uses for these exact same fields. */}
-            {preloadedData.currentProperty && (
+            {/* Skipped entirely for demo/sales tenants (tenants.is_demo, surfaced here as
+                currentProperty.tenant_is_demo by get_current_property) - a prospect being
+                walked through the app, or a QA/staging demo account, shouldn't be nagged to
+                finish setting up a property nobody's actually running, same reasoning as
+                skipping TermsAcceptanceModal for these tenants in TenantDashboard.tsx. */}
+            {preloadedData.currentProperty && !preloadedData.currentProperty?.tenant_is_demo && (
               <ErrorBoundary section="Property Setup Wizard">
                 <PropertySetupWizard
                   propertyId={preloadedData.currentProperty.id}
@@ -2692,6 +2702,15 @@ ${itemsStr}
             setActiveMenuItemKey('service_requests');
           }}
         />
+        <DemoOnboardingTour onStartTrialRequested={() => setIsSelfOnboardingOpen(true)} />
+        <SelfOnboardingWizard
+          isOpen={isSelfOnboardingOpen}
+          onClose={() => setIsSelfOnboardingOpen(false)}
+          onSuccess={(redirectUrl) => {
+            setIsSelfOnboardingOpen(false);
+            window.location.href = redirectUrl;
+          }}
+        />
     </div>
   );
 }
@@ -2739,6 +2758,15 @@ export function App() {
     default_tenant_id?: number;
   } | null>(null);
   const [isSessionLoaded, setIsSessionLoaded] = useState(false);
+
+  // This App() component is a separate top-level function from AppBody() above (which has its
+  // own copy of this same state for its own login/onboarding branches) - the LoginPage/
+  // SelfOnboardingWizard JSX in App()'s isLoginPath/isRootPath branches below referenced this
+  // name assuming it was already in scope here, but nothing in App() itself ever declared it,
+  // which is a real "Cannot find name" compile error, not a runtime-only issue.
+  const [isSelfOnboardingOpen, setIsSelfOnboardingOpen] = useState<boolean>(() => {
+    return typeof window !== 'undefined' && (window.location.search.includes('onboarding=true') || window.location.hash === '#onboarding');
+  });
 
   // Shared by every RootAdminDashboard/TenantDashboard/PlatformPropertyManagement
   // render call site below (found 21 Aug 2026: this was 5 separately hand-copied
@@ -2854,14 +2882,21 @@ export function App() {
     }
 
     return (
-      <Suspense fallback={<LoadingScreen message="Loading tenant dashboard..." />}>
-        <TenantDashboard
-          username={userSession.username}
-          tenantId={dashboardTenantId}
-          tenantInfo={resolvedTenant}
-          onLogout={handleAdminLogout}
-        />
-      </Suspense>
+      // TermsAcceptanceModal (rendered inside TenantDashboard) calls useToast() for its
+      // "scroll first"/"check the box" prompts - this branch is rendered directly by App(),
+      // never through AppWithProviders, so it needs its own ToastProvider the same way the
+      // Root Admin dashboard branch below already does, or that throws "useToast must be used
+      // within ToastProvider" with no error boundary to catch it, blanking the entire page.
+      <ToastProvider>
+        <Suspense fallback={<LoadingScreen message="Loading tenant dashboard..." />}>
+          <TenantDashboard
+            username={userSession.username}
+            tenantId={dashboardTenantId}
+            tenantInfo={resolvedTenant}
+            onLogout={handleAdminLogout}
+          />
+        </Suspense>
+      </ToastProvider>
     );
   }
 
@@ -2933,24 +2968,51 @@ export function App() {
         return <LoadingScreen message="Redirecting to root admin dashboard..." />;
       } else if (userSession.default_tenant_id) {
         return (
-          <Suspense fallback={<LoadingScreen message="Loading tenant dashboard..." />}>
-            <TenantDashboard
-              username={userSession.username}
-              tenantId={userSession.default_tenant_id}
-              onLogout={handleAdminLogout}
-            />
-          </Suspense>
+          // See the isTenantDashboardPath branch above for why this needs its own ToastProvider.
+          <ToastProvider>
+            <Suspense fallback={<LoadingScreen message="Loading tenant dashboard..." />}>
+              <TenantDashboard
+                username={userSession.username}
+                tenantId={userSession.default_tenant_id}
+                onLogout={handleAdminLogout}
+              />
+            </Suspense>
+          </ToastProvider>
         );
       }
     }
     // Show login form if not logged in
-    return <LoginPage variant="management" onLoginSuccess={handleLoginSuccess} />;
+    return (
+      <ToastProvider>
+        <LoginPage variant="management" onLoginSuccess={handleLoginSuccess} onStartTrial={() => setIsSelfOnboardingOpen(true)} />
+        <SelfOnboardingWizard
+          isOpen={isSelfOnboardingOpen}
+          onClose={() => setIsSelfOnboardingOpen(false)}
+          onSuccess={(redirectUrl) => {
+            setIsSelfOnboardingOpen(false);
+            window.location.href = redirectUrl;
+          }}
+        />
+      </ToastProvider>
+    );
   }
 
   // Root path - show login or platform management
   if (isRootPath) {
     if (!userSession) {
-      return <LoginPage variant="management" onLoginSuccess={handleLoginSuccess} />;
+      return (
+        <ToastProvider>
+          <LoginPage variant="management" onLoginSuccess={handleLoginSuccess} onStartTrial={() => setIsSelfOnboardingOpen(true)} />
+          <SelfOnboardingWizard
+            isOpen={isSelfOnboardingOpen}
+            onClose={() => setIsSelfOnboardingOpen(false)}
+            onSuccess={(redirectUrl) => {
+              setIsSelfOnboardingOpen(false);
+              window.location.href = redirectUrl;
+            }}
+          />
+        </ToastProvider>
+      );
     }
 
     // User is logged in at root - platform admins get exactly one canonical URL
@@ -2966,13 +3028,16 @@ export function App() {
     // Tenant manager - render dashboard directly
     if (userSession.default_tenant_id) {
       return (
-        <Suspense fallback={<LoadingScreen message="Loading tenant dashboard..." />}>
-          <TenantDashboard
-            username={userSession.username}
-            tenantId={userSession.default_tenant_id}
-            onLogout={handleAdminLogout}
-          />
-        </Suspense>
+        // See the isTenantDashboardPath branch above for why this needs its own ToastProvider.
+        <ToastProvider>
+          <Suspense fallback={<LoadingScreen message="Loading tenant dashboard..." />}>
+            <TenantDashboard
+              username={userSession.username}
+              tenantId={userSession.default_tenant_id}
+              onLogout={handleAdminLogout}
+            />
+          </Suspense>
+        </ToastProvider>
       );
     }
 
