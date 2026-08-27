@@ -475,9 +475,14 @@ export const LegalDrawer: React.FC<LegalDrawerProps> = ({ activeTab, onClose, te
                 </div>
               </div>
 
-              {/* Category 6: Multi-Property & Multi-Key Rooms (added 27 Aug 2026) */}
+              {/* Category 6: Multi-Property & Multi-Key Properties (added 27 Aug 2026, corrected
+                  same day - originally called this "Multi-Key Rooms" and described every key as
+                  "a room" throughout; a multi-key property's keys can just as easily be whole
+                  villas or cottages, not only bedrooms in one building - see the sitewide
+                  Multi-Room -> Multi-Key terminology fix in i18n/en.ts and the property-type
+                  picker copy for the same correction). */}
               <div className="pt-2">
-                <span className="text-2xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">Multi-Property &amp; Multi-Key Rooms</span>
+                <span className="text-2xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">Multi-Property &amp; Multi-Key Properties</span>
 
                 <div className="space-y-2.5">
                   <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
@@ -490,14 +495,14 @@ export const LegalDrawer: React.FC<LegalDrawerProps> = ({ activeTab, onClose, te
                   <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
                     <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: What's the difference between a single property and a multi-key property?</h4>
                     <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      A single property has one bookable unit. A multi-key property — a villa with several independent rooms, or a resort with multiple cottages — lets each room keep its own booking calendar, while staff and settings are shared across the whole property.
+                      A single property has one bookable unit. A multi-key property has several separately bookable keys under one address — each key could be a hotel-style room, a suite, or a whole independent villa or cottage — and each keeps its own booking calendar, while staff and settings are shared across the whole property.
                     </p>
                   </div>
 
                   <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Can one room in a multi-key property get double-booked?</h4>
+                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Can one key in a multi-key property get double-booked?</h4>
                     <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      No — every room can only ever have one active booking at a time. The system blocks it before it can happen, and the date picker greys out and strikes through any day that's already booked for that room.
+                      No — every key can only ever have one active booking at a time. The system blocks it before it can happen, and the date picker greys out and strikes through any day that's already booked for that key.
                     </p>
                   </div>
                 </div>

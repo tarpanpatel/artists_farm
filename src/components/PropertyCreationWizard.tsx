@@ -436,9 +436,9 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
                   className={`flex flex-col items-start gap-1.5 p-3.5 rounded-lg border-2 text-left transition-all disabled:opacity-60 disabled:cursor-not-allowed ${propertyType === 'MULTI_KEY' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300'}`}
                 >
                   <Layers className={`w-5 h-5 ${propertyType === 'MULTI_KEY' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}`} />
-                  <span className={`text-xs font-semibold ${propertyType === 'MULTI_KEY' ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-700 dark:text-slate-300'}`}>Multi-Room Property</span>
+                  <span className={`text-xs font-semibold ${propertyType === 'MULTI_KEY' ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-700 dark:text-slate-300'}`}>Multi-Key Property</span>
                   <span className="text-2xs text-slate-500 dark:text-slate-400 leading-snug">
-                    One address, several separately bookable rooms - like a small hotel or guesthouse. Different guests can be in different rooms at the same time.
+                    One address, several separately bookable keys - rooms, suites, or even whole villas/cottages - like a small hotel, guesthouse, or resort. Different guests can be in different keys at the same time.
                   </span>
                 </button>
               </div>

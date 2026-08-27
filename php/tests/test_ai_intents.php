@@ -432,7 +432,7 @@ check('genuine tech-stack question is still correctly refused (regression guard 
 ]);
 check('"multi-key property" no longer false-positives into a service request via the word "key"', 'Can one room in a multi-key property get double-booked?', 'Staff', null, [], [
     'actionType' => null,
-    'replyContains' => 'No - every room can only ever have one active booking',
+    'replyContains' => 'No - every key can only ever have one active booking',
 ]);
 check('genuine "room key" request still works (regression guard for the key/room fix)', 'guest needs a room key for 105', 'Staff', null, [], [
     'actionType' => 'open_add_service_request',

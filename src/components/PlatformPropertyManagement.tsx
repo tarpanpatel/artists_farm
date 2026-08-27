@@ -269,7 +269,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
         setShowPropertyModal(null);
         setEditingProperty(null);
         // Show success toast
-        const typeLabel = isMultiKey ? 'Multi-Room' : 'Single';
+        const typeLabel = isMultiKey ? 'Multi-Key' : 'Single';
         setSuccessMessage(`${typeLabel} Property "${editingProperty.name}" created successfully!`);
         setTimeout(() => setSuccessMessage(null), 3000);
       } else {
@@ -1490,8 +1490,8 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                         className="w-4 h-4"
                       />
                       <div>
-                        <p className="font-medium text-slate-900 dark:text-white">{t('multi_key_property_option', 'Multi-Room Property')}</p>
-                        <p className="text-xs text-slate-600 dark:text-slate-400">{t('multi_key_property_hint', 'Multiple rooms/suites with shared staff & expenses')}</p>
+                        <p className="font-medium text-slate-900 dark:text-white">{t('multi_key_property_option', 'Multi-Key Property')}</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-400">{t('multi_key_property_hint', 'Multiple rooms, suites, or independent units (villas, cottages) with shared staff & expenses')}</p>
                       </div>
                     </label>
                   </div>
@@ -1980,7 +1980,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                                   ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300'
                                   : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
                               }`}>
-                                {isMultiKey ? t('multi_key_badge', 'Multi-Room') : t('single_badge', 'Single')}
+                                {isMultiKey ? t('multi_key_badge', 'Multi-Key') : t('single_badge', 'Single')}
                               </span>
                               {isMultiKey && (
                                 <span className="text-2xs font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">

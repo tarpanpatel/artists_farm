@@ -1090,18 +1090,23 @@ function getIntentTable(): array {
                 ['room', 'double', 'book'], ['double', 'booked'], ['double', 'booking'],
             ],
             'handler' => fn(string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array => [
-                'reply' => "No - every room can only ever have one active booking at a time. The system blocks it before it can happen, and the date picker greys out and strikes through any day that's already booked for that room.",
+                'reply' => "No - every key can only ever have one active booking at a time. The system blocks it before it can happen, and the date picker greys out and strikes through any day that's already booked for that key.",
                 'action' => null,
             ],
         ],
         [
             'type' => 'info_multikey_difference',
+            // Corrected 27 Aug 2026 (live correction, twice): "multi-key" and "multi-room" are NOT
+            // synonyms - a key can be a whole independent villa or cottage, not only a bedroom in
+            // one building. This reply (and the sitewide property-type label) previously said
+            // "room" throughout, which is exactly the mistake that got corrected. See i18n/en.ts's
+            // matching fix for the user-facing "Multi-Room" -> "Multi-Key" label.
             'phrases' => [
                 'single property multi-key', 'difference single property', 'what is a multi-key',
                 ['difference', 'multi-key'], ['single', 'property', 'multi-key'],
             ],
             'handler' => fn(string $q, string $lower, array $ctx, string $userRole, array $roleFlags): array => [
-                'reply' => "A single property has one bookable unit. A multi-key property - a villa with several independent rooms, or a resort with multiple cottages - lets each room keep its own booking calendar, while staff and settings are shared across the whole property.",
+                'reply' => "A single property has one bookable unit. A multi-key property has several separately bookable keys under one address - each key could be a hotel-style room, a suite, or a whole independent villa or cottage - and each keeps its own booking calendar, while staff and settings are shared across the whole property.",
                 'action' => null,
             ],
         ],

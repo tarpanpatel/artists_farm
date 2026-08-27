@@ -2040,7 +2040,7 @@ ${itemsStr}
 
               {/* MultiKey room view - takes priority over everything */}
               {preloadedData.isMultiKeyProperty && selectedRoomSlugOverride ? (
-                <ErrorBoundary section="Multi-Room Property Overview">
+                <ErrorBoundary section="Multi-Key Property Overview">
                   <MultiKeyPropertyOverview
                   propertyId={preloadedData.currentProperty?.id}
                   propertySlug={multiKeyPropertySlug}
@@ -2114,7 +2114,7 @@ ${itemsStr}
                         }}
                       />
                     </ErrorBoundary>
-                    <ErrorBoundary section="Multi-Room Property Overview">
+                    <ErrorBoundary section="Multi-Key Property Overview">
                       <MultiKeyPropertyOverview
                       propertyId={preloadedData.currentProperty?.id}
                       propertySlug={multiKeyPropertySlug}

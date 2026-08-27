@@ -490,7 +490,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                                   ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/40'
                                   : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
                               }`}>
-                                {isMultiKey ? 'Multi-Room Property' : 'Single Property'}
+                                {isMultiKey ? 'Multi-Key Property' : 'Single Property'}
                               </span>
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap">
