@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, Home, Loader2 } from './icons/FlowbiteIcons';
+import { AlertCircle, Home } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';
 
 interface LoadingScreenProps {
@@ -35,8 +35,23 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
           <img src="/icons/icon-source.png" alt="" className="w-full h-full rounded-lg loading-screen__logo-img" />
         </div>
 
-        {/* Standard Loading Spinner Ring */}
-        <Loader2 className="w-10 h-10 text-blue-600 dark:text-blue-400 animate-spin loading-screen__spinner" />
+        {/* Standard Loading Spinner Ring - a plain CSS border-ring div, NOT an icon component
+            (fixed 27 Aug 2026, live report: "why still 2 types of loading", raised multiple
+            times). Root cause: this used to be <Loader2 animate-spin>, and Loader2 is defined as
+            `wrap(getOutline('Spinner') || getOutline('Refresh'))` in FlowbiteIcons.tsx - Flowbite's
+            icon set has no "Spinner" icon at all, so that always silently fell back to the
+            Refresh icon (two curved arrows) instead. That's a completely different shape from
+            index.html's own #initial-loader__spinner (a plain CSS border-ring, shown before React
+            even mounts) - so the boot sequence visibly changed spinner SHAPE, not just handed off
+            between two loading screens as intended. Rebuilt as the exact same CSS-ring technique
+            index.html already uses (border + border-top-color + rounded-full + spin), colors
+            matched 1:1 to that file's #dbeafe/#3b82f6 (light) and #1e293b/#60a5fa (dark) - so
+            there's no shape or color change at all when the static loader hands off to this one,
+            and no dependency on Flowbite ever adding a "Spinner" icon. */}
+        <div
+          role="presentation"
+          className="w-10 h-10 rounded-full border-[3px] border-blue-100 border-t-blue-500 dark:border-slate-800 dark:border-t-blue-400 animate-spin loading-screen__spinner"
+        />
 
         {/* Brand text label removed (26 Aug 2026, explicit request): the logo
             mark itself is distinctive enough now to not need "Ground Code"

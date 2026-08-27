@@ -123,7 +123,34 @@ export const CheckCircle = CheckCircle2;
 export const AlertCircle = wrap(getOutline('ExclamationCircle'));
 export const AlertTriangle = wrap(getOutline('ExclamationCircle'));
 export const XCircle = wrap(getOutline('CloseCircle'));
-export const Loader2 = wrap(getOutline('Spinner') || getOutline('Refresh'));
+// Loader2 (fixed 27 Aug 2026, live report raised multiple times: "why still 2 types of
+// loading"). This used to be `wrap(getOutline('Spinner') || getOutline('Refresh'))` -
+// flowbite-react-icons has no "Spinner" icon at all, so every one of this app's ~40 loading-spinner
+// call sites silently fell back to the Refresh icon (two curved arrows) instead, which - once
+// `animate-spin` is applied - looks nothing like a spinning ring, unlike every other loading
+// indicator in the app (e.g. index.html's own pure-CSS #initial-loader__spinner shown before React
+// even mounts). Rebuilt as a real standalone spinner SVG (the exact path lucide-react's own
+// Loader2 used, from before this app's Lucide migration - a near-complete circle with one gap)
+// instead of depending on Flowbite ever adding a matching icon. Every existing call site's
+// `<Loader2 className="... animate-spin" />` usage is unaffected - same IconProps shape, same
+// size/className override behavior as every other icon in this file.
+export const Loader2: React.FC<IconProps> = ({ size = 20, className = '', ...props }: IconProps) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden="true"
+    {...props}
+  >
+    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+  </svg>
+);
 export const Info = wrap(getOutline('InfoCircle'));
 
 // Settings, Data & Utilities
