@@ -32,7 +32,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
             with the transparent glyph dropped inside it (26 Aug 2026: that
             double-square look was reported and replaced with this). */}
         <div className="w-14 h-14 rounded-2xl bg-white/10 dark:bg-white/5 border border-white/20 p-2.5 shadow-xl flex items-center justify-center relative loading-screen__logo-container">
-          <img src="app-icons/icon-source.png" alt="" className="w-full h-full rounded-lg loading-screen__logo-img" />
+          <img src="/app-icons/icon-source.png" alt="" className="w-full h-full rounded-lg loading-screen__logo-img" />
         </div>
 
         {/* Standard Loading Spinner Ring - a plain CSS border-ring div, NOT an icon component
