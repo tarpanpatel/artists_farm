@@ -130,10 +130,10 @@ const TOUR_CATEGORIES: TourCategory[] = [
       {
         id: 'booking-grid',
         selector: '[data-tour="booking-grid"]',
-        title: '📅 Interactive Booking Grid',
-        description: 'Track real-time room availability, nightly tariffs, check-ins, check-outs, and guest folios in one unified calendar view.',
+        title: '📅 Multi-Room Booking Calendar',
+        description: 'Track real-time multi-room availability, daily tariffs, check-ins, check-outs, and guest folios across all property rooms in one unified calendar view.',
         side: 'bottom',
-        beforeShow: goToFirstRoomDashboard,
+        beforeShow: (nav) => nav.handleNavigateTab('dashboard', 'dashboard'),
       },
       {
         id: 'checkin-folio',
@@ -322,6 +322,7 @@ export const DemoOnboardingTour: React.FC<DemoOnboardingTourProps> = ({
   const [hasCompletedOnce, setHasCompletedOnce] = React.useState<boolean>(() => {
     return localStorage.getItem('demo_tour_completed') === 'true';
   });
+  const [isTourActive, setIsTourActive] = React.useState<boolean>(false);
 
   const driverRef = useRef<Driver | null>(null);
 
@@ -337,12 +338,14 @@ export const DemoOnboardingTour: React.FC<DemoOnboardingTourProps> = ({
   }, [handleNavigateTab, onNavigateToRoom, firstChildRoomSlug]);
 
   const handleComplete = useCallback(() => {
+    setIsTourActive(false);
     setHasCompletedOnce(true);
     localStorage.setItem('demo_tour_completed', 'true');
     onStartTrialRequested?.();
   }, [onStartTrialRequested]);
 
   const handleSkip = useCallback(() => {
+    setIsTourActive(false);
     setHasCompletedOnce(true);
     localStorage.setItem('demo_tour_completed', 'true');
   }, []);
@@ -369,6 +372,7 @@ export const DemoOnboardingTour: React.FC<DemoOnboardingTourProps> = ({
   const navigatingRef = useRef(false);
 
   const startTour = useCallback(() => {
+    setIsTourActive(true);
     const d = driver({
       showProgress: true,
       allowClose: true,
@@ -394,6 +398,7 @@ export const DemoOnboardingTour: React.FC<DemoOnboardingTourProps> = ({
         const nextIndex = currentIdx + 1;
         if (nextIndex >= ALL_STEPS.length) {
           isFinishingRef.current = true;
+          setIsTourActive(false);
           d.destroy();
           handleComplete();
           return;
@@ -414,14 +419,17 @@ export const DemoOnboardingTour: React.FC<DemoOnboardingTourProps> = ({
           .finally(() => { navigatingRef.current = false; });
       },
       onDoneClick: () => {
+        setIsTourActive(false);
         d.destroy();
         handleComplete();
       },
       onCloseClick: () => {
+        setIsTourActive(false);
         d.destroy();
         handleSkip();
       },
       onDestroyStarted: () => {
+        setIsTourActive(false);
         d.destroy();
         if (isFinishingRef.current) {
           isFinishingRef.current = false;
@@ -447,6 +455,10 @@ export const DemoOnboardingTour: React.FC<DemoOnboardingTourProps> = ({
       driverRef.current?.destroy();
     };
   }, []);
+
+  if (isTourActive) {
+    return null;
+  }
 
   return (
     <div className="fixed bottom-20 right-6 z-50 flex items-center gap-2">
