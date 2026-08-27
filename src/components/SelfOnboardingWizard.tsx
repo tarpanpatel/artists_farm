@@ -27,6 +27,12 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [registeredRedirectUrl, setRegisteredRedirectUrl] = useState<string | null>(null);
+  // 28 Aug 2026, explicit request: clicking a greyed-out "Next"/"Complete Setup" button used to
+  // silently do nothing (native disabled buttons don't fire onClick at all) - these track whether
+  // the user has actually tried to advance from that step, so field-level errors only appear after
+  // a real attempt (never on a pristine untouched field) but then update live as they fix things.
+  const [step1Attempted, setStep1Attempted] = useState(false);
+  const [step3Attempted, setStep3Attempted] = useState(false);
 
   // --- Step 1: Owner Credentials ---
   const [fullName, setFullName] = useState('');
@@ -51,6 +57,41 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
 
   const isStep1Valid = !!fullName.trim() && !!email.trim() && phone.replace(/\D/g, '').length === 10 && passcode.length === 6;
   const isStep3Valid = !!propertyName.trim() && hasKitchen !== null;
+
+  // Field-level error messages - only surface once the user has actually tried to advance past
+  // the step (step1Attempted/step3Attempted), then stay live as the field itself changes, same
+  // pattern as CLAUDE.md's "Real-Time Form Validation" section.
+  const fullNameError = step1Attempted && !fullName.trim() ? 'Full name is required' : undefined;
+  const emailError = step1Attempted && !email.trim() ? 'Email address is required' : undefined;
+  const phoneError = step1Attempted && phone.replace(/\D/g, '').length !== 10 ? 'Enter a valid 10-digit mobile number' : undefined;
+  const passcodeError = step1Attempted && passcode.length !== 6 ? 'Enter a 6-digit passcode' : undefined;
+  const propertyNameError = step3Attempted && !propertyName.trim() ? 'Property name is required' : undefined;
+
+  // 28 Aug 2026, explicit request: clicking "Next Step" while it looks greyed out used to do
+  // nothing at all (native `disabled` blocks onClick entirely) - both step-gate buttons below are
+  // no longer natively disabled for their OWN validation gate (only for `loading`), so a click
+  // always reaches one of these two handlers, which now surface exactly why nothing happened:
+  // a field-level reason gets its own inline error (see the four *Error consts above), and
+  // hasKitchen (a button-pair toggle, not a text Input with its own error slot) gets a toast.
+  const handleNextStepClick = () => {
+    if (step === 1 && !isStep1Valid) {
+      setStep1Attempted(true);
+      return;
+    }
+    setStep((s) => (s + 1) as Step);
+  };
+
+  const handleCompleteSetupClick = () => {
+    if (loading) return;
+    if (!isStep3Valid) {
+      setStep3Attempted(true);
+      if (hasKitchen === null) {
+        showToast('Please select whether this property serves food.', { type: 'warning' });
+      }
+      return;
+    }
+    handleSubmit();
+  };
 
   const handleSubmit = async () => {
     setError(null);
@@ -174,6 +215,7 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               helperText="e.g. Rajesh Sharma"
+              error={fullNameError}
             />
 
             <Input
@@ -182,23 +224,28 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               helperText="e.g. rajesh@vrikshawanresort.com - official tax bills & invoices will be sent here."
+              error={emailError}
             />
 
             <Input
               type="tel"
+              inputMode="numeric"
               label="Mobile Number (Login Username)"
               value={phone}
               onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
               helperText="10-digit mobile number - this is your login username."
+              error={phoneError}
             />
 
             <Input
               type="password"
+              inputMode="numeric"
               maxLength={6}
               label="6-Digit Passcode (PIN)"
               value={passcode}
               onChange={(e) => setPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
               helperText="e.g. 123456 - a 6-digit numeric PIN for quick login."
+              error={passcodeError}
             />
           </div>
         )}
@@ -267,6 +314,7 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
               value={propertyName}
               onChange={(e) => setPropertyName(e.target.value)}
               helperText="e.g. Vrikshawan Resort Hut"
+              error={propertyNameError}
             />
 
             <div>
@@ -296,6 +344,7 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
             {propertyType === 'MULTI_KEY' && (
               <Input
                 type="number"
+                inputMode="numeric"
                 min={1}
                 max={50}
                 label="Number of Rooms"
@@ -378,7 +427,12 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
       </div>
 
       {/* Footer Navigation Buttons */}
-      <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between shrink-0 bg-slate-50 dark:bg-slate-900">
+      {/* pb-[calc(1rem+env(safe-area-inset-bottom))] (28 Aug 2026, explicit report + screenshot:
+          "Next Step" button sat with no breathing room above the home-indicator bar on iPhone) -
+          see CLAUDE.md's "Bottom-Anchored Drawer Footer Safe Area" rule; this is a full h-screen
+          Drawer with a footer as its last flex child, not App.tsx's shared <main> (which already
+          handles its own safe-area-inset-bottom + persistent mobile nav bar clearance separately). */}
+      <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] border-t border-slate-200 dark:border-slate-700 flex items-center justify-between shrink-0 bg-slate-50 dark:bg-slate-900">
         {step > 1 && step < 4 ? (
           <Button variant="secondary" onClick={() => setStep((s) => (s - 1) as Step)} disabled={loading}>
             <ArrowLeft className="w-4 h-4 mr-1" /> Back
@@ -390,8 +444,8 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
         {step < 3 ? (
           <Button
             variant="primary"
-            onClick={() => setStep((s) => (s + 1) as Step)}
-            disabled={step === 1 && !isStep1Valid}
+            onClick={handleNextStepClick}
+            className={step === 1 && !isStep1Valid ? 'opacity-50' : ''}
           >
             <span>Next Step</span>
             <ArrowRight className="w-4 h-4 ml-1" />
@@ -399,9 +453,14 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
         ) : step === 3 ? (
           <Button
             variant="primary"
-            onClick={handleSubmit}
-            disabled={!isStep3Valid || loading}
-          >
+            onClick={handleCompleteSetupClick}
+            disabled={loading}
+            className={!isStep3Valid ? 'opacity-50' : ''}
+          >{/* Not natively `disabled` for the !isStep3Valid case (28 Aug 2026, explicit
+               request) - a real disabled button swallows the click entirely, which is exactly
+               why this used to silently do nothing. Still visually greyed via opacity, still
+               genuinely disabled while `loading` (a real in-flight submit must not be
+               re-triggered). handleCompleteSetupClick surfaces the actual reason instead. */}
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin mr-1" /> Creating Account...
