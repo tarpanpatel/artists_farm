@@ -203,7 +203,7 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
               <div
                 key={guest.id}
                 onClick={() => onSelectGuest?.(guest.id)}
-                className={`bg-white dark:bg-gray-800 rounded-lg border transition-all p-4 space-y-3 cursor-pointer ${
+                className={`bg-white dark:bg-gray-800 rounded-lg border transition-all p-4 sm:p-6 space-y-3 cursor-pointer ${
                   isSelected
                     ? 'border-blue-500 dark:border-blue-500 ring-2 ring-blue-500/20 shadow-md'
                     : 'border-gray-200 dark:border-gray-700 shadow-md hover:border-gray-300 dark:hover:border-gray-600'

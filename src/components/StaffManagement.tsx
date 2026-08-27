@@ -1071,7 +1071,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   const phoneVal = rawPhone.replace(/\D/g, '');
 
                   return (
-                    <div key={row.id} className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-3 space-y-2.5">
+                    <div key={row.id} className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 space-y-2.5">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1 flex items-center flex-wrap gap-2">
                           <h4 className="font-bold text-slate-900 dark:text-white text-sm m-0">{row.fullName}</h4>

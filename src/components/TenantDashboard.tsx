@@ -360,7 +360,11 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-8 space-y-8 tenant-dashboard__main">
+      {/* px-4 sm:px-6 lg:px-8 (27 Aug 2026, full-app padding sweep) - was a flat px-6 at
+          every width, independent of App.tsx's shared <main> (px-4 sm:px-6 lg:px-8) used by
+          every tab inside a property - aligned to the same scale so this page (the tenant-
+          level "Property Control Panel", not one of those tabs) doesn't drift from it. */}
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 tenant-dashboard__main">
         {/* Success Toast */}
         {successMsg && (
           <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] bg-emerald-600 text-white px-5 py-3 rounded-lg shadow-2xl text-sm font-medium flex items-center gap-2 animate-pulse tenant-dashboard__success-toast">

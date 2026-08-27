@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { ThemeProvider } from 'flowbite-react';
 import { App } from './App';
 // Self-hosted Inter (25 Aug 2026, replaces the fonts.googleapis.com <link> in
 // index.html) - same font, same weights (variable 100-900 covers the
@@ -148,10 +149,30 @@ if ('serviceWorker' in navigator) {
   }
 }
 
+// Global flowbite-react theme overrides (27 Aug 2026, full-app padding sweep - user report:
+// card padding looks inconsistent screen to screen). <Card>'s own className prop only reaches
+// its OUTER wrapper div (border/bg/shadow) - the actual padding lives on a SEPARATE inner div
+// built from `theme.root.children` directly, with no className merge at all (confirmed in
+// node_modules/flowbite-react/dist/components/Card/{Card,theme}.js) - the same "className
+// lands on the wrong DOM node" class of bug already found in Input.tsx's TextInput usage and
+// DashboardFooter.tsx's FooterLink. That means every one of the ~15 files using <Card> across
+// this app was stuck with its hardcoded flat `p-6`, with no per-instance way to fix it. A
+// single ThemeProvider override here fixes all of them at once instead of hand-patching each
+// call site (or each future one) with its own `theme` prop.
+const flowbiteTheme = {
+  card: {
+    root: {
+      children: 'flex h-full flex-col justify-center gap-4 p-4 sm:p-6',
+    },
+  },
+};
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
-    <UpdateAvailableBanner />
-    <ScrollToTopButton />
+    <ThemeProvider theme={flowbiteTheme}>
+      <App />
+      <UpdateAvailableBanner />
+      <ScrollToTopButton />
+    </ThemeProvider>
   </React.StrictMode>
 );
