@@ -33,7 +33,11 @@ import { LoadingScreen } from './components/LoadingScreen';
 import { LoginPage } from './components/LoginPage';
 import { MultiKeyPropertyOverview } from './components/MultiKeyPropertyOverview';
 import { AIChatWidget } from './components/AIChatWidget';
-import { DemoOnboardingTour } from './components/DemoOnboardingTour';
+// Lazy-loaded (28 Aug 2026, explicit request: "make sure driver.js only loads on demo property")
+// via the same lazyWithRetry() pattern every tab component below already uses - this keeps
+// driver.js (and its CSS) out of the main bundle entirely for the common case (a real tenant's
+// property, where the render below never mounts it), fetched only the moment a public-demo
+// property actually renders it.
 import { SelfOnboardingWizard } from './components/SelfOnboardingWizard';
 import { getPropertyAndRoomSlugs } from './services/api';
 
@@ -43,6 +47,11 @@ import { getPropertyAndRoomSlugs } from './services/api';
 // dashboards, Platform property management). Keeping these out of the main
 // bundle is what lets the initial paint (login + default dashboard tab) ship
 // a much smaller slice of JS - see TabContentFallback/Suspense usage below.
+// DemoOnboardingTour pulls in driver.js + its CSS (28 Aug 2026, explicit request: "make sure
+// driver.js only loads on demo property") - lazy-loading it keeps that weight out of the main
+// bundle for every real tenant, since the render site below only ever mounts it when
+// `currentProperty.is_public_demo` is true.
+const DemoOnboardingTour = lazyWithRetry(() => import('./components/DemoOnboardingTour').then(m => ({ default: m.DemoOnboardingTour })), 'DemoOnboardingTour');
 const KitchenManagement = lazyWithRetry(() => import('./components/KitchenManagement').then(m => ({ default: m.KitchenManagement })), 'KitchenManagement');
 const InventoryManagement = lazyWithRetry(() => import('./components/InventoryManagement').then(m => ({ default: m.InventoryManagement })), 'InventoryManagement');
 const PettyCashManagement = lazyWithRetry(() => import('./components/PettyCashManagement').then(m => ({ default: m.PettyCashManagement })), 'PettyCashManagement');
@@ -2715,7 +2724,21 @@ ${itemsStr}
             setActiveMenuItemKey('service_requests');
           }}
         />
-        <DemoOnboardingTour onStartTrialRequested={() => setIsSelfOnboardingOpen(true)} />
+        {/* Gated on is_public_demo (28 Aug 2026, explicit request) - the anonymous-visitor
+            auto-login demo property flag, not tenant_is_demo (a whole owner account being a
+            sales/QA demo tenant - a different, broader concept, see the PropertySetupWizard
+            guard above for that distinction). This tour is specifically the public marketing/
+            demo walkthrough, so it should never mount for a real tenant's property at all. */}
+        {preloadedData.currentProperty?.is_public_demo && (
+          <Suspense fallback={null}>
+            <DemoOnboardingTour
+              onStartTrialRequested={() => setIsSelfOnboardingOpen(true)}
+              handleNavigateTab={handleNavigateTab}
+              onNavigateToRoom={handleNavigateToRoom}
+              firstChildRoomSlug={preloadedData.currentProperty?.rooms?.[0]?.slug ?? null}
+            />
+          </Suspense>
+        )}
         <SelfOnboardingWizard
           isOpen={isSelfOnboardingOpen}
           onClose={() => setIsSelfOnboardingOpen(false)}

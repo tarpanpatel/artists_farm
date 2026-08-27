@@ -1,4 +1,4 @@
-- STRICT NO DEPLOYMENT RULE: Never execute any deployment scripts or server sync commands (e.g. deploy-staging.ps1, deploy-production.ps1). Work strictly on local environment only.
+- DEPLOYMENT RULE: Only execute deployment scripts or server sync commands (e.g. deploy-staging.ps1, deploy-production.ps1) when the user explicitly asks to deploy/publish. Never deploy automatically or proactively.
 - Do not open files in editor tabs when viewing or making code edits unless explicitly requested by the user.
 - Strictly adhere to visual design tokens, iconography, modal form grid rules, and responsive mobile layouts defined in [DESIGN.md](file:///c:/xampp/htdocs/artists_farm/DESIGN.md).
 - **Popover Only (No Generic Tooltips) Rule**: Never use basic `<Tooltip>` components or generic OS/browser `title="..."` attributes for UI tooltips, action icons, or hover cards. Everywhere across the site, interactive hover/click info cards must exclusively use `<Popover>` (`src/components/Popover.tsx`) following Flowbite Popover styling with structured header/body containers, dark mode tokens (`dark:bg-gray-800 dark:border-gray-700`), `rounded-lg`, and `shadow-lg`.

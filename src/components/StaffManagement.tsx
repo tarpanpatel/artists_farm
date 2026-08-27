@@ -829,7 +829,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       {activeSubTab === 'control_center' && (
         <div className="space-y-6 staff-management">
           {/* Active System Users & Staff */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+          <div data-tour="staff-permissions" className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
             {/* Top Toolbar: Flowbite Search and Actions */}
             <div className="p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
               <div className="flex-1 max-w-md">
@@ -1200,7 +1200,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
       {/* SUB-TAB 2: ATTENDANCE CALENDAR MATRIX */}
       {activeSubTab === 'calendar' && (
-        <div className="space-y-4">
+        <div data-tour="attendance-salary" className="space-y-4">
           {/* 24 Aug 2026, reported live: table headers/legend rendered
               immediately with zero staff rows in between whenever this tab
               mounted before StaffContext's initial fetch resolved - `staff`

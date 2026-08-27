@@ -582,6 +582,37 @@ function registerTenantTrial($pdo) {
             }
         }
 
+        // Send welcome email - reuses the SAME root-admin-editable
+        // tenant_welcome_template (Root Admin > Email Settings) that the manual
+        // "Create Tenant" flow already sends via sendSmtpEmail(), rather than a
+        // second hardcoded template, so there's only ever one welcome message an
+        // admin needs to customize. Best-effort like the WhatsApp send above - a
+        // missing/misconfigured SMTP setup must never fail an already-committed
+        // trial signup.
+        if ($email && function_exists('sendSmtpEmail') && function_exists('getTenantWelcomeTemplate')) {
+            try {
+                $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+                $host = $_SERVER['HTTP_HOST'] ?? 'ground-code.com';
+                $loginUrl = "{$scheme}://{$host}/{$propertySlug}";
+
+                $renderedMessage = renderTenantWelcomeTemplate(getTenantWelcomeTemplate($pdo), [
+                    'tenant_name' => $fullName,
+                    'login_url' => $loginUrl,
+                    'username' => $phone,
+                    'temp_passcode' => $passcode,
+                ]);
+
+                $emailResult = sendSmtpEmail($pdo, $email, 'Welcome to Ground Code - Your 30-Day Free Trial is Live!', nl2br(htmlspecialchars($renderedMessage)));
+                if (!$emailResult['success'] && class_exists('TelescopeLogger')) {
+                    TelescopeLogger::log('email', 'WARNING', 'Onboarding welcome email send failed: ' . $emailResult['error'], 'registerTenantTrial', ['tenant_id' => $tenantId, 'email' => $email]);
+                }
+            } catch (Exception $mailErr) {
+                if (class_exists('TelescopeLogger')) {
+                    TelescopeLogger::log('email', 'WARNING', 'Onboarding welcome email threw: ' . $mailErr->getMessage(), 'registerTenantTrial');
+                }
+            }
+        }
+
         // Log via Telescope
         if (class_exists('TelescopeLogger')) {
             TelescopeLogger::log(

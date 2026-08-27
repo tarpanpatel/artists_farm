@@ -1819,6 +1819,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     const pendingSheetsCount = recentSheets.filter(s => s.status === 'PENDING').length;
 
     return (
+      <div data-tour="stock-requisition">
       <Tabs
         aria-label="Stock Request Tabs"
         variant="default"
@@ -2544,6 +2545,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       </div>
     </TabItem>
   </Tabs>
+      </div>
 );
 }
 
@@ -2641,7 +2643,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   );
 
   return (
-    <div className="stock-inventory-container space-y-6">
+    <div data-tour="inventory-stock" className="stock-inventory-container space-y-6">
       <PageHeader title={t('inventory_catalog_heading')} subtitle={t('inventory_catalog_subtitle')} />
 
       {/* Desktop Table */}

@@ -333,7 +333,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
   }, [drawerEntries, searchHistory]);
 
   return (
-    <div className="cash-drawer space-y-6 text-slate-800 dark:text-slate-200">
+    <div data-tour="cash-drawer" className="cash-drawer space-y-6 text-slate-800 dark:text-slate-200">
       <PageHeader
         title={
           <span className="inline-flex items-center gap-2">

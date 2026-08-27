@@ -1118,7 +1118,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
 
       {/* Enable Telegram Notifications Main Page Card */}
       {!hideRoutingControls && (
-        <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div data-tour="telegram-alerts" className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-sky-50 dark:bg-sky-950/60 text-[#0088cc] flex items-center justify-center shrink-0 border border-sky-100 dark:border-sky-900">
               <Send className="w-5 h-5" />

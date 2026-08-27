@@ -3317,7 +3317,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           </Drawer>
 
           {/* Header */}
-          <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md">
+          <div data-tour="recipe-builder" className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md">
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
                 <h3 className="kitchen-management__subtitle text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">

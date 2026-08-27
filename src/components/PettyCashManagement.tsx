@@ -1535,7 +1535,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       />
 
       {/* Add Expenses form on top (Full Width Card) */}
-      <Card className="add-expenses-container w-full shadow-md border-gray-200 dark:border-gray-700">
+      <Card data-tour="petty-cash" className="add-expenses-container w-full shadow-md border-gray-200 dark:border-gray-700">
         <h3 className="petty-cash-management__subtitle font-semibold text-slate-900 dark:text-white text-sm mb-4 flex items-center gap-1.5">
           {t('add_expenses_heading', 'ADD EXPENSES')}
         </h3>

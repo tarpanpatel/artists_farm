@@ -1164,6 +1164,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
 
                   <button
                     type="button"
+                    data-tour="whatsapp-invoicing"
                     onClick={handleShareBooking}
                     className="w-full h-10 px-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-300 dark:border-gray-600 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
                     title={t('share_with_guest_button', 'Share with guest')}
