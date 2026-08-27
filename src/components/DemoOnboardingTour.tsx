@@ -42,6 +42,28 @@ interface TourCategory {
   steps: TourStep[];
 }
 
+// Fixed 28 Aug 2026 - found live: for a MULTI_KEY property's own #dashboard tab with no room
+// selected, App.tsx renders TodayOverview for the calendar, NOT OperationalDashboard - the
+// booking-grid/kds-kitchen/checkin-folio/whatsapp-invoicing data-tour anchors all live inside
+// OperationalDashboard, which only mounts once a SPECIFIC room is selected (same component the
+// protected "Booking Calendar Row" note in CLAUDE.md describes as reused per-room). A plain
+// handleNavigateTab('dashboard','dashboard') therefore never finds any of those 4 anchors, and
+// driver.js's skipMissingElement cascades through every remaining step trying to find a match -
+// when none of the 14 match, it reaches its own "no more steps" teardown path and silently marks
+// the tour finished, which is why the trigger button used to vanish after one click with nothing
+// ever visibly highlighted. Fix: drill into the first child room the exact same way the ota-sync
+// step already correctly does, for every step whose anchor lives inside OperationalDashboard.
+function goToFirstRoomDashboard(nav: TourNavContext): void {
+  const roomSlug = nav.getFirstChildRoomSlug();
+  if (roomSlug) {
+    nav.onNavigateToRoom(roomSlug, 'dashboard');
+  } else {
+    // SINGLE-property fallback (shouldn't happen given this tour is MULTI_KEY-only, but avoids
+    // silently stranding the tour if it's ever mounted somewhere unexpected).
+    nav.handleNavigateTab('dashboard', 'dashboard');
+  }
+}
+
 // Shared by checkin-folio and whatsapp-invoicing (28 Aug 2026): both need BookingDetailsModal
 // open, but they can't literally share one mounted instance - the ota-sync step in between
 // navigates to a different room's edit_property sub-tab, which unmounts the Dashboard subtree
@@ -51,7 +73,7 @@ interface TourCategory {
 // opens the real modal). Demo data guarantees at least one real booking per room for a MULTI_KEY
 // property, so this is safe to assume.
 async function openFirstBookingModal(nav: TourNavContext): Promise<void> {
-  nav.handleNavigateTab('dashboard', 'dashboard');
+  goToFirstRoomDashboard(nav);
   const bar = await waitForElement('[data-tour="checkin-open-booking-bar"]');
   if (!bar) return;
   (bar as HTMLElement).click();
@@ -98,7 +120,7 @@ const TOUR_CATEGORIES: TourCategory[] = [
         title: '📅 Interactive Booking Grid',
         description: 'Track real-time room availability, nightly tariffs, check-ins, check-outs, and guest folios in one unified calendar view.',
         side: 'bottom',
-        beforeShow: (nav) => nav.handleNavigateTab('dashboard', 'dashboard'),
+        beforeShow: goToFirstRoomDashboard,
       },
       {
         id: 'checkin-folio',
@@ -140,7 +162,7 @@ const TOUR_CATEGORIES: TourCategory[] = [
         title: '🍳 Live Kitchen Display System',
         description: 'Streamline food prep timers, live kitchen order tickets, and room service delivery status on kitchen display screens.',
         side: 'bottom',
-        beforeShow: (nav) => nav.handleNavigateTab('dashboard', 'dashboard'),
+        beforeShow: goToFirstRoomDashboard,
       },
       {
         id: 'recipe-builder',
