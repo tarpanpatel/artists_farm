@@ -79,37 +79,46 @@ function getCronJobDefinitions(): array {
             'interval_minutes' => null,
             'daily_at_time' => '09:00:00',
         ],
+        [
+            'job_key' => 'trial_lifecycle_cadence',
+            'name' => '30-Day Trial Lifecycle & Renewal Cadence',
+            'description' => 'Automated Day 1/3/7/14/21/23(7-day notice)/28/30 follow-up nudges, trial expiry notices, and subscription status transitions.',
+            'script_path' => 'trial_lifecycle_cadence.php',
+            'log_file' => 'trial_lifecycle_cadence.log',
+            'schedule_type' => 'daily_at',
+            'interval_minutes' => null,
+            'daily_at_time' => '08:30:00',
+        ],
     ];
 }
 
 function ensureCronJobsSchema(PDO $pdo): void {
-    if (isSchemaVerified('schema_cron_jobs_v1')) {
-        return;
-    }
-    $pdo->exec("CREATE TABLE IF NOT EXISTS cron_jobs (
-        job_key VARCHAR(64) PRIMARY KEY,
-        name VARCHAR(150) NOT NULL,
-        description TEXT,
-        script_path VARCHAR(255) NOT NULL,
-        enabled TINYINT(1) NOT NULL DEFAULT 1,
-        schedule_type ENUM('interval_minutes','daily_at') NOT NULL DEFAULT 'daily_at',
-        interval_minutes INT DEFAULT NULL,
-        daily_at_time TIME DEFAULT NULL,
-        last_run_at DATETIME DEFAULT NULL,
-        last_run_status VARCHAR(20) DEFAULT NULL,
-        last_run_message TEXT,
-        last_run_duration_ms INT DEFAULT NULL,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    if (!isSchemaVerified('schema_cron_jobs_v2')) {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS cron_jobs (
+            job_key VARCHAR(64) PRIMARY KEY,
+            name VARCHAR(150) NOT NULL,
+            description TEXT,
+            script_path VARCHAR(255) NOT NULL,
+            enabled TINYINT(1) NOT NULL DEFAULT 1,
+            schedule_type ENUM('interval_minutes','daily_at') NOT NULL DEFAULT 'daily_at',
+            interval_minutes INT DEFAULT NULL,
+            daily_at_time TIME DEFAULT NULL,
+            last_run_at DATETIME DEFAULT NULL,
+            last_run_status VARCHAR(20) DEFAULT NULL,
+            last_run_message TEXT,
+            last_run_duration_ms INT DEFAULT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
-    $seedStmt = $pdo->prepare("INSERT IGNORE INTO cron_jobs (job_key, name, description, script_path, schedule_type, interval_minutes, daily_at_time) VALUES (?, ?, ?, ?, ?, ?, ?)");
-    foreach (getCronJobDefinitions() as $job) {
-        $seedStmt->execute([
-            $job['job_key'], $job['name'], $job['description'], $job['script_path'],
-            $job['schedule_type'], $job['interval_minutes'], $job['daily_at_time'],
-        ]);
+        $seedStmt = $pdo->prepare("INSERT IGNORE INTO cron_jobs (job_key, name, description, script_path, schedule_type, interval_minutes, daily_at_time) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        foreach (getCronJobDefinitions() as $job) {
+            $seedStmt->execute([
+                $job['job_key'], $job['name'], $job['description'], $job['script_path'],
+                $job['schedule_type'], $job['interval_minutes'], $job['daily_at_time'],
+            ]);
+        }
+        markSchemaVerified('schema_cron_jobs_v2');
     }
-    markSchemaVerified('schema_cron_jobs_v1');
 }
 
 function cronJobRowToApi(array $row, array $def): array {

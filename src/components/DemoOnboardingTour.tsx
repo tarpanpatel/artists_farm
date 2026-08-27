@@ -273,7 +273,6 @@ export const DemoOnboardingTour: React.FC<DemoOnboardingTourProps> = ({
   });
 
   const driverRef = useRef<Driver | null>(null);
-  const navigatingRef = useRef(false);
 
   // Refs so the driver.js config (built once, on tour start) always reads current values without
   // needing to be torn down and rebuilt every time a prop changes.
@@ -297,41 +296,23 @@ export const DemoOnboardingTour: React.FC<DemoOnboardingTourProps> = ({
     localStorage.setItem('demo_tour_completed', 'true');
   }, []);
 
-  // The one function every transition (initial start, Next, Prev) funnels through - each step
-  // fully describes its own required app state via beforeShow rather than a delta from the
-  // previous step, so the same function handles both directions plus the very first step.
-  const goToStep = useCallback(async (index: number, d: Driver) => {
-    if (navigatingRef.current) return;
-    if (index < 0) return;
-    if (index >= ALL_STEPS.length) {
-      d.destroy();
-      handleComplete();
-      return;
-    }
+  // Set right before intentionally calling moveTo() with an out-of-range index (Next on the
+  // last step) so onDestroyStarted below can tell "finished naturally" apart from "dismissed
+  // early via Escape/overlay-click" - both reach onDestroyStarted (see the driver.js source
+  // notes below), but only the former should trigger onStartTrialRequested.
+  const isFinishingRef = useRef(false);
 
-    navigatingRef.current = true;
-    try {
-      const step = ALL_STEPS[index];
-      await step.beforeShow?.(navRef.current);
-      const found = await waitForElement(step.selector);
-      if (!found) {
-        // Selector never appeared (navigation failed, or this demo property genuinely has no
-        // data for this step) - skip forward rather than leaving the tour stuck on a blank
-        // highlight.
-        navigatingRef.current = false;
-        if (index + 1 < ALL_STEPS.length) {
-          await goToStep(index + 1, d);
-        } else {
-          d.destroy();
-          handleComplete();
-        }
-        return;
-      }
-      d.moveTo(index);
-    } finally {
-      navigatingRef.current = false;
-    }
-  }, [handleComplete]);
+  // Navigates to a given step's required app state (tab switch / clicks), WITHOUT itself waiting
+  // for the target selector to mount - driver.js's own `waitForElement`/`skipMissingElement`
+  // config (set on the driver() call below) already polls for the final highlight target once
+  // moveTo() is called, so duplicating that wait here would be redundant. This function only
+  // needs to handle the app-navigation side.
+  const runBeforeShow = useCallback(async (index: number) => {
+    if (index < 0 || index >= ALL_STEPS.length) return;
+    await ALL_STEPS[index].beforeShow?.(navRef.current);
+  }, []);
+
+  const navigatingRef = useRef(false);
 
   const startTour = useCallback(() => {
     const d = driver({
@@ -339,6 +320,12 @@ export const DemoOnboardingTour: React.FC<DemoOnboardingTourProps> = ({
       allowClose: true,
       overlayOpacity: 0.65,
       popoverClass: 'app-tour-popover',
+      // driver.js's own built-in wait: after moveTo() targets a step, it polls (MutationObserver
+      // + timeout, verified in node_modules/driver.js source) for that step's element to appear
+      // before highlighting, and skips the step entirely if it never does within this window -
+      // exactly what's needed for tab-switch navigation whose target is lazy-loaded/code-split.
+      waitForElement: 4000,
+      skipMissingElement: true,
       steps: ALL_STEPS.map((step) => ({
         element: step.selector,
         popover: {
@@ -348,31 +335,66 @@ export const DemoOnboardingTour: React.FC<DemoOnboardingTourProps> = ({
           align: step.align,
         },
       })),
+      // Overriding onNextClick/onPrevClick hands driver.js's own internal advance logic
+      // entirely to us (confirmed in source: defining these skips the built-in moveNext/
+      // movePrevious path) - so beforeShow's navigation always runs BEFORE moveTo() lets
+      // driver.js start highlighting, on both Next and Prev.
       onNextClick: (_el, _step, opts) => {
-        void goToStep(opts.state.activeIndex! + 1, d);
+        if (navigatingRef.current) return;
+        const nextIndex = (opts.index ?? -1) + 1;
+        if (nextIndex >= ALL_STEPS.length) {
+          isFinishingRef.current = true;
+          opts.driver.moveTo(nextIndex);
+          return;
+        }
+        navigatingRef.current = true;
+        void runBeforeShow(nextIndex)
+          .then(() => opts.driver.moveTo(nextIndex))
+          .finally(() => { navigatingRef.current = false; });
       },
       onPrevClick: (_el, _step, opts) => {
-        void goToStep((opts.state.activeIndex ?? 1) - 1, d);
+        if (navigatingRef.current) return;
+        const prevIndex = (opts.index ?? 1) - 1;
+        if (prevIndex < 0) return;
+        navigatingRef.current = true;
+        void runBeforeShow(prevIndex)
+          .then(() => opts.driver.moveTo(prevIndex))
+          .finally(() => { navigatingRef.current = false; });
       },
+      // Defining onCloseClick hands the popover's own Close(X) button fully to us too (skips
+      // driver.js's internal closeClick->destroy path entirely, confirmed in source) - a plain
+      // direct destroy() here never reaches onDestroyStarted below (its `e` param is only true
+      // on driver.js's OWN internal dismiss paths, not an app-called destroy()).
       onCloseClick: () => {
         d.destroy();
         handleSkip();
       },
+      // Reached only via driver.js's own internal dismiss paths we don't override above -
+      // Escape key and clicking the dimmed overlay (both confirmed in source to call its
+      // internal h() with the default e=true, which invokes this hook instead of destroying
+      // outright) - AND our own onNextClick's out-of-range moveTo() call above, which internally
+      // takes the same h() path when the target index has no matching step. isFinishingRef
+      // disambiguates the two.
       onDestroyStarted: () => {
-        if (!d.hasNextStep()) {
-          // Finished naturally (Next on the last step) - handled by goToStep's own
-          // out-of-range branch, nothing to do here.
-          d.destroy();
-          return;
-        }
         d.destroy();
-        handleSkip();
+        if (isFinishingRef.current) {
+          isFinishingRef.current = false;
+          handleComplete();
+        } else {
+          handleSkip();
+        }
       },
     });
 
     driverRef.current = d;
-    void goToStep(0, d);
-  }, [goToStep, handleSkip]);
+    // beforeShow must complete BEFORE drive(0) starts - driver.js begins waiting for step 0's
+    // element the instant drive() is called, so calling it first would start that wait against
+    // whatever tab happened to be active before any tour navigation ran.
+    navigatingRef.current = true;
+    void runBeforeShow(0)
+      .then(() => d.drive(0))
+      .finally(() => { navigatingRef.current = false; });
+  }, [runBeforeShow, handleComplete, handleSkip]);
 
   useEffect(() => {
     return () => {

@@ -1,0 +1,12 @@
+2026-08-27 22:50:35 - Check-in verification reminder worker started
+2026-08-27 22:50:35 - Swept 3 expired ID-document file(s)/row(s) older than 24h
+2026-08-27 22:50:35 - SKIPPED: guest #22 (Michael Brown, Unassigned, property 59676) - No group configured for 'checkin_verification_reminder'
+2026-08-27 22:50:35 - SKIPPED: guest #38 (Michael Brown, Unassigned, property 58888) - No group configured for 'checkin_verification_reminder'
+2026-08-27 22:50:35 - SKIPPED: guest #2129 (Rancho, Unassigned, property 5722) - No group configured for 'checkin_verification_reminder'
+2026-08-27 22:50:35 - SKIPPED: guest #2130 (Gia, Room 102, property 290230) - No group configured for 'checkin_verification_reminder'
+2026-08-27 22:50:35 - SKIPPED: guest #2272 (Divya Verma, Room 101, property 290230) - No group configured for 'checkin_verification_reminder'
+2026-08-27 22:50:35 - SKIPPED: guest #2286 (Rajesh Nair, Room 102, property 290230) - No group configured for 'checkin_verification_reminder'
+2026-08-27 22:50:35 - SKIPPED: guest #2300 (Radhika Sharma, Room 103, property 290230) - No group configured for 'checkin_verification_reminder'
+2026-08-27 22:50:35 - SKIPPED: guest #2313 (Rahul Verma, Room 104, property 290230) - No group configured for 'checkin_verification_reminder'
+2026-08-27 22:50:35 - SKIPPED: guest #2327 (Karan Varma, Room 105, property 290230) - No group configured for 'checkin_verification_reminder'
+2026-08-27 22:50:35 - Reminder worker completed (9 booking(s) processed)
