@@ -91,7 +91,18 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           // surface it, so it now joins the z-60/70/100 "secondary modal
           // meant to stack above already-open content" tier documented
           // there (found 20 Aug 2026).
-          className="fixed inset-0 z-59 bg-slate-900/60 backdrop-blur-xs transition-opacity animate-in fade-in"
+          //
+          // Stops above the nav bar, not inset-0 (added 27 Aug 2026, live
+          // report: the sheet itself already leaves room for the nav below
+          // it, but this backdrop used to cover the FULL viewport at a
+          // higher z-index than the nav (z-59 vs the nav's z-[54]) - the nav
+          // was still technically there, just dimmed/blurred into
+          // invisibility underneath a full-screen 60%-black blurred overlay.
+          // Bottom offset matches the nav's own real rendered height exactly
+          // (same calc() the nav uses for its safe-area-inset-bottom
+          // padding), so the nav stays fully bright AND clickable while this
+          // sheet is open, not just technically present under the dimming.
+          className="fixed top-0 left-0 right-0 bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] z-59 bg-slate-900/60 backdrop-blur-xs transition-opacity animate-in fade-in"
         />
       )}
 
@@ -99,7 +110,11 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       <div
         className={`fixed left-0 right-0 z-60 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 rounded-t-2xl shadow-2xl transition-all duration-300 ease-out transform ${
           isQuickActionOpen
-            ? 'bottom-16 translate-y-0 opacity-100'
+            // bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] (was a flat bottom-16, added 27
+            // Aug 2026) - matches the nav's own real height exactly (see its h-[calc(...)] below)
+            // instead of assuming a flat 64px, so the gap left for the nav is correct even on a
+            // notched/home-indicator device where the nav is taller than 64px.
+            ? 'bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] translate-y-0 opacity-100'
             : 'bottom-0 translate-y-full opacity-0 pointer-events-none'
         } p-4 max-h-[80vh] overflow-y-auto`}
       >
