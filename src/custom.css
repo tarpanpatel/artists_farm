@@ -1204,9 +1204,50 @@ div:has(> [role="tablist"]) {
    separately in Popover.tsx itself. If you're hunting a z-index bug that
    isn't explained by anything in this file, grep for `zIndex` (camelCase,
    inline style objects) in addition to `z-\[?\d` Tailwind classes - both
-   exist in this codebase and only one is greppable by "z-" alone. */
+   exist in this codebase and only one is greppable by "z-" alone.
+
+   CONFIRMED VIOLATION #2 FOUND + FIXED 28 Aug 2026 (reported as "room names
+   are facing z index issue" while the Property Setup Wizard drawer was
+   open over the multi-key dashboard's TodayOverview calendar): flowbite-
+   react's OWN Drawer component - the one every modal/dialog in this app is
+   built on, per the Modal & Dialog Rules above - hardcodes its backdrop at
+   `fixed inset-0 z-30` and its panel at `z-40` directly in its shipped
+   `theme.js` (never edited per this repo's "never touch node_modules"
+   rule). TodayOverview.tsx's sticky room-name column (its own, unrelated,
+   correctly-scoped fix from 3 Aug 2026 - see that file's own comments) uses
+   `z-20`/`z-30` to stay above its own horizontally-scrolling date grid.
+   z-30 vs z-30 is an exact tie between two elements that are DOM siblings,
+   not ancestor/descendant - browsers break such ties by DOM paint order,
+   not intent, so whichever of the two happens to mount later in the tree
+   wins. The room-name column's z-30 was never "wrong" on its own (nothing
+   about the scale above reserves z-30) - it just happened to collide with
+   a completely different component's hardcoded value that this scale had
+   never accounted for, because a Drawer's backdrop/panel aren't a plain
+   `fixed inset-0 z-50` full-page modal (the only shape the rule below
+   already normalizes) - Drawer's backdrop+panel are two separate sibling
+   elements with their own hardcoded numbers, invisible to that selector.
+   Fixed below by bringing the Drawer's own backdrop/panel up into the same
+   tier as a real page modal (58/59, backdrop below panel, both still
+   comfortably under the 60/70/100 secondary-modal tier for things like a
+   date-picker rendered inside a drawer) - not by touching TodayOverview's
+   z-20/z-30 at all, since those were never the actual bug. */
 .fixed.inset-0.z-50 {
   z-index: 58;
+}
+
+/* Drawer backdrop is the plain, attribute-less <div> flowbite-react renders as
+   the very next sibling right after its own `[data-testid="flowbite-drawer"]`
+   panel (see node_modules/flowbite-react/dist/components/Drawer/Drawer.js -
+   `isOpen && backdrop && <div className={theme.root.backdrop} />` right after
+   the panel div in the same returned array) - there's no other attribute on it
+   to select by. Backdrop below, panel above, both above the z-50 popover tier
+   and any in-page sticky column (see CONFIRMED VIOLATION #2 above), both still
+   under the 60/70/100 secondary-modal tier. */
+[data-testid="flowbite-drawer"] + div {
+  z-index: 58;
+}
+[data-testid="flowbite-drawer"] {
+  z-index: 59;
 }
 
 /* Attendance Matrix Enhancements */
