@@ -574,7 +574,7 @@ function getMultiKeyProperty($pdo, $propertyId = 0, $currentProperty = []) {
         $stmt = $pdo->prepare("
             SELECT id, tenant_id, name, slug, property_type, address, currency, timezone, is_active, created_at,
                    email, phone, google_maps_link, whatsapp_voucher_template, gstin, upi_id, upi_qr_code_url, instructions,
-                   telegram_template_customization_enabled, walk_in_table_count
+                   telegram_template_customization_enabled, walk_in_table_count, is_public_demo
             FROM properties
             WHERE id = ? AND property_type = 'MULTI_KEY'
         ");
@@ -645,6 +645,10 @@ function getMultiKeyProperty($pdo, $propertyId = 0, $currentProperty = []) {
                 'timezone' => $property['timezone'],
                 'is_active' => (bool)$property['is_active'],
                 'created_at' => $property['created_at'],
+                // Added 28 Aug 2026 - see getTenantIsDemo()'s own comment in property_resolver.php
+                // for why both of these were silently missing from this endpoint's response.
+                'is_public_demo' => (bool)($property['is_public_demo'] ?? false),
+                'tenant_is_demo' => getTenantIsDemo($pdo, (int)$property['tenant_id']),
                 'room_count' => count($rooms),
                 'rooms' => $rooms,
                 'shared_data' => $shared_data

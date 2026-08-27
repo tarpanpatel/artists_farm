@@ -177,3 +177,20 @@ function getCurrentProperty(PDO $pdo, ?int $knownId = null): array {
     $stmt->execute([$id]);
     return $stmt->fetch() ?: [];
 }
+
+// Shared by router.php's get_current_property case AND getMultiKeyProperty() (28 Aug 2026 -
+// the latter previously hand-built its own response array with no tenant_is_demo/is_public_demo
+// at all, so any MULTI_KEY property's currentProperty - which DataLoader.tsx REPLACES wholesale
+// with this endpoint's response, not get_current_property's - could never trigger the demo-only
+// UI gates in App.tsx no matter what these flags were set to in the DB). Extracted here so a
+// future third call site reuses this instead of copying the try/catch a second time.
+function getTenantIsDemo(PDO $pdo, int $tenantId): bool {
+    try {
+        $stmt = $pdo->prepare("SELECT is_demo FROM tenants WHERE id = ? LIMIT 1");
+        $stmt->execute([$tenantId]);
+        $row = $stmt->fetch();
+        return !empty($row['is_demo']);
+    } catch (Exception $e) {
+        return false;
+    }
+}
