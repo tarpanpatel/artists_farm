@@ -308,9 +308,17 @@ export const OnboardingManager: React.FC = () => {
 
       if (resJson && resJson.status === 'success') {
         setTestResult(resJson.results);
-        if (channel === 'whatsapp' && resJson.results?.whatsapp_url) {
-          window.open(resJson.results.whatsapp_url, '_blank');
-          showToast('Opened WhatsApp test message in new tab!', { type: 'success' });
+        if (channel === 'whatsapp') {
+          const waApi = resJson.results?.whatsapp_api;
+          if (waApi?.status === 'success') {
+            showToast(`WhatsApp sent directly via Meta Cloud API to ${testPhone}!`, { type: 'success' });
+          } else {
+            const reason = waApi?.message || 'Meta template approval required for outbound API';
+            showToast(`API: ${reason}. Opening WhatsApp Web preview...`, { type: 'info' });
+            if (resJson.results?.whatsapp_url) {
+              window.open(resJson.results.whatsapp_url, '_blank');
+            }
+          }
         } else if (channel === 'telegram') {
           showToast('Telegram test dispatch sent to Admin channel!', { type: 'success' });
         } else if (channel === 'email') {

@@ -960,8 +960,18 @@ function sendTestCadenceNudge(PDO $pdo) {
             }
         }
 
-        // 3. WhatsApp Link Generation
+        // 3. WhatsApp Direct API Dispatch & Link Generation
         $phoneParam = preg_replace('/[^0-9]/', '', $customPhone ?: '919571263474');
+        if ($channel === 'whatsapp' || $channel === 'all') {
+            if (file_exists(__DIR__ . '/../whatsapp/sender.php')) {
+                require_once __DIR__ . '/../whatsapp/sender.php';
+            }
+            if (function_exists('sendWhatsAppDirectTextMessage')) {
+                $waApiRes = sendWhatsAppDirectTextMessage($phoneParam, $waMessage);
+                $results['whatsapp_api'] = $waApiRes;
+            }
+        }
+
         $results['whatsapp_url'] = 'https://wa.me/' . $phoneParam . '?text=' . rawurlencode($waMessage);
         $results['interpolated_text'] = [
             'subject' => $emailSubject,

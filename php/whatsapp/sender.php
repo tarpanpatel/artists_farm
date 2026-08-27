@@ -169,3 +169,69 @@ if (!function_exists('sendWhatsAppTemplateMessage')) {
         return is_array($decoded) ? $decoded : ['raw' => $response];
     }
 }
+
+/**
+ * Send a direct text message via WhatsApp Business Cloud API.
+ */
+if (!function_exists('sendWhatsAppDirectTextMessage')) {
+    function sendWhatsAppDirectTextMessage($toRawNumber, $messageText) {
+        $token = getWhatsAppAccessToken();
+        if (!$token) {
+            return ['status' => 'error', 'message' => 'WhatsApp access token not configured'];
+        }
+
+        $to = normalizeWhatsAppNumber($toRawNumber);
+        if (!$to) {
+            return ['status' => 'error', 'message' => "Could not normalize phone number: {$toRawNumber}"];
+        }
+
+        $payload = [
+            'messaging_product' => 'whatsapp',
+            'recipient_type' => 'individual',
+            'to' => $to,
+            'type' => 'text',
+            'text' => [
+                'preview_url' => true,
+                'body' => (string)$messageText,
+            ],
+        ];
+
+        $url = 'https://graph.facebook.com/' . WHATSAPP_API_VERSION . '/' . WHATSAPP_PHONE_NUMBER_ID . '/messages';
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Authorization: Bearer ' . $token,
+            'Content-Type: application/json',
+        ]);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        $status = ($http_code == 200) ? 'SUCCESS' : 'WARNING';
+        if (class_exists('TelescopeLogger')) {
+            TelescopeLogger::log(
+                'whatsapp',
+                $status,
+                "📱 WhatsApp API Direct Message to {$to} - HTTP {$http_code}" . ($error ? " (Error: {$error})" : ''),
+                "WhatsApp Direct Sender [Response: {$http_code}]",
+                ['to' => $to, 'http_code' => $http_code, 'error' => $error, 'response' => $response]
+            );
+        }
+
+        $decoded = json_decode($response, true);
+        if ($http_code == 200 && !empty($decoded['messages'])) {
+            return ['status' => 'success', 'http_code' => $http_code, 'data' => $decoded];
+        } else {
+            $apiError = $decoded['error']['message'] ?? ($decoded['error']['error_user_msg'] ?? "HTTP {$http_code}");
+            return ['status' => 'error', 'http_code' => $http_code, 'message' => $apiError, 'raw' => $decoded ?: $response];
+        }
+    }
+}
