@@ -2724,12 +2724,14 @@ ${itemsStr}
             setActiveMenuItemKey('service_requests');
           }}
         />
-        {/* Gated on is_public_demo (28 Aug 2026, explicit request) - the anonymous-visitor
-            auto-login demo property flag, not tenant_is_demo (a whole owner account being a
-            sales/QA demo tenant - a different, broader concept, see the PropertySetupWizard
-            guard above for that distinction). This tour is specifically the public marketing/
-            demo walkthrough, so it should never mount for a real tenant's property at all. */}
-        {preloadedData.currentProperty?.is_public_demo && (
+        {/* Gated on is_public_demo / demo tenant properties - the public marketing /
+            demo walkthrough, mounted on demo properties so visitors and testers can experience the tour. */}
+        {Boolean(
+          preloadedData.currentProperty?.is_public_demo ||
+          (preloadedData.currentProperty as any)?.tenant_is_demo ||
+          (preloadedData.currentProperty as any)?.is_demo ||
+          preloadedData.currentProperty?.slug === 'demo'
+        ) && (
           <Suspense fallback={null}>
             <DemoOnboardingTour
               onStartTrialRequested={() => setIsSelfOnboardingOpen(true)}
