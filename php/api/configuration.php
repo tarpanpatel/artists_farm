@@ -951,12 +951,47 @@ function sendTestCadenceNudge(PDO $pdo) {
             if (file_exists(__DIR__ . '/../telegram/sender.php')) {
                 require_once __DIR__ . '/../telegram/sender.php';
             }
-            if (function_exists('sendAdminTelegramMessage')) {
+            // Resolve Telegram Bot Token & Admin Chat ID dynamically from DB
+            $botToken = (defined('TELEGRAM_BOT_TOKEN') && TELEGRAM_BOT_TOKEN) ? TELEGRAM_BOT_TOKEN : null;
+            $adminChatId = (defined('TELEGRAM_ADMIN_CHAT_ID') && TELEGRAM_ADMIN_CHAT_ID) ? TELEGRAM_ADMIN_CHAT_ID : null;
+
+            try {
+                $tgStmt = $pdo->query("SELECT config FROM property_modules WHERE module_slug = 'telegram' AND is_enabled = 1 ORDER BY id DESC LIMIT 1");
+                $tgRow = $tgStmt ? $tgStmt->fetch(PDO::FETCH_ASSOC) : null;
+                if ($tgRow && !empty($tgRow['config'])) {
+                    $tgConfig = json_decode($tgRow['config'], true);
+                    if (!empty($tgConfig['botToken'])) {
+                        $botToken = $tgConfig['botToken'];
+                    }
+                    if (!empty($tgConfig['groups'])) {
+                        foreach ($tgConfig['groups'] as $grp) {
+                            if (stripos($grp['name'] ?? '', 'admin') !== false || stripos($grp['name'] ?? '', 'owner') !== false) {
+                                $adminChatId = $grp['chatId'] ?? null;
+                                break;
+                            }
+                        }
+                        if (!$adminChatId && !empty($tgConfig['groups'][0]['chatId'])) {
+                            $adminChatId = $tgConfig['groups'][0]['chatId'];
+                        }
+                    }
+                }
+                if (!$botToken) {
+                    $botTokenStmt = $pdo->query("SELECT telegram_bot_token FROM properties WHERE telegram_bot_token IS NOT NULL AND telegram_bot_token != '' LIMIT 1");
+                    $botToken = $botTokenStmt ? $botTokenStmt->fetchColumn() : null;
+                }
+            } catch (Exception $e) {}
+
+            if ($botToken && $adminChatId && function_exists('sendRawTelegramMessage')) {
                 $tgFormatted = "🧪 <b>[TEST CADENCE DISPATCH]</b>\n━━━━━━━━━━━━━━━━━━\n" . $tgMessage;
-                $tgSent = sendAdminTelegramMessage($tgFormatted);
-                $results['telegram'] = $tgSent ? 'sent' : 'failed';
+                $rawRes = sendRawTelegramMessage($tgFormatted, $botToken, $adminChatId);
+                $results['telegram'] = (!empty($rawRes['ok']) && $rawRes['ok'] === true) ? 'sent' : 'failed';
+                $results['telegram_response'] = $rawRes;
             } else {
-                $results['telegram'] = 'telegram_function_missing';
+                $missing = [];
+                if (!$botToken) $missing[] = 'Bot Token';
+                if (!$adminChatId) $missing[] = 'Admin Group Chat ID';
+                $results['telegram'] = 'unconfigured';
+                $results['telegram_error'] = !empty($missing) ? ('Missing ' . implode(' & ', $missing) . ' in Property Telegram Settings') : 'Telegram sender function unavailable';
             }
         }
 

@@ -11,24 +11,17 @@ import {
   Loader2,
   RefreshCw,
   Send,
-  CheckCircle2,
-  AlertCircle,
-  HelpCircle,
-  Copy,
   ChevronRight,
   ChevronDown,
   Sparkles,
   Info,
-  ExternalLink,
 } from './icons/FlowbiteIcons';
 import { Button } from './Button';
 import { Input } from './Input';
 import { Textarea } from './Textarea';
 import { ToggleSwitch } from './ToggleSwitch';
-import { Popover } from './Popover';
 import { useToast } from './ToastContext';
 import { apiFetch, API_ROOT_BASE } from '../services/api';
-import { t } from '../i18n/en';
 
 interface CadenceStageConfig {
   enabled: boolean;
@@ -320,7 +313,12 @@ export const OnboardingManager: React.FC = () => {
             }
           }
         } else if (channel === 'telegram') {
-          showToast('Telegram test dispatch sent to Admin channel!', { type: 'success' });
+          if (resJson.results?.telegram === 'sent') {
+            showToast('Telegram test dispatch sent to Admin group!', { type: 'success' });
+          } else {
+            const tgErr = resJson.results?.telegram_error || resJson.results?.telegram_response?.description || 'Telegram bot token or group chat ID not configured in Property Settings';
+            showToast(`Telegram dispatch: ${tgErr}`, { type: 'warning' });
+          }
         } else if (channel === 'email') {
           showToast(`Email test sent to ${testEmail}! Check your inbox.`, { type: 'success' });
         } else {
