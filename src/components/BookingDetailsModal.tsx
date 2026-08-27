@@ -112,7 +112,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const { staff } = useStaff();
   const { showToast } = useToast();
   const { confirm } = useConfirm();
-  const { activeRole, isAuthenticated, authChecked } = useAuth();
+  const { activeRole } = useAuth();
   // ROLES.md (23 Aug 2026): Staff Kitchen is view-only on bookings - no
   // upload ID, C-Form, check-in, checkout, edit, or delete. Plain Staff keeps
   // all of those except checkout specifically. Read directly from AuthContext
@@ -123,30 +123,6 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const isStaffKitchenRole = normalizedActiveRole === 'staff kitchen';
   const canActOnBooking = !isStaffKitchenRole;
   const canCheckoutBooking = !isStaffKitchenRole && normalizedActiveRole !== 'staff';
-
-  const [propDetails, setPropDetails] = useState<{
-    name?: string;
-    address?: string;
-    phone?: string;
-    google_maps_link?: string;
-    upi_id?: string;
-    upi_qr_code_url?: string;
-    checkin_time?: string;
-    checkout_time?: string;
-    instructions?: string;
-  }>({});
-
-  useEffect(() => {
-    if (!authChecked || !isAuthenticated) return;
-    fetch('/php/api/router.php?action=get_property', { credentials: 'include' })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.status === 'success' && data.data) {
-          setPropDetails(data.data);
-        }
-      })
-      .catch(() => {});
-  }, [isAuthenticated, authChecked]);
 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -463,25 +439,25 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
 
   const buildShareMessage = () => {
     const matchedRoom = rooms.find((r) => String(r.id) === String(g.roomId ?? g.room_id));
-    const unitName = guest.roomNumber || matchedRoom?.name || propDetails.name || 'N/A';
+    const unitName = guest.roomNumber || matchedRoom?.name || propertyName || 'N/A';
 
-    const addressVal = propertyAddress || propDetails.address || g.address || '';
-    const phoneVal = propertyPhone || propDetails.phone || g.phone || '';
-    const mapsVal = propertyMapsLink || propDetails.google_maps_link || g.google_maps_link || '';
-    const upiVal = propertyUpiId || propDetails.upi_id || g.upi_id || '';
-    let qrVal = propertyUpiQrCodeUrl || propDetails.upi_qr_code_url || (g as any).upi_qr_code_url || '';
+    const addressVal = propertyAddress || g.address || '';
+    const phoneVal = propertyPhone || g.phone || '';
+    const mapsVal = propertyMapsLink || g.google_maps_link || '';
+    const upiVal = propertyUpiId || g.upi_id || '';
+    let qrVal = propertyUpiQrCodeUrl || (g as any).upi_qr_code_url || '';
     if (qrVal && qrVal.startsWith('/') && typeof window !== 'undefined') {
       qrVal = window.location.origin + qrVal;
     }
-    const checkinTimeVal = propertyCheckinTime || propDetails.checkin_time || '14:00';
-    const checkoutTimeVal = propertyCheckoutTime || propDetails.checkout_time || '11:00';
-    const notesVal = propertyInstructions || propDetails.instructions || g.instructions || g.notes || '';
+    const checkinTimeVal = propertyCheckinTime || '14:00';
+    const checkoutTimeVal = propertyCheckoutTime || '11:00';
+    const notesVal = propertyInstructions || g.instructions || g.notes || '';
 
     return renderWhatsappVoucherTemplate(DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, {
       guest_name: guest.guestName,
       room_name: unitName,
       room_number: unitName,
-      property_name: propertyName || propDetails.name || 'our property',
+      property_name: propertyName || 'our property',
       checkin_date: formatDate(guest.checkinDate?.split(' ')[0] || ''),
       checkin_time: checkinTimeVal,
       checkout_date: formatDate(guest.expectedCheckout?.split(' ')[0] || guest.checkoutDate?.split(' ')[0] || ''),
