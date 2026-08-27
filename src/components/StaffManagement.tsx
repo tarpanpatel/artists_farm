@@ -2200,7 +2200,6 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   error={newUpiId.trim() && !isValidUpiIdSyntax(newUpiId) ? t('upi_id_invalid_format_error', 'Enter a valid UPI ID, e.g. name@bank') : undefined}
                   success={newUpiId.trim() && isValidUpiIdSyntax(newUpiId) ? t('upi_id_valid_format_success', 'Valid UPI ID format') : undefined}
                   helperText={t('staff_upi_id_help_text', 'A scannable QR code is generated automatically from this ID so this team member can be paid by scanning it.')}
-                  leftIcon={<QrCode className="w-4 h-4" />}
                 />
                 {newUpiId.trim() && isValidUpiIdSyntax(newUpiId) && (
                   <div className="mt-2">
@@ -2430,7 +2429,6 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   error={updateUpiId.trim() && !isValidUpiIdSyntax(updateUpiId) ? t('upi_id_invalid_format_error', 'Enter a valid UPI ID, e.g. name@bank') : undefined}
                   success={updateUpiId.trim() && isValidUpiIdSyntax(updateUpiId) ? t('upi_id_valid_format_success', 'Valid UPI ID format') : undefined}
                   helperText={t('staff_upi_id_help_text', 'A scannable QR code is generated automatically from this ID so this team member can be paid by scanning it.')}
-                  leftIcon={<QrCode className="w-4 h-4" />}
                 />
                 {/* Legacy uploaded QR images (from before this became UPI-ID-driven,
                     26 Aug 2026) are preserved and still shown here - as the

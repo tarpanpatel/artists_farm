@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Home, Hotel, Layers, Phone, Mail, IdCard, Wallet, QrCode,
-  Clock, IndianRupee, FileText, CheckCircle2, Loader2, ArrowRight, ArrowLeft, X,
+  Home, Hotel, Layers, Phone, Wallet,
+  Clock, FileText, CheckCircle2, Loader2, ArrowRight, ArrowLeft, X,
   ChefHat, AlertCircle,
 } from './icons/FlowbiteIcons';
 import { Drawer } from 'flowbite-react';
@@ -529,7 +529,7 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
         {activeStep.key === 'contact' && (
           <div className="space-y-4">
             <p className="text-xs text-slate-500 dark:text-slate-400">All optional - skip if you'd rather add these later.</p>
-            <Input type="email" label="Email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="info@example.com" leftIcon={<Mail className="w-4 h-4" />} />
+            <Input type="email" label="Email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="info@example.com" />
             <Input
               type="tel"
               label="Property Phone Number"
@@ -537,7 +537,6 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
               onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
               placeholder="Enter 10-digit mobile number"
               helperText="This is the phone number guests will be shown to contact the property."
-              leftIcon={<Phone className="w-4 h-4" />}
             />
           </div>
         )}
@@ -551,7 +550,6 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
               onChange={(e) => setGstin(e.target.value.toUpperCase())}
               placeholder="27ABCDE1234F1Z5"
               helperText="Printed on GST tax invoices at checkout."
-              leftIcon={<IdCard className="w-4 h-4" />}
             />
             <Input
               label="UPI ID (optional)"
@@ -561,7 +559,6 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
               error={upiId.trim() && !isValidUpiIdSyntax(upiId) ? 'Enter a valid UPI ID, e.g. name@bank' : undefined}
               success={upiId.trim() && isValidUpiIdSyntax(upiId) ? 'Valid UPI ID format' : undefined}
               helperText="A scannable UPI QR code (generated automatically from this ID) and the ID itself are added to booking/bill messages shared over WhatsApp."
-              leftIcon={<QrCode className="w-4 h-4" />}
             />
             {upiId.trim() && isValidUpiIdSyntax(upiId) && (
               <UpiPaymentBlock upiId={upiId.trim()} payeeName={name.trim() || 'Payment'} qrCodeImageUrl={upiQrCodeUrl} />
@@ -573,8 +570,8 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
           <div className="space-y-4">
             <p className="text-xs text-slate-500 dark:text-slate-400">Sensible defaults are already filled in - change only what's different for you.</p>
             <div className="grid grid-cols-2 gap-4">
-              <Input type="time" label="Check-in Time" value={checkinTime} onChange={(e) => setCheckinTime(e.target.value)} leftIcon={<Clock className="w-4 h-4" />} />
-              <Input type="time" label="Check-out Time" value={checkoutTime} onChange={(e) => setCheckoutTime(e.target.value)} leftIcon={<Clock className="w-4 h-4" />} />
+              <Input type="time" label="Check-in Time" value={checkinTime} onChange={(e) => setCheckinTime(e.target.value)} />
+              <Input type="time" label="Check-out Time" value={checkoutTime} onChange={(e) => setCheckoutTime(e.target.value)} />
             </div>
             {propertyType !== 'MULTI_KEY' && (
               <Input
@@ -584,7 +581,6 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
                 onChange={(e) => setDefaultTariff(e.target.value)}
                 placeholder="e.g. 2000"
                 helperText="Pre-fills the rate when creating a new booking - still editable per booking."
-                leftIcon={<IndianRupee className="w-4 h-4" />}
               />
             )}
             <Input

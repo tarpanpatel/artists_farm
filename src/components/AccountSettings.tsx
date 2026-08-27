@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from 'flowbite-react';
-import { UserCog, User, Phone, Mail, ShieldCheck, KeyRound, Loader2, Save } from './icons/FlowbiteIcons';
+import { UserCog, KeyRound, Loader2, Save } from './icons/FlowbiteIcons';
 import { Input } from './Input';
 import { Button } from './Button';
 import { useToast } from './ToastContext';
@@ -173,7 +173,6 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ username, onUs
               onChange={(e) => setProfileUsername(e.target.value.replace(/\D/g, '').slice(0, 10))}
               placeholder="10-digit mobile number"
               inputMode="numeric"
-              leftIcon={<Phone className="w-4 h-4" />}
               helperText="Used to log in - same value everywhere in the app, no separate username."
             />
           </div>
@@ -183,7 +182,6 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ username, onUs
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="e.g. Root Admin"
-              leftIcon={<User className="w-4 h-4" />}
             />
           </div>
           <div className="account-settings__field">
@@ -193,7 +191,6 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ username, onUs
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              leftIcon={<Mail className="w-4 h-4" />}
             />
           </div>
           <div className="account-settings__field account-settings__field--full sm:col-span-2">
@@ -202,7 +199,6 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ username, onUs
               value={gstin}
               onChange={(e) => setGstin(e.target.value.toUpperCase())}
               placeholder="e.g. 27ABCDE1234F1Z5"
-              leftIcon={<ShieldCheck className="w-4 h-4" />}
               helperText="15-character GST identification number (auto-uppercased)."
             />
           </div>

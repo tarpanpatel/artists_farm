@@ -820,7 +820,6 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   value={editRoomRent}
                   onChange={(e) => setEditRoomRent(e.target.value)}
                   disabled={!isEditing}
-                  leftIcon={<IndianRupee className="w-3.5 h-3.5" />}
                 />
               </div>
               <div>
@@ -843,7 +842,6 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   value={editAdvance}
                   onChange={(e) => setEditAdvance(e.target.value)}
                   disabled={!isEditing}
-                  leftIcon={<IndianRupee className="w-3.5 h-3.5" />}
                 />
               </div>
               <div>
