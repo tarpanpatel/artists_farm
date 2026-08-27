@@ -626,6 +626,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           {/* Action Banner 1: Check-in ID Verification */}
           {!isEditing && (
             <div
+              data-tour="checkin-folio"
               className={`booking-details-modal__id-btn w-full mb-3 px-3.5 py-2.5 rounded-lg border flex items-center justify-between gap-2 transition-colors ${
                 guest.idVerificationStatus === 'Complete'
                   ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800'
