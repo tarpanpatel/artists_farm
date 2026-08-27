@@ -441,4 +441,160 @@ function checkTelegramHealth($pdo) {
         echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
     }
 }
+
+/**
+ * Self-service automated onboarding for prospective hotel/resort clients.
+ * Creates tenant, owner user, property (with room slots & kitchen setting), and 30-day trial license.
+ */
+function registerTenantTrial($pdo) {
+    try {
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        $fullName = trim($input['full_name'] ?? '');
+        $email = trim($input['email'] ?? '');
+        $phone = preg_replace('/\D/', '', (string)($input['phone'] ?? ''));
+        $passcode = trim($input['passcode'] ?? '');
+        $propertyName = trim($input['property_name'] ?? '');
+        $propertyType = strtoupper(trim($input['property_type'] ?? 'SINGLE'));
+        $roomCount = max(1, (int)($input['room_count'] ?? 1));
+        $checkinTime = trim($input['checkin_time'] ?? '14:00');
+        $checkoutTime = trim($input['checkout_time'] ?? '11:00');
+        $hasKitchen = (int)($input['has_kitchen'] ?? 1);
+
+        if (!$fullName || !$email || !$phone || !$passcode || !$propertyName) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Missing required registration fields']);
+            return;
+        }
+
+        if (strlen($phone) !== 10) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Phone number must be a valid 10-digit mobile number']);
+            return;
+        }
+
+        if (strlen($passcode) !== 6) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Passcode must be a 6-digit PIN']);
+            return;
+        }
+
+        // Check if phone or email is already registered
+        $checkStmt = $pdo->prepare("SELECT id FROM users WHERE username = ? OR phone_number = ? LIMIT 1");
+        $checkStmt->execute([$phone, $phone]);
+        if ($checkStmt->fetch()) {
+            http_response_code(409);
+            echo json_encode(['success' => false, 'message' => 'An account with this phone number already exists. Please login instead.']);
+            return;
+        }
+
+        $pdo->beginTransaction();
+
+        // 1. Create Tenant
+        $tenantStmt = $pdo->prepare("
+            INSERT INTO tenants (name, owner_name, owner_phone, email, status, plan, created_at)
+            VALUES (?, ?, ?, ?, 'active', 'trial', NOW())
+        ");
+        $tenantStmt->execute([$propertyName, $fullName, $phone, $email]);
+        $tenantId = (int)$pdo->lastInsertId();
+
+        // 2. Create Master Owner User
+        $userStmt = $pdo->prepare("
+            INSERT INTO users (username, full_name, phone_number, email, passcode, role, is_platform_admin, default_tenant_id, created_at)
+            VALUES (?, ?, ?, ?, ?, 'admin', 0, ?, NOW())
+        ");
+        $userStmt->execute([$phone, $fullName, $phone, $email, $passcode, $tenantId]);
+        $userId = (int)$pdo->lastInsertId();
+
+        // Generate property slug
+        $baseSlug = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', $propertyName));
+        $baseSlug = trim($baseSlug, '-');
+        if (!$baseSlug) $baseSlug = 'property-' . time();
+        $propertySlug = $baseSlug;
+
+        // Ensure unique slug
+        $slugCheck = $pdo->prepare("SELECT id FROM properties WHERE slug = ? LIMIT 1");
+        $slugCheck->execute([$propertySlug]);
+        if ($slugCheck->fetch()) {
+            $propertySlug .= '-' . rand(100, 999);
+        }
+
+        // 3. Create Property
+        $propStmt = $pdo->prepare("
+            INSERT INTO properties (tenant_id, name, slug, property_type, room_count, checkin_time, checkout_time, status, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'active', NOW())
+        ");
+        $propStmt->execute([$tenantId, $propertyName, $propertySlug, $propertyType, $roomCount, $checkinTime, $checkoutTime]);
+        $propertyId = (int)$pdo->lastInsertId();
+
+        // Provision child rooms for Multi-Key property
+        if ($propertyType === 'MULTI_KEY' && $roomCount > 1) {
+            $roomStmt = $pdo->prepare("
+                INSERT INTO properties (tenant_id, parent_property_id, name, slug, property_type, room_order, is_active, created_at)
+                VALUES (?, ?, ?, ?, 'MULTI_KEY_ROOM', ?, 1, NOW())
+            ");
+            for ($i = 1; $i <= $roomCount; $i++) {
+                $roomName = "Room " . sprintf("%02d", $i);
+                $roomSlug = $propertySlug . '-room-' . $i;
+                $roomStmt->execute([$tenantId, $propertyId, $roomName, $roomSlug, $i]);
+            }
+        }
+
+        // Kitchen Module toggle
+        if ($hasKitchen === 0 && function_exists('disableKitchenModuleForNewProperty')) {
+            disableKitchenModuleForNewProperty($pdo, $propertyId);
+        }
+
+        // 4. Create 30-Day Trial License
+        $startDate = date('Y-m-d');
+        $expiryDate = date('Y-m-d', strtotime('+30 days'));
+        $licStmt = $pdo->prepare("
+            INSERT INTO property_licenses (property_id, tenant_id, license_type, start_date, expiry_date, status, created_at)
+            VALUES (?, ?, 'trial', ?, ?, 'active', NOW())
+        ");
+        $licStmt->execute([$propertyId, $tenantId, $startDate, $expiryDate]);
+
+        $pdo->commit();
+
+        // Set session state
+        $_SESSION['user_id'] = $userId;
+        $_SESSION['username'] = $phone;
+        $_SESSION['full_name'] = $fullName;
+        $_SESSION['role'] = 'admin';
+        $_SESSION['tenant_id'] = $tenantId;
+        $_SESSION['property_id'] = $propertyId;
+
+        // Send WhatsAPI notification if configured
+        if (function_exists('sendWhatsAppTemplateMessage')) {
+            try {
+                sendWhatsAppTemplateMessage($phone, 'welcome_onboarding', [$fullName, $propertySlug, $phone, $passcode]);
+            } catch (Exception $waErr) {
+                // Log and continue gracefully
+            }
+        }
+
+        // Log via Telescope
+        if (class_exists('TelescopeLogger')) {
+            TelescopeLogger::log(
+                'system',
+                'New Trial Self-Registration',
+                "{$fullName} ({$phone}) created tenant {$propertyName} with 30-day trial",
+                "Onboarding Wizard [Tenant: #{$tenantId}]",
+                ['tenant_id' => $tenantId, 'property_id' => $propertyId, 'owner' => $fullName, 'phone' => $phone]
+            );
+        }
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'Trial registered successfully',
+            'property_slug' => $propertySlug,
+            'redirect_url' => '/' . $propertySlug,
+        ]);
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Failed to create trial account: ' . $e->getMessage()]);
+    }
+}
 ?>
