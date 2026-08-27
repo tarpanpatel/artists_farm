@@ -10,6 +10,7 @@ import { useToast } from './ToastContext';
 import { useAuth } from '../contexts/AuthContext';
 import { shareTextContent } from '../utils/shareText';
 import { isCFormGenuinelyFiled } from '../utils/cFormStatus';
+import { getFirstName } from '../utils/nameUtils';
 import { t } from '../i18n/en';
 
 interface TodayOverviewProps {
@@ -727,7 +728,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                                     blockedDateStrings: roomOccupiedDateStrings.filter((d) => !ownDays.has(d)),
                                   });
                                 }}
-                                className="px-2.5 rounded-md font-semibold cursor-pointer absolute bg-slate-700 dark:bg-slate-700 hover:bg-slate-600 text-white border border-slate-600 pointer-events-auto shadow-md flex items-center z-20 overflow-hidden transition-colors"
+                                className="px-2.5 rounded-md font-semibold cursor-pointer absolute bg-red-600 dark:bg-red-700 hover:bg-red-500 text-white border border-red-700/40 pointer-events-auto shadow-md flex items-center z-20 overflow-hidden transition-colors animate-pulse"
                                 style={commonStyle}
                               >
                                 <span className="font-semibold truncate text-[11px] leading-none">{otaItem.label}</span>
@@ -794,7 +795,10 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                                   />
                                 )}
                                 {isOtaBooking && <Globe className="w-2.5 h-2.5 shrink-0" />}
-                                <span className="truncate">{guest.guestName}</span>
+                                <span className="truncate">
+                                  {getFirstName(guest.guestName)}
+                                  {isOtaBooking && (guest.otaSourceLabel || guest.otaSource) ? ` (${guest.otaSourceLabel || guest.otaSource})` : ''}
+                                </span>
                               </span>
                               <span className="text-[10px] font-medium opacity-90 whitespace-nowrap leading-none shrink-0">₹{info.nightlyRate}</span>
                             </div>
@@ -825,10 +829,10 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             <span className="w-5 h-3.5 rounded-xs bg-amber-600 inline-flex items-center justify-center text-white text-[9px] shadow-md">
               <Globe className="w-2.5 h-2.5" />
             </span>
-            <span>{t('legend_ota_converted', 'OTA Booking (Airbnb / Booking.com)')}</span>
+            <span>{t('legend_ota_converted', 'Converted OTA Bookings')}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-5 h-3.5 rounded-xs bg-slate-800 dark:bg-slate-900 border border-slate-600 inline-block shadow-md" />
+            <span className="w-5 h-3.5 rounded-xs bg-red-600 dark:bg-red-700 border border-red-700/40 inline-block shadow-md animate-pulse" />
             <span>{t('legend_ota_blocked', 'OTA Blocked Date')}</span>
           </div>
           <div className="flex items-center gap-2">

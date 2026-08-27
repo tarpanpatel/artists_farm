@@ -40,6 +40,7 @@ import { Input } from './Input';
 import { t } from '../i18n/en';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import { isCFormGenuinelyFiled } from '../utils/cFormStatus';
+import { getFirstName } from '../utils/nameUtils';
 
 interface OperationalDashboardProps {
   guests: Guest[];
@@ -1375,7 +1376,12 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                                     <span className="flex w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/50" />
                                   )}
                                   {isOtaBooking && <Globe className="w-2.5 h-2.5 shrink-0" />}
-                                  <span className="truncate font-semibold min-w-0">{dayBooking.guestName.split(' ')[0]}</span>
+                                  <span className="truncate font-semibold min-w-0">
+                                    {getFirstName(dayBooking.guestName)}
+                                    {isOtaBooking && ((dayBooking as any).otaSourceLabel || (dayBooking as any).otaSource)
+                                      ? ` (${(dayBooking as any).otaSourceLabel || (dayBooking as any).otaSource})`
+                                      : ''}
+                                  </span>
                                   {nightlyRate > 0 && <span className="text-2xs font-normal opacity-85 shrink-0 ml-auto">₹{nightlyRate}</span>}
                                 </button>
                               </Popover>
@@ -1426,7 +1432,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                             >
                               <button
                                 type="button"
-                                className="w-full rounded-md px-2 py-1 bg-slate-700 dark:bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white text-xs font-medium flex flex-col justify-center shadow-2xs truncate text-left cursor-pointer transition-colors"
+                                className="w-full rounded-md px-2 py-1 bg-red-600 dark:bg-red-700 hover:bg-red-500 border border-red-700/40 text-white text-xs font-medium flex flex-col justify-center shadow-2xs truncate text-left cursor-pointer transition-colors animate-pulse"
                               >
                                 <div className="truncate font-semibold">{otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}</div>
                               </button>
@@ -1464,10 +1470,10 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               <span className="w-5 h-3.5 rounded-xs bg-amber-600 inline-flex items-center justify-center text-white text-[9px] shadow-md">
                 <Globe className="w-2.5 h-2.5" />
               </span>
-              <span>{t('legend_ota_converted', 'OTA Booking (Airbnb / Booking.com)')}</span>
+              <span>{t('legend_ota_converted', 'Converted OTA Bookings')}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-5 h-3.5 rounded-xs bg-slate-700 dark:bg-slate-700 border border-slate-600 inline-block shadow-md" />
+              <span className="w-5 h-3.5 rounded-xs bg-red-600 dark:bg-red-700 border border-red-700/40 inline-block shadow-md animate-pulse" />
               <span>{t('legend_ota_blocked', 'OTA Blocked Date')}</span>
             </div>
             <div className="flex items-center gap-2">

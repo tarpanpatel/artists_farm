@@ -108,6 +108,7 @@ export const strings: Record<string, string> = {
   legend_checked_out: "Checked Out",
   legend_airbnb_booking: "Airbnb Booking",
   legend_ota_blocked: "OTA-Blocked (not yet a booking)",
+  legend_ota_converted: "Converted OTA Bookings",
   ota_blocked_label: "Blocked",
   ota_blocked_tooltip: "Blocked via {{source}} - not yet a booking in this system",
   legend_blocked: "Blocked",
