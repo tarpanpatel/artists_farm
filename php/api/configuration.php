@@ -63,6 +63,18 @@ function handleConfigurationRequests($pdo, $request_method, $action, $propertyId
             registerTenantTrial($pdo);
             break;
 
+        case 'get_saas_platform_config':
+            getSaasPlatformConfig($pdo);
+            break;
+
+        case 'save_saas_platform_config':
+            saveSaasPlatformConfig($pdo);
+            break;
+
+        case 'send_test_cadence_nudge':
+            sendTestCadenceNudge($pdo);
+            break;
+
         default:
             http_response_code(400);
             echo json_encode(['error' => 'Unknown configuration action']);
@@ -636,6 +648,282 @@ function registerTenantTrial($pdo) {
         }
         http_response_code(500);
         echo json_encode(['success' => false, 'message' => 'Failed to create trial account: ' . $e->getMessage()]);
+    }
+}
+
+/**
+ * Return default 30-Day Trial Cadence definition map
+ */
+function getDefaultTrialCadenceStages(): array {
+    return [
+        'day_1_welcome' => [
+            'enabled' => true,
+            'day_number' => 1,
+            'stage_type' => 'day_age',
+            'title' => 'Welcome to Ground Code — Day 1 Checklist',
+            'email_subject' => 'Welcome to Ground Code, {tenant_name}! Day 1 Setup Checklist',
+            'email_body' => "Hello {tenant_name},\n\nWelcome to Ground Code! Your 30-day full-access trial for {property_name} is now live.\n\nHere is your Day 1 Quickstart:\n1. Open your property dashboard ({login_url})\n2. Add your team members in Staff Management\n3. Connect Telegram to get live notifications for check-ins, food orders, and expenses\n\nNeed help getting started? Reply directly to this email or call {support_phone}.",
+            'telegram_message' => "🏢 <b>GROUND CODE TRIAL STARTED</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Property:</b> {property_name}\n🎉 Welcome! Your 30-day full-access trial is active.\n👉 Finish your setup: Add staff, set room rates, and connect payment QR.",
+        ],
+        'day_3_features' => [
+            'enabled' => true,
+            'day_number' => 3,
+            'stage_type' => 'day_age',
+            'title' => 'Ground Code Tip: Cash Drawer & Petty Cash',
+            'email_subject' => 'Day 3 on Ground Code: Stop Petty Cash & Cash Leakage',
+            'email_body' => "Hello {tenant_name},\n\nAre you tracking your daily property expenses on Ground Code yet?\n\nKey features for your first week:\n• Petty Cash Drawer: Log cash-in and cash-out with photo proof\n• Kitchen & Food POS: Instantly add meals and drinks to guest bills\n• Service Requests: Assign room cleaning and maintenance to staff\n\nLog in to explore: {login_url}",
+            'telegram_message' => "💰 <b>GROUND CODE TIP: CASH CONTROL</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Property:</b> {property_name}\n📌 Track petty cash expenses and front-desk drawer balances with receipt photos.\n👉 Tap Petty Cash & Cash Drawer in your dashboard.",
+        ],
+        'day_7_milestone' => [
+            'enabled' => true,
+            'day_number' => 7,
+            'stage_type' => 'day_age',
+            'title' => '1 Week on Ground Code — How is it going?',
+            'email_subject' => '1 Week on Ground Code — Your Operations Summary',
+            'email_body' => "Hello {tenant_name},\n\nCongratulations on completing your first week on Ground Code!\n\nCheck your Analytics Dashboard to see live metrics on occupancy, direct vs OTA revenue, and expense summaries.\n\nIf you have any questions or want a quick 10-minute walkthrough for your team, we're here to help.",
+            'telegram_message' => "📊 <b>1-WEEK MILESTONE REACHED</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Property:</b> {property_name}\n✨ You've completed 1 week on Ground Code! Check your live revenue analytics.",
+        ],
+        'day_14_halfway' => [
+            'enabled' => true,
+            'day_number' => 14,
+            'stage_type' => 'day_age',
+            'title' => '14 Days Remaining in Your Trial',
+            'email_subject' => 'Halfway through your Ground Code Trial — 14 Days Remaining',
+            'email_body' => "Hello {tenant_name},\n\nYou are halfway through your 30-day trial of Ground Code for {property_name}.\n\nMake sure to connect your Airbnb and Booking.com iCal feeds in Settings → Calendar Sync to prevent double-bookings automatically.\n\nYour trial remains active until {expires_at}.",
+            'telegram_message' => "⏳ <b>HALFWAY TRIAL CHECK-IN</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Property:</b> {property_name}\n📅 14 days remaining in your trial (Expires: {expires_at}).\n💡 Tip: Sync your Airbnb / OTA calendars in Settings.",
+        ],
+        'day_21_renewal_plan' => [
+            'enabled' => true,
+            'day_number' => 21,
+            'stage_type' => 'day_age',
+            'title' => '9 Days Left in Your Free Trial — Plan Your Subscription',
+            'email_subject' => 'Ground Code Trial: 9 Days Left on {tenant_name}',
+            'email_body' => "Hello {tenant_name},\n\nYour 30-day trial on Ground Code is entering its final week (ending on {expires_at}).\n\nTo ensure uninterrupted access for your staff, kitchen, and booking systems, please review your subscription options:\n• Current Plan: {plan_type}\n• Expiry Date: {expires_at}\n\nContact your account manager or reply to this email to activate regular billing.",
+            'telegram_message' => "📋 <b>UPCOMING TRIAL RENEWAL</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Property:</b> {property_name}\n⏳ 9 days left on your free trial (Expires: {expires_at}).\n👉 Contact your account manager to activate subscription.",
+        ],
+        'day_23_7d_notice' => [
+            'enabled' => true,
+            'day_number' => 23,
+            'stage_type' => 'days_left',
+            'title' => '⚠️ 7-Day Subscription Expiry Notice',
+            'email_subject' => 'URGENT: Your Ground Code Subscription Expires in 7 Days ({tenant_name})',
+            'email_body' => "Hello {tenant_name},\n\nThis is a courtesy reminder that your Ground Code subscription for {tenant_name} will expire in 7 days on {expires_at}.\n\nRenew now to avoid service interruption for your front-desk and staff.\n\nPlan: {plan_type}\nExpiry: {expires_at}",
+            'telegram_message' => "⚠️ <b>7-DAY EXPIRATION NOTICE</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Property:</b> {property_name}\n🚨 Your subscription expires in 7 days on {expires_at}.\n👉 Renew to maintain uninterrupted operations.",
+        ],
+        'day_28_2d_notice' => [
+            'enabled' => true,
+            'day_number' => 28,
+            'stage_type' => 'days_left',
+            'title' => '🚨 Final Notice: 48 Hours Until Subscription Expiry',
+            'email_subject' => 'FINAL NOTICE: 48 Hours Left on Ground Code ({tenant_name})',
+            'email_body' => "Hello {tenant_name},\n\nYour Ground Code subscription expires in 48 hours on {expires_at}.\n\nPlease renew immediately to prevent staff logout and booking synchronization pauses.\n\nContact support ({support_phone}) to complete renewal.",
+            'telegram_message' => "🚨 <b>URGENT: 48 HOURS LEFT</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Property:</b> {property_name}\n⏳ 2 days remaining until subscription expires ({expires_at}).\n👉 Action required immediately.",
+        ],
+        'day_30_expired' => [
+            'enabled' => true,
+            'day_number' => 30,
+            'stage_type' => 'days_left',
+            'title' => 'Subscription Expired — Reactivate Ground Code',
+            'email_subject' => 'Your Ground Code Subscription for {tenant_name} Has Expired',
+            'email_body' => "Hello {tenant_name},\n\nYour Ground Code subscription for {tenant_name} expired on {expires_at}.\n\nYour property data, bookings, and guest records are safely stored. To reactivate full access for your team, please contact support to renew your subscription.\n\nThank you for using Ground Code!",
+            'telegram_message' => "🔒 <b>SUBSCRIPTION EXPIRED</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Property:</b> {property_name}\n⚠️ Trial/Subscription expired on {expires_at}.\n👉 Contact support ({support_phone}) to reactivate account.",
+        ],
+    ];
+}
+
+/**
+ * Get SaaS Platform & Onboarding Configuration
+ */
+function getSaasPlatformConfig(PDO $pdo) {
+    if (!($_SESSION['is_platform_admin'] ?? false)) {
+        http_response_code(403);
+        echo json_encode(['status' => 'error', 'message' => 'Root Admin access required']);
+        exit;
+    }
+
+    try {
+        $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'saas_%' OR setting_key = 'tenant_welcome_template'");
+        $rows = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+        $defaultWelcomeWhatsapp = "🎉 Welcome to Ground Code, {tenant_name} ji!\n\nYour 30-Day Free Trial for *{property_name}* is now LIVE!\n\n🔐 *Your Login Credentials:*\n• Dashboard URL: {login_url}\n• Username (Mobile): {username}\n• Passcode: {temp_passcode}\n• Trial Expiry Date: {expiry_date}\n\n📱 *IMPORTANT: Add to Phone Home Screen*\n1️⃣ Open link: {login_url}\n2️⃣ iPhone: Share → 'Add to Home Screen'\n3️⃣ Android: 3-Dots Menu → 'Install App' / 'Add to Home Screen'\n\nHappy Managing!\nGround Code Support: {support_phone}";
+        $defaultWelcomeEmailSubject = "Welcome to Ground Code, {tenant_name}! Your 30-Day Free Trial is Live";
+        $defaultWelcomeEmailBody = "Hello {tenant_name},\n\nWelcome to Ground Code! Your 30-day full-access trial for {property_name} has been activated.\n\nYour Login Credentials:\n• Dashboard URL: {login_url}\n• Username: {username}\n• Temporary Passcode: {temp_passcode}\n• Trial Expiration: {expiry_date}\n\nOpen your dashboard to set up your rooms, staff, and food menu:\n{login_url}\n\nNeed help? Contact support at {support_phone} or reply directly to this email.";
+
+        $pricingConfig = !empty($rows['saas_pricing_config']) ? json_decode($rows['saas_pricing_config'], true) : [
+            'base_monthly_fee' => 1499,
+            'per_key_monthly_fee' => 50,
+            'trial_days' => 30,
+            'annual_discount_pct' => 20,
+            'gst_rate_pct' => 18,
+            'currency_symbol' => '₹',
+        ];
+
+        $cadenceConfig = !empty($rows['saas_trial_cadence_config']) ? json_decode($rows['saas_trial_cadence_config'], true) : getDefaultTrialCadenceStages();
+
+        $pwaBranding = !empty($rows['saas_pwa_branding']) ? json_decode($rows['saas_pwa_branding'], true) : [
+            'app_name' => 'Ground Code',
+            'short_name' => 'GroundCode',
+            'theme_color' => '#2563EB',
+            'bg_color' => '#FAFAFA',
+            'icon_192_url' => '/app-icons/icon-source.png',
+            'icon_512_url' => '/app-icons/icon-source.png',
+        ];
+
+        $supportContact = !empty($rows['saas_support_contact']) ? json_decode($rows['saas_support_contact'], true) : [
+            'support_phone' => '+91 95712 63474',
+            'support_whatsapp' => '+91 95712 63474',
+            'support_email' => 'support@ground-code.com',
+            'grace_period_days' => 3,
+            'default_modules' => ['kitchen_kds', 'food_pos', 'petty_cash', 'inventory', 'attendance', 'telegram_alerts', 'whatsapp_bills'],
+        ];
+
+        echo json_encode([
+            'status' => 'success',
+            'data' => [
+                'welcome_whatsapp' => $rows['saas_welcome_whatsapp'] ?? $defaultWelcomeWhatsapp,
+                'welcome_email_subject' => $rows['saas_welcome_email_subject'] ?? $defaultWelcomeEmailSubject,
+                'welcome_email_body' => $rows['saas_welcome_email_body'] ?? $defaultWelcomeEmailBody,
+                'pricing' => $pricingConfig,
+                'cadence' => $cadenceConfig,
+                'pwa' => $pwaBranding,
+                'support' => $supportContact,
+            ],
+        ]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+    }
+}
+
+/**
+ * Save SaaS Platform & Onboarding Configuration
+ */
+function saveSaasPlatformConfig(PDO $pdo) {
+    if (!($_SESSION['is_platform_admin'] ?? false)) {
+        http_response_code(403);
+        echo json_encode(['status' => 'error', 'message' => 'Root Admin access required']);
+        exit;
+    }
+
+    try {
+        $input = json_decode(file_get_contents('php://input'), true);
+        if (!$input) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'Invalid JSON payload']);
+            exit;
+        }
+
+        $stmt = $pdo->prepare("
+            INSERT INTO system_settings (setting_key, setting_value, updated_by)
+            VALUES (?, ?, ?)
+            ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_by = VALUES(updated_by), updated_at = NOW()
+        ");
+
+        $adminUser = $_SESSION['username'] ?? 'Root Admin';
+
+        if (isset($input['welcome_whatsapp'])) {
+            $stmt->execute(['saas_welcome_whatsapp', trim($input['welcome_whatsapp']), $adminUser]);
+        }
+        if (isset($input['welcome_email_subject'])) {
+            $stmt->execute(['saas_welcome_email_subject', trim($input['welcome_email_subject']), $adminUser]);
+        }
+        if (isset($input['welcome_email_body'])) {
+            $stmt->execute(['saas_welcome_email_body', trim($input['welcome_email_body']), $adminUser]);
+        }
+        if (isset($input['pricing']) && is_array($input['pricing'])) {
+            $stmt->execute(['saas_pricing_config', json_encode($input['pricing'], JSON_PRETTY_PRINT), $adminUser]);
+        }
+        if (isset($input['cadence']) && is_array($input['cadence'])) {
+            $stmt->execute(['saas_trial_cadence_config', json_encode($input['cadence'], JSON_PRETTY_PRINT), $adminUser]);
+        }
+        if (isset($input['pwa']) && is_array($input['pwa'])) {
+            $stmt->execute(['saas_pwa_branding', json_encode($input['pwa'], JSON_PRETTY_PRINT), $adminUser]);
+        }
+        if (isset($input['support']) && is_array($input['support'])) {
+            $stmt->execute(['saas_support_contact', json_encode($input['support'], JSON_PRETTY_PRINT), $adminUser]);
+        }
+
+        if (class_exists('TelescopeLogger')) {
+            TelescopeLogger::log('settings', 'INFO', 'SaaS Onboarding & Platform Configuration updated by ' . $adminUser, 'saveSaasPlatformConfig');
+        }
+
+        echo json_encode(['status' => 'success', 'message' => 'Onboarding & Platform settings saved successfully']);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+    }
+}
+
+/**
+ * Test Trigger for a Cadence Stage Nudge
+ */
+function sendTestCadenceNudge(PDO $pdo) {
+    if (!($_SESSION['is_platform_admin'] ?? false)) {
+        http_response_code(403);
+        echo json_encode(['status' => 'error', 'message' => 'Root Admin access required']);
+        exit;
+    }
+
+    try {
+        $input = json_decode(file_get_contents('php://input'), true);
+        $stageKey = $input['stageKey'] ?? 'day_1_welcome';
+        $testEmail = trim($input['testEmail'] ?? '');
+        $testPropertyId = (int)($input['testPropertyId'] ?? 0);
+
+        $results = ['email' => null, 'telegram' => null];
+
+        // Fetch stage data
+        $stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'saas_trial_cadence_config' LIMIT 1");
+        $stmt->execute();
+        $customCadence = json_decode($stmt->fetchColumn() ?: '[]', true);
+        $defaults = getDefaultTrialCadenceStages();
+        $stageInfo = $customCadence[$stageKey] ?? $defaults[$stageKey] ?? null;
+
+        if (!$stageInfo) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'Unknown cadence stage']);
+            exit;
+        }
+
+        $sampleVars = [
+            'tenant_name' => 'Demo Resort Owner',
+            'property_name' => 'Mountain View Villa',
+            'plan_type' => 'Growth',
+            'expires_at' => date('Y-m-d', strtotime('+30 days')),
+            'days_left' => 30,
+            'login_url' => 'https://staging.ground-code.com/demo',
+            'support_phone' => '+91 95712 63474',
+        ];
+
+        // 1. Email Test
+        if ($testEmail && filter_var($testEmail, FILTER_VALIDATE_EMAIL) && function_exists('sendSmtpEmail')) {
+            $subj = $stageInfo['email_subject'];
+            $body = $stageInfo['email_body'];
+            foreach ($sampleVars as $k => $v) {
+                $subj = str_replace('{' . $k . '}', (string)$v, $subj);
+                $body = str_replace('{' . $k . '}', (string)$v, $body);
+            }
+            $html = "<div style='font-family: Arial, sans-serif; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;'><h3 style='color: #2563eb;'>[TEST] {$stageInfo['title']}</h3><p style='white-space: pre-line; color: #334155;'>{$body}</p></div>";
+            $results['email'] = sendSmtpEmail($pdo, $testEmail, "[TEST] " . $subj, $html);
+        }
+
+        // 2. Telegram Test
+        if ($testPropertyId > 0 && function_exists('sendPropertyTelegramMessage')) {
+            $tgMsg = $stageInfo['telegram_message'] ?? $stageInfo['title'];
+            foreach ($sampleVars as $k => $v) {
+                $tgMsg = str_replace('{' . $k . '}', (string)$v, $tgMsg);
+            }
+            $results['telegram'] = sendPropertyTelegramMessage($pdo, $testPropertyId, 'admin', "🧪 <b>[TEST CADENCE DISPATCH]</b>\n\n" . $tgMsg);
+        }
+
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'Test nudge dispatched',
+            'results' => $results,
+        ]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
     }
 }
 ?>

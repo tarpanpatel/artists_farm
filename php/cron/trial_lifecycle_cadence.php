@@ -51,6 +51,14 @@ function ensureTrialLifecycleCadenceSchema(PDO $pdo): void {
 try {
     ensureTrialLifecycleCadenceSchema($pdo);
 
+    // Load custom cadence settings and support info from system_settings
+    $settingsStmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('saas_trial_cadence_config', 'saas_support_contact')");
+    $settingsMap = $settingsStmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+    $customCadence = !empty($settingsMap['saas_trial_cadence_config']) ? json_decode($settingsMap['saas_trial_cadence_config'], true) : [];
+    $supportConfig = !empty($settingsMap['saas_support_contact']) ? json_decode($settingsMap['saas_support_contact'], true) : [];
+    $supportPhone = $supportConfig['support_phone'] ?? '+91 95712 63474';
+
     // Fetch all active/trial tenants (skip demo/sales accounts)
     $stmt = $pdo->query("
         SELECT id, name, slug, email, phone, subscription_plan, subscription_status,
@@ -89,11 +97,33 @@ try {
             $daysUntilExpiry = (int)ceil(($expiresAtTs - $now) / 86400);
         }
 
-        // Get tenant's primary property for Telegram dispatch
-        $propStmt = $pdo->prepare("SELECT id, name FROM properties WHERE tenant_id = ? ORDER BY id ASC LIMIT 1");
+        // Get tenant's primary property for Telegram dispatch and login URL
+        $propStmt = $pdo->prepare("SELECT id, name, slug FROM properties WHERE tenant_id = ? ORDER BY id ASC LIMIT 1");
         $propStmt->execute([$tenantId]);
         $primaryProperty = $propStmt->fetch(PDO::FETCH_ASSOC);
         $primaryPropertyId = $primaryProperty ? (int)$primaryProperty['id'] : null;
+        $propertyName = $primaryProperty ? $primaryProperty['name'] : $tenantName;
+        $propertySlug = $primaryProperty ? $primaryProperty['slug'] : $tenant['slug'];
+        $loginUrl = "https://staging.ground-code.com/{$propertySlug}";
+
+        // Template interpolation map
+        $vars = [
+            'tenant_name' => $tenantName,
+            'property_name' => $propertyName,
+            'plan_type' => $planType,
+            'expires_at' => $expiresAt ?: 'End of 30-Day Period',
+            'days_left' => $daysUntilExpiry !== null ? $daysUntilExpiry : max(0, 30 - $dayAge),
+            'login_url' => $loginUrl,
+            'support_phone' => $supportPhone,
+            'username' => $tenant['phone'] ?? '',
+        ];
+
+        $interpolate = function(string $text) use ($vars): string {
+            foreach ($vars as $k => $v) {
+                $text = str_replace('{' . $k . '}', (string)$v, $text);
+            }
+            return $text;
+        };
 
         // Check which cadence stages have already been sent for this tenant
         $sentStagesStmt = $pdo->prepare("SELECT cadence_stage FROM tenant_trial_cadence_logs WHERE tenant_id = ?");
@@ -104,87 +134,109 @@ try {
         // Determine applicable cadence stage
         $applicableStages = [];
 
+        // Helper to check if stage is enabled in custom cadence or default enabled
+        $isStageEnabled = function(string $stageKey) use ($customCadence): bool {
+            if (isset($customCadence[$stageKey]['enabled'])) {
+                return (bool)$customCadence[$stageKey]['enabled'];
+            }
+            return true;
+        };
+
         // Day 1 Welcome (1 day after creation)
-        if ($dayAge >= 1 && !isset($sentSet['day_1_welcome']) && $status === 'trial') {
+        if ($dayAge >= 1 && !isset($sentSet['day_1_welcome']) && $status === 'trial' && $isStageEnabled('day_1_welcome')) {
+            $conf = $customCadence['day_1_welcome'] ?? [];
             $applicableStages[] = [
                 'stage' => 'day_1_welcome',
                 'day' => 1,
-                'title' => "Welcome to Ground Code — Day 1 Checklist",
-                'email_subject' => "Welcome to Ground Code, {$tenantName}! Day 1 Setup Checklist",
+                'title' => $interpolate($conf['title'] ?? "Welcome to Ground Code — Day 1 Checklist"),
+                'email_subject' => $interpolate($conf['email_subject'] ?? "Welcome to Ground Code, {tenant_name}! Day 1 Setup Checklist"),
                 'summary' => "Welcome to your 30-day free trial! Add your team and set up your room rates to get started.",
-                'body' => "Hello {$tenantName},\n\nWelcome to Ground Code! Your 30-day full-access trial is live.\n\nHere is your Day 1 Quickstart:\n1. Open your property dashboard\n2. Add your staff team in Staff Management\n3. Connect Telegram to get live notifications for check-ins, food orders, and expenses\n\nNeed any help getting started? Reply directly to this email anytime.",
+                'body' => $interpolate($conf['email_body'] ?? "Hello {tenant_name},\n\nWelcome to Ground Code! Your 30-day full-access trial for {property_name} is live.\n\nHere is your Day 1 Quickstart:\n1. Open your property dashboard ({login_url})\n2. Add your team in Staff Management\n3. Connect Telegram for real-time alerts\n\nNeed help getting started? Contact support ({support_phone}) or reply to this email."),
+                'telegram' => $interpolate($conf['telegram_message'] ?? "🏢 <b>GROUND CODE TRIAL STARTED</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Property:</b> {property_name}\n🎉 Welcome! Your 30-day full-access trial is active.\n👉 Finish your setup: Add staff, set room rates, and connect payment QR."),
             ];
         }
 
         // Day 3 Feature Discovery
-        if ($dayAge >= 3 && !isset($sentSet['day_3_features']) && $status === 'trial') {
+        if ($dayAge >= 3 && !isset($sentSet['day_3_features']) && $status === 'trial' && $isStageEnabled('day_3_features')) {
+            $conf = $customCadence['day_3_features'] ?? [];
             $applicableStages[] = [
                 'stage' => 'day_3_features',
                 'day' => 3,
-                'title' => "Ground Code Tip: Cash Drawer & Petty Cash",
-                'email_subject' => "Day 3 on Ground Code: Stop Petty Cash & Cash Leakage",
+                'title' => $interpolate($conf['title'] ?? "Ground Code Tip: Cash Drawer & Petty Cash"),
+                'email_subject' => $interpolate($conf['email_subject'] ?? "Day 3 on Ground Code: Stop Petty Cash & Cash Leakage"),
                 'summary' => "Track cash collections, staff emergency advances, and kitchen purchases with receipt photos.",
-                'body' => "Hello {$tenantName},\n\nAre you tracking your daily property expenses on Ground Code yet?\n\nKey features for your first week:\n• Petty Cash Drawer: Log cash-in and cash-out with photo proof\n• Kitchen & Food POS: Instantly add meals and drinks to guest bills\n• Service Requests: Assign room cleaning and maintenance to staff\n\nLog in to explore your dashboard: https://staging.ground-code.com",
+                'body' => $interpolate($conf['email_body'] ?? "Hello {tenant_name},\n\nAre you tracking your daily property expenses on Ground Code yet?\n\nKey features for your first week:\n• Petty Cash Drawer: Log cash-in and cash-out with photo proof\n• Kitchen & Food POS: Instantly add meals and drinks to guest bills\n• Service Requests: Assign room cleaning and maintenance to staff\n\nLog in to explore: {login_url}"),
+                'telegram' => $interpolate($conf['telegram_message'] ?? "💰 <b>GROUND CODE TIP: CASH CONTROL</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Property:</b> {property_name}\n📌 Track petty cash expenses and front-desk drawer balances with receipt photos.\n👉 Tap Petty Cash & Cash Drawer in your dashboard."),
             ];
         }
 
         // Day 7 One-Week Milestone
-        if ($dayAge >= 7 && !isset($sentSet['day_7_milestone']) && $status === 'trial') {
+        if ($dayAge >= 7 && !isset($sentSet['day_7_milestone']) && $status === 'trial' && $isStageEnabled('day_7_milestone')) {
+            $conf = $customCadence['day_7_milestone'] ?? [];
             $applicableStages[] = [
                 'stage' => 'day_7_milestone',
                 'day' => 7,
-                'title' => "1 Week on Ground Code — How is it going?",
-                'email_subject' => "1 Week on Ground Code — Your Operations Summary",
+                'title' => $interpolate($conf['title'] ?? "1 Week on Ground Code — How is it going?"),
+                'email_subject' => $interpolate($conf['email_subject'] ?? "1 Week on Ground Code — Your Operations Summary"),
                 'summary' => "You have completed your first week on Ground Code! Check your analytics and revenue summary.",
-                'body' => "Hello {$tenantName},\n\nCongratulations on completing your first week on Ground Code!\n\nCheck your Analytics Dashboard to see live metrics on occupancy, direct vs OTA revenue, and expense summaries.\n\nIf you have any questions or want a quick walkthrough for your team, we're here to help.",
+                'body' => $interpolate($conf['email_body'] ?? "Hello {tenant_name},\n\nCongratulations on completing your first week on Ground Code!\n\nCheck your Analytics Dashboard to see live metrics on occupancy, direct vs OTA revenue, and expense summaries.\n\nIf you have any questions or want a quick walkthrough for your team, we're here to help."),
+                'telegram' => $interpolate($conf['telegram_message'] ?? "📊 <b>1-WEEK MILESTONE REACHED</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Property:</b> {property_name}\n✨ You've completed 1 week on Ground Code! Check your live revenue analytics."),
             ];
         }
 
         // Day 14 Halfway Check-in
-        if ($dayAge >= 14 && !isset($sentSet['day_14_halfway']) && $status === 'trial') {
+        if ($dayAge >= 14 && !isset($sentSet['day_14_halfway']) && $status === 'trial' && $isStageEnabled('day_14_halfway')) {
+            $conf = $customCadence['day_14_halfway'] ?? [];
             $applicableStages[] = [
                 'stage' => 'day_14_halfway',
                 'day' => 14,
-                'title' => "14 Days Remaining in Your Trial",
-                'email_subject' => "Halfway through your Ground Code Trial — 14 Days Remaining",
+                'title' => $interpolate($conf['title'] ?? "14 Days Remaining in Your Trial"),
+                'email_subject' => $interpolate($conf['email_subject'] ?? "Halfway through your Ground Code Trial — 14 Days Remaining"),
                 'summary' => "Your 30-day trial is halfway through. Ensure your OTA calendars (Airbnb, Booking.com) are connected.",
-                'body' => "Hello {$tenantName},\n\nYou are halfway through your 30-day trial of Ground Code.\n\nMake sure to connect your Airbnb and Booking.com iCal feeds in Settings → Calendar Sync to avoid double-bookings automatically.\n\nYour trial remains active until " . ($expiresAt ?: 'Day 30') . ".",
+                'body' => $interpolate($conf['email_body'] ?? "Hello {tenant_name},\n\nYou are halfway through your 30-day trial of Ground Code for {property_name}.\n\nMake sure to connect your Airbnb and Booking.com iCal feeds in Settings → Calendar Sync to avoid double-bookings automatically.\n\nYour trial remains active until {expires_at}."),
+                'telegram' => $interpolate($conf['telegram_message'] ?? "⏳ <b>HALFWAY TRIAL CHECK-IN</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Property:</b> {property_name}\n📅 14 days remaining in your trial (Expires: {expires_at}).\n💡 Tip: Sync your Airbnb / OTA calendars in Settings."),
             ];
         }
 
         // Day 21 (Upcoming Renewal Notice - 9 Days left)
-        if ($dayAge >= 21 && !isset($sentSet['day_21_renewal_plan']) && ($daysUntilExpiry === null || $daysUntilExpiry <= 9) && $status === 'trial') {
+        if ($dayAge >= 21 && !isset($sentSet['day_21_renewal_plan']) && ($daysUntilExpiry === null || $daysUntilExpiry <= 9) && $status === 'trial' && $isStageEnabled('day_21_renewal_plan')) {
+            $conf = $customCadence['day_21_renewal_plan'] ?? [];
             $applicableStages[] = [
                 'stage' => 'day_21_renewal_plan',
                 'day' => 21,
-                'title' => "9 Days Left in Your Free Trial — Plan Your Subscription",
-                'email_subject' => "Ground Code Trial: 9 Days Left on {$tenantName}",
+                'title' => $interpolate($conf['title'] ?? "9 Days Left in Your Free Trial — Plan Your Subscription"),
+                'email_subject' => $interpolate($conf['email_subject'] ?? "Ground Code Trial: 9 Days Left on {tenant_name}"),
                 'summary' => "Your free trial expires in 9 days. Choose your plan to keep your property running smoothly without interruption.",
-                'body' => "Hello {$tenantName},\n\nYour 30-day trial on Ground Code is entering its final week (ending on {$expiresAt}).\n\nTo ensure uninterrupted access for your staff, kitchen, and booking systems, please review your subscription options:\n• Plan: {$planType}\n• Expiry Date: {$expiresAt}\n\nContact support or your account manager to activate your regular subscription.",
+                'body' => $interpolate($conf['email_body'] ?? "Hello {tenant_name},\n\nYour 30-day trial on Ground Code is entering its final week (ending on {expires_at}).\n\nTo ensure uninterrupted access for your staff, kitchen, and booking systems, please review your subscription options:\n• Plan: {plan_type}\n• Expiry Date: {expires_at}\n\nContact support ({support_phone}) to activate regular billing."),
+                'telegram' => $interpolate($conf['telegram_message'] ?? "📋 <b>UPCOMING TRIAL RENEWAL</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Property:</b> {property_name}\n⏳ 9 days left on your free trial (Expires: {expires_at}).\n👉 Contact your account manager to activate subscription."),
             ];
         }
 
         // Day 23 / 7-Day Expiry Notice
-        if ($daysUntilExpiry !== null && $daysUntilExpiry <= 7 && $daysUntilExpiry > 2 && !isset($sentSet['day_23_7d_notice'])) {
+        if ($daysUntilExpiry !== null && $daysUntilExpiry <= 7 && $daysUntilExpiry > 2 && !isset($sentSet['day_23_7d_notice']) && $isStageEnabled('day_23_7d_notice')) {
+            $conf = $customCadence['day_23_7d_notice'] ?? [];
             $applicableStages[] = [
                 'stage' => 'day_23_7d_notice',
                 'day' => 23,
-                'title' => "⚠️ 7-Day Subscription Expiry Notice",
-                'email_subject' => "URGENT: Your Ground Code Subscription Expires in 7 Days ({$tenantName})",
+                'title' => $interpolate($conf['title'] ?? "⚠️ 7-Day Subscription Expiry Notice"),
+                'email_subject' => $interpolate($conf['email_subject'] ?? "URGENT: Your Ground Code Subscription Expires in 7 Days ({tenant_name})"),
                 'summary' => "Your Ground Code subscription expires in {$daysUntilExpiry} days on {$expiresAt}.",
-                'body' => "Hello {$tenantName},\n\nThis is a courtesy reminder that your Ground Code subscription for {$tenantName} will expire in {$daysUntilExpiry} days on {$expiresAt}.\n\nRenew now to avoid service interruption for your front-desk and staff.\n\nPlan: {$planType}\nExpiry: {$expiresAt}",
+                'body' => $interpolate($conf['email_body'] ?? "Hello {tenant_name},\n\nThis is a courtesy reminder that your Ground Code subscription for {tenant_name} will expire in {$daysUntilExpiry} days on {expires_at}.\n\nRenew now to avoid service interruption for your front-desk and staff.\n\nPlan: {plan_type}\nExpiry: {expires_at}"),
+                'telegram' => $interpolate($conf['telegram_message'] ?? "⚠️ <b>7-DAY EXPIRATION NOTICE</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Property:</b> {property_name}\n🚨 Your subscription expires in 7 days on {expires_at}.\n👉 Renew to maintain uninterrupted operations."),
             ];
         }
 
         // Day 28 / 2-Day Final Notice
-        if ($daysUntilExpiry !== null && $daysUntilExpiry <= 2 && $daysUntilExpiry >= 0 && !isset($sentSet['day_28_2d_notice'])) {
+        if ($daysUntilExpiry !== null && $daysUntilExpiry <= 2 && $daysUntilExpiry >= 0 && !isset($sentSet['day_28_2d_notice']) && $isStageEnabled('day_28_2d_notice')) {
+            $conf = $customCadence['day_28_2d_notice'] ?? [];
             $applicableStages[] = [
                 'stage' => 'day_28_2d_notice',
                 'day' => 28,
-                'title' => "🚨 Final Notice: 48 Hours Until Subscription Expiry",
-                'email_subject' => "FINAL NOTICE: 48 Hours Left on Ground Code ({$tenantName})",
+                'title' => $interpolate($conf['title'] ?? "🚨 Final Notice: 48 Hours Until Subscription Expiry"),
+                'email_subject' => $interpolate($conf['email_subject'] ?? "FINAL NOTICE: 48 Hours Left on Ground Code ({tenant_name})"),
                 'summary' => "Your subscription expires in {$daysUntilExpiry} day(s). Action required immediately.",
-                'body' => "Hello {$tenantName},\n\nYour Ground Code subscription expires in {$daysUntilExpiry} day(s) on {$expiresAt}.\n\nPlease renew immediately to prevent staff logout and booking synchronization pauses.\n\nContact your account manager or support to complete renewal.",
+                'body' => $interpolate($conf['email_body'] ?? "Hello {tenant_name},\n\nYour Ground Code subscription expires in {$daysUntilExpiry} day(s) on {expires_at}.\n\nPlease renew immediately to prevent staff logout and booking synchronization pauses.\n\nContact support ({support_phone}) to complete renewal."),
+                'telegram' => $interpolate($conf['telegram_message'] ?? "🚨 <b>URGENT: 48 HOURS LEFT</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Property:</b> {property_name}\n⏳ 2 days remaining until subscription expires ({expires_at}).\n👉 Action required immediately."),
             ];
         }
 
@@ -203,14 +255,18 @@ try {
                 $histStmt->execute([$tenantId, $planType, $planType, $expiresAt, $expiresAt]);
             }
 
-            $applicableStages[] = [
-                'stage' => 'day_30_expired',
-                'day' => 30,
-                'title' => "Subscription Expired — Reactivate Ground Code",
-                'email_subject' => "Your Ground Code Subscription for {$tenantName} Has Expired",
-                'summary' => "Your subscription expired on {$expiresAt}. Reactivate your account to restore full access.",
-                'body' => "Hello {$tenantName},\n\nYour Ground Code subscription for {$tenantName} expired on {$expiresAt}.\n\nYour property data, bookings, and guest records are safely stored. To reactivate full access for your team, please contact support to renew your subscription.\n\nThank you for using Ground Code!",
-            ];
+            if ($isStageEnabled('day_30_expired')) {
+                $conf = $customCadence['day_30_expired'] ?? [];
+                $applicableStages[] = [
+                    'stage' => 'day_30_expired',
+                    'day' => 30,
+                    'title' => $interpolate($conf['title'] ?? "Subscription Expired — Reactivate Ground Code"),
+                    'email_subject' => $interpolate($conf['email_subject'] ?? "Your Ground Code Subscription for {tenant_name} Has Expired"),
+                    'summary' => "Your subscription expired on {$expiresAt}. Reactivate your account to restore full access.",
+                    'body' => $interpolate($conf['email_body'] ?? "Hello {tenant_name},\n\nYour Ground Code subscription for {tenant_name} expired on {expires_at}.\n\nYour property data, bookings, and guest records are safely stored. To reactivate full access for your team, please contact support ({support_phone}) to renew your subscription.\n\nThank you for using Ground Code!"),
+                    'telegram' => $interpolate($conf['telegram_message'] ?? "🔒 <b>SUBSCRIPTION EXPIRED</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Property:</b> {property_name}\n⚠️ Trial/Subscription expired on {expires_at}.\n👉 Contact support ({support_phone}) to reactivate account."),
+                ];
+            }
         }
 
         // Execute dispatches for all due stages for this tenant
@@ -227,11 +283,13 @@ try {
             // 1. Telegram Dispatch (if property Telegram is connected)
             if ($primaryPropertyId) {
                 try {
-                    $tgMessage = "🏢 <b>GROUND CODE SUBSCRIPTION UPDATE</b>\n━━━━━━━━━━━━━━━━━━\n"
-                               . "🏷️ <b>Property:</b> {$tenantName}\n"
-                               . "📅 <b>Status:</b> " . ucfirst($status) . " (Plan: {$planType})\n"
-                               . "📌 <b>{$msgTitle}</b>\n\n"
-                               . "{$stageInfo['summary']}\n━━━━━━━━━━━━━━━━━━";
+                    $tgMessage = !empty($stageInfo['telegram']) ? $stageInfo['telegram'] : (
+                        "🏢 <b>GROUND CODE SUBSCRIPTION UPDATE</b>\n━━━━━━━━━━━━━━━━━━\n"
+                        . "🏷️ <b>Property:</b> {$tenantName}\n"
+                        . "📅 <b>Status:</b> " . ucfirst($status) . " (Plan: {$planType})\n"
+                        . "📌 <b>{$msgTitle}</b>\n\n"
+                        . "{$stageInfo['summary']}\n━━━━━━━━━━━━━━━━━━"
+                    );
 
                     $tgResult = sendPropertyTelegramMessage($pdo, $primaryPropertyId, 'admin', $tgMessage, null, 'subscription_cadence_nudge');
                     if (is_array($tgResult) && empty($tgResult['skipped'])) {
@@ -246,17 +304,16 @@ try {
             if (!empty($tenantEmail) && filter_var($tenantEmail, FILTER_VALIDATE_EMAIL)) {
                 try {
                     $htmlEmail = "
-                        <div style='font-family: Inter, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #ffffff; border: 1px solid #e2e8f0; rounded: 8px;'>
+                        <div style='font-family: Inter, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px;'>
                             <div style='border-bottom: 2px solid #2563eb; padding-bottom: 12px; margin-bottom: 20px;'>
-                                <h2 style='color: #1e293b; margin: 0; font-size: 20px;'>Ground Code Homestay Operations</h2>
+                                <h2 style='margin: 0; color: #1e293b; font-size: 20px; font-weight: 700;'>Ground Code</h2>
+                                <p style='margin: 4px 0 0 0; color: #64748b; font-size: 13px;'>Hotel & Resort Management SaaS</p>
                             </div>
-                            <h3 style='color: #0f172a; margin-top: 0;'>{$msgTitle}</h3>
-                            <div style='color: #334155; line-height: 1.6; white-space: pre-line;'>
-                                " . htmlspecialchars($msgBody) . "
-                            </div>
-                            <div style='margin-top: 24px; padding-top: 16px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #64748b;'>
-                                <p>Tenant: <strong>{$tenantName}</strong> | Plan: <strong>{$planType}</strong></p>
-                                <p>Ground Code Resort & Homestay Operations Platform</p>
+                            <h3 style='color: #0f172a; font-size: 16px; margin-top: 0;'>{$msgTitle}</h3>
+                            <div style='color: #334155; font-size: 14px; line-height: 1.6; white-space: pre-line;'>{$msgBody}</div>
+                            <div style='margin-top: 24px; padding-top: 16px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #94a3b8;'>
+                                Ground Code • Ground Reality Hotel Management<br>
+                                Need assistance? WhatsApp/Call: {$supportPhone}
                             </div>
                         </div>
                     ";

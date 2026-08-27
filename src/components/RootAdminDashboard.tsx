@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send, Mail, Bell, UserCog, Pencil, DatabaseBackup, Loader2, RefreshCw, AlertTriangle, UserRound, Receipt, Package, Bot, Server } from './icons/FlowbiteIcons';
+import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send, Mail, Bell, UserCog, Pencil, DatabaseBackup, Loader2, RefreshCw, AlertTriangle, UserRound, Receipt, Package, Bot, Server, Sparkles } from './icons/FlowbiteIcons';
 import { Card, Sidebar, SidebarItems, SidebarItemGroup, SidebarItem, SidebarCollapse } from 'flowbite-react';
 import { KpiCard } from './KpiCard';
 import { Button } from './Button';
@@ -18,6 +18,7 @@ import { TelegramNotificationModal } from './TelegramNotificationModal';
 import { TelegramHealthPanel } from './TelegramHealthPanel';
 import { EmailSettingsPanel } from './EmailSettingsPanel';
 import { AccountSettings } from './AccountSettings';
+import { OnboardingManager } from './OnboardingManager';
 import { TelegramConfig } from '../types';
 import { AuthProvider } from '../contexts/AuthContext';
 import { apiFetch, API_ROOT_BASE } from '../services/api';
@@ -46,9 +47,9 @@ interface RootAdminDashboardProps {
   activeRole: string;
 }
 
-type SectionType = 'dashboard' | 'tenants_properties' | 'appearance' | 'edit_main_menu' | 'default_expenses' | 'default_bills' | 'service_request_types' | 'system_stock' | 'telegram_templates' | 'email_settings' | 'account_settings' | 'db_sync' | 'demo_data' | 'ai_services' | 'cron_jobs';
+type SectionType = 'dashboard' | 'tenants_properties' | 'onboarding' | 'appearance' | 'edit_main_menu' | 'default_expenses' | 'default_bills' | 'service_request_types' | 'system_stock' | 'telegram_templates' | 'email_settings' | 'account_settings' | 'db_sync' | 'demo_data' | 'ai_services' | 'cron_jobs';
 
-const VALID_SECTIONS: SectionType[] = ['dashboard', 'tenants_properties', 'appearance', 'edit_main_menu', 'default_expenses', 'default_bills', 'service_request_types', 'system_stock', 'telegram_templates', 'email_settings', 'account_settings', 'db_sync', 'demo_data', 'ai_services', 'cron_jobs'];
+const VALID_SECTIONS: SectionType[] = ['dashboard', 'tenants_properties', 'onboarding', 'appearance', 'edit_main_menu', 'default_expenses', 'default_bills', 'service_request_types', 'system_stock', 'telegram_templates', 'email_settings', 'account_settings', 'db_sync', 'demo_data', 'ai_services', 'cron_jobs'];
 
 export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
   username,
@@ -379,6 +380,16 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                 {t('root_tenants_properties_label', 'Owners')}
               </SidebarItem>
 
+              <SidebarItem
+                as="button"
+                icon={Sparkles}
+                active={activeSection === 'onboarding'}
+                onClick={() => goToSection('onboarding')}
+                className="w-full cursor-pointer text-left"
+              >
+                Onboarding
+              </SidebarItem>
+
               <SidebarCollapse
                 icon={Pencil}
                 label="Edit Defaults"
@@ -591,6 +602,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
               <h2 className="root-admin-dashboard__title text-lg lg:text-xl font-semibold text-gray-900 dark:text-white truncate">
                 {activeSection === 'dashboard' && t('root_dashboard_label', 'Dashboard')}
                 {activeSection === 'tenants_properties' && t('root_tenants_properties_label', 'Owners')}
+                {activeSection === 'onboarding' && 'Onboarding & SaaS Platform Manager'}
                 {activeSection === 'edit_main_menu' && t('root_edit_main_menu_label', 'Edit Main Menu')}
                 {activeSection === 'default_expenses' && t('root_default_expenses_heading_label', 'Default Expenses (MultiKey)')}
                 {activeSection === 'default_bills' && 'Default Bills (MultiKey)'}
@@ -651,6 +663,9 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
               </Card>
             </div>
           )}
+
+          {/* Onboarding & SaaS Platform Manager */}
+          {activeSection === 'onboarding' && <OnboardingManager />}
 
           {/* Tenants & Properties */}
           {activeSection === 'tenants_properties' && (
