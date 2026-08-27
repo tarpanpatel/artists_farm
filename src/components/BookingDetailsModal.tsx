@@ -129,6 +129,8 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [highlightReceiverFields, setHighlightReceiverFields] = useState(false);
   const [isIdModalOpen, setIsIdModalOpen] = useState(false);
+  const [isSharePreviewOpen, setIsSharePreviewOpen] = useState(false);
+  const [sharePreviewMessage, setSharePreviewMessage] = useState('');
 
   const handleOpenId = () => {
     if (onOpenIdVerification) {
@@ -481,15 +483,24 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     });
   };
 
-  const handleShareBooking = async () => {
-    const message = buildShareMessage();
+  // 28 Aug 2026, explicit request: Share used to fire navigator.share()/clipboard-copy
+  // immediately with no way to see the actual message first. Now Share just opens a
+  // preview drawer of the exact text that will go out; the preview's own Send button
+  // is what actually triggers shareTextContent() below.
+  const handleShareBooking = () => {
+    setSharePreviewMessage(buildShareMessage());
+    setIsSharePreviewOpen(true);
+  };
+
+  const handleConfirmSendBooking = async () => {
     await shareTextContent(
       'Booking Details',
-      message,
+      sharePreviewMessage,
       showToast,
       "Booking details copied - paste them wherever you'd like to send them.",
       'Could not share or copy booking details.',
     );
+    setIsSharePreviewOpen(false);
   };
 
   const financialHandlers = staff.filter((s) => s.isFinancialHandler).map((s) => ({ value: s.name, label: s.name }));
@@ -903,186 +914,183 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               </div>
             )}
 
-            {/* Foreign Guest C-Form Section (plain, no colored callout box -
-                found 21 Aug 2026 this stood out more than any other field
-                group on the form for no real reason) */}
-            {(editIsForeignGuest || guest.isForeignGuest) && (
-              <div id="c-form-checkbox-container" className="pt-1 border-t border-slate-100 dark:border-slate-700">
-                <div className="flex items-center justify-between gap-2">
-                  <label className={`flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-100 select-none ${canActOnBooking ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}>
-                    <Checkbox
-                      // Bound to cFormSectionOpen, not cFormFiledState (24 Aug
-                      // 2026 fix) - checking this box only REVEALS the fields
-                      // below to fill in, it doesn't itself save anything
-                      // (that's still "Save C-Form"). It used to flip
-                      // cFormFiledState straight away, which prematurely
-                      // marked this "Filed" (and, via cFormLocked, immediately
-                      // DISABLED the very fields it had just revealed) before
-                      // any save actually happened. Unchecking is the one
-                      // real exception - that DOES save immediately (an
-                      // explicit "actually mark as not filed" action), so it
-                      // still flips cFormFiledState itself, and closes the
-                      // section back up along with it.
-                      checked={cFormSectionOpen}
-                      disabled={!canActOnBooking}
-                      onChange={async (e) => {
-                        if (!canActOnBooking) return;
-                        const isChecked = e.target.checked;
-                        if (!isChecked) {
-                          const ok = await markCFormFiled(guest.id, false, '');
-                          if (ok) {
-                            setCFormFiledState(false);
-                            setCFormSectionOpen(false);
-                            setCFormNumberState('');
-                            showToast('C-Form marked as pending', { type: 'success' });
-                            await onSave({ ...guest, cFormFiledAt: null, cFormFiled: false, c_form_filed: false, cFormNumber: '', c_form_number: '' } as any);
-                          } else {
-                            showToast('Failed to update C-Form status', { type: 'error' });
-                          }
+            {/* Foreign Guest C-Form Section */}
+            <div data-tour="cform-filing" id="c-form-checkbox-container" className="pt-1 border-t border-slate-100 dark:border-slate-700">
+              <div className="flex items-center justify-between gap-2">
+                <label className={`flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-100 select-none ${canActOnBooking ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}>
+                  <Checkbox
+                    id="c-form-filed-checkbox"
+                    // Bound to cFormSectionOpen, not cFormFiledState (24 Aug
+                    // 2026 fix) - checking this box only REVEALS the fields
+                    // below to fill in, it doesn't itself save anything
+                    // (that's still "Save C-Form"). It used to flip
+                    // cFormFiledState straight away, which prematurely
+                    // marked this "Filed" (and, via cFormLocked, immediately
+                    // DISABLED the very fields it had just revealed) before
+                    // any save actually happened. Unchecking is the one
+                    // real exception - that DOES save immediately (an
+                    // explicit "actually mark as not filed" action), so it
+                    // still flips cFormFiledState itself, and closes the
+                    // section back up along with it.
+                    checked={cFormSectionOpen}
+                    disabled={!canActOnBooking}
+                    onChange={async (e) => {
+                      if (!canActOnBooking) return;
+                      const isChecked = e.target.checked;
+                      if (!isChecked) {
+                        const ok = await markCFormFiled(guest.id, false, '');
+                        if (ok) {
+                          setCFormFiledState(false);
+                          setCFormSectionOpen(false);
+                          setCFormNumberState('');
+                          showToast('C-Form marked as pending', { type: 'success' });
+                          await onSave({ ...guest, cFormFiledAt: null, cFormFiled: false, c_form_filed: false, cFormNumber: '', c_form_number: '' } as any);
                         } else {
-                          setCFormSectionOpen(true);
+                          showToast('Failed to update C-Form status', { type: 'error' });
+                        }
+                      } else {
+                        setCFormSectionOpen(true);
+                      }
+                    }}
+                  />
+                  <span>Mark C-Form as filed</span>
+                </label>
+                <span className={`text-xs font-semibold ${cFormMissingProof ? 'text-amber-600 dark:text-amber-400' : isCFormFiled ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                  {cFormMissingProof ? 'Filed (no reference on record)' : isCFormFiled ? 'Filed' : 'Filing Pending'}
+                </span>
+              </div>
+
+              {cFormMissingProof && (
+                <p className="mt-1.5 text-2xs font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3 shrink-0" />
+                  Marked filed but no confirmation number or document was ever saved - verify with the guest and fill it in below.
+                </p>
+              )}
+
+              {cFormSectionOpen && canActOnBooking && (
+                <div
+                  ref={cFormSectionRef}
+                  className={`mt-2.5 space-y-2 p-2.5 rounded-lg border transition-colors ${
+                    // Red highlight box (24 Aug 2026 - "highlight that in a
+                    // box with red") while this is genuinely still
+                    // unresolved - clears itself the moment isCFormFiled
+                    // actually flips true (a real save), not on a timer.
+                    // Also stays up for cFormMissingProof (25 Aug 2026) -
+                    // "filed" with nothing behind it is still unresolved,
+                    // not a timer-driven state either.
+                    !isCFormFiled || cFormMissingProof
+                      ? 'border-red-400 dark:border-red-600 bg-red-50/60 dark:bg-red-950/20 ring-2 ring-red-400/60 dark:ring-red-600/60'
+                      : 'border-transparent'
+                  }`}
+                >
+                  {/* Upload control comes first, above the number field it
+                      fills - reads clearer than the reverse order (fill
+                      THIS, or upload to fill it automatically). File is
+                      held here only; it's not uploaded to the server (and
+                      never reaches Telegram) until "Save C-Form" below
+                      actually goes through - see that button's onClick. */}
+                  <div>
+                    <FileInput
+                      id="c-form-file-input"
+                      accept="application/pdf,image/jpeg,image/png,image/webp"
+                      disabled={cFormLocked}
+                      // A real file input is always clickable to pick a different file -
+                      // no separate "Reupload" trigger needed once a document is attached.
+                      helperText={
+                        cFormFile
+                          ? `Selected: ${cFormFile.name}`
+                          : "PDF or photo of the filed Form C - we'll read the Applicant ID from its barcode and fill it in below automatically."
+                      }
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0] || null;
+                        e.target.value = ''; // allow re-selecting the same file after a failed scan
+                        if (!file) return;
+                        setCFormFile(file);
+                        setBarcodeScanStatus('scanning');
+                        const applicantId = await scanApplicantIdFromFile(file);
+                        if (applicantId) {
+                          setCFormNumberState(applicantId);
+                          setBarcodeScanStatus('found');
+                        } else {
+                          setBarcodeScanStatus('not_found');
                         }
                       }}
                     />
-                    <span>Mark C-Form as filed</span>
-                  </label>
-                  <span className={`text-xs font-semibold ${cFormMissingProof ? 'text-amber-600 dark:text-amber-400' : isCFormFiled ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                    {cFormMissingProof ? 'Filed (no reference on record)' : isCFormFiled ? 'Filed' : 'Filing Pending'}
-                  </span>
-                </div>
-
-                {cFormMissingProof && (
-                  <p className="mt-1.5 text-2xs font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3 shrink-0" />
-                    Marked filed but no confirmation number or document was ever saved - verify with the guest and fill it in below.
-                  </p>
-                )}
-
-                {cFormSectionOpen && canActOnBooking && (
-                  <div
-                    ref={cFormSectionRef}
-                    className={`mt-2.5 space-y-2 p-2.5 rounded-lg border transition-colors ${
-                      // Red highlight box (24 Aug 2026 - "highlight that in a
-                      // box with red") while this is genuinely still
-                      // unresolved - clears itself the moment isCFormFiled
-                      // actually flips true (a real save), not on a timer.
-                      // Also stays up for cFormMissingProof (25 Aug 2026) -
-                      // "filed" with nothing behind it is still unresolved,
-                      // not a timer-driven state either.
-                      !isCFormFiled || cFormMissingProof
-                        ? 'border-red-400 dark:border-red-600 bg-red-50/60 dark:bg-red-950/20 ring-2 ring-red-400/60 dark:ring-red-600/60'
-                        : 'border-transparent'
-                    }`}
-                  >
-                    {/* Upload control comes first, above the number field it
-                        fills - reads clearer than the reverse order (fill
-                        THIS, or upload to fill it automatically). File is
-                        held here only; it's not uploaded to the server (and
-                        never reaches Telegram) until "Save C-Form" below
-                        actually goes through - see that button's onClick. */}
-                    <div>
-                      <FileInput
-                        id="c-form-file-input"
-                        accept="application/pdf,image/jpeg,image/png,image/webp"
-                        disabled={cFormLocked}
-                        // A real file input is always clickable to pick a different file -
-                        // no separate "Reupload" trigger needed once a document is attached.
-                        helperText={
-                          cFormFile
-                            ? `Selected: ${cFormFile.name}`
-                            : "PDF or photo of the filed Form C - we'll read the Applicant ID from its barcode and fill it in below automatically."
-                        }
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0] || null;
-                          e.target.value = ''; // allow re-selecting the same file after a failed scan
-                          if (!file) return;
-                          setCFormFile(file);
-                          setBarcodeScanStatus('scanning');
-                          const applicantId = await scanApplicantIdFromFile(file);
-                          if (applicantId) {
-                            setCFormNumberState(applicantId);
-                            setBarcodeScanStatus('found');
-                          } else {
-                            setBarcodeScanStatus('not_found');
-                          }
-                        }}
-                      />
-                      {barcodeScanStatus === 'scanning' && (
-                        <p className="mt-1 flex items-center gap-1 text-2xs text-slate-500 dark:text-slate-400">
-                          <Loader2 className="w-3 h-3 animate-spin" /> Reading barcode...
-                        </p>
-                      )}
-                      {barcodeScanStatus === 'found' && (
-                        <p className="mt-1 flex items-center gap-1 text-2xs text-emerald-600 dark:text-emerald-400">
-                          <ScanLine className="w-3 h-3" /> Applicant ID read from barcode - double-check it below before saving.
-                        </p>
-                      )}
-                      {barcodeScanStatus === 'not_found' && (
-                        <p className="mt-1 text-2xs text-amber-600 dark:text-amber-400">
-                          Couldn't read a barcode from that file - enter the Applicant ID / Confirmation No. manually below.
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <input
-                        id="c-form-number-input"
-                        type="text"
-                        value={cFormNumberState}
-                        onChange={(e) => setCFormNumberState(e.target.value)}
-                        placeholder="C-Form Confirmation No. / Applicant ID"
-                        disabled={cFormLocked}
-                        className="flex-1 px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-500 dark:disabled:text-slate-400 disabled:cursor-not-allowed"
-                      />
-                      <button
-                        type="button"
-                        // FIXED 25 Aug 2026 (live report: a past booking was marked "Filed"
-                        // with an empty Confirmation No. field, no warning anywhere) - this
-                        // had no guard at all against saving filed=true with nothing entered.
-                        // Require SOME evidence - a typed confirmation number or an attached
-                        // document - before this is clickable at all, not just after the fact.
-                        disabled={isSavingCForm || cFormLocked || (!cFormNumberState.trim() && !cFormFile)}
-                        title={!cFormNumberState.trim() && !cFormFile ? 'Enter a confirmation number or attach the filed document first' : undefined}
-                        onClick={async () => {
-                          setIsSavingCForm(true);
-                          // Upload (if a file was picked) BEFORE marking filed, so the
-                          // saved record - and the Telegram notification it triggers -
-                          // carry the document together, in one save, rather than the
-                          // file trailing in as a separate later event.
-                          let documentUrl: string | undefined;
-                          if (cFormFile) {
-                            const uploaded = await uploadDocumentDB(cFormFile, 'c_form');
-                            if (!uploaded) {
-                              setIsSavingCForm(false);
-                              showToast('Failed to upload the C-Form file - try again', { type: 'error' });
-                              return;
-                            }
-                            documentUrl = uploaded.url;
-                          }
-                          const ok = await markCFormFiled(guest.id, true, cFormNumberState, documentUrl);
-                          setIsSavingCForm(false);
-                          if (ok) {
-                            const filedAt = new Date().toISOString();
-                            setCFormFiledState(true);
-                            showToast(
-                              documentUrl ? 'C-Form saved & sent to Telegram with the uploaded document' : 'C-Form saved & Telegram notification sent',
-                              { type: 'success' }
-                            );
-                            await onSave({ ...guest, cFormFiledAt: filedAt, cFormFiled: true, c_form_filed: true, cFormNumber: cFormNumberState, c_form_number: cFormNumberState, cFormDocumentUrl: documentUrl } as any);
-                          } else {
-                            showToast('Failed to save C-Form details', { type: 'error' });
-                          }
-                        }}
-                        className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-400 text-white transition-all cursor-pointer shadow-2xs shrink-0 flex items-center gap-1"
-                      >
-                        {isSavingCForm ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                        <span>Save C-Form</span>
-                      </button>
-                    </div>
+                    {barcodeScanStatus === 'scanning' && (
+                      <p className="mt-1 flex items-center gap-1 text-2xs text-slate-500 dark:text-slate-400">
+                        <Loader2 className="w-3 h-3 animate-spin" /> Reading barcode...
+                      </p>
+                    )}
+                    {barcodeScanStatus === 'found' && (
+                      <p className="mt-1 flex items-center gap-1 text-2xs text-emerald-600 dark:text-emerald-400">
+                        <ScanLine className="w-3 h-3" /> Applicant ID read from barcode - double-check it below before saving.
+                      </p>
+                    )}
+                    {barcodeScanStatus === 'not_found' && (
+                      <p className="mt-1 text-2xs text-amber-600 dark:text-amber-400">
+                        Couldn't read a barcode from that file - enter the Applicant ID / Confirmation No. manually below.
+                      </p>
+                    )}
                   </div>
-                )}
-              </div>
-            )}
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="c-form-number-input"
+                      type="text"
+                      value={cFormNumberState}
+                      onChange={(e) => setCFormNumberState(e.target.value)}
+                      placeholder="C-Form Confirmation No. / Applicant ID"
+                      disabled={cFormLocked}
+                      className="flex-1 px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-500 dark:disabled:text-slate-400 disabled:cursor-not-allowed"
+                    />
+                    <button
+                      type="button"
+                      // FIXED 25 Aug 2026 (live report: a past booking was marked "Filed"
+                      // with an empty Confirmation No. field, no warning anywhere) - this
+                      // had no guard at all against saving filed=true with nothing entered.
+                      // Require SOME evidence - a typed confirmation number or an attached
+                      // document - before this is clickable at all, not just after the fact.
+                      disabled={isSavingCForm || cFormLocked || (!cFormNumberState.trim() && !cFormFile)}
+                      title={!cFormNumberState.trim() && !cFormFile ? 'Enter a confirmation number or attach the filed document first' : undefined}
+                      onClick={async () => {
+                        setIsSavingCForm(true);
+                        // Upload (if a file was picked) BEFORE marking filed, so the
+                        // saved record - and the Telegram notification it triggers -
+                        // carry the document together, in one save, rather than the
+                        // file trailing in as a separate later event.
+                        let documentUrl: string | undefined;
+                        if (cFormFile) {
+                          const uploaded = await uploadDocumentDB(cFormFile, 'c_form');
+                          if (!uploaded) {
+                            setIsSavingCForm(false);
+                            showToast('Failed to upload the C-Form file - try again', { type: 'error' });
+                            return;
+                          }
+                          documentUrl = uploaded.url;
+                        }
+                        const ok = await markCFormFiled(guest.id, true, cFormNumberState, documentUrl);
+                        setIsSavingCForm(false);
+                        if (ok) {
+                          const filedAt = new Date().toISOString();
+                          setCFormFiledState(true);
+                          showToast(
+                            documentUrl ? 'C-Form saved & sent to Telegram with the uploaded document' : 'C-Form saved & Telegram notification sent',
+                            { type: 'success' }
+                          );
+                          await onSave({ ...guest, cFormFiledAt: filedAt, cFormFiled: true, c_form_filed: true, cFormNumber: cFormNumberState, c_form_number: cFormNumberState, cFormDocumentUrl: documentUrl } as any);
+                        } else {
+                          showToast('Failed to save C-Form details', { type: 'error' });
+                        }
+                      }}
+                      className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-400 text-white transition-all cursor-pointer shadow-2xs shrink-0 flex items-center gap-1"
+                    >
+                      {isSavingCForm ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                      <span>Save C-Form</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Modal Actions Footer: Clean Layout with Checkout on Bottom Right */}
@@ -1197,6 +1205,50 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             await onSave({ ...guest, idVerificationStatus: 'Complete' });
           }}
         />
+      )}
+
+      {/* Share Preview (28 Aug 2026) - z-70, one tier above this file's own main
+          drawer (z-60), same "secondary drawer stacked above an already-open drawer"
+          tier the OTA-badge Popover above already uses (zIndex=70). */}
+      {isSharePreviewOpen && (
+        <FlowbiteDrawer
+          open={isSharePreviewOpen}
+          onClose={() => setIsSharePreviewOpen(false)}
+          position="right"
+          className="z-70 w-full sm:max-w-md h-full bg-white dark:bg-gray-800 p-0 flex flex-col shadow-2xl transition-transform border-l border-gray-200 dark:border-gray-700"
+        >
+          <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 dark:border-gray-700 shrink-0 bg-white dark:bg-gray-800">
+            <h2 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">
+              {t('share_preview_heading', 'Share Preview')}
+            </h2>
+            <button
+              type="button"
+              onClick={() => setIsSharePreviewOpen(false)}
+              className="text-gray-400 bg-transparent hover:bg-gray-100 hover:text-gray-900 rounded-lg text-sm w-8 h-8 inline-flex items-center justify-center dark:hover:bg-gray-700 dark:hover:text-white cursor-pointer transition-colors shrink-0"
+              aria-label="Close share preview"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <DrawerItems className="flex-1 overflow-y-auto p-4 sm:p-5">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+              {t('share_preview_subheading', "This is exactly what will be sent - review it before sending.")}
+            </p>
+            <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-lg p-4 text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">
+              {sharePreviewMessage}
+            </div>
+          </DrawerItems>
+          <div className="p-4 sm:p-5 border-t border-gray-200 dark:border-gray-700 shrink-0">
+            <button
+              type="button"
+              onClick={handleConfirmSendBooking}
+              className="w-full h-10 px-4 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 active:scale-98"
+            >
+              <Share2 className="w-4 h-4 shrink-0" />
+              <span>{t('share_preview_send_button', 'Send')}</span>
+            </button>
+          </div>
+        </FlowbiteDrawer>
       )}
     </>
   );
