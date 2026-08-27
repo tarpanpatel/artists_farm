@@ -750,25 +750,27 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       >
         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           {(!isAttendancePage || activeSubTab === 'control_center') && (
-            <Button
-              onClick={() => {
-                setUserFormTab('create');
-                setNewFullName('');
-                setNewUsername('');
-                setNewPasscode('');
-                setNewUpiId('');
-                setNewIsFinancialHandler(false);
-                setNewAccessAllProperties(false);
-                setNewDailyWage('');
-                setIsTeamMemberModalOpen(true);
-              }}
-              variant="primary"
-              size="md"
-              leftIcon={<Plus className="w-4 h-4" />}
-              className="font-semibold shadow-md cursor-pointer"
-            >
-              Create Team Member
-            </Button>
+            <div data-tour="create-team-member">
+              <Button
+                onClick={() => {
+                  setUserFormTab('create');
+                  setNewFullName('');
+                  setNewUsername('');
+                  setNewPasscode('');
+                  setNewUpiId('');
+                  setNewIsFinancialHandler(false);
+                  setNewAccessAllProperties(false);
+                  setNewDailyWage('');
+                  setIsTeamMemberModalOpen(true);
+                }}
+                variant="primary"
+                size="md"
+                leftIcon={<Plus className="w-4 h-4" />}
+                className="font-semibold shadow-md cursor-pointer"
+              >
+                Create Team Member
+              </Button>
+            </div>
           )}
 
           {/* Bulk Select controls - only relevant on the attendance calendar sub-tab */}

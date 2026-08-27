@@ -195,7 +195,7 @@ try {
     Write-Ok "Uploaded."
 
     Write-Step "Swapping dist into place on staging server"
-    Invoke-Ssh "cd $RemoteDir && rm -rf dist_deploy_new && mkdir dist_deploy_new && tar -xzf ~/staging_dist_deploy.tar.gz -C dist_deploy_new && rsync -a --delete dist_deploy_new/ dist/ && rm -rf dist_deploy_new ~/staging_dist_deploy.tar.gz"
+    Invoke-Ssh "cd $RemoteDir && rm -rf dist_deploy_new && mkdir dist_deploy_new && tar -xzf ~/staging_dist_deploy.tar.gz -C dist_deploy_new && rsync -a --delete dist_deploy_new/ dist/ && cp -f dist_deploy_new/favicon.ico . 2>/dev/null || true && cp -rf dist_deploy_new/app-icons . 2>/dev/null || true && rm -rf dist_deploy_new ~/staging_dist_deploy.tar.gz"
     Write-Ok "Staging dist/ updated."
     Remove-Item $tarPath -Force -ErrorAction SilentlyContinue
 

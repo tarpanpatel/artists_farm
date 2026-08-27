@@ -162,6 +162,14 @@ const TOUR_CATEGORIES: TourCategory[] = [
         side: 'right',
         beforeShow: openFirstBookingModal,
       },
+      {
+        id: 'mobile-bottom-nav',
+        selector: '[data-tour="mobile-bottom-nav"]',
+        title: '📱 Quick Actions & Mobile Navigation',
+        description: 'Quickly access 1-tap booking creation, instant expense logging, food ordering, and seamless navigation across all resort management screens.',
+        side: 'top',
+        beforeShow: goToFirstRoomDashboard,
+      },
     ],
   },
   {
@@ -243,6 +251,14 @@ const TOUR_CATEGORIES: TourCategory[] = [
         selector: '[data-tour="staff-permissions"]',
         title: '👥 Multi-Role Staff RBAC Permissions',
         description: 'Assign granular access roles (Front Desk, Kitchen Staff, Supervisor, Accountant) to control sensitive financial visibility.',
+        side: 'bottom',
+        beforeShow: (nav) => nav.handleNavigateTab('staff', 'staff_permissions'),
+      },
+      {
+        id: 'create-team-member',
+        selector: '[data-tour="create-team-member"]',
+        title: '➕ Add New Staff & Team Accounts',
+        description: 'Create and configure new staff member profiles, assign roles, set daily wages or monthly salaries, and manage operational permissions.',
         side: 'bottom',
         beforeShow: (nav) => nav.handleNavigateTab('staff', 'staff_permissions'),
       },
@@ -338,10 +354,8 @@ export const DemoOnboardingTour: React.FC<DemoOnboardingTourProps> = ({
   const isFinishingRef = useRef(false);
 
   // Navigates to a given step's required app state (tab switch / clicks), WITHOUT itself waiting
-  // for the target selector to mount - driver.js's own `waitForElement`/`skipMissingElement`
-  // config (set on the driver() call below) already polls for the final highlight target once
-  // moveTo() is called, so duplicating that wait here would be redundant. This function only
-  // needs to handle the app-navigation side.
+  // for the target selector to mount - driver.js's own `waitForElement` config already polls for
+  // the final highlight target once moveTo() is called.
   const runBeforeShow = useCallback(async (index: number) => {
     if (index < 0 || index >= ALL_STEPS.length) return;
     const step = ALL_STEPS[index];
@@ -360,31 +374,28 @@ export const DemoOnboardingTour: React.FC<DemoOnboardingTourProps> = ({
       allowClose: true,
       overlayOpacity: 0.50,
       popoverClass: 'app-tour-popover',
-      // driver.js's own built-in wait: after moveTo() targets a step, it polls (MutationObserver
-      // + timeout, verified in node_modules/driver.js source) for that step's element to appear
-      // before highlighting, and skips the step entirely if it never does within this window -
-      // exactly what's needed for tab-switch navigation whose target is lazy-loaded/code-split.
       waitForElement: 4000,
-      skipMissingElement: true,
-      steps: ALL_STEPS.map((step) => ({
+      skipMissingElement: false,
+      steps: ALL_STEPS.map((step, idx) => ({
         element: step.selector,
         popover: {
           title: step.title,
           description: step.description,
           side: step.side,
           align: step.align,
+          nextBtnText: idx === ALL_STEPS.length - 1 ? 'Get Started' : 'Next',
+          prevBtnText: 'Previous',
+          showButtons: idx === 0 ? ['next', 'close'] : ['previous', 'next', 'close'],
         },
       })),
-      // Overriding onNextClick/onPrevClick hands driver.js's own internal advance logic
-      // entirely to us (confirmed in source: defining these skips the built-in moveNext/
-      // movePrevious path) - so beforeShow's navigation always runs BEFORE moveTo() lets
-      // driver.js start highlighting, on both Next and Prev.
       onNextClick: (_el, _step, opts) => {
         if (navigatingRef.current) return;
-        const nextIndex = (opts.index ?? -1) + 1;
+        const currentIdx = opts.driver.getActiveIndex() ?? opts.index ?? 0;
+        const nextIndex = currentIdx + 1;
         if (nextIndex >= ALL_STEPS.length) {
           isFinishingRef.current = true;
-          opts.driver.moveTo(nextIndex);
+          d.destroy();
+          handleComplete();
           return;
         }
         navigatingRef.current = true;
@@ -394,27 +405,22 @@ export const DemoOnboardingTour: React.FC<DemoOnboardingTourProps> = ({
       },
       onPrevClick: (_el, _step, opts) => {
         if (navigatingRef.current) return;
-        const prevIndex = (opts.index ?? 1) - 1;
+        const currentIdx = opts.driver.getActiveIndex() ?? opts.index ?? 0;
+        const prevIndex = currentIdx - 1;
         if (prevIndex < 0) return;
         navigatingRef.current = true;
         void runBeforeShow(prevIndex)
           .then(() => opts.driver.moveTo(prevIndex))
           .finally(() => { navigatingRef.current = false; });
       },
-      // Defining onCloseClick hands the popover's own Close(X) button fully to us too (skips
-      // driver.js's internal closeClick->destroy path entirely, confirmed in source) - a plain
-      // direct destroy() here never reaches onDestroyStarted below (its `e` param is only true
-      // on driver.js's OWN internal dismiss paths, not an app-called destroy()).
+      onDoneClick: () => {
+        d.destroy();
+        handleComplete();
+      },
       onCloseClick: () => {
         d.destroy();
         handleSkip();
       },
-      // Reached only via driver.js's own internal dismiss paths we don't override above -
-      // Escape key and clicking the dimmed overlay (both confirmed in source to call its
-      // internal h() with the default e=true, which invokes this hook instead of destroying
-      // outright) - AND our own onNextClick's out-of-range moveTo() call above, which internally
-      // takes the same h() path when the target index has no matching step. isFinishingRef
-      // disambiguates the two.
       onDestroyStarted: () => {
         d.destroy();
         if (isFinishingRef.current) {

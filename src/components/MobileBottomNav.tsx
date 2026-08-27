@@ -226,6 +226,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           notched-bottom (home indicator) device in standalone PWA mode. Same
           fix as Header.tsx: grow the box instead of shrinking its content. */}
       <nav
+        data-tour="mobile-bottom-nav"
         aria-label="Mobile Bottom Navigation"
         className="mobile-bottom-nav fixed bottom-0 left-0 right-0 z-[54] md:hidden h-[calc(4rem+env(safe-area-inset-bottom,0px))] bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 pb-[env(safe-area-inset-bottom,0px)] transition-transform duration-200 shadow-lg"
       >

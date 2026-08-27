@@ -14,6 +14,7 @@ import {
   getRoomSlugFromHash,
 } from '../services/api';
 import { t } from '../i18n/en';
+import { recordTelescopeLog } from '../utils/telescopeLogger';
 
 export interface PreloadedData {
   currentProperty: any;
@@ -345,18 +346,52 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
         // the same in-flight promise; a genuine failure already resolved, so it needs a
         // brand-new call, not another .then() on the same settled promise) and patch in
         // whatever comes back instead of leaving it stuck.
+        //
+        // Bounded loop, not a single retry (found 28 Aug 2026, still reproducing live on
+        // dev/staging as the chronic "Sidebar Shows Only Kitchen" bug - see CLAUDE.md):
+        // a single retry has exactly one more chance to beat whatever cold-start/session-
+        // file-locking condition caused the first failure - if the SAME condition is still
+        // in effect (a slow PHP-FPM worker staying slow for a couple more requests, not
+        // just one), the retry fails too and there was never a third attempt, leaving
+        // navItems permanently empty for the rest of the tab's life. Nav items specifically
+        // are never legitimately empty (see safeFetchNavItems above), so it's the one field
+        // worth extending the loop for; the other four patch in whatever they got on every
+        // pass (unchanged from before) but don't extend the loop on their own since an
+        // empty guests/receipts/menu list can be genuinely correct.
         if (anyRealDataFetchFailed) {
-          (timedOut ? realDataPromise : runRealDataFetches()).then(([realNav, realTelegram, realGuests, realReceipts, realMenu]) => {
-            if (isStale()) return;
-            setData((prev) => prev ? {
-              ...prev,
-              navItems: !realNav.failed && Array.isArray(realNav.value) ? realNav.value : prev.navItems,
-              telegramConfig: !realTelegram.failed ? realTelegram.value : prev.telegramConfig,
-              initialGuests: !realGuests.failed && Array.isArray(realGuests.value) ? realGuests.value : prev.initialGuests,
-              initialReceipts: !realReceipts.failed && Array.isArray(realReceipts.value) ? realReceipts.value : prev.initialReceipts,
-              initialMenu: !realMenu.failed && Array.isArray(realMenu.value) ? realMenu.value : prev.initialMenu,
-            } : prev);
-          });
+          (async () => {
+            const maxAttempts = 3;
+            let source = timedOut ? realDataPromise : runRealDataFetches();
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+              const [realNav, realTelegram, realGuests, realReceipts, realMenu] = await source;
+              if (isStale()) return;
+              setData((prev) => prev ? {
+                ...prev,
+                navItems: !realNav.failed && Array.isArray(realNav.value) ? realNav.value : prev.navItems,
+                telegramConfig: !realTelegram.failed ? realTelegram.value : prev.telegramConfig,
+                initialGuests: !realGuests.failed && Array.isArray(realGuests.value) ? realGuests.value : prev.initialGuests,
+                initialReceipts: !realReceipts.failed && Array.isArray(realReceipts.value) ? realReceipts.value : prev.initialReceipts,
+                initialMenu: !realMenu.failed && Array.isArray(realMenu.value) ? realMenu.value : prev.initialMenu,
+              } : prev);
+
+              if (!realNav.failed) return;
+              if (attempt === maxAttempts) {
+                // Every attempt came back empty - this is the exact state that renders as
+                // Navigation.tsx's synthetic "Kitchen" fallback. Log it so this chronic,
+                // hard-to-reproduce-on-demand bug becomes something we can actually count
+                // instead of only hearing about when a user notices their sidebar looks wrong.
+                recordTelescopeLog({
+                  portal: 'js',
+                  severity: 'WARNING',
+                  msg: `Nav menu items never loaded after ${maxAttempts} attempts - sidebar fell back to synthetic Kitchen-only tree`,
+                  origin: 'DataLoader.tsx loadAllData retry loop',
+                });
+                return;
+              }
+              await new Promise((resolve) => setTimeout(resolve, 600 * attempt));
+              source = runRealDataFetches();
+            }
+          })();
         }
       } catch (err) {
         if (isStale()) return;
