@@ -4,18 +4,34 @@
  * Function: Resident registration, stay breakdown, and check-out status.
  */
 
-function convertSnakeToCamel($array) {
-    $result = [];
-    foreach ($array as $key => $value) {
-        $camelKey = preg_replace_callback('/_([a-z])/', function($m) { return strtoupper($m[1]); }, $key);
-        $result[$camelKey] = $value;
+// Guarded (28 Aug 2026, found while adding the Telegram check-in/check-out
+// buttons) - service_requests.php defines an identical helper, already
+// guarded on its own side, but this copy wasn't, so loading this file AFTER
+// service_requests.php in the same process (e.g. webhook_handler.php now
+// requires both) fataled with "Cannot redeclare convertSnakeToCamel()".
+// router.php's own load order (guests.php first) happened to avoid it, which
+// is exactly why this had never surfaced before.
+if (!function_exists('convertSnakeToCamel')) {
+    function convertSnakeToCamel($array) {
+        $result = [];
+        foreach ($array as $key => $value) {
+            $camelKey = preg_replace_callback('/_([a-z])/', function($m) { return strtoupper($m[1]); }, $key);
+            $result[$camelKey] = $value;
+        }
+        return $result;
     }
-    return $result;
 }
 
 require_once __DIR__ . '/../config/schema_cache.php';
 require_once __DIR__ . '/../config/guest_status.php';
 require_once __DIR__ . '/../security/input_validator.php';
+// Self-guarding (every function inside wrapped in function_exists checks), so
+// safe to require unconditionally regardless of how many physical paths this
+// file itself gets loaded from - see webhook_handler.php's own comment on the
+// staging cross-environment __DIR__ collision this class of require can hit.
+require_once __DIR__ . '/../telegram/sender.php';
+require_once __DIR__ . '/../telegram/templates.php';
+require_once __DIR__ . '/../housekeeping/housekeeping.php';
 
 /**
  * First-pass input validation for guest PII write actions. Validates only the
@@ -137,6 +153,136 @@ function ensureIdVerificationSchema($pdo) {
         $pdo->exec("ALTER TABLE guests ADD COLUMN IF NOT EXISTS `id_verification_last_reminder_at` DATETIME DEFAULT NULL");
     } catch (PDOException $e) {}
     markSchemaVerified('schema_id_verification');
+}
+
+// Backs the "Mark Checked-In" / "Mark Checked-Out" Telegram action buttons
+// (added 28 Aug 2026): telegram_booking_* remembers the "NEW GUEST BOOKING"
+// message (edited when Check-In is tapped); telegram_checkout_* remembers the
+// separate departure-day reminder message sent by
+// php/cron/checkout_departure_reminders.php (edited when Check-Out is
+// tapped); checkout_reminder_last_sent_at dedupes that cron the same way
+// id_verification_last_reminder_at dedupes the ID-verification reminder above.
+function ensureGuestTelegramCheckinoutSchema($pdo) {
+    if (isSchemaVerified('schema_guest_telegram_checkinout')) return;
+    try {
+        $pdo->exec("ALTER TABLE guests ADD COLUMN IF NOT EXISTS `telegram_booking_chat_id` VARCHAR(64) DEFAULT NULL");
+    } catch (PDOException $e) {}
+    try {
+        $pdo->exec("ALTER TABLE guests ADD COLUMN IF NOT EXISTS `telegram_booking_message_id` INT DEFAULT NULL");
+    } catch (PDOException $e) {}
+    try {
+        $pdo->exec("ALTER TABLE guests ADD COLUMN IF NOT EXISTS `telegram_checkout_chat_id` VARCHAR(64) DEFAULT NULL");
+    } catch (PDOException $e) {}
+    try {
+        $pdo->exec("ALTER TABLE guests ADD COLUMN IF NOT EXISTS `telegram_checkout_message_id` INT DEFAULT NULL");
+    } catch (PDOException $e) {}
+    try {
+        $pdo->exec("ALTER TABLE guests ADD COLUMN IF NOT EXISTS `checkout_reminder_last_sent_at` DATETIME DEFAULT NULL");
+    } catch (PDOException $e) {}
+    markSchemaVerified('schema_guest_telegram_checkinout');
+}
+
+// Shared by the app's own checkin_guest/checkout_guest API actions and the
+// Telegram "Mark Checked-In"/"Mark Checked-Out" buttons (checkinGuestViaTelegram/
+// checkoutGuestViaTelegram below) - one place that actually flips guest
+// status, so every entry point stays consistent. In particular, checkout
+// always triggers the housekeeping "needs cleaning" flow now, not just one
+// UI path.
+function performGuestCheckin($pdo, $guestId, $propertyId) {
+    $stmt = $pdo->prepare("SELECT id, status FROM guests WHERE id = ? AND property_id = ?");
+    $stmt->execute([$guestId, $propertyId]);
+    $guest = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$guest) {
+        return ['success' => false, 'already' => false, 'message' => 'Guest not found'];
+    }
+    if ($guest['status'] === GUEST_STATUS_CHECKED_IN) {
+        return ['success' => true, 'already' => true, 'message' => 'Guest is already checked in'];
+    }
+    $pdo->prepare("UPDATE guests SET status = ?, checkin_date = COALESCE(checkin_date, ?) WHERE id = ? AND property_id = ?")
+        ->execute([GUEST_STATUS_CHECKED_IN, date('Y-m-d H:i:s'), $guestId, $propertyId]);
+    return ['success' => true, 'already' => false, 'message' => 'Guest checked in successfully'];
+}
+
+function performGuestCheckout($pdo, $guestId, $propertyId) {
+    $stmt = $pdo->prepare("SELECT id, status, room_id FROM guests WHERE id = ? AND property_id = ?");
+    $stmt->execute([$guestId, $propertyId]);
+    $guest = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$guest) {
+        return ['success' => false, 'already' => false, 'message' => 'Guest not found'];
+    }
+    if ($guest['status'] === GUEST_STATUS_CHECKED_OUT || $guest['status'] === GUEST_STATUS_CHECKEDOUT_LEGACY) {
+        return ['success' => true, 'already' => true, 'message' => 'Guest is already checked out'];
+    }
+    try {
+        $pdo->prepare("UPDATE guests SET status = ?, checkout_date = ? WHERE id = ? AND property_id = ?")
+            ->execute([GUEST_STATUS_CHECKED_OUT, date('Y-m-d'), $guestId, $propertyId]);
+    } catch (PDOException $e) {
+        $pdo->prepare("UPDATE guests SET status = ?, check_out = ? WHERE id = ? AND property_id = ?")
+            ->execute([GUEST_STATUS_CHECKED_OUT, date('Y-m-d H:i:s'), $guestId, $propertyId]);
+    }
+    if (!empty($guest['room_id'])) {
+        markRoomDirtyAfterCheckout($pdo, $propertyId, $guest['room_id']);
+    }
+    return ['success' => true, 'already' => false, 'message' => 'Guest checked out successfully'];
+}
+
+// Telegram "Mark Checked-In" tap handler (callback_data checkin_guest_{id}).
+function checkinGuestViaTelegram($pdo, $guestId, $staffName) {
+    ensureGuestTelegramCheckinoutSchema($pdo);
+    $stmt = $pdo->prepare("SELECT id, guest_name, property_id, telegram_booking_chat_id, telegram_booking_message_id FROM guests WHERE id = ?");
+    $stmt->execute([$guestId]);
+    $guest = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$guest) {
+        return ['status' => 'error', 'message' => 'Guest not found'];
+    }
+
+    $result = performGuestCheckin($pdo, $guestId, $guest['property_id']);
+    if (!$result['success']) {
+        return ['status' => 'error', 'message' => $result['message']];
+    }
+    if ($result['already']) {
+        return ['status' => 'success', 'already' => true, 'message' => 'Already checked in'];
+    }
+
+    if (!empty($guest['telegram_booking_chat_id']) && !empty($guest['telegram_booking_message_id'])) {
+        $config = getPropertyTelegramConfig($pdo, $guest['property_id']);
+        $botToken = !empty($config['botToken']) ? $config['botToken'] : (defined('TELEGRAM_BOT_TOKEN') ? TELEGRAM_BOT_TOKEN : null);
+        $editedText = "✅ <b>GUEST CHECKED IN</b>\n\n👤 <b>Guest:</b> " . htmlspecialchars($guest['guest_name']) . "\n🛎️ <b>Checked In By:</b> {$staffName}\n🕒 <b>At:</b> " . date('h:i A');
+        editTelegramMessageText($guest['telegram_booking_chat_id'], $guest['telegram_booking_message_id'], $editedText, null, $botToken);
+    }
+
+    return ['status' => 'success', 'already' => false, 'message' => 'Guest checked in successfully'];
+}
+
+// Telegram "Mark Checked-Out" tap handler (callback_data checkout_guest_{id}).
+// Bare status flip only - matches the app's own checkout_guest action exactly
+// (see performGuestCheckout above). Does NOT create a bill/receipt - full
+// billing still happens separately in the app, same as it already can today.
+function checkoutGuestViaTelegram($pdo, $guestId, $staffName) {
+    ensureGuestTelegramCheckinoutSchema($pdo);
+    $stmt = $pdo->prepare("SELECT id, guest_name, property_id, telegram_checkout_chat_id, telegram_checkout_message_id FROM guests WHERE id = ?");
+    $stmt->execute([$guestId]);
+    $guest = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$guest) {
+        return ['status' => 'error', 'message' => 'Guest not found'];
+    }
+
+    $result = performGuestCheckout($pdo, $guestId, $guest['property_id']);
+    if (!$result['success']) {
+        return ['status' => 'error', 'message' => $result['message']];
+    }
+    if ($result['already']) {
+        return ['status' => 'success', 'already' => true, 'message' => 'Already checked out'];
+    }
+
+    if (!empty($guest['telegram_checkout_chat_id']) && !empty($guest['telegram_checkout_message_id'])) {
+        $config = getPropertyTelegramConfig($pdo, $guest['property_id']);
+        $botToken = !empty($config['botToken']) ? $config['botToken'] : (defined('TELEGRAM_BOT_TOKEN') ? TELEGRAM_BOT_TOKEN : null);
+        $editedText = "✅ <b>GUEST CHECKED OUT</b>\n\n👤 <b>Guest:</b> " . htmlspecialchars($guest['guest_name']) . "\n🚪 <b>Checked Out By:</b> {$staffName}\n🕒 <b>At:</b> " . date('h:i A');
+        editTelegramMessageText($guest['telegram_checkout_chat_id'], $guest['telegram_checkout_message_id'], $editedText, null, $botToken);
+    }
+
+    return ['status' => 'success', 'already' => false, 'message' => 'Guest checked out successfully'];
 }
 
 // Foreign-guest flag + C-Form (FRRO) filing tracking. C-Form must be filed
@@ -386,6 +532,7 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                 ensureComplianceSchema($pdo);
                 ensureOtaBookingSchema($pdo);
                 ensureGuestExtraChargesSchema($pdo);
+                ensureGuestTelegramCheckinoutSchema($pdo);
                 $input = json_decode(file_get_contents('php://input'), true);
                 if (!is_array($input)) $input = [];
                 try {
@@ -566,7 +713,6 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     $pdo->commit();
 
                     // Send Telegram notification for new guest booking
-                    require_once __DIR__ . '/../telegram/sender.php';
                     $guestName = $input['guest_name'] ?? $input['name'] ?? 'Resident Guest';
                     $checkinDate = $input['checkin_date'] ?? date('Y-m-d');
                     $checkoutDate = $input['expected_checkout'] ?? date('Y-m-d', strtotime('+1 day'));
@@ -587,7 +733,20 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     $telegramMessage .= "⏳ <b>Pending:</b> ₹{$pendingAmount}\n\n";
                     $telegramMessage .= "🆔 <b>Booking ID:</b> {$newId}";
 
-                    sendPropertyTelegramMessage($pdo, $propertyId, 'admin', $telegramMessage);
+                    // "Mark Checked-In" only makes sense for a fresh reservation - a
+                    // booking created as already Checked In (walk-in, OTA conversion)
+                    // has nothing left to tap.
+                    $bookingReplyMarkup = $status === GUEST_STATUS_BOOKED
+                        ? ['inline_keyboard' => [[
+                            ['text' => '🛎️ Mark Checked-In', 'callback_data' => "checkin_guest_{$newId}"]
+                        ]]]
+                        : null;
+                    $bookingSendResult = sendPropertyTelegramMessage($pdo, $propertyId, 'admin', $telegramMessage, $bookingReplyMarkup);
+                    $bookingDecoded = is_string($bookingSendResult) ? json_decode($bookingSendResult, true) : null;
+                    if (!empty($bookingDecoded['ok']) && !empty($bookingDecoded['result'])) {
+                        $pdo->prepare("UPDATE guests SET telegram_booking_chat_id = ?, telegram_booking_message_id = ? WHERE id = ?")
+                            ->execute([$bookingDecoded['result']['chat']['id'], $bookingDecoded['result']['message_id'], $newId]);
+                    }
 
                     // WhatsApp booking confirmation direct to the guest (staff-facing
                     // Telegram notification above is separate from this). Phased
@@ -875,13 +1034,17 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                 $guestId = validateGuestIdOrRespond($input['id'] ?? null);
                 if ($guestId === null) break;
                 try {
-                    $stmt = $pdo->prepare("UPDATE guests SET status = ?, checkout_date = ? WHERE id = ? AND property_id = ?");
-                    $stmt->execute([GUEST_STATUS_CHECKED_OUT, date('Y-m-d'), $guestId, $propertyId]);
+                    $result = performGuestCheckout($pdo, $guestId, $propertyId);
+                    if (!$result['success']) {
+                        http_response_code(404);
+                        echo json_encode(['status' => 'error', 'message' => $result['message']]);
+                        break;
+                    }
+                    echo json_encode(['status' => 'success', 'message' => 'Guest checked out successfully']);
                 } catch (PDOException $e) {
-                    $stmt = $pdo->prepare("UPDATE guests SET status = ?, check_out = ? WHERE id = ? AND property_id = ?");
-                    $stmt->execute([GUEST_STATUS_CHECKED_OUT, date('Y-m-d H:i:s'), $guestId, $propertyId]);
+                    http_response_code(500);
+                    echo json_encode(['status' => 'error', 'message' => 'Failed to check out guest: ' . $e->getMessage()]);
                 }
-                echo json_encode(['status' => 'success', 'message' => 'Guest checked out successfully']);
             }
             break;
 
@@ -892,8 +1055,12 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                 $guestId = validateGuestIdOrRespond($input['id'] ?? null);
                 if ($guestId === null) break;
                 try {
-                    $stmt = $pdo->prepare("UPDATE guests SET status = ?, checkin_date = COALESCE(checkin_date, ?) WHERE id = ? AND property_id = ?");
-                    $stmt->execute([GUEST_STATUS_CHECKED_IN, date('Y-m-d H:i:s'), $guestId, $propertyId]);
+                    $result = performGuestCheckin($pdo, $guestId, $propertyId);
+                    if (!$result['success']) {
+                        http_response_code(404);
+                        echo json_encode(['status' => 'error', 'message' => $result['message']]);
+                        break;
+                    }
                     echo json_encode(['status' => 'success', 'message' => 'Guest checked in successfully']);
                 } catch (PDOException $e) {
                     http_response_code(500);

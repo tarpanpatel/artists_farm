@@ -73,6 +73,8 @@ if (!class_exists('TelegramTemplates')) {
                 'service_request_created' => "🛎️ <b>NEW SERVICE REQUEST</b>\n\n🧾 <b>Type:</b> {request_type}\n🚪 <b>Room:</b> {room_name}\n📝 <b>Details:</b> {description}\n👤 <b>Requested By:</b> {requested_by}\n📅 <b>Scheduled:</b> {scheduled_at}",
                 'service_request_fulfilled_edit' => "✅ <b>SERVICE REQUEST FULFILLED</b>\n\n🧾 <b>Type:</b> {request_type}\n🚪 <b>Room:</b> {room_name}\n👤 <b>Fulfilled By:</b> {staff_name}\n🕒 <b>At:</b> {fulfill_time}",
                 'booking_updated' => "✏️ <b>BOOKING UPDATED</b>\n\n👤 <b>Guest:</b> {guest_name}\n🆔 <b>Booking ID:</b> {booking_id}\n\n{changes_list}",
+                'checkout_day_reminder' => "🚪 <b>DEPARTURE DAY</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Guest:</b> {guest_name}\n🚪 <b>Room:</b> {room_name}\n📅 <b>Expected Checkout:</b> {checkout_date}\n━━━━━━━━━━━━━━━━━━\n👉 <i>Tap below once the guest has left.</i>",
+                'room_needs_cleaning' => "🧹 <b>ROOM NEEDS CLEANING</b>\n━━━━━━━━━━━━━━━━━━\n🚪 <b>Room:</b> {room_name}\n━━━━━━━━━━━━━━━━━━\n👉 <i>Tap below once it's cleaned and ready for the next guest.</i>",
             ];
 
             // Make defaults emojis bulletproof too just in case

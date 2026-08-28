@@ -13,16 +13,12 @@ import {
   CheckCircle2,
   Undo,
   Redo,
-  Plus,
-  Trash2,
   FileCode,
   Eye,
   Eraser,
-  ExternalLink,
   Loader2,
   Check,
   ChevronDown,
-  ToggleLeft,
   Bot,
   Search,
   Pencil,
@@ -32,7 +28,6 @@ import { invalidateTemplateCache, getPropertySlug, fetchTelegramConfigDB, saveTe
 import { TelegramConnectionStatus } from './TelegramConnectionStatus';
 import { ToggleSwitch } from './ToggleSwitch';
 import { StyledSelect } from './StyledSelect';
-import { Input } from './Input';
 import { Textarea } from './Textarea';
 import { PageHeader } from './PageHeader';
 import { Button } from './Button';
@@ -42,13 +37,6 @@ import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { t } from '../i18n/en';
 
-export interface TelegramInlineButton {
-  id: string;
-  text: string;
-  url?: string;
-  callback_data?: string;
-}
-
 export interface TelegramTemplateExtended {
   id: string;
   dbKey: string;
@@ -57,7 +45,6 @@ export interface TelegramTemplateExtended {
   description: string;
   variables: string[];
   template: string;
-  buttons?: TelegramInlineButton[][];
   // Manual "move to group" override - see getTemplateGroup() below.
   groupOverride?: string | null;
 }
@@ -193,9 +180,6 @@ const FALLBACK_TEMPLATES: TelegramTemplateExtended[] = [
     description: 'Sent to Finance group when cash drawer additions or payouts occur.',
     variables: ['{staff_name}', '{action_type}', '{amount}', '{handed_to}', '{remarks}', '{net_balance_after}'],
     template: `🏧 <b>FINANCIAL TRANSACTION (DRAWER ADJUSTMENT)</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Staff Handler:</b> {staff_name}\n🔄 <b>Action Type:</b> {action_type}\n🤝 <b>Handed To:</b> {handed_to}\n📝 <b>Remarks:</b> {remarks}\n💰 <b>Amount Movement:</b> ₹{amount}\n━━━━━━━━━━━━━━━━━━\n📊 <b>Net Balance After: ₹{net_balance_after}</b>`,
-    buttons: [
-      [{ id: 'b1', text: '📊 Open Cash Drawer Logs', callback_data: 'view_cash_drawer' }]
-    ]
   },
   {
     id: 'tpl-2',
@@ -205,9 +189,6 @@ const FALLBACK_TEMPLATES: TelegramTemplateExtended[] = [
     description: 'Sent to Finance group when an operational or farm utility expense is recorded.',
     variables: ['{expense_date}', '{category}', '{paid_by}', '{description}', '{payment_mode}', '{amount}'],
     template: `💸 <b>NEW FINANCIAL TRANSACTION (EXPENSE)</b>\n━━━━━━━━━━━━━━━━━━\n📅 <b>Date:</b> {expense_date}\n🗂️ <b>Category:</b> {category}\n👤 <b>Paid By:</b> {paid_by}\n📝 <b>Details:</b> {description}\n💳 <b>Method:</b> {payment_mode}\n━━━━━━━━━━━━━━━━━━\n🔴 <b>DEBIT AMOUNT: ₹{amount}</b>`,
-    buttons: [
-      [{ id: 'b2', text: '📖 View Expense Ledger', callback_data: 'view_ledger' }]
-    ]
   },
   {
     id: 'tpl-4',
@@ -235,9 +216,6 @@ const FALLBACK_TEMPLATES: TelegramTemplateExtended[] = [
     description: 'Sent when an individual dish is marked ready for pickup by the kitchen.',
     variables: ['{order_id}', '{qty}', '{dish_name}', '{instruction_note}'],
     template: `🍽️ <b>DISH READY TO SERVE</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #{order_id}\n• <b>{qty}x</b> {dish_name}{instruction_note}\n━━━━━━━━━━━━━━━━━━\n🏃‍♂️ <i>Staff, please collect and tap below when served.</i>`,
-    buttons: [
-      [{ id: 'b6', text: '🏃‍♂️ Mark as Served', callback_data: 'mark_served_40' }]
-    ]
   },
   {
     id: 'tpl-7',
@@ -247,9 +225,6 @@ const FALLBACK_TEMPLATES: TelegramTemplateExtended[] = [
     description: 'Sent to kitchen staff when a new food order ticket is placed.',
     variables: ['{order_id}', '{guest_name}', '{room_no}', '{waiter_name}', '{order_time}', '{order_items}'],
     template: `<b>🔔 NEW ORDER #{order_id}</b>\n<b>Guest:</b> {guest_name}\n<b>Room:</b> {room_no}\n<b>Waiter:</b> {waiter_name}\n<b>Items:</b>\n{order_items}\n\n<i>Time: {order_time}</i>`,
-    buttons: [
-      [{ id: 'b7', text: '👨‍🍳 View Kitchen KDS Queue', callback_data: 'open_kds' }]
-    ]
   },
   {
     id: 'tpl-8',
@@ -268,9 +243,6 @@ const FALLBACK_TEMPLATES: TelegramTemplateExtended[] = [
     description: 'Sent when kitchen staff submits a store material or stock request.',
     variables: ['{staff_name}', '{request_time}', '{items_list}', '{custom_notes}'],
     template: `📦 <b>MATERIAL REQUEST</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>By:</b> {staff_name}\n📅 <b>At:</b> {request_time}\n\n📝 <b>Items List Required:</b>\n{items_list}\n\n💬 <b>Special / Ad-Hoc Requests:</b>\n{custom_notes}\n━━━━━━━━━━━━━━━━━━`,
-    buttons: [
-      [{ id: 'b9', text: '🚚 Fulfill Request', callback_data: 'fulfill_req_1166' }]
-    ]
   },
   {
     id: 'tpl-10',
@@ -631,10 +603,9 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
   }, [isOpen, isAuthenticated]);
 
   // Filter templates based on enabled modules, merged with live DB content/
-  // metadata. FALLBACK_TEMPLATES stays the source of truth for inline button
-  // configs (system_telegram_templates has no buttons column) - DB entries
-  // override title/category/description/template/variables for a matching key,
-  // and any DB-only key (no hardcoded counterpart) is appended with no buttons.
+  // metadata. DB entries override title/category/description/template/
+  // variables for a matching key, and any DB-only key (no hardcoded
+  // counterpart) is appended as-is.
   useEffect(() => {
     const byKey = new Map(dbTemplates.map((t) => [t.templateKey, t]));
     const merged: TelegramTemplateExtended[] = FALLBACK_TEMPLATES.map((tpl) => {
@@ -921,50 +892,6 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
     }
   };
 
-  // Inline Buttons Helper Methods
-  const handleAddButtonRow = () => {
-    const newBtn: TelegramInlineButton = {
-      id: `btn-${Date.now()}`,
-      text: '⚡ New Action Button',
-      callback_data: 'action_click',
-    };
-    const currentButtons = currentTpl.buttons || [];
-    const updatedButtons = [...currentButtons, [newBtn]];
-
-    setTemplatesList((prev) =>
-      prev.map((t) => (t.id === currentTpl.id ? { ...t, buttons: updatedButtons } : t))
-    );
-  };
-
-  const handleUpdateButton = (rowIndex: number, btnIndex: number, field: 'text' | 'callback_data' | 'url', val: string) => {
-    const currentButtons = currentTpl.buttons || [];
-    const updated = currentButtons.map((row, rIdx) => {
-      if (rIdx !== rowIndex) return row;
-      return row.map((b, bIdx) => {
-        if (bIdx !== btnIndex) return b;
-        return { ...b, [field]: val };
-      });
-    });
-
-    setTemplatesList((prev) =>
-      prev.map((t) => (t.id === currentTpl.id ? { ...t, buttons: updated } : t))
-    );
-  };
-
-  const handleDeleteButton = (rowIndex: number, btnIndex: number) => {
-    const currentButtons = currentTpl.buttons || [];
-    const updated = currentButtons
-      .map((row, rIdx) => {
-        if (rIdx !== rowIndex) return row;
-        return row.filter((_, bIdx) => bIdx !== btnIndex);
-      })
-      .filter((row) => row.length > 0);
-
-    setTemplatesList((prev) =>
-      prev.map((t) => (t.id === currentTpl.id ? { ...t, buttons: updated } : t))
-    );
-  };
-
   const handleSaveActiveTemplate = () => {
     setSaveStatus('Saving...');
     fetch('/php/telegram/manager.php', {
@@ -974,7 +901,6 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
         action: 'save_template',
         template_key: currentTpl.dbKey,
         content: currentTpl.template,
-        buttons: JSON.stringify(currentTpl.buttons || []),
         staff_user: getLoggedInUserName(),
       }),
     })
@@ -1396,10 +1322,9 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
           </div>
           )}
 
-          {/* Everything below (variables, WYSIWYG editor, inline buttons
-              config) is edit-only - a view-only user only sees the header,
-              the routing control above, and the read-only preview further
-              down. */}
+          {/* Everything below (variables, WYSIWYG editor) is edit-only - a
+              view-only user only sees the header, the routing control above,
+              and the read-only preview further down. */}
           {canEditTemplates && (
           <>
           {/* Insert Available Variables */}
@@ -1584,86 +1509,6 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
             )}
           </div>
 
-          {/* Inline Keyboard Buttons Section */}
-          <div className="p-3.5 bg-slate-100 dark:bg-slate-800/80 rounded-lg border border-slate-200 dark:border-slate-700 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex flex-col gap-0.5">
-                <span className="flex items-center gap-1.5">
-                  <ToggleLeft className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-                  {t('inline_keyboard_buttons_heading', 'Telegram Inline Keyboard Buttons')}
-                </span>
-                <span className="text-[10px] text-slate-400 font-normal">
-                  URLs open web pages. Callbacks (e.g., <code>mark_served_40</code>) trigger backend scripts directly from Telegram.
-                </span>
-              </span>
-              <button
-                type="button"
-                onClick={handleAddButtonRow}
-                className="text-[11px] font-semibold text-sky-700 dark:text-sky-300 bg-sky-100 dark:bg-sky-950 hover:bg-sky-200 dark:hover:bg-sky-900 px-2.5 py-1 rounded-lg border border-sky-300 dark:border-sky-800 flex items-center gap-1 transition-all cursor-pointer"
-              >
-                <Plus className="w-3 h-3" />
-                <span>{t('add_button_button', 'Add Button')}</span>
-              </button>
-            </div>
-
-            {(!currentTpl.buttons || currentTpl.buttons.length === 0) ? (
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 italic m-0">
-                {t('no_buttons_message', 'No interactive inline buttons attached to this template yet. Click above to add buttons like "Mark as Served" or "Download Invoice".')}
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {currentTpl.buttons.map((row, rIdx) => (
-                  <div key={rIdx} className="space-y-1.5">
-                    {row.map((btn, bIdx) => (
-                      <div
-                        key={btn.id || bIdx}
-                        className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 text-xs"
-                      >
-                        <div className="flex-1">
-                          <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('button_text_label', 'Button Text:')}</label>
-                          <Input
-                            type="text"
-                            value={btn.text}
-                            onChange={(e) => handleUpdateButton(rIdx, bIdx, 'text', e.target.value)}
-                            className="text-xs font-semibold"
-                            fullWidth={false}
-                          />
-                        </div>
-
-                        <div className="flex-1">
-                          <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('action_callback_url_label', 'Action Callback / URL:')}</label>
-                          <Input
-                            type="text"
-                            value={btn.url || btn.callback_data || ''}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              if (val.startsWith('http')) {
-                                handleUpdateButton(rIdx, bIdx, 'url', val);
-                              } else {
-                                handleUpdateButton(rIdx, bIdx, 'callback_data', val);
-                              }
-                            }}
-                            placeholder={t('callback_placeholder', 'callback_data or https://...')}
-                            className="text-xs font-mono"
-                            fullWidth={false}
-                          />
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteButton(rIdx, bIdx)}
-                          title={t('delete_button_tooltip', 'Delete Button')}
-                          className="p-2 text-rose-500 hover:text-rose-700 dark:hover:text-rose-300 rounded hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors self-end sm:self-center cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
           </>
           )}
 
@@ -1690,26 +1535,6 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                 className="bg-[#242f3d] rounded-lg p-3.5 text-xs font-sans leading-relaxed text-slate-100 whitespace-pre-wrap border border-slate-700/60 shadow-xs"
                 dangerouslySetInnerHTML={{ __html: renderPreviewMessage(currentTpl.template) }}
               />
-
-              {/* Rendered Interactive Inline Keyboard Buttons */}
-              {currentTpl.buttons && currentTpl.buttons.length > 0 && (
-                <div className="space-y-1.5 pt-1">
-                  {currentTpl.buttons.map((row, rIdx) => (
-                    <div key={rIdx} className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                      {row.map((btn, bIdx) => (
-                        <button
-                          key={btn.id || bIdx}
-                          type="button"
-                          className="bg-[#2b3a4a] hover:bg-[#344557] text-[#64b5f6] font-semibold text-xs py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 border border-[#37495d] transition-all cursor-pointer active:scale-98 shadow-xs"
-                        >
-                          <span>{btn.text}</span>
-                          {btn.url && <ExternalLink className="w-3 h-3 text-[#64b5f6]" />}
-                        </button>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              )}
 
               <div className="text-right text-[10px] text-slate-400 font-mono pt-1 flex items-center justify-end gap-1">
                 <span>05:25 PM</span>

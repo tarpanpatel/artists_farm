@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Loader2, AlertCircle, Pencil, Check, X } from './icons/FlowbiteIcons';
+import { Plus, Trash2, Loader2, AlertCircle, Pencil, Check, X, Sparkles } from './icons/FlowbiteIcons';
 import { Drawer, Alert } from 'flowbite-react';
 import { t } from '../i18n/en';
 import { Button } from './Button';
@@ -76,19 +76,22 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
   const [editingTariffRoomId, setEditingTariffRoomId] = useState<number | null>(null);
   const [tariffDraft, setTariffDraft] = useState('');
   const [savingTariff, setSavingTariff] = useState(false);
+  const [housekeepingStatuses, setHousekeepingStatuses] = useState<Record<number, string>>({});
+  const [markingReadyRoomId, setMarkingReadyRoomId] = useState<number | null>(null);
 
-  const { isAuthenticated, authChecked } = useAuth();
+  const { isAuthenticated, authChecked, currentUser } = useAuth();
   const { confirm } = useConfirm();
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [propRes, overviewRes] = await Promise.all([
+      const [propRes, overviewRes, housekeepingRes] = await Promise.all([
         apiFetch(`/php/api/router.php?action=get_multikey_property&property_id=${propertyId}`),
         apiFetch(`/php/api/router.php?action=get_multikey_overview&property_id=${propertyId}`),
+        apiFetch(`/php/api/router.php?action=get_housekeeping_statuses&property_id=${propertyId}`),
       ]);
 
-      const [propData, overviewData] = await Promise.all([propRes.json(), overviewRes.json()]);
+      const [propData, overviewData, housekeepingData] = await Promise.all([propRes.json(), overviewRes.json(), housekeepingRes.json()]);
       if (propData.success) {
         setProperty(propData.data);
         if (propData.data.tenant_id) {
@@ -101,11 +104,40 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
       if (overviewData.success) {
         setOverview(overviewData.data);
       }
+      if (housekeepingData.success) {
+        setHousekeepingStatuses(housekeepingData.data || {});
+      }
     } catch (err) {
       console.error('Failed to load rooms:', err);
       setError('Failed to load rooms');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Shared with the Telegram "Mark Room Ready" button (webhook_handler.php ->
+  // markRoomReady() in housekeeping.php) - this is just the app-side entry
+  // point into the same function.
+  const handleMarkRoomReady = async (roomId: number) => {
+    setMarkingReadyRoomId(roomId);
+    try {
+      const response = await apiFetch('/php/api/router.php?action=set_room_ready', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ room_id: roomId, staff_name: currentUser?.name || currentUser?.username || 'Staff' }),
+      });
+      const data = await response.json();
+      if (data.status === 'success') {
+        setHousekeepingStatuses((prev) => ({ ...prev, [roomId]: 'Ready' }));
+        showToast(t('room_marked_ready_toast', 'Room marked ready'), { type: 'success' });
+      } else {
+        showToast(data.message || t('room_marked_ready_failed_toast', 'Failed to update room'), { type: 'error' });
+      }
+    } catch (err) {
+      console.error('Failed to mark room ready:', err);
+      showToast(t('room_marked_ready_failed_toast', 'Failed to update room'), { type: 'error' });
+    } finally {
+      setMarkingReadyRoomId(null);
     }
   };
 
@@ -297,6 +329,22 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
                     >
                       {status === 'booked' ? t('booked_badge', 'Booked') : t('available_badge', 'Available')}
                     </span>
+                    {housekeepingStatuses[room.id] === 'Dirty' && (
+                      <button
+                        type="button"
+                        onClick={() => handleMarkRoomReady(room.id)}
+                        disabled={markingReadyRoomId === room.id}
+                        title={t('mark_room_ready_tooltip', 'Tap once cleaned to mark it ready')}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded shrink-0 bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-900/60 transition-colors cursor-pointer disabled:opacity-60"
+                      >
+                        {markingReadyRoomId === room.id ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Sparkles className="w-3 h-3" />
+                        )}
+                        <span>{t('needs_cleaning_badge', 'Needs Cleaning')}</span>
+                      </button>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-1.5 shrink-0">

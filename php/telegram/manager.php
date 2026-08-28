@@ -241,6 +241,22 @@ $defaultTemplates = [
         'description' => 'Sent to the Admin group whenever a booking is edited. Shows only the fields that actually changed (old → new).',
         'available_variables' => '{guest_name},{booking_id},{changes_list}',
         'content' => "✏️ <b>BOOKING UPDATED</b>\n\n👤 <b>Guest:</b> {guest_name}\n🆔 <b>Booking ID:</b> {booking_id}\n\n{changes_list}"
+    ],
+    'checkout_day_reminder' => [
+        'template_key' => 'checkout_day_reminder',
+        'title' => 'Departure Day Reminder',
+        'category' => 'Guest Check-in',
+        'description' => 'Sent to Admin with a "Mark Checked-Out" button on a guest\'s expected checkout date, and daily after if they\'re still checked in.',
+        'available_variables' => '{guest_name},{room_name},{checkout_date}',
+        'content' => "🚪 <b>DEPARTURE DAY</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Guest:</b> {guest_name}\n🚪 <b>Room:</b> {room_name}\n📅 <b>Expected Checkout:</b> {checkout_date}\n━━━━━━━━━━━━━━━━━━\n👉 <i>Tap below once the guest has left.</i>"
+    ],
+    'room_needs_cleaning' => [
+        'template_key' => 'room_needs_cleaning',
+        'title' => 'Room Needs Cleaning',
+        'category' => 'Kitchen & Ordering',
+        'description' => 'Sent to Admin with a "Mark Room Ready" button the moment a guest checks out of a room.',
+        'available_variables' => '{room_name}',
+        'content' => "🧹 <b>ROOM NEEDS CLEANING</b>\n━━━━━━━━━━━━━━━━━━\n🚪 <b>Room:</b> {room_name}\n━━━━━━━━━━━━━━━━━━\n👉 <i>Tap below once it's cleaned and ready for the next guest.</i>"
     ]
 ];
 

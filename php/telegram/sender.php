@@ -150,6 +150,18 @@ if (!function_exists('appendAppUrlToMessage')) {
                 if ($row) {
                     $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
                     $host = $_SERVER['HTTP_HOST'] ?? 'localhost:3000';
+                    // Telegram's own link-entity parser silently refuses to
+                    // linkify any URL whose host is literally "localhost" (a
+                    // literal IP like 127.0.0.1 or a real domain both work
+                    // fine, confirmed by direct testing 28 Aug 2026) - the <a>
+                    // tag gets dropped entirely, and Telegram's independent
+                    // hashtag auto-detector then picks up the leftover
+                    // "#dashboard" text on its own, which is what produced the
+                    // half-blue, half-plain, wrong-tap-target link reported live
+                    // that day. Production/staging never hit this (real
+                    // domains aren't affected) - this substitution only changes
+                    // local XAMPP dev's own links.
+                    $host = preg_replace('/^localhost(?=:|$)/i', '127.0.0.1', $host);
                     $hash = 'dashboard';
                     if ($category === 'kitchen' || strpos($message, 'KITCHEN') !== false) {
                         $hash = 'kitchen';
@@ -168,7 +180,15 @@ if (!function_exists('appendAppUrlToMessage')) {
         } catch (Exception $e) {}
 
         if ($appUrl) {
-            $message .= "\n\n🔗 <b>Open in App:</b> <a href=\"{$appUrl}\">{$appUrl}</a>";
+            // Link text must NOT be the raw URL - it contains a #hash fragment
+            // (e.g. #dashboard), which Telegram's own entity parser detects as
+            // a hashtag INSIDE the <a> tag's text and renders as a separate,
+            // overlapping "hashtag" entity. That splits the link visually (only
+            // the #fragment portion shows as tappable blue) and, worse, tapping
+            // it does a Telegram hashtag search instead of opening the URL -
+            // reported live 28 Aug 2026 via a real Admin Farm Group screenshot.
+            // A plain, non-URL anchor text sidesteps the collision entirely.
+            $message .= "\n\n🔗 <a href=\"{$appUrl}\">Open in App</a>";
         }
         return $message;
     }
@@ -612,8 +632,18 @@ if (!function_exists('editTelegramMessageText')) {
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
         curl_setopt($ch, CURLOPT_TIMEOUT, 8);
-        curl_exec($ch);
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
         curl_close($ch);
+
+        TelescopeLogger::log(
+            'telegram',
+            ($http_code == 200) ? 'SUCCESS' : 'WARNING',
+            "✏️ Telegram API: editMessageText on chat {$chat_id} msg {$message_id} - HTTP {$http_code}" . ($error ? " (Error: {$error})" : ''),
+            "Telegram Sender [Response: {$http_code}]",
+            ['chat_id' => $chat_id, 'message_id' => $message_id, 'http_code' => $http_code, 'error' => $error]
+        );
     }
 }
 
@@ -640,7 +670,17 @@ if (!function_exists('answerTelegramCallbackQuery')) {
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
         curl_setopt($ch, CURLOPT_TIMEOUT, 8);
-        curl_exec($ch);
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
         curl_close($ch);
+
+        TelescopeLogger::log(
+            'telegram',
+            ($http_code == 200) ? 'SUCCESS' : 'WARNING',
+            "🔘 Telegram API: answerCallbackQuery - HTTP {$http_code}" . ($error ? " (Error: {$error})" : ''),
+            "Telegram Sender [Response: {$http_code}]",
+            ['callback_query_id' => $callback_query_id, 'text' => $text, 'http_code' => $http_code, 'error' => $error]
+        );
     }
 }

@@ -61,9 +61,15 @@ interface HeaderProps {
   // ContactSupportMenu as-is since it has no per-property operational context for the bot to act on.
   onToggleAIChat?: () => void;
   // Opens StaffPropertyPicker.tsx as a mid-session overlay (28 Aug 2026) - only rendered
-  // when the switcher icon below is (currentUser.canSwitchProperties, checked internally
-  // here, not passed in), so this can stay optional/no-op for every other session.
+  // when canSwitchProperties below is true, so this can stay optional/no-op for every
+  // other session.
   onSwitchProperty?: () => void;
+  // Whether to show the Switch Property icon - computed in App.tsx, not just
+  // currentUser.canSwitchProperties directly: Root Admin's "View site as Super Admin"
+  // preview (this file's own Eye dropdown) also sets this true, using whichever
+  // property's tenant Root Admin is currently viewing as the switch target, since a real
+  // Super Admin of that tenant would always see this icon.
+  canSwitchProperties?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -84,6 +90,7 @@ export const Header: React.FC<HeaderProps> = ({
   onNavigate,
   onToggleAIChat,
   onSwitchProperty,
+  canSwitchProperties,
 }) => {
   const { currentUser, activeRole, setActiveRole, isAuthenticated, authChecked } = useAuth();
   // "View site as" (Root Admin only) - a pure frontend preview: it only
@@ -395,10 +402,13 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Switch Property icon (28 Aug 2026, explicit request) - takes this exact header
               slot INSTEAD OF the calendar-sync icon below, for any session that can actually
-              use it: a staff account with access_all_properties, or the tenant owner
-              (currentUser.canSwitchProperties covers both - see check_session/login_user in
-              router.php). Everyone else keeps the calendar-sync icon in this slot, unchanged. */}
-          {currentUser?.canSwitchProperties ? (
+              use it: a staff account with access_all_properties, the tenant owner (both via
+              currentUser.canSwitchProperties - see check_session/login_user in router.php),
+              or Root Admin previewing "View site as Super Admin" above (App.tsx computes the
+              final canSwitchProperties prop, folding in that preview case too - a real Super
+              Admin always has this). Everyone else keeps the calendar-sync icon in this slot,
+              unchanged. */}
+          {canSwitchProperties ? (
             <Popover
               trigger="hover"
               placement="bottom"

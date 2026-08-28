@@ -9,7 +9,7 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
     // Auto-create staff_users and payees tables
     try {
         require_once __DIR__ . '/../config/schema_cache.php';
-        
+
         if (!isSchemaVerified('schema_staff_tables')) {
 
         // Add new columns if upgrading from old schema (safe to run multiple times)

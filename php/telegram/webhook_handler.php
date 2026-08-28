@@ -13,6 +13,19 @@
 
 require_once __DIR__ . '/sender.php';
 require_once __DIR__ . '/../service_requests/service_requests.php';
+// Guarded the same way pairing.php guards module_manager.php - this file gets
+// loaded via two different physical paths in one process on staging (its own
+// copy vs the whitelisted production copy telegram.php redirects to, see
+// pairing.php's own comment above for the full write-up), and neither
+// guests.php nor housekeeping.php's own declarations are function_exists()-
+// guarded internally, so an unguarded require here would "Cannot redeclare"
+// the moment both paths get loaded in the same request.
+if (!function_exists('performGuestCheckin')) {
+    require_once __DIR__ . '/../guests/guests.php';
+}
+if (!function_exists('markRoomReady')) {
+    require_once __DIR__ . '/../housekeeping/housekeeping.php';
+}
 
 if (!function_exists('handleTelegramCallbackQuery')) {
     function handleTelegramCallbackQuery($pdo, array $cq, $token = null) {
@@ -48,11 +61,12 @@ if (!function_exists('handleTelegramCallbackQuery')) {
 
             // Find the specific order_item by order_id and array position
             $checkStmt = $pdo->prepare("
-                SELECT oi.id, oi.order_id, oi.item_status, oi.quantity, mi.name as dish_name, o.guest_id, g.guest_name, g.room_number as table_no
+                SELECT oi.id, oi.order_id, oi.item_status, oi.quantity, mi.name as dish_name, o.guest_id, g.guest_name, rp.name as table_no
                 FROM order_items oi
                 JOIN orders o ON oi.order_id = o.id
                 JOIN menu_items mi ON oi.menu_item_id = mi.id
                 LEFT JOIN guests g ON o.guest_id = g.id
+                LEFT JOIN properties rp ON g.room_id = rp.id
                 WHERE oi.order_id = ? OR oi.order_id = ? OR o.id = ?
                 ORDER BY oi.id ASC
             ");
@@ -173,11 +187,12 @@ if (!function_exists('handleTelegramCallbackQuery')) {
             try {
                 if ($propertyId) {
                     $servedStmt = $pdo->prepare("
-                        SELECT oi.quantity, mi.name as dish_name, g.guest_name, g.room_number as table_no
+                        SELECT oi.quantity, mi.name as dish_name, g.guest_name, rp.name as table_no
                         FROM order_items oi
                         JOIN orders o ON oi.order_id = o.id
                         JOIN menu_items mi ON oi.menu_item_id = mi.id
                         LEFT JOIN guests g ON o.guest_id = g.id
+                        LEFT JOIN properties rp ON g.room_id = rp.id
                         WHERE oi.order_id = ? AND (oi.item_status IS NULL OR LOWER(oi.item_status) != 'served')
                     ");
                     $servedStmt->execute([$order_id]);
@@ -239,6 +254,33 @@ if (!function_exists('handleTelegramCallbackQuery')) {
                 answerTelegramCallbackQuery($cq_id, "Already marked fulfilled.", true, $propertyToken);
             } else {
                 answerTelegramCallbackQuery($cq_id, $result['message'] ?? 'Failed to update request.', true, $propertyToken);
+            }
+        } elseif (preg_match('/^checkin_guest_(\d+)$/', $callback_data, $matches)) {
+            $result = checkinGuestViaTelegram($pdo, intval($matches[1]), $staff_name);
+            if (($result['status'] ?? '') === 'success' && empty($result['already'])) {
+                answerTelegramCallbackQuery($cq_id, "Guest checked in!", false, $propertyToken);
+            } elseif (!empty($result['already'])) {
+                answerTelegramCallbackQuery($cq_id, "Guest is already checked in.", true, $propertyToken);
+            } else {
+                answerTelegramCallbackQuery($cq_id, $result['message'] ?? 'Failed to check in guest.', true, $propertyToken);
+            }
+        } elseif (preg_match('/^checkout_guest_(\d+)$/', $callback_data, $matches)) {
+            $result = checkoutGuestViaTelegram($pdo, intval($matches[1]), $staff_name);
+            if (($result['status'] ?? '') === 'success' && empty($result['already'])) {
+                answerTelegramCallbackQuery($cq_id, "Guest checked out!", false, $propertyToken);
+            } elseif (!empty($result['already'])) {
+                answerTelegramCallbackQuery($cq_id, "Guest is already checked out.", true, $propertyToken);
+            } else {
+                answerTelegramCallbackQuery($cq_id, $result['message'] ?? 'Failed to check out guest.', true, $propertyToken);
+            }
+        } elseif (preg_match('/^room_ready_(\d+)$/', $callback_data, $matches)) {
+            $result = markRoomReady($pdo, intval($matches[1]), $staff_name);
+            if (($result['status'] ?? '') === 'success' && empty($result['already'])) {
+                answerTelegramCallbackQuery($cq_id, "Room marked ready!", false, $propertyToken);
+            } elseif (!empty($result['already'])) {
+                answerTelegramCallbackQuery($cq_id, "Room is already marked ready.", true, $propertyToken);
+            } else {
+                answerTelegramCallbackQuery($cq_id, $result['message'] ?? 'Failed to update room.', true, $propertyToken);
             }
         }
     }

@@ -80,6 +80,16 @@ function getCronJobDefinitions(): array {
             'daily_at_time' => '09:00:00',
         ],
         [
+            'job_key' => 'checkout_departure_reminders',
+            'name' => 'Departure Day Reminders',
+            'description' => 'Sends the Admin Telegram group a "Mark Checked-Out" button for every still-checked-in guest whose expected checkout date has arrived.',
+            'script_path' => 'checkout_departure_reminders.php',
+            'log_file' => 'checkout_departure_reminders.log',
+            'schedule_type' => 'daily_at',
+            'interval_minutes' => null,
+            'daily_at_time' => '09:00:00',
+        ],
+        [
             'job_key' => 'trial_lifecycle_cadence',
             'name' => '30-Day Trial Lifecycle & Renewal Cadence',
             'description' => 'Automated Day 1/3/7/14/21/23(7-day notice)/28/30 follow-up nudges, trial expiry notices, and subscription status transitions.',
@@ -93,7 +103,7 @@ function getCronJobDefinitions(): array {
 }
 
 function ensureCronJobsSchema(PDO $pdo): void {
-    if (!isSchemaVerified('schema_cron_jobs_v2')) {
+    if (!isSchemaVerified('schema_cron_jobs_v3')) {
         $pdo->exec("CREATE TABLE IF NOT EXISTS cron_jobs (
             job_key VARCHAR(64) PRIMARY KEY,
             name VARCHAR(150) NOT NULL,
@@ -117,7 +127,7 @@ function ensureCronJobsSchema(PDO $pdo): void {
                 $job['schedule_type'], $job['interval_minutes'], $job['daily_at_time'],
             ]);
         }
-        markSchemaVerified('schema_cron_jobs_v2');
+        markSchemaVerified('schema_cron_jobs_v3');
     }
 }
 

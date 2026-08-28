@@ -548,6 +548,22 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // authenticated owner/access_all_properties session (currentUser.canSwitchProperties).
   const [isSwitchingProperty, setIsSwitchingProperty] = useState(false);
 
+  // Root Admin's "View site as Super Admin" preview (Header.tsx's Eye dropdown) must also
+  // show the switcher, since a real Super Admin always can - Root Admin's own currentUser
+  // has no canSwitchProperties/tenantId/tenantSlug of their own (Root Admin isn't scoped to
+  // one tenant), so this falls back to whichever property Root Admin is CURRENTLY viewing -
+  // exactly the tenant a real Super Admin of that property would be switching within.
+  const isRootAdminPreviewingSuperAdmin =
+    activeRole === 'Super Admin' &&
+    (currentUser?.role || '').toLowerCase().replace(/_/g, ' ').trim() === 'root admin';
+  const effectiveCanSwitchProperties = !!currentUser?.canSwitchProperties || isRootAdminPreviewingSuperAdmin;
+  const effectiveSwitchTenantId = currentUser?.canSwitchProperties
+    ? currentUser.tenantId
+    : (preloadedData.currentProperty?.tenant_id ?? null);
+  const effectiveSwitchTenantSlug = currentUser?.canSwitchProperties
+    ? currentUser.tenantSlug
+    : getPropertyAndRoomSlugs().tenantSlug;
+
   const handleLoginFailed = (username: string) => {
     logAudit(`Staff User ${username} failed login attempt`, { status: 'Failed', module: 'login', user: username });
   };
@@ -1938,7 +1954,7 @@ ${itemsStr}
           />
         )}
 
-        {isAuthenticated && isSwitchingProperty && currentUser?.canSwitchProperties && currentUser?.tenantId && currentUser?.tenantSlug && (
+        {isAuthenticated && isSwitchingProperty && effectiveCanSwitchProperties && effectiveSwitchTenantId && effectiveSwitchTenantSlug && (
           // z-[60], not the ordinary z-50 modal tier - this needs to sit above
           // DemoOnboardingTour's own floating "Explore Full App Tour" trigger
           // (fixed z-50, no literal inset-0 so the app-wide z-50->58 bump rule
@@ -1946,9 +1962,9 @@ ${itemsStr}
           // poke through this overlay's background.
           <div className="fixed inset-0 z-[60]">
             <StaffPropertyPicker
-              tenantId={currentUser.tenantId}
-              tenantSlug={currentUser.tenantSlug}
-              user={{ id: currentUser.id, username: currentUser.username || '', name: currentUser.name, role: currentUser.role }}
+              tenantId={effectiveSwitchTenantId}
+              tenantSlug={effectiveSwitchTenantSlug}
+              user={{ id: currentUser?.id, username: currentUser?.username || '', name: currentUser?.name, role: currentUser?.role }}
               onLogout={handleLogout}
               onClose={() => setIsSwitchingProperty(false)}
             />
@@ -1983,6 +1999,7 @@ ${itemsStr}
             onNavigate={(tab, itemKey) => handleNavigateTab(tab, itemKey)}
             onToggleAIChat={() => setIsAIChatOpen((prev) => !prev)}
             onSwitchProperty={() => setIsSwitchingProperty(true)}
+            canSwitchProperties={effectiveCanSwitchProperties}
           />
         )}
 

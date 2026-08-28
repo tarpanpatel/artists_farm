@@ -1432,7 +1432,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                             >
                               <button
                                 type="button"
-                                className="w-full rounded-md px-2 py-1 bg-red-600 dark:bg-red-700 hover:bg-red-500 border border-red-700/40 text-white text-xs font-medium flex flex-col justify-center shadow-2xs truncate text-left cursor-pointer transition-colors animate-pulse"
+                                className="w-full rounded-md px-2 py-1 bg-red-600 dark:bg-red-700 hover:bg-red-500 border border-red-700/40 text-white text-xs font-medium flex flex-col justify-center shadow-2xs truncate text-left cursor-pointer transition-colors"
                               >
                                 <div className="truncate font-semibold">{otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}</div>
                               </button>
@@ -1473,7 +1473,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               <span>{t('legend_ota_converted', 'Converted OTA Bookings')}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-5 h-3.5 rounded-xs bg-red-600 dark:bg-red-700 border border-red-700/40 inline-block shadow-md animate-pulse" />
+              <span className="w-5 h-3.5 rounded-xs bg-red-600 dark:bg-red-700 border border-red-700/40 inline-block shadow-md" />
               <span>{t('legend_ota_blocked', 'OTA Blocked Date')}</span>
             </div>
             <div className="flex items-center gap-2">

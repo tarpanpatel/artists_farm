@@ -209,6 +209,9 @@ require_once __DIR__ . '/multikey_properties.php';
 if (!function_exists('ensureSystemServiceRequestCatalogSchema')) {
     require_once __DIR__ . '/../service_requests/service_requests.php';
 }
+if (!function_exists('markRoomReady')) {
+    require_once __DIR__ . '/../housekeeping/housekeeping.php';
+}
 require_once __DIR__ . '/../security/rate_limiter.php';
 require_once __DIR__ . '/../security/csrf_handler.php';
 require_once __DIR__ . '/../utils/mailer.php';
@@ -322,6 +325,28 @@ if (!isSchemaVerified('schema_properties_table_v5')) {
         }
     } catch (Exception $e) {}
     markSchemaVerified('schema_properties_table_v5');
+}
+
+// Self-healing column check for `properties.housekeeping_status` (28 Aug 2026) - backs the
+// new "Mark Room Ready" Telegram action button: a room is flipped to 'Dirty' when its guest
+// checks out (see performGuestCheckout() in guests.php) and back to 'Ready' either from the
+// Telegram button or the matching toggle in RoomsManagement.tsx. The two telegram_* columns
+// remember the "Needs Cleaning" alert's chat/message id so the tap can edit that same message
+// instead of posting a duplicate - same pattern as service_requests.telegram_chat_id.
+if (!isSchemaVerified('schema_properties_table_v6')) {
+    try {
+        $propertiesColsV6 = $pdo->query("SHOW COLUMNS FROM properties")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('housekeeping_status', $propertiesColsV6)) {
+            $pdo->exec("ALTER TABLE properties ADD COLUMN `housekeeping_status` VARCHAR(20) NOT NULL DEFAULT 'Ready' AFTER `telegram_bot_token`");
+        }
+        if (!in_array('housekeeping_telegram_chat_id', $propertiesColsV6)) {
+            $pdo->exec("ALTER TABLE properties ADD COLUMN `housekeeping_telegram_chat_id` VARCHAR(64) DEFAULT NULL AFTER `housekeeping_status`");
+        }
+        if (!in_array('housekeeping_telegram_message_id', $propertiesColsV6)) {
+            $pdo->exec("ALTER TABLE properties ADD COLUMN `housekeeping_telegram_message_id` INT DEFAULT NULL AFTER `housekeeping_telegram_chat_id`");
+        }
+    } catch (Exception $e) {}
+    markSchemaVerified('schema_properties_table_v6');
 }
 
 // Self-healing column check for `tenants.subscription_expires_at` and `tenants.plan_type` (26 Aug 2026)
@@ -3536,6 +3561,12 @@ switch ($action) {
             }
         }
         handleServiceRequestActions($pdo, $request_method, $action, $propertyId);
+        break;
+
+    // --- HOUSEKEEPING (room-ready status, "Mark Room Ready" Telegram button) ---
+    case 'get_housekeeping_statuses':
+    case 'set_room_ready':
+        handleHousekeepingActions($pdo, $request_method, $action, $propertyId);
         break;
 
     // --- BILLING & CHECKOUT ---

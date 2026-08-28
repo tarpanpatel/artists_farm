@@ -1,0 +1,8 @@
+2026-08-28 16:18:22 - Checkout departure reminder worker started
+2026-08-28 16:18:22 - SKIPPED: guest #285 (Major Saab, Unassigned, property 203763) - No group configured for 'checkout_day_reminder'
+2026-08-28 16:18:22 - SKIPPED: guest #289 (Robert, Room 102, property 56763) - No group configured for 'checkout_day_reminder'
+2026-08-28 16:18:22 - SKIPPED: guest #2272 (Divya Verma, Room 101, property 290230) - No group configured for 'checkout_day_reminder'
+2026-08-28 16:18:22 - SKIPPED: guest #2313 (Rahul Verma, Room 104, property 290230) - No group configured for 'checkout_day_reminder'
+2026-08-28 16:18:22 - SKIPPED: guest #2327 (Karan Varma, Room 105, property 290230) - No group configured for 'checkout_day_reminder'
+2026-08-28 16:18:22 - REMINDED: guest #2335 (Claude Departure Test Guest, TEST ROOM (Claude verification), property 1)
+2026-08-28 16:18:22 - Reminder worker completed (6 booking(s) processed)

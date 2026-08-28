@@ -728,7 +728,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                                     blockedDateStrings: roomOccupiedDateStrings.filter((d) => !ownDays.has(d)),
                                   });
                                 }}
-                                className="px-2.5 rounded-md font-semibold cursor-pointer absolute bg-red-600 dark:bg-red-700 hover:bg-red-500 text-white border border-red-700/40 pointer-events-auto shadow-md flex items-center z-20 overflow-hidden transition-colors animate-pulse"
+                                className="px-2.5 rounded-md font-semibold cursor-pointer absolute bg-red-600 dark:bg-red-700 hover:bg-red-500 text-white border border-red-700/40 pointer-events-auto shadow-md flex items-center z-20 overflow-hidden transition-colors"
                                 style={commonStyle}
                               >
                                 <span className="font-semibold truncate text-[11px] leading-none">{otaItem.label}</span>
@@ -832,7 +832,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             <span>{t('legend_ota_converted', 'Converted OTA Bookings')}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-5 h-3.5 rounded-xs bg-red-600 dark:bg-red-700 border border-red-700/40 inline-block shadow-md animate-pulse" />
+            <span className="w-5 h-3.5 rounded-xs bg-red-600 dark:bg-red-700 border border-red-700/40 inline-block shadow-md" />
             <span>{t('legend_ota_blocked', 'OTA Blocked Date')}</span>
           </div>
           <div className="flex items-center gap-2">
