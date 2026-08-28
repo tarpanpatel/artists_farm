@@ -1,0 +1,20 @@
+/* Compiled Tailwind CSS source for the standalone Telescope Error Center
+   pages (php/errors/index.php, php/errors/telescope_auth.php) - these are
+   plain PHP pages outside the Vite/React app, so they loaded
+   cdn.tailwindcss.com (the Play CDN) instead of a real build: recompiling
+   Tailwind from scratch in every visitor's browser on every load, which
+   Tailwind's own docs say not to use in production, and which is also a live
+   third-party dependency Telescope pulled in at exactly the moment (a real
+   outage) it's designed to keep working through.
+
+   Replaced 28 Aug 2026 with a real, pre-compiled build via @tailwindcss/cli
+   (same pattern as landing-pages.css/"build:landing") - see the
+   "build:telescope" npm script in package.json for how this regenerates.
+   Neither Telescope page uses any `dark:` variant classes (it's a
+   permanently-dark console, not a light/dark toggle), so this doesn't need
+   the main app's custom `.dark`-class variant setup - a plain default
+   build is correct here. */
+@import "tailwindcss";
+
+@source "../php/errors/index.php";
+@source "../php/errors/telescope_auth.php";

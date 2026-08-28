@@ -97,9 +97,10 @@ if (!function_exists('getTelescopePassword')) {
     <title>Telescope Error Center</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0b0f19">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="telescope.css">
     <style>
         body { background-color: #0b0f19; color: #f3f4f6; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+        .icon { width: 1em; height: 1em; display: inline-block; flex-shrink: 0; }
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center px-4">
@@ -111,14 +112,33 @@ if (!function_exists('getTelescopePassword')) {
         <?php if ($error): ?>
         <div class="text-xs text-red-400 bg-red-950/40 border border-red-900 rounded-lg px-3 py-2"><?= htmlspecialchars($error) ?></div>
         <?php endif; ?>
-        <input type="password" id="passwordInput" placeholder="Access password" autofocus
-            inputmode="numeric"
-            class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500">
-        <button type="submit" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-semibold rounded-lg px-3 py-2 transition cursor-pointer">
+        <div class="relative">
+            <input type="password" id="passwordInput" placeholder="Access password" autofocus
+                inputmode="numeric"
+                class="w-full bg-gray-800 border border-gray-700 rounded-lg pl-3 pr-11 min-h-[2.75rem] text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500">
+            <button type="button" id="togglePasswordBtn" onclick="toggleTelescopePasswordVisibility()" class="absolute right-1 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:text-gray-300 transition cursor-pointer" title="Show password" aria-label="Show password">
+                <svg id="togglePasswordIconShow" class="icon w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg id="togglePasswordIconHide" class="icon w-4 h-4 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.53 13.53 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><path d="m2 2 20 20"/></svg>
+            </button>
+        </div>
+        <button type="submit" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-semibold rounded-lg px-3 min-h-[2.75rem] transition cursor-pointer">
             Unlock
         </button>
     </form>
     <script>
+        function toggleTelescopePasswordVisibility() {
+            const input = document.getElementById('passwordInput');
+            const showIcon = document.getElementById('togglePasswordIconShow');
+            const hideIcon = document.getElementById('togglePasswordIconHide');
+            const btn = document.getElementById('togglePasswordBtn');
+            const isHidden = input.type === 'password';
+            input.type = isHidden ? 'text' : 'password';
+            showIcon.classList.toggle('hidden', isHidden);
+            hideIcon.classList.toggle('hidden', !isHidden);
+            btn.title = isHidden ? 'Hide password' : 'Show password';
+            btn.setAttribute('aria-label', btn.title);
+        }
+
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const password = document.getElementById('passwordInput').value;

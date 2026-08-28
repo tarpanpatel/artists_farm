@@ -6,49 +6,55 @@ This document tracks identified bugs, pending backend API integrations, and upco
 
 ## ðŸŸ¢ Open Items
 ---top priority starts---
-:All buttons should be same tyled everywhere. For exampke edit button styling is different on different pages.
 
-### Root Admin Dashboard: page title overlaps platform title on scroll (reported 25 Aug 2026)
+### Button styling inconsistency across pages (confirmed 28 Aug 2026 via code audit)
 
-On Root Admin pages (reported live on "Tenants & Properties"), scrolling
-up causes the page's own sticky topbar ("Tenants & Properties" -
-`RootAdminDashboard.tsx`'s `<header className="... sticky top-0 z-20 ...">`)
-to visually overlap the "Ground Code Platform / Administration Dashboard"
-banner that sits as the first element of that section's own scrollable
-content (`PlatformPropertyManagement.tsx` - only file matching that text).
-Not reproduced/diagnosed yet - two likely candidates worth checking first:
-(a) a z-index conflict if PlatformPropertyManagement's banner has its own
-sticky/fixed positioning competing with the topbar's `z-20`, or (b) the
-classic sticky-stacking issue where two sequential sticky elements need an
-explicit `top` offset on the second one (`top-[<first element's height>]`)
-or they occupy the same scroll-pinned position. Same general family of bug
-as this session's other safe-area/header fixes today, but a distinct root
-cause - not yet investigated.
+Real and widespread, not a one-off - checked ~10 "Edit" action call sites across
+`StaffManagement.tsx`, `InventoryManagement.tsx`, `LicenseManagement.tsx`, `MenuManager.tsx`,
+`ExpenseItemsManagement.tsx`, `DefaultBillsManager.tsx`, `SystemStockManager.tsx`,
+`PettyCashManagement.tsx`, `PlatformPropertyManagement.tsx`. What actually varies (icon *shape*
+is NOT the problem - `Pencil`/`Edit2` are aliases for the same icon):
+- **Variant choice is inconsistent for the identical action**, sometimes within the same file -
+  e.g. `StaffManagement.tsx:997` uses `Button variant="primary"` for Edit, `:1114` uses
+  `variant="secondary"` plus a hardcoded `text-blue-600` override, for the same edit action.
+- **Many call sites bypass the shared `Button` component entirely** - raw `<button>`s with
+  hand-rolled Tailwind colors instead of design tokens (`DefaultBillsManager.tsx:296`,
+  `SystemStockManager.tsx:409`, `PettyCashManagement.tsx:2216`'s sky-colored pill,
+  `InventoryManagement.tsx:1687`, `StaffManagement.tsx:1723`'s mobile card).
+- **Icon size drifts** between `w-3`, `w-3.5`, and `w-4` for what should be the same-size icon.
+- **Text+icon vs. icon-only** varies with no clear rule (e.g. `PlatformPropertyManagement.tsx:1043`
+  has a label, `:2169` is icon-only for the same action elsewhere in the file).
 
-### 🔭 Mobile-First Telescope Error Center & Diagnostic Console
+Not yet fixed - fixing this properly means picking ONE canonical Edit-button pattern (variant,
+icon, size) and sweeping every call site above onto it, including migrating the raw-`<button>`
+sites onto the shared `Button` component. A real but mechanical multi-file sweep, not a design
+decision.
 
-Complete mobile-first overhaul of the **Telescope Error Center** standalone PWA dashboard (`php/errors/index.php`), login screen (`php/errors/telescope_auth.php`), and push notification system (`php/errors/sw-telescope.js`) to provide an instant, smartphone-optimized debugging and error inspection console for resort developers and admins:
+### 🔭 Telescope Error Center mobile polish (narrowed 28 Aug 2026 - most of this already shipped)
 
-1. **Mobile-First Telescope Dashboard Layout (`php/errors/index.php`)**:
-   - **Sticky Mobile Navigation & Portal Selector**: Implement a horizontal swipeable portal tab bar (`JS Browser`, `PHP`, `SQL`, `Requests`, `Security`, `404`, `Email`, `Telegram`) with unread error counters and smooth scroll snapping on mobile viewports (< 768px).
-   - **Compact Header & Touch Actions**: Streamline the top header with touch-optimized 44px buttons for Live Polling toggle, Push Notifications, Reset Logs, and Back to App navigation.
-   - **Mobile Card-Based Log Feed**: Replace multi-column desktop tables on mobile with high-density log cards displaying severity pills (`CRITICAL`, `ERROR`, `WARNING`, `INFO`), timestamp, origin tag, and expandable stack trace previews.
-   - **Mobile Bottom Sheet for Log Details**: Replace modal dialogs on smartphone screens with a smooth slide-up bottom sheet (`detailModal`), featuring 1-tap "Copy Stack Trace" and "Copy Request Payload" buttons.
+This item used to describe a full ground-up mobile overhaul as "not started." A code audit
+28 Aug 2026 found dated comments (24-27 Aug 2026) showing most of it already landed: sticky
+swipeable portal tabs with unread-count badges and scroll-snap (`index.php:270-282`), a 44px
+touch-target header for Live Polling/Push/Reset/Back (`index.php:245-258`), and a mobile bottom
+sheet for log details with "Copy Stack Trace"/"Copy Full Payload" buttons (`index.php:313-324`,
+`1029-1067`). PWA push (`sw-telescope.js`) formats notifications with a 1-tap deep link, and
+`manifest.json`/`index.php` already set the dark theme tokens and `viewport-fit=cover`.
 
-2. **Mobile Search & Date Filter Bar**:
-   - Touch-friendly search bar with instant clear icon (`x`) and auto-focus for mobile keyboards.
-   - Quick date timeframe chips (`Today`, `Yesterday`, `Last 7 Days`, `Custom`) with single-tap switching on mobile devices.
-
-3. **Touch-Optimized Telescope Auth Gate (`php/errors/telescope_auth.php`)**:
-   - Mobile-first login screen layout with responsive card scaling, auto-focused password input, show/hide password toggle, and clear touch targets.
-
-4. **PWA Mobile Push & Offline Reliability (`sw-telescope.js` & `manifest.json`)**:
-   - Mobile PWA installability with dark theme styling (`#0b0f19`), responsive viewport meta tags (`viewport-fit=cover`), and touch app icons.
-   - Mobile lock-screen formatted Web Push notifications with 1-tap deep link to open the exact error entry in Telescope.
-
-5. **Design System & Performance Compliance**:
-   - Lightweight, dependency-free Tailwind styling matching Flowbite dark mode tokens (`#0f172a`, `#1f2937`, `rounded-lg`).
-   - Touch-first hit areas (minimum 44px x 44px) across all buttons, selects, and inputs.
+**What's actually still left**, precisely:
+1. Mobile log cards have no expandable stack-trace preview inline - the trace only appears after
+   opening the bottom sheet, not as a quick expand on the card itself.
+2. Telescope login screen (`telescope_auth.php`) has no show/hide password toggle anywhere in the
+   file, and its submit button/input aren't confirmed at the 44px touch-target size the main
+   dashboard already has.
+3. The search bar (`index.php:500`) has no clear ("×") icon and no `autofocus`.
+4. Date filtering is a `<select>` dropdown (`index.php:376-381`), not the described one-tap
+   quick-date chips (Today/Yesterday/Last 7 Days/Custom) - functionally equivalent, just not the
+   touch-chip UI originally asked for.
+5. `sw-telescope.js` handles push notifications but has **no `fetch` listener or cache strategy at
+   all** - there is no offline fallback, only push handling.
+6. Tailwind is loaded via the `cdn.tailwindcss.com` runtime script, not a prebuilt bundle - the
+   opposite of the "lightweight" goal this item originally asked for; the code has its own comment
+   (`index.php:216-239`) acknowledging the `!important` specificity fights this causes.
 
 ---top priority ends--- 
 
@@ -80,57 +86,48 @@ demo data**, not a live generator bug - those demo configs were seeded 15 Aug 20
 landed 17 and 20 Aug. The generator is correct now; regenerating demo data clears it. The missing
 detection above is the real, still-open finding - it applies to genuine non-demo feeds too.
 
-### Feature: Shareable availability + rates PNG for prospective guests (requested 25 Aug 2026)
+### Feature: Shareable availability & rates page + Pricing Mode on the calendars (requested 25 Aug
+2026, decisions settled + design locked 28 Aug 2026 - not yet built)
 
-**The use case** (user's own framing): a staff member is talking to a prospective customer who
-asks "which rooms are free, and what's the price?" for a given month or date range. Rather than
-typing it out room by room, staff pick the range in the app, hit a button, and get a **PNG image**
-showing availability + rates that they can send to the prospect. Must work for both a SINGLE
-property and a MULTI_KEY property (one row per room).
+**The use case**: a staff member is talking to a prospective customer who asks "which rooms are
+free, and what's the price?" Rather than typing it out room by room, they share one link. Must work
+for both a SINGLE property (one calendar) and a MULTI_KEY property (a "multicalendar" - rooms as
+rows, days as columns).
 
-**What already exists to build on** (verified in-code 25 Aug 2026, not assumed):
+**The 3 decisions this was originally blocked on (25 Aug 2026) are now settled** (28 Aug 2026):
 
-- **Availability data - nothing new needed.** Already computed for the Booking Calendar: real
-  bookings from the `guests` table, plus OTA calendar holds via `get_blocked_dates`
-  (`php/api/ical_sync.php`). Both are already fetched and merged client-side by
-  `OperationalDashboard.tsx`, which is also what `MultiKeyPropertyOverview.tsx` reuses per-room -
-  so the multi-key case is already solved at the data layer.
-- **Rates.** `properties.default_tariff` (self-healing column, see `php/config/database.php`),
-  and each MULTI_KEY_ROOM child row carries its own `default_tariff`, editable via
-  `update_room_tariff` (`php/api/multikey_properties.php`, dispatched from `router.php`). So
-  per-room pricing already exists and is already per-room-correct for multi-key.
-- **PNG generation.** `html-to-image` is already a proven pattern in this codebase - it's how
-  checkout bills and walk-in tab bills are rendered to PNG for WhatsApp sharing (see
-  `ReceiptEditModal.tsx` / `WalkInTabBillModal.tsx`, and the `<UpiPaymentBlock>` note in
-  CLAUDE.md). Same approach applies directly here: build the DOM, render node to PNG.
+1. **Rates**: adds a real date-range rate-rule layer (`room_rate_rules` table) alongside the
+   existing flat `default_tariff`, behind a per-property `pricing_mode` ('flat'/'variable') toggle
+   - one toggle per property (not per room); each room keeps independent prices either way.
+2. **Delivery**: not a PNG at all anymore - a **live public webpage** (`availability.php`, no
+   login, same pattern as the existing "Share Menu" `food_menu.php`), reached via a shareable link
+   that always reflects current DB state. This sidesteps the wa.me-can't-attach-an-image problem
+   entirely - it's a link, not a file.
+3. **Layout**: calendar grid, confirmed - rooms-as-rows/days-as-columns for MULTI_KEY, single
+   calendar for SINGLE. One month at a time with Prev/Next, not a multi-month view (a rooms × days
+   grid is already wide).
 
-**Three decisions needed before implementing** (raised with the user 25 Aug 2026, not yet
-answered - do not start building until these are settled, especially #1):
+**New this round**: bulk price editing happens **directly on the existing Booking Calendars**
+(`TodayOverview.tsx` / `OperationalDashboard.tsx`) via a new "Bookings / Pricing" view toggle -
+not a separate settings screen. Date-range selection on the calendar reuses this app's own
+flowbite-datepicker range-select convention (click start day, then end day - same as
+`DateRangePicker.tsx`'s existing pattern); locking in a range opens a centered Modal to set the
+nightly rate + optional label, with a room checklist ("Also apply to: [ ] Room 102 ...") so one
+Save can bulk-apply the same range+rate across multiple rooms at once. `OperationalDashboard.tsx`
+is a protected component (see CLAUDE.md) - extending it here is explicitly authorized, scoped to
+an additive toggle + new render branch only, with the existing Booking Calendar Row logic
+untouched.
 
-1. **Rates are currently FLAT, not date-based.** `default_tariff` is a single number per room.
-   There is no seasonal / weekend / peak-date pricing table anywhere in the schema. So as things
-   stand, the PNG would print the same price for every single day in the range. If the real
-   requirement is "₹5,000 weekdays / ₹8,000 weekends / ₹12,000 Diwali," that needs a **new
-   date-range pricing layer** (rate rules with date ranges + precedence over the flat
-   `default_tariff` fallback) - a genuine feature in its own right, not a small addition, and it
-   changes the shape of everything downstream (the API response, the PNG layout, and whether a
-   "from ₹X" summary is even meaningful). Settle this first.
-2. **Delivery path - WhatsApp `wa.me` links cannot attach an image.** This is a known hard
-   constraint already documented in CLAUDE.md (it's exactly why the UPI QR had to be *drawn into*
-   the bill PNG rather than attached). So realistically the PNG is saved / shared via the phone's
-   native share sheet (`navigator.share` with files - works on mobile, which is where staff
-   actually are), or downloaded and manually attached. Do not design around auto-attaching to a
-   `wa.me` link; it does not work.
-3. **Image layout - two sensible formats**, pick one (or make it a toggle):
-   - **Calendar grid** - rooms as rows, days as columns, colour-coded free/booked cells. Best for
-     "show me the whole month at a glance."
-   - **Summary list** - "Room 101 - free 1-4, 9-30 Oct - ₹5,000/night." Cleaner on a phone
-     screen and better for a short range.
+**Non-negotiable constraint, unchanged**: the public page shows only *available / not available* +
+price - never guest names, booking sources, phone numbers, or anything else that leaks one guest's
+data to a prospective customer. Enforced structurally (the SQL never selects that data at all), not
+just visually.
 
-**Non-negotiable constraint regardless of the above**: the generated PNG is going to an OUTSIDE
-prospect, not staff. It must show only *available / not available* - never guest names, booking
-sources, phone numbers, or any other booking detail that leaks one guest's data to another
-prospective customer. Sanitize at the point the image data is built, not just visually.
+**Full architecture** (data model, API actions, exact UI flow, file list, verification plan) is
+written up in a Claude Code plan file from the 28 Aug 2026 session - re-derive from this summary
+plus a fresh look at `food_menu.php` (the pattern to mirror), `php/licenses/licenses.php` (the
+self-healing-module pattern to mirror), and `TodayOverview.tsx`/`OperationalDashboard.tsx` (where
+the Pricing view toggle goes) when this is picked up.
 
 ### Documentation: short file-purpose header comments
 
@@ -230,6 +227,23 @@ What's still open:
   prompt), then navigate directly to a different property in the same
   tenant's URL and confirm that also just works without re-authenticating.
 
+## ✅ Resolved 28 Aug 2026 (found via investigation, no code change needed)
+
+- **Root Admin Dashboard scroll overlap** (originally reported 25 Aug 2026, "page title overlaps
+  platform title on scroll"). Root-caused via git history: `PlatformPropertyManagement.tsx` used
+  to render its own `sticky top-0 z-40` "Ground Code Platform / Administration Dashboard" banner
+  (added before 13 Aug 2026, commit `4d9a12a`) with no `top` offset, stacking directly against
+  `RootAdminDashboard.tsx`'s `sticky top-0 z-20` topbar (`RootAdminDashboard.tsx:591`) - both
+  candidate theories were right at once (no offset between the two sticky elements, compounded by
+  the banner's higher z-index painting over the topbar). That whole `<header>` block was deleted
+  the very next day (26 Aug, commit `3358760`) as incidental cleanup in an unrelated Telegram
+  feature commit, with no commit message connecting it to this bug - so by the time this was
+  investigated, the banner no longer existed at all (confirmed: `PlatformPropertyManagement.tsx`
+  has no banner today, and its old i18n strings `platform_title`/`admin_dashboard_subtitle` are
+  now orphaned, referenced nowhere). Nothing to build. **If this banner is ever reintroduced**, give
+  it `top-[calc(4rem+env(safe-area-inset-top,0px))]` (matching the topbar's own height) and a
+  z-index ≤ 20, or the exact same overlap will come back.
+
 ## ✅ Verified 23 Aug 2026 (real browser session, Playwright, permitted this session)
 
 Removed from the open list below per this file's own convention (shipped items are removed, see
@@ -290,5 +304,5 @@ git history) - kept here as a short record of what was actually exercised and wh
 
 ---
 
-*Last Updated: 2026-08-25*
+*Last Updated: 2026-08-28*
 

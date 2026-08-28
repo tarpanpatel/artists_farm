@@ -204,7 +204,7 @@ if ($wantsJson) {
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="/app-icons/apple-touch-icon.png">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="telescope.css">
     <style>
         body { background-color: #0b0f19; color: #f3f4f6; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -212,31 +212,20 @@ if ($wantsJson) {
         ::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
         .nav-portal-item.active { background-color: #1f2937; border-left: 3px solid #06b6d4; color: #38bdf8; }
         .icon { width: 1em; height: 1em; display: inline-block; flex-shrink: 0; }
+        .timeframe-chips { display: none; gap: .5rem; flex-wrap: wrap; }
+        .telescope-trace-preview { display: none; }
 
         /* Mobile-first Telescope console. The desktop layout resumes at 768px.
-           Every declaration below carries `!important` (24 Aug 2026, fixing a
-           bug reported live via mobile screenshot: this whole block already
-           existed and looked correct, but visibly did nothing - header
-           buttons still overflowed off-screen, sidebar/main still sat
-           side-by-side, log cells still wrapped character-by-character).
-           Root cause: this page loads Tailwind via the CDN Play script
-           (`<script src="https://cdn.tailwindcss.com">` above), which scans
-           the DOM and injects ITS OWN <style> element at runtime, appended to
-           <head> - i.e. always AFTER this static block in the rendered DOM,
-           regardless of where the <script> tag sits in the raw HTML source.
-           Every element these rules target also carries Tailwind utility
-           classes directly in its markup (e.g. `.telescope-shell` is also
-           `class="... flex ..."`, `.telescope-actions` is also `class="flex
-           items-center gap-4 ..."`). A single custom class selector and a
-           single Tailwind utility class selector are equal specificity, so
-           the tiebreak is pure source order - and Tailwind's runtime-injected
-           sheet always loses that race in its own favor, silently overriding
-           every rule here. `!important` is the standard, expected way to
-           guarantee a scoped override wins against a CDN utility framework
-           whose injection point you don't control - safe here specifically
-           because this entire block is already gated behind `max-width:
-           767px` and exists purely to override the desktop-oriented classes
-           baked into the HTML. */
+           Every declaration below carries `!important`. Originally (24 Aug
+           2026) this was needed because Tailwind loaded via the CDN Play
+           script, which injects its own <style> at runtime AFTER this static
+           block regardless of source order, so a plain override always lost
+           that specificity race. 28 Aug 2026: replaced the CDN script with a
+           real pre-compiled stylesheet (see the <link> above and the
+           "build:telescope" npm script) - the runtime-injection race is gone,
+           so `!important` is no longer strictly required, but it's left in
+           place since removing it now would need a full manual re-verification
+           of every rule below with no functional upside. */
         @media (max-width: 767px) {
             html { -webkit-text-size-adjust: 100% !important; }
             body { min-width: 0 !important; }
@@ -259,9 +248,12 @@ if ($wantsJson) {
 
             .telescope-shell { display: block !important; overflow: visible !important; }
             .telescope-sidebar { width: 100% !important; padding: 1rem !important; gap: 1rem !important; border-right: 0 !important; border-bottom: 1px solid #1f2937 !important; }
-            .telescope-sidebar > div:first-child { display: grid !important; grid-template-columns: 7.25rem minmax(0, 1fr) !important; align-items: center !important; gap: .5rem !important; }
+            .telescope-sidebar > div:first-child { display: grid !important; grid-template-columns: 1fr !important; gap: .5rem !important; }
             .telescope-sidebar > div:first-child label { margin: 0 !important; }
-            .telescope-sidebar > div:first-child select { min-height: 2.75rem !important; }
+            .timeframe-select { display: none !important; }
+            .timeframe-chips { display: flex !important; }
+            .timeframe-chip { flex: 1 1 auto !important; min-height: 2.75rem !important; padding: .5rem .5rem !important; border-radius: .5rem !important; background: #111827 !important; border: 1px solid #1f2937 !important; color: #9ca3af !important; font-size: .6875rem !important; font-weight: 600 !important; text-align: center !important; cursor: pointer !important; transition: background .15s, border-color .15s, color .15s !important; }
+            .timeframe-chip.active { background: #0e7490 !important; border-color: #06b6d4 !important; color: #fff !important; }
             #customDateRangePanel { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: .75rem !important; }
             #customDateRangePanel.hidden { display: none !important; }
             #customDateRangePanel > :first-child, #customDateRangePanel button { grid-column: 1 / -1 !important; }
@@ -309,6 +301,22 @@ if ($wantsJson) {
                row's own right padding above makes room for it. */
             .telescope-logs td.telescope-row-copy-cell { position: absolute !important; top: .875rem !important; right: 1rem !important; padding: 0 !important; width: auto !important; }
             .telescope-logs td.telescope-row-copy-cell::before { display: none !important; }
+
+            /* Inline expandable stack-trace preview on mobile cards (roadmap
+               item 1's card sub-point) - a native <details>/<summary>, so
+               expand/collapse needs no JS. Hidden on desktop by the base
+               (non-media) .telescope-trace-preview rule above; only entries
+               that actually have a `trace` field render this at all (see
+               renderLogsPage()'s row template). stopPropagation on the
+               element keeps expanding it from also opening the full detail
+               sheet, which the row's own onclick still does for a tap
+               anywhere else on the card. */
+            .telescope-trace-preview { display: block !important; margin-top: .5rem !important; }
+            .telescope-trace-preview summary { font-size: .6875rem !important; font-weight: 700 !important; color: #67e8f9 !important; cursor: pointer !important; list-style: none !important; }
+            .telescope-trace-preview summary::-webkit-details-marker { display: none !important; }
+            .telescope-trace-preview summary::before { content: '\25b8' !important; display: inline-block !important; margin-right: .25rem !important; transition: transform .15s !important; }
+            .telescope-trace-preview[open] summary::before { transform: rotate(90deg) !important; }
+            .telescope-trace-preview pre { margin-top: .375rem !important; padding: .625rem !important; background: #030712 !important; border: 1px solid #1f2937 !important; border-radius: .5rem !important; font-size: .6875rem !important; line-height: 1.4 !important; color: #d1d5db !important; white-space: pre-wrap !important; overflow-wrap: anywhere !important; max-height: 12rem !important; overflow-y: auto !important; }
 
             /* Bottom sheet (roadmap item 1's 4th sub-point) - real slide-up/
                slide-down, not an instant show/hide. #detailModal itself keeps
@@ -373,12 +381,23 @@ if ($wantsJson) {
         <aside class="telescope-sidebar w-64 border-r border-gray-800 bg-[#0f172a]/50 p-4 flex flex-col gap-6 flex-shrink-0">
             <div>
                 <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-2 font-sans">Timeframe Filter</label>
-                <select id="timeframeSelect" onchange="onTimeframeChange()" class="w-full bg-gray-900 border border-gray-800 text-gray-300 text-xs rounded-lg p-2 outline-none font-sans">
+                <select id="timeframeSelect" onchange="onTimeframeChange()" class="timeframe-select w-full bg-gray-900 border border-gray-800 text-gray-300 text-xs rounded-lg p-2 outline-none font-sans">
                     <option value="today" selected>Today</option>
                     <option value="yesterday">Yesterday</option>
                     <option value="7days">Last 7 Days</option>
                     <option value="custom">Custom Date Range</option>
                 </select>
+                <!-- Mobile-only quick date chips (roadmap item 2) - hidden on
+                     desktop (.timeframe-chips base rule) and shown only under
+                     767px, replacing the dropdown with one-tap selection. Drives
+                     the same #timeframeSelect + onTimeframeChange() the dropdown
+                     already uses, so no filtering logic is duplicated. -->
+                <div id="timeframeChips" class="timeframe-chips font-sans">
+                    <button type="button" class="timeframe-chip active" data-timeframe="today" onclick="setTimeframeChip('today')">Today</button>
+                    <button type="button" class="timeframe-chip" data-timeframe="yesterday" onclick="setTimeframeChip('yesterday')">Yesterday</button>
+                    <button type="button" class="timeframe-chip" data-timeframe="7days" onclick="setTimeframeChip('7days')">Last 7 Days</button>
+                    <button type="button" class="timeframe-chip" data-timeframe="custom" onclick="setTimeframeChip('custom')">Custom</button>
+                </div>
             </div>
 
             <div id="customDateRangePanel" class="hidden space-y-2">
@@ -497,7 +516,10 @@ if ($wantsJson) {
             <div class="telescope-search mb-4 flex items-center gap-3">
                 <div class="relative flex-1">
                     <svg class="icon absolute left-3.5 top-3 text-gray-500 text-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                    <input type="text" id="searchInput" oninput="loadPortalLogs()" placeholder="Search system logs by route, severity, keywords, trace parameters or IP..." class="w-full bg-gray-900 border border-gray-800 text-gray-200 text-xs rounded-xl pl-9 pr-4 py-2.5 outline-none focus:border-cyan-500 transition font-sans">
+                    <input type="text" id="searchInput" oninput="loadPortalLogs(); toggleSearchClear();" autofocus placeholder="Search system logs by route, severity, keywords, trace parameters or IP..." class="w-full bg-gray-900 border border-gray-800 text-gray-200 text-xs rounded-xl pl-9 pr-9 py-2.5 outline-none focus:border-cyan-500 transition font-sans">
+                    <button type="button" id="searchClearBtn" onclick="clearSearchInput()" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 items-center justify-center rounded-full text-gray-500 hover:text-gray-300 hover:bg-gray-800 transition cursor-pointer" title="Clear search" aria-label="Clear search">
+                        <svg class="icon w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    </button>
                 </div>
                 <button id="copySearchBtn" onclick="copyVisibleErrors(this)" class="flex items-center gap-1.5 px-3 py-2.5 bg-cyan-950/80 hover:bg-cyan-900/90 text-cyan-300 text-xs rounded-xl transition border border-cyan-800/80 cursor-pointer font-sans whitespace-nowrap" title="Copy all currently filtered error logs to clipboard">
                     <svg class="icon text-cyan-400 w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
@@ -625,6 +647,36 @@ if ($wantsJson) {
             document.getElementById('dateToInput').value = '';
         }
         loadPortalLogs();
+    }
+
+    // Mobile quick-date chips (roadmap item 2) - just drive the existing
+    // #timeframeSelect + onTimeframeChange() so the desktop dropdown and
+    // mobile chips can never disagree about which timeframe is active.
+    function setTimeframeChip(value) {
+        const select = document.getElementById('timeframeSelect');
+        if (!select) return;
+        select.value = value;
+        document.querySelectorAll('.timeframe-chip').forEach((chip) => {
+            chip.classList.toggle('active', chip.dataset.timeframe === value);
+        });
+        onTimeframeChange();
+    }
+
+    // Search bar clear button (roadmap item 2).
+    function toggleSearchClear() {
+        const input = document.getElementById('searchInput');
+        const btn = document.getElementById('searchClearBtn');
+        if (!input || !btn) return;
+        btn.classList.toggle('hidden', input.value.length === 0);
+    }
+
+    function clearSearchInput() {
+        const input = document.getElementById('searchInput');
+        if (!input) return;
+        input.value = '';
+        toggleSearchClear();
+        loadPortalLogs();
+        input.focus();
     }
 
     function clearCustomDates() {
@@ -906,7 +958,7 @@ if ($wantsJson) {
                     <td class="px-4 py-2.5 whitespace-nowrap">
                         <span class="px-2 py-0.5 rounded text-[10px] font-bold ${sevClass}">${r.severity || 'LOG'}</span>
                     </td>
-                    <td class="px-4 py-2.5 text-gray-200 truncate max-w-md">${escapeHtml(r.msg || '')}</td>
+                    <td class="px-4 py-2.5 text-gray-200 truncate max-w-md">${escapeHtml(r.msg || '')}${r.trace ? `<details class="telescope-trace-preview" onclick="event.stopPropagation()"><summary>Stack trace</summary><pre>${escapeHtml(String(r.trace)).slice(0, 800)}</pre></details>` : ''}</td>
                     <td class="px-4 py-2.5 text-gray-400 truncate">${escapeHtml(r.origin || '')}</td>
                     <td class="telescope-row-copy-cell px-4 py-2.5 whitespace-nowrap" data-label="">
                         <button type="button" onclick='event.stopPropagation(); copyToClipboard(JSON.stringify(${rowJson}, null, 2), this)' class="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-800 hover:bg-cyan-900/60 text-gray-400 hover:text-cyan-300 border border-gray-700 hover:border-cyan-800/80 transition cursor-pointer" title="Copy this error to clipboard" aria-label="Copy this error">
