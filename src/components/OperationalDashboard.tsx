@@ -704,7 +704,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
               <h3 className="font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-amber-500" />
-                {t('alerts_heading', 'System Alerts')}
+                {t('alerts_heading', 'Booking Alerts')}
               </h3>
               {totalAlerts > 0 ? (
                 <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-300">
@@ -825,7 +825,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             onClick={() => onNavigate('guests', 'all_bookings')}
             className="mt-4 w-full text-white bg-blue-700 hover:bg-blue-800 font-semibold text-xs py-2 rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer"
           >
-            <span>View All Bookings & Guests ({guests.length})</span>
+            <span>View All ({guests.length})</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -842,10 +842,10 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
                 <h3 className="operational-dashboard__subtitle font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                   <Utensils className="w-4 h-4 text-blue-600" />
-                  {t('live_kitchen_tickets_heading', 'Live Kitchen Tickets')}
+                  {t('live_kitchen_tickets_heading', 'Live Kitchen Orders')}
                 </h3>
-                <span className="bg-blue-100 text-blue-800 text-[10px] font-semibold px-2 py-0.5 rounded border border-blue-200">
-                  {pendingOrders.length} {t('tickets_suffix', 'Tickets')}
+                <span className="bg-amber-100 text-amber-800 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-amber-300">
+                  {pendingOrders.length}
                 </span>
               </div>
 
@@ -888,7 +888,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               onClick={() => onNavigate('kitchen')}
               className="mt-4 w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-semibold text-xs py-2 rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer"
             >
-              <span>{t('open_kitchen_orders_button', 'Open Kitchen Orders')} ({pendingOrders.length})</span>
+              <span>{t('open_kitchen_orders_button', 'View Kitchen Orders')} ({pendingOrders.length})</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
