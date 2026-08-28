@@ -58,6 +58,32 @@ sheet for log details with "Copy Stack Trace"/"Copy Full Payload" buttons (`inde
 
 ---top priority ends--- 
 
+### Tab/count numbers should render as a real badge, not plain "(N)" text (reported 28 Aug 2026, screenshot-driven: "Live Tickets (2)", Bookings' "Past (1)")
+
+Site-wide, not a single-file fix - a tab label with a trailing count currently renders as plain
+parenthetical text glued onto the label string (e.g. `` `${label}${count > 0 ? ` (${count})` : ''}` ``,
+see `KitchenManagement.tsx:1414`'s Live Tickets tab and the equivalent pattern in `GuestManagement.tsx`'s
+Today/Upcoming/Past booking tabs), instead of a visually distinct badge (pill/circle) next to the
+label. A broad grep for this same `${...}${count > 0 ? \` (${count})\` : ''}`-shaped pattern turned up
+16 files with the same construction (`TodayOverview.tsx`, `TelegramNotificationModal.tsx`,
+`OperationalDashboard.tsx`, `App.tsx`, `ServiceRequestsManagement.tsx`, `PettyCashManagement.tsx`,
+`InventoryManagement.tsx`, `BookingDetailsModal.tsx`, `BillingCheckout.tsx`, `CashDrawerManager.tsx`,
+`KitchenManagement.tsx`, `GuestManagement.tsx`, `ICalSyncManager.tsx`, `LicenseManagement.tsx`,
+`StaffContext.tsx`, `AIChatWidget.tsx`) - re-grep when this is picked up rather than trusting this list
+to still be complete/accurate by then.
+
+**Not blocked by Flowbite** (checked `node_modules/flowbite-react/dist/components/Tabs/TabItem.d.ts`):
+`TabItem`'s `title` prop is typed `ReactNode`, not `string` - so a real badge element can be composed
+directly into it (`title={<span className="flex items-center gap-1.5">{label}<span className="...badge
+pill...">{count}</span></span>}`) rather than needing a workaround. Telescope's error console
+(`php/errors/index.php`) already has its own unread-count badge convention on its portal tabs
+(mentioned elsewhere in this file) - worth checking whether that visual style is the one to reuse here
+for consistency, or whether DESIGN.md should get a new documented "count badge" token pair instead of
+this sweep inventing its own.
+
+Not yet started - explicitly deferred, only tracked here per request ("don't do now, put it into
+todo").
+
 ### OTA double-booking conflicts are never detected or alerted (found 26 Aug 2026)
 
 **The gap**: `php/api/ical_sync.php` contains zero overlap/conflict logic. Two OTA feeds can both
