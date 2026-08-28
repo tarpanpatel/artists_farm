@@ -100,38 +100,21 @@
         0%, 100% { opacity: 1; }
         50% { opacity: 0.6; }
       }
-      @media (prefers-color-scheme: dark) {
-        #initial-loader { background: linear-gradient(to bottom right, #020617, #0f172a); }
-        #initial-loader__spinner { border-color: #1e293b; border-top-color: #60a5fa; }
-      }
+      /* Dark mode intentionally OFF app-wide (28 Aug 2026, explicit user decision:
+         "remove dark mode from this app for now as I will never need it"). This
+         #initial-loader used to have its own `@media (prefers-color-scheme: dark)`
+         block, and briefly (same day) a real `.dark`-class bootstrap existed in a
+         <script> right below here plus a matching matchMedia listener in main.tsx -
+         both removed per that request. DO NOT re-add a system-dark-mode media query
+         here, or the `.dark`-class toggle script, without the user explicitly asking
+         again - re-adding just this file's own media query alone (without the class
+         toggle) would recreate the exact "dark boot screen flashes to a light app"
+         bug this same investigation found and fixed earlier the same day, since the
+         rest of the app's `dark:` Tailwind classes need `.dark` on <html> to ever
+         apply (src/index.css's `@custom-variant dark (&:where(.dark, .dark *));`) and
+         nothing sets that class now. See CLAUDE.md's "Dark Mode — Intentionally
+         Disabled" rule for the full history if this comes up again. */
     </style>
-    <script>
-      // Dark-mode bootstrap (28 Aug 2026, root-caused live: "white bottom"/theme-flash
-      // reports on the boot screen). src/index.css configures Tailwind's `dark:` variant
-      // as CLASS-based (`@custom-variant dark (&:where(.dark, .dark *));`), not the
-      // default media-query strategy - but nothing anywhere in this codebase ever added
-      // that `.dark` class to <html>. Confirmed by grepping the entire src/ tree: no
-      // `classList.add('dark')`/`matchMedia` wiring exists at all (themeService.ts's
-      // `enableDarkModeToggle` flag is declared and defaulted but never read anywhere).
-      // Net effect: EVERY `dark:` utility class in the whole React app - thousands of
-      // them - was silently inert, always rendering light, no matter the system setting.
-      // The only thing that ever looked dark-mode-aware was this file's OWN separate
-      // `#initial-loader` CSS just above, which uses a plain `@media (prefers-color-
-      // scheme: dark)` block, completely unrelated to Tailwind's class-based config -
-      // so a dark-mode phone would show a correctly-dark boot screen, then flash to a
-      // permanently-light app the instant React took over (LoadingScreen.tsx included -
-      // its own `dark:from-slate-950 dark:to-slate-900` could never apply either).
-      // Runs synchronously, as early in <head> as possible, so the `.dark` class is
-      // already set before React's first paint - no flash on the React side from here
-      // on. main.tsx also listens for the OS setting changing mid-session (this inline
-      // script only runs once, at initial page load).
-      (function () {
-        try {
-          var isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-          document.documentElement.classList.toggle('dark', !!isDark);
-        } catch (e) {}
-      })();
-    </script>
     <script>
       // Custom CSS override, injected via runtime DOM API rather than a
       // static <link> tag on purpose: Vite's HTML plugin treats a literal
