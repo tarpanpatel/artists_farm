@@ -311,14 +311,15 @@ function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
                         mi.name as item_name, 
                         oi.quantity, 
                         COALESCE(o.served_by_name, 'Staff') as served_by, 
-                        COALESCE(g.guest_name, 'Walk-in') as guest_name, 
-                        COALESCE(g.room_number, '') as room_number, 
-                        COALESCE(o.served_at, o.updated_at, NOW()) as served_at, 
+                        COALESCE(g.guest_name, 'Walk-in') as guest_name,
+                        COALESCE(p.name, '') as room_number,
+                        COALESCE(o.served_at, o.updated_at, NOW()) as served_at,
                         oi.ready_at
                     FROM order_items oi
                     JOIN orders o ON oi.order_id = o.id
                     JOIN menu_items mi ON oi.menu_item_id = mi.id
                     LEFT JOIN guests g ON o.guest_id = g.id
+                    LEFT JOIN properties p ON g.room_id = p.id
                     WHERE (o.property_id = ? OR o.property_id IS NULL OR o.property_id = 0) AND LOWER(oi.item_status) = 'served'
                     ORDER BY oi.id DESC
                     LIMIT 200
