@@ -20,6 +20,7 @@ import {
   Home as RoomIcon,
   X,
   Bot,
+  ArrowRightLeft,
 } from './icons/FlowbiteIcons';
 import { useAuth } from '../contexts/AuthContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
@@ -59,6 +60,10 @@ interface HeaderProps {
   // can't help (see AIChatWidget.tsx's consecutiveUnmatched banner) - TenantDashboard.tsx keeps
   // ContactSupportMenu as-is since it has no per-property operational context for the bot to act on.
   onToggleAIChat?: () => void;
+  // Opens StaffPropertyPicker.tsx as a mid-session overlay (28 Aug 2026) - only rendered
+  // when the switcher icon below is (currentUser.canSwitchProperties, checked internally
+  // here, not passed in), so this can stay optional/no-op for every other session.
+  onSwitchProperty?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -78,6 +83,7 @@ export const Header: React.FC<HeaderProps> = ({
   onInstallIconClick,
   onNavigate,
   onToggleAIChat,
+  onSwitchProperty,
 }) => {
   const { currentUser, activeRole, setActiveRole, isAuthenticated, authChecked } = useAuth();
   // "View site as" (Root Admin only) - a pure frontend preview: it only
@@ -387,7 +393,30 @@ export const Header: React.FC<HeaderProps> = ({
             </Popover>
           )}
 
-          {icalCalendars.length > 0 && (
+          {/* Switch Property icon (28 Aug 2026, explicit request) - takes this exact header
+              slot INSTEAD OF the calendar-sync icon below, for any session that can actually
+              use it: a staff account with access_all_properties, or the tenant owner
+              (currentUser.canSwitchProperties covers both - see check_session/login_user in
+              router.php). Everyone else keeps the calendar-sync icon in this slot, unchanged. */}
+          {currentUser?.canSwitchProperties ? (
+            <Popover
+              trigger="hover"
+              placement="bottom"
+              content={
+                <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                  {t('switch_property_tooltip', 'Switch property')}
+                </div>
+              }
+            >
+              <button
+                onClick={() => onSwitchProperty?.()}
+                aria-label={t('switch_property_aria', 'Switch property')}
+                className="header__switch-property relative p-2 text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
+              >
+                <ArrowRightLeft className="w-5 h-5" />
+              </button>
+            </Popover>
+          ) : icalCalendars.length > 0 && (
             <Popover
               trigger="hover"
               placement="bottom"

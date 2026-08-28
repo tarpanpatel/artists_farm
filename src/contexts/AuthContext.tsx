@@ -87,6 +87,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // asking the real backend session (check_session), never by trusting
   // localStorage alone.
   useEffect(() => {
+    // Coalescing guard (added 28 Aug 2026 - found via a burst of 401s during the
+    // public-demo auto-login window, each independently re-triggering a full
+    // checkAuthState() run): apiFetch() dispatches artists_farm_session_expired on
+    // EVERY 401 (see api.ts), and it's completely normal for several concurrent
+    // requests to all 401 in a tight burst before login actually lands (anything
+    // that raced ahead of it). Without this, each one fired its own full,
+    // uncoordinated auth-check/demo-login attempt, all overlapping - wasted
+    // requests at best, and the source of the exact kind of auth-state churn that
+    // cascades into every isAuthenticated-gated effect across the app (staff,
+    // attendance, service requests, inventory, orders, stock requests, ...)
+    // re-firing multiple times per single load. Trailing-edge coalescing: a call
+    // that arrives while one is already running just requests one more run after
+    // the current one finishes, rather than starting its own overlapping run.
+    let inFlight = false;
+    let rerunQueued = false;
+
     const checkAuthState = async () => {
       try {
         const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=check_session`);
@@ -102,6 +118,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             phone: data.user.username,
             monthlySalary: 0,
             status: 'Active',
+            canSwitchProperties: !!data.user.can_switch_properties,
+            tenantId: data.user.tenant_id ?? null,
+            tenantSlug: data.user.tenant_slug ?? null,
           };
           localStorage.setItem(userKey(), JSON.stringify(user));
           setIsAuthenticated(true);
@@ -150,6 +169,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               phone: loginData.user.username,
               monthlySalary: 0,
               status: 'Active',
+              canSwitchProperties: !!loginData.user.can_switch_properties,
+              tenantId: loginData.user.tenant_id ?? null,
+              tenantSlug: loginData.user.tenant_slug ?? null,
             };
             localStorage.setItem(userKey(), JSON.stringify(user));
             setIsAuthenticated(true);
@@ -171,16 +193,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setAuthChecked(true);
     };
 
-    checkAuthState();
+    const runCheckAuthState = () => {
+      if (inFlight) {
+        rerunQueued = true;
+        return;
+      }
+      inFlight = true;
+      checkAuthState().finally(() => {
+        inFlight = false;
+        if (rerunQueued) {
+          rerunQueued = false;
+          runCheckAuthState();
+        }
+      });
+    };
 
-    window.addEventListener('storage', checkAuthState);
+    runCheckAuthState();
+
+    window.addEventListener('storage', runCheckAuthState);
     // Same-tab equivalent: 'storage' only fires in OTHER tabs, never the one
     // that made the change. apiFetch() dispatches this event on any 401 that
     // isn't login_user/check_session itself.
-    window.addEventListener('artists_farm_session_expired', checkAuthState);
+    window.addEventListener('artists_farm_session_expired', runCheckAuthState);
     return () => {
-      window.removeEventListener('storage', checkAuthState);
-      window.removeEventListener('artists_farm_session_expired', checkAuthState);
+      window.removeEventListener('storage', runCheckAuthState);
+      window.removeEventListener('artists_farm_session_expired', runCheckAuthState);
     };
   }, []);
 

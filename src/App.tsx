@@ -528,6 +528,9 @@ function AppBody({ preloadedData }: AppBodyProps) {
       phone: rawUser.phone_number || rawUser.username || '',
       monthlySalary: 0,
       status: 'Active',
+      canSwitchProperties: !!rawUser.can_switch_properties,
+      tenantId: rawUser.tenant_id ?? null,
+      tenantSlug: rawUser.tenant_slug ?? null,
     };
     login(staffMember);
     logAudit(`Staff User ${staffMember.name} logged into POS portal`, { status: 'Success', module: 'login', user: staffMember.name });
@@ -539,6 +542,11 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // onNeedsPropertySelection, cleared once StaffPropertyPicker navigates away (full
   // page load) or the staff logs out from the picker screen instead of picking anything.
   const [propertySelection, setPropertySelection] = useState<{ tenantId: number; tenantSlug: string; user: any } | null>(null);
+
+  // Header.tsx's Switch Property icon (28 Aug 2026) - reuses StaffPropertyPicker as a
+  // mid-session overlay rather than the login-flow rendering above, for an already-
+  // authenticated owner/access_all_properties session (currentUser.canSwitchProperties).
+  const [isSwitchingProperty, setIsSwitchingProperty] = useState(false);
 
   const handleLoginFailed = (username: string) => {
     logAudit(`Staff User ${username} failed login attempt`, { status: 'Failed', module: 'login', user: username });
@@ -679,10 +687,20 @@ function AppBody({ preloadedData }: AppBodyProps) {
   const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>([]);
   const [focusGuestId, setFocusGuestId] = useState<string | null>(null);
   // Bumped at the start of every guest/menu/audit-log/receipt hydration fetch
-  // cycle (see the two effects below) so a slower, older in-flight request
+  // cycle (see the effect below) so a slower, older in-flight request
   // can detect it's been superseded and skip applying its (possibly
   // wrong-property) result once it resolves.
   const hydrationTokenRef = useRef(0);
+  // DataLoader.tsx already fetched fresh guests/receipts for this exact
+  // property before this component ever mounted (see preloadedData.initialGuests/
+  // initialReceipts seeding the state above) - re-fetching them again on that
+  // same initial pass is pure duplicate network traffic, not a correctness
+  // need. Captured once at mount; the property-hydration effect below nulls
+  // it out after the first comparison so a REAL property switch later still
+  // triggers a genuine re-fetch (DataLoader itself only ever loads once per
+  // full page mount and has no idea a different property was switched to
+  // client-side, so that case must still hit the network).
+  const preloadedPropertyIdRef = useRef<number | undefined>(preloadedData.currentProperty?.id);
   const { showToast } = useToast();
   const { staff, refreshStaff, refreshAttendance } = useStaff();
 
@@ -804,37 +822,16 @@ function AppBody({ preloadedData }: AppBodyProps) {
     }
   };
 
-  // Re-fetch ALL data when the property or kitchen module availability
-  // changes. Shares hydrationTokenRef with the property-hydration effect
-  // below so whichever fetch cycle started last wins, regardless of which
-  // effect it belongs to.
-  useEffect(() => {
-    if (!authChecked || !isAuthenticated) return;
-    hydrationTokenRef.current += 1;
-    const myToken = hydrationTokenRef.current;
-    const isStale = () => hydrationTokenRef.current !== myToken;
-
-    fetchGuestsFromDB().then((data) => {
-      if (isStale()) return;
-      if (data && data.length > 0) setGuests(data); else setGuests([]);
-    });
-    if (isModuleEnabled('kitchen')) {
-      fetchMenuFromDB().then((data) => {
-        if (isStale()) return;
-        if (data && data.length > 0) setMenu(data); else setMenu([]);
-      });
-    }
-    refreshStaff();
-    refreshAttendance();
-    fetchAuditLogsFromDB().then((data) => {
-      if (isStale()) return;
-      if (data && data.length > 0) setAuditLogs(data); else setAuditLogs([]);
-    });
-    fetchReceiptsFromDB().then((data) => {
-      if (isStale()) return;
-      if (data && data.length > 0) setReceipts(data); else setReceipts([]);
-    });
-  }, [isModuleEnabled, preloadedData.currentProperty?.id, isAuthenticated, authChecked]);
+  // A near-duplicate of this effect used to live here (guests/menu/staff/
+  // attendance/audit-logs/receipts, same triggers) - a leftover from the
+  // Sandbox/Testing Mode system removed site-wide 12 Aug 2026 (see CLAUDE.md)
+  // that never got cleaned up with the rest of it. The property-hydration
+  // effect below already does everything this one did, plus service
+  // requests and menu-dedup handling, so it was deleted outright (28 Aug
+  // 2026) rather than merged - its own comment already documented up to 4
+  // concurrent fetchGuestsFromDB() calls firing per load/switch because of
+  // this exact duplication. refreshStaff() (this effect's only call the
+  // other one didn't already make) moved into that effect below.
 
   // PRODUCT_STRATEGY.md's 30-day trial playbook calls for a "Day 27: in-app
   // warning toast reminding the owner their trial ends in 3 days" - this is
@@ -976,23 +973,39 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // just on mount) is what keeps a previous property's data from lingering in
   // state after navigating to a different one.
   //
-  // This effect (and the testing-mode effect above) both fetch the same data,
-  // and StrictMode's dev-only double-invoke means each can fire twice - so up
-  // to 4 concurrent fetchGuestsFromDB() calls can be in flight at once. If an
-  // older call (still in flight for a previous property) resolves after a
-  // newer one, it would overwrite correct state with stale/wrong-property
-  // data. The token below discards any resolution that isn't from the most
-  // recently started fetch cycle.
+  // StrictMode's dev-only double-invoke means this can still fire twice on its
+  // own, so 2 concurrent fetchGuestsFromDB() calls can be in flight at once (a
+  // near-duplicate sibling effect used to double this further - see its removal
+  // note above). If an older call (still in flight for a previous property)
+  // resolves after a newer one, it would overwrite correct state with stale/
+  // wrong-property data. The token below discards any resolution that isn't
+  // from the most recently started fetch cycle.
   useEffect(() => {
     if (!authChecked || !isAuthenticated) return;
     hydrationTokenRef.current += 1;
     const myToken = hydrationTokenRef.current;
     const isStale = () => hydrationTokenRef.current !== myToken;
 
-    fetchGuestsFromDB().then((data) => {
-      if (isStale()) return;
-      setGuests(data && data.length > 0 ? data : []);
-    });
+    // DataLoader.tsx already fetched guests/receipts for this exact property
+    // before mount (see preloadedPropertyIdRef's own comment above) - skip
+    // re-fetching those two specifically on that same initial pass. Menu is
+    // deliberately NOT skipped here despite also being preloaded - its dedup
+    // safety net below (>75 items) needs to keep running on every load, not
+    // just from the second hydration onward.
+    const isInitialLoadForPreloadedProperty = preloadedData.currentProperty?.id === preloadedPropertyIdRef.current;
+    preloadedPropertyIdRef.current = undefined;
+
+    if (!isInitialLoadForPreloadedProperty) {
+      fetchGuestsFromDB().then((data) => {
+        if (isStale()) return;
+        setGuests(data && data.length > 0 ? data : []);
+      });
+      fetchReceiptsFromDB().then((data) => {
+        if (isStale()) return;
+        setReceipts(data && data.length > 0 ? data : []);
+      });
+    }
+    refreshStaff();
     if (isModuleEnabled('kitchen')) {
       fetchMenuFromDB().then((data) => {
         if (data && data.length > 75) {
@@ -1012,10 +1025,6 @@ function AppBody({ preloadedData }: AppBodyProps) {
     fetchAuditLogsFromDB().then((data) => {
       if (isStale()) return;
       setAuditLogs(data && data.length > 0 ? data : []);
-    });
-    fetchReceiptsFromDB().then((data) => {
-      if (isStale()) return;
-      setReceipts(data && data.length > 0 ? data : []);
     });
     fetchServiceRequestsFromDB().then((data) => {
       if (isStale()) return;
@@ -1929,6 +1938,23 @@ ${itemsStr}
           />
         )}
 
+        {isAuthenticated && isSwitchingProperty && currentUser?.canSwitchProperties && currentUser?.tenantId && currentUser?.tenantSlug && (
+          // z-[60], not the ordinary z-50 modal tier - this needs to sit above
+          // DemoOnboardingTour's own floating "Explore Full App Tour" trigger
+          // (fixed z-50, no literal inset-0 so the app-wide z-50->58 bump rule
+          // in custom.css never applies to it either) which would otherwise
+          // poke through this overlay's background.
+          <div className="fixed inset-0 z-[60]">
+            <StaffPropertyPicker
+              tenantId={currentUser.tenantId}
+              tenantSlug={currentUser.tenantSlug}
+              user={{ id: currentUser.id, username: currentUser.username || '', name: currentUser.name, role: currentUser.role }}
+              onLogout={handleLogout}
+              onClose={() => setIsSwitchingProperty(false)}
+            />
+          </div>
+        )}
+
         {!isAuthenticated && !propertySelection && (
           <LoginPage
             variant="terminal"
@@ -1956,6 +1982,7 @@ ${itemsStr}
             onInstallIconClick={handleHeaderInstallClick}
             onNavigate={(tab, itemKey) => handleNavigateTab(tab, itemKey)}
             onToggleAIChat={() => setIsAIChatOpen((prev) => !prev)}
+            onSwitchProperty={() => setIsSwitchingProperty(true)}
           />
         )}
 

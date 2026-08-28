@@ -176,7 +176,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
   useEffect(() => {
     if (!activeMenuItemKey) return;
-    if (activeMenuItemKey === 'stock_requests') setActiveTab('fulfill');
+    if (activeMenuItemKey === 'stock_requests' || activeMenuItemKey === 'request_materials') setActiveTab('requisitions');
+    else if (activeMenuItemKey === 'fulfill_stock_req' || activeMenuItemKey === 'pending_stock_requests') setActiveTab('fulfill');
     else if (activeMenuItemKey === 'deficit_shortfalls_log') setActiveTab('deficit');
     else if (activeMenuItemKey === 'stock_log') setActiveTab('stock_log');
     else if (activeMenuItemKey === 'edit_kitchen_stock') setActiveTab('catalog');

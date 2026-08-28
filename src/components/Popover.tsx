@@ -209,6 +209,7 @@ export const Popover: React.FC<PopoverProps> = ({
 
   const handleMouseEnter = () => {
     if (trigger !== 'hover') return;
+    if (document.body.classList.contains('driver-active') || document.querySelector('.driver-popover')) return;
     if (hideTimeoutRef.current) {
       window.clearTimeout(hideTimeoutRef.current);
       hideTimeoutRef.current = null;
@@ -231,7 +232,11 @@ export const Popover: React.FC<PopoverProps> = ({
       window.clearTimeout(hideTimeoutRef.current);
       hideTimeoutRef.current = null;
     }
-    setIsOpen(!isOpen);
+    if (trigger === 'hover') {
+      setIsOpen(false);
+    } else {
+      setIsOpen(!isOpen);
+    }
   };
 
   const clonedChild = React.cloneElement(children, {

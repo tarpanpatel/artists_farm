@@ -280,6 +280,16 @@ export interface StaffMember {
   // type) always rendered the field blank regardless of what was actually
   // saved - found live, reported as "updated details but it didn't save".
   dailyWage?: number;
+  // Property-switcher capability for the CURRENTLY LOGGED IN session (Header.tsx's Switch
+  // Property icon) - true for a staff account with accessAllProperties above, OR a tenant-
+  // owning account (Super Admin/Tenant Manager, default_tenant_id set) - see check_session's
+  // can_switch_properties in router.php. Deliberately separate from accessAllProperties above,
+  // which describes a STAFF RECORD being edited in StaffManagement, not necessarily "am I,
+  // the current session, allowed to switch" - an owner can switch too but was never a "staff"
+  // row with that toggle at all.
+  canSwitchProperties?: boolean;
+  tenantId?: number | null;
+  tenantSlug?: string | null;
 }
 
 export interface AttendanceRecord {

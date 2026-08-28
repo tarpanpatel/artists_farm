@@ -17,10 +17,14 @@ Discover *Ground Code PMS & KDS* — the modern, mobile-first resort management 
 
 ✨ **Key Features:**
 • 📅 Multi-Room Interactive Booking Grid
-• 📲 1-Click WhatsApp Booking Confirmations & GST Invoices
+• 🔑 Fast Check-in & Guest ID Document Uploads
+• 🛂 Foreign National C-Form Filing with Barcode Auto-Scan
+• 📲 1-Click WhatsApp Booking Confirmations & GST Invoices with UPI QR
+• 🔄 2-Way OTA Calendar Sync (Airbnb, Booking.com, Agoda, MakeMyTrip)
 • 🍳 Integrated Kitchen Display System (KDS) & Restaurant Billing
 • 💰 Petty Cash Drawer & Daily Expense Tracking
-• 📊 Real-Time Revenue Analytics & Staff Permissions
+• 👥 Staff Attendance, Wage Logs & Role-Based Permissions
+• 📊 Real-Time Revenue Analytics & Police/GST Registers
 
 🎁 **Exclusive Offer**: Get 30 Days Full Access Absolutely FREE (No Credit Card Required).
 
@@ -40,39 +44,33 @@ Ground Code SaaS Team
 
 ---
 
-## 2. 🎯 Demo Site Interactive Onboarding Tour (8 Category-Based Popovers)
+## 2. 🎯 Demo Site Interactive Onboarding Tour (Comprehensive Step Sequence)
 
-### Architecture
-An interactive modular popover tour engine built using standard Flowbite popovers ([`Popover.tsx`](file:///c:/xampp/htdocs/artists_farm/src/components/Popover.tsx)) and target element selectors (`data-tour="target-id"`). Visitors can navigate sequentially or switch between feature category pills at any time:
+> [!NOTE]
+> You can edit this table to change the order, descriptions, titles, or active targets of the onboarding tour. Once updated, the interactive tour engine ([`DemoOnboardingTour.tsx`](file:///c:/xampp/htdocs/artists_farm/src/components/DemoOnboardingTour.tsx)) will be aligned accordingly.
 
-```
-+-----------------------------------------------------------------------------------------+
-|                                                                                         |
-|   +---------------------------------------------------------------------------------+   |
-|   |  Popover Tour Card (z-index: 9999)                                              |   |
-|   |  [Core PMS] [Automation] [Food & Beverage] [Store Ops] [Financials] [HR & Team] |   |
-|   |  -----------------------------------------------------------------------------  |   |
-|   |  Step 1 of 3: 📅 Interactive Multi-Room Booking Grid                            |   |
-|   |  Track real-time room availability, check-ins, check-outs, and guest folios.    |   |
-|   |                                                                                 |   |
-|   |  [Skip Tour]                                         [< Previous]  [Next Step >]  |   |
-|   +---------------------------------------------------------------------------------+   |
-|                                                                                         |
-+-----------------------------------------------------------------------------------------+
-```
+### 📋 Complete Interactive App Tour Steps Table
 
-### Complete 8-Module App Feature Tour Coverage
-
-| Module / Category | Tour Element Target | Popover Step Title | Feature Coverage & Description |
-| :--- | :--- | :--- | :--- |
-| 🏨 **1. Front Desk & Reservations** | `[data-tour="booking-grid"]`<br>`[data-tour="checkin-folio"]`<br>`[data-tour="ota-sync"]` | • Interactive Booking Grid<br>• Fast Check-in & Guest ID Upload<br>• 2-Way OTA Calendar Sync (iCal) | Real-time calendar grid, room tariffs, guest folios, Aadhaar/Passport ID uploads, foreign C-Form filing, and 2-way sync with Airbnb/Booking.com/Agoda. |
-| 📲 **2. WhatsApp Bills & UPI QR** | `[data-tour="whatsapp-invoicing"]`<br>`[data-tour="whatsapp-templates"]` | • 1-Click WhatsApp Invoices<br>• Custom WhatsApp Message Templates | Instant booking vouchers and tax bills sent via WhatsApp API with scannable UPI QR codes and customizable templates. |
-| 🍳 **3. Kitchen Display (KDS)** | `[data-tour="kds-kitchen"]`<br>`[data-tour="recipe-builder"]` | • Live Kitchen Display (KDS)<br>• Recipe Builder & Menu Manager | Food order prep timers, room service delivery tickets, dish recipe ingredient costing, and staff meal logging. |
-| 📦 **4. Inventory & Requisitions** | `[data-tour="inventory-stock"]`<br>`[data-tour="stock-requisition"]` | • Raw Material Stock Tracker<br>• Material Requisition Workflow | Grocery & linen stock tracking, low-stock reorder alerts, and kitchen-to-store material requisition approvals. |
-| 💰 **5. Petty Cash & Financials** | `[data-tour="petty-cash"]`<br>`[data-tour="cash-drawer"]` | • Petty Cash & Vendor Payouts<br>• Shift Cash Drawer Balance | Vendor expense logs, petty cash vouchers, front-desk shift cash drawer openings/closings, and cash vs. UPI tallying. |
-| 👥 **6. Staff, Attendance & HR** | `[data-tour="staff-permissions"]`<br>`[data-tour="attendance-salary"]` | • Multi-Role RBAC Permissions<br>• Attendance & Monthly Salary Slips | Granular access roles (Admin, Supervisor, Kitchen, Front Desk), daily attendance calendar, advance payouts, and salary slips. |
-| 🤖 **7. Real-Time Push Alerts** | `[data-tour="telegram-alerts"]` | • Real-Time Telegram Push Alerts | Instant push alerts for check-ins, check-outs, new kitchen orders, cash payouts, and pending material requests. |
-| 📊 **8. Analytics, Audit & GST** | `[data-tour="analytics-summary"]`<br>`[data-tour="gst-export"]` | • Revenue, ADR & Occupancy Analytics<br>• 1-Click GST Reports & Police Export | Daily occupancy %, Average Daily Rate (ADR), RevPAR metrics, system audit logs, and 1-click Excel export for GST returns & police registers. |
+| Step # | Category | Step ID | Title | Description | Selector (`data-tour`) | Target Screen / Tab | Action / Hook |
+| :---: | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **1** | 🏨 **Front Desk & Daily Operations** | `booking-grid` | 📅 Multi-Room Calendar & Daily Operations Overview | Track real-time room availability, daily tariffs, active kitchen orders, pending guest requests, and manage folios right from one unified calendar — getting 50% of your daily operations done instantly. | `[data-tour="booking-grid"]` | `#dashboard` (Multi-Room Calendar) | `handleNavigateTab('dashboard', 'dashboard')` |
+| **2** | 🏨 **Front Desk & Daily Operations** | `checkin-folio` | 🔑 Fast Check-In, ID Upload & C-Form Barcode Scan | Effortlessly upload guest Aadhaar/Passport IDs, record advance payments, and upload foreign C-Form PDFs where the Applicant ID is automatically detected via barcode scan and saved to booking records in seconds. | `[data-tour="checkin-folio"]` | `BookingDetailsModal` (Drawer & C-Form Container) | `openCFormSection` (sticks in modal, auto-expands C-Form section) |
+| **3** | 🏨 **Front Desk & Daily Operations** | `whatsapp-invoicing` | 📲 1-Click Share & Real-Time WhatsApp Message Preview | Click Share to review the exact formatted booking confirmation and GST bill before sending — complete with guest details, check-in dates, maps link, and scannable UPI QR payment code. | `[data-tour="share-preview-drawer"]` | `BookingDetailsModal` (Share Preview Drawer) | `openSharePreview` (clicks Share button to open preview drawer) |
+| **4** | 🏨 **Front Desk & Daily Operations** | `bookings-manager` | 📋 Past, Present & Future Bookings Manager | Search and filter across all historical stays, currently checked-in guests, and upcoming future reservations with real-time balance tracking, folios, and instant check-out workflows. | `[data-tour="bookings-manager"]` | `#guests/all_bookings` (All Bookings Desk) | `handleNavigateTab('guests', 'all_bookings')` |
+| **5** | 🏨 **Front Desk & Daily Operations** | `service-requests-board` | 🛎️ Service Requests & 1-Tap Telegram Fulfillment | Log guest housekeeping and room service requests in seconds. Staff get instant Telegram push notifications and can fulfill or update tasks with 1 tap directly from Telegram without needing to open the app. | `[data-tour="service-requests-board"]` | `#service_requests` (Service Requests Board) | `handleNavigateTab('service_requests', 'service_requests')` |
+| **6** | 🏨 **Front Desk & Daily Operations** | `ota-sync` | 🔄 2-Way OTA Calendar Sync (iCal) | Sync bookings automatically with Airbnb, Booking.com, Agoda, and MakeMyTrip to prevent double-bookings across channels. | `[data-tour="ota-sync"]` | `#room-slug/edit_property` (Room Edit Tab) | `onNavigateToRoom(roomSlug, 'edit_property')` |
+| **7** | 🏨 **Front Desk & Daily Operations** | `mobile-bottom-nav` | 📱 Quick Actions & Mobile Navigation | Quickly access 1-tap booking creation, instant expense logging, food ordering, and seamless navigation across all resort management screens. | `[data-tour="mobile-bottom-nav"]` | Mobile / Desktop Navigation Shell | `goToFirstRoomDashboard` |
+| **8** | 🍳 **Kitchen Display & Dining** | `kds-kitchen` | 🍳 Live Kitchen Display System (KDS) | Streamline food prep timers, live kitchen order tickets, and room service delivery status on kitchen display screens. | `[data-tour="kds-kitchen"]` | `#room-slug/dashboard` (Live KDS Orders) | `goToFirstRoomDashboard` |
+| **9** | 📦 **Inventory & Stock Requisitions** | `inventory-stock` | 📦 Raw Material Stock Tracker | Track kitchen grocery stock, linen inventory, and cleaning supplies with live quantities and automated low-stock reorder threshold alerts. | `[data-tour="inventory-stock"]` | `#inventory/stock_log` (Live Stock Log & Inventory Tracker) | `handleNavigateTab('inventory', 'stock_log')` |
+| **10** | 📦 **Inventory & Stock Requisitions** | `stock-requisition` | 📋 Material Requisitions | Allow kitchen staff to request raw ingredients from store managers directly from the Request Materials catalog with complete approval and audit workflows. | `[data-tour="stock-requisition"]` | `#inventory/stock_requests` (Request Materials Tab) | `handleNavigateTab('inventory', 'stock_requests')` |
+| **11** | 💰 **Petty Cash & Expense Control** | `petty-cash` | 💰 Petty Cash & Vendor Expenses | Log daily vendor payouts, staff cash drawer shift openings/closings, and cash drawer reconciliations with zero discrepancy. | `[data-tour="petty-cash"]` | `#petty_cash/expenses` | `handleNavigateTab('petty_cash', 'expenses')` |
+| **12** | 💰 **Petty Cash & Expense Control** | `cash-drawer` | 💵 Shift Cash Drawer Balance | Reconcile cash collected at front desk shift changes with automated tallying of cash, UPI, card, and bank transfers. | `[data-tour="cash-drawer"]` | `#petty_cash/finances` | `handleNavigateTab('petty_cash', 'finances')` |
+| **13** | 👥 **Staff, Attendance & Salary** | `staff-permissions` | 👥 Multi-Role Staff RBAC Permissions | Assign granular access roles (Front Desk, Kitchen Staff, Supervisor, Accountant) to control sensitive financial visibility. | `[data-tour="staff-permissions"]` | `#staff/staff_permissions` | `handleNavigateTab('staff', 'staff_permissions')` |
+| **14** | 👥 **Staff, Attendance & Salary** | `create-team-member` | ➕ Add New Staff & Team Accounts | Create and configure new staff member profiles, assign roles, set daily wages or monthly salaries, and manage operational permissions. | `[data-tour="create-team-member"]` | `#staff/staff_permissions` | `handleNavigateTab('staff', 'staff_permissions')` |
+| **15** | 👥 **Staff, Attendance & Salary** | `attendance-salary` | 📅 Attendance Calendar & Monthly Salaries | Track daily staff present/absent logs, advance salary payouts, and generate automated monthly salary slips. | `[data-tour="attendance-salary"]` | `#staff/attendance_calendar` | `handleNavigateTab('staff', 'attendance_calendar')` |
+| **16** | 🤖 **Real-Time Operations Alerts** | `telegram-alerts` | 🤖 Real-Time Telegram Push Alerts | Get instant push alerts on your phone whenever a guest checks in, a kitchen order is placed, or cash is paid out. | `[data-tour="telegram-alerts"]` | `#telegram/telegram` | `handleNavigateTab('telegram', 'telegram')` |
+| **17** | 📊 **Analytics & Business Intel** | `analytics-summary` | 📊 Revenue, ADR & Occupancy Analytics | Analyze daily occupancy rates, Average Daily Rate (ADR), and Profit per Room Night metrics. | `[data-tour="analytics-summary"]` | `#analytics/dashboard_analytics` | `handleNavigateTab('analytics', 'dashboard_analytics')` |
+| **18** | 📖 **Food Menu & Recipe Builder** | `recipe-builder` | 📖 Recipe Builder & Food Menu Manager | Manage food item pricing, categories, ingredients cost breakdown, and staff meal logs effortlessly. | `[data-tour="recipe-builder"]` | `#kitchen/beta_recipe_builder` | `handleNavigateTab('kitchen', 'beta_recipe_builder')` |
 
 ---
 

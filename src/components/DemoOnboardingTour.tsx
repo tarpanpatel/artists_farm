@@ -63,15 +63,14 @@ function goToFirstRoomDashboard(nav: TourNavContext): void {
   }
 }
 
-// Shared by checkin-folio and whatsapp-invoicing (28 Aug 2026): both need BookingDetailsModal
-// open, but they can't literally share one mounted instance - the ota-sync step in between
-// navigates to a different room's edit_property sub-tab, which unmounts the Dashboard subtree
-// (and its `selectedBooking` state) that opened the modal. Each step independently re-runs this
-// same 2-click sequence instead: click the first visible booking bar (opens a small preview
-// Popover), then its "View More" button (this is what actually calls setSelectedBooking() and
-// opens the real modal). Demo data guarantees at least one real booking per room for a MULTI_KEY
-// property, so this is safe to assume.
+// Shared by checkin-folio, cform-filing, and whatsapp-invoicing (28 Aug 2026): all three need BookingDetailsModal
+// open and stay inside the drawer sequentially. Each step safely ensures the modal is open.
 async function openFirstBookingModal(nav: TourNavContext): Promise<void> {
+  // Clean up any lingering hover preview popovers in DOM
+  document.querySelectorAll('[data-popover]').forEach((el) => {
+    (el as HTMLElement).style.display = 'none';
+  });
+
   // If modal is already open with data-tour="checkin-folio", return early
   if (document.querySelector('[data-tour="checkin-folio"]')) return;
 
@@ -85,6 +84,11 @@ async function openFirstBookingModal(nav: TourNavContext): Promise<void> {
 
   bar.click();
 
+  // Dismiss any hover preview popover that might have opened
+  document.querySelectorAll('[data-popover]').forEach((el) => {
+    (el as HTMLElement).style.display = 'none';
+  });
+
   // If a preview popover with "View More" appears (on single room OperationalDashboard), click it
   const viewMore = (await waitForElement('[data-tour="checkin-view-more"]', 800)) as HTMLElement | null;
   if (viewMore) {
@@ -93,6 +97,28 @@ async function openFirstBookingModal(nav: TourNavContext): Promise<void> {
 
   // Wait for the modal content to finish mounting
   await waitForElement('[data-tour="checkin-folio"]', 3000);
+}
+
+async function openCFormSection(nav: TourNavContext): Promise<void> {
+  await openFirstBookingModal(nav);
+  // Auto-expand C-Form section if it is collapsed
+  const checkbox = document.querySelector('#c-form-filed-checkbox') as HTMLInputElement | null;
+  if (checkbox && !checkbox.checked) {
+    checkbox.click();
+  }
+  await waitForElement('[data-tour="cform-filing"]', 2000);
+}
+
+async function openSharePreview(nav: TourNavContext): Promise<void> {
+  await openFirstBookingModal(nav);
+  // Click Share button if preview drawer is not already open
+  if (!document.querySelector('[data-tour="share-preview-drawer"]')) {
+    const shareBtn = (await waitForElement('[data-tour="whatsapp-invoicing"]', 2000)) as HTMLElement | null;
+    if (shareBtn) {
+      shareBtn.click();
+    }
+  }
+  await waitForElement('[data-tour="share-preview-drawer"]', 2000);
 }
 
 // Polls (rAF loop) rather than a fixed setTimeout - tab content in this app is React.lazy/Suspense
@@ -124,24 +150,48 @@ function waitForElement(selector: string, timeoutMs = 4000): Promise<Element | n
 const TOUR_CATEGORIES: TourCategory[] = [
   {
     id: 'front-desk',
-    name: 'Front Desk & Reservations',
+    name: 'Front Desk & Daily Operations',
     badge: 'Core PMS',
     steps: [
       {
         id: 'booking-grid',
         selector: '[data-tour="booking-grid"]',
-        title: '📅 Multi-Room Booking Calendar',
-        description: 'Track real-time multi-room availability, daily tariffs, check-ins, check-outs, and guest folios across all property rooms in one unified calendar view.',
+        title: '📅 Multi-Room Calendar & Daily Operations Overview',
+        description: 'Track real-time room availability, daily tariffs, active kitchen orders, pending guest requests, and manage folios right from one unified calendar — getting 50% of your daily operations done instantly.',
         side: 'bottom',
         beforeShow: (nav) => nav.handleNavigateTab('dashboard', 'dashboard'),
       },
       {
         id: 'checkin-folio',
         selector: '[data-tour="checkin-folio"]',
-        title: '🔑 Fast Check-In & Guest ID Upload',
-        description: 'Upload guest Aadhaar/Passport documents, record advance payments, and file C-Forms for international guests in under 30 seconds.',
+        title: '🔑 Fast Check-In, ID Upload & C-Form Barcode Scan',
+        description: 'Effortlessly upload guest Aadhaar/Passport IDs, record advance payments, and upload foreign C-Form PDFs where the Applicant ID is automatically detected via barcode scan and saved to booking records in seconds.',
         side: 'right',
-        beforeShow: openFirstBookingModal,
+        beforeShow: openCFormSection,
+      },
+      {
+        id: 'whatsapp-invoicing',
+        selector: '[data-tour="share-preview-drawer"]',
+        title: '📲 1-Click Share & Real-Time WhatsApp Message Preview',
+        description: 'Click Share to review the exact formatted booking confirmation and GST bill before sending — complete with guest details, check-in dates, maps link, and scannable UPI QR payment code.',
+        side: 'left',
+        beforeShow: openSharePreview,
+      },
+      {
+        id: 'bookings-manager',
+        selector: '[data-tour="bookings-manager"]',
+        title: '📋 Past, Present & Future Bookings Manager',
+        description: 'Search and filter across all historical stays, currently checked-in guests, and upcoming future reservations with real-time balance tracking, folios, and instant check-out workflows.',
+        side: 'top',
+        beforeShow: (nav) => nav.handleNavigateTab('guests', 'all_bookings'),
+      },
+      {
+        id: 'service-requests-board',
+        selector: '[data-tour="service-requests-board"]',
+        title: '🛎️ Service Requests & 1-Tap Telegram Fulfillment',
+        description: 'Log guest housekeeping and room service requests in seconds. Staff get instant Telegram push notifications and can fulfill or update tasks with 1 tap directly from Telegram without needing to open the app.',
+        side: 'top',
+        beforeShow: (nav) => nav.handleNavigateTab('service_requests', 'service_requests'),
       },
       {
         id: 'ota-sync',
@@ -153,14 +203,6 @@ const TOUR_CATEGORIES: TourCategory[] = [
           const roomSlug = nav.getFirstChildRoomSlug();
           if (roomSlug) nav.onNavigateToRoom(roomSlug, 'edit_property');
         },
-      },
-      {
-        id: 'whatsapp-invoicing',
-        selector: '[data-tour="whatsapp-invoicing"]',
-        title: '📲 1-Click WhatsApp Invoices',
-        description: 'Send instant booking vouchers and GST tax invoices with scannable UPI QR codes directly to guest WhatsApp numbers.',
-        side: 'right',
-        beforeShow: openFirstBookingModal,
       },
       {
         id: 'mobile-bottom-nav',
@@ -185,14 +227,6 @@ const TOUR_CATEGORIES: TourCategory[] = [
         side: 'bottom',
         beforeShow: goToFirstRoomDashboard,
       },
-      {
-        id: 'recipe-builder',
-        selector: '[data-tour="recipe-builder"]',
-        title: '📖 Recipe Builder & Food Menu Manager',
-        description: 'Manage food item pricing, categories, ingredients cost breakdown, and staff meal logs effortlessly.',
-        side: 'top',
-        beforeShow: (nav) => nav.handleNavigateTab('kitchen', 'beta_recipe_builder'),
-      },
     ],
   },
   {
@@ -206,7 +240,7 @@ const TOUR_CATEGORIES: TourCategory[] = [
         title: '📦 Raw Material Stock Tracker',
         description: 'Track kitchen grocery stock, linen inventory, and cleaning supplies with automated low-stock reorder threshold alerts.',
         side: 'right',
-        beforeShow: (nav) => nav.handleNavigateTab('inventory', 'edit_kitchen_stock'),
+        beforeShow: (nav) => nav.handleNavigateTab('inventory', 'stock_log'),
       },
       {
         id: 'stock-requisition',
@@ -299,6 +333,21 @@ const TOUR_CATEGORIES: TourCategory[] = [
         description: 'Analyze daily occupancy rates, Average Daily Rate (ADR), and Profit per Room Night metrics.',
         side: 'top',
         beforeShow: (nav) => nav.handleNavigateTab('analytics', 'dashboard_analytics'),
+      },
+    ],
+  },
+  {
+    id: 'recipe-builder',
+    name: 'Food Menu & Recipe Builder',
+    badge: 'Menu Management',
+    steps: [
+      {
+        id: 'recipe-builder',
+        selector: '[data-tour="recipe-builder"]',
+        title: '📖 Recipe Builder & Food Menu Manager',
+        description: 'Manage food item pricing, categories, ingredients cost breakdown, and staff meal logs effortlessly.',
+        side: 'top',
+        beforeShow: (nav) => nav.handleNavigateTab('kitchen', 'beta_recipe_builder'),
       },
     ],
   },

@@ -1396,23 +1396,30 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                     {t('pay_to_registered_vendor_checkbox_label', 'Pay to pre-registered vendor?')}
                   </Label>
                 </label>
-                <StyledSelect
-                  label={t('vendor_payee_optional_label', 'Vendor / Payee Name (Optional)')}
-                  searchable
-                  disabled={!formState.payToRegisteredVendor}
-                  value={formState.paidBy === currentUserName ? '' : formState.paidBy}
-                  onChange={val => dispatch({ type: 'SET_FIELD', field: 'paidBy', value: val || currentUserName })}
-                  placeholder="Select a registered payee..."
-                  options={vendorOptions}
-                />
-                <button
-                  type="button"
-                  onClick={() => setIsPayeeManagerOpen(true)}
-                  className="mt-1.5 text-2xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 cursor-pointer transition-colors"
-                >
-                  <Settings className="w-3 h-3" />
-                  <span>Manage Payees</span>
-                </button>
+                <div className={`transition-opacity ${!formState.payToRegisteredVendor ? 'opacity-20 pointer-events-none' : ''}`}>
+                  <StyledSelect
+                    label={t('vendor_payee_optional_label', 'Vendor / Payee Name (Optional)')}
+                    searchable
+                    disabled={!formState.payToRegisteredVendor}
+                    value={formState.paidBy === currentUserName ? '' : formState.paidBy}
+                    onChange={val => dispatch({ type: 'SET_FIELD', field: 'paidBy', value: val || currentUserName })}
+                    placeholder={formState.payToRegisteredVendor ? 'Select a registered payee...' : '-- None (Logged by Self) --'}
+                    options={vendorOptions}
+                  />
+                  <button
+                    type="button"
+                    disabled={!formState.payToRegisteredVendor}
+                    onClick={() => setIsPayeeManagerOpen(true)}
+                    className={`mt-1.5 text-2xs font-semibold flex items-center gap-1 transition-colors ${
+                      !formState.payToRegisteredVendor
+                        ? 'text-slate-400 dark:text-slate-500 cursor-not-allowed'
+                        : 'text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer'
+                    }`}
+                  >
+                    <Settings className="w-3 h-3" />
+                    <span>Manage Payees</span>
+                  </button>
+                </div>
               </div>
             </div>
 

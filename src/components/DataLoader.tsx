@@ -14,7 +14,6 @@ import {
   getRoomSlugFromHash,
 } from '../services/api';
 import { t } from '../i18n/en';
-import { recordTelescopeLog } from '../utils/telescopeLogger';
 
 export interface PreloadedData {
   currentProperty: any;
@@ -150,11 +149,29 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
             });
 
         let roomsFetchFailed = false;
-        if (isAuthenticated && property && property.property_type === 'MULTI_KEY') {
-          try {
-            property = await fetchMultiKeyRooms(property.id);
-          } catch (err) {
-            console.error('Failed to fetch MultiKey property details:', err);
+        if (property && property.property_type === 'MULTI_KEY') {
+          if (isAuthenticated) {
+            try {
+              property = await fetchMultiKeyRooms(property.id);
+            } catch (err) {
+              console.error('Failed to fetch MultiKey property details:', err);
+              roomsFetchFailed = true;
+            }
+          } else {
+            // BUG (found 28 Aug 2026, live: multi-key dashboard's TodayOverview
+            // calendar showing "No rooms available" despite the property genuinely
+            // having 5 seeded demo rooms). isAuthenticated here is THIS component's
+            // own early check_session call - completely separate from AuthContext's,
+            // which is where the public-demo auto-login sequence (3 sequential round
+            // trips: check_session -> get_demo_login_credentials -> login_user)
+            // actually lives. On a fresh demo visit this check fires and resolves
+            // false almost every time, well before that sequence has any real chance
+            // to finish. The old code just skipped the fetch outright when that
+            // happened - roomsFetchFailed stayed false, so the retry further down
+            // (gated on roomsFetchFailed) never ran either, leaving
+            // currentProperty.rooms permanently missing for the rest of the page's
+            // life. A MULTI_KEY property's rooms are never optional, so a skip here
+            // needs the exact same recovery path as a genuine fetch failure.
             roomsFetchFailed = true;
           }
         }
@@ -316,15 +333,33 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
           initialMenu: Array.isArray(initialMenu) ? initialMenu : [],
         });
 
-        // Rooms fetch failed above (see BUG note near fetchMultiKeyRooms) - retry once in
-        // the background and patch the real rooms into currentProperty once they land.
+        // Rooms fetch failed OR was skipped above (see BUG note near fetchMultiKeyRooms) -
+        // retry in the background and patch the real rooms into currentProperty once they
+        // land. Bounded loop with a real delay between attempts, not a single immediate
+        // retry: the "skipped" case specifically needs actual TIME to pass for the
+        // public-demo auto-login (AuthContext's separate 3-round-trip sequence) to
+        // finish - retrying instantly would just hit the exact same not-yet-authenticated
+        // state again. A genuine fetch failure (transient network/cold-start error)
+        // recovers fine within the same loop too.
         if (roomsFetchFailed && property?.id) {
-          fetchMultiKeyRooms(property.id)
-            .then((fullProperty) => {
+          (async () => {
+            const maxAttempts = 4;
+            const propId = property.id;
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+              await new Promise((resolve) => setTimeout(resolve, 700 * attempt));
               if (isStale()) return;
-              setData((prev) => prev ? { ...prev, currentProperty: fullProperty } : prev);
-            })
-            .catch((err) => console.error('Retry for MultiKey property details also failed:', err));
+              try {
+                const fullProperty = await fetchMultiKeyRooms(propId);
+                if (isStale()) return;
+                setData((prev) => prev ? { ...prev, currentProperty: fullProperty } : prev);
+                return;
+              } catch (err) {
+                if (attempt === maxAttempts) {
+                  console.error('Retry for MultiKey property details exhausted all attempts:', err);
+                }
+              }
+            }
+          })();
         }
 
         // Modules fetch failed above - same treatment, retry once in the background.
@@ -347,51 +382,29 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
         // brand-new call, not another .then() on the same settled promise) and patch in
         // whatever comes back instead of leaving it stuck.
         //
-        // Bounded loop, not a single retry (found 28 Aug 2026, still reproducing live on
-        // dev/staging as the chronic "Sidebar Shows Only Kitchen" bug - see CLAUDE.md):
-        // a single retry has exactly one more chance to beat whatever cold-start/session-
-        // file-locking condition caused the first failure - if the SAME condition is still
-        // in effect (a slow PHP-FPM worker staying slow for a couple more requests, not
-        // just one), the retry fails too and there was never a third attempt, leaving
-        // navItems permanently empty for the rest of the tab's life. Nav items specifically
-        // are never legitimately empty (see safeFetchNavItems above), so it's the one field
-        // worth extending the loop for; the other four patch in whatever they got on every
-        // pass (unchanged from before) but don't extend the loop on their own since an
-        // empty guests/receipts/menu list can be genuinely correct.
+        // Single retry is enough here (simplified 28 Aug 2026 - a bounded 3-attempt loop
+        // used to live here specifically for navItems). Found while tracing that fix: this
+        // preload's navItems is NOT the authoritative copy - App.tsx has its own completely
+        // separate loadWithRetry effect (mounted right after this data arrives) that
+        // independently fetches, retries up to 3 times, AND does real transformation this
+        // preload never did (filters removed items, reassigns display order, defaults
+        // roles). That effect will correct/overwrite whatever lands here within moments
+        // regardless of how hard THIS copy tries, so extending this retry loop was
+        // duplicating work App.tsx already does more completely - this copy only needs to
+        // be "good enough for a fast first paint" (Navigation.tsx's initial render, and the
+        // renamed-nav-item hash-routing fallback in App.tsx), not itself exhaustively retried.
         if (anyRealDataFetchFailed) {
-          (async () => {
-            const maxAttempts = 3;
-            let source = timedOut ? realDataPromise : runRealDataFetches();
-            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-              const [realNav, realTelegram, realGuests, realReceipts, realMenu] = await source;
-              if (isStale()) return;
-              setData((prev) => prev ? {
-                ...prev,
-                navItems: !realNav.failed && Array.isArray(realNav.value) ? realNav.value : prev.navItems,
-                telegramConfig: !realTelegram.failed ? realTelegram.value : prev.telegramConfig,
-                initialGuests: !realGuests.failed && Array.isArray(realGuests.value) ? realGuests.value : prev.initialGuests,
-                initialReceipts: !realReceipts.failed && Array.isArray(realReceipts.value) ? realReceipts.value : prev.initialReceipts,
-                initialMenu: !realMenu.failed && Array.isArray(realMenu.value) ? realMenu.value : prev.initialMenu,
-              } : prev);
-
-              if (!realNav.failed) return;
-              if (attempt === maxAttempts) {
-                // Every attempt came back empty - this is the exact state that renders as
-                // Navigation.tsx's synthetic "Kitchen" fallback. Log it so this chronic,
-                // hard-to-reproduce-on-demand bug becomes something we can actually count
-                // instead of only hearing about when a user notices their sidebar looks wrong.
-                recordTelescopeLog({
-                  portal: 'js',
-                  severity: 'WARNING',
-                  msg: `Nav menu items never loaded after ${maxAttempts} attempts - sidebar fell back to synthetic Kitchen-only tree`,
-                  origin: 'DataLoader.tsx loadAllData retry loop',
-                });
-                return;
-              }
-              await new Promise((resolve) => setTimeout(resolve, 600 * attempt));
-              source = runRealDataFetches();
-            }
-          })();
+          (timedOut ? realDataPromise : runRealDataFetches()).then(([realNav, realTelegram, realGuests, realReceipts, realMenu]) => {
+            if (isStale()) return;
+            setData((prev) => prev ? {
+              ...prev,
+              navItems: !realNav.failed && Array.isArray(realNav.value) ? realNav.value : prev.navItems,
+              telegramConfig: !realTelegram.failed ? realTelegram.value : prev.telegramConfig,
+              initialGuests: !realGuests.failed && Array.isArray(realGuests.value) ? realGuests.value : prev.initialGuests,
+              initialReceipts: !realReceipts.failed && Array.isArray(realReceipts.value) ? realReceipts.value : prev.initialReceipts,
+              initialMenu: !realMenu.failed && Array.isArray(realMenu.value) ? realMenu.value : prev.initialMenu,
+            } : prev);
+          });
         }
       } catch (err) {
         if (isStale()) return;

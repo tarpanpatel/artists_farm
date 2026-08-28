@@ -13,7 +13,7 @@
 // PWA). A fully automatic per-build version stamp would close this gap for
 // every future deploy, not just this one - worth doing later, out of scope
 // for this immediate fix.
-const CACHE_NAME = 'farm-pos-v17';
+const CACHE_NAME = 'farm-pos-v22';
 
 // Hashed asset pattern — Vite content-hashed files (e.g. index-CrXjaekR.js)
 // These must NEVER be cached by the SW; the browser cache handles them natively

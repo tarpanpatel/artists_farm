@@ -57,8 +57,21 @@ function isPropertyAccessAllowed(PDO $pdo, int $propertyId): bool {
         return $allowed;
     }
 
-    if (isset($_SESSION['property_id'])) {
-        return (int)$_SESSION['property_id'] === $propertyId;
+    // Exact match is the fast/common path (ordinary single-property staff),
+    // but a MISMATCH must fall through to the tenant-ownership check below
+    // rather than returning false outright (bug found 28 Aug 2026, live via
+    // check_session reporting session_property_mismatch for a Super Admin
+    // navigating into a property under their own tenant that just isn't
+    // their own literal "home" property_id - e.g. a demo super-admin account
+    // whose own property_id is 1 visiting a sibling property under the same
+    // tenant). login_user always sets $_SESSION['property_id'] to the user's
+    // row, even for tenant/platform accounts (contradicting this file's own
+    // top comment, which assumed such sessions carry no property_id at all)
+    // - so this branch used to short-circuit false before the tenant check
+    // ever ran, making that check effectively dead code for any logged-in
+    // tenant-owning user whose home property wasn't the one being viewed.
+    if (isset($_SESSION['property_id']) && (int)$_SESSION['property_id'] === $propertyId) {
+        return true;
     }
 
     if (isset($_SESSION['user_id']) && isset($_SESSION['username'])) {

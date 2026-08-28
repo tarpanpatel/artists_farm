@@ -115,24 +115,30 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
   // Same template + substitution logic BookingDetailsModal.tsx's real "Share
   // via WhatsApp" send uses - this preview is only trustworthy if it can
   // never drift from what actually goes out to a guest.
-  const getPreviewText = () => renderWhatsappVoucherTemplate(DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, {
-    ...previewSampleValues,
-    property_name: name.trim() || 'Your Property',
-    address: address.trim(),
-    property_address: address.trim(),
-    contact_phone: phone.trim(),
-    property_phone: phone.trim(),
-    phone: phone.trim(),
-    maps_link: mapsLink.trim(),
-    google_maps_link: mapsLink.trim(),
-    upi_id: upiId.trim(),
-    upi_qr_code_url: upiQrCodeUrl.trim(),
-    qr_code: upiQrCodeUrl.trim(),
-    other_notes: instructions.trim(),
-    instructions: instructions.trim(),
-    checkin_time: checkinTime,
-    checkout_time: checkoutTime,
-  });
+  const getPreviewText = () => {
+    const finalUpi = (upiId.trim() || 'payments@upi');
+    const upiPaymentDeepLink = `upi://pay?pa=${encodeURIComponent(finalUpi)}&pn=${encodeURIComponent(name.trim() || 'Your Property')}&cu=INR`;
+    const finalQr = upiQrCodeUrl.trim() || `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(upiPaymentDeepLink)}`;
+
+    return renderWhatsappVoucherTemplate(DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, {
+      ...previewSampleValues,
+      property_name: name.trim() || 'Your Property',
+      address: address.trim(),
+      property_address: address.trim(),
+      contact_phone: phone.trim(),
+      property_phone: phone.trim(),
+      phone: phone.trim(),
+      maps_link: mapsLink.trim(),
+      google_maps_link: mapsLink.trim(),
+      upi_id: finalUpi,
+      upi_qr_code_url: finalQr,
+      qr_code: finalQr,
+      other_notes: instructions.trim(),
+      instructions: instructions.trim(),
+      checkin_time: checkinTime,
+      checkout_time: checkoutTime,
+    });
+  };
 
   const handleSave = async () => {
     if (!name.trim()) {

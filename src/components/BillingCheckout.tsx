@@ -860,7 +860,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   ];
 
   return (
-    <div className="billing-checkout space-y-6">
+    <div data-tour="bookings-manager" className="billing-checkout space-y-6">
       <PageHeader
         title={t('bookings_page_title', 'Bookings')}
         hideBorder

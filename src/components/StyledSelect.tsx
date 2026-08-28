@@ -101,7 +101,9 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
         <div className="mb-2 block">
           <label
             htmlFor={id}
-            className="app-label text-xs font-semibold text-slate-700 dark:text-slate-200"
+            className={`app-label text-xs font-semibold ${
+              disabled ? 'text-slate-400 dark:text-slate-500 cursor-not-allowed' : 'text-slate-700 dark:text-slate-200'
+            }`}
           >
             {label}
           </label>

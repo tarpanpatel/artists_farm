@@ -1016,6 +1016,25 @@ switch ($action) {
                 ]);
                 break;
             }
+            // Property-switcher capability (28 Aug 2026, Header.tsx's Switch Property icon):
+            // a session can switch between every property under one tenant either because
+            // it's a staff account with access_all_properties (staff_tenant_id, set at login
+            // - see login_user's staff_users branch), or because it's a tenant-owning account
+            // (default_tenant_id, set at login for the users-table branch). Resolve whichever
+            // applies once here so the frontend doesn't need to know the difference between
+            // the two underlying mechanisms - it just gets "can this session switch, and to
+            // which tenant".
+            $switcherTenantId = $_SESSION['staff_tenant_id'] ?? $_SESSION['default_tenant_id'] ?? null;
+            $canSwitchProperties = !empty($_SESSION['staff_access_all_properties']) || !empty($_SESSION['default_tenant_id']);
+            $switcherTenantSlug = null;
+            if ($canSwitchProperties && $switcherTenantId) {
+                try {
+                    $tSlugStmt = $pdo->prepare("SELECT slug FROM tenants WHERE id = ? LIMIT 1");
+                    $tSlugStmt->execute([$switcherTenantId]);
+                    $switcherTenantSlug = $tSlugStmt->fetchColumn() ?: null;
+                } catch (Exception $e) {}
+            }
+
             echo json_encode([
                 'status' => 'success',
                 'authenticated' => true,
@@ -1026,6 +1045,9 @@ switch ($action) {
                     'name' => $_SESSION['full_name'] ?? null,
                     'role' => $_SESSION['role'] ?? 'Staff',
                     'property_id' => $_SESSION['property_id'] ?? null,
+                    'can_switch_properties' => $canSwitchProperties && $switcherTenantId && $switcherTenantSlug ? true : false,
+                    'tenant_id' => $canSwitchProperties ? $switcherTenantId : null,
+                    'tenant_slug' => $canSwitchProperties ? $switcherTenantSlug : null,
                 ],
             ]);
         } else {
@@ -1220,6 +1242,19 @@ switch ($action) {
                         }
                     }
 
+                    // Property-switcher fields (28 Aug 2026, same capability check_session
+                    // computes - see that case's own comment) - added here too so the icon
+                    // appears immediately after a fresh login, not only after the next
+                    // check_session/reload picks it up.
+                    $ownerTenantSlug = null;
+                    if (!empty($user['default_tenant_id'])) {
+                        try {
+                            $ownerTSlugStmt = $pdo->prepare("SELECT slug FROM tenants WHERE id = ? LIMIT 1");
+                            $ownerTSlugStmt->execute([$user['default_tenant_id']]);
+                            $ownerTenantSlug = $ownerTSlugStmt->fetchColumn() ?: null;
+                        } catch (Exception $e) {}
+                    }
+
                     echo json_encode([
                         'success' => true,
                         'message' => 'Login successful',
@@ -1231,6 +1266,9 @@ switch ($action) {
                             'is_platform_admin' => $is_platform_admin,
                             'default_tenant_id' => $user['default_tenant_id'] ?? null,
                             'must_change_passcode' => (bool)($user['must_change_passcode'] ?? false),
+                            'can_switch_properties' => !empty($user['default_tenant_id']) && $ownerTenantSlug ? true : false,
+                            'tenant_id' => $user['default_tenant_id'] ?? null,
+                            'tenant_slug' => $ownerTenantSlug,
                         ]
                     ]);
                     exit;
@@ -1323,6 +1361,7 @@ switch ($action) {
                                 'default_tenant_id' => null,
                                 'must_change_passcode' => false,
                                 'access_all_properties' => true,
+                                'can_switch_properties' => !empty($tenantRow['tenant_id']) && !empty($tenantRow['tenant_slug']),
                                 'tenant_id' => $tenantRow['tenant_id'] ?? null,
                                 'tenant_slug' => $tenantRow['tenant_slug'] ?? null,
                             ]

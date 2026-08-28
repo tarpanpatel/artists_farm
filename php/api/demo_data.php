@@ -1889,6 +1889,60 @@ function purgeDemoBookingOverlaps($pdo, $propertyId): int {
     $stmt->execute($scopeIds);
     $removed += deleteOverlappingRows($pdo, $stmt->fetchAll(PDO::FETCH_ASSOC), 'room_id', 'ical_synced_events');
 
+    // --- 3. Cross-check: an OTA event that overlaps a real guest booking in the SAME room
+    //        (found 28 Aug 2026, live: Room 102 on the Luxe Stays demo property had a guest
+    //        booking - "Gia", 31 Jul-2 Aug - overlapping a synced Airbnb hold, 1-3 Aug, visible
+    //        as two stacked bars/a taller row on the multi-key dashboard calendar). Sweeps 1 and
+    //        2 above only ever compare a table against ITSELF (guest-vs-guest, OTA-vs-OTA), so a
+    //        conflict straddling both tables was never caught by either - this is the sweep that
+    //        was missing. Guest bookings are kept as authoritative (the demo's central showcase
+    //        entity - names, checkout flow, billing); the conflicting OTA event is removed
+    //        instead, the same "just clean up demo data" precedent sweeps 1/2 already set. Note
+    //        this is deliberately DEMO-ONLY cleanup - CLAUDE.md documents that silently discarding
+    //        a REAL OTA hold would hide an actual double-booking rather than fix it; that concern
+    //        doesn't apply to scripted demo data, which has no real-world guest behind either side.
+    $stmt = $pdo->prepare("
+        SELECT id, room_id, checkin_date AS start_at, expected_checkout AS end_at
+        FROM guests
+        WHERE property_id = ? AND is_demo = 1 AND room_id IS NOT NULL
+          AND status IN (?, ?, ?)
+    ");
+    $stmt->execute([$propertyId, GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_IN, GUEST_STATUS_BOOKED]);
+    $guestRangesByRoom = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $g) {
+        $gStart = strtotime($g['start_at']);
+        $gEnd = strtotime($g['end_at']);
+        if ($gStart === false || $gEnd === false) continue;
+        $guestRangesByRoom[(int)$g['room_id']][] = [$gStart, $gEnd];
+    }
+
+    if (!empty($guestRangesByRoom)) {
+        $stmt = $pdo->prepare("
+            SELECT e.id, c.property_id AS room_id, e.event_start AS start_at, e.event_end AS end_at
+            FROM ical_synced_events e
+            JOIN ical_sync_configs c ON c.id = e.sync_config_id
+            WHERE c.property_id IN ($inScope) AND c.is_demo = 1
+        ");
+        $stmt->execute($scopeIds);
+        $delOta = $pdo->prepare("DELETE FROM ical_synced_events WHERE id = ?");
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $e) {
+            $roomId = (int)$e['room_id'];
+            if (empty($guestRangesByRoom[$roomId])) continue;
+            $eStart = strtotime($e['start_at']);
+            $eEnd = strtotime($e['end_at']);
+            if ($eStart === false || $eEnd === false) continue;
+            foreach ($guestRangesByRoom[$roomId] as [$gStart, $gEnd]) {
+                // Half-open, same rule as deleteOverlappingRows() - same-day turnover
+                // (checkout day = event start day, or vice versa) is not a conflict.
+                if ($gStart < $eEnd && $gEnd > $eStart) {
+                    $delOta->execute([$e['id']]);
+                    $removed += $delOta->rowCount();
+                    break;
+                }
+            }
+        }
+    }
+
     return $removed;
 }
 

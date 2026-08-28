@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Building2, Layers, Home, ExternalLink, LogOut, Loader2 } from './icons/FlowbiteIcons';
+import { Building2, Layers, Home, ExternalLink, LogOut, Loader2, ArrowLeft } from './icons/FlowbiteIcons';
 import { API_ROOT_BASE } from '../services/api';
 import { StaffMember } from '../types';
 import { t } from '../i18n/en';
@@ -20,6 +20,11 @@ interface StaffPropertyPickerProps {
   // pick one here.
   user: { id: string | number; username: string; name?: string; role?: string };
   onLogout: () => void;
+  // Set only when this is shown mid-session (Header.tsx's Switch Property icon, for an
+  // already-authenticated owner/access_all_properties account) rather than as part of the
+  // login flow - gives this screen a way back to "stay where I was" that the login-flow
+  // usage (no session yet to go back to) never needs, so it stays undefined there.
+  onClose?: () => void;
 }
 
 // Shown after a staff member with `access_all_properties` logs in (see
@@ -32,6 +37,7 @@ export const StaffPropertyPicker: React.FC<StaffPropertyPickerProps> = ({
   tenantSlug,
   user,
   onLogout,
+  onClose,
 }) => {
   const [properties, setProperties] = useState<PickerProperty[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,12 +106,22 @@ export const StaffPropertyPicker: React.FC<StaffPropertyPickerProps> = ({
             </p>
           </div>
         </div>
-        <button
-          onClick={onLogout}
-          className="staff-property-picker__logout flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors cursor-pointer"
-        >
-          <LogOut className="w-3.5 h-3.5" /> {t('logout_button', 'Log Out')}
-        </button>
+        <div className="flex items-center gap-4">
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="staff-property-picker__back flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" /> {t('back_button', 'Back')}
+            </button>
+          )}
+          <button
+            onClick={onLogout}
+            className="staff-property-picker__logout flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" /> {t('logout_button', 'Log Out')}
+          </button>
+        </div>
       </div>
 
       <div className="staff-property-picker__body flex-1 max-w-5xl w-full mx-auto px-6 py-8">

@@ -448,8 +448,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     const addressVal = propertyAddress || g.address || '';
     const phoneVal = propertyPhone || g.phone || '';
     const mapsVal = propertyMapsLink || g.google_maps_link || '';
-    const upiVal = propertyUpiId || g.upi_id || '';
-    let qrVal = propertyUpiQrCodeUrl || (g as any).upi_qr_code_url || '';
+    const upiVal = (propertyUpiId || g.upi_id || 'payments@upi').trim();
+    const upiPaymentDeepLink = `upi://pay?pa=${encodeURIComponent(upiVal)}&pn=${encodeURIComponent(propertyName || 'Resort')}&cu=INR`;
+    let qrVal = propertyUpiQrCodeUrl || (g as any).upi_qr_code_url || `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(upiPaymentDeepLink)}`;
     if (qrVal && qrVal.startsWith('/') && typeof window !== 'undefined') {
       qrVal = window.location.origin + qrVal;
     }

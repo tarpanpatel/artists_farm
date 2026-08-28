@@ -455,7 +455,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
   };
 
   return (
-    <div className="space-y-6 service-requests-management__container">
+    <div data-tour="service-requests-board" className="space-y-6 service-requests-management__container">
       <PageHeader
         title={
           <span className="inline-flex items-center gap-2">

@@ -1380,6 +1380,7 @@ export const strings: Record<string, string> = {
   staff_picker_load_error: "Could not load properties for this account.",
   staff_picker_no_properties: "No active properties found for this business.",
   logout_button: "Log Out",
+  back_button: "Back",
 
   // Default Expenses Manager
   default_expenses_description: "Manage the 20 default expense categories. Changes cascade to all MultiKey properties.",
@@ -1406,6 +1407,8 @@ export const strings: Record<string, string> = {
   view_notifications_aria: "View notifications",
   install_app_tooltip: "Install App",
   install_app_aria: "Install app on this device",
+  switch_property_tooltip: "Switch property",
+  switch_property_aria: "Switch property",
   notifications_label: "Notifications",
   recent_service_requests_label: "Guest Service Requests",
   recently_served_orders_label: "Recently Served Orders",
