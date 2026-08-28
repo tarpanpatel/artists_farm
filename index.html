@@ -18,11 +18,11 @@
          this meta tag providing the safe-area geometry it reads from. -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Ground Code Resort Management</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%232563eb'/%3E%3Cpath d='M30 50 L45 65 L72 35' stroke='white' stroke-width='10' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E" />
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-    <link rel="shortcut icon" href="/favicon.ico" />
     <link rel="icon" type="image/png" sizes="32x32" href="/app-icons/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/app-icons/favicon-16x16.png" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/app-icons/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.json" />
     <!-- Mirrors manifest.php's background_color/theme_color (#0B84FF) here
          in the HTML head - without this, the OS's pre-paint transition frame
@@ -105,6 +105,33 @@
         #initial-loader__spinner { border-color: #1e293b; border-top-color: #60a5fa; }
       }
     </style>
+    <script>
+      // Dark-mode bootstrap (28 Aug 2026, root-caused live: "white bottom"/theme-flash
+      // reports on the boot screen). src/index.css configures Tailwind's `dark:` variant
+      // as CLASS-based (`@custom-variant dark (&:where(.dark, .dark *));`), not the
+      // default media-query strategy - but nothing anywhere in this codebase ever added
+      // that `.dark` class to <html>. Confirmed by grepping the entire src/ tree: no
+      // `classList.add('dark')`/`matchMedia` wiring exists at all (themeService.ts's
+      // `enableDarkModeToggle` flag is declared and defaulted but never read anywhere).
+      // Net effect: EVERY `dark:` utility class in the whole React app - thousands of
+      // them - was silently inert, always rendering light, no matter the system setting.
+      // The only thing that ever looked dark-mode-aware was this file's OWN separate
+      // `#initial-loader` CSS just above, which uses a plain `@media (prefers-color-
+      // scheme: dark)` block, completely unrelated to Tailwind's class-based config -
+      // so a dark-mode phone would show a correctly-dark boot screen, then flash to a
+      // permanently-light app the instant React took over (LoadingScreen.tsx included -
+      // its own `dark:from-slate-950 dark:to-slate-900` could never apply either).
+      // Runs synchronously, as early in <head> as possible, so the `.dark` class is
+      // already set before React's first paint - no flash on the React side from here
+      // on. main.tsx also listens for the OS setting changing mid-session (this inline
+      // script only runs once, at initial page load).
+      (function () {
+        try {
+          var isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          document.documentElement.classList.toggle('dark', !!isDark);
+        } catch (e) {}
+      })();
+    </script>
     <script>
       // Custom CSS override, injected via runtime DOM API rather than a
       // static <link> tag on purpose: Vite's HTML plugin treats a literal

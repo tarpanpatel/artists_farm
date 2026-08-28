@@ -20,6 +20,22 @@ import { UpdateAvailableBanner } from './components/UpdateAvailableBanner';
 import { ScrollToTopButton } from './components/ScrollToTopButton';
 import { setServiceWorkerRegistration } from './utils/serviceWorkerUpdate';
 
+// Keeps the `.dark` class (index.html's inline bootstrap script sets it once,
+// synchronously, before this module even runs) in sync for the rest of the tab's
+// lifetime - that script only runs once at initial page load, so without this
+// listener, toggling the OS theme while the PWA/tab is already open would leave the
+// whole React app stuck on whatever mode was active at boot. See index.html's own
+// comment for why this class-toggle exists at all (src/index.css's dark: variant is
+// class-based, not media-query-based, and nothing previously ever set this class).
+if (typeof window !== 'undefined' && window.matchMedia) {
+  const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  const applyDarkClass = (isDark: boolean) => {
+    document.documentElement.classList.toggle('dark', isDark);
+  };
+  applyDarkClass(darkModeQuery.matches);
+  darkModeQuery.addEventListener('change', (e) => applyDarkClass(e.matches));
+}
+
 // Error filtering - skip genuine noise only. This list previously also
 // matched "Cannot read property/properties" (the single most common real JS
 // crash), "is not defined", "not a constructor", "Invalid hook call", and
