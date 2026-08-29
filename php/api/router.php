@@ -560,7 +560,22 @@ if (!function_exists('syncTenantSuperAdminAcrossProperties')) {
 }
 
 // === Global Error & Exception Handlers ===
+// Registered AFTER logger.php's own set_error_handler/set_exception_handler (required at
+// the top of this file) - PHP's set_error_handler()/set_exception_handler() each replace
+// whatever was previously registered rather than chaining, so THIS handler - not
+// logger.php's - is the one actually active for the rest of every router.php request.
+// Kept as its own registration (not deleted/merged) because it does something
+// logger.php's doesn't: it always returns a clean JSON 500 on an uncaught exception,
+// so an API client gets a parseable error instead of a raw PHP fatal-error dump. But it
+// was missing logger.php's E_NOTICE/E_WARNING skip (found 29 Aug 2026 while tracking
+// down "Telescope sometimes shows nothing") - since this handler wins for the vast
+// majority of real traffic (anything through router.php), every routine PHP
+// notice/warning on every API call was logging to the 'php' portal, evicting genuinely
+// rare errors out of that portal's 300-entry cap far faster than intended.
 set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    if ($errno === E_NOTICE || $errno === E_USER_NOTICE || $errno === E_WARNING || $errno === E_USER_WARNING) {
+        return false;
+    }
     if (error_reporting() & $errno) {
         $level = 'ERROR';
         if ($errno == E_ERROR || $errno == E_PARSE) $level = 'FATAL';

@@ -18,9 +18,26 @@ if (!class_exists('TelescopeLogger')) {
         /**
          * Clear the file-backed telescope log store. Does not touch audit_logs -
          * that's real staff login/activity history, not debug telemetry.
+         *
+         * Goes through the same single-handle-plus-flock path as appendLog() (29
+         * Aug 2026) rather than a bare file_put_contents() - a reset landing in
+         * the middle of a concurrent appendLog() write used to race the same way
+         * appendLog() itself did against other appendLog() calls (see that
+         * method's own comment for the full write-up).
          */
         public static function clear() {
-            return @file_put_contents(self::$logFile, '[]') !== false;
+            $fp = @fopen(self::$logFile, 'c+');
+            if ($fp === false) {
+                return false;
+            }
+            $ok = false;
+            if (flock($fp, LOCK_EX)) {
+                $ok = ftruncate($fp, 0) && (fwrite($fp, '[]') !== false);
+                fflush($fp);
+                flock($fp, LOCK_UN);
+            }
+            fclose($fp);
+            return $ok;
         }
 
         /**
@@ -138,6 +155,36 @@ if (!class_exists('TelescopeLogger')) {
             ]);
         }
 
+        /**
+         * Read-modify-write logs.json under a SINGLE exclusive lock held across the
+         * whole cycle (29 Aug 2026, fixing the actual root cause of "Telescope
+         * sometimes shows nothing" - reported as a chronic, load-dependent flakiness).
+         *
+         * The previous version read the file, decoded it, appended in memory, then
+         * wrote it back with LOCK_EX only on the final file_put_contents() - the READ
+         * was unlocked. Under real concurrent traffic (every page load logs a
+         * 'requests' entry via router.php, every browser tab's JS crash beacons
+         * straight to this same file, multiple staff hitting the API at once), two
+         * requests could both read the same pre-append snapshot, each append their
+         * own new entry to their own in-memory copy, and then both write back -
+         * whichever process's write happened to land second silently overwrote the
+         * first's, discarding that entry with no error anywhere (file_put_contents
+         * still "succeeds": it wrote valid JSON, just without the log that lost the
+         * race). This is exactly a lost-update race, and it's inherently
+         * non-deterministic - it only bites under concurrent access, which is why the
+         * symptom was "sometimes it works, sometimes it doesn't" rather than a
+         * reproducible break.
+         *
+         * fopen('c+') + flock(LOCK_EX) held across the read AND the write closes this:
+         * every writer must acquire the same exclusive lock before it can even read,
+         * so the read a writer sees is always genuinely current (reflecting every
+         * write that came before it, not a stale snapshot), and no two processes can
+         * ever be inside this critical section at the same time. This does mean two
+         * concurrent Telescope-logging requests briefly queue behind each other
+         * (typically sub-millisecond for a file this size) rather than racing -
+         * correctness over raw throughput, which is the right tradeoff for a debug
+         * log that's supposed to be trustworthy.
+         */
         private static function appendLog($entry) {
             $file = self::$logFile;
             $dir = dirname($file);
@@ -145,19 +192,46 @@ if (!class_exists('TelescopeLogger')) {
                 @mkdir($dir, 0755, true);
             }
 
-            $logs = [];
-
-            if (file_exists($file)) {
-                $content = @file_get_contents($file);
-                if (!empty($content)) {
-                    $decoded = @json_decode($content, true);
-                    if (is_array($decoded)) {
-                        $logs = $decoded;
-                    }
-                }
-            } else {
-                @touch($file);
+            $isNewFile = !file_exists($file);
+            $fp = @fopen($file, 'c+');
+            if ($fp === false) {
+                return; // Can't open/create the file at all (permissions, disk) - nothing more to do.
+            }
+            if ($isNewFile) {
+                // Both the web server process (a real request) and a CLI cron process
+                // can be the first to ever create this file - world-writable so
+                // neither one locks the other out later, same as the file always did
+                // before this rewrite.
                 @chmod($file, 0666);
+            }
+
+            if (!flock($fp, LOCK_EX)) {
+                fclose($fp);
+                return;
+            }
+
+            $logs = [];
+            // PHP caches stat() results per-process/per-path - a long-lived PHP-FPM
+            // worker that already called filesize() on this exact path in an earlier
+            // request could otherwise see a stale (pre-write) size here, even though
+            // a different process rewrote the file since. clearstatcache() forces a
+            // real re-stat now that the lock guarantees no other writer is mid-write.
+            clearstatcache(true, $file);
+            $size = filesize($file);
+            if ($size > 0) {
+                $content = fread($fp, $size);
+                $decoded = ($content !== false && $content !== '') ? json_decode($content, true) : null;
+                if (is_array($decoded)) {
+                    $logs = $decoded;
+                } elseif (!empty($content)) {
+                    // Corrupted/non-JSON content in a non-empty file (e.g. a partial
+                    // write from an interrupted request under the old unlocked code
+                    // path, or an out-of-band edit) - preserve the evidence in a
+                    // sibling file instead of silently discarding the whole log
+                    // history on this write. Best-effort only; a failure here must
+                    // never block logging the current entry.
+                    @file_put_contents($file . '.corrupted-' . date('Ymd-His'), $content);
+                }
             }
 
             // Unshift new entry to top
@@ -185,7 +259,12 @@ if (!class_exists('TelescopeLogger')) {
                 }
             }
 
-            @file_put_contents($file, json_encode($capped, JSON_PRETTY_PRINT), LOCK_EX);
+            ftruncate($fp, 0);
+            rewind($fp);
+            fwrite($fp, json_encode($capped, JSON_PRETTY_PRINT));
+            fflush($fp);
+            flock($fp, LOCK_UN);
+            fclose($fp);
         }
 
         /**
