@@ -19,6 +19,24 @@
  */
 
 require_once __DIR__ . '/../config/schema_cache.php';
+require_once __DIR__ . '/../security/input_validator.php';
+
+function validateWalkInTabInput(array $input): array {
+    $validated = [];
+    if (isset($input['label']) && trim((string)$input['label']) !== '') {
+        $validated['label'] = InputValidator::validateString($input['label'], 1, 150);
+    }
+    if (isset($input['payment_method']) && trim((string)$input['payment_method']) !== '') {
+        $validated['payment_method'] = InputValidator::validateString($input['payment_method'], 1, 50);
+    }
+    if (isset($input['discount']) && $input['discount'] !== null && $input['discount'] !== '') {
+        $validated['discount'] = InputValidator::validateFloat($input['discount'], 0);
+    }
+    if (isset($input['gst_rate']) && $input['gst_rate'] !== null && $input['gst_rate'] !== '') {
+        $validated['gst_rate'] = InputValidator::validateFloat($input['gst_rate'], 0, 100);
+    }
+    return $validated;
+}
 
 if (!function_exists('ensureWalkInTabSchema')) {
     function ensureWalkInTabSchema($pdo) {
@@ -111,7 +129,14 @@ function handleWalkInTabRequests($pdo, $request_method, $action, $propertyId) {
 
         case 'open_walk_in_tab':
             if ($request_method === 'POST') {
-                $input = json_decode(file_get_contents('php://input'), true);
+                $input = json_decode(file_get_contents('php://input'), true) ?? [];
+                try {
+                    $input = array_merge($input, validateWalkInTabInput($input));
+                } catch (Exception $eVal) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => $eVal->getMessage()]);
+                    break;
+                }
                 $label = trim((string)($input['label'] ?? '')) ?: null;
                 try {
                     $stmt = $pdo->prepare("INSERT INTO walk_in_tabs (property_id, label, status, opened_at) VALUES (?, ?, 'open', NOW())");
@@ -128,7 +153,14 @@ function handleWalkInTabRequests($pdo, $request_method, $action, $propertyId) {
         // entry must land together or not at all.
         case 'bill_walk_in_tab':
             if ($request_method === 'POST') {
-                $input = json_decode(file_get_contents('php://input'), true);
+                $input = json_decode(file_get_contents('php://input'), true) ?? [];
+                try {
+                    $input = array_merge($input, validateWalkInTabInput($input));
+                } catch (Exception $eVal) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => $eVal->getMessage()]);
+                    break;
+                }
                 $tabId = (int)($input['tab_id'] ?? 0);
                 $paymentMethod = $input['payment_method'] ?? 'Cash';
                 $discount = max(0, (float)($input['discount'] ?? 0));

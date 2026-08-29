@@ -1,21 +1,27 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Plus,
-  Edit2,
-  Trash2,
-  Loader2,
-  ScrollText,
   ShieldCheck,
+  Plus,
+  Trash2,
   AlertTriangle,
+  Clock,
+  CheckCircle,
+  FileText,
+  Calendar,
+  Building,
+  Upload,
+  X,
+  ExternalLink,
+  Pencil,
+  Paperclip,
+  Loader2,
+  Lock,
+  ScrollText,
   XCircle,
   Search,
   Landmark,
   Hash,
-  X,
-  Paperclip,
-  FileText,
   Image as ImageIcon,
-  ExternalLink,
 } from './icons/FlowbiteIcons';
 import { Drawer } from 'flowbite-react';
 import { apiFetch, API_ROOT_BASE, uploadDocumentDB } from '../services/api';
@@ -452,7 +458,7 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
                     <span />
                   )}
                   <div className="flex items-center gap-1.5">
-                    <Button variant="primary" size="sm" onClick={() => openEditModal(license)} leftIcon={<Edit2 className="w-3.5 h-3.5 shrink-0" />}>
+                    <Button variant="secondary" size="sm" onClick={() => openEditModal(license)} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
                       {t('edit_button', 'Edit')}
                     </Button>
                     <button

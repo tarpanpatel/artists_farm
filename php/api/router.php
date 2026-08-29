@@ -153,6 +153,7 @@ if (!function_exists('isModuleAvailable')) {
 }
 require_once __DIR__ . '/db_export.php';
 require_once __DIR__ . '/../licenses/licenses.php';
+require_once __DIR__ . '/../rates/rate_rules.php';
 require_once __DIR__ . '/../theme/theme_settings.php';
 
 // Conditional (23 Aug 2026, found live on staging): this was an unconditional
@@ -213,6 +214,7 @@ if (!function_exists('markRoomReady')) {
     require_once __DIR__ . '/../housekeeping/housekeeping.php';
 }
 require_once __DIR__ . '/../security/rate_limiter.php';
+require_once __DIR__ . '/../security/unified_login.php';
 require_once __DIR__ . '/../security/csrf_handler.php';
 require_once __DIR__ . '/../utils/mailer.php';
 require_once __DIR__ . '/../utils/welcome_template.php';
@@ -1178,352 +1180,14 @@ switch ($action) {
             markSchemaVerified('schema_login_tables');
         }
 
-        $cleanDigits = preg_replace('/\D/', '', $rawIdentifier);
-        $mobileNumber = strlen($cleanDigits) >= 10 ? substr($cleanDigits, -10) : $cleanDigits;
-
-        // SECURITY (11 Aug 2026): a non-numeric identifier (e.g. a username with no digits at
-        // all) makes $mobileNumber an empty string, which used to still get bound into the LIKE
-        // clause below as '%' . '' = '%' - matching ANY row with a non-null phone_number instead
-        // of failing to match, so a username-style login attempt could land on an arbitrary
-        // unrelated account (real passcode still required, but wrong-account risk either way).
-        // Only include the phone-matching clause/params at all when there's an actual digit
-        // string to match against.
-        $hasPhoneCandidate = $mobileNumber !== '';
-
-        try {
-            // 1. Search in users table (Platform & Tenant Admins)
-            if ($hasPhoneCandidate) {
-                $stmt = $pdo->prepare("
-                    SELECT id, username, full_name, phone_number, password, passcode, role, is_platform_admin, default_tenant_id, must_change_passcode
-                    FROM users
-                    WHERE username = ? OR phone_number = ? OR username = ? OR (phone_number IS NOT NULL AND phone_number LIKE ?)
-                    LIMIT 1
-                ");
-                $stmt->execute([$rawIdentifier, $rawIdentifier, $mobileNumber, '%' . $mobileNumber]);
-            } else {
-                $stmt = $pdo->prepare("
-                    SELECT id, username, full_name, phone_number, password, passcode, role, is_platform_admin, default_tenant_id, must_change_passcode
-                    FROM users
-                    WHERE username = ?
-                    LIMIT 1
-                ");
-                $stmt->execute([$rawIdentifier]);
-            }
-            $user = $stmt->fetch();
-
-            if ($user) {
-                $storedPasscode = $user['passcode'] ?? '';
-                $storedPassword = $user['password'] ?? '';
-
-                // SECURITY (10 Aug 2026): removed "|| $passcode === '123456'" - that clause was a
-                // permanent universal skeleton key for every account, forever, even after the real
-                // passcode was changed. It was also redundant for its only legitimate purpose (new
-                // accounts default to a real stored passcode of '123456', already covered by the
-                // first clause below) - so removing it is a pure security fix, not a behavior change
-                // for first-login.
-                $isPasscodeValid = ($storedPasscode && $storedPasscode === $passcode) ||
-                                   ($storedPassword && password_verify($passcode, $storedPassword)) ||
-                                   ($storedPassword && $storedPassword === $passcode);
-
-                if ($isPasscodeValid) {
-                    $is_platform_admin = (bool)($user['is_platform_admin'] ?? false);
-                    $has_default_tenant = !empty($user['default_tenant_id']);
-
-                    $role = $user['role'];
-                    if ($is_platform_admin) {
-                        $role = 'root_admin';
-                    } elseif ($has_default_tenant) {
-                        $role = 'super_admin';
-                    }
-
-                    $_SESSION['user_id'] = $user['id'];
-                    $_SESSION['username'] = $user['username'];
-                    $_SESSION['role'] = $role;
-                    $_SESSION['is_platform_admin'] = $is_platform_admin;
-                    $_SESSION['default_tenant_id'] = $user['default_tenant_id'] ?? null;
-                    $_SESSION['full_name'] = $user['full_name'] ?: $user['username'];
-
-                    appSetSessionCookie(session_id());
-                    $rateLimiter->resetAttempts($rateLimitClientId, 'login_user');
-
-                    // Role-aware message (fixed 25 Aug 2026, same live report as the pre-check
-                    // fix above): this used to hardcode "Staff User {username}" even when the
-                    // account logging in was Root Admin/Super Admin - a real Root Dashboard
-                    // login was recorded, just mislabeled in a way that made it easy to miss/
-                    // dismiss as a routine staff row instead of recognizing it as "me, logging
-                    // into the Root Dashboard".
-                    $loginRoleLabel = $role === 'root_admin' ? 'Root Admin' : ($role === 'super_admin' ? 'Super Admin' : ($role ?: 'User'));
-                    $loginSuccessMsg = "{$loginRoleLabel} {$user['username']} logged into system";
-                    TelescopeLogger::log(
-                        'login',
-                        'SUCCESS',
-                        $loginSuccessMsg,
-                        "Login Controller [Success]",
-                        ['username' => $user['username'], 'role' => $role, 'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1', 'status' => 'Success']
-                    );
-                    try {
-                        $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-                        $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
-                        $stmtAudit = $pdo->prepare("INSERT INTO audit_logs (property_id, action, timestamp, user, ip_address, user_agent, status, module) VALUES (?, ?, NOW(), ?, ?, ?, 'Success', 'login')");
-                        $stmtAudit->execute([1, $loginSuccessMsg, $user['username'], $ip, $ua]);
-                    } catch (Exception $ea) {
-                        // SECURITY/DIAGNOSTICS (24 Aug 2026, live report: "I logged in twice
-                        // recently but it's not showing" in Telescope's Login Portal) - this catch
-                        // used to be completely empty, so if this INSERT ever failed (schema
-                        // drift, constraint violation, connection hiccup), the login still
-                        // succeeded normally for the user but left ZERO trace anywhere - not even
-                        // in Telescope's own SQL Error portal, since the exception never reached
-                        // TelescopeLogger at all. That's exactly the "not showing" symptom with no
-                        // way to diagnose it. Now at least the NEXT occurrence is visible instead
-                        // of silently invisible - login itself must still never fail because of a
-                        // logging problem, so this stays non-fatal.
-                        if (class_exists('TelescopeLogger')) {
-                            TelescopeLogger::log('sql', 'SQL Error', $ea->getMessage(), "Login audit_logs INSERT failed for user {$user['username']}", ['username' => $user['username']]);
-                        }
-                    }
-
-                    // Property-switcher fields (28 Aug 2026, same capability check_session
-                    // computes - see that case's own comment) - added here too so the icon
-                    // appears immediately after a fresh login, not only after the next
-                    // check_session/reload picks it up.
-                    $ownerTenantSlug = null;
-                    if (!empty($user['default_tenant_id'])) {
-                        try {
-                            $ownerTSlugStmt = $pdo->prepare("SELECT slug FROM tenants WHERE id = ? LIMIT 1");
-                            $ownerTSlugStmt->execute([$user['default_tenant_id']]);
-                            $ownerTenantSlug = $ownerTSlugStmt->fetchColumn() ?: null;
-                        } catch (Exception $e) {}
-                    }
-
-                    echo json_encode([
-                        'success' => true,
-                        'message' => 'Login successful',
-                        'user' => [
-                            'id' => $user['id'],
-                            'username' => $user['username'],
-                            'name' => $user['full_name'] ?: $user['username'],
-                            'role' => $role,
-                            'is_platform_admin' => $is_platform_admin,
-                            'default_tenant_id' => $user['default_tenant_id'] ?? null,
-                            'must_change_passcode' => (bool)($user['must_change_passcode'] ?? false),
-                            'can_switch_properties' => !empty($user['default_tenant_id']) && $ownerTenantSlug ? true : false,
-                            'tenant_id' => $user['default_tenant_id'] ?? null,
-                            'tenant_slug' => $ownerTenantSlug,
-                        ]
-                    ]);
-                    exit;
-                }
-            }
-
-            // 2. Search in staff_users table
-            if ($hasPhoneCandidate) {
-                $stmt = $pdo->prepare("
-                    SELECT id, username, phone_number, full_name, role, passcode, property_id, access_all_properties
-                    FROM staff_users
-                    WHERE (username = ? OR phone_number = ? OR username = ? OR (phone_number IS NOT NULL AND phone_number LIKE ?)) AND status = 'Active'
-                    LIMIT 1
-                ");
-                $stmt->execute([$rawIdentifier, $rawIdentifier, $mobileNumber, '%' . $mobileNumber]);
-            } else {
-                $stmt = $pdo->prepare("
-                    SELECT id, username, phone_number, full_name, role, passcode, property_id, access_all_properties
-                    FROM staff_users
-                    WHERE username = ? AND status = 'Active'
-                    LIMIT 1
-                ");
-                $stmt->execute([$rawIdentifier]);
-            }
-            $staff = $stmt->fetch();
-
-            if ($staff) {
-                // SECURITY (10 Aug 2026): same fix as the users-table check above - staff without
-                // a passcode already default to '123456' on the line above, so that alone covers
-                // first-login. The removed "|| $passcode === '123456'" was a standing skeleton key
-                // for every staff account regardless of their actual set passcode.
-                $storedPasscode = $staff['passcode'] ?? '123456';
-                if ($storedPasscode === $passcode) {
-                    // "Access All Properties" staff (11 Aug 2026): don't lock the session to
-                    // this one row's property_id - that's exactly the bug this feature fixes
-                    // (LIMIT 1 above can fetch any of a multi-property staff's rows, so picking
-                    // THIS row's property_id would be arbitrary). Instead resolve their tenant
-                    // once (any of their rows works - staff can never span tenants, enforced at
-                    // the point access_all_properties gets turned on) and let them choose which
-                    // property to enter from a picker; isPropertyAccessAllowed() then permits
-                    // any property under that tenant, not just one.
-                    if (!empty($staff['access_all_properties'])) {
-                        $tenantStmt = $pdo->prepare("
-                            SELECT p.tenant_id, t.slug as tenant_slug
-                            FROM properties p
-                            JOIN tenants t ON t.id = p.tenant_id
-                            WHERE p.id = ?
-                            LIMIT 1
-                        ");
-                        $tenantStmt->execute([$staff['property_id']]);
-                        $tenantRow = $tenantStmt->fetch();
-
-                        $_SESSION['user_id'] = $staff['id'];
-                        $_SESSION['username'] = $staff['username'];
-                        $_SESSION['role'] = $staff['role'] ?: 'Staff';
-                        $_SESSION['staff_access_all_properties'] = true;
-                        $_SESSION['staff_tenant_id'] = $tenantRow['tenant_id'] ?? null;
-                        $_SESSION['full_name'] = $staff['full_name'] ?: $staff['username'];
-                        // Deliberately NOT setting $_SESSION['property_id'] here -
-                        // isPropertyAccessAllowed() (access_control.php) sets it as a
-                        // side effect once they actually navigate into a property.
-
-                        appSetSessionCookie(session_id());
-                        $rateLimiter->resetAttempts($rateLimitClientId, 'login_user');
-
-                        // GAP FIXED (25 Aug 2026, same live report as the two fixes above): unlike
-                        // the users-table (admin) branch, this staff_users branch never wrote a
-                        // success row to audit_logs/TelescopeLogger at all - ordinary staff logins
-                        // were completely invisible in the Login Portal, not just mislabeled.
-                        try {
-                            $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-                            $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
-                            $stmtAudit = $pdo->prepare("INSERT INTO audit_logs (property_id, action, timestamp, user, ip_address, user_agent, status, module) VALUES (?, ?, NOW(), ?, ?, ?, 'Success', 'login')");
-                            $stmtAudit->execute([$staff['property_id'], "Staff User {$staff['username']} logged into system", $staff['username'], $ip, $ua]);
-                        } catch (Exception $ea) {
-                            if (class_exists('TelescopeLogger')) {
-                                TelescopeLogger::log('sql', 'SQL Error', $ea->getMessage(), "Login audit_logs INSERT failed for staff {$staff['username']}", ['username' => $staff['username']]);
-                            }
-                        }
-
-                        echo json_encode([
-                            'success' => true,
-                            'message' => 'Login successful',
-                            'user' => [
-                                'id' => $staff['id'],
-                                'username' => $staff['username'],
-                                'name' => $staff['full_name'] ?: $staff['username'],
-                                'role' => $staff['role'] ?: 'Staff',
-                                'is_platform_admin' => false,
-                                'default_tenant_id' => null,
-                                'must_change_passcode' => false,
-                                'access_all_properties' => true,
-                                'can_switch_properties' => !empty($tenantRow['tenant_id']) && !empty($tenantRow['tenant_slug']),
-                                'tenant_id' => $tenantRow['tenant_id'] ?? null,
-                                'tenant_slug' => $tenantRow['tenant_slug'] ?? null,
-                            ]
-                        ]);
-                        exit;
-                    }
-
-                    $_SESSION['user_id'] = $staff['id'];
-                    $_SESSION['username'] = $staff['username'];
-                    $_SESSION['role'] = $staff['role'] ?: 'Staff';
-                    $_SESSION['property_id'] = $staff['property_id'];
-                    $_SESSION['full_name'] = $staff['full_name'] ?: $staff['username'];
-
-                    appSetSessionCookie(session_id());
-                    $rateLimiter->resetAttempts($rateLimitClientId, 'login_user');
-
-                    // GAP FIXED (25 Aug 2026) - see identical comment on the access_all_properties
-                    // branch above; this is the same fix for the regular (single-property) staff path.
-                    try {
-                        $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-                        $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
-                        $stmtAudit = $pdo->prepare("INSERT INTO audit_logs (property_id, action, timestamp, user, ip_address, user_agent, status, module) VALUES (?, ?, NOW(), ?, ?, ?, 'Success', 'login')");
-                        $stmtAudit->execute([$staff['property_id'], "Staff User {$staff['username']} logged into system", $staff['username'], $ip, $ua]);
-                    } catch (Exception $ea) {
-                        if (class_exists('TelescopeLogger')) {
-                            TelescopeLogger::log('sql', 'SQL Error', $ea->getMessage(), "Login audit_logs INSERT failed for staff {$staff['username']}", ['username' => $staff['username']]);
-                        }
-                    }
-
-                    echo json_encode([
-                        'success' => true,
-                        'message' => 'Login successful',
-                        'user' => [
-                            'id' => $staff['id'],
-                            'username' => $staff['username'],
-                            'name' => $staff['full_name'] ?: $staff['username'],
-                            'role' => $staff['role'] ?: 'Staff',
-                            'is_platform_admin' => false,
-                            'default_tenant_id' => null,
-                            'must_change_passcode' => false,
-                        ]
-                    ]);
-                    exit;
-                }
-            }
-
-            // 3. Emergency admin fallback (last-resort root login when all real accounts are inaccessible)
-            $emergencyPassword = getenv('EMERGENCY_ADMIN_PASSWORD');
-            if (!empty($emergencyPassword) && $passcode === $emergencyPassword) {
-                $_SESSION['user_id'] = 1;
-                $_SESSION['username'] = $rawIdentifier ?: 'admin';
-                $_SESSION['role'] = 'root_admin';
-                $_SESSION['is_platform_admin'] = true;
-                $_SESSION['full_name'] = $rawIdentifier ?: 'admin';
-
-                appSetSessionCookie(session_id());
-                $rateLimiter->resetAttempts($rateLimitClientId, 'login_user');
-
-                // This path is a full root-admin bypass of every real credential check, so it
-                // always gets an audit row - a security-sensitive login must never be the
-                // ONE kind of login with no trail at all (added 25 Aug 2026).
-                try {
-                    $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-                    $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
-                    $stmtAudit = $pdo->prepare("INSERT INTO audit_logs (property_id, action, timestamp, user, ip_address, user_agent, status, module) VALUES (?, ?, NOW(), ?, ?, ?, 'Success', 'login')");
-                    $stmtAudit->execute([1, 'Emergency Admin ' . ($rawIdentifier ?: 'admin') . ' logged into system', $rawIdentifier ?: 'admin', $ip, $ua]);
-                } catch (Exception $ea) {
-                    if (class_exists('TelescopeLogger')) {
-                        TelescopeLogger::log('sql', 'SQL Error', $ea->getMessage(), 'Login audit_logs INSERT failed for emergency admin login', []);
-                    }
-                }
-                TelescopeLogger::log(
-                    'login',
-                    'SUCCESS',
-                    'Emergency Admin ' . ($rawIdentifier ?: 'admin') . ' logged into system',
-                    'Login Controller [Emergency Fallback]',
-                    ['username' => $rawIdentifier ?: 'admin', 'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1', 'status' => 'Success']
-                );
-
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Emergency admin login successful',
-                    'user' => [
-                        'id' => 1,
-                        'username' => $rawIdentifier ?: 'admin',
-                        'name' => $rawIdentifier ?: 'admin',
-                        'role' => 'root_admin',
-                        'is_platform_admin' => true,
-                        'default_tenant_id' => null,
-                        'must_change_passcode' => false,
-                    ]
-                ]);
-                exit;
-            }
-
-            http_response_code(401);
-            TelescopeLogger::log(
-                'login',
-                'WARNING',
-                "Staff User {$rawIdentifier} failed login attempt",
-                "Login Controller [Failed]",
-                ['identifier' => $rawIdentifier, 'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1', 'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown', 'status' => 'Failed']
-            );
-            try {
-                $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-                $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
-                $stmtAudit = $pdo->prepare("INSERT INTO audit_logs (property_id, action, timestamp, user, ip_address, user_agent, status, module) VALUES (?, ?, NOW(), ?, ?, ?, 'Failed', 'login')");
-                $stmtAudit->execute([1, "Staff User {$rawIdentifier} failed login attempt", $rawIdentifier, $ip, $ua]);
-            } catch (Exception $ea) {}
-
-            echo json_encode(['success' => false, 'message' => 'Invalid mobile number/username or 6-digit passcode']);
-        } catch (Exception $e) {
-            http_response_code(500);
-            TelescopeLogger::log(
-                'login',
-                'ERROR',
-                "Login error for {$rawIdentifier}: " . $e->getMessage(),
-                "Login Controller [Exception]",
-                ['identifier' => $rawIdentifier, 'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1']
-            );
-            echo json_encode(['success' => false, 'message' => 'Login error: ' . $e->getMessage()]);
-        }
+        // Credential-check/session-set/response-build logic lives in
+        // performUnifiedLogin() (php/security/unified_login.php), shared with
+        // php/api/authenticate.php - see that file's own header comment for why
+        // this was extracted (29 Aug 2026, real behavioral drift found between
+        // the two previously-independent copies).
+        $loginResult = performUnifiedLogin($pdo, $rawIdentifier, $passcode, $rateLimiter, $rateLimitClientId);
+        http_response_code($loginResult['status_code']);
+        echo json_encode($loginResult['body']);
         exit;
 
     // Fast admin/root/tenant passcode verification
@@ -3761,6 +3425,14 @@ switch ($action) {
     case 'delete_license':
     case 'check_expiring_licenses':
         handleLicenseRequests($pdo, $request_method, $action, $propertyId);
+        break;
+
+    // --- RATE RULES & PRICING ---
+    case 'get_rate_rules':
+    case 'save_rate_rule':
+    case 'delete_rate_rule':
+    case 'update_pricing_mode':
+        handleRateRuleRequests($pdo, $request_method, $action, $propertyId);
         break;
 
     // --- PROPERTY ---

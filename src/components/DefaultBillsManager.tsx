@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Receipt, AlertCircle, Loader2, Search, CheckCircle2, FileText } from './icons/FlowbiteIcons';
+import { Plus, Pencil, Trash2, Receipt, AlertCircle, Loader2, Search, CheckCircle2, FileText } from './icons/FlowbiteIcons';
 import { Drawer, Alert } from 'flowbite-react';
 import { X } from './icons/FlowbiteIcons';
 import { useConfirm } from './ConfirmDialogContext';
@@ -293,24 +293,28 @@ export const DefaultBillsManager: React.FC<DefaultBillsManagerProps> = ({ onLogo
                       <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight line-clamp-1 pl-4">{item.description}</p>
                     )}
                     <div className="flex gap-1">
-                      <button
+                      <Button
+                        variant="secondary"
+                        size="xs"
                         onClick={() => {
                           setEditingItem(item);
                           setEditForm({ label: item.label, description: item.description || '' });
                         }}
-                        className="flex-1 p-1 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded text-[11px] font-medium transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                        leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
+                        className="flex-1 justify-center"
                       >
-                        <Edit2 className="w-3 h-3" />
                         Edit
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        variant="danger"
+                        size="xs"
                         onClick={() => handleDeleteItem(item)}
                         disabled={saving}
-                        className="flex-1 p-1 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded text-[11px] font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-1 cursor-pointer"
+                        leftIcon={<Trash2 className="w-3.5 h-3.5 shrink-0" />}
+                        className="flex-1 justify-center"
                       >
-                        <Trash2 className="w-3 h-3" />
                         Delete
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -322,11 +326,11 @@ export const DefaultBillsManager: React.FC<DefaultBillsManagerProps> = ({ onLogo
 
       {/* Edit Modal */}
       <Drawer open={!!editingItem} onClose={() => { if (!saving) setEditingItem(null); }} position="right" className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between">
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-          <span className="flex items-center gap-2 font-bold text-gray-900 dark:text-white text-base">
-            <Edit2 className="w-4 h-4 text-blue-600" />
-            Edit Bill Item
-          </span>
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-2">
+            <Pencil className="w-4 h-4 text-blue-600" />
+            <h3 className="text-base font-bold text-gray-900 dark:text-white">Edit Bill Item</h3>
+          </div>
           <button
             type="button"
             onClick={() => { if (!saving) setEditingItem(null); }}

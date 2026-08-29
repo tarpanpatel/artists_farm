@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, AlertCircle, Loader2, Search, CheckCircle2, RefreshCw, Package } from './icons/FlowbiteIcons';
+import { Plus, Pencil, Trash2, AlertCircle, Loader2, Search, CheckCircle2, RefreshCw, Package } from './icons/FlowbiteIcons';
 import { Drawer, Alert } from 'flowbite-react';
 import { X } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';
@@ -406,26 +406,28 @@ export const SystemStockManager: React.FC<SystemStockManagerProps> = ({ onLogout
                         </span>
                       </div>
                       <div className="flex gap-1">
-                        <button
+                        <Button
+                          variant="secondary"
+                          size="xs"
                           onClick={() => {
                             setEditingItem(item);
                             setEditForm({ name: item.name, categoryId: item.category_id || 1, unit: item.unit || 'Kg' });
                           }}
-                          className="flex-1 p-1 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded text-[11px] font-medium transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                          title={t('edit_button', 'Edit')}
+                          leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
+                          className="flex-1 justify-center"
                         >
-                          <Edit2 className="w-3 h-3" />
                           {t('edit_button', 'Edit')}
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          variant="danger"
+                          size="xs"
                           onClick={() => handleDeleteItem(item.id, item.name)}
                           disabled={saving}
-                          className="flex-1 p-1 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded text-[11px] font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-1 cursor-pointer"
-                          title={t('delete_button', 'Delete')}
+                          leftIcon={<Trash2 className="w-3.5 h-3.5 shrink-0" />}
+                          className="flex-1 justify-center"
                         >
-                          <Trash2 className="w-3 h-3" />
                           {t('delete_button', 'Delete')}
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   </div>

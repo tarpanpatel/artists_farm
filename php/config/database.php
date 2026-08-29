@@ -103,7 +103,7 @@ $server_name = $_SERVER['SERVER_NAME'] ?? $_SERVER['HTTP_HOST'] ?? null;
 // this file's own "never silently fall through to production" principle
 // (see the staging-DB-isolation comment right below).
 if ($server_name === null && php_sapi_name() === 'cli') {
-    $scriptPath = str_replace('\\', '/', __FILE__);
+    $scriptPath = strtolower(str_replace('\\', '/', __FILE__));
     if (str_contains($scriptPath, '/staging.ground-code.com/')) {
         $server_name = 'staging.ground-code.com';
     } elseif (str_contains($scriptPath, '/ground-code.com/')) {

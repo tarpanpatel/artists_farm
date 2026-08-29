@@ -4,6 +4,31 @@
  * Function: Persistent checkout receipt storage and retrieval from billing_receipts table.
  */
 
+require_once __DIR__ . '/../security/input_validator.php';
+
+function validateReceiptInput(array $input): array {
+    $validated = [];
+    if (isset($input['guestName']) && trim((string)$input['guestName']) !== '') {
+        $validated['guestName'] = InputValidator::validateString($input['guestName'], 1, 255);
+    }
+    if (isset($input['roomNumber']) && trim((string)$input['roomNumber']) !== '') {
+        $validated['roomNumber'] = InputValidator::validateString($input['roomNumber'], 1, 50);
+    }
+    if (isset($input['payment_method']) && trim((string)$input['payment_method']) !== '') {
+        $validated['payment_method'] = InputValidator::validateString($input['payment_method'], 1, 50);
+    }
+    if (isset($input['grandTotal']) && $input['grandTotal'] !== null && $input['grandTotal'] !== '') {
+        $validated['grandTotal'] = InputValidator::validateFloat($input['grandTotal'], 0);
+    }
+    if (isset($input['roomTotal']) && $input['roomTotal'] !== null && $input['roomTotal'] !== '') {
+        $validated['roomTotal'] = InputValidator::validateFloat($input['roomTotal'], 0);
+    }
+    if (isset($input['foodTotal']) && $input['foodTotal'] !== null && $input['foodTotal'] !== '') {
+        $validated['foodTotal'] = InputValidator::validateFloat($input['foodTotal'], 0);
+    }
+    return $validated;
+}
+
 function handleReceiptRequests($pdo, $request_method, $action, $propertyId) {
     require_once __DIR__ . '/../config/schema_cache.php';
     
@@ -54,7 +79,14 @@ function handleReceiptRequests($pdo, $request_method, $action, $propertyId) {
 
         case 'save_receipt':
             if ($request_method === 'POST') {
-                $input = json_decode(file_get_contents('php://input'), true);
+                $input = json_decode(file_get_contents('php://input'), true) ?? [];
+                try {
+                    $input = array_merge($input, validateReceiptInput($input));
+                } catch (Exception $eVal) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => $eVal->getMessage()]);
+                    break;
+                }
                 try {
                     // Same reasoning as add_guest in guests.php: the receipt row and its
                     // settlement ledger entry must land together or not at all, or a

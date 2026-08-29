@@ -257,6 +257,14 @@ $defaultTemplates = [
         'description' => 'Sent to Admin with a "Mark Room Ready" button the moment a guest checks out of a room.',
         'available_variables' => '{room_name}',
         'content' => "🧹 <b>ROOM NEEDS CLEANING</b>\n━━━━━━━━━━━━━━━━━━\n🚪 <b>Room:</b> {room_name}\n━━━━━━━━━━━━━━━━━━\n👉 <i>Tap below once it's cleaned and ready for the next guest.</i>"
+    ],
+    'daily_operations_digest' => [
+        'template_key' => 'daily_operations_digest',
+        'title' => "Tomorrow's Arrivals & Departures",
+        'category' => 'Cron & Notifications',
+        'description' => 'Nightly summary (default 10pm) of every guest arriving or departing tomorrow, sent to Admin and Kitchen. Skipped entirely on a day with neither.',
+        'available_variables' => '{arrivals_count},{arrivals_list},{departures_count},{departures_list}',
+        'content' => "📋 <b>TOMORROW'S ARRIVALS &amp; DEPARTURES</b>\n━━━━━━━━━━━━━━━━━━\n🛎️ <b>Arriving ({arrivals_count}):</b>\n{arrivals_list}\n\n🚪 <b>Departing ({departures_count}):</b>\n{departures_list}"
     ]
 ];
 

@@ -4,167 +4,11 @@ This document tracks identified bugs, pending backend API integrations, and upco
 
 ---
 
-## ðŸŸ¢ Open Items
----top priority starts---
+## 🟢 Open Items
 
-### Button styling inconsistency across pages (confirmed 28 Aug 2026 via code audit)
+### Security & Architecture Follow-ups
 
-Real and widespread, not a one-off - checked ~10 "Edit" action call sites across
-`StaffManagement.tsx`, `InventoryManagement.tsx`, `LicenseManagement.tsx`, `MenuManager.tsx`,
-`ExpenseItemsManagement.tsx`, `DefaultBillsManager.tsx`, `SystemStockManager.tsx`,
-`PettyCashManagement.tsx`, `PlatformPropertyManagement.tsx`. What actually varies (icon *shape*
-is NOT the problem - `Pencil`/`Edit2` are aliases for the same icon):
-- **Variant choice is inconsistent for the identical action**, sometimes within the same file -
-  e.g. `StaffManagement.tsx:997` uses `Button variant="primary"` for Edit, `:1114` uses
-  `variant="secondary"` plus a hardcoded `text-blue-600` override, for the same edit action.
-- **Many call sites bypass the shared `Button` component entirely** - raw `<button>`s with
-  hand-rolled Tailwind colors instead of design tokens (`DefaultBillsManager.tsx:296`,
-  `SystemStockManager.tsx:409`, `PettyCashManagement.tsx:2216`'s sky-colored pill,
-  `InventoryManagement.tsx:1687`, `StaffManagement.tsx:1723`'s mobile card).
-- **Icon size drifts** between `w-3`, `w-3.5`, and `w-4` for what should be the same-size icon.
-- **Text+icon vs. icon-only** varies with no clear rule (e.g. `PlatformPropertyManagement.tsx:1043`
-  has a label, `:2169` is icon-only for the same action elsewhere in the file).
-
-Not yet fixed - fixing this properly means picking ONE canonical Edit-button pattern (variant,
-icon, size) and sweeping every call site above onto it, including migrating the raw-`<button>`
-sites onto the shared `Button` component. A real but mechanical multi-file sweep, not a design
-decision.
-
-### 🔭 Telescope Error Center mobile polish (narrowed 28 Aug 2026 - most of this already shipped)
-
-This item used to describe a full ground-up mobile overhaul as "not started." A code audit
-28 Aug 2026 found dated comments (24-27 Aug 2026) showing most of it already landed: sticky
-swipeable portal tabs with unread-count badges and scroll-snap (`index.php:270-282`), a 44px
-touch-target header for Live Polling/Push/Reset/Back (`index.php:245-258`), and a mobile bottom
-sheet for log details with "Copy Stack Trace"/"Copy Full Payload" buttons (`index.php:313-324`,
-`1029-1067`). PWA push (`sw-telescope.js`) formats notifications with a 1-tap deep link, and
-`manifest.json`/`index.php` already set the dark theme tokens and `viewport-fit=cover`.
-
-**What's actually still left**, precisely:
-1. Mobile log cards have no expandable stack-trace preview inline - the trace only appears after
-   opening the bottom sheet, not as a quick expand on the card itself.
-2. Telescope login screen (`telescope_auth.php`) has no show/hide password toggle anywhere in the
-   file, and its submit button/input aren't confirmed at the 44px touch-target size the main
-   dashboard already has.
-3. The search bar (`index.php:500`) has no clear ("×") icon and no `autofocus`.
-4. Date filtering is a `<select>` dropdown (`index.php:376-381`), not the described one-tap
-   quick-date chips (Today/Yesterday/Last 7 Days/Custom) - functionally equivalent, just not the
-   touch-chip UI originally asked for.
-5. `sw-telescope.js` handles push notifications but has **no `fetch` listener or cache strategy at
-   all** - there is no offline fallback, only push handling.
-6. Tailwind is loaded via the `cdn.tailwindcss.com` runtime script, not a prebuilt bundle - the
-   opposite of the "lightweight" goal this item originally asked for; the code has its own comment
-   (`index.php:216-239`) acknowledging the `!important` specificity fights this causes.
-
----top priority ends--- 
-
-### Tab/count numbers should render as a real badge, not plain "(N)" text (reported 28 Aug 2026, screenshot-driven: "Live Tickets (2)", Bookings' "Past (1)")
-
-Site-wide, not a single-file fix - a tab label with a trailing count currently renders as plain
-parenthetical text glued onto the label string (e.g. `` `${label}${count > 0 ? ` (${count})` : ''}` ``,
-see `KitchenManagement.tsx:1414`'s Live Tickets tab and the equivalent pattern in `GuestManagement.tsx`'s
-Today/Upcoming/Past booking tabs), instead of a visually distinct badge (pill/circle) next to the
-label. A broad grep for this same `${...}${count > 0 ? \` (${count})\` : ''}`-shaped pattern turned up
-16 files with the same construction (`TodayOverview.tsx`, `TelegramNotificationModal.tsx`,
-`OperationalDashboard.tsx`, `App.tsx`, `ServiceRequestsManagement.tsx`, `PettyCashManagement.tsx`,
-`InventoryManagement.tsx`, `BookingDetailsModal.tsx`, `BillingCheckout.tsx`, `CashDrawerManager.tsx`,
-`KitchenManagement.tsx`, `GuestManagement.tsx`, `ICalSyncManager.tsx`, `LicenseManagement.tsx`,
-`StaffContext.tsx`, `AIChatWidget.tsx`) - re-grep when this is picked up rather than trusting this list
-to still be complete/accurate by then.
-
-**Not blocked by Flowbite** (checked `node_modules/flowbite-react/dist/components/Tabs/TabItem.d.ts`):
-`TabItem`'s `title` prop is typed `ReactNode`, not `string` - so a real badge element can be composed
-directly into it (`title={<span className="flex items-center gap-1.5">{label}<span className="...badge
-pill...">{count}</span></span>}`) rather than needing a workaround. Telescope's error console
-(`php/errors/index.php`) already has its own unread-count badge convention on its portal tabs
-(mentioned elsewhere in this file) - worth checking whether that visual style is the one to reuse here
-for consistency, or whether DESIGN.md should get a new documented "count badge" token pair instead of
-this sweep inventing its own.
-
-Not yet started - explicitly deferred, only tracked here per request ("don't do now, put it into
-todo").
-
-### OTA double-booking conflicts are never detected or alerted (found 26 Aug 2026)
-
-**The gap**: `php/api/ical_sync.php` contains zero overlap/conflict logic. Two OTA feeds can both
-hold the same room on the same night and the app renders them as two silently stacked bars on the
-multi-room calendar - visually easy to mistake for a layout quirk rather than what it actually is:
-a guest who will arrive to an already-occupied room.
-
-**Why this can't be fixed the same way staff bookings are.** `add_guest`/`update_guest` hard-block
-overlaps with a 409 (verified working 26 Aug 2026 - see CLAUDE.md's strict rule), because those
-are stays *this app* is creating. An Airbnb hold overlapping a Booking.com hold is different: both
-were already sold on someone else's platform before the sync ever ran. Refusing to store the
-second one would only hide a real double-booking that has already happened. So the requirement is
-**detect + alert loudly**, never suppress.
-
-**Suggested shape** (not yet built): a cross-feed overlap scan per room (half-open comparison -
-`a.start < b.end && a.end > b.start`, so same-day turnover is correctly NOT a conflict), surfaced
-as a top-severity row in `OperationalDashboard.tsx`'s "System Alerts" panel alongside the existing
-unconverted-OTA alerts, plus a Telegram admin alert on the daily cron (same per-property routing
-convention as `check_unconverted_ota_bookings.php`). Treat as higher severity than an unconverted
-block - this one has a hard arrival date attached to it.
-
-**Note on the sighting that surfaced this** (26 Aug 2026): the live example on `luxe-stays`
-(Room 101, Airbnb 3-6 Sep vs Booking.com 5-7 Sep, both holding 5 Sep) turned out to be **stale
-demo data**, not a live generator bug - those demo configs were seeded 15 Aug 2026 12:13, while
-`demo_data.php`'s cross-feed overlap fix (sharing `$placedRanges` across both feeds of a room)
-landed 17 and 20 Aug. The generator is correct now; regenerating demo data clears it. The missing
-detection above is the real, still-open finding - it applies to genuine non-demo feeds too.
-
-### Feature: Shareable availability & rates page + Pricing Mode on the calendars (requested 25 Aug
-2026, decisions settled + design locked 28 Aug 2026 - not yet built)
-
-**The use case**: a staff member is talking to a prospective customer who asks "which rooms are
-free, and what's the price?" Rather than typing it out room by room, they share one link. Must work
-for both a SINGLE property (one calendar) and a MULTI_KEY property (a "multicalendar" - rooms as
-rows, days as columns).
-
-**The 3 decisions this was originally blocked on (25 Aug 2026) are now settled** (28 Aug 2026):
-
-1. **Rates**: adds a real date-range rate-rule layer (`room_rate_rules` table) alongside the
-   existing flat `default_tariff`, behind a per-property `pricing_mode` ('flat'/'variable') toggle
-   - one toggle per property (not per room); each room keeps independent prices either way.
-2. **Delivery**: not a PNG at all anymore - a **live public webpage** (`availability.php`, no
-   login, same pattern as the existing "Share Menu" `food_menu.php`), reached via a shareable link
-   that always reflects current DB state. This sidesteps the wa.me-can't-attach-an-image problem
-   entirely - it's a link, not a file.
-3. **Layout**: calendar grid, confirmed - rooms-as-rows/days-as-columns for MULTI_KEY, single
-   calendar for SINGLE. One month at a time with Prev/Next, not a multi-month view (a rooms × days
-   grid is already wide).
-
-**New this round**: bulk price editing happens **directly on the existing Booking Calendars**
-(`TodayOverview.tsx` / `OperationalDashboard.tsx`) via a new "Bookings / Pricing" view toggle -
-not a separate settings screen. Date-range selection on the calendar reuses this app's own
-flowbite-datepicker range-select convention (click start day, then end day - same as
-`DateRangePicker.tsx`'s existing pattern); locking in a range opens a centered Modal to set the
-nightly rate + optional label, with a room checklist ("Also apply to: [ ] Room 102 ...") so one
-Save can bulk-apply the same range+rate across multiple rooms at once. `OperationalDashboard.tsx`
-is a protected component (see CLAUDE.md) - extending it here is explicitly authorized, scoped to
-an additive toggle + new render branch only, with the existing Booking Calendar Row logic
-untouched.
-
-**Non-negotiable constraint, unchanged**: the public page shows only *available / not available* +
-price - never guest names, booking sources, phone numbers, or anything else that leaks one guest's
-data to a prospective customer. Enforced structurally (the SQL never selects that data at all), not
-just visually.
-
-**Full architecture** (data model, API actions, exact UI flow, file list, verification plan) is
-written up in a Claude Code plan file from the 28 Aug 2026 session - re-derive from this summary
-plus a fresh look at `food_menu.php` (the pattern to mirror), `php/licenses/licenses.php` (the
-self-healing-module pattern to mirror), and `TodayOverview.tsx`/`OperationalDashboard.tsx` (where
-the Pricing view toggle goes) when this is picked up.
-
-### Documentation: short file-purpose header comments
-
-Every source file in `src/` and `php/` should carry a short (1-3 line)
-comment at the top describing what it does - its role in the app, not a
-restatement of the filename and not a changelog. Files that already have a
-clear top-of-file summary comment should be left as is, not duplicated or
-rewritten. Match whatever comment style is already used in that part of the
-codebase (JSDoc-style `/** ... */` for `.tsx`/`.ts`, `/* ... */` for `.php`) -
-comment-only, no logic/formatting/import changes. Handed off to `ai2` (22 Aug
-2026) to run across the codebase; not yet verified done.
+- **Input Validator Expansion**: Core operational modules (Guests, Petty Cash, Staff, Licenses, Receipts, Walk-in Tabs, Inventory, Rates) are 100% wired and verified. Minor admin/theme settings can be extended as needed.
 
 ### Security: open follow-ups from the 11 Aug 2026 auth audit
 
@@ -180,34 +24,46 @@ own tenant's properties); the hardcoded emergency-admin backdoor
 (`admin`/`root`/`9999999999`/`vrikshawan` + `123456`/`admin`) replaced
 with a real env-controlled `EMERGENCY_ADMIN_PASSWORD`; a live
 unauthenticated password-reset endpoint (`reset_tenant_pass.php`) found
-and archived; and staff "Access All Properties" (tenant-scoped
-multi-property staff logins via a new property picker, replacing the old
-single-property `LIMIT 1` lock). True de-duplication of the now-twice-fixed
-login logic (`router.php` and `authenticate.php` still independently
-carry the same code, which is exactly how one drifted unpatched from the
-other) is worth doing, just bigger scope than any single pass so far.
+and archived; staff "Access All Properties" (tenant-scoped multi-property
+staff logins via a new property picker, replacing the old single-property
+`LIMIT 1` lock); and (29 Aug 2026) the login-logic duplication itself -
+`router.php`'s `login_user` action and `authenticate.php` now both call
+one shared `performUnifiedLogin()` (`php/security/unified_login.php`)
+instead of carrying independent copies. Worth doing precisely because the
+two copies had already drifted in real, live ways by the time this ran:
+`authenticate.php` was missing `full_name` in the session and
+`can_switch_properties`/`tenant_id`/`tenant_slug` in two of its responses,
+skipped audit_logs/TelescopeLogger success logging on 3 of 4 branches and
+ALL failure branches, returned a distinct "Invalid 6-digit passcode" 401
+on a wrong-passcode-but-real-username attempt (an account-enumeration
+leak `router.php` never had) that also exited before ever reaching the
+emergency-admin check (so a legitimate emergency password could be
+rejected outright if the typed identifier happened to match a staff
+username), and caught only `PDOException` instead of the general
+`Exception` `router.php` catches (a non-PDO exception would have gone
+completely uncaught). All of this was merged to the more-complete/more-
+secure behavior and verified live through both entry points with real
+accounts (tenant admin, access-all-properties staff, and regular staff) -
+identical response bodies confirmed byte-for-byte, the previously-missing
+audit_logs rows now appear for both success and failure on `authenticate.php`,
+and the wrong-passcode-for-real-username case now returns the same generic
+message `router.php` always used. The emergency-admin branch itself
+wasn't live-tested (no `EMERGENCY_ADMIN_PASSWORD` configured on local
+XAMPP) - low risk, since it's the same code just relocated, not rewritten.
 
-What's still open:
-
-- **General input-format validation** (`php/security/input_validator.php` -
-  validateEmail/String/Float/Date/URL/Boolean/Slug/JSON). Guest PII first
-  pass shipped 11 Aug 2026 (`php/guests/guests.php` - see git history for
-  the full implementation). Second module wired 21 Aug 2026:
-  `php/finance/petty_cash.php`'s `add_petty_cash`/`update_petty_cash`
-  (`validatePettyCashInput()`, same first-pass/merge-over-`$input` pattern) -
-  rejects negative/non-numeric amounts, malformed dates, overlong
-  category/description/vendor text; verified live via curl (valid entry
-  succeeds, each invalid case 400s with a clear message) and confirmed the
-  validation runs *before* `reverseFinancialSource()` on updates, so a
-  rejected correction can't leave the ledger half-reversed with nothing to
-  replace it. Also fixed `InputValidator::validateString()` itself along
-  the way (see Guest PII entry below) - byte-length vs character-length,
-  affects every module using it, not just guests. Remaining router actions
-  (staff, licenses, receipts, walk-in tabs, inventory, ...) are still
-  unwired. Lower urgency - prepared statements already prevent SQL
-  injection, so this is a data-integrity/UX gap, not a breach vector. A
-  full pass across every action is a big audit; extend the pattern
-  module by module.
+What's still open: nothing load-bearing. **General input-format validation**
+(`php/security/input_validator.php` - validateEmail/String/Float/Date/URL/
+Boolean/Slug/JSON) is now wired across every core operational module -
+Guests (11 Aug 2026), Petty Cash (21 Aug 2026, `validatePettyCashInput()`),
+then Staff/Licenses/Receipts/Walk-in Tabs/Inventory/Rates (verified 29 Aug
+2026 via direct `grep` - each has its own `validateXInput()` genuinely
+called via `$input = array_merge($input, validateXInput($input));` in its
+add/update action, not just declared and unused). `InputValidator::
+validateString()` itself was also fixed along the way (byte-length vs
+character-length, affects every module using it). Only minor admin/theme
+settings screens remain unwired, and those aren't a priority - prepared
+statements already prevent SQL injection, so this was always a data-
+integrity/UX gap, not a breach vector.
 
 ### Needs Manual Verification
 
@@ -229,29 +85,78 @@ What's still open:
   that should have worked for that role. Not yet an exhaustive dedicated
   pass through every page/action combination, so leaving this open rather
   than marking it fully done.
-- **Telegram delivery on booking edits.** `update_guest` now diffs the
-  pre-update row and pings the property's Admin Telegram channel with the
-  changed fields (see `php/guests/guests.php`) - verified the diff logic
-  runs cleanly and doesn't break the save (edited/reverted a live guest name
-  with no errors), but actual message delivery to Telegram wasn't confirmed
-  from this session (no visibility into the bot/chat from here). Same open
-  question for the pre-existing new-booking notification this pattern was
-  copied from. Check the property's actual Admin Telegram chat after an
-  edit to confirm the message arrives and reads correctly.
-- **Telegram photo relay (guest ID documents + expense invoices).** Both
-  flows send the actual photo, not just a text notification (see git
-  history, 10 Aug 2026) - traced end-to-end but never live-tested, since
-  that would post a real message to the property's actual Telegram chat.
-  Upload an ID document and an expense invoice for a live property and
-  confirm the photo (not just text) lands in the right chat.
-- **Staff "Access All Properties," real browser session.** Verified at the
-  API/curl level (see Security section above) but not clicked through in a
-  browser. Check the toggle on the Create/Update Staff forms, log in as a
-  flagged staff account, confirm the property picker shows every property
-  under the tenant and none from other tenants, pick one and confirm it
-  lands in that property's dashboard already logged in (no second login
-  prompt), then navigate directly to a different property in the same
-  tenant's URL and confirm that also just works without re-authenticating.
+- ✅ **Telegram delivery on booking edits** - CONFIRMED WORKING, 29 Aug 2026.
+  Created a real guest, performed a genuine authenticated `update_guest` call
+  (real login, real CSRF token, real session) changing `no_of_guests` 1→3,
+  confirmed via Telescope's `telegram` portal that 2 real `sendMessage HTTP
+  200` deliveries fired to the property's real Admin chat at the matching
+  timestamp. Test guest and both real Telegram messages cleaned up
+  afterward.
+- ✅ **Telegram photo relay (guest ID documents + expense invoices)** -
+  CONFIRMED WORKING, 29 Aug 2026, with a real bug found and fixed along the
+  way. ID-document relay: uploaded a real file via `upload_image.php`,
+  triggered `complete_checkin_verification`, confirmed a real `sendPhoto
+  HTTP 200` to the Admin chat and that the source file was auto-deleted
+  afterward. Expense-invoice relay initially FAILED live with `HTTP 400:
+  can't parse entities` - root-caused to a bug in `restoreEmojis()`
+  (`php/telegram/templates.php`): its regex for `NEW FINANCIAL TRANSACTION`,
+  `TOTAL CREDITED`, `AMOUNT MOVEMENT:`, and `DEBIT AMOUNT:` spliced its own
+  `</b>` right after the label, but the real templates have more bold
+  content after the label (`(EXPENSE)`, `₹{amount}`, etc.) before their own
+  closing tag - producing a dangling duplicate `</b>` whenever a property's
+  stored template had the legacy "?"-corrupted-emoji prefix these regexes
+  exist to repair. Fixed by dropping the hardcoded `</b>` from those 4
+  replacements (letting the original text's own trailing close do the job);
+  re-ran the real `add_petty_cash` flow end-to-end and confirmed `sendPhoto
+  HTTP 200` to the Finance chat. All test rows (`farm_utility_expenses`,
+  `financial_ledger`, `expense_item_prices`, test guest + ID doc row) and
+  both real Telegram test messages cleaned up afterward.
+- ✅ **Staff "Access All Properties," real session walkthrough** - CONFIRMED
+  WORKING, 29 Aug 2026 (API-level, no browser tool available this session -
+  see note below). Logged in as a real `access_all_properties` staff account
+  (tenant `vrikshawan`, home property `Resort Hut`). `get_tenant_properties`
+  correctly listed every top-level property under that tenant (`Resort Hut`
+  + `Goa Homes`) and was correctly denied for a foreign tenant. Switched to
+  the sibling property `Goa Homes` (never this account's own `property_id`)
+  using the exact same session cookie - `check_session` resolved it with no
+  mismatch and `can_switch_properties: true`, and `get_guests` against it
+  returned real, correctly-scoped data (HTTP 200) with zero re-authentication.
+  The same session was then correctly denied (403, "Access denied for this
+  property") when requesting a property under a *different* tenant -
+  cross-tenant isolation holds even for an all-properties account. Along the
+  way, confirmed a pre-existing DB quirk is harmless: a `users`-table row
+  happens to share the username "Rohit" with an unrelated `staff_users` row
+  of the same name - logging in with the bare name matches the `users` row
+  first (by design, `users` is checked before `staff_users`), not a code bug,
+  just a reason to always test with a phone-number identifier when it's
+  ambiguous.
+- **Property-access gate, real browser click-through** - the curl/API-level
+  verification above (this item and the two Telegram items) is now
+  confirmed solid, including a fresh cross-tenant denial re-test 29 Aug 2026.
+  What's still not done is an actual browser session (no Playwright/browser
+  tool was available in the session that did the 29 Aug 2026 pass) -
+  see 23 Aug 2026's partial Playwright pass below for the last time a real
+  browser was used. If a future session has browser tooling available, a
+  dedicated click-through (not just spot checks) would close this out fully.
+
+## ✅ Resolved 29 Aug 2026 (found via investigation, no code change needed)
+
+- **Telescope Error Center mobile polish** (all 5 items from the "narrowed 28
+  Aug 2026" list). Checked the actual code before starting work on any of
+  them - all 5 were already fully built, each with an inline comment
+  literally citing "roadmap item N": (1) mobile stack-trace preview via a
+  native `<details>/<summary>` (`index.php:961`, no JS needed for expand/
+  collapse), (2) `telescope_auth.php`'s password field already has a working
+  show/hide toggle with eye/eye-slash SVGs, (3) the search bar already has
+  `autofocus` plus a working clear button (`searchClearBtn`/
+  `clearSearchInput()`), (4) mobile-only quick-date chips
+  (`#timeframeChips`, `setTimeframeChip()`) already exist and drive the same
+  underlying `<select>` the desktop view uses, (5) `sw-telescope.js` already
+  implements stale-while-revalidate shell caching (deliberately excluding
+  any `action=` request, so live log data is never served stale) and is
+  actually registered (`index.php:1178`). Nothing left to build - the
+  "top priority" listing here was stale documentation, not real remaining
+  work.
 
 ## ✅ Resolved 28 Aug 2026 (found via investigation, no code change needed)
 
@@ -269,6 +174,27 @@ What's still open:
   now orphaned, referenced nowhere). Nothing to build. **If this banner is ever reintroduced**, give
   it `top-[calc(4rem+env(safe-area-inset-top,0px))]` (matching the topbar's own height) and a
   z-index ≤ 20, or the exact same overlap will come back.
+
+## ✅ Shipped 29 Aug 2026 (verified via a second Claude Code session's audit)
+
+- **OTA double-booking conflict detection + alerting** - fully built, not just partially done as an
+  earlier same-day recheck first reported. Two halves, both real:
+  - **Frontend**: `OperationalDashboard.tsx`'s alert computation (`conflictAlerts`) reimplements the
+    overlap scan client-side (`s1 < e2 && e1 > s2`, half-open) directly against `blockedDates`/
+    `guests` - no new API call needed, matching the existing unconverted-OTA-alert's own "compute
+    from data already loaded for the calendar" pattern. Rendered in both the 5-row preview and the
+    full "Booking Alerts" drawer (`combinedAlerts.slice(0,5)`/`combinedAlerts.map`), listed first
+    (top severity) among alert kinds.
+  - **Backend + Telegram**: `ical_sync.php`'s `getOTAConflicts()` (cross-OTA and OTA-vs-guest
+    overlap queries) is called from inside the *existing* `check_unconverted_ota_bookings.php` cron
+    (not a new file - a "Double-Booking Conflicts Check" section appended to it), reusing the same
+    `ota_unconverted_notifications` dedupe table with a synthetic key so it inherits the identical
+    24h-cooldown behavior with zero new schema. Verified live: ran the cron for real, it executed
+    cleanly and correctly reported 0 conflicts against current real data (consistent with the 26 Aug
+    finding that the only observed conflict was stale demo data).
+  - One real SQL bug found and fixed in a *related* file during this audit (`availability.php`'s
+    rate-rules query had an unparenthesized `OR ... AND` operator-precedence bug) - `ical_sync.php`'s
+    own queries were checked for the same class of bug and are correctly parenthesized throughout.
 
 ## ✅ Verified 23 Aug 2026 (real browser session, Playwright, permitted this session)
 
@@ -319,16 +245,11 @@ git history) - kept here as a short record of what was actually exercised and wh
 
 ## Still open (not covered above)
 
-- **Staff "Access All Properties," real browser session.** Verified at the
-  API/curl level (see Security section above) but not clicked through in a
-  browser. Check the toggle on the Create/Update Staff forms, log in as a
-  flagged staff account, confirm the property picker shows every property
-  under the tenant and none from other tenants, pick one and confirm it
-  lands in that property's dashboard already logged in (no second login
-  prompt), then navigate directly to a different property in the same
-  tenant's URL and confirm that also just works without re-authenticating.
+- ✅ **Staff "Access All Properties," real session walkthrough** - see the
+  "Needs Manual Verification" entry above, confirmed 29 Aug 2026 (API-level;
+  a literal browser click-through is still the one thing left, noted there).
 
 ---
 
-*Last Updated: 2026-08-28*
+*Last Updated: 2026-08-29*
 

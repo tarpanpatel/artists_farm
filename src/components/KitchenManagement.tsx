@@ -1411,7 +1411,16 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         >
           <TabItem
             active={activeTab === 'kds'}
-            title={`${t('live_active_orders_label', 'Live Tickets')}${pendingOrdersCount > 0 ? ` (${pendingOrdersCount})` : ''}`}
+            title={
+              <span className="inline-flex items-center gap-1.5">
+                <span>{t('live_active_orders_label', 'Live Tickets')}</span>
+                {pendingOrdersCount > 0 && (
+                  <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300">
+                    {pendingOrdersCount}
+                  </span>
+                )}
+              </span>
+            }
           />
           <TabItem
             active={activeTab === 'new_order'}

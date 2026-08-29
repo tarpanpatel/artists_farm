@@ -5,6 +5,31 @@
  * Single source of truth: staff_users table for ALL staff data (directory + permissions).
  */
 
+require_once __DIR__ . '/../security/input_validator.php';
+
+function validateStaffInput(array $input): array {
+    $validated = [];
+    if (isset($input['fullName']) && trim((string)$input['fullName']) !== '') {
+        $validated['fullName'] = InputValidator::validateString($input['fullName'], 1, 150);
+    }
+    if (isset($input['name']) && trim((string)$input['name']) !== '') {
+        $validated['name'] = InputValidator::validateString($input['name'], 1, 150);
+    }
+    if (isset($input['role']) && trim((string)$input['role']) !== '') {
+        $validated['role'] = InputValidator::validateString($input['role'], 1, 50);
+    }
+    if (isset($input['upiId']) && trim((string)$input['upiId']) !== '') {
+        $validated['upiId'] = InputValidator::validateString($input['upiId'], 1, 100);
+    }
+    if (isset($input['monthlySalary']) && $input['monthlySalary'] !== null && $input['monthlySalary'] !== '') {
+        $validated['monthlySalary'] = InputValidator::validateFloat($input['monthlySalary'], 0);
+    }
+    if (isset($input['dailyWage']) && $input['dailyWage'] !== null && $input['dailyWage'] !== '') {
+        $validated['dailyWage'] = InputValidator::validateFloat($input['dailyWage'], 0);
+    }
+    return $validated;
+}
+
 function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
     // Auto-create staff_users and payees tables
     try {
@@ -140,7 +165,14 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
 
         case 'add_user':
             if ($request_method === 'POST') {
-                $input = json_decode(file_get_contents('php://input'), true);
+                $input = json_decode(file_get_contents('php://input'), true) ?? [];
+                try {
+                    $input = array_merge($input, validateStaffInput($input));
+                } catch (Exception $eVal) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => $eVal->getMessage()]);
+                    break;
+                }
                 $username = $input['username'] ?? ($input['name'] ?? '');
                 $passcode = $input['passcode'] ?? '';
                 if (!preg_match('/^\d{10}$/', $username)) {
@@ -217,7 +249,14 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
 
         case 'update_user':
             if ($request_method === 'POST') {
-                $input = json_decode(file_get_contents('php://input'), true);
+                $input = json_decode(file_get_contents('php://input'), true) ?? [];
+                try {
+                    $input = array_merge($input, validateStaffInput($input));
+                } catch (Exception $eVal) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => $eVal->getMessage()]);
+                    break;
+                }
                 try {
                     // Fetch existing user
                     $existing = null;

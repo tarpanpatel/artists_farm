@@ -503,11 +503,29 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
           >
             <TabItem
               active={activeTab === 'pending'}
-              title={`Pending${pending.length ? ` (${pending.length})` : ''}`}
+              title={
+                <span className="inline-flex items-center gap-1.5">
+                  <span>Pending</span>
+                  {pending.length > 0 && (
+                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300">
+                      {pending.length}
+                    </span>
+                  )}
+                </span>
+              }
             />
             <TabItem
               active={activeTab === 'fulfilled'}
-              title={`Fulfilled${fulfilled.length ? ` (${fulfilled.length})` : ''}`}
+              title={
+                <span className="inline-flex items-center gap-1.5">
+                  <span>Fulfilled</span>
+                  {fulfilled.length > 0 && (
+                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
+                      {fulfilled.length}
+                    </span>
+                  )}
+                </span>
+              }
             />
           </Tabs>
         </div>

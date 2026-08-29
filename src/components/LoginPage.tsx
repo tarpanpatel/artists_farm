@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Alert } from 'flowbite-react';
-import { AlertCircle, Lock, ShieldCheck, Mail, CheckCircle2, ArrowLeft, Loader2, Delete, Sparkles } from './icons/FlowbiteIcons';
+import { AlertCircle, Lock, ShieldCheck, Mail, CheckCircle2, ArrowLeft, Loader2, Backspace, Sparkles } from './icons/FlowbiteIcons';
 import { Input } from './Input';
 import { t } from '../i18n/en';
 
@@ -448,16 +448,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
 
       <div className="w-full bg-white rounded-lg shadow-sm dark:border md:mt-0 sm:max-w-md xl:p-0 dark:bg-gray-800 dark:border-gray-700">
         <div className="p-6 space-y-4 md:space-y-6 sm:p-8">
-          <div className="space-y-1">
-            <h1 className="text-xl font-bold leading-tight tracking-tight text-gray-900 md:text-2xl dark:text-white">
-              {isTerminal ? t('terminal_authorization_heading', 'Sign in to Terminal') : t('sign_in_heading', 'Sign in to your account')}
-            </h1>
-            {isTerminal && (
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {t('terminal_authorization_subtitle')}
-              </p>
-            )}
-          </div>
+          <h1 className="text-xl font-bold leading-tight tracking-tight text-gray-900 md:text-2xl dark:text-white">
+            {isTerminal ? t('terminal_authorization_heading', 'Sign in to Terminal') : t('sign_in_heading', 'Sign in to your account')}
+          </h1>
 
           <form onSubmit={handleLogin} ref={loginFormRef} className="space-y-4 md:space-y-6">
             {error && (
@@ -557,7 +550,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
                   onClick={handleBackspace}
                   className="py-2.5 text-xs font-semibold bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 hover:text-amber-600 transition-colors cursor-pointer"
                 >
-                  <Delete className="w-4 h-4 mx-auto" />
+                  <Backspace className="w-4 h-4 mx-auto" />
                 </button>
               </div>
             )}

@@ -1,7 +1,3 @@
-/**
- * Staff Property Switcher Modal
- * Enables multi-property staff users to switch active property contexts seamlessly.
- */
 import React, { useEffect, useState } from 'react';
 import { Building2, Layers, Home, ExternalLink, LogOut, Loader2, ArrowLeft } from './icons/FlowbiteIcons';
 import { API_ROOT_BASE } from '../services/api';

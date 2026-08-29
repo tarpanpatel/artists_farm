@@ -579,6 +579,91 @@ class ICalSyncManager {
     }
 
     /**
+     * Cross-feed OTA double-booking overlap scan per room/property.
+     * Identifies:
+     * 1. Overlaps between two distinct synced OTA events on the same room (e1.id < e2.id).
+     * 2. Overlaps between an unconverted synced OTA event and a non-cancelled confirmed guest booking.
+     */
+    public function getOTAConflicts($propertyId = null): array {
+        try {
+            $scopeIds = [];
+            if ($propertyId !== null) {
+                $propertyId = intval($propertyId);
+                $scopeIds = [$propertyId];
+                $roomStmt = $this->pdo->prepare("SELECT id FROM properties WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM'");
+                $roomStmt->execute([$propertyId]);
+                foreach ($roomStmt->fetchAll(PDO::FETCH_COLUMN) as $roomId) {
+                    $scopeIds[] = (int)$roomId;
+                }
+            }
+
+            $whereScope1 = "";
+            $whereScope2 = "";
+            $scopeParams = [];
+            if (!empty($scopeIds)) {
+                $placeholders = implode(',', array_fill(0, count($scopeIds), '?'));
+                $whereScope1 = "AND c1.property_id IN ($placeholders)";
+                $whereScope2 = "AND (g.room_id IN ($placeholders) OR g.property_id IN ($placeholders))";
+                $scopeParams = $scopeIds;
+            }
+
+            // 1. Cross-OTA collisions on the same room
+            $queryOta = "SELECT e1.id as event1_id, e1.event_title as title1, e1.event_start as start1, e1.event_end as end1,
+                                e1.external_event_id as ext1, c1.property_id as room_id, c1.service_name as source1, c1.service_type as service1,
+                                e2.id as event2_id, e2.event_title as title2, e2.event_start as start2, e2.event_end as end2,
+                                e2.external_event_id as ext2, c2.service_name as source2, c2.service_type as service2,
+                                p.name as room_name, parent.name as parent_name,
+                                'ota_ota' as conflict_type
+                         FROM ical_synced_events e1
+                         JOIN ical_sync_configs c1 ON e1.sync_config_id = c1.id
+                         JOIN ical_synced_events e2 ON e1.id < e2.id
+                         JOIN ical_sync_configs c2 ON e2.sync_config_id = c2.id AND c1.property_id = c2.property_id
+                         JOIN properties p ON p.id = c1.property_id
+                         LEFT JOIN properties parent ON parent.id = p.parent_property_id
+                         WHERE e1.sync_status = 'synced' AND e2.sync_status = 'synced'
+                         AND e1.event_start < e2.event_end AND e1.event_end > e2.event_start
+                         AND e1.event_end >= CURDATE()
+                         $whereScope1
+                         ORDER BY e1.event_start ASC";
+
+            $stmtOta = $this->pdo->prepare($queryOta);
+            $stmtOta->execute($scopeParams);
+            $otaConflicts = $stmtOta->fetchAll();
+
+            // 2. OTA event vs Confirmed Guest Booking collision on the same room
+            $queryGuest = "SELECT e.id as event1_id, e.event_title as title1, e.event_start as start1, e.event_end as end1,
+                                  e.external_event_id as ext1, c.property_id as room_id, c.service_name as source1, c.service_type as service1,
+                                  g.id as guest_id, g.guest_name as guest_name, g.checkin_date as guest_checkin, g.expected_checkout as guest_checkout,
+                                  g.status as guest_status,
+                                  p.name as room_name, parent.name as parent_name,
+                                  'ota_guest' as conflict_type
+                           FROM ical_synced_events e
+                           JOIN ical_sync_configs c ON e.sync_config_id = c.id
+                           JOIN guests g ON (g.room_id = c.property_id OR (g.room_id IS NULL AND g.property_id = c.property_id))
+                           JOIN properties p ON p.id = c.property_id
+                           LEFT JOIN properties parent ON parent.id = p.parent_property_id
+                           WHERE e.sync_status = 'synced'
+                           AND g.status NOT IN ('Cancelled', 'CheckedOut')
+                           AND (g.ical_external_event_id IS NULL OR g.ical_external_event_id != e.external_event_id)
+                           AND g.checkin_date < DATE(e.event_end) AND g.expected_checkout > DATE(e.event_start)
+                           AND e.event_end >= CURDATE()
+                           $whereScope2
+                           ORDER BY e.event_start ASC";
+
+            $stmtGuest = $this->pdo->prepare($queryGuest);
+            $stmtGuest->execute($scopeParams);
+            $guestConflicts = $stmtGuest->fetchAll();
+
+            return [
+                'status' => 'success',
+                'data' => array_merge($otaConflicts, $guestConflicts),
+            ];
+        } catch (Exception $e) {
+            return ['status' => 'error', 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
      * Self-healing create of the dedupe table
      * php/cron/check_unconverted_ota_bookings.php uses to avoid re-sending
      * the same Telegram alert every run - see that file. Not needed by any
@@ -676,6 +761,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         case 'get_blocked_dates':
             $response = $manager->getBlockedDates($currentPropertyId);
             break;
+        case 'get_ota_conflicts':
+            $response = $manager->getOTAConflicts($currentPropertyId);
+            break;
     }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = json_decode(file_get_contents('php://input'), true) ?? $_POST;
@@ -713,6 +801,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             break;
         case 'get_blocked_dates':
             $response = $manager->getBlockedDates($currentPropertyId);
+            break;
+        case 'get_ota_conflicts':
+            $response = $manager->getOTAConflicts($currentPropertyId);
             break;
     }
 }

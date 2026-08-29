@@ -16,7 +16,10 @@ import {
   ChevronUp,
   ChevronDown,
   Globe,
+  DollarSign,
+  Share2,
 } from './icons/FlowbiteIcons';
+import { RateRuleModal } from './RateRuleModal';
 import { Guest } from '../types';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
@@ -29,7 +32,7 @@ import {
   GUEST_STATUS_ACTIVE_LEGACY,
   GUEST_STATUS_CHECKEDOUT_LEGACY,
 } from '../constants/guestStatus';
-import { getPropertySlug } from '../services/api';
+import { getPropertySlug, fetchRateRulesDB, RateRule } from '../services/api';
 import { GuestManagement } from './GuestManagement';
 import { CheckinVerificationModal } from './CheckinVerificationModal';
 import { BookingDetailsModal } from './BookingDetailsModal';
@@ -200,8 +203,42 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
     reservation_url?: string;
     source?: string;
     source_label?: string;
+    room_id?: number | string;
   }>>([]);
   const [otaConversionTarget, setOtaConversionTarget] = useState<{ block: (typeof blockedDates)[number]; blockedDateStrings: string[] } | null>(null);
+
+  // Dynamic Date-Range Pricing & Rates State
+  const [calendarViewMode, setCalendarViewMode] = useState<'bookings' | 'pricing'>('bookings');
+  const [rateRules, setRateRules] = useState<RateRule[]>([]);
+  const [pricingMode, setPricingMode] = useState<'flat' | 'variable'>('flat');
+  const [propertyDefaultTariff, setPropertyDefaultTariff] = useState<number | null>(null);
+  const [showRateRuleModal, setShowRateRuleModal] = useState(false);
+  const [selectedRateRuleStartDate, setSelectedRateRuleStartDate] = useState<string | undefined>(undefined);
+  const [selectedRateRuleEndDate, setSelectedRateRuleEndDate] = useState<string | undefined>(undefined);
+
+  const loadRateRules = async () => {
+    const data = await fetchRateRulesDB();
+    setRateRules(data.rules);
+    setPricingMode(data.pricing_mode);
+    if (data.default_tariff !== null) setPropertyDefaultTariff(data.default_tariff);
+  };
+
+  useEffect(() => {
+    loadRateRules();
+  }, [roomId]);
+
+  const getDayPrice = (dateStr: string): { rate: number; isRule: boolean; label?: string } => {
+    if (pricingMode === 'variable') {
+      const match = rateRules.find((r) => {
+        const roomMatch = !r.room_id || (roomId && Number(r.room_id) === Number(roomId));
+        return roomMatch && r.start_date <= dateStr && r.end_date >= dateStr;
+      });
+      if (match) {
+        return { rate: Number(match.rate_per_night), isRule: true, label: match.rule_name };
+      }
+    }
+    return { rate: propertyDefaultTariff || 0, isRule: false };
+  };
 
   // Every date already spoken for on this calendar (any other guest stay, or
   // any other still-unclaimed OTA block) - fed to ConvertOtaBookingModal's
@@ -554,7 +591,83 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       };
     });
 
+  // --- OTA Double-Booking Conflicts (top-severity scan: a.start < b.end && a.end > b.start):
+  // 1. Overlaps between two distinct synced OTA calendar blocks on the same room.
+  // 2. Overlaps between an unconverted OTA block and an active confirmed guest folio on the same room.
+  const conflictAlerts: CombinedAlertItem[] = [];
+  const seenConflictPairs = new Set<string>();
+
+  for (let i = 0; i < blockedDates.length; i++) {
+    const b1 = blockedDates[i];
+    const s1 = (b1.event_start || '').split(' ')[0].split('T')[0];
+    const e1 = (b1.event_end || '').split(' ')[0].split('T')[0];
+    if (!s1 || !e1 || e1 < todayStr) continue;
+
+    // Cross-OTA overlap
+    for (let j = i + 1; j < blockedDates.length; j++) {
+      const b2 = blockedDates[j];
+      if (b1.external_event_id === b2.external_event_id) continue;
+      const r1 = String(b1.room_id || '');
+      const r2 = String(b2.room_id || '');
+      if (r1 && r2 && r1 !== r2) continue;
+
+      const s2 = (b2.event_start || '').split(' ')[0].split('T')[0];
+      const e2 = (b2.event_end || '').split(' ')[0].split('T')[0];
+      if (!s2 || !e2 || e2 < todayStr) continue;
+
+      if (s1 < e2 && e1 > s2) {
+        const pairKey = [b1.external_event_id, b2.external_event_id].sort().join('::');
+        if (!seenConflictPairs.has(pairKey)) {
+          seenConflictPairs.add(pairKey);
+          const src1 = b1.source_label || b1.source || 'OTA 1';
+          const src2 = b2.source_label || b2.source || 'OTA 2';
+          conflictAlerts.push({
+            kind: 'ota',
+            block: b1,
+            severity: 'red',
+            reasons: [
+              {
+                label: 'Double-Booking Conflict',
+                detail: `${src1} overlaps with ${src2} (${formatAlertDate(s1)} - ${formatAlertDate(e1)})`,
+              },
+            ],
+          });
+        }
+      }
+    }
+
+    // OTA vs Guest overlap
+    for (const g of guests) {
+      if (g.status === 'CheckedOut') continue;
+      if (g.icalExternalEventId === b1.external_event_id) continue;
+
+      const gStart = (g.checkinDate || '').split(' ')[0].split('T')[0];
+      const gEnd = (g.expectedCheckout || g.checkoutDate || g.checkinDate || '').split(' ')[0].split('T')[0];
+      if (!gStart || !gEnd || gEnd < todayStr) continue;
+
+      if (gStart < e1 && gEnd > s1) {
+        const guestPairKey = `guest::${g.id}::ota::${b1.external_event_id}`;
+        if (!seenConflictPairs.has(guestPairKey)) {
+          seenConflictPairs.add(guestPairKey);
+          const src = b1.source_label || b1.source || 'OTA';
+          conflictAlerts.push({
+            kind: 'ota',
+            block: b1,
+            severity: 'red',
+            reasons: [
+              {
+                label: 'Double-Booking Conflict',
+                detail: `${src} block overlaps with ${g.guestName} (${formatAlertDate(s1)} - ${formatAlertDate(e1)})`,
+              },
+            ],
+          });
+        }
+      }
+    }
+  }
+
   const combinedAlerts: CombinedAlertItem[] = [
+    ...conflictAlerts,
     ...Array.from(guestAlertMap.values()).map((a): CombinedAlertItem => ({ kind: 'guest', ...a })),
     ...otaAlerts,
   ].sort((a, b) => (a.severity === b.severity ? 0 : a.severity === 'red' ? -1 : 1));
@@ -984,23 +1097,73 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 {roomName ? `${roomName} Calendar` : t('booking_calendar_heading', 'Booking Calendar')}
               </h3>
             </div>
-            <button
-              type="button"
-              // FIXED 25 Aug 2026 (live report: "New booking button over calendar not
-              // working") - onNavigate('new_booking') was routing to a tab named
-              // 'new_booking', which doesn't exist anywhere in App.tsx's TabType/
-              // handleNavigateTab - the click landed nowhere. This button's whole job is
-              // "open the Add Booking drawer", exactly what the two "Add Booking" buttons in
-              // this same file's own page header already do correctly - reuse that, not a
-              // dead tab-navigation call. Doesn't touch the calendar grid itself (color-
-              // coding, blocked dates, OTA conversion, edit modal - the protected logic),
-              // only this toolbar button's destination.
-              onClick={() => setShowAddGuestModal(true)}
-              className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-xs px-3 py-1.5 inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>{t('new_booking_btn', 'New Booking')}</span>
-            </button>
+            <div className="flex items-center gap-2">
+              {/* Bookings / Pricing View Toggle */}
+              <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-gray-700 p-0.5 rounded-lg border border-gray-200 dark:border-gray-600">
+                <button
+                  type="button"
+                  onClick={() => setCalendarViewMode('bookings')}
+                  className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                    calendarViewMode === 'bookings'
+                      ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-xs'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
+                  }`}
+                >
+                  Bookings
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCalendarViewMode('pricing')}
+                  className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer flex items-center gap-1 ${
+                    calendarViewMode === 'pricing'
+                      ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-xs'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
+                  }`}
+                >
+                  <DollarSign className="w-3 h-3" />
+                  Pricing
+                </button>
+              </div>
+
+              {calendarViewMode === 'bookings' ? (
+                <button
+                  type="button"
+                  onClick={() => setShowAddGuestModal(true)}
+                  className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-xs px-3 py-1.5 inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>{t('new_booking_btn', 'New Booking')}</span>
+                </button>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedRateRuleStartDate(undefined);
+                      setSelectedRateRuleEndDate(undefined);
+                      setShowRateRuleModal(true);
+                    }}
+                    className="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-xs px-3 py-1.5 inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Set Rate Rule</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const slug = getPropertySlug() || '';
+                      const url = `${window.location.origin}/availability.php${slug ? `?property_slug=${encodeURIComponent(slug)}` : ''}`;
+                      window.open(url, '_blank');
+                    }}
+                    className="text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 font-medium rounded-lg text-xs px-2.5 py-1.5 inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+                    title="Open public availability page"
+                  >
+                    <Share2 className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Public Page</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-1 overflow-x-auto">
             <button
@@ -1217,74 +1380,89 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                               </span>
                             )}
                           </div>
-                          {/* Invisible spacer reserving the same two-line
-                              height the overlay bar occupies, so the
-                              "+more" button below sits at the same spot it
-                              always has - the real, visible bar is drawn by
-                              the absolute overlay beneath this grid, not
-                              here. */}
-                          <div className="invisible px-2 py-1 text-xs" aria-hidden="true">
-                            <div>&nbsp;</div>
-                            <div className="text-2xs">&nbsp;</div>
-                          </div>
-                          {dayBookingOverflowCount > 0 && (
-                            <Popover
-                              trigger="click"
-                              placement="auto"
-                              open={openOverflowDateStr === dateStr}
-                              onOpenChange={(isOpen) => setOpenOverflowDateStr(isOpen ? dateStr : null)}
-                              content={
-                                <div className="w-60 p-2">
-                                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 px-1 pb-2">
-                                    {formatDateDDMMYYYY(dateStr)} · {dayBookingsForDate.length} bookings
-                                  </div>
-                                  <div className="space-y-1 max-h-64 overflow-y-auto">
-                                    {dayBookingsForDate.map((g) => {
-                                      const amt = (g as any).totalCharge || (g as any).totalAmount || (g as any).total_charge || 0;
-                                      const itemPendingReasons = getGuestPendingReasons(g);
-                                      const hasItemPending = itemPendingReasons.length > 0;
-                                      return (
-                                        <button
-                                          key={g.id}
-                                          type="button"
-                                          onClick={() => {
-                                            setSelectedBookingFocusSection(null);
-                                            setSelectedBooking(g);
-                                            setOpenOverflowDateStr(null);
-                                          }}
-                                          className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 text-left transition-colors cursor-pointer"
-                                        >
-                                          <div className="min-w-0">
-                                            <div className="text-xs font-semibold text-slate-900 dark:text-white truncate flex items-center gap-1.5">
-                                              {hasItemPending && (
-                                                <span
-                                                  className="flex w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/50"
-                                                  title={`Action Pending: ${itemPendingReasons.join(', ')}`}
-                                                />
-                                              )}
-                                              <span className="truncate">{g.guestName}</span>
-                                            </div>
-                                            <div className="text-2xs text-slate-500 dark:text-slate-400">
-                                              {g.roomNumber}{amt > 0 ? ` · ₹${Math.round(amt)}` : ''}
-                                            </div>
-                                          </div>
-                                          <span className="text-2xs font-semibold text-blue-600 dark:text-blue-400 shrink-0">
-                                            {t('view_booking_button', 'View')} →
-                                          </span>
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              }
+                          {calendarViewMode === 'pricing' ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedRateRuleStartDate(dateStr);
+                                setSelectedRateRuleEndDate(dateStr);
+                                setShowRateRuleModal(true);
+                              }}
+                              className="w-full text-left mt-2 p-1.5 rounded-md bg-slate-50 dark:bg-slate-700/60 hover:bg-blue-50 dark:hover:bg-blue-900/30 border border-slate-200 dark:border-slate-600 transition-colors cursor-pointer"
                             >
-                              <button
-                                type="button"
-                                className="text-2xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline py-0.5 text-left cursor-pointer transition-colors block w-full truncate"
-                              >
-                                +{dayBookingOverflowCount} more
-                              </button>
-                            </Popover>
+                              <div className="text-xs font-bold text-slate-900 dark:text-white">
+                                ₹{Math.round(getDayPrice(dateStr).rate)}
+                              </div>
+                              <div className="text-2xs text-slate-500 dark:text-slate-400 truncate">
+                                {getDayPrice(dateStr).isRule ? (getDayPrice(dateStr).label || 'Dynamic Rule') : 'Base Tariff'}
+                              </div>
+                            </button>
+                          ) : (
+                            <>
+                              <div className="invisible px-2 py-1 text-xs" aria-hidden="true">
+                                <div>&nbsp;</div>
+                                <div className="text-2xs">&nbsp;</div>
+                              </div>
+                              {dayBookingOverflowCount > 0 && (
+                                <Popover
+                                  trigger="click"
+                                  placement="auto"
+                                  open={openOverflowDateStr === dateStr}
+                                  onOpenChange={(isOpen) => setOpenOverflowDateStr(isOpen ? dateStr : null)}
+                                  content={
+                                    <div className="w-60 p-2">
+                                      <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 px-1 pb-2">
+                                        {formatDateDDMMYYYY(dateStr)} · {dayBookingsForDate.length} bookings
+                                      </div>
+                                      <div className="space-y-1 max-h-64 overflow-y-auto">
+                                        {dayBookingsForDate.map((g) => {
+                                          const amt = (g as any).totalCharge || (g as any).totalAmount || (g as any).total_charge || 0;
+                                          const itemPendingReasons = getGuestPendingReasons(g);
+                                          const hasItemPending = itemPendingReasons.length > 0;
+                                          return (
+                                            <button
+                                              key={g.id}
+                                              type="button"
+                                              onClick={() => {
+                                                setSelectedBookingFocusSection(null);
+                                                setSelectedBooking(g);
+                                                setOpenOverflowDateStr(null);
+                                              }}
+                                              className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 text-left transition-colors cursor-pointer"
+                                            >
+                                              <div className="min-w-0">
+                                                <div className="text-xs font-semibold text-slate-900 dark:text-white truncate flex items-center gap-1.5">
+                                                  {hasItemPending && (
+                                                    <span
+                                                      className="flex w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/50"
+                                                      title={`Action Pending: ${itemPendingReasons.join(', ')}`}
+                                                    />
+                                                  )}
+                                                  <span className="truncate">{g.guestName}</span>
+                                                </div>
+                                                <div className="text-2xs text-slate-500 dark:text-slate-400">
+                                                  {g.roomNumber}{amt > 0 ? ` · ₹${Math.round(amt)}` : ''}
+                                                </div>
+                                              </div>
+                                              <span className="text-2xs font-semibold text-blue-600 dark:text-blue-400 shrink-0">
+                                                {t('view_booking_button', 'View')} →
+                                              </span>
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  }
+                                >
+                                  <button
+                                    type="button"
+                                    className="text-2xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline py-0.5 text-left cursor-pointer transition-colors block w-full truncate"
+                                  >
+                                    +{dayBookingOverflowCount} more
+                                  </button>
+                                </Popover>
+                              )}
+                            </>
                           )}
                         </div>
                       );
@@ -1299,7 +1477,8 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                         its date-number row height (the w-6 h-6 today-circle,
                         24px) - verified against the invisible spacer above
                         via Playwright, not guessed. */}
-                    <div className="absolute inset-x-0 top-[30px] sm:top-[32px] pointer-events-none grid grid-cols-7 px-1.5 sm:px-2">
+                    {calendarViewMode === 'bookings' && (
+                      <div className="absolute inset-x-0 top-[30px] sm:top-[32px] pointer-events-none grid grid-cols-7 px-1.5 sm:px-2">
                       {segments.map((seg, segIdx) => {
                         const gridColumn = `${seg.startCol + 1} / span ${seg.endCol - seg.startCol + 1}`;
                         if (seg.kind === 'booking') {
@@ -1441,6 +1620,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                         );
                       })}
                     </div>
+                    )}
                   </div>
                 );
               })}
@@ -1722,6 +1902,23 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           </div>
         </div>
       </Drawer>
+
+      {/* Dynamic Rate Rules & Pricing Mode Modal */}
+      {showRateRuleModal && (
+        <RateRuleModal
+          isOpen={showRateRuleModal}
+          onClose={() => setShowRateRuleModal(false)}
+          propertyId={roomId}
+          rooms={rooms}
+          rateRules={rateRules}
+          pricingMode={pricingMode}
+          defaultTariff={propertyDefaultTariff}
+          propertySlug={getPropertySlug() || undefined}
+          onRulesUpdated={loadRateRules}
+          initialStartDate={selectedRateRuleStartDate}
+          initialEndDate={selectedRateRuleEndDate}
+        />
+      )}
     </div>
   );
 };

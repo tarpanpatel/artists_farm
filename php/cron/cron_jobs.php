@@ -90,6 +90,16 @@ function getCronJobDefinitions(): array {
             'daily_at_time' => '09:00:00',
         ],
         [
+            'job_key' => 'daily_operations_digest',
+            'name' => "Tomorrow's Arrivals & Departures Digest",
+            'description' => 'Nightly (10pm) combined summary of every guest arriving or departing tomorrow, sent to Admin and Kitchen. Skipped for a property with neither.',
+            'script_path' => 'daily_operations_digest.php',
+            'log_file' => 'daily_operations_digest.log',
+            'schedule_type' => 'daily_at',
+            'interval_minutes' => null,
+            'daily_at_time' => '22:00:00',
+        ],
+        [
             'job_key' => 'trial_lifecycle_cadence',
             'name' => '30-Day Trial Lifecycle & Renewal Cadence',
             'description' => 'Automated Day 1/3/7/14/21/23(7-day notice)/28/30 follow-up nudges, trial expiry notices, and subscription status transitions.',
@@ -103,7 +113,7 @@ function getCronJobDefinitions(): array {
 }
 
 function ensureCronJobsSchema(PDO $pdo): void {
-    if (!isSchemaVerified('schema_cron_jobs_v3')) {
+    if (!isSchemaVerified('schema_cron_jobs_v4')) {
         $pdo->exec("CREATE TABLE IF NOT EXISTS cron_jobs (
             job_key VARCHAR(64) PRIMARY KEY,
             name VARCHAR(150) NOT NULL,
@@ -127,7 +137,7 @@ function ensureCronJobsSchema(PDO $pdo): void {
                 $job['schedule_type'], $job['interval_minutes'], $job['daily_at_time'],
             ]);
         }
-        markSchemaVerified('schema_cron_jobs_v3');
+        markSchemaVerified('schema_cron_jobs_v4');
     }
 }
 

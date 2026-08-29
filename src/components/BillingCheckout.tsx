@@ -907,15 +907,42 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
           >
             <TabItem
               active={activeTab === 'today'}
-              title={`${t('today_tab', 'Today')}${tabCounts.today ? ` (${tabCounts.today})` : ''}`}
+              title={
+                <span className="inline-flex items-center gap-1.5">
+                  <span>{t('today_tab', 'Today')}</span>
+                  {tabCounts.today > 0 && (
+                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
+                      {tabCounts.today}
+                    </span>
+                  )}
+                </span>
+              }
             />
             <TabItem
               active={activeTab === 'upcoming'}
-              title={`${t('upcoming_tab', 'Upcoming')}${tabCounts.upcoming ? ` (${tabCounts.upcoming})` : ''}`}
+              title={
+                <span className="inline-flex items-center gap-1.5">
+                  <span>{t('upcoming_tab', 'Upcoming')}</span>
+                  {tabCounts.upcoming > 0 && (
+                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
+                      {tabCounts.upcoming}
+                    </span>
+                  )}
+                </span>
+              }
             />
             <TabItem
               active={activeTab === 'past_bookings'}
-              title={`${t('past_bookings_tab', 'Past')}${tabCounts.past_bookings ? ` (${tabCounts.past_bookings})` : ''}`}
+              title={
+                <span className="inline-flex items-center gap-1.5">
+                  <span>{t('past_bookings_tab', 'Past')}</span>
+                  {tabCounts.past_bookings > 0 && (
+                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-full bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
+                      {tabCounts.past_bookings}
+                    </span>
+                  )}
+                </span>
+              }
             />
           </Tabs>
 

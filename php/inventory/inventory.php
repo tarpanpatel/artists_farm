@@ -4,6 +4,37 @@
  * Function: Requisitions, warehouse stock fulfillment, deficit shortfalls, and kitchen purchase tracking.
  */
 
+require_once __DIR__ . '/../security/input_validator.php';
+
+function validateInventoryInput(array $input): array {
+    $validated = [];
+    if (isset($input['name']) && trim((string)$input['name']) !== '') {
+        $validated['name'] = InputValidator::validateString($input['name'], 1, 200);
+    }
+    if (isset($input['itemName']) && trim((string)$input['itemName']) !== '') {
+        $validated['itemName'] = InputValidator::validateString($input['itemName'], 1, 200);
+    }
+    if (isset($input['category']) && trim((string)$input['category']) !== '') {
+        $validated['category'] = InputValidator::validateString($input['category'], 1, 100);
+    }
+    if (isset($input['unit']) && trim((string)$input['unit']) !== '') {
+        $validated['unit'] = InputValidator::validateString($input['unit'], 1, 50);
+    }
+    if (isset($input['quantity']) && $input['quantity'] !== null && $input['quantity'] !== '') {
+        $validated['quantity'] = InputValidator::validateFloat($input['quantity'], 0);
+    }
+    if (isset($input['price']) && $input['price'] !== null && $input['price'] !== '') {
+        $validated['price'] = InputValidator::validateFloat($input['price'], 0);
+    }
+    if (isset($input['totalPrice']) && $input['totalPrice'] !== null && $input['totalPrice'] !== '') {
+        $validated['totalPrice'] = InputValidator::validateFloat($input['totalPrice'], 0);
+    }
+    if (isset($input['unitCost']) && $input['unitCost'] !== null && $input['unitCost'] !== '') {
+        $validated['unitCost'] = InputValidator::validateFloat($input['unitCost'], 0);
+    }
+    return $validated;
+}
+
 function handleInventoryRequests($pdo, $request_method, $action, $propertyId) {
     require_once __DIR__ . '/../config/schema_cache.php';
     require_once __DIR__ . '/../uploads/image_cleanup.php';
@@ -275,7 +306,14 @@ function handleInventoryRequests($pdo, $request_method, $action, $propertyId) {
 
         case 'create_kitchen_purchase':
             if ($request_method === 'POST') {
-                $input = json_decode(file_get_contents('php://input'), true);
+                $input = json_decode(file_get_contents('php://input'), true) ?? [];
+                try {
+                    $input = array_merge($input, validateInventoryInput($input));
+                } catch (Exception $eVal) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => $eVal->getMessage()]);
+                    break;
+                }
                 try {
 
 
@@ -512,7 +550,14 @@ function handleInventoryRequests($pdo, $request_method, $action, $propertyId) {
 
         case 'add_catalog_item':
             if ($request_method === 'POST') {
-                $input = json_decode(file_get_contents('php://input'), true);
+                $input = json_decode(file_get_contents('php://input'), true) ?? [];
+                try {
+                    $input = array_merge($input, validateInventoryInput($input));
+                } catch (Exception $eVal) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => $eVal->getMessage()]);
+                    break;
+                }
                 $name = trim($input['name'] ?? '');
                 $categoryName = trim($input['category'] ?? 'General');
                 $price = floatval($input['price'] ?? 0);
@@ -576,7 +621,14 @@ function handleInventoryRequests($pdo, $request_method, $action, $propertyId) {
 
         case 'update_catalog_item':
             if ($request_method === 'POST') {
-                $input = json_decode(file_get_contents('php://input'), true);
+                $input = json_decode(file_get_contents('php://input'), true) ?? [];
+                try {
+                    $input = array_merge($input, validateInventoryInput($input));
+                } catch (Exception $eVal) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => $eVal->getMessage()]);
+                    break;
+                }
                 $id = intval($input['id'] ?? 0);
                 $name = trim($input['name'] ?? '');
                 $categoryName = trim($input['category'] ?? 'General');

@@ -2213,19 +2213,23 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                           </td>
                           <td className="px-4 py-3 text-right">
                             <div className="flex items-center justify-end gap-1.5">
-                              <button
+                              <Button
+                                variant="secondary"
+                                size="xs"
                                 onClick={() => setEditingPayee(p)}
-                                className="bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors border border-sky-100 dark:border-sky-900/60"
+                                leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
                               >
-                                <Pencil className="w-3 h-3" /> Edit
-                              </button>
-                              <button
+                                Edit
+                              </Button>
+                              <Button
+                                variant="danger"
+                                size="xs"
                                 onClick={() => handleDeletePayee(p.id, p.name)}
                                 disabled={isSavingPayee}
-                                className="bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors border border-red-100 dark:border-red-900/60"
+                                leftIcon={<Trash2 className="w-3.5 h-3.5 shrink-0" />}
                               >
-                                <Trash2 className="w-3 h-3" /> Delete
-                              </button>
+                                Delete
+                              </Button>
                             </div>
                           </td>
                         </tr>
@@ -2424,19 +2428,23 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                           </td>
                           <td className="px-4 py-3 text-right">
                             <div className="flex items-center justify-end gap-1.5">
-                              <button
+                              <Button
+                                variant="secondary"
+                                size="xs"
                                 onClick={() => setEditingCustomItem({ id: p.id, label: p.label, category: p.category, defaultAmount: p.default_amount.toString(), description: p.description || '' })}
-                                className="bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors border border-sky-100 dark:border-sky-900/60"
+                                leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
                               >
-                                <Pencil className="w-3 h-3" /> Edit
-                              </button>
-                              <button
+                                Edit
+                              </Button>
+                              <Button
+                                variant="danger"
+                                size="xs"
                                 onClick={() => handleDeleteCustomItem(p.id, p.label)}
                                 disabled={isSavingCustomItem}
-                                className="bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors border border-red-100 dark:border-red-900/60"
+                                leftIcon={<Trash2 className="w-3.5 h-3.5 shrink-0" />}
                               >
-                                <Trash2 className="w-3 h-3" /> Delete
-                              </button>
+                                Delete
+                              </Button>
                             </div>
                           </td>
                         </tr>

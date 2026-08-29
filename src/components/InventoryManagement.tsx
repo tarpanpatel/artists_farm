@@ -5,7 +5,7 @@ import { Badge } from './Badge';
 import { Popover } from './Popover';
 import { TablePagination } from './TablePagination';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
-import { Boxes, PackagePlus, AlertTriangle, Plus, CheckCircle2, X, Search, ShoppingCart, Settings, Package, Check, ClipboardEdit, Edit2, Pencil, ChevronDown, ChevronUp, Loader2, FlaskConical, Coffee, Milk, Apple, Banana, Cake, Carrot, Wheat, SprayCan, Drumstick, UtensilsCrossed, Croissant, Soup, Droplet, Snowflake, Fish, Wrench, Balloon, Refrigerator, Microwave, Fan, Blend, Bean, HandPlatter, GlassWater, LeafyGreen, Trash2, Candy, Flame, Cherry, Grape, Citrus, Egg, CupSoda, Utensils, Sandwich, Cookie, Nut, Filter, Eye, type FlowbiteIconComponent } from './icons/FlowbiteIcons';
+import { Boxes, PackagePlus, AlertTriangle, Plus, CheckCircle2, X, Search, ShoppingCart, Settings, Package, Check, ClipboardEdit, Pencil, ChevronDown, ChevronUp, Loader2, FlaskConical, Coffee, Milk, Apple, Banana, Cake, Carrot, Wheat, SprayCan, Drumstick, UtensilsCrossed, Croissant, Soup, Droplet, Snowflake, Fish, Wrench, Balloon, Refrigerator, Microwave, Fan, Blend, Bean, HandPlatter, GlassWater, LeafyGreen, Trash2, Candy, Flame, Cherry, Grape, Citrus, Egg, CupSoda, Utensils, Sandwich, Cookie, Nut, Filter, Eye, type FlowbiteIconComponent } from './icons/FlowbiteIcons';
 import { InventoryItem, CatalogItem } from '../types';
 import { t } from '../i18n/en';
 import { PageHeader, PageHeaderButton } from './PageHeader';
@@ -1358,7 +1358,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                               {t('approve_button')}
                             </Button>
                           )}
-                          <Button variant="primary" size="sm" onClick={() => handleEditCatalogItem(row)} leftIcon={<Edit2 className="w-3.5 h-3.5 shrink-0" />}>
+                          <Button variant="secondary" size="sm" onClick={() => handleEditCatalogItem(row)} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
                             {t('edit_button')}
                           </Button>
                           {canDeleteCatalogItem && (
@@ -1557,7 +1557,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                                     {t('approve_button')}
                                   </button>
                                 )}
-                                <Button variant="primary" size="sm" onClick={() => handleEditCatalogItem(item)} leftIcon={<Edit2 className="w-3.5 h-3.5 shrink-0" />}>
+                                <Button variant="secondary" size="sm" onClick={() => handleEditCatalogItem(item)} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
                                   {t('edit_button')}
                                 </Button>
                                 {canDeleteCatalogItem && (
@@ -1679,20 +1679,25 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     ) : (
                       <>
                         <span className="flex-1 text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">{cat}</span>
-                        <button
+                        <Button
+                          variant="ghost"
+                          size="xs"
                           onClick={() => { setEditingCategoryId(dbCat?.id || 0); setEditingCategoryName(cat); }}
-                          className="text-slate-400 hover:text-blue-600 text-xs cursor-pointer p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                           title={t('rename_tooltip')}
+                          aria-label={t('rename_tooltip')}
                         >
                           <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="xs"
                           onClick={() => handleDeleteCategory(dbCat?.id || 0, cat)}
-                          className="text-slate-400 hover:text-red-600 text-xs cursor-pointer p-1 rounded hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
                           title={t('delete_button')}
+                          aria-label={t('delete_button')}
+                          className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                         >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
+                          <Trash2 className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
+                        </Button>
                       </>
                     )}
                   </div>
@@ -1838,7 +1843,16 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       >
         <TabItem
           active={activeTab === 'fulfill'}
-          title={`Pending Requests${pendingSheetsCount > 0 ? ` (${pendingSheetsCount})` : ''}`}
+          title={
+            <span className="inline-flex items-center gap-1.5">
+              <span>Pending Requests</span>
+              {pendingSheetsCount > 0 && (
+                <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300">
+                  {pendingSheetsCount}
+                </span>
+              )}
+            </span>
+          }
           icon={CheckCircle2}
         >
           {/* Chrome (bg/border/rounded/padding) is mobile-only - at md: and up
@@ -1914,7 +1928,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                       <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
                         {row.status === 'PENDING' ? (
                           <>
-                            <Button variant="primary" size="sm" onClick={() => handleEditFulfill(row)} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                            <Button variant="secondary" size="sm" onClick={() => handleEditFulfill(row)} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
                               Edit & Deliver
                             </Button>
                             <Button variant="secondary" size="sm" onClick={() => handleQuickComplete(row)} leftIcon={<CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}>
@@ -2047,7 +2061,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                         <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100 dark:border-slate-700/60">
                           {row.status === 'PENDING' ? (
 <>
-                            <Button variant="primary" size="sm" onClick={() => handleEditFulfill(row)} leftIcon={<Edit2 className="w-3.5 h-3.5 shrink-0" />}>
+                            <Button variant="secondary" size="sm" onClick={() => handleEditFulfill(row)} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
                               Edit & Deliver
                             </Button>
                           </>

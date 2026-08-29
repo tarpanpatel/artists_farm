@@ -1105,7 +1105,16 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
               <TabItem
                 key={cat}
                 active={activeCategory === cat}
-                title={`${cat}${count > 0 ? ` (${count})` : ''}`}
+                title={
+                  <span className="inline-flex items-center gap-1.5">
+                    <span>{cat}</span>
+                    {count > 0 && (
+                      <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-full bg-sky-100 text-sky-800 dark:bg-sky-900/60 dark:text-sky-300">
+                        {count}
+                      </span>
+                    )}
+                  </span>
+                }
               />
             );
           })}

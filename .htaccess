@@ -28,6 +28,10 @@ DirectoryIndex index.php index.html
     RewriteRule ^food_menu/([a-z0-9-_]+)/?$ food_menu.php?property_slug=$1 [QSA,L]
     RewriteRule ^food_menu/?$ food_menu.php [QSA,L]
 
+    # Public, no-login "Share Availability" link (availability.php)
+    RewriteRule ^availability/([a-z0-9-_]+)/?$ availability.php?property_slug=$1 [QSA,L]
+    RewriteRule ^availability/?$ availability.php [QSA,L]
+
     # Handle tenant/property routing for multi-tenant SaaS
     # e.g., /tenant-slug/property-slug/anything -> /index.php?tenant_slug=tenant-slug&property_slug=property-slug
     # Only rewrites when the full path isn't a real file/directory, so

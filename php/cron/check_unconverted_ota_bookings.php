@@ -54,11 +54,7 @@ try {
         exit;
     }
 
-    $blocks = $result['data'];
-    if (empty($blocks)) {
-        logLine($logFile, "$timestamp - No unconverted due blocks found");
-        exit;
-    }
+    $blocks = $result['data'] ?? [];
 
     if (file_exists(__DIR__ . '/../telegram/telegram.php')) {
         require_once __DIR__ . '/../telegram/telegram.php';
@@ -116,7 +112,63 @@ try {
         $sentCount++;
     }
 
-    logLine($logFile, "$timestamp - Checked " . count($blocks) . " unconverted block(s), sent $sentCount notification(s)");
+    // --- Double-Booking Conflicts Check ---
+    $conflictResult = $manager->getOTAConflicts();
+    $conflicts = $conflictResult['data'] ?? [];
+    $conflictSentCount = 0;
+
+    foreach ($conflicts as $conflict) {
+        $propertyId = (int)($conflict['room_id'] ?? 0);
+        $extKey = ($conflict['conflict_type'] ?? '') === 'ota_ota'
+            ? 'conflict_' . ($conflict['ext1'] ?? '') . '_' . ($conflict['ext2'] ?? '')
+            : 'conflict_' . ($conflict['ext1'] ?? '') . '_guest_' . ($conflict['guest_id'] ?? '');
+
+        $checkStmt->execute([$extKey, $propertyId]);
+        $lastNotified = $checkStmt->fetchColumn();
+        if ($lastNotified && strtotime($lastNotified) > strtotime('-24 hours')) {
+            continue;
+        }
+
+        $propertyLabel = $conflict['parent_name'] ?: $conflict['room_name'];
+        $roomLabel = $conflict['parent_name'] ? $conflict['room_name'] : '';
+
+        $message = "🚨 *Double-Booking Conflict Detected*\n\n";
+        $message .= "*Property:* $propertyLabel\n";
+        if ($roomLabel) {
+            $message .= "*Room:* $roomLabel\n";
+        }
+
+        if (($conflict['conflict_type'] ?? '') === 'ota_ota') {
+            $s1 = substr($conflict['start1'], 0, 10);
+            $e1 = substr($conflict['end1'], 0, 10);
+            $s2 = substr($conflict['start2'], 0, 10);
+            $e2 = substr($conflict['end2'], 0, 10);
+            $src1 = $conflict['source1'] ?: 'OTA Feed 1';
+            $src2 = $conflict['source2'] ?: 'OTA Feed 2';
+            $message .= "*Collision:* `$src1` ($s1 → $e1) overlaps with `$src2` ($s2 → $e2)\n\n";
+        } else {
+            $s1 = substr($conflict['start1'], 0, 10);
+            $e1 = substr($conflict['end1'], 0, 10);
+            $gStart = substr($conflict['guest_checkin'], 0, 10);
+            $gEnd = substr($conflict['guest_checkout'], 0, 10);
+            $src1 = $conflict['source1'] ?: 'OTA Feed';
+            $gName = $conflict['guest_name'] ?: 'Confirmed Guest';
+            $message .= "*Collision:* `$src1` block ($s1 → $e1) overlaps with booked guest *$gName* ($gStart → $gEnd)\n\n";
+        }
+        $message .= "Immediate attention required to resolve double occupancy.";
+
+        try {
+            sendPropertyTelegramMessage($pdo, $propertyId, 'admin', $message, null, 'ota_conflict_alert');
+        } catch (Throwable $eTg) {
+            error_log("OTA conflict Telegram notification failed for {$extKey}: " . $eTg->getMessage());
+            continue;
+        }
+
+        $upsertStmt->execute([$extKey, $propertyId]);
+        $conflictSentCount++;
+    }
+
+    logLine($logFile, "$timestamp - Checked " . count($blocks) . " unconverted block(s), sent $sentCount notification(s). Checked " . count($conflicts) . " conflict(s), sent $conflictSentCount alert(s).");
 } catch (Exception $e) {
     logLine($logFile, "$timestamp - FATAL: " . $e->getMessage());
 }

@@ -75,6 +75,7 @@ if (!class_exists('TelegramTemplates')) {
                 'booking_updated' => "✏️ <b>BOOKING UPDATED</b>\n\n👤 <b>Guest:</b> {guest_name}\n🆔 <b>Booking ID:</b> {booking_id}\n\n{changes_list}",
                 'checkout_day_reminder' => "🚪 <b>DEPARTURE DAY</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Guest:</b> {guest_name}\n🚪 <b>Room:</b> {room_name}\n📅 <b>Expected Checkout:</b> {checkout_date}\n━━━━━━━━━━━━━━━━━━\n👉 <i>Tap below once the guest has left.</i>",
                 'room_needs_cleaning' => "🧹 <b>ROOM NEEDS CLEANING</b>\n━━━━━━━━━━━━━━━━━━\n🚪 <b>Room:</b> {room_name}\n━━━━━━━━━━━━━━━━━━\n👉 <i>Tap below once it's cleaned and ready for the next guest.</i>",
+                'daily_operations_digest' => "📋 <b>TOMORROW'S ARRIVALS &amp; DEPARTURES</b>\n━━━━━━━━━━━━━━━━━━\n🛎️ <b>Arriving ({arrivals_count}):</b>\n{arrivals_list}\n\n🚪 <b>Departing ({departures_count}):</b>\n{departures_list}",
             ];
 
             // Make defaults emojis bulletproof too just in case
@@ -95,9 +96,15 @@ if (!class_exists('TelegramTemplates')) {
                 '/\?[^\x00-\x7F]*\s*(<b>)?FINAL ITEMIZED KOT/i' => '🍽️ <b>FINAL ITEMIZED KOT</b>',
                 '/\?[^\x00-\x7F]*\s*(<b>)?FINAL PAYOUT SPLIT/i' => '💳 <b>FINAL PAYOUT SPLIT</b>',
                 '/\?[^\x00-\x7F]*\s*(<b>)?Desk Cashier Executing/i' => '👤 <i>Desk Cashier Executing</i>',
-                '/\?[^\x00-\x7F]*\s*(<b>)?NEW FINANCIAL TRANSACTION/i' => '💰 <b>NEW FINANCIAL TRANSACTION</b>',
+                // NOTE: no trailing </b> in this replacement (unlike most others here) -
+                // the real templates put more bold content after this label before the
+                // actual close ("(EXPENSE)"/"(REVENUE CREDIT)"), so the tag must stay open
+                // for the original text's own trailing </b> to close it. Adding one here
+                // produced a dangling extra </b> (found 29 Aug 2026 - see DEBIT AMOUNT/
+                // TOTAL CREDITED/AMOUNT MOVEMENT below for the same class of fix).
+                '/\?[^\x00-\x7F]*\s*(<b>)?NEW FINANCIAL TRANSACTION/i' => '💰 <b>NEW FINANCIAL TRANSACTION',
                 '/\?[^\x00-\x7F]*\s*(<b>)?Cashier:(<\/b>)?/i' => '👤 <b>Cashier:</b>',
-                '/\?[^\x00-\x7F]*\s*(<b>)?TOTAL CREDITED/i' => '🟢 <b>TOTAL CREDITED</b>',
+                '/\?[^\x00-\x7F]*\s*(<b>)?TOTAL CREDITED/i' => '🟢 <b>TOTAL CREDITED',
                 '/\?[^\x00-\x7F]*\s*(<b>)?UPCOMING ARRIVALS TOMORROW/i' => '🛎️ <b>UPCOMING ARRIVALS TOMORROW</b>',
                 '/\?[^\x00-\x7F]*\s*(<b>)?DISH READY TO SERVE/i' => '🍽️ <b>DISH READY TO SERVE</b>',
                 '/\?[^\x00-\x7F]*\s*(<b>)?Order Ticket:(<\/b>)?/i' => '🏷️ <b>Order Ticket:</b>',
@@ -119,7 +126,7 @@ if (!class_exists('TelegramTemplates')) {
                 '/\?[^\x00-\x7F]*\s*(<b>)?Staff Handler:(<\/b>)?/i' => '👤 <b>Staff Handler:</b>',
                 '/\?[^\x00-\x7F]*\s*(<b>)?Action Type:(<\/b>)?/i' => '🔄 <b>Action Type:</b>',
                 '/\?[^\x00-\x7F]*\s*(<b>)?Remarks:(<\/b>)?/i' => '📝 <b>Remarks:</b>',
-                '/\?[^\x00-\x7F]*\s*(<b>)?AMOUNT MOVEMENT:(<\/b>)?/i' => '💰 <b>AMOUNT MOVEMENT:</b>',
+                '/\?[^\x00-\x7F]*\s*(<b>)?AMOUNT MOVEMENT:(<\/b>)?/i' => '💰 <b>AMOUNT MOVEMENT:',
                 '/\?[^\x00-\x7F]*\s*(<b>)?Resident:(<\/b>)?/i' => '👤 <b>Resident:</b>',
                 '/\?[^\x00-\x7F]*\s*(<b>)?Receipt:(<\/b>)?/i' => '🆔 <b>Receipt:</b>',
                 '/\?[^\x00-\x7F]*\s*(<b>)?Advance Paid:(<\/b>)?/i' => '💰 <b>Advance Paid:</b>',
@@ -137,7 +144,7 @@ if (!class_exists('TelegramTemplates')) {
                 '/\?[^\x00-\x7F]*\s*(<b>)?Paid By:(<\/b>)?/i' => '👤 <b>Paid By:</b>',
                 '/\?[^\x00-\x7F]*\s*(<b>)?Details:(<\/b>)?/i' => '📝 <b>Details:</b>',
                 '/\?[^\x00-\x7F]*\s*(<b>)?Method:(<\/b>)?/i' => '💳 <b>Method:</b>',
-                '/\?[^\x00-\x7F]*\s*(<b>)?DEBIT AMOUNT:/i' => '🔴 <b>DEBIT AMOUNT:</b>',
+                '/\?[^\x00-\x7F]*\s*(<b>)?DEBIT AMOUNT:/i' => '🔴 <b>DEBIT AMOUNT:',
                 '/\?[^\x00-\x7F]*\s*(<b>)?Checked In:(<\/b>)?/i' => '📅 <b>Checked In:</b>',
                 '/\?[^\x00-\x7F]*\s*(<b>)?Uploaded:(<\/b>)?/i' => '📋 <b>Uploaded:</b>',
                 '/\?[^\x00-\x7F]*\s*(<i>)?Open Complete Check-in for this booking to finish it\.(<\/i>)?/i' => '👉 <i>Open Complete Check-in for this booking to finish it.</i>',

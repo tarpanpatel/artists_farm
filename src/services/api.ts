@@ -2990,4 +2990,87 @@ export async function fetchCronJobLogDB(jobKey: string): Promise<string> {
   }
 }
 
+export interface RateRule {
+  id?: number;
+  property_id: number;
+  room_id?: number | null;
+  start_date: string;
+  end_date: string;
+  rate_per_night: number;
+  rule_name?: string;
+  room_name?: string;
+}
+
+export async function fetchRateRulesDB(): Promise<{ rules: RateRule[]; pricing_mode: 'flat' | 'variable'; default_tariff: number | null }> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=get_rate_rules`);
+    const json = await res.json();
+    if (json.status === 'success') {
+      return {
+        rules: Array.isArray(json.data) ? json.data : [],
+        pricing_mode: json.pricing_mode || 'flat',
+        default_tariff: json.default_tariff != null ? Number(json.default_tariff) : null,
+      };
+    }
+    return { rules: [], pricing_mode: 'flat', default_tariff: null };
+  } catch (err) {
+    console.error('Failed to fetch rate rules:', err);
+    return { rules: [], pricing_mode: 'flat', default_tariff: null };
+  }
+}
+
+export async function saveRateRuleDB(rule: {
+  id?: number;
+  room_ids?: (number | null)[];
+  room_id?: number | null;
+  start_date: string;
+  end_date: string;
+  rate_per_night: number;
+  rule_name?: string;
+}): Promise<{ success: boolean; message: string }> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=save_rate_rule`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(rule),
+    });
+    const json = await res.json();
+    return { success: json.status === 'success', message: json.message || '' };
+  } catch (err) {
+    console.error('Failed to save rate rule:', err);
+    return { success: false, message: 'Network error saving rate rule' };
+  }
+}
+
+export async function deleteRateRuleDB(id: number): Promise<{ success: boolean; message: string }> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=delete_rate_rule`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    const json = await res.json();
+    return { success: json.status === 'success', message: json.message || '' };
+  } catch (err) {
+    console.error('Failed to delete rate rule:', err);
+    return { success: false, message: 'Network error deleting rate rule' };
+  }
+}
+
+export async function updatePricingModeDB(pricing_mode: 'flat' | 'variable'): Promise<{ success: boolean; message: string }> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=update_pricing_mode`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pricing_mode }),
+    });
+    const json = await res.json();
+    return { success: json.status === 'success', message: json.message || '' };
+  } catch (err) {
+    console.error('Failed to update pricing mode:', err);
+    return { success: false, message: 'Network error updating pricing mode' };
+  }
+}
+
+
 

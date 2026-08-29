@@ -5,6 +5,31 @@
  * Tracks expiry dates and sends notifications
  */
 
+require_once __DIR__ . '/../security/input_validator.php';
+
+function validateLicenseInput(array $input): array {
+    $validated = [];
+    if (isset($input['license_type']) && trim((string)$input['license_type']) !== '') {
+        $validated['license_type'] = InputValidator::validateString($input['license_type'], 1, 100);
+    }
+    if (isset($input['license_name']) && trim((string)$input['license_name']) !== '') {
+        $validated['license_name'] = InputValidator::validateString($input['license_name'], 1, 255);
+    }
+    if (isset($input['license_number']) && trim((string)$input['license_number']) !== '') {
+        $validated['license_number'] = InputValidator::validateString($input['license_number'], 1, 100);
+    }
+    if (isset($input['issuing_authority']) && trim((string)$input['issuing_authority']) !== '') {
+        $validated['issuing_authority'] = InputValidator::validateString($input['issuing_authority'], 1, 255);
+    }
+    if (isset($input['start_date']) && trim((string)$input['start_date']) !== '') {
+        $validated['start_date'] = InputValidator::validateDate(trim((string)$input['start_date']));
+    }
+    if (isset($input['end_date']) && trim((string)$input['end_date']) !== '') {
+        $validated['end_date'] = InputValidator::validateDate(trim((string)$input['end_date']));
+    }
+    return $validated;
+}
+
 function handleLicenseRequests($pdo, $request_method, $action, $propertyId) {
     require_once __DIR__ . '/../config/schema_cache.php';
 
@@ -98,14 +123,18 @@ function getLicenses($pdo, $propertyId) {
         $licenses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Calculate status for each license
+        $today = new DateTime();
         foreach ($licenses as &$license) {
+            $endDate = new DateTime($license['end_date']);
+            $interval = $today->diff($endDate);
             $daysRemaining = (int)$license['days_remaining'];
+
             if ($daysRemaining < 0) {
-                $license['status'] = 'expired';
-            } elseif ($daysRemaining <= 7) {
-                $license['status'] = 'expiring_soon';
+                $license['computed_status'] = 'expired';
+            } elseif ($daysRemaining <= 30) {
+                $license['computed_status'] = 'expiring_soon';
             } else {
-                $license['status'] = 'active';
+                $license['computed_status'] = 'active';
             }
         }
 
@@ -116,7 +145,14 @@ function getLicenses($pdo, $propertyId) {
 }
 
 function addLicense($pdo, $propertyId) {
-    $input = json_decode(file_get_contents('php://input'), true);
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    try {
+        $input = array_merge($input, validateLicenseInput($input));
+    } catch (Exception $eVal) {
+        http_response_code(400);
+        echo json_encode(['status' => 'error', 'message' => $eVal->getMessage()]);
+        return;
+    }
 
     try {
         $stmt = $pdo->prepare("
@@ -143,7 +179,14 @@ function addLicense($pdo, $propertyId) {
 }
 
 function updateLicense($pdo, $propertyId) {
-    $input = json_decode(file_get_contents('php://input'), true);
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    try {
+        $input = array_merge($input, validateLicenseInput($input));
+    } catch (Exception $eVal) {
+        http_response_code(400);
+        echo json_encode(['status' => 'error', 'message' => $eVal->getMessage()]);
+        return;
+    }
 
     try {
         $stmt = $pdo->prepare("

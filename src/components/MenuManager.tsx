@@ -786,7 +786,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                         <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between mt-1 text-xs">
                           <span className="font-mono text-2xs text-slate-400 dark:text-slate-500">#{item.id}</span>
                           <div className="flex items-center gap-1">
-                            <Button variant="primary" size="sm" onClick={() => requirePasscode(() => handleOpenEditFood(item))} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                            <Button variant="secondary" size="sm" onClick={() => requirePasscode(() => handleOpenEditFood(item))} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
                               {t('edit_item_tooltip', 'Edit Item')}
                             </Button>
                             <button
@@ -885,7 +885,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                             ₹{item.price}
                           </span>
                           <div className="flex items-center gap-1.5">
-                            <Button variant="primary" size="sm" onClick={() => requirePasscode(() => handleOpenEditFood(item))} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                            <Button variant="secondary" size="sm" onClick={() => requirePasscode(() => handleOpenEditFood(item))} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
                               {t('edit_item_tooltip', 'Edit Item')}
                             </Button>
                             <button

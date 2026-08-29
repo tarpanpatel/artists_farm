@@ -395,13 +395,24 @@ function ensureGuestExtraChargesSchema($pdo) {
  * dangling guest_id_documents row are removed.
  */
 
-function idDocumentsUploadDir(): string {
-    return __DIR__ . '/../uploads/images/id_documents';
+// Root of the tenant/property-scoped upload tree (php/uploads/upload_image.php
+// writes id_documents to {root}/{tenantSlug}/{propertySlug}/id_documents/, not
+// a flat shared folder). Both functions below used to point at a flat legacy
+// `.../images/id_documents` path that predates that per-tenant layout - found
+// 29 Aug 2026 via a leftover orphaned thumbnail file that survived a real
+// delete: the main image (whose path IS derived correctly, from the stored
+// URL) deleted fine, but the thumbnail lookup and the whole TTL sweep below
+// were silently checking a directory that no real upload has written to in a
+// long time, so neither ever touched a real file. This is a real guest-PII
+// retention bug, not cosmetic - ID document thumbnails, and every ID document
+// this 24h TTL safety net is supposed to catch, were never actually being
+// cleaned up.
+function idDocumentsUploadRoot(): string {
+    return __DIR__ . '/../uploads/images';
 }
 
 // Delete the full-size + thumb disk files behind a set of stored URL paths.
 function deleteIdDocumentFiles(array $urls): void {
-    $dir = idDocumentsUploadDir();
     foreach ($urls as $url) {
         $pos = strpos((string)$url, '/uploads/');
         if ($pos === false) {
@@ -409,7 +420,9 @@ function deleteIdDocumentFiles(array $urls): void {
         }
         $fullPath = __DIR__ . '/../' . substr((string)$url, $pos + 1);
         @unlink($fullPath);
-        @unlink($dir . '/thumbs/' . basename($fullPath));
+        // Thumb lives alongside the full-size file's own directory, not a
+        // fixed shared location - see idDocumentsUploadRoot()'s comment.
+        @unlink(dirname($fullPath) . '/thumbs/' . basename($fullPath));
     }
 }
 
@@ -418,17 +431,27 @@ function deleteIdDocumentFiles(array $urls): void {
 // pointing at the swept files so the reminder counter and document list never
 // report a photo that is gone. Best-effort: never fails the caller.
 function cleanupExpiredIdDocuments($pdo, int $hours = 24, int $propertyId = 0): int {
-    $dir = idDocumentsUploadDir();
-    if (!is_dir($dir)) {
+    $root = idDocumentsUploadRoot();
+    if (!is_dir($root)) {
         return 0;
     }
     $expireBefore = time() - ($hours * 3600);
     $removed = 0;
     $iterator = new RecursiveIteratorIterator(
-        new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS)
+        new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS)
     );
     foreach ($iterator as $file) {
-        if ($file->isFile() && $file->getMTime() < $expireBefore) {
+        if (!$file->isFile()) {
+            continue;
+        }
+        // The upload root is shared with menu/catalog/misc/qr_code images
+        // (see upload_image.php) - only ever touch files under an
+        // "id_documents" folder at any tenant/property nesting depth, never
+        // sweep unrelated non-PII assets by walking into their directories too.
+        if (strpos(str_replace('\\', '/', $file->getPathname()), '/id_documents/') === false) {
+            continue;
+        }
+        if ($file->getMTime() < $expireBefore) {
             @unlink($file->getPathname());
             $removed++;
         }

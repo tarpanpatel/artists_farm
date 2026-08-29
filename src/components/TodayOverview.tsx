@@ -1,11 +1,12 @@
 import React, { useMemo, useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Calendar, LogOut, Bell, User, Globe, Share2 } from './icons/FlowbiteIcons';
+import { ChevronLeft, ChevronRight, Plus, Calendar, LogOut, Bell, User, Globe, Share2, DollarSign } from './icons/FlowbiteIcons';
 import { Popover } from './Popover';
 import { Guest } from '../types';
 import { BookingDetailsModal } from './BookingDetailsModal';
 import { ConvertOtaBookingModal } from './ConvertOtaBookingModal';
+import { RateRuleModal } from './RateRuleModal';
 import { KpiCard } from './KpiCard';
-import { getPropertySlug } from '../services/api';
+import { getPropertySlug, fetchRateRulesDB, RateRule } from '../services/api';
 import { useToast } from './ToastContext';
 import { useAuth } from '../contexts/AuthContext';
 import { shareTextContent } from '../utils/shareText';
@@ -119,6 +120,21 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     source_label?: string;
   }>>([]);
   const [otaConversionTarget, setOtaConversionTarget] = useState<{ block: (typeof blockedDates)[number]; roomName: string; blockedDateStrings: string[] } | null>(null);
+  const [showRateRuleModal, setShowRateRuleModal] = useState(false);
+  const [rateRules, setRateRules] = useState<RateRule[]>([]);
+  const [pricingMode, setPricingMode] = useState<'flat' | 'variable'>('flat');
+  const [defaultTariff, setDefaultTariff] = useState<number | null>(null);
+
+  const loadRateRules = async () => {
+    const data = await fetchRateRulesDB();
+    setRateRules(data.rules);
+    setPricingMode(data.pricing_mode);
+    if (data.default_tariff !== null) setDefaultTariff(data.default_tariff);
+  };
+
+  useEffect(() => {
+    loadRateRules();
+  }, []);
 
   const fetchBlockedDates = async () => {
     try {
@@ -449,6 +465,27 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
         <div className="flex justify-between items-center">
           <h2 className="today-overview__title text-base font-semibold text-slate-900 dark:text-white">{visibleMonthLabel}</h2>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowRateRuleModal(true)}
+              className="px-2.5 py-1 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 border border-slate-300 dark:border-slate-600 rounded-lg transition-colors cursor-pointer flex items-center gap-1 shrink-0"
+            >
+              <DollarSign className="w-3.5 h-3.5 text-blue-600" />
+              <span>Pricing & Rates</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const slug = getPropertySlug() || '';
+                const url = `${window.location.origin}/availability.php${slug ? `?property_slug=${encodeURIComponent(slug)}` : ''}`;
+                window.open(url, '_blank');
+              }}
+              className="px-2.5 py-1 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 border border-blue-200 dark:border-blue-800 rounded-lg transition-colors cursor-pointer flex items-center gap-1 shrink-0"
+              title="Open public availability page"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              <span>Share Availability</span>
+            </button>
             <button
               type="button"
               onClick={() => {
@@ -885,6 +922,19 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             const convertedId = otaConversionTarget.block.external_event_id;
             setBlockedDates((prev) => prev.filter((bd) => bd.external_event_id !== convertedId));
           }}
+        />
+      )}
+
+      {showRateRuleModal && (
+        <RateRuleModal
+          isOpen={showRateRuleModal}
+          onClose={() => setShowRateRuleModal(false)}
+          rooms={rooms}
+          rateRules={rateRules}
+          pricingMode={pricingMode}
+          defaultTariff={defaultTariff}
+          propertySlug={getPropertySlug() || undefined}
+          onRulesUpdated={loadRateRules}
         />
       )}
     </div>

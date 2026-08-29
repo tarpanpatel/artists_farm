@@ -476,24 +476,24 @@ export const ExpenseItemsManagement: React.FC = () => {
                             </div>
 
                             <div className="flex items-center gap-1.5 shrink-0">
-                              <button
-                                type="button"
+                              <Button
+                                variant="secondary"
+                                size="xs"
                                 onClick={() => handleEditClick(item)}
                                 disabled={saving}
-                                className="px-2 py-1 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 font-semibold text-xs rounded-lg transition cursor-pointer flex items-center gap-1 disabled:opacity-50"
+                                leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
                               >
-                                <Pencil className="w-3 h-3" />
-                                <span>{t('edit_button', 'Edit')}</span>
-                              </button>
-                              <button
-                                type="button"
+                                {t('edit_button', 'Edit')}
+                              </Button>
+                              <Button
+                                variant="danger"
+                                size="xs"
                                 onClick={() => handleDeleteItem(item.id, item.label)}
                                 disabled={saving}
-                                className="px-2 py-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 border border-slate-200 dark:border-slate-700 font-semibold text-xs rounded-lg transition cursor-pointer flex items-center gap-1 disabled:opacity-50"
+                                leftIcon={<Trash2 className="w-3.5 h-3.5 shrink-0" />}
                               >
-                                <Trash2 className="w-3 h-3" />
-                                <span>{t('delete_button', 'Delete')}</span>
-                              </button>
+                                {t('delete_button', 'Delete')}
+                              </Button>
                             </div>
                           </div>
                         </div>

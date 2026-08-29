@@ -86,7 +86,14 @@ agency-agents/
 AI_MARKET_RESEARCH_PROMPT.md
 
 # Uploaded guest ID documents - real PII, never version-controlled
-# (menu/catalog images stay tracked - those are demo content, not guest data)
+# (menu/catalog images stay tracked - those are demo content, not guest data).
+# Unanchored + wildcard (29 Aug 2026, found via review before a commit): real
+# uploads write to php/uploads/images/{tenantSlug}/{propertySlug}/id_documents/
+# (see upload_image.php) - the old literal path below only ever matched a
+# flat php/uploads/images/id_documents/ that no real upload has written to in
+# a long time, so every tenant's real ID-document folder (and its thumbs/
+# subfolder) was NOT actually gitignored despite this rule's intent.
+id_documents/
 php/uploads/images/id_documents/
 
 # Uploaded license/certificate documents - real property paperwork, same
