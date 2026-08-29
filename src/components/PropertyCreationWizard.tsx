@@ -6,6 +6,8 @@ import {
 } from './icons/FlowbiteIcons';
 import { Drawer } from 'flowbite-react';
 import { Input } from './Input';
+import { StyledSelect } from './StyledSelect';
+import { PROPERTY_CURRENCY_OPTIONS } from '../utils/currencies';
 import { Textarea } from './Textarea';
 import { Button } from './Button';
 import { UpiPaymentBlock, isValidUpiIdSyntax } from '../utils/upiQrCode';
@@ -144,6 +146,9 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
   const [defaultTariff, setDefaultTariff] = useState(
     existingProperty?.default_tariff != null ? String(existingProperty.default_tariff) : ''
   );
+  const [currency, setCurrency] = useState(
+    (existingProperty as { currency?: string } | undefined)?.currency || 'INR'
+  );
   const [walkInTableCount, setWalkInTableCount] = useState(
     existingProperty?.walk_in_table_count != null ? String(existingProperty.walk_in_table_count) : '10'
   );
@@ -246,6 +251,7 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
         payload.checkin_time = checkinTime;
         payload.checkout_time = checkoutTime;
         payload.walk_in_table_count = walkInTableCount;
+        payload.currency = currency;
         if (propertyType !== 'MULTI_KEY') payload.default_tariff = defaultTariff;
       } else if (activeStep.key === 'notes') {
         payload.instructions = instructions;
@@ -592,6 +598,12 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
               onChange={(e) => setWalkInTableCount(e.target.value)}
               placeholder="10"
               helperText="How many number of tables the Kitchen can serve."
+            />
+            <StyledSelect
+              label="Currency"
+              value={currency}
+              onChange={setCurrency}
+              options={PROPERTY_CURRENCY_OPTIONS}
             />
           </div>
         )}

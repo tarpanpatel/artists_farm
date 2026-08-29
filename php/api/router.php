@@ -2262,6 +2262,15 @@ switch ($action) {
         $property_checkout_time = trim($input['checkout_time'] ?? '') ?: '11:00';
         $property_walk_in_tables = isset($input['walk_in_table_count']) && $input['walk_in_table_count'] !== ''
             ? max(1, (int)$input['walk_in_table_count']) : 10;
+        // Currency (30 Aug 2026). The properties.currency column has existed all
+        // along but nothing could ever set it - no form field, no API parameter -
+        // so every property was stuck on the 'INR' default. That's a hard ceiling
+        // for a multi-tenant product: a tenant outside India could never be
+        // onboarded correctly. Defaults to INR so existing callers are unchanged.
+        $property_currency = strtoupper(trim($input['currency'] ?? '')) ?: 'INR';
+        if (!preg_match('/^[A-Z]{3}$/', $property_currency)) {
+            $property_currency = 'INR';
+        }
         // Default tariff only meaningful for a SINGLE property/room-level pricing - a MULTI_KEY
         // parent isn't itself bookable (see PropertyEditForm.tsx's identical gate), so this is
         // simply never applied on that branch below regardless of what's sent.
@@ -2348,13 +2357,18 @@ switch ($action) {
                 $pdo->prepare("
                     UPDATE properties SET address = ?, google_maps_link = ?, gstin = ?, upi_id = ?,
                         upi_qr_code_url = ?, instructions = ?, checkin_time = ?, checkout_time = ?,
-                        walk_in_table_count = ?
+                        walk_in_table_count = ?, currency = ?
                     WHERE id = ?
                 ")->execute([
                     $property_address ?: null, $property_maps_link ?: null, $property_gstin ?: null,
                     $property_upi_id ?: null, $property_upi_qr_url ?: null, $property_instructions ?: null,
-                    $property_checkin_time, $property_checkout_time, $property_walk_in_tables, $parentId,
+                    $property_checkin_time, $property_checkout_time, $property_walk_in_tables,
+                    $property_currency, $parentId,
                 ]);
+                // Child rooms inherit the parent's currency - a room can never be
+                // priced in a different currency from the property it belongs to.
+                $pdo->prepare("UPDATE properties SET currency = ? WHERE parent_property_id = ?")
+                    ->execute([$property_currency, $parentId]);
                 syncTenantSuperAdminRow($pdo, $tenant_id, $parentId);
                 if (!$property_has_kitchen) {
                     disableKitchenModuleForNewProperty($pdo, $parentId);
@@ -2369,13 +2383,13 @@ switch ($action) {
                 $pdo->prepare("
                     UPDATE properties SET address = ?, google_maps_link = ?, gstin = ?, upi_id = ?,
                         upi_qr_code_url = ?, instructions = ?, checkin_time = ?, checkout_time = ?,
-                        walk_in_table_count = ?, default_tariff = ?
+                        walk_in_table_count = ?, default_tariff = ?, currency = ?
                     WHERE id = ?
                 ")->execute([
                     $property_address ?: null, $property_maps_link ?: null, $property_gstin ?: null,
                     $property_upi_id ?: null, $property_upi_qr_url ?: null, $property_instructions ?: null,
                     $property_checkin_time, $property_checkout_time, $property_walk_in_tables,
-                    $property_default_tariff, $propertyId,
+                    $property_default_tariff, $property_currency, $propertyId,
                 ]);
                 syncTenantSuperAdminRow($pdo, $tenant_id, $propertyId);
                 if (!$property_has_kitchen) {
@@ -2663,6 +2677,17 @@ switch ($action) {
             if (array_key_exists('gstin', $input)) {
                 $sets[] = 'gstin = ?';
                 $params[] = trim($input['gstin']) ?: null;
+            }
+            // See create_property_for_tenant's own comment: the column existed
+            // but nothing could set it, so every property was stuck on INR.
+            // Ignored rather than rejected if malformed - a bad value here must
+            // not fail an otherwise valid property save.
+            if (array_key_exists('currency', $input)) {
+                $cur = strtoupper(trim((string)$input['currency']));
+                if (preg_match('/^[A-Z]{3}$/', $cur)) {
+                    $sets[] = 'currency = ?';
+                    $params[] = $cur;
+                }
             }
             if (array_key_exists('upi_id', $input)) {
                 $sets[] = 'upi_id = ?';
