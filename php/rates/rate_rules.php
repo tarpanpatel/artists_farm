@@ -36,6 +36,41 @@ function handleRateRuleRequests($pdo, $requestMethod, $action, $propertyId) {
         }
     }
 
+    // Stay restrictions (30 Aug 2026). A rate rule could previously only say
+    // "this range costs X" - there was no way to express "minimum 2 nights over
+    // Diwali" or "closed to arrival on changeover day", which are ordinary
+    // requirements for a homestay and are what every OTA and channel manager
+    // models as restrictions alongside the rate.
+    //
+    // Separate self-heal key from the CREATE TABLE above so existing
+    // installations pick these up without the table being recreated.
+    //
+    // min_stay_arrival vs min_stay_through is a real distinction the OTAs draw:
+    // "arrival" applies only when a stay STARTS on that date; "through" applies
+    // to any stay spanning it. Both are stored because channel managers ask
+    // which one you support, and answering "only one" limits distribution.
+    if (!isSchemaVerified('schema_room_rate_rule_restrictions')) {
+        foreach ([
+            "ADD COLUMN IF NOT EXISTS `min_stay_arrival` INT NULL",
+            "ADD COLUMN IF NOT EXISTS `min_stay_through` INT NULL",
+            "ADD COLUMN IF NOT EXISTS `max_stay` INT NULL",
+            "ADD COLUMN IF NOT EXISTS `stop_sell` TINYINT(1) NOT NULL DEFAULT 0",
+            "ADD COLUMN IF NOT EXISTS `closed_to_arrival` TINYINT(1) NOT NULL DEFAULT 0",
+            "ADD COLUMN IF NOT EXISTS `closed_to_departure` TINYINT(1) NOT NULL DEFAULT 0",
+        ] as $clause) {
+            try {
+                $pdo->exec("ALTER TABLE `room_rate_rules` $clause");
+            } catch (PDOException $e) {}
+        }
+        // rate_per_night becomes optional: a rule may now carry ONLY
+        // restrictions (e.g. a 3-night minimum over a festival at the normal
+        // price). Existing rows are unaffected.
+        try {
+            $pdo->exec("ALTER TABLE `room_rate_rules` MODIFY `rate_per_night` DECIMAL(10,2) NULL");
+        } catch (PDOException $e) {}
+        markSchemaVerified('schema_room_rate_rule_restrictions');
+    }
+
     switch ($action) {
         case 'get_rate_rules':
             getRateRules($pdo, $propertyId);
@@ -114,9 +149,45 @@ function saveRateRule($pdo, $propertyId) {
         $targetRoomIds = $input['room_ids'] ?? (isset($input['room_id']) ? [$input['room_id']] : [null]);
         $ruleId = !empty($input['id']) ? (int)$input['id'] : null;
 
-        if (!$startDate || !$endDate || $ratePerNight === null || $ratePerNight < 0) {
+        // Restrictions (30 Aug 2026). Nullable ints so "not set" is distinct
+        // from "set to zero" - a min_stay of 0 is meaningless, but omitting it
+        // must leave the OTA's own default alone rather than pushing a 0.
+        $intOrNull = function ($v) {
+            if ($v === null || $v === '' || $v === false) return null;
+            $n = (int)$v;
+            return $n > 0 ? $n : null;
+        };
+        $minStayArrival   = $intOrNull($input['min_stay_arrival'] ?? null);
+        $minStayThrough   = $intOrNull($input['min_stay_through'] ?? null);
+        $maxStay          = $intOrNull($input['max_stay'] ?? null);
+        $stopSell         = !empty($input['stop_sell']) ? 1 : 0;
+        $closedToArrival  = !empty($input['closed_to_arrival']) ? 1 : 0;
+        $closedToDeparture= !empty($input['closed_to_departure']) ? 1 : 0;
+
+        $hasRestriction = $minStayArrival !== null || $minStayThrough !== null || $maxStay !== null
+            || $stopSell || $closedToArrival || $closedToDeparture;
+
+        // A rule must now carry a rate OR at least one restriction - previously
+        // rate was unconditionally required, which made "3-night minimum at the
+        // usual price" impossible to express.
+        if (!$startDate || !$endDate) {
             http_response_code(400);
-            echo json_encode(['status' => 'error', 'message' => 'Start date, end date, and non-negative rate per night are required.']);
+            echo json_encode(['status' => 'error', 'message' => 'Start date and end date are required.']);
+            return;
+        }
+        if ($ratePerNight === null && !$hasRestriction) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'Set a rate per night, or at least one restriction (minimum stay, stop sell, or arrival/departure closure).']);
+            return;
+        }
+        if ($ratePerNight !== null && $ratePerNight < 0) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'Rate per night cannot be negative.']);
+            return;
+        }
+        if ($maxStay !== null && $minStayArrival !== null && $maxStay < $minStayArrival) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'Maximum stay cannot be shorter than the minimum stay.']);
             return;
         }
 
@@ -135,20 +206,45 @@ function saveRateRule($pdo, $propertyId) {
             $roomId = !empty($targetRoomIds[0]) ? (int)$targetRoomIds[0] : null;
             $stmt = $pdo->prepare("
                 UPDATE room_rate_rules
-                SET room_id = ?, start_date = ?, end_date = ?, rate_per_night = ?, rule_name = ?
+                SET room_id = ?, start_date = ?, end_date = ?, rate_per_night = ?, rule_name = ?,
+                    min_stay_arrival = ?, min_stay_through = ?, max_stay = ?,
+                    stop_sell = ?, closed_to_arrival = ?, closed_to_departure = ?
                 WHERE id = ? AND property_id = ?
             ");
-            $stmt->execute([$roomId, $startDate, $endDate, $ratePerNight, $ruleName, $ruleId, $propertyId]);
+            $stmt->execute([$roomId, $startDate, $endDate, $ratePerNight, $ruleName,
+                $minStayArrival, $minStayThrough, $maxStay,
+                $stopSell, $closedToArrival, $closedToDeparture,
+                $ruleId, $propertyId]);
         } else {
             // Bulk insert for selected rooms
             $stmt = $pdo->prepare("
-                INSERT INTO room_rate_rules (property_id, room_id, start_date, end_date, rate_per_night, rule_name)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO room_rate_rules (property_id, room_id, start_date, end_date, rate_per_night, rule_name,
+                    min_stay_arrival, min_stay_through, max_stay, stop_sell, closed_to_arrival, closed_to_departure)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             foreach ($targetRoomIds as $rId) {
                 $roomId = !empty($rId) ? (int)$rId : null;
-                $stmt->execute([$propertyId, $roomId, $startDate, $endDate, $ratePerNight, $ruleName]);
+                $stmt->execute([$propertyId, $roomId, $startDate, $endDate, $ratePerNight, $ruleName,
+                    $minStayArrival, $minStayThrough, $maxStay,
+                    $stopSell, $closedToArrival, $closedToDeparture]);
             }
+        }
+
+        // Channel Manager Outbox (30 Aug 2026): Enqueue rate & restriction changes
+        require_once __DIR__ . '/../channex/outbox.php';
+        foreach ($targetRoomIds as $rId) {
+            $roomId = !empty($rId) ? (int)$rId : null;
+            enqueueOutboxItem($pdo, (int)$propertyId, $roomId, 'rates', $startDate, $endDate, [
+                'action' => 'save_rate_rule',
+                'rule_id' => $ruleId,
+                'rate_per_night' => $ratePerNight,
+                'min_stay_arrival' => $minStayArrival,
+                'min_stay_through' => $minStayThrough,
+                'max_stay' => $maxStay,
+                'stop_sell' => $stopSell,
+                'closed_to_arrival' => $closedToArrival,
+                'closed_to_departure' => $closedToDeparture,
+            ]);
         }
 
         echo json_encode(['status' => 'success', 'message' => 'Rate rule saved successfully.']);
@@ -169,8 +265,21 @@ function deleteRateRule($pdo, $propertyId) {
             return;
         }
 
+        $lookup = $pdo->prepare("SELECT room_id, start_date, end_date FROM room_rate_rules WHERE id = ? AND property_id = ?");
+        $lookup->execute([$ruleId, $propertyId]);
+        $existingRule = $lookup->fetch(PDO::FETCH_ASSOC);
+
         $stmt = $pdo->prepare("DELETE FROM room_rate_rules WHERE id = ? AND property_id = ?");
         $stmt->execute([$ruleId, $propertyId]);
+
+        if ($existingRule && !empty($existingRule['start_date']) && !empty($existingRule['end_date'])) {
+            require_once __DIR__ . '/../channex/outbox.php';
+            $roomId = !empty($existingRule['room_id']) ? (int)$existingRule['room_id'] : null;
+            enqueueOutboxItem($pdo, (int)$propertyId, $roomId, 'rates', $existingRule['start_date'], $existingRule['end_date'], [
+                'action' => 'delete_rate_rule',
+                'rule_id' => $ruleId,
+            ]);
+        }
 
         echo json_encode(['status' => 'success', 'message' => 'Rate rule deleted successfully.']);
     } catch (Exception $e) {
