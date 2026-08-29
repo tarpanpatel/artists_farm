@@ -135,6 +135,7 @@ if ($propertyId > 0 && !empty($scopeIds)) {
 
 // 4. Fetch Rate Rules for this period
 $rateRulesPerRoom = [];
+$stopSellPerRoom = [];
 if ($propertyId > 0 && !empty($scopeIds)) {
     try {
         if (!isSchemaVerified('schema_room_rate_rules')) {
@@ -154,8 +155,16 @@ if ($propertyId > 0 && !empty($scopeIds)) {
             markSchemaVerified('schema_room_rate_rules');
         }
 
+        // stop_sell is selected alongside the rate (30 Aug 2026): a night the
+        // owner has closed for sale must not be advertised as bookable on this
+        // public page. Without this the page would happily invite an enquiry
+        // for a date the property has deliberately shut - worse than showing
+        // nothing, because the guest has already formed an expectation.
+        // COALESCE keeps this working on installations that haven't picked up
+        // the restrictions columns yet.
         $stmt = $pdo->prepare("
-            SELECT room_id, start_date, end_date, rate_per_night
+            SELECT room_id, start_date, end_date, rate_per_night,
+                   COALESCE(stop_sell, 0) AS stop_sell
             FROM room_rate_rules
             WHERE (property_id IN ($placeholders) OR room_id IN ($placeholders))
             AND start_date <= ? AND end_date >= ?
@@ -170,13 +179,28 @@ if ($propertyId > 0 && !empty($scopeIds)) {
             $end = strtotime($rr['end_date']);
             while ($cur <= $end) {
                 $dStr = date('Y-m-d', $cur);
-                if (!isset($rateRulesPerRoom[$rId][$dStr])) {
+                // A rate rule may now carry only restrictions and no rate at
+                // all, so guard the null rather than casting it to 0.00 and
+                // publishing a free night.
+                if (!isset($rateRulesPerRoom[$rId][$dStr]) && $rr['rate_per_night'] !== null) {
                     $rateRulesPerRoom[$rId][$dStr] = (float)$rr['rate_per_night'];
+                }
+                if (!empty($rr['stop_sell'])) {
+                    $stopSellPerRoom[$rId][$dStr] = true;
                 }
                 $cur = strtotime('+1 day', $cur);
             }
         }
     } catch (Exception $e) {}
+}
+
+// A night the owner has closed for sale must never be advertised as bookable
+// here (30 Aug 2026). Room-specific rules win over a property-wide rule, same
+// precedence getDailyRate() already uses.
+if (!function_exists('isStopSell')) {
+    function isStopSell($roomId, $dateStr, $stopSellPerRoom) {
+        return !empty($stopSellPerRoom[$roomId][$dateStr]) || !empty($stopSellPerRoom[0][$dateStr]);
+    }
 }
 
 // Helper to compute live rate for a room on a given day
@@ -451,7 +475,11 @@ $slugParam = isset($_GET['property_slug']) ? '&property_slug=' . urlencode($_GET
                                         <?php
                                         $dStr = sprintf('%04d-%02d-%02d', $selectedYear, $selectedMonth, $d);
                                         $isPast = $dStr < $todayStr;
-                                        $isBooked = !empty($bookedDaysPerRoom[$rId][$dStr]);
+                                        // A stop-sell night is presented exactly like a booked one:
+                                        // unavailable, no rate shown. Deliberately NOT a distinct
+                                        // "closed" state - this is a public page, and why a night
+                                        // is unavailable is the owner's business, not the guest's.
+                                        $isBooked = !empty($bookedDaysPerRoom[$rId][$dStr]) || isStopSell($rId, $dStr, $stopSellPerRoom);
                                         $rate = getDailyRate($rId, $dStr, $rTariff, $pricingMode, $rateRulesPerRoom, $baseTariff);
                                         $cellClass = $isPast ? 'past' : ($isBooked ? 'booked' : 'available');
                                         ?>
@@ -499,7 +527,9 @@ $slugParam = isset($_GET['property_slug']) ? '&property_slug=' . urlencode($_GET
                             <?php
                             $dStr = sprintf('%04d-%02d-%02d', $selectedYear, $selectedMonth, $d);
                             $isPast = $dStr < $todayStr;
-                            $isBooked = !empty($bookedDaysPerRoom[$rId][$dStr]);
+                            // See the multicalendar branch above: a stop-sell night reads
+                            // as unavailable here too, with no rate advertised.
+                            $isBooked = !empty($bookedDaysPerRoom[$rId][$dStr]) || isStopSell($rId, $dStr, $stopSellPerRoom);
                             $rate = getDailyRate($rId, $dStr, $rTariff, $pricingMode, $rateRulesPerRoom, $baseTariff);
                             ?>
                             <div class="day-cell">
