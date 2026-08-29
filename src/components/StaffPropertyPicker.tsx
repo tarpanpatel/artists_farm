@@ -1,3 +1,7 @@
+/**
+ * Staff Property Switcher Modal
+ * Enables multi-property staff users to switch active property contexts seamlessly.
+ */
 import React, { useEffect, useState } from 'react';
 import { Building2, Layers, Home, ExternalLink, LogOut, Loader2, ArrowLeft } from './icons/FlowbiteIcons';
 import { API_ROOT_BASE } from '../services/api';
@@ -92,7 +96,12 @@ export const StaffPropertyPicker: React.FC<StaffPropertyPickerProps> = ({
 
   return (
     <div className="staff-property-picker min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col">
-      <div className="staff-property-picker__header bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4 flex items-center justify-between">
+      {/* pt-[env(safe-area-inset-top)] (29 Aug 2026, user report + screenshot: header content
+          overlapped by the phone's status bar) - same fix as TenantDashboard.tsx's header got
+          27 Aug 2026 for the identical symptom; this in-flow (non-sticky) header had never gotten
+          it. Added as extra top padding on top of the existing py-4, not a fixed h-[calc(...)]
+          scheme - this header's height is already just "however tall its content is". */}
+      <div className="staff-property-picker__header bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 pt-[calc(1rem+env(safe-area-inset-top,0px))] pb-4 flex items-center justify-between">
         <div className="staff-property-picker__user flex items-center gap-2.5">
           <div className="staff-property-picker__user-icon w-9 h-9 rounded-lg bg-gradient-to-br from-teal-100 to-emerald-100 dark:from-teal-900/40 dark:to-emerald-900/40 flex items-center justify-center">
             <Building2 className="w-5 h-5 text-teal-600 dark:text-teal-400" />
