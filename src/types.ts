@@ -28,6 +28,10 @@ export interface Guest {
   otaSourceLabel?: string | null;
   icalExternalEventId?: string | null;
   otaCancelledDetectedAt?: string | null;
+  // Set by the server on every write; sent back unchanged when saving an edit
+  // so a save built on a stale copy is rejected instead of silently clobbering
+  // whatever another staff member changed in the meantime.
+  updatedAt?: string | null;
   // Itemized "Additional Charges" lines from the booking form (Decoration
   // Fees, Extra Housekeeping, Pet Stay Charges, or a custom Misc Charges
   // Management template) - persisted to guest_extra_charges so analytics can

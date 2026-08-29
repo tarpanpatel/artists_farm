@@ -74,10 +74,23 @@ if (!function_exists('handleTelegramCallbackQuery')) {
             $allItems = $checkStmt->fetchAll(PDO::FETCH_ASSOC);
             $itemRow = $allItems[$item_index] ?? $allItems[0] ?? null;
 
+            // CONCURRENCY (30 Aug 2026): the "already served?" test above is advisory
+            // only - it CANNOT be trusted to decide whether to write, because a Telegram
+            // inline button stays tappable for everyone in the group indefinitely and the
+            // KDS only refreshes every 15s, so two staff tapping the same dish seconds
+            // apart both read 'not served' and both proceeded. The UPDATE is what actually
+            // decides: it only matches a row that is still unserved, and rowCount() tells
+            // us whether THIS tap was the one that claimed it. Without this, the second
+            // tap wrote a duplicate served_logs row (a phantom second serving in the KDS
+            // "Served Dishes" report) and a duplicate audit row.
+            $claimed = false;
             if ($itemRow && strtolower($itemRow['item_status']) !== 'served') {
+                $claimStmt = $pdo->prepare("UPDATE order_items SET item_status = 'Served' WHERE id = ? AND (item_status IS NULL OR LOWER(item_status) != 'served')");
+                $claimStmt->execute([$itemRow['id']]);
+                $claimed = $claimStmt->rowCount() > 0;
+            }
 
-                $pdo->prepare("UPDATE order_items SET item_status = 'Served' WHERE id = ?")
-                    ->execute([$itemRow['id']]);
+            if ($itemRow && $claimed) {
 
                 // Immutable Audit Log trace
                 try {
@@ -183,9 +196,19 @@ if (!function_exists('handleTelegramCallbackQuery')) {
             $order_id = $matches[1];
 
             // Record in Current Guest Served Dishes (served_logs) for every item
-            // about to be marked served (query before the status flip below)
+            // about to be marked served (query before the status flip below).
+            //
+            // CONCURRENCY (30 Aug 2026): "read the unserved items, log them, then flip
+            // them" is only safe if no one else can do the same thing in between - two
+            // staff tapping "Serve All" on the same ticket both read the same unserved
+            // list and both wrote a full set of served_logs rows, duplicating every dish
+            // in the KDS "Served Dishes" report (the UPDATE below was already correctly
+            // conditional, so only the logging duplicated - which made it easy to miss).
+            // Selecting FOR UPDATE inside a transaction makes the second tapper wait,
+            // then read an empty unserved list and log nothing.
             try {
                 if ($propertyId) {
+                    $pdo->beginTransaction();
                     $servedStmt = $pdo->prepare("
                         SELECT oi.quantity, mi.name as dish_name, g.guest_name, rp.name as table_no
                         FROM order_items oi
@@ -194,6 +217,7 @@ if (!function_exists('handleTelegramCallbackQuery')) {
                         LEFT JOIN guests g ON o.guest_id = g.id
                         LEFT JOIN properties rp ON g.room_id = rp.id
                         WHERE oi.order_id = ? AND (oi.item_status IS NULL OR LOWER(oi.item_status) != 'served')
+                        FOR UPDATE
                     ");
                     $servedStmt->execute([$order_id]);
                     $insServed = $pdo->prepare("INSERT INTO served_logs (property_id, order_id, item_name, quantity, served_by, guest_name, room_number, served_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
@@ -208,10 +232,20 @@ if (!function_exists('handleTelegramCallbackQuery')) {
                             $si['table_no']
                         ]);
                     }
+                    // Flip the items inside the same transaction the rows were locked in,
+                    // so the log rows and the status change land together or not at all.
+                    $pdo->prepare("UPDATE order_items SET item_status = 'Served' WHERE order_id = ? AND (item_status IS NULL OR LOWER(item_status) != 'served')")
+                        ->execute([$order_id]);
+                    $pdo->commit();
                 }
-            } catch (PDOException $es) {}
+            } catch (PDOException $es) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+            }
 
-            // Mark all unserved items in this order as served
+            // Mark all unserved items in this order as served (also covers the
+            // no-$propertyId case, where the transactional block above is skipped).
             $pdo->prepare("UPDATE order_items SET item_status = 'Served' WHERE order_id = ? AND (item_status IS NULL OR LOWER(item_status) != 'served')")
                 ->execute([$order_id]);
 

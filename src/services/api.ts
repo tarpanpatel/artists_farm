@@ -1122,6 +1122,9 @@ export async function fetchGuestsFromDB(): Promise<any[]> {
           otaSourceLabel: g.otaSourceLabel || g.ota_source_label || null,
           icalExternalEventId: g.icalExternalEventId || g.ical_external_event_id || null,
           otaCancelledDetectedAt: g.otaCancelledDetectedAt || g.ota_cancelled_detected_at || null,
+          // Concurrency token echoed back on save so the backend can reject an
+          // edit built on a stale copy - see update_guest's expected_updated_at.
+          updatedAt: g.updatedAt || g.updated_at || null,
         });
       }
 
@@ -1210,19 +1213,27 @@ export async function updateGuestInDB(guest: {
   booking_source?: string;
   notes?: string;
   is_foreign_guest?: boolean;
+  // The updatedAt value this edit was built from. The server rejects the save
+  // if the booking has moved since, rather than silently overwriting whatever
+  // another staff member changed (see update_guest in php/guests/guests.php).
+  expected_updated_at?: string | null;
 }): Promise<boolean> {
-  try {
-    const res = await apiFetch(`${API_BASE}?action=update_guest`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(guest),
-    });
-    const json = await res.json();
-    return json.status === 'success';
-  } catch (err) {
-    console.error('Failed to update guest in DB:', err);
-    return false;
+  // Throws with the backend's REAL message on a rejected save rather than
+  // collapsing every failure into `false` (30 Aug 2026). The only caller
+  // already turns a falsy result into a generic "Failed to update booking",
+  // which would have hidden the one message that actually tells the user what
+  // to do - "someone else changed this booking, reload and re-apply". Same
+  // throw-the-real-reason pattern deleteGuestFromDB/addGuestToDB already use.
+  const res = await apiFetch(`${API_BASE}?action=update_guest`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(guest),
+  });
+  const json = await res.json().catch(() => null);
+  if (!json || json.status !== 'success') {
+    throw new Error(json?.message || 'Failed to update booking');
   }
+  return true;
 }
 
 export async function checkoutGuestInDB(guestId: string): Promise<boolean> {

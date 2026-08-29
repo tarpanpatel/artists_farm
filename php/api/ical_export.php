@@ -40,7 +40,7 @@ try {
         $propertyId = $room['id'];
         $propertyName = $room['name'];
 
-        $stmt = $pdo->prepare("SELECT DATE(checkin_date) as start_date, DATE(expected_checkout) as end_date, status, guest_name FROM guests WHERE room_id = :room_id AND checkin_date IS NOT NULL AND status != 'Cancelled'");
+        $stmt = $pdo->prepare("SELECT id, DATE(checkin_date) as start_date, DATE(expected_checkout) as end_date, status, guest_name FROM guests WHERE room_id = :room_id AND checkin_date IS NOT NULL AND status != 'Cancelled'");
         $stmt->execute([':room_id' => $propertyId]);
         $bookings = $stmt->fetchAll();
     } else {
@@ -56,9 +56,49 @@ try {
         $propertyId = $property['id'];
         $propertyName = $property['name'];
 
-        $stmt = $pdo->prepare("SELECT DATE(checkin_date) as start_date, DATE(expected_checkout) as end_date, status, guest_name FROM guests WHERE property_id = :property_id AND checkin_date IS NOT NULL AND status != 'Cancelled'");
+        $stmt = $pdo->prepare("SELECT id, DATE(checkin_date) as start_date, DATE(expected_checkout) as end_date, status, guest_name FROM guests WHERE property_id = :property_id AND checkin_date IS NOT NULL AND status != 'Cancelled'");
         $stmt->execute([':property_id' => $propertyId]);
         $bookings = $stmt->fetchAll();
+    }
+
+    // Unconverted OTA holds must be re-published too (added 30 Aug 2026).
+    // This feed used to export ONLY the guests table, so a night sold on
+    // Airbnb and synced in as a calendar block - but not yet clicked through
+    // "Convert to Booking" - was still advertised to every OTHER channel as
+    // available. That is not a race that occasionally bites: until someone
+    // performs that manual conversion, Booking.com et al are told the room is
+    // free 100% of the time, and can legitimately sell the same night. The
+    // whole point of this feed is "these dates are taken", and an OTA hold is
+    // exactly that regardless of whether staff have processed it yet.
+    // Excludes holds already converted (the guests row above covers those,
+    // and exporting both would emit a duplicate VEVENT for one stay) and
+    // anything already in the past.
+    try {
+        $blockStmt = $pdo->prepare("
+            SELECT e.external_event_id,
+                   DATE(e.event_start) as start_date,
+                   DATE(e.event_end) as end_date
+            FROM ical_synced_events e
+            JOIN ical_sync_configs c ON e.sync_config_id = c.id
+            WHERE c.property_id = :pid
+              AND e.sync_status = 'synced'
+              AND e.event_end >= CURDATE()
+              AND NOT EXISTS (
+                  SELECT 1 FROM guests g
+                  WHERE g.ical_external_event_id = e.external_event_id
+                    AND (g.room_id = c.property_id OR g.property_id = c.property_id)
+                    AND g.status != 'Cancelled'
+              )
+        ");
+        $blockStmt->execute([':pid' => $propertyId]);
+        foreach ($blockStmt->fetchAll() as $blk) {
+            $blk['is_ota_block'] = true;
+            $bookings[] = $blk;
+        }
+    } catch (PDOException $eBlocks) {
+        // A missing/empty sync table must never break the whole feed - an OTA
+        // that gets a 500 here would fall back to treating everything as free,
+        // which is strictly worse than publishing just the direct bookings.
     }
 
     // Generate iCal format
@@ -84,7 +124,17 @@ try {
         foreach ($bookings as $booking) {
             $startDate = strtotime($booking['start_date']);
             $endDate = strtotime($booking['end_date']);
-            $eventId = md5($propertyId . $booking['start_date'] . $booking['end_date']);
+            // UID must be unique PER BOOKING, not per date range (fixed 30 Aug
+            // 2026). It was md5(propertyId + start + end), so two different
+            // stays that happen to share the same dates - two rooms booked for
+            // the same nights on a whole-property feed, or a direct booking
+            // sitting alongside an OTA hold - produced an IDENTICAL UID, and
+            // iCal consumers dedupe by UID, so one of them silently vanished
+            // from the feed and its nights were advertised as free.
+            $uidSeed = !empty($booking['is_ota_block'])
+                ? 'ota-' . ($booking['external_event_id'] ?? '')
+                : 'guest-' . ($booking['id'] ?? '');
+            $eventId = md5($propertyId . '|' . $uidSeed . '|' . $booking['start_date'] . '|' . $booking['end_date']);
 
             $ical .= "BEGIN:VEVENT\r\n";
             $ical .= "UID:$eventId@artistsfarm.local\r\n";

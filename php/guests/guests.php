@@ -182,6 +182,27 @@ function ensureGuestTelegramCheckinoutSchema($pdo) {
     markSchemaVerified('schema_guest_telegram_checkinout');
 }
 
+// Concurrency token for booking edits (added 30 Aug 2026). update_guest
+// overwrites every column from the submitted form, so two staff editing the
+// same booking meant the later save silently discarded the earlier one - no
+// error, no warning, and nobody finds out until a guest turns up on the wrong
+// date. This column is the "version" each edit is checked against: the client
+// echoes back the value it loaded, and the UPDATE only applies if the row
+// hasn't moved since (see update_guest's expected_updated_at handling).
+//
+// Fractional seconds are deliberate: a plain 1-second-resolution TIMESTAMP
+// would let two saves inside the same second carry the same token, which is
+// exactly the fast double-save this is meant to catch. MariaDB's ON UPDATE
+// only fires when a row's values actually change, so a no-op save correctly
+// leaves the token (and therefore anyone else's in-flight edit) alone.
+function ensureGuestConcurrencySchema($pdo) {
+    if (isSchemaVerified('schema_guest_updated_at')) return;
+    try {
+        $pdo->exec("ALTER TABLE guests ADD COLUMN IF NOT EXISTS `updated_at` TIMESTAMP(6) NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)");
+    } catch (PDOException $e) {}
+    markSchemaVerified('schema_guest_updated_at');
+}
+
 // Shared by the app's own checkin_guest/checkout_guest API actions and the
 // Telegram "Mark Checked-In"/"Mark Checked-Out" buttons (checkinGuestViaTelegram/
 // checkoutGuestViaTelegram below) - one place that actually flips guest
@@ -492,6 +513,8 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
         case 'get_guests':
             reconcileDemoGuestStatuses($pdo, $propertyId);
             ensureOtaBookingSchema($pdo);
+            // The edit form needs updated_at to send back as its concurrency token.
+            ensureGuestConcurrencySchema($pdo);
             try {
                 // A Single property has no separate "room" to assign - it IS the one
                 // bookable unit, so a guest there should show the property's own name,
@@ -556,6 +579,7 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                 ensureOtaBookingSchema($pdo);
                 ensureGuestExtraChargesSchema($pdo);
                 ensureGuestTelegramCheckinoutSchema($pdo);
+                ensureGuestConcurrencySchema($pdo);
                 $input = json_decode(file_get_contents('php://input'), true);
                 if (!is_array($input)) $input = [];
                 try {
@@ -605,17 +629,65 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     // against BOOKED too, not just Active/CheckedIn - a future
                     // reservation is exactly the kind of thing a second booking must
                     // not silently double up on.
-                    if ($roomId !== null) {
-                        $newCheckin = $input['checkin_date'] ?? date('Y-m-d');
-                        $newCheckout = $input['expected_checkout'] ?? date('Y-m-d H:i:s', strtotime('+1 day'));
-                        $roomConflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id = ? AND property_id = ? AND status IN (?, ?, ?) AND checkin_date < ? AND expected_checkout > ? LIMIT 1");
-                        $roomConflictStmt->execute([$roomId, $propertyId, GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_IN, GUEST_STATUS_BOOKED, $newCheckout, $newCheckin]);
+                    //
+                    // CONCURRENCY (30 Aug 2026): the check below MUST stay a locking
+                    // read. It was a plain SELECT, which under this DB's REPEATABLE
+                    // READ isolation is a non-locking snapshot read - proven with two
+                    // real concurrent connections to let two staff booking the same
+                    // room for the same dates BOTH pass this check and BOTH insert.
+                    // Worse, the losing transaction kept reading its stale snapshot
+                    // even after the other committed, so the danger window was the
+                    // whole transaction, not a few milliseconds. Two changes fix it:
+                    //   1. Take an exclusive row lock on the room (or the property
+                    //      itself for a whole-property booking) FIRST, so concurrent
+                    //      booking attempts for the same unit serialize here instead
+                    //      of racing. Always the same single row in the same order,
+                    //      so it can't deadlock against itself.
+                    //   2. Run the overlap check itself as `... FOR UPDATE`, which in
+                    //      InnoDB is a "current read" - it sees the latest committed
+                    //      rows rather than the transaction's frozen snapshot, and
+                    //      gap-locks the range so a concurrent INSERT can't slip in.
+                    // Neither alone is sufficient: (1) without (2) still reads a stale
+                    // snapshot; (2) without (1) is correct but relies purely on gap
+                    // locks over an index range.
+                    $newCheckin = $input['checkin_date'] ?? date('Y-m-d');
+                    $newCheckout = $input['expected_checkout'] ?? date('Y-m-d H:i:s', strtotime('+1 day'));
+
+                    // Whole-property (SINGLE) bookings carry no room_id at all, so the
+                    // room-scoped branch below never ran for them - meaning a whole
+                    // villa/homestay had NO overlap protection whatsoever, not even
+                    // the racy version (found 30 Aug 2026 during the concurrency
+                    // audit). Deliberately scoped to genuinely room-less properties:
+                    // a MULTI_KEY property can also hold legacy room_id-NULL rows
+                    // ("Other / Unassigned Rooms"), and those must NOT block each
+                    // other, since they're not a single shared physical unit.
+                    $isWholePropertyBooking = false;
+                    if ($roomId === null) {
+                        $typeStmt = $pdo->prepare("SELECT property_type FROM properties WHERE id = ? LIMIT 1");
+                        $typeStmt->execute([$propertyId]);
+                        $isWholePropertyBooking = ($typeStmt->fetchColumn() === 'SINGLE');
+                    }
+
+                    if ($roomId !== null || $isWholePropertyBooking) {
+                        $lockTargetId = $roomId !== null ? $roomId : $propertyId;
+                        $pdo->prepare("SELECT id FROM properties WHERE id = ? FOR UPDATE")->execute([$lockTargetId]);
+
+                        if ($roomId !== null) {
+                            $roomConflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id = ? AND property_id = ? AND status IN (?, ?, ?) AND checkin_date < ? AND expected_checkout > ? LIMIT 1 FOR UPDATE");
+                            $roomConflictStmt->execute([$roomId, $propertyId, GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_IN, GUEST_STATUS_BOOKED, $newCheckout, $newCheckin]);
+                        } else {
+                            $roomConflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id IS NULL AND property_id = ? AND status IN (?, ?, ?) AND checkin_date < ? AND expected_checkout > ? LIMIT 1 FOR UPDATE");
+                            $roomConflictStmt->execute([$propertyId, GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_IN, GUEST_STATUS_BOOKED, $newCheckout, $newCheckin]);
+                        }
+
                         if ($roomConflictStmt->fetch()) {
                             if ($pdo->inTransaction()) {
                                 $pdo->rollBack();
                             }
                             http_response_code(409);
-                            echo json_encode(['status' => 'error', 'message' => 'Selected room already has an active booking for these dates']);
+                            echo json_encode(['status' => 'error', 'message' => $roomId !== null
+                                ? 'Selected room already has an active booking for these dates'
+                                : 'This property already has an active booking for these dates']);
                             break;
                         }
                     }
@@ -801,6 +873,7 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
             if ($request_method === 'POST') {
                 ensureComplianceSchema($pdo);
                 ensureOtaBookingSchema($pdo);
+                ensureGuestConcurrencySchema($pdo);
                 $input = json_decode(file_get_contents('php://input'), true);
                 if (!is_array($input)) $input = [];
                 try {
@@ -822,15 +895,64 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     $previousGuest = $prevStmt->fetch(PDO::FETCH_ASSOC) ?: [];
                     $previousNoOfGuests = intval($previousGuest['no_of_guests'] ?? 0);
 
+                    // CONCURRENCY (30 Aug 2026): same fix as add_guest's - see the long
+                    // comment there for why a plain SELECT could not enforce this. Two
+                    // extra wrinkles specific to this path:
+                    //   - There was no transaction at all here, so even a FOR UPDATE
+                    //     lock would have been released the instant its statement
+                    //     finished (autocommit), leaving the gap between check and
+                    //     UPDATE just as wide. The check + UPDATE now commit as one
+                    //     unit, so the lock is actually held across both.
+                    //   - Moving a booking INTO an occupied room is the exact operation
+                    //     this guards, and it races against add_guest too (one staff
+                    //     member creating a booking while another drags an existing one
+                    //     into the same room) - locking the same room row in both paths
+                    //     is what makes those two serialize against each other.
+                    $pdo->beginTransaction();
+
+                    // LOST UPDATE GUARD (30 Aug 2026): re-read the row inside the
+                    // transaction and compare against the version the client loaded.
+                    // The earlier $previousGuest read happened outside any lock and is
+                    // used for the change-diff notification, so it can't be trusted for
+                    // this. Optimistic by design - staff editing DIFFERENT bookings, or
+                    // the same booking one after another, are never blocked; only a
+                    // genuine "you're both editing this exact booking right now" collides.
+                    // Backwards compatible: a client that sends no token (older cached
+                    // bundle, an integration, the OTA-conversion path) keeps the old
+                    // last-write-wins behaviour rather than being hard-failed.
+                    $expectedUpdatedAt = trim((string)($input['expected_updated_at'] ?? $input['expectedUpdatedAt'] ?? ''));
+                    if ($expectedUpdatedAt !== '') {
+                        $verStmt = $pdo->prepare("SELECT updated_at FROM guests WHERE id = ? AND property_id = ? FOR UPDATE");
+                        $verStmt->execute([$guestId, $propertyId]);
+                        $currentUpdatedAt = $verStmt->fetchColumn();
+                        if ($currentUpdatedAt !== false && (string)$currentUpdatedAt !== $expectedUpdatedAt) {
+                            if ($pdo->inTransaction()) {
+                                $pdo->rollBack();
+                            }
+                            http_response_code(409);
+                            echo json_encode([
+                                'status' => 'error',
+                                'code' => 'stale_booking',
+                                'message' => 'Someone else changed this booking while you were editing it. Reload to see their changes, then re-apply yours.',
+                                'current_updated_at' => $currentUpdatedAt,
+                            ]);
+                            break;
+                        }
+                    }
+
                     if ($roomId !== null) {
+                        $pdo->prepare("SELECT id FROM properties WHERE id = ? FOR UPDATE")->execute([$roomId]);
                         // Was missing GUEST_STATUS_BOOKED - a future reservation is the
                         // most common thing this check needs to catch (moving a stay
                         // into a room that's already reserved later on), and it was
                         // silently excluded (found + fixed alongside add_guest's
                         // missing check, 20 Aug 2026).
-                        $conflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id = ? AND status IN (?, ?, ?) AND id != ? AND property_id = ? AND checkin_date < ? AND expected_checkout > ? LIMIT 1");
+                        $conflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id = ? AND status IN (?, ?, ?) AND id != ? AND property_id = ? AND checkin_date < ? AND expected_checkout > ? LIMIT 1 FOR UPDATE");
                         $conflictStmt->execute([$roomId, GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_IN, GUEST_STATUS_BOOKED, $guestId, $propertyId, $newCheckout, $newCheckin]);
                         if ($conflictStmt->fetch()) {
+                            if ($pdo->inTransaction()) {
+                                $pdo->rollBack();
+                            }
                             http_response_code(409);
                             echo json_encode(['status' => 'error', 'message' => 'Selected room already has an active booking for these dates']);
                             break;
@@ -891,6 +1013,15 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                             $propertyId,
                         ]);
                     }
+
+                    // Commit before responding/notifying: the room lock taken above must
+                    // be released as soon as the write is durable, not held across the
+                    // Telegram sends below (a slow/hanging API call would otherwise block
+                    // every other booking attempt for this room for its whole duration).
+                    if ($pdo->inTransaction()) {
+                        $pdo->commit();
+                    }
+
                     echo json_encode(['status' => 'success', 'message' => 'Booking updated successfully']);
 
                     // Ping Admin with exactly what changed, not just "booking updated" -
@@ -1024,6 +1155,12 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         }
                     }
                 } catch (PDOException $e) {
+                    // Must roll back explicitly - an open transaction here would keep
+                    // holding the room lock taken above until the connection closed,
+                    // stalling every other booking attempt for that room.
+                    if ($pdo->inTransaction()) {
+                        $pdo->rollBack();
+                    }
                     http_response_code(500);
                     echo json_encode(['status' => 'error', 'message' => 'Failed to update guest: ' . $e->getMessage()]);
                 }

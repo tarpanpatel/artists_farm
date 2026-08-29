@@ -333,7 +333,18 @@ function AppBody({ preloadedData }: AppBodyProps) {
 
   const handleNavigateToMultiKeyOverview = () => {
     setSelectedRoomSlugOverride(null);
+    // Must land on the 'dashboard' tab - the rooms overview only renders under
+    // `!selectedRoomSlugOverride && activeTab === 'dashboard'` (see render below).
+    setActiveTab('dashboard');
     setActiveMenuItemKey('multikey_property_overview');
+    // Clear the room slug out of the URL hash too. Without this, the "restore
+    // room view on refresh" effect (keyed on selectedRoomSlugOverride) re-reads
+    // the still-'#room-slug' hash the instant we null the override and snaps
+    // straight back into the room - which is exactly why "Go Back" appeared to
+    // do nothing from a room's Edit Room page (29 Aug 2026).
+    if (typeof window !== 'undefined' && window.location.hash.replace('#', '').split('/')[0] !== 'dashboard') {
+      window.location.hash = '#dashboard';
+    }
   };
 
   const handleNavigateToRoom = (roomSlug: string, initialTab: TabType = 'dashboard') => {
@@ -1622,8 +1633,21 @@ function AppBody({ preloadedData }: AppBodyProps) {
       booking_source: g.booking_source ?? updatedGuest.bookingSource ?? '',
       notes: g.notes ?? updatedGuest.notes ?? '',
       is_foreign_guest: g.is_foreign_guest ?? updatedGuest.isForeignGuest ?? false,
+      // Version this edit was built from - the save is rejected if someone else
+      // changed the booking in the meantime, instead of silently discarding
+      // their change. Read from the guest currently in state rather than from
+      // updatedGuest, since the edit form round-trips its own copy and may not
+      // carry the field through.
+      expected_updated_at:
+        guests.find((existing) => existing.id === updatedGuest.id)?.updatedAt ??
+        updatedGuest.updatedAt ??
+        null,
     });
     if (!ok) throw new Error('Failed to update booking');
+    // Refetch rather than merging blindly: the local row's updatedAt token is
+    // now stale (the server just issued a new one), so a second edit in the
+    // same session would otherwise be wrongly rejected as a conflict.
+    fetchGuestsFromDB().then((fresh) => { if (fresh.length) setGuests(fresh); }).catch(() => {});
     setGuests((prev) =>
       prev.map((g) => (g.id === updatedGuest.id ? { ...g, ...updatedGuest } : g))
     );
@@ -2039,7 +2063,6 @@ ${itemsStr}
             isSidebarOpen={isSidebarOpen}
             kitchenModuleEnabled={kitchenEnabled}
             onOpenAddBooking={() => setIsAddBookingModalOpen(true)}
-            onOpenAddExpense={() => setIsAddExpenseModalOpen(true)}
             permissions={mobileNavPermissions}
           />
         )}
