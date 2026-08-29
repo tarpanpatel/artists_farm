@@ -3007,9 +3007,15 @@ export interface RateRule {
   room_id?: number | null;
   start_date: string;
   end_date: string;
-  rate_per_night: number;
+  rate_per_night?: number | null;
   rule_name?: string;
   room_name?: string;
+  min_stay_arrival?: number | null;
+  min_stay_through?: number | null;
+  max_stay?: number | null;
+  stop_sell?: number;
+  closed_to_arrival?: number;
+  closed_to_departure?: number;
 }
 
 export async function fetchRateRulesDB(): Promise<{ rules: RateRule[]; pricing_mode: 'flat' | 'variable'; default_tariff: number | null }> {
@@ -3036,8 +3042,14 @@ export async function saveRateRuleDB(rule: {
   room_id?: number | null;
   start_date: string;
   end_date: string;
-  rate_per_night: number;
+  rate_per_night?: number | null;
   rule_name?: string;
+  min_stay_arrival?: number | null;
+  min_stay_through?: number | null;
+  max_stay?: number | null;
+  stop_sell?: number | boolean;
+  closed_to_arrival?: number | boolean;
+  closed_to_departure?: number | boolean;
 }): Promise<{ success: boolean; message: string }> {
   try {
     const res = await apiFetch(`${API_BASE}?action=save_rate_rule`, {

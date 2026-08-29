@@ -805,6 +805,14 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                             'description' => 'Advance collected at guest registration',
                         ], $propertyId);
                     }
+
+                    // Channel Manager Outbox (30 Aug 2026): Enqueue within transaction
+                    require_once __DIR__ . '/../channex/outbox.php';
+                    enqueueOutboxItem($pdo, (int)$propertyId, $roomId, 'availability', $newCheckin, $newCheckout, [
+                        'action' => 'add_guest',
+                        'guest_id' => $newId,
+                    ]);
+
                     $pdo->commit();
 
                     // Send Telegram notification for new guest booking
@@ -1014,6 +1022,20 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         ]);
                     }
 
+                    // Channel Manager Outbox (30 Aug 2026): Enqueue both old and new date ranges
+                    require_once __DIR__ . '/../channex/outbox.php';
+                    if (!empty($previousGuest['checkin_date']) && !empty($previousGuest['expected_checkout'])) {
+                        $oldRoomId = !empty($previousGuest['room_id']) ? (int)$previousGuest['room_id'] : null;
+                        enqueueOutboxItem($pdo, (int)$propertyId, $oldRoomId, 'availability', $previousGuest['checkin_date'], $previousGuest['expected_checkout'], [
+                            'action' => 'update_guest_old_dates',
+                            'guest_id' => $guestId,
+                        ]);
+                    }
+                    enqueueOutboxItem($pdo, (int)$propertyId, $roomId, 'availability', $newCheckin, $newCheckout, [
+                        'action' => 'update_guest_new_dates',
+                        'guest_id' => $guestId,
+                    ]);
+
                     // Commit before responding/notifying: the room lock taken above must
                     // be released as soon as the write is durable, not held across the
                     // Telegram sends below (a slow/hanging API call would otherwise block
@@ -1173,9 +1195,21 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                 $guestId = validateGuestIdOrRespond($input['id'] ?? null);
                 if ($guestId === null) break;
                 try {
+                    $lookupStmt = $pdo->prepare("SELECT room_id, checkin_date, expected_checkout FROM guests WHERE id = ? AND property_id = ?");
+                    $lookupStmt->execute([$guestId, $propertyId]);
+                    $guestRow = $lookupStmt->fetch(PDO::FETCH_ASSOC);
+
                     $stmt = $pdo->prepare("DELETE FROM guests WHERE id = ? AND property_id = ?");
                     $stmt->execute([$guestId, $propertyId]);
                     if ($stmt->rowCount() > 0) {
+                        if ($guestRow && !empty($guestRow['checkin_date']) && !empty($guestRow['expected_checkout'])) {
+                            require_once __DIR__ . '/../channex/outbox.php';
+                            $roomId = !empty($guestRow['room_id']) ? (int)$guestRow['room_id'] : null;
+                            enqueueOutboxItem($pdo, (int)$propertyId, $roomId, 'availability', $guestRow['checkin_date'], $guestRow['expected_checkout'], [
+                                'action' => 'delete_guest',
+                                'guest_id' => $guestId,
+                            ]);
+                        }
                         echo json_encode(['status' => 'success', 'message' => 'Booking deleted successfully']);
                     } else {
                         http_response_code(404);

@@ -155,7 +155,7 @@ if ($propertyId > 0 && !empty($scopeIds)) {
         }
 
         $stmt = $pdo->prepare("
-            SELECT room_id, start_date, end_date, rate_per_night
+            SELECT room_id, start_date, end_date, rate_per_night, stop_sell
             FROM room_rate_rules
             WHERE (property_id IN ($placeholders) OR room_id IN ($placeholders))
             AND start_date <= ? AND end_date >= ?
@@ -168,10 +168,20 @@ if ($propertyId > 0 && !empty($scopeIds)) {
             $rId = $rr['room_id'] !== null ? (int)$rr['room_id'] : 0;
             $cur = strtotime($rr['start_date']);
             $end = strtotime($rr['end_date']);
+            $isStopSell = !empty($rr['stop_sell']);
             while ($cur <= $end) {
                 $dStr = date('Y-m-d', $cur);
-                if (!isset($rateRulesPerRoom[$rId][$dStr])) {
+                if ($rr['rate_per_night'] !== null && !isset($rateRulesPerRoom[$rId][$dStr])) {
                     $rateRulesPerRoom[$rId][$dStr] = (float)$rr['rate_per_night'];
+                }
+                if ($isStopSell) {
+                    if ($rId === 0) {
+                        foreach ($scopeIds as $sId) {
+                            $bookedDaysPerRoom[$sId][$dStr] = true;
+                        }
+                    } else {
+                        $bookedDaysPerRoom[$rId][$dStr] = true;
+                    }
                 }
                 $cur = strtotime('+1 day', $cur);
             }
