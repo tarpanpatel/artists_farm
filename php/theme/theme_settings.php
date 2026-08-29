@@ -98,6 +98,8 @@ function updateThemeSettings($pdo, $settingsData, $updatedBy = 'system') {
     }
 }
 
+require_once __DIR__ . '/../security/input_validator.php';
+
 function handleThemeRequests($pdo, $request_method, $action, $propertyId = null) {
     try {
         switch ($action) {
@@ -116,15 +118,6 @@ function handleThemeRequests($pdo, $request_method, $action, $propertyId = null)
                     break;
                 }
 
-                // SECURITY (12 Aug 2026): this platform-wide theme (applies to
-                // every property, every tenant) had no role check of its own -
-                // the only thing standing between any authenticated staff
-                // member and overwriting the site theme for everyone was the
-                // router.php property-scope gate, which checks property
-                // ACCESS, not role, so any staff with valid access to their own
-                // property could already call this. Matches the explicit
-                // root-admin check saveSystemSettings() (configuration.php)
-                // already has for the equivalent system-settings save.
                 $isRootAdmin = (($_SESSION['role'] ?? '') === 'root_admin')
                     || (($_SERVER['HTTP_X_USER_ROLE'] ?? '') === 'root_admin');
                 if (!$isRootAdmin) {
@@ -135,13 +128,13 @@ function handleThemeRequests($pdo, $request_method, $action, $propertyId = null)
 
                 $input = json_decode(file_get_contents('php://input'), true);
                 $settingsData = $input['settings'] ?? null;
-                $updatedBy = $_SESSION['username'] ?? 'root_admin';
+                $updatedBy = InputValidator::validateString($_SESSION['username'] ?? 'root_admin', 1, 100);
 
-                if (!$settingsData) {
+                if (!$settingsData || !is_array($settingsData)) {
                     http_response_code(400);
                     echo json_encode([
                         'status' => 'error',
-                        'message' => 'Settings data is required',
+                        'message' => 'Settings data is required and must be an array/object',
                     ]);
                     break;
                 }

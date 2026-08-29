@@ -5,7 +5,7 @@ import {
   Check, X, LayoutDashboard, NavIcon,
   Layers, PanelLeftClose, PanelRightOpen,
   ExternalLink, Loader2, ArrowLeft, ArrowRight,
-  FLOWBITE_ICONS, IconProps
+  FLOWBITE_ICONS
 } from './icons/FlowbiteIcons';
 import { NavMenuItem } from '../types';
 import { saveNavMenuDB, apiFetch } from '../services/api';

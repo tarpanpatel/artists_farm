@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Plus, Loader2, AlertCircle, AlertTriangle, BarChart3, Pencil, CheckCircle2, Share2, Copy, XCircle, ExternalLink, X, TelegramIcon, Trash2 } from './icons/FlowbiteIcons';
+import { Building2, Plus, Loader2, AlertCircle, AlertTriangle, BarChart3, Pencil, CheckCircle2, Share2, Copy, XCircle, ExternalLink, X, TelegramIcon, Trash2, KeyRound, Mail, RotateCcw, Eye, EyeOff } from './icons/FlowbiteIcons';
 import { Drawer, Alert, Modal } from 'flowbite-react';
 import { ToggleSwitch } from './ToggleSwitch';
 import { StyledSelect } from './StyledSelect';
@@ -60,7 +60,6 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [expandedTenant, setExpandedTenant] = useState<number | null>(null);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
   const [showEditTenantModal, setShowEditTenantModal] = useState(false);
   // Renewal trail for manual/offline billing (27 Aug 2026, see PRODUCT_STRATEGY.md) -
@@ -115,13 +114,10 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
       .replace(/\-\-+/g, '-');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   // Root-admin-visible login credentials per tenant, fetched lazily the first
-  // time a tenant row is expanded. Kept separate from `tenants` state since
+  // time a tenant row is expanded or edited. Kept separate from `tenants` state since
   // it's a sensitive on-demand lookup, not something to bulk-load upfront.
   const [tenantCredsMap, setTenantCredsMap] = useState<Record<number, { username: string; passcode: string; mustChangePasscode: boolean } | 'not_found' | null>>({});
   const [credsLoadingId, setCredsLoadingId] = useState<number | null>(null);
-  // Loading state for "Create Login" - shown in place of "No login exists
-  // for this tenant yet." for tenants that were created before create_tenant
-  // auto-generated one, or without a valid phone number at the time.
   const [creatingLoginId, setCreatingLoginId] = useState<number | null>(null);
   const [createLoginError, setCreateLoginError] = useState<{ tenantId: number; message: string } | null>(null);
   const [sendingLoginId, setSendingLoginId] = useState<number | null>(null);
@@ -216,6 +212,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
     setShowEditTenantModal(true);
     setRenewalNote('');
     loadRenewalHistory(tenant.id);
+    loadTenantCredentials(tenant.id);
   };
 
   const handleAddProperty = async () => {
@@ -641,12 +638,13 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
       const propertyUrl = `${API_ROOT_BASE}/${tenantSlug}/${property.slug}/#dashboard`;
       window.open(propertyUrl, '_blank');
     } catch (err) {
+      console.error('Failed to open property:', err);
       setError('Failed to open property');
     }
   };
 
   const loadTenantCredentials = async (tenantId: number) => {
-    if (tenantCredsMap[tenantId] !== undefined) return; // already fetched (or fetching finished with null result cached)
+    if (tenantCredsMap[tenantId] !== undefined) return;
     setCredsLoadingId(tenantId);
     try {
       const res = await fetch(`/php/api/router.php?action=get_tenant_credentials&tenant_id=${tenantId}`, {
@@ -693,7 +691,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
             mustChangePasscode: !!Number(data.data.must_change_passcode),
           },
         }));
-        setRevealedPasscodeId(tenantId); // show the fresh passcode immediately, not masked
+        setRevealedPasscodeId(tenantId);
       } else {
         setCreateLoginError({ tenantId, message: data.message || 'Failed to create login' });
       }
@@ -1360,6 +1358,157 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                         {h.recorded_by && <p className="text-slate-400 dark:text-slate-500 mt-0.5">by {h.recorded_by}</p>}
                       </div>
                     ))
+                  )}
+                </div>
+              </div>
+
+              {/* Tenant Login Credentials Section */}
+              <div className="rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <div className="px-3 py-2 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                  <span className="text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <KeyRound className="w-3.5 h-3.5 text-indigo-500" />
+                    Tenant Login Credentials
+                  </span>
+                  {credsLoadingId === editingTenant.id && (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-500" />
+                  )}
+                </div>
+
+                <div className="p-3 bg-white dark:bg-slate-900 space-y-3">
+                  {credsLoadingId === editingTenant.id ? (
+                    <div className="py-4 text-center text-xs text-slate-400 dark:text-slate-500 flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
+                      Loading credentials...
+                    </div>
+                  ) : tenantCredsMap[editingTenant.id] === 'not_found' || !tenantCredsMap[editingTenant.id] ? (
+                    <div className="space-y-2.5">
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        No login exists for this tenant yet.
+                      </p>
+                      {createLoginError && createLoginError.tenantId === editingTenant.id && (
+                        <p className="text-xs text-red-600 dark:text-red-400">{createLoginError.message}</p>
+                      )}
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="xs"
+                        onClick={() => handleCreateTenantLogin(editingTenant.id)}
+                        disabled={creatingLoginId === editingTenant.id}
+                        leftIcon={creatingLoginId === editingTenant.id ? <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" /> : <KeyRound className="w-3.5 h-3.5 shrink-0" />}
+                      >
+                        {creatingLoginId === editingTenant.id ? 'Creating...' : 'Create Tenant Login'}
+                      </Button>
+                    </div>
+                  ) : (
+                    (() => {
+                      const creds = tenantCredsMap[editingTenant.id] as { username: string; passcode: string; mustChangePasscode: boolean };
+                      const isRevealed = revealedPasscodeId === editingTenant.id;
+                      return (
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="p-2.5 rounded-md bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                              <p className="text-2xs font-medium text-slate-500 dark:text-slate-400">Username (Phone)</p>
+                              <div className="flex items-center justify-between mt-1">
+                                <span className="font-mono text-xs font-bold text-slate-900 dark:text-white">{creds.username}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    navigator.clipboard?.writeText(creds.username);
+                                    showToast(t('copied_to_clipboard', 'Copied to clipboard'), { type: 'success' });
+                                  }}
+                                  className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer"
+                                  title="Copy username"
+                                >
+                                  <Copy className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="p-2.5 rounded-md bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                              <p className="text-2xs font-medium text-slate-500 dark:text-slate-400">Passcode</p>
+                              <div className="flex items-center justify-between mt-1">
+                                <span className="font-mono text-xs font-bold text-slate-900 dark:text-white tracking-wider">
+                                  {isRevealed ? creds.passcode : '••••••'}
+                                </span>
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => setRevealedPasscodeId(isRevealed ? null : editingTenant.id)}
+                                    className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer"
+                                    title={isRevealed ? 'Hide passcode' : 'Show passcode'}
+                                  >
+                                    {isRevealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5 text-slate-500" />}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      navigator.clipboard?.writeText(creds.passcode);
+                                      showToast(t('copied_to_clipboard', 'Copied to clipboard'), { type: 'success' });
+                                    }}
+                                    className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer"
+                                    title="Copy passcode"
+                                  >
+                                    <Copy className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div>
+                            {creds.mustChangePasscode ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-2xs font-semibold rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
+                                <AlertTriangle className="w-3 h-3 text-amber-600" />
+                                Temp passcode - not yet changed by tenant
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-2xs font-semibold rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                Tenant has set their own passcode
+                              </span>
+                            )}
+                          </div>
+
+                          {resetLoginError && resetLoginError.tenantId === editingTenant.id && (
+                            <p className="text-xs text-red-600 dark:text-red-400">{resetLoginError.message}</p>
+                          )}
+
+                          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="xs"
+                              onClick={() => handleResetTenantLogin(editingTenant.id)}
+                              disabled={resettingLoginId === editingTenant.id}
+                              leftIcon={resettingLoginId === editingTenant.id ? <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" /> : <RotateCcw className="w-3.5 h-3.5 shrink-0" />}
+                            >
+                              {resettingLoginId === editingTenant.id ? 'Resetting...' : 'Reset Passcode'}
+                            </Button>
+
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="xs"
+                              onClick={() => handleSendLoginInfoEmail(editingTenant.id, creds.username, editingTenant.email)}
+                              disabled={sendingLoginId === editingTenant.id}
+                              leftIcon={sendingLoginId === editingTenant.id ? <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" /> : <Mail className="w-3.5 h-3.5 shrink-0" />}
+                            >
+                              {sendingLoginId === editingTenant.id ? 'Sending...' : 'Email Login'}
+                            </Button>
+
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="xs"
+                              onClick={() => window.open(buildTenantWhatsAppShareUrl(editingTenant, creds), '_blank')}
+                              leftIcon={<Share2 className="w-3.5 h-3.5 shrink-0" />}
+                            >
+                              WhatsApp
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })()
                   )}
                 </div>
               </div>

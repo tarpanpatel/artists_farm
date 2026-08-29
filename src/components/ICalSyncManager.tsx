@@ -9,7 +9,6 @@ import {
   Clock,
   CheckCircle2,
   ShieldCheck,
-  Search,
   Layers,
   Pencil,
   Download,
@@ -465,22 +464,49 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
       )}
 
       <PageHeader
-        title={t('ical_ota_channel_integration_heading', 'iCal & OTA Channel Integration Keys')}
+        title={t('ical_ota_channel_integration_heading', 'OTA Channel Sync')}
         subtitle={t('ical_ota_channel_integration_subtitle', 'Synchronize availability feeds across Airbnb, Booking.com, VRBO, Agoda, and custom channel endpoints.')}
       >
-        <PageHeaderButton
-          onClick={handleSyncAll}
-          icon={RefreshCw}
-          iconClassName={isSyncingAll ? 'animate-spin' : ''}
-          variant="secondary"
-          disabled={isSyncingAll || calendars.length === 0}
-        >
-          {isSyncingAll ? t('syncing_all_button', 'Syncing All...') : t('sync_all_feeds_button', 'Sync All Feeds')}
-        </PageHeaderButton>
-        <PageHeaderButton onClick={() => setIsAddModalOpen(true)} icon={Plus}>
-          {t('connect_ical_feed_button', 'Connect iCal Feed')}
-        </PageHeaderButton>
+        {/* grid-cols-2 + w-full on mobile so the two actions split the row evenly
+            under the title; sm:contents drops the wrapper on desktop so they fall
+            back to the normal inline header-actions row unchanged. */}
+        <div className="grid grid-cols-2 gap-2.5 w-full sm:contents">
+          <PageHeaderButton
+            onClick={handleSyncAll}
+            icon={RefreshCw}
+            iconClassName={isSyncingAll ? 'animate-spin' : ''}
+            variant="secondary"
+            disabled={isSyncingAll || calendars.length === 0}
+            className="w-full sm:w-auto"
+          >
+            {isSyncingAll ? t('syncing_all_button', 'Syncing All...') : t('sync_all_feeds_button', 'Sync All Feeds')}
+          </PageHeaderButton>
+          <PageHeaderButton onClick={() => setIsAddModalOpen(true)} icon={Plus} className="w-full sm:w-auto">
+            {t('connect_ical_feed_button', 'Connect Feed')}
+          </PageHeaderButton>
+        </div>
       </PageHeader>
+
+      {/* Not-real-time warning (29 Aug 2026, explicit request) - iCal is a pull-based
+          standard: our background worker re-pulls every ~15 min, and each OTA only
+          re-publishes its own calendar on its own schedule (Airbnb/Booking.com
+          typically every few hours), so end to end a change can lag well past
+          "instant". Set expectations here rather than let a user think a booking
+          vanished. */}
+      <div className="flex items-start gap-2.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 sm:p-4 text-xs text-amber-800 dark:text-amber-200 ical-sync-manager__timing-warning">
+        <Clock className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+        <div className="space-y-1">
+          <p className="font-semibold">
+            {t('ical_not_realtime_warning_heading', 'This is not a real-time sync.')}
+          </p>
+          <p className="leading-relaxed">
+            {t(
+              'ical_not_realtime_warning_body',
+              'iCal feeds are pulled on a schedule, not pushed. A new booking or cancellation on Airbnb, Booking.com or another channel usually shows up here within 15–30 minutes, but can take up to a few hours depending on how often that channel re-publishes its calendar. Changes you make here reach the other channels on the same kind of delay. "Sync All Feeds" pulls the latest right now if you can\'t wait.',
+            )}
+          </p>
+        </div>
+      </div>
 
       {/* Top 3 Metric KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 ical-sync-manager__kpi-grid">
@@ -536,15 +562,14 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
         {/* Table Filter Toolbar */}
         <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-900/50">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 ical-sync-manager__filter-toolbar flex-1">
-            {/* Search Input */}
-            <div className="relative flex-1">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 z-10" />
+            {/* Search Input - no in-field icon per DESIGN.md "No Icons Inside Input Fields" */}
+            <div className="flex-1">
               <Input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={t('filter_feeds_placeholder', 'Filter feeds by platform or endpoint URL...')}
-                className="pl-9 ical-sync-manager__search-input w-full"
+                className="ical-sync-manager__search-input w-full"
               />
             </div>
 

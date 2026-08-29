@@ -127,13 +127,6 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
     );
   };
 
-  const handleRemoveFoodItem = (index: number) => {
-    const item = foodItemList[index];
-    setFoodItemList(prev => prev.filter((_, i) => i !== index));
-    if (item) {
-      setAuditTrailList(prev => [...prev, `Removed food item: ${item.name} (₹${item.total})`]);
-    }
-  };
 
   const handleAddAdjustment = () => {
     const amt = Number(adjAmount);

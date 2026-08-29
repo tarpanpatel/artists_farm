@@ -1,6 +1,6 @@
 <?php
 
-function getCurrentPropertyId(PDO $pdo): int {
+function getCurrentPropertyId(PDO $pdo, ?bool &$wasExplicit = null): int {
     $candidates = [];
     $explicitlyRequested = false;
 
@@ -20,10 +20,12 @@ function getCurrentPropertyId(PDO $pdo): int {
         $stmt->execute([$tenantSlug, $tenantSlug, $tenantSlug, $propertySlug, $propertySlug, $propertySlug]);
         $row = $stmt->fetch();
         if ($row) {
+            $wasExplicit = true;
             return (int)$row['id'];
         }
         // Explicit tenant+property combo requested but not found - reject immediately rather
         // than falling through to an unrelated property.
+        $wasExplicit = true;
         return 0;
     }
 
@@ -73,6 +75,7 @@ function getCurrentPropertyId(PDO $pdo): int {
         $stmt->execute([$maybeTenant, $maybeTenant, $maybeTenant, $maybeProperty, $maybeProperty, $maybeProperty]);
         $row = $stmt->fetch();
         if ($row) {
+            $wasExplicit = true;
             return (int)$row['id'];
         }
         // No exact pair match (e.g. a legacy compound slug, or segment[1] isn't a property
@@ -116,6 +119,7 @@ function getCurrentPropertyId(PDO $pdo): int {
         $stmt->execute([$slug, $slug, $slug]);
         $row = $stmt->fetch();
         if ($row) {
+            $wasExplicit = $explicitlyRequested;
             return (int)$row['id'];
         }
 
@@ -131,6 +135,7 @@ function getCurrentPropertyId(PDO $pdo): int {
         $stmt->execute([$slug, $slug, $slug]);
         $row = $stmt->fetch();
         if ($row) {
+            $wasExplicit = $explicitlyRequested;
             return (int)$row['id'];
         }
     }
@@ -140,11 +145,13 @@ function getCurrentPropertyId(PDO $pdo): int {
     // back to an unrelated property. This is a multi-tenant app; silently loading a different
     // tenant's data for an unresolved request would be a data-isolation bug, not a convenience.
     if ($explicitlyRequested) {
+        $wasExplicit = true;
         return 0;
     }
 
     // Priority 6: Default fallback - only reached when NO explicit signal was present at all
     // (e.g. bare domain root access, or only an ambiguous subdomain).
+    $wasExplicit = false;
     $stmt = $pdo->prepare("SELECT id FROM properties WHERE slug = 'jaipur' AND is_active = 1 LIMIT 1");
     $stmt->execute();
     $row = $stmt->fetch();

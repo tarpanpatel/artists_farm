@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2, Share2, LogOut, Upload, CreditCard, Globe, AlertTriangle, X, IndianRupee, ScanLine } from './icons/FlowbiteIcons';
+import { Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2, Share2, LogOut, Upload, CreditCard, Globe, AlertTriangle, X, ScanLine } from './icons/FlowbiteIcons';
 import { Drawer as FlowbiteDrawer, DrawerItems, Checkbox, Modal } from 'flowbite-react';
 import { Badge } from './Badge';
 import { Popover } from './Popover';
@@ -409,7 +409,8 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
       setIsEditing(false);
       showToast('Booking updated successfully', { type: 'success' });
     } catch (err) {
-      showToast('Failed to update booking. Please try again.', { type: 'error' });
+      const msg = err instanceof Error && err.message ? err.message : 'Failed to update booking. Please try again.';
+      showToast(msg, { type: 'error' });
     } finally {
       setIsSaving(false);
     }

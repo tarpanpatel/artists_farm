@@ -3,6 +3,7 @@ import { Alert } from 'flowbite-react';
 import { AlertCircle, Lock, ShieldCheck, Mail, CheckCircle2, ArrowLeft, Loader2, Backspace, Sparkles } from './icons/FlowbiteIcons';
 import { Input } from './Input';
 import { t } from '../i18n/en';
+import { useAuth } from '../contexts/AuthContext';
 
 interface LoginPageProps {
   variant?: 'management' | 'terminal';
@@ -14,6 +15,7 @@ interface LoginPageProps {
 
 export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', onLoginSuccess, onLoginFailed, onNeedsPropertySelection, onStartTrial }) => {
   const isTerminal = variant === 'terminal';
+  const { sessionMismatchNotice, clearSessionMismatchNotice } = useAuth();
 
   const [mobileNumber, setMobileNumber] = useState('');
   const [passcode, setPasscode] = useState('');
@@ -62,6 +64,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
     const val = (rawVal === 'admin' || rawVal === 'root') ? rawVal : rawVal.replace(/\D/g, '').slice(0, 10);
     setMobileNumber(val);
     setError(null);
+    clearSessionMismatchNotice();
     if (val.length === 10 || val === 'admin' || val === 'root') {
       setTimeout(() => {
         passcodeInputRef.current?.focus();
@@ -78,6 +81,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
     const val = e.target.value.replace(/\D/g, '').slice(0, 6);
     setPasscode(val);
     setError(null);
+    clearSessionMismatchNotice();
   };
 
   const handlePasscodeKey = (num: string) => {
@@ -449,10 +453,16 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
       <div className="w-full bg-white rounded-lg shadow-sm dark:border md:mt-0 sm:max-w-md xl:p-0 dark:bg-gray-800 dark:border-gray-700">
         <div className="p-6 space-y-4 md:space-y-6 sm:p-8">
           <h1 className="text-xl font-bold leading-tight tracking-tight text-gray-900 md:text-2xl dark:text-white">
-            {isTerminal ? t('terminal_authorization_heading', 'Sign in to Terminal') : t('sign_in_heading', 'Sign in to your account')}
+            {isTerminal ? t('terminal_authorization_heading', 'Sign in') : t('sign_in_heading', 'Sign in to your account')}
           </h1>
 
           <form onSubmit={handleLogin} ref={loginFormRef} className="space-y-4 md:space-y-6">
+            {sessionMismatchNotice && !error && (
+              <Alert color="warning" icon={AlertCircle} className="rounded-lg">
+                <span>{sessionMismatchNotice}</span>
+              </Alert>
+            )}
+
             {error && (
               <Alert color="failure" icon={AlertCircle} className="rounded-lg">
                 <span>{error}</span>

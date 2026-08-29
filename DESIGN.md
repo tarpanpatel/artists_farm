@@ -122,6 +122,16 @@ PettyCash's expense time), pair `Datepicker` for the date half with a separate `
 for the time half (still native, still opens an OS picker, but it's a narrower, unavoidable gap —
 flowbite-react has no Timepicker) rather than leaving the whole field as `type="datetime-local"`.
 
+## No Icons Inside Input Fields (added 29 Aug 2026, explicit request: "I don't want any icons inside fields")
+
+**A text input's box contains text and nothing else.** No glyph is absolutely-positioned over a `<input>` / `<textarea>`, and the input never carries `pl-9`/`pl-10`/`pr-10`-style padding reserved for one.
+
+- **Leading decoration** (a search magnifier, a mail/user/lock glyph, a "+91" badge, etc.) is removed. If the field genuinely needs a label beyond its `placeholder`, use the real `<label>` or `helperText`, not an in-field icon.
+- **Trailing controls** (a clear-"×", a password show/hide eye) move to a real `<button>` **beside** the field (outside its border), or are dropped. They are not painted inside the input.
+- **Validation state**: the red/green **border + ring + message** from the Flowbite validation pattern stay (see "Real-Time Form Validation" in CLAUDE.md), but the inline `AlertTriangle`/`CheckCircle2` **icon inside the field is dropped** - this rule supersedes that part of the pattern. `src/components/Input.tsx` renders those; the icon overlay comes out, the `error`/`success` colour + `helperText` message stay.
+- **`src/components/Input.tsx`'s `leftIcon`/`rightIcon` props are deprecated** - do not pass them on new code; existing call sites get migrated (icon removed, or moved to a sibling element) screen-by-screen as each file is touched, same cadence as the Lucide migration.
+- **Exempt - native widget affordances, not "icons in a field"**: a `<select>` / `StyledSelect` dropdown chevron and flowbite-datepicker's calendar-trigger button. These *define what the control is* (a select with no chevron reads as a broken text box) and are part of the widget, not decoration layered onto a text input. If the user later wants these gone too, that's a separate call.
+
 ## DataTable & Table Log Specifications
 
 Canonical Flowbite Datatables reference: https://github.com/themesberg/flowbite/blob/main/content/components/tables.md
@@ -253,5 +263,15 @@ All action modals, creation forms, and secondary management dialogs across the s
 **MANDATORY - nested dialogs never stack a second Drawer (25 Aug 2026, explicit user report + rule request)**: this is a *separate* rule from the confirmation/alert exception above and applies regardless of content length or field count - a real multi-field form is included. If a dialog is opened while ANOTHER drawer is already open (i.e. it's a step/sub-action reached from inside that drawer, not a top-level entry point of its own), it must be a centered `<Modal>`, never a second right-side `<Drawer>` stacked on top. Two same-edge slide-over drawers on screen at once reads as "the first one closed and a different one opened," not "a step within the same flow" - and closing the inner one has repeatedly been coded (wrongly) to also close the outer one "since you're back at a blank drawer edge anyway," which is its own separate bug class this rule prevents by construction.
   - Found live 25 Aug 2026: `CheckinVerificationModal.tsx` (opened via `onOpenIdVerification` from inside `BookingDetailsModal.tsx`, which is itself a Drawer) was a second stacked Drawer, and its close handler in `OperationalDashboard.tsx` nulled `selectedBooking` right along with it - "Complete Check-in" dumped the user all the way back to the dashboard instead of back into Booking Details. Fixed by converting it to a Modal and removing that extra null-out.
   - Before adding any new dialog that opens from inside an existing drawer, check: is a drawer already open when this can appear? If yes, this is a Modal by default, not a Drawer - don't wait for it to misbehave first.
+
+## Wizard / Setup Stepper (added 29 Aug 2026, explicit request)
+
+The multi-step "timeline stepper" at the top of a setup/creation wizard (`PropertySetupWizard.tsx`, `PropertyCreationWizard.tsx`, `SelfOnboardingWizard.tsx`, and any future one) is **not** a passive progress display - **the circular icon for each step must be clickable and jump to that step.**
+
+- The circle is a real `<button type="button">`, not a `<span>` - with `aria-label` ("Go to {label} step") and `aria-current="step"` on the active one. Keep `cursor-pointer` and the existing per-state colour classes.
+- **Jumping forward** persists the current step first (same as the "Next Step" button) and applies the same first-step gate (e.g. Basics' required address) - but does **not** validate, save, or auto-fill any step skipped over.
+- **Skipped-over steps keep the existing position-based status logic** (`idx < stepIndex && !step.isDone` → the amber "passed but incomplete" `AlertCircle` state; `step.isDone` → the emerald "complete" state). Clicking "Notes" straight after "Basics" leaves Contact/Payments/Operations showing amber-incomplete, exactly as clicking "Next" past them would. **Do not add per-step "visited" tracking** - status is purely a function of `stepIndex` + each step's own `isDone`, so navigating back returns the forward steps to their untouched grey.
+- **Jumping backward** is a plain `setStepIndex(idx)` with no persist/validation (matches the "Back" button), so a half-typed invalid field on the current step never traps the user on it.
+- Disable the circle buttons while `saving` or once the wizard is `finished`.
 
 

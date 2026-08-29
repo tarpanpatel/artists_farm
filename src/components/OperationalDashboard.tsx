@@ -151,7 +151,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   const { orders } = useKitchenContext();
   const pendingOrders = orders.filter((o) => o.status === 'Pending' || o.status === 'Preparing');
   const recentOrders = orders.slice(0, 5);
-  const { inventory, pendingStockRequestsCount } = useInventoryContext();
+  const { stockRequests, pendingStockRequestsCount } = useInventoryContext();
   const [selectedBooking, setSelectedBooking] = useState<Guest | null>(null);
   // Which section a System Alerts row click should land BookingDetailsModal
   // on (24 Aug 2026 - "if someone clicks such button from dashboard ... this
@@ -312,8 +312,8 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
     fetchBlockedDates();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, authChecked]);
-  // Low stock alerts where currentStock <= minThreshold
-  const stockAlerts = inventory.filter((item) => item.currentStock <= item.minThreshold);
+  // Pending stock requests raised by staff (awaiting fulfilment)
+  const pendingStockRequests = stockRequests.filter((r) => (r.status || '').toUpperCase() === 'PENDING');
 
   // Booking Matrix logic for current month
   const today = new Date();
@@ -1016,36 +1016,36 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           </div>
         )}
 
-        {/* Column 3: Requisitions Card */}
+        {/* Column 3: Stock Requests Card */}
         <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
               <h3 className="operational-dashboard__subtitle font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-red-600" />
-                {t('requisitions_label', 'Requisitions')}
+                {t('stock_requests_label', 'Stock Requests')}
               </h3>
               <span className="bg-red-100 text-red-800 text-[10px] font-semibold px-2 py-0.5 rounded border border-red-200">
-                {stockAlerts.length} {t('items_low_suffix', 'Items Low')}
+                {pendingStockRequests.length} {t('pending_suffix', 'Pending')}
               </span>
             </div>
 
-            {stockAlerts.length > 0 ? (
+            {pendingStockRequests.length > 0 ? (
               <ul className="divide-y divide-slate-100 dark:divide-slate-700 text-xs">
-                {stockAlerts.slice(0, 5).map((item) => (
-                  <li key={item.id} className="py-2 flex items-center justify-between gap-2">
-                    <div>
-                      <p className="font-semibold text-slate-900 dark:text-white">{item.name}</p>
-                      <p className="text-slate-500 text-[11px]">{item.category}</p>
+                {pendingStockRequests.slice(0, 5).map((req) => (
+                  <li key={req.id} className="py-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-semibold text-slate-900 dark:text-white">#{req.id}</p>
+                      <span className="shrink-0 text-slate-400 text-[11px]">{req.date}</span>
                     </div>
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-300">
-                      {item.currentStock} / {item.minThreshold} {item.unit}
-                    </span>
+                    <p className="text-slate-500 text-[11px] truncate mt-0.5">
+                      {Array.isArray(req.items) ? req.items.join(', ') : ''}
+                    </p>
                   </li>
                 ))}
               </ul>
             ) : (
               <div className="py-8 text-center text-slate-400 text-xs font-medium">
-                {t('all_stocks_sufficient', 'All inventory items sufficient.')}
+                {t('no_pending_stock_requests', 'No pending stock requests.')}
               </div>
             )}
           </div>

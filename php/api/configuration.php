@@ -20,6 +20,7 @@
 if (!defined('APP_IS_STAGING_ENV')) {
     require_once __DIR__ . '/../config/database.php';
 }
+require_once __DIR__ . '/../security/input_validator.php';
 
 function handleConfigurationRequests($pdo, $request_method, $action, $propertyId) {
     switch ($action) {
@@ -318,9 +319,9 @@ function saveSystemSettings($pdo) {
             return;
         }
 
-        $setting_key = $input['setting_key'];
-        $setting_value = $input['setting_value'];
-        $updated_by = $_SESSION['username'] ?? 'root_admin';
+        $setting_key = InputValidator::validateString($input['setting_key'], 1, 100);
+        $setting_value = is_string($input['setting_value']) ? $input['setting_value'] : json_encode($input['setting_value']);
+        $updated_by = InputValidator::validateString($_SESSION['username'] ?? 'root_admin', 1, 100);
 
         // Write custom_css directly to assets/css/custom_css_override.css file on disk
         if ($setting_key === 'custom_css') {

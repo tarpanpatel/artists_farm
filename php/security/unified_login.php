@@ -38,19 +38,23 @@
 
 if (!function_exists('performUnifiedLogin')) {
 
-    function performUnifiedLogin(PDO $pdo, string $rawIdentifier, string $passcode, RateLimiter $rateLimiter, string $rateLimitClientId): array {
+    function performUnifiedLogin(PDO $pdo, string $rawIdentifier, string $passcode, RateLimiter $rateLimiter, string $rateLimitClientId, ?int $requestedPropertyId = null): array {
         $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
         $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+
+        if ($requestedPropertyId === null && function_exists('getCurrentPropertyId')) {
+            $wasExplicit = false;
+            $resolved = getCurrentPropertyId($pdo, $wasExplicit);
+            if ($wasExplicit && $resolved > 0) {
+                $requestedPropertyId = $resolved;
+            }
+        }
 
         $logAudit = function (int $propertyId, string $action, string $user, string $status) use ($pdo, $ip, $ua) {
             try {
                 $stmt = $pdo->prepare("INSERT INTO audit_logs (property_id, action, timestamp, user, ip_address, user_agent, status, module) VALUES (?, ?, NOW(), ?, ?, ?, ?, 'login')");
                 $stmt->execute([$propertyId, $action, $user, $ip, $ua, $status]);
             } catch (Exception $ea) {
-                // SECURITY/DIAGNOSTICS (24 Aug 2026, live report: "I logged in twice
-                // recently but it's not showing" in Telescope's Login Portal) - this
-                // must stay non-fatal (login itself must never fail because of a
-                // logging problem) but must not go silently invisible either.
                 if (class_exists('TelescopeLogger')) {
                     TelescopeLogger::log('sql', 'SQL Error', $ea->getMessage(), "Login audit_logs INSERT failed for {$user}", ['username' => $user]);
                 }
@@ -61,11 +65,6 @@ if (!function_exists('performUnifiedLogin')) {
             $cleanDigits = preg_replace('/\D/', '', $rawIdentifier);
             $mobileNumber = strlen($cleanDigits) >= 10 ? substr($cleanDigits, -10) : $cleanDigits;
 
-            // SECURITY (11 Aug 2026): a non-numeric identifier collapses $mobileNumber to an
-            // empty string, and "phone_number LIKE '%' . $mobileNumber" would become LIKE '%' -
-            // matching ANY row with a non-null phone number instead of failing to match. Only
-            // include the phone-matching clause/params at all when there's an actual digit
-            // string to match against.
             $hasPhoneCandidate = $mobileNumber !== '';
 
             // 1. Search in `users` table (Platform Super Admins, Tenant Admins)
@@ -92,9 +91,6 @@ if (!function_exists('performUnifiedLogin')) {
                 $storedPasscode = $user['passcode'] ?? '';
                 $storedPassword = $user['password'] ?? '';
 
-                // SECURITY (10 Aug 2026): no "|| $passcode === '123456'" universal skeleton key -
-                // new accounts already default to a real stored passcode of '123456', covered by
-                // the first clause below.
                 $isPasscodeValid = ($storedPasscode && $storedPasscode === $passcode) ||
                                    ($storedPassword && password_verify($passcode, $storedPassword)) ||
                                    ($storedPassword && $storedPassword === $passcode);
@@ -102,6 +98,22 @@ if (!function_exists('performUnifiedLogin')) {
                 if ($isPasscodeValid) {
                     $is_platform_admin = (bool)($user['is_platform_admin'] ?? false);
                     $has_default_tenant = !empty($user['default_tenant_id']);
+
+                    // Cross-tenant verification: if logging into a specific property context, verify tenant access
+                    if (!$is_platform_admin && $has_default_tenant && $requestedPropertyId && $requestedPropertyId > 0) {
+                        $pStmt = $pdo->prepare("SELECT tenant_id FROM properties WHERE id = ? LIMIT 1");
+                        $pStmt->execute([$requestedPropertyId]);
+                        $pTenantId = $pStmt->fetchColumn();
+                        if ($pTenantId && (int)$pTenantId !== (int)$user['default_tenant_id']) {
+                            $rateLimiter->resetAttempts($rateLimitClientId, 'login_user');
+                            $logAudit($requestedPropertyId, "User {$user['username']} denied login to foreign tenant property ID {$requestedPropertyId}", $user['username'], 'Denied');
+                            return ['status_code' => 403, 'body' => [
+                                'success' => false,
+                                'code' => 'property_access_denied',
+                                'message' => 'You do not have access to this property with these credentials.',
+                            ]];
+                        }
+                    }
 
                     $role = $user['role'];
                     if ($is_platform_admin) {
@@ -203,15 +215,27 @@ if (!function_exists('performUnifiedLogin')) {
                         $tenantStmt->execute([$staff['property_id']]);
                         $tenantRow = $tenantStmt->fetch();
 
+                        if ($requestedPropertyId && $requestedPropertyId > 0 && !empty($tenantRow['tenant_id'])) {
+                            $pStmt = $pdo->prepare("SELECT tenant_id FROM properties WHERE id = ? LIMIT 1");
+                            $pStmt->execute([$requestedPropertyId]);
+                            $pTenantId = $pStmt->fetchColumn();
+                            if ($pTenantId && (int)$pTenantId !== (int)$tenantRow['tenant_id']) {
+                                $rateLimiter->resetAttempts($rateLimitClientId, 'login_user');
+                                $logAudit($requestedPropertyId, "Staff {$staff['username']} denied login to foreign tenant property ID {$requestedPropertyId}", $staff['username'], 'Denied');
+                                return ['status_code' => 403, 'body' => [
+                                    'success' => false,
+                                    'code' => 'property_access_denied',
+                                    'message' => 'You do not have access to this property with these credentials.',
+                                ]];
+                            }
+                        }
+
                         $_SESSION['user_id'] = $staff['id'];
                         $_SESSION['username'] = $staff['username'];
                         $_SESSION['role'] = $staff['role'] ?: 'Staff';
                         $_SESSION['staff_access_all_properties'] = true;
                         $_SESSION['staff_tenant_id'] = $tenantRow['tenant_id'] ?? null;
                         $_SESSION['full_name'] = $staff['full_name'] ?: $staff['username'];
-                        // Deliberately NOT setting $_SESSION['property_id'] here -
-                        // isPropertyAccessAllowed() (access_control.php) sets it as a
-                        // side effect once they actually navigate into a property.
 
                         appSetSessionCookie(session_id());
                         $rateLimiter->resetAttempts($rateLimitClientId, 'login_user');
@@ -233,6 +257,16 @@ if (!function_exists('performUnifiedLogin')) {
                                 'tenant_id' => $tenantRow['tenant_id'] ?? null,
                                 'tenant_slug' => $tenantRow['tenant_slug'] ?? null,
                             ],
+                        ]];
+                    }
+
+                    if ($requestedPropertyId && $requestedPropertyId > 0 && (int)$staff['property_id'] !== (int)$requestedPropertyId) {
+                        $rateLimiter->resetAttempts($rateLimitClientId, 'login_user');
+                        $logAudit($requestedPropertyId, "Staff {$staff['username']} denied login to unassigned property ID {$requestedPropertyId}", $staff['username'], 'Denied');
+                        return ['status_code' => 403, 'body' => [
+                            'success' => false,
+                            'code' => 'property_access_denied',
+                            'message' => 'Your staff account is only authorized for your assigned property.',
                         ]];
                     }
 

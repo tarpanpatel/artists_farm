@@ -8,7 +8,6 @@ import {
   Plus,
   CalendarPlus,
   ChefHat,
-  Receipt,
   X
 } from './icons/FlowbiteIcons';
 import { TabType } from './Navigation';
@@ -49,7 +48,6 @@ interface MobileBottomNavProps {
   isSidebarOpen: boolean;
   kitchenModuleEnabled?: boolean;
   onOpenAddBooking?: () => void;
-  onOpenAddExpense?: () => void;
   permissions?: MobileBottomNavPermissions;
 }
 
@@ -60,7 +58,6 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   isSidebarOpen,
   kitchenModuleEnabled = true,
   onOpenAddBooking,
-  onOpenAddExpense,
   permissions = DEFAULT_PERMISSIONS,
 }) => {
   const [isQuickActionOpen, setIsQuickActionOpen] = useState(false);
@@ -74,7 +71,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   // of the four Quick Actions it opens - a button that opens an empty sheet
   // fails the same "not accessible => not visible" rule as the sheet's own
   // buttons.
-  const hasAnyQuickAction = permissions.addExpense || permissions.addBooking || permissions.addFoodOrder || permissions.viewLiveKitchenOrder;
+  const hasAnyQuickAction = permissions.addBooking || permissions.viewLiveKitchenOrder;
 
   return (
     <>
@@ -116,11 +113,10 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             // notched/home-indicator device where the nav is taller than 64px.
             ? 'bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] translate-y-0 opacity-100'
             : 'bottom-0 translate-y-full opacity-0 pointer-events-none'
-        } p-4 max-h-[80vh] overflow-y-auto`}
+        } px-4 pb-4 pt-1.5 max-h-[80vh] overflow-y-auto`}
       >
-        {/* Handle bar with Close Button */}
-        <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100 dark:border-slate-800">
-          <div className="w-12 h-1 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto" />
+        {/* Close Button */}
+        <div className="flex items-center justify-end pb-2 mb-2 border-b border-slate-100 dark:border-slate-800">
           <button
             type="button"
             onClick={() => setIsQuickActionOpen(false)}
@@ -132,30 +128,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          {/* 1. Add Expense */}
-          {permissions.addExpense && (
-            <button
-              type="button"
-              onClick={() => {
-                setIsQuickActionOpen(false);
-                if (onOpenAddExpense) {
-                  onOpenAddExpense();
-                } else {
-                  handleNavClick('petty_cash', 'expenses');
-                }
-              }}
-              className="flex items-center gap-3 p-3.5 rounded-xl bg-emerald-50 hover:bg-emerald-100/80 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 font-semibold text-xs text-left transition-all active:scale-95 cursor-pointer shadow-xs"
-            >
-              <div className="w-10 h-10 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                <Receipt className="w-5 h-5" />
-              </div>
-              <div className="min-w-0">
-                <span className="block font-bold text-slate-900 dark:text-white truncate">Add Expense</span>
-              </div>
-            </button>
-          )}
-
-          {/* 2. Add Booking */}
+          {/* 1. Add Booking */}
           {permissions.addBooking && (
             <button
               type="button"
@@ -178,23 +151,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             </button>
           )}
 
-          {/* 3. Add Food Order */}
-          {permissions.addFoodOrder && (
-            <button
-              type="button"
-              onClick={() => handleNavClick('kitchen', 'take_food_order')}
-              className="flex items-center gap-3 p-3.5 rounded-xl bg-amber-50 hover:bg-amber-100/80 dark:bg-amber-950/40 dark:hover:bg-amber-900/50 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 font-semibold text-xs text-left transition-all active:scale-95 cursor-pointer shadow-xs"
-            >
-              <div className="w-10 h-10 rounded-lg bg-amber-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                <UtensilsCrossed className="w-5 h-5" />
-              </div>
-              <div className="min-w-0">
-                <span className="block font-bold text-slate-900 dark:text-white truncate">Add Food Order</span>
-              </div>
-            </button>
-          )}
-
-          {/* 4. View Live Kitchen Order */}
+          {/* 2. Live Kitchen */}
           {permissions.viewLiveKitchenOrder && (
             <button
               type="button"
@@ -205,7 +162,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 <ChefHat className="w-5 h-5" />
               </div>
               <div className="min-w-0">
-                <span className="block font-bold text-slate-900 dark:text-white truncate">View Live Kitchen Order</span>
+                <span className="block font-bold text-slate-900 dark:text-white truncate">Live Kitchen</span>
               </div>
             </button>
           )}

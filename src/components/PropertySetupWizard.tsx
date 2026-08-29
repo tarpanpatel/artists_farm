@@ -216,6 +216,26 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
 
   const handleBack = () => setStepIndex((i) => Math.max(i - 1, 0));
 
+  // Clickable stepper circles (per DESIGN.md "Wizard / Setup Stepper"). Forward
+  // jumps persist the current step and apply the same first-step gate as "Next
+  // Step", but never validate/save/auto-fill the steps skipped over - those just
+  // render in the existing amber "passed but incomplete" state via the position-
+  // based logic below. Backward jumps are a plain move, matching handleBack.
+  const handleStepClick = async (idx: number) => {
+    if (saving || finished || idx === stepIndex) return;
+    if (idx < stepIndex) {
+      setError(null);
+      setStepIndex(idx);
+      return;
+    }
+    if (stepIndex === 0 && !step0Valid) {
+      setError('Add the property address before moving on.');
+      return;
+    }
+    const ok = await persistCurrentStep();
+    if (ok) setStepIndex(idx);
+  };
+
   // Dismisses without saving (unlike Save & Exit) and suppresses the drawer's auto-open for
   // 24h - a "not now" for the whole checklist, not just the current step (that's Skip's job).
   const handleDoItLater = () => {
@@ -297,9 +317,10 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
         </button>
       </div>
 
-      {/* Timeline stepper - identical shape and identical 5 steps to PropertyCreationWizard's,
-          purely a progress display (no click-to-jump) - navigation is via the footer only,
-          exactly matching that component. */}
+      {/* Timeline stepper - identical shape and identical 5 steps to PropertyCreationWizard's.
+          Each circle is a clickable button that jumps to its step (see handleStepClick and
+          DESIGN.md's "Wizard / Setup Stepper" rule) - the footer Back/Next buttons still work
+          too. Step status stays purely position-based (idx vs stepIndex) + each step's isDone. */}
       <div className="px-4 pt-3 pb-7 border-b border-gray-200 dark:border-gray-700 overflow-x-auto shrink-0">
         <ol className="flex items-center w-full">
           {steps.map((step, idx) => {
@@ -314,8 +335,13 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
             return (
               <li key={step.key} className={`flex items-center ${!isLast ? 'flex-1' : ''}`}>
                 <div className="relative flex items-center justify-center shrink-0">
-                  <span
-                    className={`flex items-center justify-center w-8 h-8 rounded-full shrink-0 transition-all ${
+                  <button
+                    type="button"
+                    onClick={() => handleStepClick(idx)}
+                    disabled={saving || finished}
+                    aria-label={`Go to ${step.label} step`}
+                    aria-current={isCurrent ? 'step' : undefined}
+                    className={`flex items-center justify-center w-8 h-8 rounded-full shrink-0 transition-all cursor-pointer disabled:cursor-default ${
                       isCurrent
                         ? 'bg-indigo-600 text-white shadow-xs ring-4 ring-indigo-100 dark:ring-indigo-900/60'
                         : isFullyComplete
@@ -332,7 +358,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
                     ) : (
                       <StepIcon className="w-4 h-4" />
                     )}
-                  </span>
+                  </button>
                   <span
                     className={`absolute top-full left-1/2 -translate-x-1/2 mt-1 text-2xs font-semibold whitespace-nowrap ${
                       isCurrent
@@ -486,7 +512,11 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
           only advances past the current step) it dismisses the whole checklist and snoozes
           its auto-open for 24h, so it needs to be reachable from step 0 too, not just once
           Back/Save & Exit are already showing. */}
-      <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2 bg-gray-50 dark:bg-gray-850 shrink-0">
+      {/* pb-[calc(1rem+env(safe-area-inset-bottom))] per DESIGN.md's "Bottom-Anchored Drawer
+          Footer Safe Area" rule - this footer is a shrink-0 child pinned to the drawer's
+          physical bottom edge, so on a home-indicator device a plain p-4 leaves the primary
+          action button with zero breathing room. Mirrors SelfOnboardingWizard.tsx's footer. */}
+      <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] border-t border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2 bg-gray-50 dark:bg-gray-850 shrink-0">
         <div className="flex items-center gap-2">
           {stepIndex > 0 && !finished && (
             <Button type="button" variant="secondary" size="sm" onClick={handleBack} disabled={saving}>

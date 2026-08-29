@@ -93,7 +93,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, childre
         )}
       </div>
     </div>
-    {children && <div className="flex flex-wrap items-center gap-2.5 sm:shrink-0 page-header__actions">{children}</div>}
+    {children && <div className={`flex flex-wrap items-center gap-2.5 sm:shrink-0 ${forceRow ? '' : 'w-full sm:w-auto'} page-header__actions`}>{children}</div>}
   </div>
 );
 
@@ -104,6 +104,9 @@ interface PageHeaderButtonProps {
   children: React.ReactNode;
   variant?: 'primary' | 'secondary';
   disabled?: boolean;
+  // Extra classes on the button itself - e.g. `w-full sm:w-auto` when a page
+  // wants its header actions to split the row evenly on mobile.
+  className?: string;
 }
 
 /**
@@ -117,6 +120,7 @@ export const PageHeaderButton: React.FC<PageHeaderButtonProps> = ({
   children,
   variant = 'primary',
   disabled = false,
+  className = '',
 }) => (
   <Button
     variant={variant === 'primary' ? 'primary' : 'secondary'}
@@ -124,7 +128,7 @@ export const PageHeaderButton: React.FC<PageHeaderButtonProps> = ({
     onClick={onClick}
     disabled={disabled}
     leftIcon={Icon && <Icon className={`w-4 h-4 ${iconClassName} page-header-button__icon`} />}
-    className="page-header-button"
+    className={`page-header-button ${className}`}
   >
     <span className="page-header-button__text">{children}</span>
   </Button>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useReducer } from 'react';
 import { Drawer, Card, TextInput as FlowbiteTextInput, Label, Checkbox, Dropdown, DropdownItem, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell } from 'flowbite-react';
-import { X, Search, Pencil, Edit2, FileText, FileSpreadsheet, ImageIcon, Landmark, Loader2, Clock, User, Scale, Building2, Camera, Plus, Trash2, Settings, Filter } from './icons/FlowbiteIcons';
+import { X, Search, Pencil, Edit2, FileText, FileSpreadsheet, Landmark, Loader2, User, Scale, Building2, Camera, Plus, Trash2, Settings, Filter } from './icons/FlowbiteIcons';
 import { TablePagination } from './TablePagination';
 import { PettyCashEntry } from '../types';
 import { Button } from './Button';
@@ -239,7 +239,6 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   const [payeeNameTouched, setPayeeNameTouched] = useState(false);
   const [payeeLightboxUrl, setPayeeLightboxUrl] = useState<string | null>(null);
   const [isSavingPayee, setIsSavingPayee] = useState(false);
-  const [costLogsPage, setCostLogsPage] = useState(1);
 
   const handleSavePayee = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -467,8 +466,6 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
   // Inline Editing State / Modal Edit State for Admin & Super Admin
   const [editingEntry, setEditingEntry] = useState<PettyCashEntry | null>(null);
-  const [editingCell, setEditingCell] = useState<{ id: string; field: 'date' | 'amount' } | null>(null);
-  const [editValue, setEditValue] = useState<string>('');
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
 
   // Search & Timeframe Filter State (Flowbite Application UI Transactions Pattern)
@@ -859,35 +856,6 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     if (onClose) onClose();
   };
 
-  // Double click cell to edit inline
-  const handleCellDoubleClick = (entryId: string, field: 'date' | 'amount', currentValue: any, source?: string) => {
-    // Kitchen-sourced rows live in kitchen_purchases_log, not pettyCash -
-    // handleCellSave below looks up/writes pettyCash by id, so editing one
-    // inline here would silently no-op rather than actually saving anything.
-    if (!canManageExpense || source === 'kitchen') return;
-    setEditingCell({ id: entryId, field });
-    setEditValue(String(currentValue));
-  };
-
-  const handleCellSave = (entryId: string) => {
-    if (!editingCell) return;
-
-    const original = pettyCash.find(e => e.id === entryId);
-    if (!original) return;
-
-    const updated: PettyCashEntry = {
-      ...original,
-      [editingCell.field]: editingCell.field === 'amount' ? Number(editValue) : editValue
-    };
-
-    updatePettyCash(updated);
-
-    if (updated.description && updated.amount) {
-      setItemPrices(prev => ({ ...prev, [updated.description.trim()]: Number(updated.amount) }));
-    }
-
-    setEditingCell(null);
-  };
 
   // Save Modal Edit
   const handleSaveModalEdit = (e: React.FormEvent) => {

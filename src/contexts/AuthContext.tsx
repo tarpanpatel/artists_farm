@@ -20,6 +20,8 @@ interface AuthContextValue {
    *  so they wait for the real session result, not just the optimistic
    *  localStorage snapshot. */
   authChecked: boolean;
+  sessionMismatchNotice: string | null;
+  clearSessionMismatchNotice: () => void;
   setActiveRole: (role: string) => void;
   login: (staff: StaffMember) => void;
   logout: () => void;
@@ -57,6 +59,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Gating on `authChecked && isAuthenticated` means: "we have confirmed with
   // the backend that we are actually logged in right now."
   const [authChecked, setAuthChecked] = useState(false);
+  const [sessionMismatchNotice, setSessionMismatchNotice] = useState<string | null>(null);
+
+  const clearSessionMismatchNotice = useCallback(() => {
+    setSessionMismatchNotice(null);
+  }, []);
 
   const [currentUser, setCurrentUser] = useState<StaffMember | null>(() => {
     if (typeof window !== 'undefined') {
@@ -127,6 +134,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setCurrentUser(user);
           setActiveRole(normalizeRole(user.role));
           setAuthChecked(true);
+          setSessionMismatchNotice(null);
           return;
         }
 
@@ -140,6 +148,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setIsAuthenticated(false);
           setCurrentUser(null);
           setAuthChecked(true);
+          setSessionMismatchNotice('You are signed in, but your account does not have access to this property. Please sign in with an authorized account or switch to your property.');
           return;
         }
 
@@ -178,6 +187,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setCurrentUser(user);
             setActiveRole(normalizeRole(user.role));
             setAuthChecked(true);
+            setSessionMismatchNotice(null);
             return;
           }
         }
@@ -226,6 +236,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAuthChecked(true);
     setCurrentUser(staff);
     setActiveRole(normalizeRole(staff.role || 'Staff'));
+    setSessionMismatchNotice(null);
     localStorage.setItem(authKey(), 'true');
     localStorage.setItem(userKey(), JSON.stringify(staff));
   }, []);
@@ -237,13 +248,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     apiFetch('/php/api/router.php?action=logout', { method: 'POST' }).catch(() => {});
     setIsAuthenticated(false);
     setCurrentUser(null);
+    setSessionMismatchNotice(null);
     localStorage.removeItem(authKey());
     localStorage.removeItem(userKey());
     localStorage.removeItem('artists_farm_user_session');
   }, []);
 
   return (
-    <AuthContext.Provider value={{ currentUser, activeRole, isAuthenticated, authChecked, setActiveRole, login, logout }}>
+    <AuthContext.Provider value={{ currentUser, activeRole, isAuthenticated, authChecked, sessionMismatchNotice, clearSessionMismatchNotice, setActiveRole, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
