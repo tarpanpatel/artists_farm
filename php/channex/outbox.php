@@ -118,3 +118,55 @@ function enqueueOutboxItem(
         return false;
     }
 }
+
+if (!function_exists('triggerEventDrivenChannexDrain')) {
+    /**
+     * Fires the outbox drain after the HTTP response has already gone back
+     * to the browser (fastcgi_finish_request), so a save/booking action
+     * never blocks on the Channex round-trip.
+     *
+     * BATCHING WINDOW (31 Aug 2026): a short sleep before draining, not an
+     * immediate drain. AriDrainWorker::processBatch() already correctly
+     * merges every row still 'pending' at the moment it runs into as few
+     * API calls as possible - the gap was purely timing: this used to
+     * drain immediately after enqueueing, so a user (or a certification
+     * reviewer) making 2-3 separate edits within a few seconds of each
+     * other had each one drained and marked 'done' before the next edit's
+     * outbox row even existed, producing one API call per edit instead of
+     * one batched call. Channex's own certification docs call this out by
+     * name as an auto-fail anti-pattern ("Separate API calls for
+     * individual dates or rates where the test specification requires a
+     * single API call"), and their live review explicitly tests it
+     * ("change this rate to 250 and this min-stay to 3" in quick
+     * succession). A few seconds of delay costs nothing for a single
+     * isolated edit and gives back-to-back edits a real chance to land in
+     * the same drain batch.
+     */
+    function triggerEventDrivenChannexDrain(PDO $pdo, int $delaySeconds = 6): void {
+        if (!is_file(__DIR__ . '/ari_drain_worker.php')) {
+            return;
+        }
+        require_once __DIR__ . '/ari_drain_worker.php';
+        if (!class_exists('AriDrainWorker')) {
+            return;
+        }
+
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        } else {
+            @ob_end_flush();
+            @flush();
+        }
+
+        if ($delaySeconds > 0) {
+            sleep($delaySeconds);
+        }
+
+        try {
+            $worker = new AriDrainWorker($pdo);
+            $worker->processBatch();
+        } catch (Exception $e) {
+            error_log("Channex event-driven drain failed: " . $e->getMessage());
+        }
+    }
+}

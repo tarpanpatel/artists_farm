@@ -252,7 +252,9 @@ function saveRateRule($pdo, $propertyId) {
         }
 
         echo json_encode(['status' => 'success', 'message' => 'Rate rule saved successfully.']);
-        triggerEventDrivenChannexDrain($pdo);
+        if (function_exists('triggerEventDrivenChannexDrain')) {
+            triggerEventDrivenChannexDrain($pdo);
+        }
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -291,32 +293,19 @@ function deleteRateRule($pdo, $propertyId) {
         }
 
         echo json_encode(['status' => 'success', 'message' => 'Rate rule deleted successfully.']);
-        triggerEventDrivenChannexDrain($pdo);
+        if (function_exists('triggerEventDrivenChannexDrain')) {
+            triggerEventDrivenChannexDrain($pdo);
+        }
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
     }
 }
 
-function triggerEventDrivenChannexDrain($pdo) {
-    if (is_file(__DIR__ . '/../channex/ari_drain_worker.php')) {
-        require_once __DIR__ . '/../channex/ari_drain_worker.php';
-        if (class_exists('AriDrainWorker')) {
-            if (function_exists('fastcgi_finish_request')) {
-                fastcgi_finish_request();
-            } else {
-                @ob_end_flush();
-                @flush();
-            }
-            try {
-                $worker = new AriDrainWorker($pdo);
-                $worker->processBatch();
-            } catch (Exception $e) {
-                error_log("Channex event-driven drain failed: " . $e->getMessage());
-            }
-        }
-    }
-}
+// triggerEventDrivenChannexDrain() moved to channex/outbox.php (31 Aug 2026)
+// so guests.php can share it too - see that file for the batching-window
+// rationale. require_once above (line 235/282) already loads outbox.php,
+// which is where enqueueOutboxItem() itself lives.
 
 function updatePricingMode($pdo, $propertyId) {
     try {

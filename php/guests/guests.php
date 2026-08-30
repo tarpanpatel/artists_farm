@@ -871,6 +871,20 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         $response['overlap_warning'] = $overlapWarning;
                     }
                     echo json_encode($response);
+
+                    // Channel Manager Outbox (31 Aug 2026): a booking here enqueued an
+                    // availability change above, but nothing ever drained it - it just
+                    // sat 'pending' until someone happened to click "Drain Outbox" or a
+                    // rate-rule save elsewhere drained the whole queue as a side effect.
+                    // Certification Test 9 requires this to fire automatically from a
+                    // real booking with no manual step. See outbox.php for why this
+                    // waits a few seconds before draining instead of draining instantly.
+                    if (is_file(__DIR__ . '/../channex/outbox.php')) {
+                        require_once __DIR__ . '/../channex/outbox.php';
+                        if (function_exists('triggerEventDrivenChannexDrain')) {
+                            triggerEventDrivenChannexDrain($pdo);
+                        }
+                    }
                 } catch (PDOException $e) {
                     if ($pdo->inTransaction()) {
                         $pdo->rollBack();
@@ -1054,6 +1068,12 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
 
                     echo json_encode(['status' => 'success', 'message' => 'Booking updated successfully']);
 
+                    // Channel Manager Outbox (31 Aug 2026): see add_guest's own comment
+                    // above - nothing was draining these enqueued rows automatically.
+                    if (function_exists('triggerEventDrivenChannexDrain')) {
+                        triggerEventDrivenChannexDrain($pdo);
+                    }
+
                     // Ping Admin with exactly what changed, not just "booking updated" -
                     // a diff against the pre-update row, one line per field that actually
                     // moved. Best-effort: notification failure must never fail the save
@@ -1223,6 +1243,13 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                             }
                         }
                         echo json_encode(['status' => 'success', 'message' => 'Booking deleted successfully']);
+
+                        // Channel Manager Outbox (31 Aug 2026): see add_guest's own
+                        // comment above - nothing was draining these enqueued rows
+                        // automatically.
+                        if (function_exists('triggerEventDrivenChannexDrain')) {
+                            triggerEventDrivenChannexDrain($pdo);
+                        }
                     } else {
                         http_response_code(404);
                         echo json_encode(['status' => 'error', 'message' => 'Booking not found']);
