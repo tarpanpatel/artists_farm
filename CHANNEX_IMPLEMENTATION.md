@@ -71,10 +71,23 @@ you trust the docs:
    permissions failure and will send you to support for nothing. It is not a
    permissions problem. Get the id from `GET /groups`; the property's own
    `relationships.groups` also carries it.
-3. **`filter[property_id]=` silently returns an empty array** on `/channels`
-   while the channels plainly exist. It does not error — it just lies. List
-   unfiltered and match client-side, or you will "confirm" there are no channels
-   and delete nothing while three sit there.
+3. **`property_id` in the create payload is silently ignored.** The channel is
+   created attached to the *group* only, with `relationships.properties` empty —
+   so it does not appear under the property in the dashboard, and
+   `filter[property_id]` correctly returns nothing.
+
+   Link it afterwards with `PUT /channels/{id}` and an **array**:
+   `{"channel": {"properties": ["<property_uuid>"]}}`. Confirm by re-reading the
+   channel and checking `relationships.properties.data` is non-empty — the PUT
+   returns 200 either way.
+
+   > Worth stating plainly, because it wasted an hour: on first seeing
+   > `filter[property_id]` return `[]` while `GET /channels` listed three
+   > channels, the obvious-looking conclusion is "the filter is broken". It is
+   > not. The filter was right and the channels genuinely had no property. The
+   > tell was in `relationships.properties`, which nobody looks at until the
+   > dashboard shows an empty list. When an API's filter disagrees with its list
+   > endpoint, suspect the data before the filter.
 
 Valid `channel` codes, confirmed empirically (casing matters):
 
@@ -96,6 +109,7 @@ There is a configured sandbox channel already in place:
 Certification Simulator  (OpenChannel)
   id          3bde9156-1373-438b-ae47-c863d5f219f9
   hotel_code  CERT-TEST-001
+  property    4286428a-5561-4508-bd28-1f9ae55d8795  (linked via PUT, see above)
   mapping     room_type 4ca732c0-6f4f-457c-9c48-396f3d784590 <-> ota_room_101
               rate_plan 2d0dfacb-0239-4ec9-9eba-f6962ff3ecd8 <-> ota_rate_bar
 ```
