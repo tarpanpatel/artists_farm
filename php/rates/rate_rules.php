@@ -230,21 +230,33 @@ function saveRateRule($pdo, $propertyId) {
             }
         }
 
-        // Channel Manager Outbox (30 Aug 2026): Enqueue rate & restriction changes
-        require_once __DIR__ . '/../channex/outbox.php';
-        foreach ($targetRoomIds as $rId) {
-            $roomId = !empty($rId) ? (int)$rId : null;
-            enqueueOutboxItem($pdo, (int)$propertyId, $roomId, 'rates', $startDate, $endDate, [
-                'action' => 'save_rate_rule',
-                'rule_id' => $ruleId,
-                'rate_per_night' => $ratePerNight,
-                'min_stay_arrival' => $minStayArrival,
-                'min_stay_through' => $minStayThrough,
-                'max_stay' => $maxStay,
-                'stop_sell' => $stopSell,
-                'closed_to_arrival' => $closedToArrival,
-                'closed_to_departure' => $closedToDeparture,
-            ]);
+        // Channel Manager Outbox: queue the rate/restriction change for push.
+        //
+        // Optional by design (30 Aug 2026). The channel-manager integration
+        // lives on its own branch and may not be present at all - an
+        // unconditional require here made saving ANY rate rule fatal on a
+        // checkout without php/channex/, which is exactly what happened when
+        // this hook was merged ahead of the code it depends on. Rate rules are
+        // a standalone product feature; they must never fail because an
+        // optional distribution integration isn't installed.
+        if (is_file(__DIR__ . '/../channex/outbox.php')) {
+            require_once __DIR__ . '/../channex/outbox.php';
+            if (function_exists('enqueueOutboxItem')) {
+                foreach ($targetRoomIds as $rId) {
+                    $roomId = !empty($rId) ? (int)$rId : null;
+                    enqueueOutboxItem($pdo, (int)$propertyId, $roomId, 'rates', $startDate, $endDate, [
+                        'action' => 'save_rate_rule',
+                        'rule_id' => $ruleId,
+                        'rate_per_night' => $ratePerNight,
+                        'min_stay_arrival' => $minStayArrival,
+                        'min_stay_through' => $minStayThrough,
+                        'max_stay' => $maxStay,
+                        'stop_sell' => $stopSell,
+                        'closed_to_arrival' => $closedToArrival,
+                        'closed_to_departure' => $closedToDeparture,
+                    ]);
+                }
+            }
         }
 
         echo json_encode(['status' => 'success', 'message' => 'Rate rule saved successfully.']);
@@ -272,13 +284,17 @@ function deleteRateRule($pdo, $propertyId) {
         $stmt = $pdo->prepare("DELETE FROM room_rate_rules WHERE id = ? AND property_id = ?");
         $stmt->execute([$ruleId, $propertyId]);
 
-        if ($existingRule && !empty($existingRule['start_date']) && !empty($existingRule['end_date'])) {
+        // Optional - see the matching guard in saveRateRule() for why.
+        if ($existingRule && !empty($existingRule['start_date']) && !empty($existingRule['end_date'])
+            && is_file(__DIR__ . '/../channex/outbox.php')) {
             require_once __DIR__ . '/../channex/outbox.php';
-            $roomId = !empty($existingRule['room_id']) ? (int)$existingRule['room_id'] : null;
-            enqueueOutboxItem($pdo, (int)$propertyId, $roomId, 'rates', $existingRule['start_date'], $existingRule['end_date'], [
-                'action' => 'delete_rate_rule',
-                'rule_id' => $ruleId,
-            ]);
+            if (function_exists('enqueueOutboxItem')) {
+                $roomId = !empty($existingRule['room_id']) ? (int)$existingRule['room_id'] : null;
+                enqueueOutboxItem($pdo, (int)$propertyId, $roomId, 'rates', $existingRule['start_date'], $existingRule['end_date'], [
+                    'action' => 'delete_rate_rule',
+                    'rule_id' => $ruleId,
+                ]);
+            }
         }
 
         echo json_encode(['status' => 'success', 'message' => 'Rate rule deleted successfully.']);
