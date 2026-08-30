@@ -3642,7 +3642,14 @@ switch ($action) {
             break;
         }
 
-        require_once __DIR__ . '/../channex/webhook_receiver.php';
+        if (is_file(__DIR__ . '/../channex/webhook_receiver.php')) {
+            require_once __DIR__ . '/../channex/webhook_receiver.php';
+        }
+        if (!class_exists('ChannexWebhookReceiver')) {
+            http_response_code(503);
+            echo json_encode(['status' => 'error', 'message' => 'Channex webhook receiver not installed']);
+            break;
+        }
         $rawInput = file_get_contents('php://input');
         $payload = json_decode($rawInput, true) ?: [];
 
@@ -3673,7 +3680,14 @@ switch ($action) {
         break;
 
     case 'channex_content_sync':
-        require_once __DIR__ . '/../channex/content_sync.php';
+        if (is_file(__DIR__ . '/../channex/content_sync.php')) {
+            require_once __DIR__ . '/../channex/content_sync.php';
+        }
+        if (!class_exists('ChannexContentSyncer')) {
+            http_response_code(503);
+            echo json_encode(['status' => 'error', 'message' => 'Channex content sync module not installed']);
+            break;
+        }
         $targetPropertyId = $propertyId ?: (int)($_GET['property_id'] ?? 1);
         $syncer = new ChannexContentSyncer($pdo);
         try {
@@ -3686,7 +3700,14 @@ switch ($action) {
         break;
 
     case 'channex_register_webhook':
-        require_once __DIR__ . '/../channex/ChannexAdapter.php';
+        if (is_file(__DIR__ . '/../channex/ChannexAdapter.php')) {
+            require_once __DIR__ . '/../channex/ChannexAdapter.php';
+        }
+        if (!class_exists('ChannexAdapter')) {
+            http_response_code(503);
+            echo json_encode(['status' => 'error', 'message' => 'Channex adapter not installed']);
+            break;
+        }
         $adapter = new ChannexAdapter($pdo);
         $callbackUrl = trim((string)($_POST['callback_url'] ?? ($_GET['callback_url'] ?? '')));
         $channexPropId = trim((string)($_POST['channex_property_id'] ?? ($_GET['channex_property_id'] ?? '')));
@@ -3781,6 +3802,11 @@ switch ($action) {
         if (is_file(__DIR__ . '/../channex/ari_drain_worker.php')) {
             require_once __DIR__ . '/../channex/ari_drain_worker.php';
         }
+        if (!function_exists('enqueueOutboxItem') || !class_exists('AriDrainWorker')) {
+            http_response_code(503);
+            echo json_encode(['status' => 'error', 'message' => 'Channex ARI push module not installed']);
+            break;
+        }
         $rawInput = file_get_contents('php://input');
         $input = json_decode($rawInput, true) ?: $_POST;
 
@@ -3829,6 +3855,11 @@ switch ($action) {
         if (is_file(__DIR__ . '/../channex/ari_drain_worker.php')) {
             require_once __DIR__ . '/../channex/ari_drain_worker.php';
         }
+        if (!class_exists('AriDrainWorker')) {
+            http_response_code(503);
+            echo json_encode(['status' => 'error', 'message' => 'Channex outbox worker not installed']);
+            break;
+        }
         $rawInput = file_get_contents('php://input');
         $input = json_decode($rawInput, true) ?: $_POST;
         $rowId = (int)($input['id'] ?? 0);
@@ -3841,7 +3872,14 @@ switch ($action) {
         break;
 
     case 'channex_outbox_drain':
-        require_once __DIR__ . '/../channex/ari_drain_worker.php';
+        if (is_file(__DIR__ . '/../channex/ari_drain_worker.php')) {
+            require_once __DIR__ . '/../channex/ari_drain_worker.php';
+        }
+        if (!class_exists('AriDrainWorker')) {
+            http_response_code(503);
+            echo json_encode(['status' => 'error', 'message' => 'Channex outbox worker not installed']);
+            break;
+        }
         $worker = new AriDrainWorker($pdo);
         $res = $worker->processBatch();
         echo json_encode(['status' => 'success', 'data' => $res]);

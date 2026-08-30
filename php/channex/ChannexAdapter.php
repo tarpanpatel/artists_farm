@@ -58,7 +58,11 @@ class ChannexAdapter implements ChannelManagerAdapter {
             return ['success' => true, 'message' => 'No active future dates to push'];
         }
 
-        return $this->client->post('availability', ['values' => $values]);
+        $res = $this->client->post('availability', ['values' => $values]);
+        if (!empty($res['data']) && is_array($res['data']) && isset($res['data'][0]['id'])) {
+            $res['task_id'] = $res['data'][0]['id'];
+        }
+        return $res;
     }
 
     public function pushRestrictions(int $propertyId, ?int $roomId, array $restrictions): array {
@@ -115,7 +119,11 @@ class ChannexAdapter implements ChannelManagerAdapter {
             return ['success' => true, 'message' => 'No active future dates to push'];
         }
 
-        return $this->client->post('restrictions', ['values' => $values]);
+        $res = $this->client->post('restrictions', ['values' => $values]);
+        if (!empty($res['data']) && is_array($res['data']) && isset($res['data'][0]['id'])) {
+            $res['task_id'] = $res['data'][0]['id'];
+        }
+        return $res;
     }
 
     public function acknowledgeRevision(string $revisionId): bool {
@@ -166,8 +174,13 @@ class ChannexAdapter implements ChannelManagerAdapter {
     }
 
     private function getMapping(int $propertyId, ?int $roomId): ?array {
-        $stmt = $this->pdo->prepare("SELECT * FROM channex_mappings WHERE property_id = ? AND (room_id = ? OR (room_id IS NULL AND ? IS NULL)) LIMIT 1");
-        $stmt->execute([$propertyId, $roomId, $roomId]);
+        if ($roomId === null) {
+            $stmt = $this->pdo->prepare("SELECT * FROM channex_mappings WHERE property_id = ? AND room_id IS NULL LIMIT 1");
+            $stmt->execute([$propertyId]);
+        } else {
+            $stmt = $this->pdo->prepare("SELECT * FROM channex_mappings WHERE property_id = ? AND room_id = ? LIMIT 1");
+            $stmt->execute([$propertyId, $roomId]);
+        }
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return $row ?: null;
     }

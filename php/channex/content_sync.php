@@ -91,23 +91,37 @@ class ChannexContentSyncer {
         $channexPropertyId = $mapStmt->fetchColumn();
 
         if (!$channexPropertyId) {
-            // Create Property in Channex (villa type per verified sandbox facts)
-            $propPayload = [
-                'property' => [
-                    'title' => $prop['name'],
-                    'property_type' => 'villa',
-                    'currency' => $currency,
-                    'timezone' => 'Asia/Kolkata',
-                    'country' => 'IN',
-                    'city' => 'Jaipur',
-                    'zip_code' => '302001',
-                ]
-            ];
-            $res = $this->client->post('properties', $propPayload);
-            if (!$res['success'] || empty($res['data']['id'])) {
-                throw new RuntimeException("Failed to create Channex property: " . json_encode($res['error'] ?? 'Unknown error'));
+            // Check if matching property already exists on Channex (idempotency check)
+            $remoteProps = $this->client->get('properties', ['limit' => 100]);
+            if (!empty($remoteProps['data'])) {
+                foreach ($remoteProps['data'] as $rp) {
+                    $rpTitle = $rp['attributes']['title'] ?? '';
+                    if (strcasecmp($rpTitle, $prop['name']) === 0) {
+                        $channexPropertyId = $rp['id'];
+                        break;
+                    }
+                }
             }
-            $channexPropertyId = $res['data']['id'];
+
+            if (!$channexPropertyId) {
+                // Create Property in Channex (villa type per verified sandbox facts)
+                $propPayload = [
+                    'property' => [
+                        'title' => $prop['name'],
+                        'property_type' => 'villa',
+                        'currency' => $currency,
+                        'timezone' => 'Asia/Kolkata',
+                        'country' => 'IN',
+                        'city' => 'Jaipur',
+                        'zip_code' => '302001',
+                    ]
+                ];
+                $res = $this->client->post('properties', $propPayload);
+                if (!$res['success'] || empty($res['data']['id'])) {
+                    throw new RuntimeException("Failed to create Channex property: " . json_encode($res['error'] ?? 'Unknown error'));
+                }
+                $channexPropertyId = $res['data']['id'];
+            }
         }
 
         $results = [];
@@ -123,25 +137,38 @@ class ChannexContentSyncer {
                 continue;
             }
 
-            // 1. Create Room Type
-            $roomPayload = [
-                'room_type' => [
-                    'property_id' => $channexPropertyId,
-                    'title' => $unit['name'],
-                    'count_of_rooms' => 1,
-                    'room_kind' => 'room',
-                    'capacity' => 6,
-                    'occ_adults' => 6,
-                    'occ_children' => 2,
-                    'occ_infants' => 2,
-                    'default_occupancy' => 2,
-                ]
-            ];
-            $roomRes = $this->client->post('room_types', $roomPayload);
-            if (!$roomRes['success'] || empty($roomRes['data']['id'])) {
-                throw new RuntimeException("Failed to create Channex room type for '{$unit['name']}': " . json_encode($roomRes['error'] ?? 'Unknown error'));
+            // 1. Resolve or Create Room Type
+            $channexRoomTypeId = null;
+            $remoteRooms = $this->client->get('room_types', ['filter[property_id]' => $channexPropertyId]);
+            if (!empty($remoteRooms['data'])) {
+                foreach ($remoteRooms['data'] as $rr) {
+                    if (strcasecmp($rr['attributes']['title'] ?? '', $unit['name']) === 0) {
+                        $channexRoomTypeId = $rr['id'];
+                        break;
+                    }
+                }
             }
-            $channexRoomTypeId = $roomRes['data']['id'];
+
+            if (!$channexRoomTypeId) {
+                $roomPayload = [
+                    'room_type' => [
+                        'property_id' => $channexPropertyId,
+                        'title' => $unit['name'],
+                        'count_of_rooms' => 1,
+                        'room_kind' => 'room',
+                        'capacity' => 6,
+                        'occ_adults' => 6,
+                        'occ_children' => 2,
+                        'occ_infants' => 2,
+                        'default_occupancy' => 2,
+                    ]
+                ];
+                $roomRes = $this->client->post('room_types', $roomPayload);
+                if (!$roomRes['success'] || empty($roomRes['data']['id'])) {
+                    throw new RuntimeException("Failed to create Channex room type for '{$unit['name']}': " . json_encode($roomRes['error'] ?? 'Unknown error'));
+                }
+                $channexRoomTypeId = $roomRes['data']['id'];
+            }
 
             // 2. Create Rate Plan.
             //
@@ -173,11 +200,25 @@ class ChannexContentSyncer {
                     ]
                 ]
             ];
-            $rateRes = $this->client->post('rate_plans', $ratePayload);
-            if (!$rateRes['success'] || empty($rateRes['data']['id'])) {
-                throw new RuntimeException("Failed to create Channex rate plan for '{$unit['name']}': " . json_encode($rateRes['error'] ?? 'Unknown error'));
+            $channexRatePlanId = null;
+            $remoteRates = $this->client->get('rate_plans', ['filter[property_id]' => $channexPropertyId]);
+            if (!empty($remoteRates['data'])) {
+                foreach ($remoteRates['data'] as $rp) {
+                    $rpRoomTypeId = $rp['relationships']['room_type']['data']['id'] ?? ($rp['attributes']['room_type_id'] ?? '');
+                    if ($rpRoomTypeId === $channexRoomTypeId) {
+                        $channexRatePlanId = $rp['id'];
+                        break;
+                    }
+                }
             }
-            $channexRatePlanId = $rateRes['data']['id'];
+
+            if (!$channexRatePlanId) {
+                $rateRes = $this->client->post('rate_plans', $ratePayload);
+                if (!$rateRes['success'] || empty($rateRes['data']['id'])) {
+                    throw new RuntimeException("Failed to create Channex rate plan for '{$unit['name']}': " . json_encode($rateRes['error'] ?? 'Unknown error'));
+                }
+                $channexRatePlanId = $rateRes['data']['id'];
+            }
 
             // Save mapping with NULL-safe deduplication
             $checkStmt = $this->pdo->prepare("
@@ -188,19 +229,24 @@ class ChannexContentSyncer {
             $checkStmt->execute([$propertyId, $roomId, $roomId]);
             $existingMappingId = $checkStmt->fetchColumn();
 
-            if ($existingMappingId) {
-                $updateStmt = $this->pdo->prepare("
-                    UPDATE channex_mappings 
-                    SET channex_property_id = ?, channex_room_type_id = ?, channex_rate_plan_id = ?, sync_status = 'active', last_synced_at = NOW()
-                    WHERE id = ?
-                ");
-                $updateStmt->execute([$channexPropertyId, $channexRoomTypeId, $channexRatePlanId, $existingMappingId]);
-            } else {
-                $saveStmt = $this->pdo->prepare("
-                    INSERT INTO channex_mappings (property_id, room_id, channex_property_id, channex_room_type_id, channex_rate_plan_id, sync_status, last_synced_at)
-                    VALUES (?, ?, ?, ?, ?, 'active', NOW())
-                ");
-                $saveStmt->execute([$propertyId, $roomId, $channexPropertyId, $channexRoomTypeId, $channexRatePlanId]);
+            try {
+                if ($existingMappingId) {
+                    $updateStmt = $this->pdo->prepare("
+                        UPDATE channex_mappings 
+                        SET channex_property_id = ?, channex_room_type_id = ?, channex_rate_plan_id = ?, sync_status = 'active', last_synced_at = NOW()
+                        WHERE id = ?
+                    ");
+                    $updateStmt->execute([$channexPropertyId, $channexRoomTypeId, $channexRatePlanId, $existingMappingId]);
+                } else {
+                    $saveStmt = $this->pdo->prepare("
+                        INSERT INTO channex_mappings (property_id, room_id, channex_property_id, channex_room_type_id, channex_rate_plan_id, sync_status, last_synced_at)
+                        VALUES (?, ?, ?, ?, ?, 'active', NOW())
+                    ");
+                    $saveStmt->execute([$propertyId, $roomId, $channexPropertyId, $channexRoomTypeId, $channexRatePlanId]);
+                }
+            } catch (PDOException $e) {
+                $checkStmt->execute([$propertyId, $roomId, $roomId]);
+                $existingMappingId = $checkStmt->fetchColumn();
             }
 
             $results[] = [

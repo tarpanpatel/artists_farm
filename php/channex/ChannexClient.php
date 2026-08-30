@@ -53,7 +53,7 @@ class ChannexClient {
         return $this->request('DELETE', $url);
     }
 
-    private function request(string $method, string $url, ?array $body = null): array {
+    protected function request(string $method, string $url, ?array $body = null): array {
         $attempt = 0;
         $lastException = null;
 

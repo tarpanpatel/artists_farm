@@ -807,11 +807,15 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     }
 
                     // Channel Manager Outbox (30 Aug 2026): Enqueue within transaction
-                    require_once __DIR__ . '/../channex/outbox.php';
-                    enqueueOutboxItem($pdo, (int)$propertyId, $roomId, 'availability', $newCheckin, $newCheckout, [
-                        'action' => 'add_guest',
-                        'guest_id' => $newId,
-                    ]);
+                    if (is_file(__DIR__ . '/../channex/outbox.php')) {
+                        require_once __DIR__ . '/../channex/outbox.php';
+                    }
+                    if (function_exists('enqueueOutboxItem')) {
+                        enqueueOutboxItem($pdo, (int)$propertyId, $roomId, 'availability', $newCheckin, $newCheckout, [
+                            'action' => 'add_guest',
+                            'guest_id' => $newId,
+                        ]);
+                    }
 
                     $pdo->commit();
 
@@ -1023,18 +1027,22 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     }
 
                     // Channel Manager Outbox (30 Aug 2026): Enqueue both old and new date ranges
-                    require_once __DIR__ . '/../channex/outbox.php';
-                    if (!empty($previousGuest['checkin_date']) && !empty($previousGuest['expected_checkout'])) {
-                        $oldRoomId = !empty($previousGuest['room_id']) ? (int)$previousGuest['room_id'] : null;
-                        enqueueOutboxItem($pdo, (int)$propertyId, $oldRoomId, 'availability', $previousGuest['checkin_date'], $previousGuest['expected_checkout'], [
-                            'action' => 'update_guest_old_dates',
+                    if (is_file(__DIR__ . '/../channex/outbox.php')) {
+                        require_once __DIR__ . '/../channex/outbox.php';
+                    }
+                    if (function_exists('enqueueOutboxItem')) {
+                        if (!empty($previousGuest['checkin_date']) && !empty($previousGuest['expected_checkout'])) {
+                            $oldRoomId = !empty($previousGuest['room_id']) ? (int)$previousGuest['room_id'] : null;
+                            enqueueOutboxItem($pdo, (int)$propertyId, $oldRoomId, 'availability', $previousGuest['checkin_date'], $previousGuest['expected_checkout'], [
+                                'action' => 'update_guest_old_dates',
+                                'guest_id' => $guestId,
+                            ]);
+                        }
+                        enqueueOutboxItem($pdo, (int)$propertyId, $roomId, 'availability', $newCheckin, $newCheckout, [
+                            'action' => 'update_guest_new_dates',
                             'guest_id' => $guestId,
                         ]);
                     }
-                    enqueueOutboxItem($pdo, (int)$propertyId, $roomId, 'availability', $newCheckin, $newCheckout, [
-                        'action' => 'update_guest_new_dates',
-                        'guest_id' => $guestId,
-                    ]);
 
                     // Commit before responding/notifying: the room lock taken above must
                     // be released as soon as the write is durable, not held across the
@@ -1203,12 +1211,16 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     $stmt->execute([$guestId, $propertyId]);
                     if ($stmt->rowCount() > 0) {
                         if ($guestRow && !empty($guestRow['checkin_date']) && !empty($guestRow['expected_checkout'])) {
-                            require_once __DIR__ . '/../channex/outbox.php';
-                            $roomId = !empty($guestRow['room_id']) ? (int)$guestRow['room_id'] : null;
-                            enqueueOutboxItem($pdo, (int)$propertyId, $roomId, 'availability', $guestRow['checkin_date'], $guestRow['expected_checkout'], [
-                                'action' => 'delete_guest',
-                                'guest_id' => $guestId,
-                            ]);
+                            if (is_file(__DIR__ . '/../channex/outbox.php')) {
+                                require_once __DIR__ . '/../channex/outbox.php';
+                            }
+                            if (function_exists('enqueueOutboxItem')) {
+                                $roomId = !empty($guestRow['room_id']) ? (int)$guestRow['room_id'] : null;
+                                enqueueOutboxItem($pdo, (int)$propertyId, $roomId, 'availability', $guestRow['checkin_date'], $guestRow['expected_checkout'], [
+                                    'action' => 'delete_guest',
+                                    'guest_id' => $guestId,
+                                ]);
+                            }
                         }
                         echo json_encode(['status' => 'success', 'message' => 'Booking deleted successfully']);
                     } else {
