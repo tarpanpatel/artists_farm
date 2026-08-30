@@ -302,7 +302,20 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   const [fulfillPage, setFulfillPage] = useState<number>(1);
 
   // Category management state
-  const [catalogView, setCatalogView] = useState<'items' | 'categories'>('items');
+  const [catalogView, setCatalogViewState] = useState<'items' | 'categories'>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = sessionStorage.getItem('artists_farm_inventory_catalog_view');
+      if (stored === 'items' || stored === 'categories') return stored;
+    }
+    return 'items';
+  });
+
+  const setCatalogView = (view: 'items' | 'categories') => {
+    setCatalogViewState(view);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('artists_farm_inventory_catalog_view', view);
+    }
+  };
   const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
   const [editingCategoryName, setEditingCategoryName] = useState('');
   const [newCategoryName, setNewCategoryName] = useState('');

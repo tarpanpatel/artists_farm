@@ -80,16 +80,47 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const { currentUser, isAuthenticated } = useAuth();
-  const { staff, staffLoading, attendance, addStaff, updateStaff, recordAttendance, refreshStaff } = useStaff();
-  const [activeSubTab, setActiveSubTab] = useState<'control_center' | 'calendar' | 'roster'>('control_center');
+  const getInitialStaffSubTab = (): 'control_center' | 'calendar' | 'roster' => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash.replace('#', '').trim().toLowerCase();
+      if (hash === 'attendance_calendar' || hash === 'attendance_salaries' || hash.includes('calendar')) return 'calendar';
+      if (hash === 'staff_directory_salaries' || hash.includes('roster')) return 'roster';
+      if (hash === 'staff_permissions' || hash === 'staff_payees_control' || hash.includes('control_center') || hash.includes('permissions')) return 'control_center';
+      const stored = sessionStorage.getItem('artists_farm_staff_tab');
+      if (stored === 'control_center' || stored === 'calendar' || stored === 'roster') return stored;
+    }
+    if (activeMenuItemKey === 'attendance_calendar' || activeMenuItemKey === 'attendance_salaries') return 'calendar';
+    if (activeMenuItemKey === 'staff_directory_salaries') return 'roster';
+    if (activeMenuItemKey === 'staff_permissions' || activeMenuItemKey === 'staff_payees_control') return 'control_center';
+    return 'control_center';
+  };
+
+  const [activeSubTab, setActiveSubTab] = useState<'control_center' | 'calendar' | 'roster'>(getInitialStaffSubTab);
   const isAttendancePage = activeMenuItemKey === 'attendance_calendar' || activeMenuItemKey === 'attendance_salaries';
 
   useEffect(() => {
-    if (activeMenuItemKey === 'attendance_calendar' || activeMenuItemKey === 'attendance_salaries') setActiveSubTab('calendar');
-    else if (activeMenuItemKey === 'staff_directory_salaries') setActiveSubTab('roster');
-    else if (activeMenuItemKey === 'staff_permissions' || activeMenuItemKey === 'staff_payees_control') setActiveSubTab('control_center');
-    else setActiveSubTab('calendar');
+    if (activeMenuItemKey === 'attendance_calendar' || activeMenuItemKey === 'attendance_salaries') {
+      setActiveSubTab('calendar');
+      if (typeof window !== 'undefined') sessionStorage.setItem('artists_farm_staff_tab', 'calendar');
+    } else if (activeMenuItemKey === 'staff_directory_salaries') {
+      setActiveSubTab('roster');
+      if (typeof window !== 'undefined') sessionStorage.setItem('artists_farm_staff_tab', 'roster');
+    } else if (activeMenuItemKey === 'staff_permissions' || activeMenuItemKey === 'staff_payees_control') {
+      setActiveSubTab('control_center');
+      if (typeof window !== 'undefined') sessionStorage.setItem('artists_farm_staff_tab', 'control_center');
+    }
   }, [activeMenuItemKey]);
+
+  useEffect(() => {
+    const handleHash = () => {
+      const hash = window.location.hash.replace('#', '').trim().toLowerCase();
+      if (hash === 'attendance_calendar' || hash === 'attendance_salaries' || hash.includes('calendar')) setActiveSubTab('calendar');
+      else if (hash === 'staff_directory_salaries' || hash.includes('roster')) setActiveSubTab('roster');
+      else if (hash === 'staff_permissions' || hash === 'staff_payees_control' || hash.includes('control_center')) setActiveSubTab('control_center');
+    };
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
 
   // Property Payroll & Payee State
   const [users, setUsers] = useState<UserAccount[]>([]);

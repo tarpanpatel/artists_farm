@@ -1049,6 +1049,7 @@ export const strings: Record<string, string> = {
   checkout_today_badge: "Checkout Today",
   upcoming_booking_badge: "Upcoming Booking",
   past_booking_badge: "Past Booking",
+  cancelled_badge: "Cancelled",
   c_form_filed_badge: "C-Form Filed",
   c_form_pending_badge: "C-Form Pending",
   id_verification_pending_badge: "ID Pending",

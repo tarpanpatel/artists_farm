@@ -111,8 +111,48 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   const isStaffKitchenRole = normalizedActiveRole === 'staff kitchen';
   const canActOnBooking = !isStaffKitchenRole;
   const canCheckoutBookingRole = !isStaffKitchenRole && normalizedActiveRole !== 'staff';
-  const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState<'today' | 'upcoming' | 'past_bookings'>('today');
+  const getInitialBookingsTab = (): 'today' | 'upcoming' | 'past_bookings' => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash.replace('#', '').trim().toLowerCase();
+      if (hash.includes('upcoming')) return 'upcoming';
+      if (hash.includes('past')) return 'past_bookings';
+      if (hash.includes('today')) return 'today';
+      const stored = sessionStorage.getItem('artists_farm_bookings_tab');
+      if (stored === 'upcoming' || stored === 'past_bookings' || stored === 'today') {
+        return stored;
+      }
+    }
+    return 'today';
+  };
+
+  const [activeTab, setActiveTab] = useState<'today' | 'upcoming' | 'past_bookings'>(getInitialBookingsTab);
+
+  const handleTabSelect = (tab: 'today' | 'upcoming' | 'past_bookings') => {
+    setActiveTab(tab);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('artists_farm_bookings_tab', tab);
+      const currentRaw = window.location.hash.replace('#', '').trim();
+      const basePart = currentRaw.split('?')[0].split('/')[0];
+      const validBase = basePart && ['bookings', 'all_bookings', 'guests', 'guest_registration', 'billing_checkout'].includes(basePart)
+        ? basePart
+        : 'bookings';
+      const newHash = tab === 'today' ? `#${validBase}` : `#${validBase}/${tab === 'past_bookings' ? 'past' : tab}`;
+      if (window.location.hash !== newHash) {
+        window.history.replaceState(null, '', newHash);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleHash = () => {
+      const hash = window.location.hash.replace('#', '').trim().toLowerCase();
+      if (hash.includes('upcoming')) setActiveTab('upcoming');
+      else if (hash.includes('past')) setActiveTab('past_bookings');
+      else if (hash.includes('today')) setActiveTab('today');
+    };
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
   const [pastBookingsDesktopPage, setPastBookingsDesktopPage] = useState(1);
   const PAST_BOOKINGS_PAGE_SIZE = 15;
   const [isProcessing] = useState(false);
@@ -201,6 +241,13 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
 
   // Helper for badge labels on cards
   const getGuestStayStatus = (guest: Guest) => {
+    // A cancelled booking is otherwise indistinguishable from a genuinely
+    // finished one - getGuestDetailedStatus() folds 'Cancelled' into
+    // 'past_bookings' regardless of dates, so a booking cancelled today with a
+    // future check-in would read as "Past Booking". Surface it explicitly.
+    if (String(guest.status || '') === 'Cancelled') {
+      return { key: 'cancelled', label: t('cancelled_badge', 'Cancelled'), variant: 'danger' as const };
+    }
     const cat = getGuestDetailedStatus(guest);
     if (cat === 'checkin_today') {
       return { key: 'staying', label: t('checked_in_today_badge', 'Checked In Today'), variant: 'success' as const };
@@ -902,7 +949,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
             clearTheme={attachedTabsClearTheme}
             onActiveTabChange={(tabIndex: number) => {
               const tabs: ('today' | 'upcoming' | 'past_bookings')[] = ['today', 'upcoming', 'past_bookings'];
-              if (tabs[tabIndex]) setActiveTab(tabs[tabIndex]);
+              if (tabs[tabIndex]) handleTabSelect(tabs[tabIndex]);
             }}
           >
             <TabItem

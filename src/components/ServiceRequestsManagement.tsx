@@ -71,8 +71,39 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
   const [newDescription, setNewDescription] = useState('');
   const [newChargeAmount, setNewChargeAmount] = useState('');
   const [saving, setSaving] = useState(false);
-  const [fulfillingId, setFulfillingId] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<'pending' | 'fulfilled'>('pending');
+  const getInitialServiceRequestsTab = (): 'pending' | 'fulfilled' => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash.replace('#', '').trim().toLowerCase();
+      if (hash.includes('fulfilled')) return 'fulfilled';
+      if (hash.includes('pending')) return 'pending';
+      const stored = sessionStorage.getItem('artists_farm_service_requests_tab');
+      if (stored === 'pending' || stored === 'fulfilled') return stored;
+    }
+    return 'pending';
+  };
+
+  const [activeTab, setActiveTab] = useState<'pending' | 'fulfilled'>(getInitialServiceRequestsTab);
+
+  const handleTabSelect = (tab: 'pending' | 'fulfilled') => {
+    setActiveTab(tab);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('artists_farm_service_requests_tab', tab);
+      const newHash = tab === 'fulfilled' ? '#service_requests/fulfilled' : '#service_requests';
+      if (window.location.hash !== newHash) {
+        window.history.replaceState(null, '', newHash);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleHash = () => {
+      const hash = window.location.hash.replace('#', '').trim().toLowerCase();
+      if (hash.includes('fulfilled')) setActiveTab('fulfilled');
+      else if (hash === 'service_requests') setActiveTab('pending');
+    };
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
   const [fulfilledPage, setFulfilledPage] = useState(0);
   const FULFILLED_PAGE_SIZE = 10;
 
@@ -498,7 +529,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
             clearTheme={attachedTabsClearTheme}
             onActiveTabChange={(tabIndex: number) => {
               const tabs: ('pending' | 'fulfilled')[] = ['pending', 'fulfilled'];
-              if (tabs[tabIndex]) setActiveTab(tabs[tabIndex]);
+              if (tabs[tabIndex]) handleTabSelect(tabs[tabIndex]);
             }}
           >
             <TabItem

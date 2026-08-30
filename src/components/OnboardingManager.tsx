@@ -170,9 +170,24 @@ const DEFAULT_CADENCE_STAGES: Record<string, CadenceStageConfig> = {
 };
 
 export const OnboardingManager: React.FC = () => {
-  const { showToast } = useToast();
+  const getInitialOnboardingTab = (): 'welcome' | 'cadence' | 'pricing' | 'pwa' | 'support' => {
+    if (typeof window !== 'undefined') {
+      const stored = sessionStorage.getItem('artists_farm_onboarding_tab');
+      if (stored === 'welcome' || stored === 'cadence' || stored === 'pricing' || stored === 'pwa' || stored === 'support') {
+        return stored;
+      }
+    }
+    return 'welcome';
+  };
 
-  const [activeTab, setActiveTab] = useState<'welcome' | 'cadence' | 'pricing' | 'pwa' | 'support'>('welcome');
+  const [activeTab, setActiveTabState] = useState<'welcome' | 'cadence' | 'pricing' | 'pwa' | 'support'>(getInitialOnboardingTab);
+
+  const setActiveTab = (tab: 'welcome' | 'cadence' | 'pricing' | 'pwa' | 'support') => {
+    setActiveTabState(tab);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('artists_farm_onboarding_tab', tab);
+    }
+  };
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 

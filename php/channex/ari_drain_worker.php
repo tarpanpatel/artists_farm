@@ -124,7 +124,7 @@ class AriDrainWorker {
                     // counts). It is also what the certification reviewers look
                     // up in their own logs for scenarios 1-6, so a push whose
                     // task id was discarded cannot be evidenced afterwards.
-                    $taskId = $res['data'][0]['id'] ?? null;
+                    $taskId = $res['data'][0]['id'] ?? ($res['task_id'] ?? null);
                     $this->markRowsDone($rowIds, $taskId);
                     $processedCount += count($rowIds);
                 } else {

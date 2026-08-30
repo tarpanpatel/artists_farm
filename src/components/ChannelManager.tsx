@@ -104,7 +104,20 @@ export const ChannelManager: React.FC<ChannelManagerProps> = ({ onLogAudit }) =>
   } | null>(null);
 
   // Outbox filter and search
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'done' | 'failed'>('all');
+  const [statusFilter, setStatusFilterState] = useState<'all' | 'pending' | 'done' | 'failed'>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = sessionStorage.getItem('artists_farm_channel_manager_filter');
+      if (stored === 'all' || stored === 'pending' || stored === 'done' || stored === 'failed') return stored;
+    }
+    return 'all';
+  });
+
+  const setStatusFilter = (f: 'all' | 'pending' | 'done' | 'failed') => {
+    setStatusFilterState(f);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('artists_farm_channel_manager_filter', f);
+    }
+  };
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 

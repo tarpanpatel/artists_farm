@@ -208,7 +208,20 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   const [otaConversionTarget, setOtaConversionTarget] = useState<{ block: (typeof blockedDates)[number]; blockedDateStrings: string[] } | null>(null);
 
   // Dynamic Date-Range Pricing & Rates State
-  const [calendarViewMode, setCalendarViewMode] = useState<'bookings' | 'pricing'>('bookings');
+  const [calendarViewMode, setCalendarViewModeState] = useState<'bookings' | 'pricing'>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = sessionStorage.getItem('artists_farm_calendar_view_mode');
+      if (stored === 'pricing' || stored === 'bookings') return stored;
+    }
+    return 'bookings';
+  });
+
+  const setCalendarViewMode = (mode: 'bookings' | 'pricing') => {
+    setCalendarViewModeState(mode);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('artists_farm_calendar_view_mode', mode);
+    }
+  };
   const [rateRules, setRateRules] = useState<RateRule[]>([]);
   const [pricingMode, setPricingMode] = useState<'flat' | 'variable'>('flat');
   const [propertyDefaultTariff, setPropertyDefaultTariff] = useState<number | null>(null);

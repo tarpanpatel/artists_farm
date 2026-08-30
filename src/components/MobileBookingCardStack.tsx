@@ -100,6 +100,16 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
         </Badge>
       );
     }
+    // Distinct from the generic "past/other" fallback below - a cancelled
+    // booking must not look like any ordinary finished one (mirrors
+    // BillingCheckout's getGuestStayStatus).
+    if (s === 'cancelled') {
+      return (
+        <Badge variant="danger" dot size="sm">
+          Cancelled
+        </Badge>
+      );
+    }
     return (
       <Badge variant="neutral" dot size="sm">
         {status}

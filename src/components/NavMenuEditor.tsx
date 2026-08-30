@@ -16,7 +16,7 @@ import { Input } from './Input';
 import { Checkbox } from 'flowbite-react';
 import { t } from '../i18n/en';
 import { useToast } from './ToastContext';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuthOptional } from '../contexts/AuthContext';
 
 interface NavMenuEditorProps {
   navItems: NavMenuItem[];
@@ -131,7 +131,18 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
   });
 
   const { showToast } = useToast();
-  const { isAuthenticated, authChecked } = useAuth();
+  // NavMenuEditor renders on BOTH sides of the AuthProvider boundary: inside it
+  // on the property path (via MenuManager), and OUTSIDE it in the Root Admin
+  // dashboard (RootAdminDashboard renders this directly, with no property-scoped
+  // provider). On the property path, wait for the real check_session result
+  // before the config fetch below fires (avoids 401s). In the Root Admin case
+  // there is no provider, but reaching that screen already means an
+  // authenticated platform admin whose session cookie apiFetch carries - so
+  // treat it as authenticated and let the fetch run (it falls back to sane
+  // defaults on any error anyway).
+  const auth = useAuthOptional();
+  const isAuthenticated = auth ? auth.isAuthenticated : true;
+  const authChecked = auth ? auth.authChecked : true;
 
   const sortableInstances = useRef<Sortable[]>([]);
   const sortableContainerRef = useRef<HTMLDivElement>(null);

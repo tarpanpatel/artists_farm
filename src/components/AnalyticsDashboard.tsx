@@ -68,10 +68,54 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 }) => {
   const { orders } = useKitchenContext();
   const { pettyCash } = useFinance();
-  const { isAuthenticated, authChecked } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'pace' | 'kitchen' | 'expenses' | 'profit_loss' | 'fluctuations'>(() => {
+  const getInitialAnalyticsTab = (): 'overview' | 'bookings' | 'pace' | 'kitchen' | 'expenses' | 'profit_loss' | 'fluctuations' => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash.replace('#', '').trim().toLowerCase();
+      if (hash.includes('/')) {
+        const sub = hash.split('/')[1];
+        if (['overview', 'bookings', 'pace', 'kitchen', 'expenses', 'profit_loss', 'fluctuations'].includes(sub)) {
+          return sub as any;
+        }
+      }
+      const stored = sessionStorage.getItem('artists_farm_analytics_tab');
+      if (stored && ['overview', 'bookings', 'pace', 'kitchen', 'expenses', 'profit_loss', 'fluctuations'].includes(stored)) {
+        return stored as any;
+      }
+    }
     return activeMenuItemKey === 'purchase_analytics' ? 'expenses' : 'overview';
-  });
+  };
+
+  const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'pace' | 'kitchen' | 'expenses' | 'profit_loss' | 'fluctuations'>(getInitialAnalyticsTab);
+
+  const handleTabSelect = (tab: 'overview' | 'bookings' | 'pace' | 'kitchen' | 'expenses' | 'profit_loss' | 'fluctuations') => {
+    setActiveTab(tab);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('artists_farm_analytics_tab', tab);
+      const currentRaw = window.location.hash.replace('#', '').trim();
+      const basePart = currentRaw.split('?')[0].split('/')[0];
+      const validBase = basePart && ['analytics', 'admin_control_overview', 'dashboard_analytics', 'purchase_analytics'].includes(basePart)
+        ? basePart
+        : 'analytics';
+      const newHash = `#${validBase}/${tab}`;
+      if (window.location.hash !== newHash) {
+        window.history.replaceState(null, '', newHash);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleHash = () => {
+      const hash = window.location.hash.replace('#', '').trim().toLowerCase();
+      if (hash.includes('/')) {
+        const sub = hash.split('/')[1];
+        if (['overview', 'bookings', 'pace', 'kitchen', 'expenses', 'profit_loss', 'fluctuations'].includes(sub)) {
+          setActiveTab(sub as any);
+        }
+      }
+    };
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
 
   // Properties with no food service have nothing to show on the Food POS /
   // Kitchen sub-tabs (kitchen orders + kitchen purchases are both blocked at
@@ -80,7 +124,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   // disabled while one of those tabs is active.
   useEffect(() => {
     if (!kitchenModuleEnabled && activeTab === 'kitchen') {
-      setActiveTab('overview');
+      handleTabSelect('overview');
     }
   }, [kitchenModuleEnabled, activeTab]);
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
@@ -1202,7 +1246,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
           const tabs: ('overview' | 'bookings' | 'pace' | 'kitchen' | 'expenses' | 'profit_loss' | 'fluctuations')[] = kitchenModuleEnabled
             ? ['overview', 'bookings', 'pace', 'kitchen', 'expenses', 'profit_loss', 'fluctuations']
             : ['overview', 'bookings', 'pace', 'expenses', 'profit_loss', 'fluctuations'];
-          if (tabs[tabIndex]) setActiveTab(tabs[tabIndex]);
+          if (tabs[tabIndex]) handleTabSelect(tabs[tabIndex]);
         }}
       >
       {/* TAB 1: OVERVIEW */}

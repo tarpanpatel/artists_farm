@@ -256,16 +256,18 @@ function AppBody({ preloadedData }: AppBodyProps) {
         channel_manager: { tab: 'channel_manager', key: 'channel_manager' },
       };
 
-      if (hash && routeMap[hash]) {
-        return routeMap[hash];
+      const baseHash = hash.split('?')[0].split('/')[0].trim();
+
+      if (baseHash && routeMap[baseHash]) {
+        return routeMap[baseHash];
       }
 
       // A nav item renamed via NavMenuEditor gets a fresh urlSlug that won't be
       // in the static routeMap above - resolve those from the live nav item
       // list. uniqueKey (not urlSlug) is the actual routing key everything else
       // in the app keys off of; urlSlug is only what the browser bar shows.
-      if (hash && preloadedData.navItems) {
-        const matched = preloadedData.navItems.find((item) => item.urlSlug === hash || item.uniqueKey === hash);
+      if (baseHash && preloadedData.navItems) {
+        const matched = preloadedData.navItems.find((item) => item.urlSlug === baseHash || item.uniqueKey === baseHash);
         if (matched) {
           let key = matched.uniqueKey || matched.tabKey;
           let tab = routeMap[key]?.tab || (matched.tabKey as TabType) || 'dashboard';
@@ -1361,15 +1363,17 @@ function AppBody({ preloadedData }: AppBodyProps) {
         channel_manager: { tab: 'channel_manager', key: 'channel_manager' },
       };
 
+      const baseHash = hash.split('?')[0].split('/')[0].trim();
+
       // 404 or Invalid Route -> Try dynamic nav items from DB, then check if it's a room slug (with optional /subtab)
-      if (!routeMap[hash]) {
+      if (!routeMap[baseHash]) {
         const [roomPart, tabPart] = hash.split('/');
         // urlSlug first - that's what a renamed item's link actually points at now;
         // uniqueKey/tabKey stay as fallbacks for items that were never renamed.
-        const dynamicItem = visibleNavItems.find((n) => n.urlSlug === hash || n.uniqueKey === hash || n.tabKey === hash);
+        const dynamicItem = visibleNavItems.find((n) => n.urlSlug === baseHash || n.uniqueKey === baseHash || n.tabKey === baseHash);
         if (dynamicItem && dynamicItem.isVisible) {
           setActiveTab(dynamicItem.tabKey as any || 'dashboard');
-          setActiveMenuItemKey(dynamicItem.uniqueKey || hash);
+          setActiveMenuItemKey(dynamicItem.uniqueKey || baseHash);
         } else {
           // Check if hash is a room slug from multi-key property (supports #room-101/edit_property)
           const targetRoomSlug = roomPart || hash;
@@ -1393,7 +1397,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         return;
       }
 
-      const targetRoute = routeMap[hash];
+      const targetRoute = routeMap[baseHash];
       // Still viewing a room only if we didn't just decide to clear it above
       // - selectedRoomSlugOverrideRef.current itself is stale here (it's
       // synced from state via its own effect, which hasn't run yet this
