@@ -28,6 +28,7 @@ function ensureChannexOutboxSchema(PDO $pdo): void {
                 `attempts` INT NOT NULL DEFAULT 0,
                 `next_attempt_at` DATETIME NULL,
                 `last_error` TEXT NULL,
+                `task_id` VARCHAR(64) NULL,
                 `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 INDEX `idx_outbox_claim` (`status`, `next_attempt_at`),
                 INDEX `idx_outbox_scope` (`property_id`, `room_id`, `kind`, `date_from`, `date_to`)
@@ -36,6 +37,19 @@ function ensureChannexOutboxSchema(PDO $pdo): void {
         markSchemaVerified('schema_channex_outbox');
     } catch (PDOException $e) {
         // Table or index may already exist
+    }
+
+    // task_id is the async task Channex returns from an ARI push. It is the only
+    // way to find out whether the update actually applied (GET /tasks/{id}), and
+    // the certification reviewers look these ids up in their own logs for
+    // scenarios 1-6 - a push whose task id was thrown away cannot be evidenced.
+    // Separate self-heal key so an installation that already created the table
+    // above still picks the column up.
+    if (!isSchemaVerified('schema_channex_outbox_task_id')) {
+        try {
+            $pdo->exec("ALTER TABLE `channex_outbox` ADD COLUMN IF NOT EXISTS `task_id` VARCHAR(64) NULL");
+        } catch (PDOException $e) {}
+        markSchemaVerified('schema_channex_outbox_task_id');
     }
 }
 

@@ -97,7 +97,15 @@ class AriDrainWorker {
                 }
 
                 if (!empty($res['success'])) {
-                    $this->markRowsDone($rowIds);
+                    // Channex answers an ARI push with an async task object -
+                    // {"data":[{"id":"<task uuid>","type":"task"}]} - and that id
+                    // is the only handle on whether the update actually applied
+                    // (GET /tasks/{id} reports completed/failed plus per-record
+                    // counts). It is also what the certification reviewers look
+                    // up in their own logs for scenarios 1-6, so a push whose
+                    // task id was discarded cannot be evidenced afterwards.
+                    $taskId = $res['data'][0]['id'] ?? null;
+                    $this->markRowsDone($rowIds, $taskId);
                     $processedCount += count($rowIds);
                 } else {
                     $this->markRowsFailed($rowIds, $attempts, json_encode($res['error'] ?? 'API reject'));
@@ -295,11 +303,11 @@ class AriDrainWorker {
         return $ranges;
     }
 
-    private function markRowsDone(array $rowIds): void {
+    private function markRowsDone(array $rowIds, ?string $taskId = null): void {
         if (empty($rowIds)) return;
         $placeholders = implode(',', array_fill(0, count($rowIds), '?'));
-        $stmt = $this->pdo->prepare("UPDATE channex_outbox SET status = 'done', last_error = NULL WHERE id IN ($placeholders)");
-        $stmt->execute($rowIds);
+        $stmt = $this->pdo->prepare("UPDATE channex_outbox SET status = 'done', task_id = ?, last_error = NULL WHERE id IN ($placeholders)");
+        $stmt->execute(array_merge([$taskId], $rowIds));
     }
 
     private function markRowsFailed(array $rowIds, int $attempts, string $error): void {
