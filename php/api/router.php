@@ -3781,9 +3781,9 @@ switch ($action) {
         ]);
         $ratesOutboxId = (int)$pdo->lastInsertId();
 
-        // Drain outbox immediately to push to Channex and capture task IDs
+        // Drain outbox immediately scoped strictly to the two enqueued rows (Scenario 1 guarantee)
         $worker = new AriDrainWorker($pdo);
-        $drainRes = $worker->processBatch();
+        $drainRes = $worker->processBatch(10, [$availOutboxId, $ratesOutboxId]);
 
         // Collect task IDs for the rows we just enqueued
         $tasksStmt = $pdo->prepare("SELECT id, kind, status, task_id, last_error FROM channex_outbox WHERE id IN (?, ?)");
@@ -3813,7 +3813,7 @@ switch ($action) {
             $pdo->prepare("UPDATE channex_outbox SET status = 'pending', attempts = 0, last_error = NULL WHERE id = ?")->execute([$rowId]);
         }
         $worker = new AriDrainWorker($pdo);
-        $drainRes = $worker->processBatch();
+        $drainRes = $worker->processBatch(10, $rowId > 0 ? [$rowId] : null);
         echo json_encode(['status' => 'success', 'data' => $drainRes]);
         break;
 

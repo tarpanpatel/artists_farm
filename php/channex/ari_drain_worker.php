@@ -24,23 +24,43 @@ class AriDrainWorker {
      * Run a single drain cycle.
      *
      * @param int $limit Max rows to claim per cycle
+     * @param int[]|null $specificIds Optional list of specific outbox row IDs to claim
      * @return array Summary of processed items
      */
-    public function processBatch(int $limit = 50): array {
+    public function processBatch(int $limit = 50, ?array $specificIds = null): array {
         // Claim pending rows
         $this->pdo->beginTransaction();
-        $claimStmt = $this->pdo->prepare("
-            SELECT id, property_id, room_id, kind, date_from, date_to, attempts
-            FROM channex_outbox
-            WHERE status = 'pending'
-               OR (status = 'failed' AND next_attempt_at IS NOT NULL AND next_attempt_at <= NOW())
-               OR (status = 'sending' AND created_at < NOW() - INTERVAL 5 MINUTE)
-            ORDER BY id ASC
-            LIMIT ?
-            FOR UPDATE
-        ");
-        $claimStmt->bindValue(1, $limit, PDO::PARAM_INT);
-        $claimStmt->execute();
+
+        if (!empty($specificIds)) {
+            $cleanIds = array_values(array_filter(array_map('intval', $specificIds), fn($id) => $id > 0));
+            if (empty($cleanIds)) {
+                $this->pdo->commit();
+                return ['processed' => 0, 'groups' => 0];
+            }
+            $idPlaceholders = implode(',', array_fill(0, count($cleanIds), '?'));
+            $claimStmt = $this->pdo->prepare("
+                SELECT id, property_id, room_id, kind, date_from, date_to, attempts
+                FROM channex_outbox
+                WHERE id IN ($idPlaceholders)
+                ORDER BY id ASC
+                FOR UPDATE
+            ");
+            $claimStmt->execute($cleanIds);
+        } else {
+            $claimStmt = $this->pdo->prepare("
+                SELECT id, property_id, room_id, kind, date_from, date_to, attempts
+                FROM channex_outbox
+                WHERE status = 'pending'
+                   OR (status = 'failed' AND next_attempt_at IS NOT NULL AND next_attempt_at <= NOW())
+                   OR (status = 'sending' AND created_at < NOW() - INTERVAL 5 MINUTE)
+                ORDER BY id ASC
+                LIMIT ?
+                FOR UPDATE
+            ");
+            $claimStmt->bindValue(1, $limit, PDO::PARAM_INT);
+            $claimStmt->execute();
+        }
+
         $claimedRows = $claimStmt->fetchAll(PDO::FETCH_ASSOC);
 
         if (empty($claimedRows)) {

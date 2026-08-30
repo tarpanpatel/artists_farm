@@ -3,7 +3,9 @@ import { Alert } from 'flowbite-react';
 import { AlertCircle, Lock, ShieldCheck, Mail, CheckCircle2, ArrowLeft, Loader2, Backspace, Sparkles } from './icons/FlowbiteIcons';
 import { Input } from './Input';
 import { t } from '../i18n/en';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuthOptional } from '../contexts/AuthContext';
+
+const NOOP = () => {};
 
 interface LoginPageProps {
   variant?: 'management' | 'terminal';
@@ -15,7 +17,9 @@ interface LoginPageProps {
 
 export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', onLoginSuccess, onLoginFailed, onNeedsPropertySelection, onStartTrial }) => {
   const isTerminal = variant === 'terminal';
-  const { sessionMismatchNotice, clearSessionMismatchNotice } = useAuth();
+  const auth = useAuthOptional();
+  const sessionMismatchNotice = auth?.sessionMismatchNotice ?? null;
+  const clearSessionMismatchNotice = auth?.clearSessionMismatchNotice ?? NOOP;
 
   const [mobileNumber, setMobileNumber] = useState('');
   const [passcode, setPasscode] = useState('');

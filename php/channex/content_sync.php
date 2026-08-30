@@ -179,18 +179,29 @@ class ChannexContentSyncer {
             }
             $channexRatePlanId = $rateRes['data']['id'];
 
-            // Save mapping
-            $saveStmt = $this->pdo->prepare("
-                INSERT INTO channex_mappings (property_id, room_id, channex_property_id, channex_room_type_id, channex_rate_plan_id, sync_status, last_synced_at)
-                VALUES (?, ?, ?, ?, ?, 'active', NOW())
-                ON DUPLICATE KEY UPDATE
-                    channex_property_id = VALUES(channex_property_id),
-                    channex_room_type_id = VALUES(channex_room_type_id),
-                    channex_rate_plan_id = VALUES(channex_rate_plan_id),
-                    sync_status = 'active',
-                    last_synced_at = NOW()
+            // Save mapping with NULL-safe deduplication
+            $checkStmt = $this->pdo->prepare("
+                SELECT id FROM channex_mappings 
+                WHERE property_id = ? AND (room_id = ? OR (room_id IS NULL AND ? IS NULL))
+                LIMIT 1
             ");
-            $saveStmt->execute([$propertyId, $roomId, $channexPropertyId, $channexRoomTypeId, $channexRatePlanId]);
+            $checkStmt->execute([$propertyId, $roomId, $roomId]);
+            $existingMappingId = $checkStmt->fetchColumn();
+
+            if ($existingMappingId) {
+                $updateStmt = $this->pdo->prepare("
+                    UPDATE channex_mappings 
+                    SET channex_property_id = ?, channex_room_type_id = ?, channex_rate_plan_id = ?, sync_status = 'active', last_synced_at = NOW()
+                    WHERE id = ?
+                ");
+                $updateStmt->execute([$channexPropertyId, $channexRoomTypeId, $channexRatePlanId, $existingMappingId]);
+            } else {
+                $saveStmt = $this->pdo->prepare("
+                    INSERT INTO channex_mappings (property_id, room_id, channex_property_id, channex_room_type_id, channex_rate_plan_id, sync_status, last_synced_at)
+                    VALUES (?, ?, ?, ?, ?, 'active', NOW())
+                ");
+                $saveStmt->execute([$propertyId, $roomId, $channexPropertyId, $channexRoomTypeId, $channexRatePlanId]);
+            }
 
             $results[] = [
                 'property_id' => $propertyId,
