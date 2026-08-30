@@ -21,10 +21,11 @@ function ensureChannexRevisionsSchema(PDO $pdo): void {
         } catch (PDOException $e) {}
     }
 
-    if (isSchemaVerified('schema_channex_booking_revisions')) {
-        return;
-    }
-
+    // Each block below guards on its OWN key rather than one early return for
+    // the whole function - otherwise a later addition never runs on any
+    // installation that already verified the first key, which is exactly how
+    // the ack-state columns silently failed to appear (30 Aug 2026).
+    if (!isSchemaVerified('schema_channex_booking_revisions')) {
     try {
         $pdo->exec("
             CREATE TABLE IF NOT EXISTS `channex_booking_revisions` (
@@ -45,6 +46,74 @@ function ensureChannexRevisionsSchema(PDO $pdo): void {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         ");
         markSchemaVerified('schema_channex_booking_revisions');
+    } catch (PDOException $e) {}
+    }
+
+    // ACK state machine, replacing the is_acknowledged boolean (30 Aug 2026).
+    // A boolean cannot tell "we tried to ACK and Channex rejected it" apart from
+    // "we have not tried yet" - both read as 0. That matters because an
+    // unacknowledged revision stays in Channex's queue and will be redelivered,
+    // so a silently-failing ACK looks like a healthy system while the same
+    // booking arrives over and over. PENDING/ACKED/FAILED plus the attempt
+    // count and last error make a stuck revision visible and retryable.
+    //
+    // Separate key so installations that already built the table pick these up.
+    if (!isSchemaVerified('schema_channex_revisions_ack_state')) {
+        foreach ([
+            "ADD COLUMN IF NOT EXISTS `ack_status` VARCHAR(20) NOT NULL DEFAULT 'PENDING'",
+            "ADD COLUMN IF NOT EXISTS `ack_attempts` INT NOT NULL DEFAULT 0",
+            "ADD COLUMN IF NOT EXISTS `ack_error` TEXT NULL",
+            "ADD COLUMN IF NOT EXISTS `acked_at` DATETIME NULL",
+        ] as $clause) {
+            try { $pdo->exec("ALTER TABLE `channex_booking_revisions` $clause"); } catch (PDOException $e) {}
+        }
+        // Backfill from the old boolean, then leave it in place rather than
+        // dropping it - an in-flight request mid-deploy may still reference it,
+        // and a stale column is harmless where a missing one is fatal.
+        try {
+            $pdo->exec("UPDATE `channex_booking_revisions`
+                        SET ack_status = CASE WHEN is_acknowledged = 1 THEN 'ACKED' ELSE 'PENDING' END
+                        WHERE ack_status = 'PENDING'");
+        } catch (PDOException $e) {}
+        try {
+            $pdo->exec("CREATE INDEX `idx_revisions_pending_ack` ON `channex_booking_revisions` (`ack_status`, `ack_attempts`)");
+        } catch (PDOException $e) {}
+        markSchemaVerified('schema_channex_revisions_ack_state');
+    }
+
+    // The guest-facing OTA confirmation code ("HM9X8YZ1" on Airbnb, a numeric
+    // string on Booking.com). Staff need it to match a guest at the door against
+    // what the OTA told them, and it is the only shared reference when querying
+    // an OTA about a disputed reservation.
+    if (!isSchemaVerified('schema_guests_ota_reservation_code')) {
+        try {
+            $pdo->exec("ALTER TABLE `guests` ADD COLUMN IF NOT EXISTS `ota_reservation_code` VARCHAR(255) NULL");
+        } catch (PDOException $e) {}
+        try {
+            $pdo->exec("CREATE INDEX `idx_guests_ota_reservation_code` ON `guests` (`ota_reservation_code`)");
+        } catch (PDOException $e) {}
+        markSchemaVerified('schema_guests_ota_reservation_code');
+    }
+}
+
+/**
+ * Records the outcome of an ACK attempt. Channex redelivers anything it has not
+ * been acknowledged for, so a failure must stay visible rather than being
+ * flattened into "not acknowledged yet".
+ */
+function recordChannexAckOutcome(PDO $pdo, string $revisionId, bool $ok, ?string $error = null): void {
+    try {
+        if ($ok) {
+            $pdo->prepare("UPDATE channex_booking_revisions
+                           SET ack_status = 'ACKED', ack_attempts = ack_attempts + 1,
+                               acked_at = NOW(), ack_error = NULL, is_acknowledged = 1
+                           WHERE revision_id = ?")->execute([$revisionId]);
+        } else {
+            $pdo->prepare("UPDATE channex_booking_revisions
+                           SET ack_status = 'FAILED', ack_attempts = ack_attempts + 1,
+                               ack_error = ?
+                           WHERE revision_id = ?")->execute([$error ?? 'ACK rejected', $revisionId]);
+        }
     } catch (PDOException $e) {}
 }
 
@@ -76,9 +145,13 @@ class ChannexWebhookReceiver {
         $existing = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($existing) {
+            // Re-ACK a revision we stored but never successfully acknowledged.
+            // This is the redelivery path: Channex keeps resending until the ACK
+            // lands, so a previously FAILED ack gets another attempt here rather
+            // than the redelivery being treated as a no-op.
             if (!$existing['is_acknowledged']) {
-                $this->adapter->acknowledgeRevision($revisionId);
-                $this->pdo->prepare("UPDATE channex_booking_revisions SET is_acknowledged = 1 WHERE revision_id = ?")->execute([$revisionId]);
+                $ok = $this->adapter->acknowledgeRevision($revisionId);
+                recordChannexAckOutcome($this->pdo, $revisionId, $ok, $ok ? null : 'Re-ACK on redelivery failed');
             }
             return ['status' => 'success', 'http_code' => 200, 'message' => 'Revision already processed (idempotent)', 'guest_id' => $existing['guest_id']];
         }
@@ -245,11 +318,14 @@ class ChannexWebhookReceiver {
             // Commit transaction
             $this->pdo->commit();
 
-            // 4. ACK AFTER COMMIT
+            // 4. ACK AFTER COMMIT. A failure here is recorded rather than
+            // swallowed: the revision stays in Channex's queue and will be
+            // redelivered, and without FAILED state that redelivery loop is
+            // invisible - the system looks healthy while the same booking
+            // arrives repeatedly.
             $ackSuccess = $this->adapter->acknowledgeRevision($revisionId);
-            if ($ackSuccess) {
-                $this->pdo->prepare("UPDATE channex_booking_revisions SET is_acknowledged = 1 WHERE revision_id = ?")->execute([$revisionId]);
-            }
+            recordChannexAckOutcome($this->pdo, $revisionId, $ackSuccess,
+                $ackSuccess ? null : 'ACK call returned failure after commit');
 
             return [
                 'status' => 'success',
