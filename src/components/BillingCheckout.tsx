@@ -125,6 +125,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     return 'today';
   };
 
+  const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'today' | 'upcoming' | 'past_bookings'>(getInitialBookingsTab);
 
   const handleTabSelect = (tab: 'today' | 'upcoming' | 'past_bookings') => {
