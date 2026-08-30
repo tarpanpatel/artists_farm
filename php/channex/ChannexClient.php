@@ -12,6 +12,41 @@ class ChannexClient {
     private string $apiKey;
     private int $maxRetries = 3;
 
+    // Proactive rate ceiling (Channex certification Test 12: "make sure you
+    // have a queue or limiter to not spam our API endpoints" - 20 ARI
+    // calls/minute). The exponential backoff below only reacts AFTER a 429;
+    // this stops a single processBatch() drain of many pending rows from
+    // ever bursting past the limit in the first place. Static (per-process),
+    // not cross-request - the actual burst risk is one drain call firing
+    // many requests in a tight loop, not many separate low-traffic requests
+    // days apart, so this doesn't need Redis/DB-backed shared state.
+    private static array $callTimestamps = [];
+    private const RATE_LIMIT_CALLS = 20;
+    private const RATE_LIMIT_WINDOW_SECONDS = 60;
+
+    private static function waitForRateLimit(): void {
+        $now = microtime(true);
+        self::$callTimestamps = array_values(array_filter(
+            self::$callTimestamps,
+            fn($t) => ($now - $t) < self::RATE_LIMIT_WINDOW_SECONDS
+        ));
+
+        if (count(self::$callTimestamps) >= self::RATE_LIMIT_CALLS) {
+            $oldest = self::$callTimestamps[0];
+            $waitSeconds = self::RATE_LIMIT_WINDOW_SECONDS - ($now - $oldest);
+            if ($waitSeconds > 0) {
+                usleep((int)($waitSeconds * 1000000));
+            }
+            $now = microtime(true);
+            self::$callTimestamps = array_values(array_filter(
+                self::$callTimestamps,
+                fn($t) => ($now - $t) < self::RATE_LIMIT_WINDOW_SECONDS
+            ));
+        }
+
+        self::$callTimestamps[] = microtime(true);
+    }
+
     public function __construct(?string $apiKey = null, ?string $baseUrl = null) {
         if ($apiKey && $baseUrl) {
             $this->apiKey = $apiKey;
@@ -59,6 +94,7 @@ class ChannexClient {
 
         while ($attempt < $this->maxRetries) {
             $attempt++;
+            self::waitForRateLimit();
             $ch = curl_init($url);
 
             $headers = [

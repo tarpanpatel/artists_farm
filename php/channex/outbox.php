@@ -10,6 +10,26 @@
 require_once __DIR__ . '/../config/schema_cache.php';
 
 function ensureChannexOutboxSchema(PDO $pdo): void {
+    // CREATE/ALTER TABLE implicitly commits any open transaction in MySQL.
+    // enqueueOutboxItem() runs inside the caller's own booking transaction
+    // (add/update/delete guest in guests.php) - if the schema cache goes
+    // cold (hourly TTL, schema_cache.php) mid-transaction, running DDL here
+    // silently ends that transaction early, so the caller's own later
+    // commit() throws "There is no active transaction" and the API reports
+    // the booking as failed even though the guest row + outbox row were
+    // already durably committed. Confirmed live 31 Aug 2026 on staging: a
+    // real booking (guest id 696) succeeded and enqueued its outbox row
+    // (id 36), but the response was `{"status":"error","message":"Failed to
+    // register guest: There is no active transaction"}` - exactly this bug.
+    // Defer the self-heal to the next call made outside a transaction; the
+    // table/column already exist in every real deployment, this only ever
+    // matters on a genuinely fresh install (which never calls this from
+    // inside a transaction in the first place - a cold DB has no guests to
+    // book yet).
+    if ($pdo->inTransaction()) {
+        return;
+    }
+
     if (isSchemaVerified('schema_channex_outbox')) {
         return;
     }
