@@ -3610,13 +3610,57 @@ switch ($action) {
 
     // --- CHANNEX CHANNEL MANAGER INTEGRATION ---
     case 'channex_webhook':
+        // This action is deliberately in $public_actions - Channex calls it
+        // unauthenticated, with no session and no CSRF token. That makes the
+        // shared secret the ONLY thing standing between the open internet and
+        // a code path that writes real bookings into the guests table. Without
+        // it, anyone who learns the URL can inject phantom reservations onto
+        // real rooms. The secret is set when registering the webhook (its
+        // `headers` object, see CHANNEX_IMPLEMENTATION.md) and stored beside
+        // the API key in the gitignored channex_config.json.
+        //
+        // Fails CLOSED: if no secret is configured, the endpoint refuses
+        // everything rather than silently accepting anonymous writes. An
+        // unconfigured integration should be inert, not open.
+        $channexCfgPath = __DIR__ . '/../config/channex_config.json';
+        $channexCfg = is_file($channexCfgPath)
+            ? (json_decode(file_get_contents($channexCfgPath), true) ?: [])
+            : [];
+        $expectedSecret = (string)($channexCfg['webhook_secret'] ?? '');
+        $providedSecret = (string)($_SERVER['HTTP_X_CHANNEX_WEBHOOK_SECRET'] ?? '');
+
+        if ($expectedSecret === '' || !hash_equals($expectedSecret, $providedSecret)) {
+            http_response_code(401);
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            if (class_exists('TelescopeLogger')) {
+                // Worth surfacing: a rejected call is either a misconfigured
+                // secret or someone probing the endpoint, and both need a human.
+                TelescopeLogger::log('security', 'WARNING',
+                    'Channex webhook rejected: ' . ($expectedSecret === '' ? 'no secret configured' : 'bad secret'),
+                    'channex_webhook', ['ip' => $_SERVER['REMOTE_ADDR'] ?? '?']);
+            }
+            break;
+        }
+
         require_once __DIR__ . '/../channex/webhook_receiver.php';
         $rawInput = file_get_contents('php://input');
         $payload = json_decode($rawInput, true) ?: [];
+
+        // Answer Channex before doing the work. Their retry timer is measured in
+        // seconds, and the HTTP 200 only means "received" - the ACK sent later,
+        // after the DB commits, is the real "processed" signal. Flushing here
+        // stops a slow booking insert from triggering duplicate deliveries.
+        http_response_code(200);
+        echo json_encode(['status' => 'success', 'received' => true]);
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        } else {
+            @ob_end_flush();
+            @flush();
+        }
+
         $receiver = new ChannexWebhookReceiver($pdo);
-        $result = $receiver->handleWebhook($payload);
-        http_response_code($result['http_code'] ?? 200);
-        echo json_encode($result);
+        $receiver->handleWebhook($payload);
         break;
 
     case 'channex_content_sync':
