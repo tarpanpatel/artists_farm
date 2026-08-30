@@ -383,6 +383,17 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     const n = Math.round((co.getTime() - ci.getTime()) / 86400000);
     return n > 0 ? n : 1;
   };
+  // totalAmount (total_charge) is the authoritative full-stay figure. This used
+  // to be roomRate x nights, but roomRate is only a real per-night rate when
+  // per_night_charges is set - and add_guest never sets it, so for every direct
+  // booking it fell back to base_room_rent, which already IS the stay total.
+  // Multiplying that by nights inflated the forecast by a factor of the stay
+  // length (a 3-night Rs.1300 booking forecast as Rs.3900). Same class of bug,
+  // and same fix, as calculateGuestTotal() in BillingCheckout.tsx.
+  const stayRevenueFor = (g: any): number => {
+    const total = Number(g.totalAmount) || 0;
+    return total > 0 ? total : (Number(g.roomRate) || 0) * nightsFor(g);
+  };
   const paceBucketDefs = [
     { key: 'next30', label: t('pace_next_30_days_label', 'Next 30 Days'), from: 0, to: 30 },
     { key: 'next60', label: t('pace_31_60_days_label', '31-60 Days'), from: 31, to: 60 },
@@ -396,7 +407,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
       return daysOut >= b.from && daysOut <= b.to;
     });
     const nights = inBucket.reduce((s: number, g: any) => s + nightsFor(g), 0);
-    const revenue = inBucket.reduce((s: number, g: any) => s + (Number(g.roomRate) || 0) * nightsFor(g), 0);
+    const revenue = inBucket.reduce((s: number, g: any) => s + stayRevenueFor(g), 0);
     return { ...b, bookings: inBucket.length, nights, revenue };
   });
   // Weekly breakdown for the next 12 weeks - the actual "which week is
@@ -413,7 +424,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
       return checkin >= weekStart && checkin <= weekEnd;
     });
     const nights = inWeek.reduce((s: number, g: any) => s + nightsFor(g), 0);
-    const revenue = inWeek.reduce((s: number, g: any) => s + (Number(g.roomRate) || 0) * nightsFor(g), 0);
+    const revenue = inWeek.reduce((s: number, g: any) => s + stayRevenueFor(g), 0);
     const label = `${weekStart.getDate()}/${weekStart.getMonth() + 1}`;
     return { label, bookings: inWeek.length, nights, revenue };
   });
