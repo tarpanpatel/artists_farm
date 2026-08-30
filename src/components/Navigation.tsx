@@ -29,7 +29,8 @@ export type TabType =
   | 'custom_css'
   | 'service_requests'
   | 'edit_property'
-  | 'licenses';
+  | 'licenses'
+  | 'channel_manager';
 
 interface NavigationProps {
   activeTab: TabType;

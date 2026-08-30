@@ -67,6 +67,7 @@ const MenuManager = lazyWithRetry(() => import('./components/MenuManager').then(
 const MiscChargesManagement = lazyWithRetry(() => import('./components/MiscChargesManagement').then(m => ({ default: m.MiscChargesManagement })), 'MiscChargesManagement');
 const ServiceRequestsManagement = lazyWithRetry(() => import('./components/ServiceRequestsManagement').then(m => ({ default: m.ServiceRequestsManagement })), 'ServiceRequestsManagement');
 const LicenseManagement = lazyWithRetry(() => import('./components/LicenseManagement').then(m => ({ default: m.LicenseManagement })), 'LicenseManagement');
+const ChannelManager = lazyWithRetry(() => import('./components/ChannelManager').then(m => ({ default: m.ChannelManager })), 'ChannelManager');
 const TelegramNotificationModal = lazyWithRetry(() => import('./components/TelegramNotificationModal').then(m => ({ default: m.TelegramNotificationModal })), 'TelegramNotificationModal');
 const EditPropertyPage = lazyWithRetry(() => import('./components/EditPropertyPage').then(m => ({ default: m.EditPropertyPage })), 'EditPropertyPage');
 const PlatformPropertyManagement = lazyWithRetry(() => import('./components/PlatformPropertyManagement').then(m => ({ default: m.PlatformPropertyManagement })), 'PlatformPropertyManagement');
@@ -252,6 +253,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         ical_sync: { tab: 'edit_property', key: 'edit_property' },
         service_requests: { tab: 'service_requests', key: 'service_requests' },
         license_management: { tab: 'licenses', key: 'license_management' },
+        channel_manager: { tab: 'channel_manager', key: 'channel_manager' },
       };
 
       if (hash && routeMap[hash]) {
@@ -516,6 +518,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
       service_requests: 'service_requests',
       edit_property: 'edit_property',
       licenses: 'license_management',
+      channel_manager: 'channel_manager',
     };
     const targetKey = menuItemKey || defaults[tab] || tab;
     setActiveMenuItemKey(targetKey);
@@ -1257,7 +1260,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         // room's own feeds), so visiting either from within a room should
         // stay in that room too, not kick out to the parent property.
         'edit_food_menu', 'beta_recipe_builder', 'misc_charges', 'edit_items_group',
-        'service_requests', 'license_management'
+        'service_requests', 'license_management', 'channel_manager'
       ]);
 
       // 'edit_property' is deliberately NOT in `reserved` above - clicking it
@@ -1355,6 +1358,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         service_requests: { tab: 'service_requests', key: 'service_requests' },
         edit_property: { tab: 'edit_property', key: 'edit_property' },
         license_management: { tab: 'licenses', key: 'license_management' },
+        channel_manager: { tab: 'channel_manager', key: 'channel_manager' },
       };
 
       // 404 or Invalid Route -> Try dynamic nav items from DB, then check if it's a room slug (with optional /subtab)
@@ -2546,6 +2550,12 @@ ${itemsStr}
               {!selectedRoomSlugOverride && activeTab === 'licenses' && (
                 <ErrorBoundary section="License Management">
                   <LicenseManagement onLogAudit={logAudit} />
+                </ErrorBoundary>
+              )}
+
+              {!selectedRoomSlugOverride && activeTab === 'channel_manager' && (
+                <ErrorBoundary section="Channel Manager">
+                  <ChannelManager onLogAudit={logAudit} />
                 </ErrorBoundary>
               )}
 

@@ -3676,6 +3676,147 @@ switch ($action) {
         }
         break;
 
+    case 'get_channex_status':
+        $targetPropertyId = $propertyId ?: (int)($_GET['property_id'] ?? 1);
+        $channexCfgPath = __DIR__ . '/../config/channex_config.json';
+        $hasConfigFile = is_file($channexCfgPath);
+        $cfg = $hasConfigFile ? (json_decode(file_get_contents($channexCfgPath), true) ?: []) : [];
+        $hasApiKey = !empty($cfg['api_key']);
+        $hasWebhookSecret = !empty($cfg['webhook_secret']);
+        $environment = $cfg['environment'] ?? 'staging';
+
+        // Mappings
+        if (is_file(__DIR__ . '/../channex/content_sync.php')) {
+            require_once __DIR__ . '/../channex/content_sync.php';
+            ensureChannexMappingsSchema($pdo);
+        }
+        $mappingsStmt = $pdo->prepare("
+            SELECT m.id, m.property_id, m.room_id, m.channex_property_id, m.channex_room_type_id, m.channex_rate_plan_id, m.sync_status, m.last_synced_at,
+                   p.name as property_name
+            FROM channex_mappings m
+            LEFT JOIN properties p ON m.property_id = p.id
+            WHERE m.property_id = ?
+            ORDER BY m.id ASC
+        ");
+        $mappingsStmt->execute([$targetPropertyId]);
+        $mappings = $mappingsStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Outbox schema & rows
+        if (is_file(__DIR__ . '/../channex/outbox.php')) {
+            require_once __DIR__ . '/../channex/outbox.php';
+            ensureChannexOutboxSchema($pdo);
+        }
+        $outboxStmt = $pdo->prepare("
+            -- channex_outbox has no updated_at column (see ensureChannexOutboxSchema);
+            -- selecting one made this whole endpoint 500, so the screen never loaded.
+            SELECT id, property_id, room_id, kind, date_from, date_to, status, attempts, task_id, last_error, created_at
+            FROM channex_outbox
+            WHERE property_id = ?
+            ORDER BY id DESC
+            LIMIT 50
+        ");
+        $outboxStmt->execute([$targetPropertyId]);
+        $outboxRows = $outboxStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Status counts
+        $countsStmt = $pdo->prepare("
+            SELECT status, COUNT(*) as count
+            FROM channex_outbox
+            WHERE property_id = ?
+            GROUP BY status
+        ");
+        $countsStmt->execute([$targetPropertyId]);
+        $countsRaw = $countsStmt->fetchAll(PDO::FETCH_KEY_PAIR);
+        $counts = [
+            'pending' => (int)($countsRaw['pending'] ?? 0),
+            'sending' => (int)($countsRaw['sending'] ?? 0),
+            'done'    => (int)($countsRaw['done'] ?? 0),
+            'failed'  => (int)($countsRaw['failed'] ?? 0),
+            'total'   => array_sum($countsRaw),
+        ];
+
+        echo json_encode([
+            'status' => 'success',
+            'data' => [
+                'config' => [
+                    'has_config_file' => $hasConfigFile,
+                    'has_api_key' => $hasApiKey,
+                    'has_webhook_secret' => $hasWebhookSecret,
+                    'environment' => $environment,
+                ],
+                'mappings' => $mappings,
+                'outbox' => $outboxRows,
+                'counts' => $counts,
+            ]
+        ]);
+        break;
+
+    case 'channex_push_ari':
+        if (is_file(__DIR__ . '/../channex/outbox.php')) {
+            require_once __DIR__ . '/../channex/outbox.php';
+        }
+        if (is_file(__DIR__ . '/../channex/ari_drain_worker.php')) {
+            require_once __DIR__ . '/../channex/ari_drain_worker.php';
+        }
+        $rawInput = file_get_contents('php://input');
+        $input = json_decode($rawInput, true) ?: $_POST;
+
+        $targetPropertyId = !empty($input['property_id']) ? (int)$input['property_id'] : ($propertyId ?: 1);
+        $dateFrom = trim((string)($input['date_from'] ?? date('Y-m-d')));
+        $dateTo = trim((string)($input['date_to'] ?? date('Y-m-d', strtotime('+500 days'))));
+        $roomId = !empty($input['room_id']) ? (int)$input['room_id'] : null;
+
+        // Enqueue EXACTLY one availability and EXACTLY one rates row spanning the range
+        enqueueOutboxItem($pdo, $targetPropertyId, $roomId, 'availability', $dateFrom, $dateTo, [
+            'action' => 'manual_push_ari',
+            'date_from' => $dateFrom,
+            'date_to' => $dateTo,
+        ]);
+        $availOutboxId = (int)$pdo->lastInsertId();
+
+        enqueueOutboxItem($pdo, $targetPropertyId, $roomId, 'rates', $dateFrom, $dateTo, [
+            'action' => 'manual_push_ari',
+            'date_from' => $dateFrom,
+            'date_to' => $dateTo,
+        ]);
+        $ratesOutboxId = (int)$pdo->lastInsertId();
+
+        // Drain outbox immediately to push to Channex and capture task IDs
+        $worker = new AriDrainWorker($pdo);
+        $drainRes = $worker->processBatch();
+
+        // Collect task IDs for the rows we just enqueued
+        $tasksStmt = $pdo->prepare("SELECT id, kind, status, task_id, last_error FROM channex_outbox WHERE id IN (?, ?)");
+        $tasksStmt->execute([$availOutboxId, $ratesOutboxId]);
+        $taskRows = $tasksStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        echo json_encode([
+            'status' => 'success',
+            'data' => [
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+                'enqueued_rows' => [$availOutboxId, $ratesOutboxId],
+                'task_rows' => $taskRows,
+                'drain_result' => $drainRes,
+            ]
+        ]);
+        break;
+
+    case 'channex_retry_outbox':
+        if (is_file(__DIR__ . '/../channex/ari_drain_worker.php')) {
+            require_once __DIR__ . '/../channex/ari_drain_worker.php';
+        }
+        $rawInput = file_get_contents('php://input');
+        $input = json_decode($rawInput, true) ?: $_POST;
+        $rowId = (int)($input['id'] ?? 0);
+        if ($rowId > 0) {
+            $pdo->prepare("UPDATE channex_outbox SET status = 'pending', attempts = 0, last_error = NULL WHERE id = ?")->execute([$rowId]);
+        }
+        $worker = new AriDrainWorker($pdo);
+        $drainRes = $worker->processBatch();
+        echo json_encode(['status' => 'success', 'data' => $drainRes]);
+        break;
+
     case 'channex_outbox_drain':
         require_once __DIR__ . '/../channex/ari_drain_worker.php';
         $worker = new AriDrainWorker($pdo);

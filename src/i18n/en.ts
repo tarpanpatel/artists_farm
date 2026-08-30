@@ -1804,8 +1804,30 @@ export const strings: Record<string, string> = {
 
   // Finances & Payroll - Pay Now confirmation
   confirm_salary_payout_title: "Confirm Salary Payout",
-  confirm_salary_payout_message: "Are you sure you want to process the payout of {amount} for {staffName} for {month}? This will generate a salary entry and record the settlement.",
   confirm_pay_now_button: "Yes, Pay Now",
+
+  // Channel Manager (Channex)
+  channel_manager_heading: "Channel Manager",
+  channel_manager_subheading: "Real-time Two-Way OTA Distribution & Live Inventory Synchronization (Channex)",
+  loading_channel_manager: "Connecting to Channel Manager...",
+  channex_load_error: "Failed to load Channel Manager status",
+  channex_sync_content_title: "Sync Property Content & Structure",
+  channex_sync_content_msg: "This will provision or update this property, room types, and rate plans on Channex and save the mapping IDs. Proceed?",
+  channex_sync_now: "Sync with Channex",
+  channex_sync_success: "Property structure synchronized with Channex successfully.",
+  channex_sync_failed: "Failed to synchronize with Channex",
+  channex_push_ari_title: "Push Availability, Rates & Restrictions",
+  channex_push_now: "Push to Channex",
+  channex_push_success: "ARI batch compressed and pushed to Channex successfully!",
+  channex_push_failed: "Failed to push ARI to Channex",
+  channex_dates_required: "Please select both start and end dates",
+  sync_content_button: "Sync Property Structure",
+  drain_outbox_button: "Drain Outbox",
+  push_ari_heading: "Push Availability & Rates (ARI)",
+  channex_credentials_title: "API Connection",
+  channex_mappings_title: "Inventory Mappings",
+  channex_queue_title: "Outbox Queue",
+  copied_to_clipboard: "Copied to clipboard!",
 };
 
 export function t(key: string, fallback?: string, params?: Record<string, string | number>): string {

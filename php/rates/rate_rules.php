@@ -231,23 +231,28 @@ function saveRateRule($pdo, $propertyId) {
         }
 
         // Channel Manager Outbox (30 Aug 2026): Enqueue rate & restriction changes
-        require_once __DIR__ . '/../channex/outbox.php';
-        foreach ($targetRoomIds as $rId) {
-            $roomId = !empty($rId) ? (int)$rId : null;
-            enqueueOutboxItem($pdo, (int)$propertyId, $roomId, 'rates', $startDate, $endDate, [
-                'action' => 'save_rate_rule',
-                'rule_id' => $ruleId,
-                'rate_per_night' => $ratePerNight,
-                'min_stay_arrival' => $minStayArrival,
-                'min_stay_through' => $minStayThrough,
-                'max_stay' => $maxStay,
-                'stop_sell' => $stopSell,
-                'closed_to_arrival' => $closedToArrival,
-                'closed_to_departure' => $closedToDeparture,
-            ]);
+        if (is_file(__DIR__ . '/../channex/outbox.php')) {
+            require_once __DIR__ . '/../channex/outbox.php';
+            if (function_exists('enqueueOutboxItem')) {
+                foreach ($targetRoomIds as $rId) {
+                    $roomId = !empty($rId) ? (int)$rId : null;
+                    enqueueOutboxItem($pdo, (int)$propertyId, $roomId, 'rates', $startDate, $endDate, [
+                        'action' => 'save_rate_rule',
+                        'rule_id' => $ruleId,
+                        'rate_per_night' => $ratePerNight,
+                        'min_stay_arrival' => $minStayArrival,
+                        'min_stay_through' => $minStayThrough,
+                        'max_stay' => $maxStay,
+                        'stop_sell' => $stopSell,
+                        'closed_to_arrival' => $closedToArrival,
+                        'closed_to_departure' => $closedToDeparture,
+                    ]);
+                }
+            }
         }
 
         echo json_encode(['status' => 'success', 'message' => 'Rate rule saved successfully.']);
+        triggerEventDrivenChannexDrain($pdo);
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -273,18 +278,43 @@ function deleteRateRule($pdo, $propertyId) {
         $stmt->execute([$ruleId, $propertyId]);
 
         if ($existingRule && !empty($existingRule['start_date']) && !empty($existingRule['end_date'])) {
-            require_once __DIR__ . '/../channex/outbox.php';
-            $roomId = !empty($existingRule['room_id']) ? (int)$existingRule['room_id'] : null;
-            enqueueOutboxItem($pdo, (int)$propertyId, $roomId, 'rates', $existingRule['start_date'], $existingRule['end_date'], [
-                'action' => 'delete_rate_rule',
-                'rule_id' => $ruleId,
-            ]);
+            if (is_file(__DIR__ . '/../channex/outbox.php')) {
+                require_once __DIR__ . '/../channex/outbox.php';
+                if (function_exists('enqueueOutboxItem')) {
+                    $roomId = !empty($existingRule['room_id']) ? (int)$existingRule['room_id'] : null;
+                    enqueueOutboxItem($pdo, (int)$propertyId, $roomId, 'rates', $existingRule['start_date'], $existingRule['end_date'], [
+                        'action' => 'delete_rate_rule',
+                        'rule_id' => $ruleId,
+                    ]);
+                }
+            }
         }
 
         echo json_encode(['status' => 'success', 'message' => 'Rate rule deleted successfully.']);
+        triggerEventDrivenChannexDrain($pdo);
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+    }
+}
+
+function triggerEventDrivenChannexDrain($pdo) {
+    if (is_file(__DIR__ . '/../channex/ari_drain_worker.php')) {
+        require_once __DIR__ . '/../channex/ari_drain_worker.php';
+        if (class_exists('AriDrainWorker')) {
+            if (function_exists('fastcgi_finish_request')) {
+                fastcgi_finish_request();
+            } else {
+                @ob_end_flush();
+                @flush();
+            }
+            try {
+                $worker = new AriDrainWorker($pdo);
+                $worker->processBatch();
+            } catch (Exception $e) {
+                error_log("Channex event-driven drain failed: " . $e->getMessage());
+            }
+        }
     }
 }
 
