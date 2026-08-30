@@ -233,7 +233,15 @@ class ChannexWebhookReceiver {
                     }
 
                     if ($conflictStmt->fetchColumn()) {
-                        $this->pdo->rollBack();
+                        // Guarded: rollBack() with no active transaction THROWS,
+                        // and that exception is then caught below and reported as
+                        // a generic 500 - masking the real outcome. Seen live: a
+                        // revision that had actually been ingested and ACKed came
+                        // back as "Failed to process booking revision: There is no
+                        // active transaction".
+                        if ($this->pdo->inTransaction()) {
+                            $this->pdo->rollBack();
+                        }
                         return ['status' => 'error', 'http_code' => 409, 'message' => 'Room/Property is already booked for modified dates'];
                     }
 
@@ -259,7 +267,10 @@ class ChannexWebhookReceiver {
                     }
 
                     if ($conflictStmt->fetchColumn()) {
-                        $this->pdo->rollBack();
+                        // Guarded for the same reason as the modification branch above.
+                        if ($this->pdo->inTransaction()) {
+                            $this->pdo->rollBack();
+                        }
                         return ['status' => 'error', 'http_code' => 409, 'message' => 'Room/Property is already booked for requested dates'];
                     }
 
