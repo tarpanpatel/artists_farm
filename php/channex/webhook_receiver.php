@@ -158,7 +158,12 @@ class ChannexWebhookReceiver {
 
         // 2. Resolve Local Property & Room Mapping
         $channexPropertyId = $booking['property_id'] ?? ($revision['property_id'] ?? '');
-        $channexRoomTypeId = $booking['room_type_id'] ?? ($revision['room_type_id'] ?? '');
+        // room_type_id lives inside rooms[0], not at the top level - reading only
+        // the top level yields '' and falls through to the property-only mapping
+        // lookup below, which on a multi-room property returns an arbitrary room.
+        $firstRoom = $booking['rooms'][0] ?? ($revision['rooms'][0] ?? []);
+        $channexRoomTypeId = $firstRoom['room_type_id']
+            ?? ($booking['room_type_id'] ?? ($revision['room_type_id'] ?? ''));
 
         $mapStmt = $this->pdo->prepare("SELECT property_id, room_id FROM channex_mappings WHERE channex_property_id = ? AND (channex_room_type_id = ? OR channex_room_type_id = '') LIMIT 1");
         $mapStmt->execute([$channexPropertyId, $channexRoomTypeId]);
@@ -178,15 +183,72 @@ class ChannexWebhookReceiver {
         $roomId = $mapping['room_id'] !== null ? (int)$mapping['room_id'] : null;
 
         $bookingStatus = strtolower($booking['status'] ?? 'new');
-        $otaSource = $booking['channel_name'] ?? ($booking['ota_source'] ?? ($booking['channel'] ?? 'Channex OTA'));
+        // ota_name is what Channex actually sends ("AirBNB", "BookingCom"); the
+        // channel_name/ota_source/channel keys checked first are not in its
+        // payload at all, so without ota_name every booking fell through to the
+        // generic default and the calendar bar read "(Channex OTA)" for all of
+        // them instead of the real platform.
+        $otaSource = $booking['channel_name']
+            ?? ($booking['ota_source']
+            ?? ($booking['ota_name']
+            ?? ($booking['channel'] ?? 'Channex OTA')));
         $checkinDate = $booking['arrival_date'] ?? $booking['checkin_date'] ?? date('Y-m-d');
         $checkoutDate = $booking['departure_date'] ?? $booking['checkout_date'] ?? date('Y-m-d', strtotime('+1 day'));
         $customer = $booking['customer'] ?? [];
         $guestName = trim(($customer['name'] ?? '') ?: (($customer['first_name'] ?? '') . ' ' . ($customer['last_name'] ?? ''))) ?: 'OTA Guest';
         $phone = $customer['phone'] ?? ($customer['telephone'] ?? 'N/A');
-        $totalAmountMinor = (int)($booking['amount'] ?? ($booking['total_price'] ?? 0));
-        $totalAmount = round($totalAmountMinor / 100, 2);
-        $noOfGuests = (int)($booking['occupancy'] ?? ($booking['adults'] ?? 1));
+        $country = trim((string)($customer['country'] ?? ''));
+        $isForeignGuest = (!empty($country) && !in_array(strtoupper($country), ['IN', 'IND', 'INDIA'], true)) ? 1 : 0;
+
+        $arrivalHour = trim((string)($booking['arrival_hour'] ?? ($booking['arrival_time'] ?? '')));
+        $bookingNotes = trim((string)($booking['notes'] ?? ''));
+        $notesParts = [];
+        if (!empty($arrivalHour)) {
+            $notesParts[] = "Arrival: {$arrivalHour}";
+        }
+        if (!empty($bookingNotes)) {
+            $notesParts[] = $bookingNotes;
+        }
+        $notes = !empty($notesParts) ? implode("\n", $notesParts) : null;
+        $guestNotes = !empty($bookingNotes) ? $bookingNotes : null;
+
+        // Channex sends amount as a decimal string in MAJOR units ("480.00"),
+        // not minor units.
+        $totalAmount = round((float)($booking['amount']
+            ?? ($firstRoom['amount'] ?? ($booking['total_price'] ?? 0))), 2);
+
+        // occupancy is an object {adults, children, infants, ages}, not a count.
+        // $firstRoom is already resolved above, including the $revision fallback -
+        // reassigning it here would silently drop that fallback for occupancy
+        // while amount above still had it.
+        $occupancy = $booking['occupancy'] ?? ($firstRoom['occupancy'] ?? null);
+        if (is_array($occupancy)) {
+            $adults = max(1, (int)($occupancy['adults'] ?? 1));
+            $children = (int)($occupancy['children'] ?? 0);
+            $noOfGuests = $adults + $children;
+        } else {
+            $adults = max(1, (int)($booking['adults'] ?? ($occupancy ?? 1)));
+            $children = (int)($booking['children'] ?? 0);
+            $noOfGuests = $adults + $children;
+        }
+
+        $totalDays = max(1, (int)round((strtotime($checkoutDate) - strtotime($checkinDate)) / 86400));
+        $baseRoomRent = $totalAmount;
+        $perNightCharges = $totalDays > 0 ? round($baseRoomRent / $totalDays, 2) : $baseRoomRent;
+
+        // Who actually holds the guest's money. 'ota' is the merchant model (the
+        // channel charged the card, nothing to collect on arrival); 'property'
+        // means WE collect at the door.
+        $otaCollectsPayment = strtolower((string)($booking['payment_collect'] ?? 'property')) === 'ota';
+        $advancePaid = $otaCollectsPayment ? $totalAmount : 0.00;
+        $pendingAmount = round($totalAmount - $advancePaid, 2);
+
+        $otaReservationCode = $booking['ota_reservation_code']
+            ?? ($revision['ota_reservation_code']
+            ?? ($booking['system_id']
+            ?? ($revision['system_id']
+            ?? ($payload['ota_reservation_code']
+            ?? ($payload['system_id'] ?? null)))));
 
         $guestId = null;
 
@@ -247,10 +309,29 @@ class ChannexWebhookReceiver {
 
                     $updStmt = $this->pdo->prepare("
                         UPDATE guests
-                        SET guest_name = ?, phone_number = ?, checkin_date = ?, expected_checkout = ?, total_charge = ?, no_of_guests = ?
+                        SET guest_name = ?, phone_number = ?, checkin_date = ?, expected_checkout = ?, total_charge = ?, no_of_guests = ?,
+                            advance_paid = ?, pending_amount = ?,
+                            adults = ?, children = ?,
+                            base_room_rent = ?, per_night_charges = ?, total_days = ?,
+                            is_foreign_guest = ?,
+                            -- Fill a blank note, never overwrite one. `notes` is
+                            -- staff-editable (see add_guest/update_guest), so a
+                            -- plain assignment here would wipe what staff typed
+                            -- every time the guest changed dates on the OTA.
+                            notes = CASE WHEN notes IS NULL OR notes = '' THEN COALESCE(?, notes) ELSE notes END,
+                            guest_notes = CASE WHEN guest_notes IS NULL OR guest_notes = '' THEN COALESCE(?, guest_notes) ELSE guest_notes END,
+                            ota_reservation_code = COALESCE(?, ota_reservation_code)
                         WHERE id = ?
                     ");
-                    $updStmt->execute([$guestName, $phone, $checkinDate, $checkoutDate, $totalAmount, $noOfGuests, $guestId]);
+                    $updStmt->execute([
+                        $guestName, $phone, $checkinDate, $checkoutDate, $totalAmount, $noOfGuests,
+                        $advancePaid, $pendingAmount,
+                        $adults, $children,
+                        $baseRoomRent, $perNightCharges, $totalDays,
+                        $isForeignGuest,
+                        $notes, $guestNotes,
+                        $otaReservationCode, $guestId
+                    ]);
 
                     // Enqueue both ranges for outbox
                     enqueueOutboxItem($this->pdo, $propertyId, $roomId, 'availability', $oldCheckin, $oldCheckout, ['action' => 'ota_mod_old', 'guest_id' => $guestId]);
@@ -278,12 +359,18 @@ class ChannexWebhookReceiver {
                     $insStmt = $this->pdo->prepare("
                         INSERT INTO guests (
                             property_id, room_id, guest_name, phone_number, checkin_date, expected_checkout,
-                            total_charge, advance_paid, pending_amount, no_of_guests, status, booking_source,
-                            channex_booking_id, ota_source, ota_source_label
+                            total_charge, advance_paid, pending_amount, no_of_guests,
+                            adults, children, base_room_rent, per_night_charges, total_days,
+                            is_foreign_guest, notes, guest_notes,
+                            status, booking_source,
+                            channex_booking_id, ota_source, ota_source_label, ota_reservation_code
                         ) VALUES (
                             ?, ?, ?, ?, ?, ?,
-                            ?, ?, 0, ?, 'Booked', 'OTA',
-                            ?, ?, ?
+                            ?, ?, ?, ?,
+                            ?, ?, ?, ?, ?,
+                            ?, ?, ?,
+                            'Booked', 'OTA',
+                            ?, ?, ?, ?
                         )
                     ");
                     $insStmt->execute([
@@ -294,11 +381,21 @@ class ChannexWebhookReceiver {
                         $checkinDate,
                         $checkoutDate,
                         $totalAmount,
-                        $totalAmount, // OTA merchant collected
+                        $advancePaid,
+                        $pendingAmount,
                         $noOfGuests,
+                        $adults,
+                        $children,
+                        $baseRoomRent,
+                        $perNightCharges,
+                        $totalDays,
+                        $isForeignGuest,
+                        $notes,
+                        $guestNotes,
                         $channexBookingId,
                         $otaSource,
                         $otaSource,
+                        $otaReservationCode,
                     ]);
                     $guestId = (int)$this->pdo->lastInsertId();
 
@@ -349,6 +446,26 @@ class ChannexWebhookReceiver {
             if ($this->pdo->inTransaction()) {
                 $this->pdo->rollBack();
             }
+
+            // Task C: Handle race condition with concurrent webhook deliveries of the same revision
+            if ($e->getCode() == 23000 || strpos($e->getMessage(), 'Duplicate entry') !== false || strpos($e->getMessage(), '1062') !== false) {
+                $stmt = $this->pdo->prepare("SELECT id, is_acknowledged, guest_id FROM channex_booking_revisions WHERE revision_id = ? LIMIT 1");
+                $stmt->execute([$revisionId]);
+                $existing = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($existing) {
+                    if (!$existing['is_acknowledged']) {
+                        $ok = $this->adapter->acknowledgeRevision($revisionId);
+                        recordChannexAckOutcome($this->pdo, $revisionId, $ok, $ok ? null : 'Re-ACK on concurrent race failed');
+                    }
+                    return [
+                        'status' => 'success',
+                        'http_code' => 200,
+                        'message' => 'Revision already processed concurrently (idempotent)',
+                        'guest_id' => $existing['guest_id']
+                    ];
+                }
+            }
+
             return [
                 'status' => 'error',
                 'http_code' => 500,
