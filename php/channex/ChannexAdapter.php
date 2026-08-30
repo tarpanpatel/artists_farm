@@ -80,8 +80,8 @@ class ChannexAdapter implements ChannelManagerAdapter {
             if ($dFrom > $dTo) continue;
 
             $item = [
-                'property_id' => $mapping['channex_property_id'],
-                'rate_plan_id' => $mapping['channex_rate_plan_id'],
+                'property_id' => $r['channex_property_id'] ?? $mapping['channex_property_id'],
+                'rate_plan_id' => $r['rate_plan_id'] ?? ($r['channex_rate_plan_id'] ?? $mapping['channex_rate_plan_id']),
                 'date_from' => $dFrom,
                 'date_to' => $dTo,
             ];
@@ -122,6 +122,47 @@ class ChannexAdapter implements ChannelManagerAdapter {
         if (empty($revisionId)) return false;
         $res = $this->client->post("booking_revisions/{$revisionId}/ack", []);
         return $res['success'] ?? false;
+    }
+
+    public function getClient(): ChannexClient {
+        return $this->client;
+    }
+
+    public function registerWebhook(?string $callbackUrl = null, ?string $channexPropertyId = null): array {
+        $cfgPath = __DIR__ . '/../config/channex_config.json';
+        $cfg = is_file($cfgPath) ? (json_decode(file_get_contents($cfgPath), true) ?: []) : [];
+        $secret = (string)($cfg['webhook_secret'] ?? '');
+
+        if (!$callbackUrl) {
+            $callbackUrl = (string)($cfg['webhook_callback_url'] ?? 'https://staging.ground-code.com/php/api/router.php?action=channex_webhook');
+        }
+
+        // Check existing webhooks to ensure idempotency
+        $existing = $this->client->get('webhooks');
+        $existingList = $existing['data'] ?? [];
+        foreach ($existingList as $item) {
+            $attrs = $item['attributes'] ?? [];
+            if (($attrs['callback_url'] ?? '') === $callbackUrl) {
+                return ['success' => true, 'data' => $item, 'action' => 'already_registered'];
+            }
+        }
+
+        $payload = [
+            'webhook' => [
+                'callback_url' => $callbackUrl,
+                'event_mask' => 'booking_new;booking_modification;booking_cancellation',
+                'is_active' => true,
+                'send_data' => true,
+                'headers' => [
+                    'X-Channex-Webhook-Secret' => $secret
+                ]
+            ]
+        ];
+        if ($channexPropertyId) {
+            $payload['webhook']['property_id'] = $channexPropertyId;
+        }
+
+        return $this->client->post('webhooks', $payload);
     }
 
     private function getMapping(int $propertyId, ?int $roomId): ?array {

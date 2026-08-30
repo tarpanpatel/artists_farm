@@ -3650,6 +3650,9 @@ switch ($action) {
         // seconds, and the HTTP 200 only means "received" - the ACK sent later,
         // after the DB commits, is the real "processed" signal. Flushing here
         // stops a slow booking insert from triggering duplicate deliveries.
+        ignore_user_abort(true);
+        set_time_limit(60);
+
         http_response_code(200);
         echo json_encode(['status' => 'success', 'received' => true]);
         if (function_exists('fastcgi_finish_request')) {
@@ -3659,8 +3662,14 @@ switch ($action) {
             @flush();
         }
 
-        $receiver = new ChannexWebhookReceiver($pdo);
-        $receiver->handleWebhook($payload);
+        try {
+            $receiver = new ChannexWebhookReceiver($pdo);
+            $receiver->handleWebhook($payload);
+        } catch (Throwable $e) {
+            if (class_exists('TelescopeLogger')) {
+                TelescopeLogger::log('error', 'ERROR', 'Channex webhook background exception: ' . $e->getMessage(), 'channex_webhook');
+            }
+        }
         break;
 
     case 'channex_content_sync':
@@ -3670,6 +3679,20 @@ switch ($action) {
         try {
             $res = $syncer->syncProperty($targetPropertyId);
             echo json_encode(['status' => 'success', 'data' => $res]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+        break;
+
+    case 'channex_register_webhook':
+        require_once __DIR__ . '/../channex/ChannexAdapter.php';
+        $adapter = new ChannexAdapter($pdo);
+        $callbackUrl = trim((string)($_POST['callback_url'] ?? ($_GET['callback_url'] ?? '')));
+        $channexPropId = trim((string)($_POST['channex_property_id'] ?? ($_GET['channex_property_id'] ?? '')));
+        try {
+            $regRes = $adapter->registerWebhook($callbackUrl ?: null, $channexPropId ?: null);
+            echo json_encode(['status' => 'success', 'data' => $regRes]);
         } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);

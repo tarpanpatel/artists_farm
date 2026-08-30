@@ -128,15 +128,79 @@ class ChannexWebhookReceiver {
     }
 
     public function handleWebhook(array $payload): array {
-        $revision = $payload['booking_revision'] ?? ($payload['data'] ?? $payload);
-        $revisionId = $revision['id'] ?? ($payload['id'] ?? null);
-        $booking = $revision['booking'] ?? $revision;
-        $channexBookingId = !empty($revision['booking']['id'])
-            ? $revision['booking']['id']
-            : (!empty($revision['booking_id']) ? $revision['booking_id'] : ($revision['id'] ?? null));
+        // Support Channex notification envelope:
+        // {"event": "booking", "payload": {"booking_id": "...", "property_id": "...", "revision_id": "..."}, "user_id": null, "timestamp": "..."}
+        // as well as direct objects from internal test suites:
+        // {"booking_revision": {...}} or raw booking revision attributes.
+        $envelopePayload = $payload['payload'] ?? [];
+        $revisionId = $envelopePayload['revision_id']
+            ?? ($payload['booking_revision']['id']
+            ?? ($payload['data']['id']
+            ?? ($payload['revision_id']
+            ?? ($payload['id'] ?? null))));
+        $channexBookingId = $envelopePayload['booking_id']
+            ?? ($payload['booking_revision']['booking_id']
+            ?? ($payload['booking_revision']['booking']['id']
+            ?? ($payload['data']['attributes']['booking_id']
+            ?? ($payload['booking_id']
+            ?? ($payload['id'] ?? null)))));
 
-        if (!$revisionId || !$channexBookingId) {
+        if (!$revisionId && !$channexBookingId) {
             return ['status' => 'error', 'http_code' => 400, 'message' => 'Missing revision ID or booking ID'];
+        }
+
+        // Check if we need to fetch the full revision from Channex API
+        // (when payload only contains envelope IDs rather than complete booking details)
+        $hasFullData = !empty($payload['booking_revision']['arrival_date'])
+            || !empty($payload['booking_revision']['rooms'])
+            || !empty($payload['data']['attributes']['arrival_date'])
+            || !empty($payload['arrival_date'])
+            || !empty($payload['rooms']);
+
+        if (!$hasFullData && $revisionId) {
+            $client = new ChannexClient();
+            $revRes = $client->get("booking_revisions/{$revisionId}");
+            if ($revRes['success'] && !empty($revRes['data']['attributes'])) {
+                $attrs = $revRes['data']['attributes'];
+                $revision = array_merge($attrs, [
+                    'id' => $revisionId,
+                    'booking_id' => $channexBookingId ?: ($attrs['booking_id'] ?? null),
+                    'booking' => array_merge($attrs, [
+                        'id' => $channexBookingId ?: ($attrs['booking_id'] ?? null),
+                    ]),
+                ]);
+                $booking = $revision['booking'];
+                $channexBookingId = $revision['booking_id'];
+            } else if ($channexBookingId) {
+                // Fallback: try fetching booking by ID
+                $bookRes = $client->get("bookings/{$channexBookingId}");
+                if ($bookRes['success'] && !empty($bookRes['data']['attributes'])) {
+                    $attrs = $bookRes['data']['attributes'];
+                    $revision = array_merge($attrs, [
+                        'id' => $revisionId,
+                        'booking_id' => $channexBookingId,
+                        'booking' => array_merge($attrs, [
+                            'id' => $channexBookingId,
+                        ]),
+                    ]);
+                    $booking = $revision['booking'];
+                } else {
+                    return ['status' => 'error', 'http_code' => 404, 'message' => "Failed to fetch revision {$revisionId} from Channex API"];
+                }
+            } else {
+                return ['status' => 'error', 'http_code' => 404, 'message' => "Failed to fetch revision {$revisionId} from Channex API"];
+            }
+        } else {
+            $revision = $payload['booking_revision'] ?? ($payload['data']['attributes'] ?? ($payload['data'] ?? $payload));
+            $booking = $revision['booking'] ?? $revision;
+            if (!$channexBookingId) {
+                $channexBookingId = !empty($revision['booking']['id'])
+                    ? $revision['booking']['id']
+                    : (!empty($revision['booking_id']) ? $revision['booking_id'] : ($revision['id'] ?? null));
+            }
+            if (!$revisionId) {
+                $revisionId = $revision['id'] ?? ($payload['id'] ?? $channexBookingId);
+            }
         }
 
         // 1. Idempotency Check: if already processed and acknowledged, return 200

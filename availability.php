@@ -155,7 +155,8 @@ if ($propertyId > 0 && !empty($scopeIds)) {
         }
 
         $stmt = $pdo->prepare("
-            SELECT room_id, start_date, end_date, rate_per_night, stop_sell
+            SELECT room_id, start_date, end_date, rate_per_night, stop_sell,
+                   min_stay_arrival, min_stay_through, max_stay, closed_to_arrival, closed_to_departure
             FROM room_rate_rules
             WHERE (property_id IN ($placeholders) OR room_id IN ($placeholders))
             AND start_date <= ? AND end_date >= ?
@@ -164,6 +165,7 @@ if ($propertyId > 0 && !empty($scopeIds)) {
         $stmt->execute(array_merge($scopeIds, $scopeIds, [$monthEndStr, $monthStartStr]));
         $rateRules = $stmt->fetchAll();
 
+        $restrictionsPerRoom = [];
         foreach ($rateRules as $rr) {
             $rId = $rr['room_id'] !== null ? (int)$rr['room_id'] : 0;
             $cur = strtotime($rr['start_date']);
@@ -173,6 +175,15 @@ if ($propertyId > 0 && !empty($scopeIds)) {
                 $dStr = date('Y-m-d', $cur);
                 if ($rr['rate_per_night'] !== null && !isset($rateRulesPerRoom[$rId][$dStr])) {
                     $rateRulesPerRoom[$rId][$dStr] = (float)$rr['rate_per_night'];
+                }
+                if (!isset($restrictionsPerRoom[$rId][$dStr])) {
+                    $restrictionsPerRoom[$rId][$dStr] = [
+                        'min_stay_arrival' => $rr['min_stay_arrival'] ? (int)$rr['min_stay_arrival'] : null,
+                        'min_stay_through' => $rr['min_stay_through'] ? (int)$rr['min_stay_through'] : null,
+                        'max_stay' => $rr['max_stay'] ? (int)$rr['max_stay'] : null,
+                        'closed_to_arrival' => !empty($rr['closed_to_arrival']),
+                        'closed_to_departure' => !empty($rr['closed_to_departure']),
+                    ];
                 }
                 if ($isStopSell) {
                     if ($rId === 0) {
@@ -204,6 +215,28 @@ if (!function_exists('getDailyRate')) {
     }
 }
 
+// Helper to get active stay restrictions for a room on a given day
+if (!function_exists('getDailyRestrictions')) {
+    function getDailyRestrictions($roomId, $dateStr, $restrictionsPerRoom) {
+        if (isset($restrictionsPerRoom[$roomId][$dateStr])) {
+            return $restrictionsPerRoom[$roomId][$dateStr];
+        }
+        if (isset($restrictionsPerRoom[0][$dateStr])) {
+            return $restrictionsPerRoom[0][$dateStr];
+        }
+        return [
+            'min_stay_arrival' => null,
+            'min_stay_through' => null,
+            'max_stay' => null,
+            'closed_to_arrival' => false,
+            'closed_to_departure' => false,
+        ];
+    }
+}
+
+$currencyCode = strtoupper($currentProperty['currency'] ?? 'INR');
+$currencySymbols = ['INR' => '₹', 'USD' => '$', 'EUR' => '€', 'GBP' => '£', 'AED' => 'AED '];
+$currencySym = $currencySymbols[$currencyCode] ?? ($currencyCode . ' ');
 $slugParam = isset($_GET['property_slug']) ? '&property_slug=' . urlencode($_GET['property_slug']) : '';
 ?>
 <!DOCTYPE html>
@@ -367,6 +400,20 @@ $slugParam = isset($_GET['property_slug']) ? '&property_slug=' . urlencode($_GET
 
         .price-tag { font-size: 0.6875rem; font-weight: 700; color: var(--text-main); margin-top: auto; }
 
+        .restriction-badge {
+            display: inline-block;
+            font-size: 0.5625rem;
+            font-weight: 700;
+            padding: 0.125rem 0.25rem;
+            border-radius: 0.25rem;
+            margin-top: 0.125rem;
+            line-height: 1.1;
+            text-align: center;
+        }
+        .restriction-badge.cta { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+        .restriction-badge.ctd { background: #ffedd5; color: #9a3412; border: 1px solid #fed7aa; }
+        .restriction-badge.min-stay { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+
         /* Multicalendar Grid */
         .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
         .multical-table { width: 100%; border-collapse: collapse; min-width: 850px; }
@@ -418,7 +465,7 @@ $slugParam = isset($_GET['property_slug']) ? '&property_slug=' . urlencode($_GET
             </div>
             <div class="legend-item">
                 <span class="legend-dot" style="background: #ef4444;"></span>
-                <span>Booked / Reserved</span>
+                <span>Booked / Closed</span>
             </div>
             <div class="legend-item">
                 <span class="legend-dot" style="background: #94a3b8;"></span>
@@ -454,7 +501,7 @@ $slugParam = isset($_GET['property_slug']) ? '&property_slug=' . urlencode($_GET
                                     <td class="multical-room-name">
                                         <div><?= htmlspecialchars($room['name']) ?></div>
                                         <?php if ($rTariff > 0): ?>
-                                            <div style="font-size: 0.6875rem; color: var(--text-muted); font-weight: normal;">Base: ₹<?= number_format($rTariff) ?></div>
+                                            <div style="font-size: 0.6875rem; color: var(--text-muted); font-weight: normal;">Base: <?= $currencySym ?><?= number_format($rTariff) ?></div>
                                         <?php endif; ?>
                                     </td>
                                     <?php for ($d = 1; $d <= $daysInMonth; $d++): ?>
@@ -463,6 +510,7 @@ $slugParam = isset($_GET['property_slug']) ? '&property_slug=' . urlencode($_GET
                                         $isPast = $dStr < $todayStr;
                                         $isBooked = !empty($bookedDaysPerRoom[$rId][$dStr]);
                                         $rate = getDailyRate($rId, $dStr, $rTariff, $pricingMode, $rateRulesPerRoom, $baseTariff);
+                                        $restrictions = getDailyRestrictions($rId, $dStr, $restrictionsPerRoom);
                                         $cellClass = $isPast ? 'past' : ($isBooked ? 'booked' : 'available');
                                         ?>
                                         <td class="multical-cell <?= $cellClass ?>">
@@ -473,7 +521,12 @@ $slugParam = isset($_GET['property_slug']) ? '&property_slug=' . urlencode($_GET
                                             <?php else: ?>
                                                 <div>✓</div>
                                                 <?php if ($rate > 0): ?>
-                                                    <div style="font-size: 0.5625rem; opacity: 0.9;">₹<?= round($rate) ?></div>
+                                                    <div style="font-size: 0.5625rem; opacity: 0.9;"><?= $currencySym ?><?= round($rate) ?></div>
+                                                <?php endif; ?>
+                                                <?php if (!empty($restrictions['closed_to_arrival'])): ?>
+                                                    <div class="restriction-badge cta" title="Closed to Arrival">CTA</div>
+                                                <?php elseif (!empty($restrictions['min_stay_arrival']) && $restrictions['min_stay_arrival'] > 1): ?>
+                                                    <div class="restriction-badge min-stay" title="Minimum <?= $restrictions['min_stay_arrival'] ?> Nights"><?= $restrictions['min_stay_arrival'] ?>N</div>
                                                 <?php endif; ?>
                                             <?php endif; ?>
                                         </td>
@@ -511,6 +564,7 @@ $slugParam = isset($_GET['property_slug']) ? '&property_slug=' . urlencode($_GET
                             $isPast = $dStr < $todayStr;
                             $isBooked = !empty($bookedDaysPerRoom[$rId][$dStr]);
                             $rate = getDailyRate($rId, $dStr, $rTariff, $pricingMode, $rateRulesPerRoom, $baseTariff);
+                            $restrictions = getDailyRestrictions($rId, $dStr, $restrictionsPerRoom);
                             ?>
                             <div class="day-cell">
                                 <span class="day-num" style="<?= $dStr === $todayStr ? 'color: var(--primary); font-weight: 800;' : '' ?>"><?= $d ?></span>
@@ -521,7 +575,18 @@ $slugParam = isset($_GET['property_slug']) ? '&property_slug=' . urlencode($_GET
                                 <?php else: ?>
                                     <span class="day-status-pill available">Available</span>
                                     <?php if ($rate > 0): ?>
-                                        <span class="price-tag">₹<?= number_format($rate) ?></span>
+                                        <span class="price-tag"><?= $currencySym ?><?= number_format($rate) ?></span>
+                                    <?php endif; ?>
+                                    <?php if (!empty($restrictions['closed_to_arrival'])): ?>
+                                        <span class="restriction-badge cta" title="Closed to arrival (no check-in)">No Check-in</span>
+                                    <?php endif; ?>
+                                    <?php if (!empty($restrictions['closed_to_departure'])): ?>
+                                        <span class="restriction-badge ctd" title="Closed to departure (no check-out)">No Check-out</span>
+                                    <?php endif; ?>
+                                    <?php if (!empty($restrictions['min_stay_arrival']) && $restrictions['min_stay_arrival'] > 1): ?>
+                                        <span class="restriction-badge min-stay" title="Minimum stay <?= $restrictions['min_stay_arrival'] ?> nights">Min <?= $restrictions['min_stay_arrival'] ?> Nights</span>
+                                    <?php elseif (!empty($restrictions['min_stay_through']) && $restrictions['min_stay_through'] > 1): ?>
+                                        <span class="restriction-badge min-stay" title="Minimum stay <?= $restrictions['min_stay_through'] ?> nights">Min <?= $restrictions['min_stay_through'] ?> Nights</span>
                                     <?php endif; ?>
                                 <?php endif; ?>
                             </div>
