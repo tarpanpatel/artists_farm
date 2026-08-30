@@ -58,6 +58,54 @@ There is no dedicated whole-property room kind; this is Channex's intended
 shape for vacation rentals, and their certification notes explicitly permit
 single-unit systems to "adapt to 1 unit / 1 rate plan and declare the adaptation".
 
+### Channel creation — the API disagrees with the docs
+
+Established 30 Aug 2026 by trial against the live sandbox. Channex's own written
+guidance is wrong or incomplete on three points, each of which costs an hour if
+you trust the docs:
+
+1. **The field is `channel`, NOT `channel_type`.** Sending `channel_type`
+   returns `{"channel":["can't be blank"]}`.
+2. **`group_id` is REQUIRED.** Omitting it returns
+   `"You not have access to requested group"` — which reads like an account
+   permissions failure and will send you to support for nothing. It is not a
+   permissions problem. Get the id from `GET /groups`; the property's own
+   `relationships.groups` also carries it.
+3. **`filter[property_id]=` silently returns an empty array** on `/channels`
+   while the channels plainly exist. It does not error — it just lies. List
+   unfiltered and match client-side, or you will "confirm" there are no channels
+   and delete nothing while three sit there.
+
+Valid `channel` codes, confirmed empirically (casing matters):
+
+| Code | Result |
+|---|---|
+| `OpenChannel` | created — simulator, needs no OTA credentials |
+| `AirBNB` | created (note the capitalisation; `Airbnb` is rejected) |
+| `Expedia` | created |
+| `BookingCom`, `Agoda` | recognised but HTTP 500 without real credentials |
+| `Airbnb`, `Booking`, `Open`, `GMT`, `Simulator`, `TestChannel` | invalid |
+
+A channel also needs `settings.hotel_code` before mapping is accepted, and
+mapping goes in `settings.mapping` via `PUT /channels/{id}` — the documented
+`POST /channels/{id}/map` endpoint returns 404.
+
+There is a configured sandbox channel already in place:
+
+```
+Certification Simulator  (OpenChannel)
+  id          3bde9156-1373-438b-ae47-c863d5f219f9
+  hotel_code  CERT-TEST-001
+  mapping     room_type 4ca732c0-6f4f-457c-9c48-396f3d784590 <-> ota_room_101
+              rate_plan 2d0dfacb-0239-4ec9-9eba-f6962ff3ecd8 <-> ota_rate_bar
+```
+
+**Known unresolved**: `is_active` will not flip via the API. `PUT` with
+`is_active: true` returns HTTP 200 and the flag stays `false` — it is silently
+ignored rather than rejected. Activation is presumably a dashboard action or
+depends on a verified connection. Do not sink time into this; toggle it in the
+UI.
+
 Credentials: `php/config/channex_config.json` (gitignored by the blanket
 `*.json` rule). **Never commit it or echo the key.**
 
