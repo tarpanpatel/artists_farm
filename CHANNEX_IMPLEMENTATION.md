@@ -99,9 +99,53 @@ Valid `channel` codes, confirmed empirically (casing matters):
 | `BookingCom`, `Agoda` | recognised but HTTP 500 without real credentials |
 | `Airbnb`, `Booking`, `Open`, `GMT`, `Simulator`, `TestChannel` | invalid |
 
-A channel also needs `settings.hotel_code` before mapping is accepted, and
-mapping goes in `settings.mapping` via `PUT /channels/{id}` — the documented
-`POST /channels/{id}/map` endpoint returns 404.
+### Mapping and activation — the shapes that actually work
+
+`settings.mapping` is a red herring: Channex accepts and stores it, but it is
+NOT the mapping, and activation still fails with
+`{"channel":["mapping shouldn't be empty"]}` while it is populated. The
+documented `POST /channels/{id}/map` returns 404.
+
+The real mapping lives in the channel's **`rate_plans`** attribute:
+
+```json
+PUT /channels/{id}
+{"channel": {
+  "group_id":   "<group>",
+  "properties": ["<property uuid>"],
+  "rate_plans": [
+    {"rate_plan_id": "<local rate plan uuid>",
+     "settings": {"room_type_code": 101001, "rate_plan_code": 202001,
+                  "occupancy": 2, "pricing_type": "OBP",
+                  "primary_occ": true, "readonly": false, "occ_changed": false}}
+  ],
+  "settings": {"hotel_code": "<code>"}
+}}
+```
+
+Three things that each cost a round trip:
+
+- **`room_type_code` / `rate_plan_code` must be INTEGERS.** Strings are accepted
+  and silently land under "removed rates" — the OTA side then reads
+  "Not mapped". For a live channel these come from
+  `POST /channels/mapping_details`, whose response nests rates under `rooms[].rates[]`
+  (note: `rooms`, not `room_types`).
+- **OpenChannel wants `settings.hotel_code`; Booking.com wants `settings.hotel_id`.**
+  Sending the wrong one returns `{"settings":["hotel_code is required"]}`. The
+  channex-pms-integration skill's example shows `hotel_id` because it was written
+  against Booking.com — do not copy it verbatim for a simulator channel.
+- **Activation is `POST /channels/{id}/activate`, not `PUT {is_active: true}`.**
+  The PUT returns HTTP 200 and silently ignores the flag. There is a matching
+  `POST /channels/{id}/deactivate`, and DELETE requires the channel be inactive
+  first.
+
+Activation error meanings, in the order you will hit them:
+`{"channel":["is not ready"]}` → mapping still empty.
+`{"errors":"invalid_credentials"}` → mapping is fine; the channel is now trying
+to authenticate against a real OTA and your `hotel_code` has nothing behind it.
+That second one is the genuine wall: per Channex's own docs, a sandbox account
+without real OTA credentials needs **support to provision a shared test hotel**
+or bind a simulated feed. Stop probing at that point and raise a ticket.
 
 There is a configured sandbox channel already in place:
 
