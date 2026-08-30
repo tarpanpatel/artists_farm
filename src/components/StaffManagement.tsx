@@ -95,6 +95,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     return 'control_center';
   };
 
+  const { staff, staffLoading, attendance, addStaff, updateStaff, recordAttendance, refreshStaff } = useStaff();
   const [activeSubTab, setActiveSubTab] = useState<'control_center' | 'calendar' | 'roster'>(getInitialStaffSubTab);
   const isAttendancePage = activeMenuItemKey === 'attendance_calendar' || activeMenuItemKey === 'attendance_salaries';
 

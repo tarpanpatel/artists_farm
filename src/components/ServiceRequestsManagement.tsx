@@ -82,6 +82,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
     return 'pending';
   };
 
+  const [fulfillingId, setFulfillingId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'pending' | 'fulfilled'>(getInitialServiceRequestsTab);
 
   const handleTabSelect = (tab: 'pending' | 'fulfilled') => {

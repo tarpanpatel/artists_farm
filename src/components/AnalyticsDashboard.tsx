@@ -85,6 +85,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     return activeMenuItemKey === 'purchase_analytics' ? 'expenses' : 'overview';
   };
 
+  const { isAuthenticated, authChecked } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'pace' | 'kitchen' | 'expenses' | 'profit_loss' | 'fluctuations'>(getInitialAnalyticsTab);
 
   const handleTabSelect = (tab: 'overview' | 'bookings' | 'pace' | 'kitchen' | 'expenses' | 'profit_loss' | 'fluctuations') => {

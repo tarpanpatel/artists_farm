@@ -180,6 +180,7 @@ export const OnboardingManager: React.FC = () => {
     return 'welcome';
   };
 
+  const { showToast } = useToast();
   const [activeTab, setActiveTabState] = useState<'welcome' | 'cadence' | 'pricing' | 'pwa' | 'support'>(getInitialOnboardingTab);
 
   const setActiveTab = (tab: 'welcome' | 'cadence' | 'pricing' | 'pwa' | 'support') => {
