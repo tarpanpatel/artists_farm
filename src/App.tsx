@@ -2990,17 +2990,20 @@ export function App() {
       // "scroll first"/"check the box" prompts - this branch is rendered directly by App(),
       // never through AppWithProviders, so it needs its own ToastProvider the same way the
       // Root Admin dashboard branch below already does, or that throws "useToast must be used
-      // within ToastProvider" with no error boundary to catch it, blanking the entire page.
-      <ToastProvider>
-        <Suspense fallback={<LoadingScreen message="Loading tenant dashboard..." />}>
-          <TenantDashboard
-            username={userSession.username}
-            tenantId={dashboardTenantId}
-            tenantInfo={resolvedTenant}
-            onLogout={handleAdminLogout}
-          />
-        </Suspense>
-      </ToastProvider>
+      // within ToastProvider", blanking the entire page. On 30 Aug 2026 the same gap recurred
+      // with useAuth, so a missing provider now degrades to a visible error rather than a blank page.
+      <ErrorBoundary section="Tenant Dashboard">
+        <ToastProvider>
+          <Suspense fallback={<LoadingScreen message="Loading tenant dashboard..." />}>
+            <TenantDashboard
+              username={userSession.username}
+              tenantId={dashboardTenantId}
+              tenantInfo={resolvedTenant}
+              onLogout={handleAdminLogout}
+            />
+          </Suspense>
+        </ToastProvider>
+      </ErrorBoundary>
     );
   }
 
@@ -3012,27 +3015,35 @@ export function App() {
     }
 
     if (!userSession || !userSession.is_platform_admin) {
-      return <LoginPage variant="management" onLoginSuccess={handleLoginSuccess} />;
+      return (
+        <ErrorBoundary section="Root Admin Login">
+          <ToastProvider>
+            <LoginPage variant="management" onLoginSuccess={handleLoginSuccess} />
+          </ToastProvider>
+        </ErrorBoundary>
+      );
     }
 
     return (
-      // AccountSettings (rendered inside RootAdminDashboard) calls useToast()
-      // for its save/error notifications - this branch is rendered directly
-      // by App(), never through AppWithProviders, so it needs its own
-      // ToastProvider or that throws "useToast must be used within
-      // ToastProvider" with no error boundary to catch it, blanking the
-      // entire page (not just the Account Settings section).
-      <ToastProvider>
-        <ConfirmDialogProvider>
-          <Suspense fallback={<LoadingScreen message="Loading root admin dashboard..." />}>
-            <RootAdminDashboard
-              username={userSession.username}
-              onLogout={handleAdminLogout}
-              activeRole="Root Admin"
-            />
-          </Suspense>
-        </ConfirmDialogProvider>
-      </ToastProvider>
+      // AccountSettings (rendered inside RootAdminDashboard) calls useToast() for its
+      // save/error notifications - this branch is rendered directly by App(), never
+      // through AppWithProviders, so it needs its own ToastProvider or that throws
+      // "useToast must be used within ToastProvider", blanking the entire page rather
+      // than just the Account Settings section. Don't remove these nested providers as
+      // redundant; each branch outside AppWithProviders supplies its own.
+      <ErrorBoundary section="Root Admin Dashboard">
+        <ToastProvider>
+          <ConfirmDialogProvider>
+            <Suspense fallback={<LoadingScreen message="Loading root admin dashboard..." />}>
+              <RootAdminDashboard
+                username={userSession.username}
+                onLogout={handleAdminLogout}
+                activeRole="Root Admin"
+              />
+            </Suspense>
+          </ConfirmDialogProvider>
+        </ToastProvider>
+      </ErrorBoundary>
     );
   }
 
@@ -3044,16 +3055,26 @@ export function App() {
     }
 
     if (!userSession || !userSession.is_platform_admin) {
-      return <LoginPage variant="management" onLoginSuccess={handleLoginSuccess} />;
+      return (
+        <ErrorBoundary section="Platform Property Management Login">
+          <ToastProvider>
+            <LoginPage variant="management" onLoginSuccess={handleLoginSuccess} />
+          </ToastProvider>
+        </ErrorBoundary>
+      );
     }
 
     return (
-      <Suspense fallback={<LoadingScreen message="Loading property management..." />}>
-        <PlatformPropertyManagement
-          username={userSession.username}
-          onLogout={handleAdminLogout}
-        />
-      </Suspense>
+      <ErrorBoundary section="Platform Property Management">
+        <ToastProvider>
+          <Suspense fallback={<LoadingScreen message="Loading property management..." />}>
+            <PlatformPropertyManagement
+              username={userSession.username}
+              onLogout={handleAdminLogout}
+            />
+          </Suspense>
+        </ToastProvider>
+      </ErrorBoundary>
     );
   }
 
@@ -3072,39 +3093,23 @@ export function App() {
         return <LoadingScreen message="Redirecting to root admin dashboard..." />;
       } else if (userSession.default_tenant_id) {
         return (
-          // See the isTenantDashboardPath branch above for why this needs its own ToastProvider.
-          <ToastProvider>
-            <Suspense fallback={<LoadingScreen message="Loading tenant dashboard..." />}>
-              <TenantDashboard
-                username={userSession.username}
-                tenantId={userSession.default_tenant_id}
-                onLogout={handleAdminLogout}
-              />
-            </Suspense>
-          </ToastProvider>
+          <ErrorBoundary section="Tenant Dashboard">
+            <ToastProvider>
+              <Suspense fallback={<LoadingScreen message="Loading tenant dashboard..." />}>
+                <TenantDashboard
+                  username={userSession.username}
+                  tenantId={userSession.default_tenant_id}
+                  onLogout={handleAdminLogout}
+                />
+              </Suspense>
+            </ToastProvider>
+          </ErrorBoundary>
         );
       }
     }
     // Show login form if not logged in
     return (
-      <ToastProvider>
-        <LoginPage variant="management" onLoginSuccess={handleLoginSuccess} onStartTrial={() => setIsSelfOnboardingOpen(true)} />
-        <SelfOnboardingWizard
-          isOpen={isSelfOnboardingOpen}
-          onClose={() => setIsSelfOnboardingOpen(false)}
-          onSuccess={(redirectUrl) => {
-            setIsSelfOnboardingOpen(false);
-            window.location.href = redirectUrl;
-          }}
-        />
-      </ToastProvider>
-    );
-  }
-
-  // Root path - show login or platform management
-  if (isRootPath) {
-    if (!userSession) {
-      return (
+      <ErrorBoundary section="Management Login">
         <ToastProvider>
           <LoginPage variant="management" onLoginSuccess={handleLoginSuccess} onStartTrial={() => setIsSelfOnboardingOpen(true)} />
           <SelfOnboardingWizard
@@ -3116,6 +3121,27 @@ export function App() {
             }}
           />
         </ToastProvider>
+      </ErrorBoundary>
+    );
+  }
+
+  // Root path - show login or platform management
+  if (isRootPath) {
+    if (!userSession) {
+      return (
+        <ErrorBoundary section="Root Login">
+          <ToastProvider>
+            <LoginPage variant="management" onLoginSuccess={handleLoginSuccess} onStartTrial={() => setIsSelfOnboardingOpen(true)} />
+            <SelfOnboardingWizard
+              isOpen={isSelfOnboardingOpen}
+              onClose={() => setIsSelfOnboardingOpen(false)}
+              onSuccess={(redirectUrl) => {
+                setIsSelfOnboardingOpen(false);
+                window.location.href = redirectUrl;
+              }}
+            />
+          </ToastProvider>
+        </ErrorBoundary>
       );
     }
 
@@ -3132,16 +3158,17 @@ export function App() {
     // Tenant manager - render dashboard directly
     if (userSession.default_tenant_id) {
       return (
-        // See the isTenantDashboardPath branch above for why this needs its own ToastProvider.
-        <ToastProvider>
-          <Suspense fallback={<LoadingScreen message="Loading tenant dashboard..." />}>
-            <TenantDashboard
-              username={userSession.username}
-              tenantId={userSession.default_tenant_id}
-              onLogout={handleAdminLogout}
-            />
-          </Suspense>
-        </ToastProvider>
+        <ErrorBoundary section="Tenant Dashboard">
+          <ToastProvider>
+            <Suspense fallback={<LoadingScreen message="Loading tenant dashboard..." />}>
+              <TenantDashboard
+                username={userSession.username}
+                tenantId={userSession.default_tenant_id}
+                onLogout={handleAdminLogout}
+              />
+            </Suspense>
+          </ToastProvider>
+        </ErrorBoundary>
       );
     }
 

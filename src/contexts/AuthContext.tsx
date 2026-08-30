@@ -35,6 +35,21 @@ export const useAuth = (): AuthContextValue => {
   return ctx;
 };
 
+/**
+ * For the few components that legitimately render on BOTH sides of the provider
+ * boundary - LoginPage is rendered inside AuthProvider on the property path and
+ * outside it on the management/root-admin screens, where there is no session
+ * check and so no sessionMismatchNotice to show. Those screens used to crash
+ * outright on the strict hook below.
+ *
+ * Reach for this only when a component genuinely has no provider by design.
+ * `useAuth` stays strict on purpose: everywhere else, a missing provider is a
+ * real bug and must fail loudly rather than silently degrade.
+ */
+export const useAuthOptional = (): AuthContextValue | null => {
+  return useContext(AuthContext);
+};
+
 // Session keys are namespaced per property so logging out of one property
 // (e.g. /goa/) doesn't clear the session of another (e.g. /jaipur/) sharing
 // the same browser origin.
