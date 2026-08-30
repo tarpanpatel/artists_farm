@@ -2966,7 +2966,13 @@ export function App() {
     }
 
     if (!userSession) {
-      return <LoginPage variant="management" onLoginSuccess={handleLoginSuccess} />;
+      return (
+        <ErrorBoundary section="Tenant Dashboard Login">
+          <ToastProvider>
+            <LoginPage variant="management" onLoginSuccess={handleLoginSuccess} />
+          </ToastProvider>
+        </ErrorBoundary>
+      );
     }
 
     // Determine which tenant ID to show: the one from the URL (resolvedTenant) or the user's default
