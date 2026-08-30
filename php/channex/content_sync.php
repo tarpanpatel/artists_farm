@@ -50,13 +50,17 @@ class ChannexContentSyncer {
      * Idempotently provision/map a property and its rooms.
      */
     public function syncProperty(int $propertyId): array {
-        $propStmt = $this->pdo->prepare("SELECT id, name, property_type, default_tariff FROM properties WHERE id = ?");
+        $propStmt = $this->pdo->prepare("SELECT id, name, property_type, default_tariff, currency FROM properties WHERE id = ?");
         $propStmt->execute([$propertyId]);
         $prop = $propStmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$prop) {
             throw new InvalidArgumentException("Property ID {$propertyId} not found");
         }
+
+        // The property's own currency, not a hardcoded INR - a rate plan created
+        // in the wrong currency prices every listing wrong on the OTA.
+        $currency = strtoupper(trim((string)($prop['currency'] ?? ''))) ?: 'INR';
 
         // Determine units: if MULTI_KEY, fetch child rooms; else single whole property
         $units = [];
@@ -92,7 +96,7 @@ class ChannexContentSyncer {
                 'property' => [
                     'title' => $prop['name'],
                     'property_type' => 'villa',
-                    'currency' => 'INR',
+                    'currency' => $currency,
                     'timezone' => 'Asia/Kolkata',
                     'country' => 'IN',
                     'city' => 'Jaipur',
@@ -139,20 +143,32 @@ class ChannexContentSyncer {
             }
             $channexRoomTypeId = $roomRes['data']['id'];
 
-            // 2. Create Rate Plan (rates in minor units: INR 3500 -> 350000)
-            $minorRate = (int)round($unit['default_tariff'] * 100);
+            // 2. Create Rate Plan.
+            //
+            // Rates are MAJOR units ("2400.00"), not minor. This used to send
+            // default_tariff * 100, which would have listed every room at 100x
+            // its real nightly rate. Confirmed two ways: reading a working rate
+            // plan back from Channex returns "2400.00", and the ARI drain worker
+            // - the path that already pushes rates successfully - sends a plain
+            // float. Same major/minor confusion the inbound booking receiver had.
+            //
+            // is_primary is required on every option and was missing, which is
+            // what Channex was actually rejecting: "invalid option, rate and
+            // is_primary is required fields".
+            $nightlyRate = round((float)$unit['default_tariff'], 2);
             $ratePayload = [
                 'rate_plan' => [
                     'property_id' => $channexPropertyId,
                     'room_type_id' => $channexRoomTypeId,
                     'title' => 'Standard Rate',
-                    'currency' => 'INR',
+                    'currency' => $currency,
                     'sell_mode' => 'per_room',
                     'rate_mode' => 'manual',
                     'options' => [
                         [
                             'occupancy' => 2,
-                            'rate' => $minorRate,
+                            'is_primary' => true,
+                            'rate' => number_format($nightlyRate, 2, '.', ''),
                         ]
                     ]
                 ]
