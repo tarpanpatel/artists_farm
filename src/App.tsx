@@ -2620,7 +2620,18 @@ ${itemsStr}
               rooms={preloadedData.currentProperty?.rooms || []}
               onAddGuest={async (guest) => {
                 await handleAddGuest(guest);
-                setIsAddBookingModalOpen(false);
+                // Close after a beat, not instantly (31 Aug 2026). Closing in
+                // the same tick as the network response meant the drawer
+                // could start vanishing before GuestManagement.tsx's own
+                // "Guest booked successfully!" toast (fired right after this
+                // promise resolves) had registered - success and the drawer
+                // disappearing looked simultaneous/ambiguous, particularly
+                // right after the response-time and false-duplicate-flash
+                // fixes above. Not awaited - onAddGuest resolves immediately
+                // so the toast/form-reset in GuestManagement's onSubmit still
+                // fire right away, while the drawer itself lingers just long
+                // enough for that toast to be clearly seen before closing.
+                setTimeout(() => setIsAddBookingModalOpen(false), 1000);
               }}
               onCheckoutGuest={handleCheckoutGuest}
               onDispatchTelegram={dispatchTelegramAlert}
