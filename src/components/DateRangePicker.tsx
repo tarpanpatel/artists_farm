@@ -60,11 +60,20 @@ function fromIsoDate(value: string): Date | undefined {
 // dd/mm/yyyy `format` option incorrectly, so Date objects are the only safe
 // choice here - see fromIsoDate above, already used elsewhere in this file
 // for the exact same reason).
-function toDisabledDates(blockedDates: string[] | undefined): Date[] {
+function toDisabledDates(blockedDates: string[] | undefined): Array<Date | number | string> {
   if (!blockedDates || blockedDates.length === 0) return [];
-  return blockedDates
-    .map((d) => fromIsoDate(d))
-    .filter((d): d is Date => d !== undefined);
+  const list: Array<Date | number | string> = [];
+  for (const raw of blockedDates) {
+    const d = fromIsoDate(raw);
+    if (!d) continue;
+    list.push(d);
+    list.push(d.getTime());
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    list.push(`${day}/${month}/${year}`);
+  }
+  return list;
 }
 
 // The earliest blocked date a checkout-style stay [start, end) would cover, or
@@ -331,6 +340,10 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       };
       rangepicker.datepickers[0].setOptions(options);
       rangepicker.datepickers[1].setOptions(options);
+      try {
+        (rangepicker.datepickers[0] as any).picker?.render();
+        (rangepicker.datepickers[1] as any).picker?.render();
+      } catch (e) {}
     };
     syncEndCeilingRef.current = syncDisabledAndCeiling;
     syncDisabledAndCeiling(toIsoDate(rangepicker.dates[0]));
