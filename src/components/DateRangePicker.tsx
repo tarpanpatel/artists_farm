@@ -90,6 +90,32 @@ function firstBlockedInRange(
   return earliest;
 }
 
+// The earliest blocked date on/after a chosen start, or null when nothing
+// ahead is blocked. Used to cap the *end*-side calendar so a night that
+// crosses a blocked date can't be clicked at all, rather than being pickable
+// and then rejected afterwards (see firstBlockedInRange's own note above -
+// datesDisabled alone doesn't stop a range being drawn across a blocked day).
+function earliestBlockedOnOrAfter(
+  startIso: string,
+  blockedDates: string[] | undefined,
+): string | null {
+  if (!startIso || !blockedDates || blockedDates.length === 0) return null;
+  let earliest: string | null = null;
+  for (const raw of blockedDates) {
+    const d = raw.slice(0, 10);
+    if (d >= startIso && (earliest === null || d < earliest)) {
+      earliest = d;
+    }
+  }
+  return earliest;
+}
+
+// Effectively "no cap" - flowbite-datepicker's setOptions treats `undefined`
+// as "leave whatever was there before" rather than "clear it" (confirmed
+// against vanillajs-datepicker, which it wraps), so clearing a previously
+// set maxDate needs an explicit far-future stand-in instead.
+const NO_END_CEILING = new Date(2099, 0, 1);
+
 function formatIsoNice(iso: string): string {
   const d = fromIsoDate(iso);
   return d
@@ -147,6 +173,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   const blockedDatesRef = useRef(blockedDates);
   blockedDatesRef.current = blockedDates;
   const suppressRangeValidationRef = useRef(false);
+  const syncEndCeilingRef = useRef<(startIso: string) => void>(() => {});
 
   const [rangeError, setRangeError] = useState<string | undefined>(undefined);
   const hasError = Boolean(error) || Boolean(rangeError);
@@ -188,6 +215,19 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       footerControls.appendChild(closeBtn);
     });
 
+    // Caps the *end*-side popover so a night that would cross a blocked date
+    // is greyed out and unclickable, instead of being pickable and only
+    // rejected once both dates are chosen (see firstBlockedInRange below,
+    // now a fallback safety net rather than the primary guard).
+    const syncEndCeiling = (startIso: string) => {
+      const cap = earliestBlockedOnOrAfter(startIso, blockedDatesRef.current);
+      rangepicker.datepickers[1].setOptions({
+        maxDate: cap ? (fromIsoDate(cap) ?? NO_END_CEILING) : NO_END_CEILING,
+      });
+    };
+    syncEndCeilingRef.current = syncEndCeiling;
+    syncEndCeiling(toIsoDate(rangepicker.dates[0]));
+
     const reportCurrentRange = () => {
       if (suppressRangeValidationRef.current) return;
 
@@ -195,8 +235,12 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       const startIso = toIsoDate(start);
       const endIso = toIsoDate(end);
 
-      // A complete range may not span a blocked night - bounce the end date and
-      // keep the (still-valid) start so the user only re-picks the checkout.
+      syncEndCeiling(startIso);
+
+      // Fallback safety net - syncEndCeiling above should already make an
+      // invalid end date unclickable, so this should rarely fire in
+      // practice, but stays in place in case a range is set programmatically
+      // (setDates, or a prop sync) rather than through a calendar click.
       if (startIso && endIso) {
         const clash = firstBlockedInRange(startIso, endIso, blockedDatesRef.current);
         if (clash) {
@@ -257,6 +301,10 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     if (key === lastBlockedDatesKeyRef.current) return;
     lastBlockedDatesKeyRef.current = key;
     rangepicker.setOptions({ datesDisabled: toDisabledDates(blockedDates) });
+    // Blocked dates can change while the form is still open (another save
+    // elsewhere drains into this same list) - re-cap the end side against
+    // whatever start is currently picked, not just against clicks.
+    syncEndCeilingRef.current(toIsoDate(rangepicker.dates[0]));
   }, [blockedDates]);
 
   return (

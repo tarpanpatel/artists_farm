@@ -21,6 +21,7 @@ declare module 'flowbite-datepicker/DateRangePicker' {
   export interface DatepickerInstance {
     readonly pickerElement: HTMLElement | undefined;
     hide(): void;
+    setOptions(options: { datesDisabled?: Date[]; maxDate?: Date | string | number }): void;
   }
 
   export default class DateRangePicker {
