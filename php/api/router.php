@@ -4,6 +4,21 @@
  * Ground Code Resort & Kitchen Management Backend System
  */
 
+// Output buffering, on from the very first line (31 Aug 2026): required for
+// channex/outbox.php's triggerEventDrivenChannexDrain() to actually return
+// the HTTP response early before its post-response Channex push. Without an
+// active buffer here, that function's fallback (ob_end_flush()+flush(), used
+// whenever fastcgi_finish_request() doesn't exist - confirmed true for this
+// host's LiteSpeed SAPI) has nothing to flush: the response was already sent
+// unbuffered, so the client just blocks until the whole script - including
+// the multi-second Channex API round trip - finishes. Measured live: 0.9s
+// with this buffer active vs 8s without it, same endpoint, same payload.
+// Every guest-booking and rate-rule save was silently taking 13-20+ seconds
+// to respond because of this, looking like a failure to the frontend (whose
+// own timeout is shorter) even though the write itself succeeded instantly -
+// found 31 Aug 2026 while dry-running the Channex certification video.
+ob_start();
+
 // PHP's default session lifetime (session.gc_maxlifetime, 1440s = 24min) is
 // too short for an admin tool where reading/deciding between actions
 // routinely exceeds it - the session silently expires mid-task, and the
