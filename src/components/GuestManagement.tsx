@@ -156,11 +156,14 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const [bookingSourceLocal, setBookingSourceLocal] = useState('Offline');
   const [advanceReceivedBy, setAdvanceReceivedBy] = useState('');
   const [pendingReceivedBy, setPendingReceivedBy] = useState('');
-  const [checkinDate, setCheckinDate] = useState(new Date().toISOString().split('T')[0]);
+  // Left blank deliberately (31 Aug 2026) - defaulting these to today/today+2
+  // meant an operator could hit Save without ever having chosen dates, and
+  // "today" is exactly the date range most likely to already be occupied or
+  // carry an active rate-rule restriction, so a silent default there is the
+  // worst place for one. Force an explicit pick every time instead.
+  const [checkinDate, setCheckinDate] = useState('');
   const [checkinTime, setCheckinTime] = useState('14:00');
-  const [expectedCheckout, setExpectedCheckout] = useState(
-    new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0]
-  );
+  const [expectedCheckout, setExpectedCheckout] = useState('');
   const [checkoutTime, setCheckoutTime] = useState('11:00');
   const [notes, setNotes] = useState('');
   const [showGuestNotes, setShowGuestNotes] = useState(false);
@@ -460,9 +463,9 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     setBookingSourceLocal('Offline');
     setAdvanceReceivedBy('');
     setPendingReceivedBy('');
-    setCheckinDate(new Date().toISOString().split('T')[0]);
+    setCheckinDate('');
     setCheckinTime('14:00');
-    setExpectedCheckout(new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0]);
+    setExpectedCheckout('');
     setCheckoutTime('11:00');
     setNotes('');
     setShowGuestNotes(false);
