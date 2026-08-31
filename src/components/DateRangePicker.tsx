@@ -253,7 +253,8 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       dp.pickerElement?.addEventListener('click', (ev) => {
         const target = ev.target;
         const matched = target instanceof Element && target.closest('.datepicker-cell.day:not(.disabled)');
-        console.error('DBG_CLICK', matched ? 'matched' : 'no-match', (target as Element)?.className);
+        (window as any).__dbg = (window as any).__dbg || [];
+        (window as any).__dbg.push({ t: 'click', matched: !!matched, cls: (target as Element)?.className });
         if (matched) {
           userClickPendingRef.current = true;
         }
@@ -341,7 +342,8 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       const [start, end] = rangepicker.dates;
       const startIso = toIsoDate(start);
       let endIso = toIsoDate(end);
-      console.error('DBG_SETTLE', JSON.stringify({ wasUserClick, prevStart: prevStartIsoRef.current, startIso, endIso }));
+      (window as any).__dbg = (window as any).__dbg || [];
+      (window as any).__dbg.push({ t: 'settle', wasUserClick, prevStart: prevStartIsoRef.current, startIso, endIso });
 
       // Re-picking checkin bug fix (1 Sep 2026) - see the refs' own comment
       // above for the full mechanics. prevStartIsoRef is seeded once right
@@ -419,6 +421,8 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     // synchronously, see the refs' comment above) into one settle pass that
     // runs after that whole synchronous cascade has finished.
     const reportCurrentRange = () => {
+      (window as any).__dbg = (window as any).__dbg || [];
+      (window as any).__dbg.push({ t: 'changeDate-fired', suppressed: suppressRangeValidationRef.current, scheduled: scheduledRef.current });
       if (suppressRangeValidationRef.current) return;
       if (scheduledRef.current) return;
       scheduledRef.current = true;
