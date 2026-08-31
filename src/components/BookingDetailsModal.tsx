@@ -834,6 +834,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 onCheckinChange={setEditCheckin}
                 onCheckoutChange={setEditCheckout}
                 disabled={!isEditing}
+                disablePastDates
                 blockedDates={getEditBlockedDateStrings()}
               />
             </div>
