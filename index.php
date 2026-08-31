@@ -58,6 +58,19 @@ if (file_exists($dist_index)) {
     $html = str_replace('href="dist/', 'href="/dist/', $html);
     $html = str_replace('="/assets/', '="/dist/assets/', $html);
 
+    // Same fix for the PWA icon + favicon links. dist/index.html emits these
+    // relative (./app-icons/..., ./favicon.ico) because vite's base is './',
+    // but the SPA is served from deep /{tenant}/{property}/ URLs where a
+    // relative href resolves to /{tenant}/{property}/app-icons/... - not a
+    // real file, so .htaccess routes it straight back into this SPA (a 200
+    // text/html response, not the PNG). Result: a broken favicon and, worse,
+    // a broken apple-touch-icon, so iOS has no home-screen icon / launch
+    // image and shows a broken-image placeholder on cold PWA launch. Both
+    // app-icons/ and favicon.ico are deployed at the domain root (same as
+    // /dist/), so anchor the links there. (Found live on staging 31 Aug 2026.)
+    $html = str_replace('href="./app-icons/', 'href="/app-icons/', $html);
+    $html = str_replace('href="./favicon.ico"', 'href="/favicon.ico"', $html);
+
     // Point the manifest link at the dynamic per-request generator (php/manifest.php)
     $manifestUrl = '/php/manifest.php?tenant_slug=' . urlencode($tenantSlug) . '&property_slug=' . urlencode($propertySlug);
     $html = preg_replace('/<link rel="manifest" href="[^"]*"\s*\/?>/', '<link rel="manifest" href="' . $manifestUrl . '" />', $html);

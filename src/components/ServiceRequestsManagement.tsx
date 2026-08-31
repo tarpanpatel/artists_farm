@@ -25,7 +25,7 @@ import { Input } from './Input';
 import { formatDateTimeDDMMYYYY } from '../utils/dateUtils';
 
 import { useConfigurationData } from '../contexts/ConfigurationDataContext';
-import { Tabs, TabItem, Card, Badge, TextInput as FlowbiteTextInput, Textarea as FlowbiteTextarea, Checkbox as FlowbiteCheckbox, Label as FlowbiteLabel, Drawer } from 'flowbite-react';
+import { Tabs, TabItem, Card, Badge, TextInput as FlowbiteTextInput, Textarea as FlowbiteTextarea, Checkbox as FlowbiteCheckbox, Label as FlowbiteLabel, Drawer, Modal } from 'flowbite-react';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
 
 interface Room {
@@ -482,7 +482,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
       >
         <div className="flex items-center gap-2 flex-wrap">
           <PageHeaderButton variant="secondary" onClick={() => setIsManageModalOpen(true)} icon={Settings}>
-            Manage Custom Types
+            Manage Custom Services
           </PageHeaderButton>
           <PageHeaderButton onClick={() => setIsAddModalOpen(true)} icon={Plus}>
             {t('new_request_button', 'New Request')}
@@ -651,9 +651,9 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
         open={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         position="right"
-        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col"
       >
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+        <div className="shrink-0 flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
           <span className="flex items-center gap-2 font-bold text-gray-900 dark:text-white text-base">
             <Clock className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             {t('new_service_request_heading', 'New Service Request')}
@@ -667,8 +667,8 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
           </button>
         </div>
 
-        <form onSubmit={handleCreate} className="app-form flex-1 flex flex-col justify-between overflow-y-auto">
-          <div className="p-4 space-y-4">
+        <form onSubmit={handleCreate} className="app-form flex-1 flex flex-col min-h-0">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {isMultiKeyProperty && rooms.length > 0 && (
               <div className="service-requests-management__form-group">
                 <StyledSelect
@@ -687,7 +687,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                   onClick={() => setIsManageModalOpen(true)}
                   className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 font-medium cursor-pointer"
                 >
-                  <Settings className="w-3.5 h-3.5" /> Manage Custom Types
+                  <Settings className="w-3.5 h-3.5" /> Manage Custom Services
                 </button>
               </div>
               <StyledSelect
@@ -757,7 +757,11 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
             </div>
           </div>
 
-          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+          {/* Pinned footer sits OUTSIDE the scroll area (shrink-0), flush with the
+              drawer's bottom edge - so it takes the safe-area inset on its bottom
+              padding per DESIGN.md's "Bottom-Anchored Drawer Footer Safe Area"
+              rule, otherwise the buttons sit under the iPhone home indicator. */}
+          <div className="shrink-0 flex justify-end gap-2 px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-850">
             <Button variant="secondary" size="md" onClick={() => setIsAddModalOpen(false)}>
               {t('cancel_button', 'Cancel')}
             </Button>
@@ -768,17 +772,25 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
         </form>
       </Drawer>
 
-      {/* Manage Custom Service Types Right Drawer */}
-      <Drawer
-        open={isManageModalOpen}
+      {/* Manage Custom Services - a centered Modal, NOT a second right-side
+          Drawer. It can be opened from inside the New Service Request drawer
+          (the "Manage Custom Services" link in the Request Type row), and
+          DESIGN.md's "nested dialogs never stack a second Drawer" rule makes
+          any dialog reachable from inside an open drawer a Modal. z-70 stacks
+          it above that drawer's z-58. */}
+      <Modal
+        show={isManageModalOpen}
         onClose={() => setIsManageModalOpen(false)}
-        position="right"
-        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+        dismissible
+        size="lg"
+        popup
+        className="z-70 service-requests-management__manage-modal"
       >
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+        <div className="flex flex-col max-h-[85vh]">
+        <div className="shrink-0 flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-t-lg">
           <span className="flex items-center gap-2 font-bold text-gray-900 dark:text-white text-base">
             <Settings className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-            Manage Custom Service Types
+            Manage Custom Services
           </span>
           <button
             type="button"
@@ -948,12 +960,13 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
           </div>
         </div>
 
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end bg-gray-50 dark:bg-gray-850">
+        <div className="shrink-0 p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end bg-gray-50 dark:bg-gray-850 rounded-b-lg">
           <Button variant="secondary" size="md" onClick={() => setIsManageModalOpen(false)}>
             Close
           </Button>
         </div>
-      </Drawer>
+        </div>
+      </Modal>
     </div>
   );
 };
