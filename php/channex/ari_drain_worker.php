@@ -74,25 +74,57 @@ class AriDrainWorker {
         $updateStmt->execute($rowIds);
         $this->pdo->commit();
 
-        // Group claimed rows by property_id, room_id, and kind
-        $grouped = [];
+        // Bucket claimed rows by property_id, room_id, and kind first.
+        $byKey = [];
         foreach ($claimedRows as $row) {
             $key = "{$row['property_id']}_" . ($row['room_id'] ?? '0') . "_{$row['kind']}";
-            if (!isset($grouped[$key])) {
-                $grouped[$key] = [
+            if (!isset($byKey[$key])) {
+                $byKey[$key] = [
                     'property_id' => (int)$row['property_id'],
                     'room_id' => $row['room_id'] !== null ? (int)$row['room_id'] : null,
                     'kind' => $row['kind'],
-                    'min_date' => $row['date_from'],
-                    'max_date' => $row['date_to'],
-                    'row_ids' => [],
-                    'max_attempts' => 0,
+                    'rows' => [],
                 ];
             }
-            if ($row['date_from'] < $grouped[$key]['min_date']) $grouped[$key]['min_date'] = $row['date_from'];
-            if ($row['date_to'] > $grouped[$key]['max_date']) $grouped[$key]['max_date'] = $row['date_to'];
-            $grouped[$key]['row_ids'][] = (int)$row['id'];
-            if ($row['attempts'] > $grouped[$key]['max_attempts']) $grouped[$key]['max_attempts'] = (int)$row['attempts'];
+            $byKey[$key]['rows'][] = $row;
+        }
+
+        // Within each property/room/kind bucket, only coalesce rows whose
+        // date ranges actually overlap or sit immediately adjacent (no gap)
+        // into a single push - two edits to unrelated, far-apart dates must
+        // never be merged into one API call that claims to cover the whole
+        // span between them. A prior version took a blind min()/max() across
+        // every pending row sharing the same key regardless of distance, so
+        // an old leftover row (e.g. a stray test date) would silently widen
+        // a brand-new, single-date edit into a multi-week range - exactly
+        // the "update targets the wrong date range" failures Channex's
+        // certification review caught on 31 Aug 2026.
+        $grouped = [];
+        foreach ($byKey as $bucket) {
+            $rows = $bucket['rows'];
+            usort($rows, fn($a, $b) => strcmp($a['date_from'], $b['date_from']));
+
+            $cluster = null;
+            foreach ($rows as $row) {
+                $gapDays = $cluster === null ? null : (strtotime($row['date_from']) - strtotime($cluster['max_date'])) / 86400;
+                if ($cluster !== null && $gapDays <= 1) {
+                    if ($row['date_to'] > $cluster['max_date']) $cluster['max_date'] = $row['date_to'];
+                    $cluster['row_ids'][] = (int)$row['id'];
+                    if ((int)$row['attempts'] > $cluster['max_attempts']) $cluster['max_attempts'] = (int)$row['attempts'];
+                    continue;
+                }
+                if ($cluster !== null) $grouped[] = $cluster;
+                $cluster = [
+                    'property_id' => $bucket['property_id'],
+                    'room_id' => $bucket['room_id'],
+                    'kind' => $bucket['kind'],
+                    'min_date' => $row['date_from'],
+                    'max_date' => $row['date_to'],
+                    'row_ids' => [(int)$row['id']],
+                    'max_attempts' => (int)$row['attempts'],
+                ];
+            }
+            if ($cluster !== null) $grouped[] = $cluster;
         }
 
         $today = date('Y-m-d');
@@ -112,7 +144,8 @@ class AriDrainWorker {
                     $compressedRanges = $this->computeCompressedAvailability($propId, $roomId, $startDate, $endDate);
                     $res = $this->adapter->pushAvailability($propId, $roomId, $compressedRanges);
                 } else {
-                    $compressedRestrictions = $this->computeCompressedRestrictions($propId, $roomId, $startDate, $endDate);
+                    $touchedFields = $this->computeTouchedFields($rowIds);
+                    $compressedRestrictions = $this->computeCompressedRestrictions($propId, $roomId, $startDate, $endDate, $touchedFields);
                     $res = $this->adapter->pushRestrictions($propId, $roomId, $compressedRestrictions);
                 }
 
@@ -197,15 +230,55 @@ class AriDrainWorker {
     }
 
     /**
-     * Compute compressed rate & restriction ranges for a date span.
+     * Looks up which rate/restriction fields the outbox rows being drained
+     * actually changed (stored by saveRateRule()/deleteRateRule() as
+     * `changed_fields` on the outbox payload - see computeChannexFieldDiff()
+     * in outbox.php), so the push can be scoped to just those fields instead
+     * of always re-sending the full rate+restrictions state. Returns null
+     * (meaning "all fields") for rows that predate that payload key or that
+     * intentionally want the complete state - e.g. the Full Sync path
+     * (channex_push_ari's manual_push_ari rows), which Channex's
+     * certification review expects to declare every supported restriction
+     * type explicitly rather than omit unset ones.
      */
-    public function computeCompressedRestrictions(int $propertyId, ?int $roomId, string $startDate, string $endDate): array {
-        $scopeId = $roomId ?: $propertyId;
+    private function computeTouchedFields(array $rowIds): ?array {
+        if (empty($rowIds)) return null;
+        $placeholders = implode(',', array_fill(0, count($rowIds), '?'));
+        $stmt = $this->pdo->prepare("SELECT payload FROM channex_outbox WHERE id IN ($placeholders)");
+        $stmt->execute($rowIds);
 
-        // Base rate
-        $propStmt = $this->pdo->prepare("SELECT default_tariff FROM properties WHERE id = ?");
-        $propStmt->execute([$scopeId]);
-        $baseTariff = (float)($propStmt->fetchColumn() ?: 3500);
+        $allFields = ['rate_per_night', 'min_stay_arrival', 'min_stay_through', 'max_stay', 'stop_sell', 'closed_to_arrival', 'closed_to_departure'];
+        $touched = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $json) {
+            $payload = $json ? json_decode($json, true) : null;
+            if (!is_array($payload) || !isset($payload['changed_fields']) || !is_array($payload['changed_fields'])) {
+                return null; // old-format or full-sync row present - push everything
+            }
+            foreach ($payload['changed_fields'] as $f) {
+                if (in_array($f, $allFields, true)) $touched[$f] = true;
+            }
+        }
+        return array_keys($touched);
+    }
+
+    /**
+     * Compute compressed rate & restriction ranges for a date span, scoped
+     * to $touchedFields (null = every field, used for full syncs).
+     */
+    public function computeCompressedRestrictions(int $propertyId, ?int $roomId, string $startDate, string $endDate, ?array $touchedFields = null): array {
+        $scopeId = $roomId ?: $propertyId;
+        $allFields = ['rate_per_night', 'min_stay_arrival', 'min_stay_through', 'max_stay', 'stop_sell', 'closed_to_arrival', 'closed_to_departure'];
+        $fields = $touchedFields === null ? $allFields : array_values(array_intersect($allFields, $touchedFields));
+        if (empty($fields)) $fields = $allFields; // never silently push nothing
+        $includeRate = in_array('rate_per_night', $fields, true);
+
+        // Base rate (only needed if this push actually includes rate)
+        $baseTariff = 3500.0;
+        if ($includeRate) {
+            $propStmt = $this->pdo->prepare("SELECT default_tariff FROM properties WHERE id = ?");
+            $propStmt->execute([$scopeId]);
+            $baseTariff = (float)($propStmt->fetchColumn() ?: 3500);
+        }
 
         // Fetch rules
         $stmt = $this->pdo->prepare("
@@ -231,22 +304,37 @@ class AriDrainWorker {
             }
         }
 
-        // Build daily state
+        // Build daily state - only the touched fields are set on each day,
+        // so a rate-only push never carries stop_sell/closed_to_arrival/etc.
         $cur = strtotime($startDate);
         $end = strtotime($endDate);
         $daily = [];
         while ($cur <= $end) {
             $dStr = date('Y-m-d', $cur);
             $rule = $rulesByDate[$dStr] ?? null;
-            $daily[$dStr] = [
-                'rate' => $rule && $rule['rate_per_night'] !== null ? (float)$rule['rate_per_night'] : $baseTariff,
-                'min_stay_arrival' => $rule ? ($rule['min_stay_arrival'] ? (int)$rule['min_stay_arrival'] : null) : null,
-                'min_stay_through' => $rule ? ($rule['min_stay_through'] ? (int)$rule['min_stay_through'] : null) : null,
-                'max_stay' => $rule ? ($rule['max_stay'] ? (int)$rule['max_stay'] : null) : null,
-                'stop_sell' => $rule ? (bool)$rule['stop_sell'] : false,
-                'closed_to_arrival' => $rule ? (bool)$rule['closed_to_arrival'] : false,
-                'closed_to_departure' => $rule ? (bool)$rule['closed_to_departure'] : false,
-            ];
+            $state = [];
+            if ($includeRate) {
+                $state['rate'] = $rule && $rule['rate_per_night'] !== null ? (float)$rule['rate_per_night'] : $baseTariff;
+            }
+            if (in_array('min_stay_arrival', $fields, true)) {
+                $state['min_stay_arrival'] = $rule ? ($rule['min_stay_arrival'] ? (int)$rule['min_stay_arrival'] : null) : null;
+            }
+            if (in_array('min_stay_through', $fields, true)) {
+                $state['min_stay_through'] = $rule ? ($rule['min_stay_through'] ? (int)$rule['min_stay_through'] : null) : null;
+            }
+            if (in_array('max_stay', $fields, true)) {
+                $state['max_stay'] = $rule ? ($rule['max_stay'] ? (int)$rule['max_stay'] : null) : null;
+            }
+            if (in_array('stop_sell', $fields, true)) {
+                $state['stop_sell'] = $rule ? (bool)$rule['stop_sell'] : false;
+            }
+            if (in_array('closed_to_arrival', $fields, true)) {
+                $state['closed_to_arrival'] = $rule ? (bool)$rule['closed_to_arrival'] : false;
+            }
+            if (in_array('closed_to_departure', $fields, true)) {
+                $state['closed_to_departure'] = $rule ? (bool)$rule['closed_to_departure'] : false;
+            }
+            $daily[$dStr] = $state;
             $cur = strtotime('+1 day', $cur);
         }
 

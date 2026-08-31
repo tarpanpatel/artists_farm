@@ -119,6 +119,41 @@ function enqueueOutboxItem(
     }
 }
 
+if (!function_exists('computeChannexFieldDiff')) {
+    /**
+     * Diffs a rate-rule's old vs new field values and returns the field
+     * names that actually changed. Channex's certification review checks
+     * that e.g. "just change the rate" produces a push containing only
+     * {rate} - not the whole rate+restrictions row - because room_rate_rules
+     * stores every field together, saveRateRule()/deleteRateRule() re-submit
+     * the complete row every time. This diff is what lets the outbox payload
+     * (and AriDrainWorker::computeCompressedRestrictions(), which reads it
+     * back) scope the actual API push to only what this save/delete changed,
+     * confirmed missing during the 31 Aug 2026 certification rejection
+     * (single-field test pushes were carrying the full restriction bundle).
+     */
+    function computeChannexFieldDiff(array $old, array $new): array {
+        $fields = ['rate_per_night', 'min_stay_arrival', 'min_stay_through', 'max_stay', 'stop_sell', 'closed_to_arrival', 'closed_to_departure'];
+        $boolFields = ['stop_sell', 'closed_to_arrival', 'closed_to_departure'];
+        $changed = [];
+        foreach ($fields as $f) {
+            $oldVal = $old[$f] ?? null;
+            $newVal = $new[$f] ?? null;
+            if (in_array($f, $boolFields, true)) {
+                $oldVal = (int)(bool)$oldVal;
+                $newVal = (int)(bool)$newVal;
+            } else {
+                $oldVal = $oldVal === null ? null : (float)$oldVal;
+                $newVal = $newVal === null ? null : (float)$newVal;
+            }
+            if ($oldVal !== $newVal) {
+                $changed[] = $f;
+            }
+        }
+        return $changed;
+    }
+}
+
 if (!function_exists('triggerEventDrivenChannexDrain')) {
     /**
      * Fires the outbox drain after the HTTP response has already gone back

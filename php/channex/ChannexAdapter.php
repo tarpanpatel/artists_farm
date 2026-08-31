@@ -90,25 +90,31 @@ class ChannexAdapter implements ChannelManagerAdapter {
                 'date_to' => $dTo,
             ];
 
-            if (isset($r['rate']) && $r['rate'] !== null) {
-                $item['rate'] = (int)round($r['rate'] * 100); // minor units
+            // array_key_exists, not isset(): AriDrainWorker::computeCompressedRestrictions()
+            // only sets keys for fields this push actually touches, so a key's
+            // presence (even holding null, e.g. an unset min_stay on a full
+            // sync) is itself the signal to include it - isset() would drop
+            // null-valued keys and silently break the full-sync case, which
+            // needs every declared restriction type present explicitly.
+            if (array_key_exists('rate', $r)) {
+                $item['rate'] = $r['rate'] !== null ? (int)round($r['rate'] * 100) : null; // minor units
             }
-            if (isset($r['min_stay_arrival']) && $r['min_stay_arrival'] !== null) {
-                $item['min_stay_arrival'] = (int)$r['min_stay_arrival'];
+            if (array_key_exists('min_stay_arrival', $r)) {
+                $item['min_stay_arrival'] = $r['min_stay_arrival'] !== null ? (int)$r['min_stay_arrival'] : null;
             }
-            if (isset($r['min_stay_through']) && $r['min_stay_through'] !== null) {
-                $item['min_stay_through'] = (int)$r['min_stay_through'];
+            if (array_key_exists('min_stay_through', $r)) {
+                $item['min_stay_through'] = $r['min_stay_through'] !== null ? (int)$r['min_stay_through'] : null;
             }
-            if (isset($r['max_stay']) && $r['max_stay'] !== null) {
-                $item['max_stay'] = (int)$r['max_stay'];
+            if (array_key_exists('max_stay', $r)) {
+                $item['max_stay'] = $r['max_stay'] !== null ? (int)$r['max_stay'] : null;
             }
-            if (isset($r['stop_sell'])) {
+            if (array_key_exists('stop_sell', $r)) {
                 $item['stop_sell'] = (bool)$r['stop_sell'];
             }
-            if (isset($r['closed_to_arrival'])) {
+            if (array_key_exists('closed_to_arrival', $r)) {
                 $item['closed_to_arrival'] = (bool)$r['closed_to_arrival'];
             }
-            if (isset($r['closed_to_departure'])) {
+            if (array_key_exists('closed_to_departure', $r)) {
                 $item['closed_to_departure'] = (bool)$r['closed_to_departure'];
             }
 

@@ -201,7 +201,29 @@ function saveRateRule($pdo, $propertyId) {
             $targetRoomIds = [null];
         }
 
+        // Channel Manager Outbox: capture the pre-save state so the enqueued
+        // push can be scoped to only the fields this save actually changes
+        // (see computeChannexFieldDiff() in channex/outbox.php - a save that
+        // only touches the rate must not also push stop_sell/closed_to_arrival/
+        // closed_to_departure just because the row happens to store them too).
+        // For a new rule there is no prior row, so "old" is the neutral
+        // baseline (no rate, no restrictions) - everything the user actually
+        // set is therefore "changed".
+        $neutralRuleState = [
+            'rate_per_night' => null, 'min_stay_arrival' => null, 'min_stay_through' => null,
+            'max_stay' => null, 'stop_sell' => 0, 'closed_to_arrival' => 0, 'closed_to_departure' => 0,
+        ];
+        $oldRuleState = $neutralRuleState;
+
         if ($ruleId) {
+            $oldStmt = $pdo->prepare("
+                SELECT rate_per_night, min_stay_arrival, min_stay_through, max_stay,
+                       stop_sell, closed_to_arrival, closed_to_departure
+                FROM room_rate_rules WHERE id = ? AND property_id = ?
+            ");
+            $oldStmt->execute([$ruleId, $propertyId]);
+            $oldRuleState = $oldStmt->fetch(PDO::FETCH_ASSOC) ?: $neutralRuleState;
+
             // Update single rule
             $roomId = !empty($targetRoomIds[0]) ? (int)$targetRoomIds[0] : null;
             $stmt = $pdo->prepare("
@@ -234,19 +256,26 @@ function saveRateRule($pdo, $propertyId) {
         if (is_file(__DIR__ . '/../channex/outbox.php')) {
             require_once __DIR__ . '/../channex/outbox.php';
             if (function_exists('enqueueOutboxItem')) {
+                $newRuleState = [
+                    'rate_per_night' => $ratePerNight,
+                    'min_stay_arrival' => $minStayArrival,
+                    'min_stay_through' => $minStayThrough,
+                    'max_stay' => $maxStay,
+                    'stop_sell' => $stopSell,
+                    'closed_to_arrival' => $closedToArrival,
+                    'closed_to_departure' => $closedToDeparture,
+                ];
+                $changedFields = function_exists('computeChannexFieldDiff')
+                    ? computeChannexFieldDiff($oldRuleState, $newRuleState)
+                    : array_keys($newRuleState);
+
                 foreach ($targetRoomIds as $rId) {
                     $roomId = !empty($rId) ? (int)$rId : null;
-                    enqueueOutboxItem($pdo, (int)$propertyId, $roomId, 'rates', $startDate, $endDate, [
-                        'action' => 'save_rate_rule',
-                        'rule_id' => $ruleId,
-                        'rate_per_night' => $ratePerNight,
-                        'min_stay_arrival' => $minStayArrival,
-                        'min_stay_through' => $minStayThrough,
-                        'max_stay' => $maxStay,
-                        'stop_sell' => $stopSell,
-                        'closed_to_arrival' => $closedToArrival,
-                        'closed_to_departure' => $closedToDeparture,
-                    ]);
+                    $payload = ['action' => 'save_rate_rule', 'rule_id' => $ruleId, 'changed_fields' => $changedFields];
+                    foreach ($changedFields as $f) {
+                        $payload[$f] = $newRuleState[$f];
+                    }
+                    enqueueOutboxItem($pdo, (int)$propertyId, $roomId, 'rates', $startDate, $endDate, $payload);
                 }
             }
         }
@@ -272,7 +301,11 @@ function deleteRateRule($pdo, $propertyId) {
             return;
         }
 
-        $lookup = $pdo->prepare("SELECT room_id, start_date, end_date FROM room_rate_rules WHERE id = ? AND property_id = ?");
+        $lookup = $pdo->prepare("
+            SELECT room_id, start_date, end_date, rate_per_night, min_stay_arrival, min_stay_through,
+                   max_stay, stop_sell, closed_to_arrival, closed_to_departure
+            FROM room_rate_rules WHERE id = ? AND property_id = ?
+        ");
         $lookup->execute([$ruleId, $propertyId]);
         $existingRule = $lookup->fetch(PDO::FETCH_ASSOC);
 
@@ -284,10 +317,22 @@ function deleteRateRule($pdo, $propertyId) {
                 require_once __DIR__ . '/../channex/outbox.php';
                 if (function_exists('enqueueOutboxItem')) {
                     $roomId = !empty($existingRule['room_id']) ? (int)$existingRule['room_id'] : null;
-                    enqueueOutboxItem($pdo, (int)$propertyId, $roomId, 'rates', $existingRule['start_date'], $existingRule['end_date'], [
-                        'action' => 'delete_rate_rule',
-                        'rule_id' => $ruleId,
-                    ]);
+                    // Deleting a rule reverts only the fields it actually set
+                    // back to the neutral baseline - diff the deleted row
+                    // against that baseline so this push, like a save, is
+                    // scoped to what actually changes for Channex.
+                    $neutralRuleState = [
+                        'rate_per_night' => null, 'min_stay_arrival' => null, 'min_stay_through' => null,
+                        'max_stay' => null, 'stop_sell' => 0, 'closed_to_arrival' => 0, 'closed_to_departure' => 0,
+                    ];
+                    $changedFields = function_exists('computeChannexFieldDiff')
+                        ? computeChannexFieldDiff($existingRule, $neutralRuleState)
+                        : array_keys($neutralRuleState);
+                    $payload = ['action' => 'delete_rate_rule', 'rule_id' => $ruleId, 'changed_fields' => $changedFields];
+                    foreach ($changedFields as $f) {
+                        $payload[$f] = $neutralRuleState[$f];
+                    }
+                    enqueueOutboxItem($pdo, (int)$propertyId, $roomId, 'rates', $existingRule['start_date'], $existingRule['end_date'], $payload);
                 }
             }
         }
