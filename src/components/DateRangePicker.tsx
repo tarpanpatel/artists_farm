@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import FlowbiteDateRangePicker from 'flowbite-datepicker/DateRangePicker';
 import { AlertTriangle } from './icons/FlowbiteIcons';
 
@@ -67,6 +67,36 @@ function toDisabledDates(blockedDates: string[] | undefined): Date[] {
     .filter((d): d is Date => d !== undefined);
 }
 
+// The earliest blocked date a checkout-style stay [start, end) would cover, or
+// null when the range is clean/incomplete. The checkout day itself is free
+// (turnover), so a block ON endIso is fine; a block on the check-in day or any
+// night in between is not. flowbite-datepicker's `datesDisabled` only stops a
+// blocked day being *clicked* - it still lets a range be drawn straight across
+// one (pick the 8th, then the 12th, over a booked 11th), so the range has to be
+// validated after the fact here.
+function firstBlockedInRange(
+  startIso: string,
+  endIso: string,
+  blockedDates: string[] | undefined,
+): string | null {
+  if (!startIso || !endIso || !blockedDates || blockedDates.length === 0) return null;
+  let earliest: string | null = null;
+  for (const raw of blockedDates) {
+    const d = raw.slice(0, 10);
+    if (d >= startIso && d < endIso && (earliest === null || d < earliest)) {
+      earliest = d;
+    }
+  }
+  return earliest;
+}
+
+function formatIsoNice(iso: string): string {
+  const d = fromIsoDate(iso);
+  return d
+    ? d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+    : iso;
+}
+
 /**
  * Checkin/checkout field built directly on flowbite-datepicker's own
  * DateRangePicker - the vanilla-JS library flowbite.com's own docs use for
@@ -112,9 +142,15 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   const rangepickerRef = useRef<InstanceType<typeof FlowbiteDateRangePicker> | null>(null);
   const callbacksRef = useRef({ onCheckinChange, onCheckoutChange });
   callbacksRef.current = { onCheckinChange, onCheckoutChange };
+  // The mount effect below binds the changeDate handler once, so it needs a
+  // live ref to the latest blockedDates rather than the value it closed over.
+  const blockedDatesRef = useRef(blockedDates);
+  blockedDatesRef.current = blockedDates;
+  const suppressRangeValidationRef = useRef(false);
 
-  const hasError = Boolean(error);
-  const errorMessage = typeof error === 'string' ? error : undefined;
+  const [rangeError, setRangeError] = useState<string | undefined>(undefined);
+  const hasError = Boolean(error) || Boolean(rangeError);
+  const errorMessage = rangeError ?? (typeof error === 'string' ? error : undefined);
   const currentFieldClass = hasError ? errorFieldClass : fieldClass;
   const lastBlockedDatesKeyRef = useRef<string>('');
 
@@ -153,9 +189,42 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     });
 
     const reportCurrentRange = () => {
+      if (suppressRangeValidationRef.current) return;
+
       const [start, end] = rangepicker.dates;
-      callbacksRef.current.onCheckinChange(toIsoDate(start));
-      callbacksRef.current.onCheckoutChange(toIsoDate(end));
+      const startIso = toIsoDate(start);
+      const endIso = toIsoDate(end);
+
+      // A complete range may not span a blocked night - bounce the end date and
+      // keep the (still-valid) start so the user only re-picks the checkout.
+      if (startIso && endIso) {
+        const clash = firstBlockedInRange(startIso, endIso, blockedDatesRef.current);
+        if (clash) {
+          const startItselfBlocked = (blockedDatesRef.current ?? []).some(
+            (d) => d.slice(0, 10) === startIso,
+          );
+          const keepStartIso = startItselfBlocked ? '' : startIso;
+
+          suppressRangeValidationRef.current = true;
+          try {
+            rangepicker.setDates(
+              keepStartIso ? (fromIsoDate(keepStartIso) ?? { clear: true }) : { clear: true },
+              { clear: true },
+            );
+          } finally {
+            suppressRangeValidationRef.current = false;
+          }
+
+          setRangeError(`${formatIsoNice(clash)} isn't available - pick a range that doesn't cover it.`);
+          callbacksRef.current.onCheckinChange(keepStartIso);
+          callbacksRef.current.onCheckoutChange('');
+          return;
+        }
+      }
+
+      setRangeError(undefined);
+      callbacksRef.current.onCheckinChange(startIso);
+      callbacksRef.current.onCheckoutChange(endIso);
     };
     startEl.addEventListener('changeDate', reportCurrentRange);
     endEl.addEventListener('changeDate', reportCurrentRange);
