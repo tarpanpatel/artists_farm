@@ -362,6 +362,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       // the library's own swap/mirror math landed the checkout on - the old
       // value, the new value, anything - must be discarded; the user always
       // gets an explicit second pick.
+      let forcedEmptyCheckout = false;
       if (wasUserClick && prevStartIsoRef.current && startIso && startIso !== prevStartIsoRef.current) {
         // Re-mirror the end side to the checkin internally (the only stable
         // state allowOneSidedRange:false permits - see comment above) so the
@@ -373,18 +374,24 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         } finally {
           suppressRangeValidationRef.current = false;
         }
-        // ...but only that internal mirroring - the visible field stays
-        // blank, and skipNextPropsSyncRef stops the props-sync effect from
-        // "helpfully" pushing checkoutDate='' back through
-        // rangepicker.setDates, which would trigger the same one-sided-range
-        // normalization and wipe checkin back out too.
-        endEl.value = '';
         endIso = '';
+        forcedEmptyCheckout = true;
         skipNextPropsSyncRef.current = true;
       }
       prevStartIsoRef.current = startIso;
 
       syncDisabledAndCeiling(startIso);
+      // Blanking the END field's displayed text has to happen AFTER
+      // syncDisabledAndCeiling, not before (1 Sep 2026, second pass) -
+      // that call's own setOptions() does an unconditional full refreshUI
+      // on datepickers[1], which restamps its input value from the
+      // internal (deliberately re-mirrored, non-blank) date and clobbers an
+      // earlier write here. The internal state stays mirrored to checkin
+      // either way - only the on-screen text is forced blank, and only
+      // here, once nothing else downstream will touch this input again.
+      if (forcedEmptyCheckout) {
+        endEl.value = '';
+      }
 
       // Fallback safety net - syncDisabledAndCeiling above should already
       // make an invalid end date unclickable, so this should rarely fire in
