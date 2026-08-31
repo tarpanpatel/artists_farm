@@ -1204,12 +1204,17 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
               menu={[]}
               rooms={rooms}
               onAddGuest={async (guest) => {
-                // await + only close on success (23 Aug 2026, ROADMAP.md verification pass) -
-                // onAddGuest now throws on a real backend rejection (see App.tsx's
-                // handleAddGuest); closing the modal unconditionally here would hide that error
-                // from the user instead of leaving the form open to see and correct it.
+                // Does NOT close here (31 Aug 2026) - a second, parallel copy
+                // of the same bug already fixed in App.tsx's own Add Booking
+                // drawer wrapper. Closing inside this wrapper ran BEFORE it
+                // resolved, which is BEFORE the nested GuestManagement's own
+                // onSubmit reached its resetBookingForm()/showToast('Guest
+                // booked successfully!') right after awaiting this same call
+                // - close-then-toast, backwards. onClose is already wired
+                // below and GuestManagement's onSubmit calls it itself, right
+                // after showToast fires - this wrapper just needs to await
+                // and let errors propagate, same as before.
                 await onAddGuest?.(guest);
-                setShowAddBookingModal(false);
               }}
               onCheckoutGuest={onCheckoutGuest}
               activeMenuItemKey="guest_registration"

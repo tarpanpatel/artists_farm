@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { getIconComponent } from '../utils/iconResolver';
-import { ChevronRight, ChevronDown, LogOut, LinkIcon, UserRound, Share2, Receipt, Bell } from './icons/FlowbiteIcons';
+import { ChevronRight, ChevronDown, LogOut, LinkIcon, UserRound, Share2 } from './icons/FlowbiteIcons';
 import { NavMenuItem } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
@@ -53,10 +53,6 @@ interface NavigationProps {
   onNavigateToRoom?: (roomSlug: string) => void;
   multiKeyRooms?: any[];
   kitchenModuleEnabled?: boolean;
-  onOpenAddExpense?: () => void;
-  onOpenAddServiceRequest?: () => void;
-  canAddExpense?: boolean;
-  canAddServiceRequest?: boolean;
 }
 
 // groupOnly (23 Aug 2026): marks a synthetic parent shell created purely so a
@@ -100,10 +96,6 @@ export const Navigation: React.FC<NavigationProps> = ({
   onNavigateToRoom: _onNavigateToRoom,
   multiKeyRooms: _multiKeyRooms,
   kitchenModuleEnabled = true,
-  onOpenAddExpense,
-  onOpenAddServiceRequest,
-  canAddExpense = false,
-  canAddServiceRequest = false,
 }) => {
   const { activeRole, logout, currentUser } = useAuth();
   // Legacy bookmarked/synthetic key that has no nav-tree node of its own -
@@ -751,30 +743,6 @@ export const Navigation: React.FC<NavigationProps> = ({
                       <span className="ms-3 flex-1 text-left truncate">{t('share_food_menu_button', 'Share Menu')}</span>
                     </button>
                   </li>
-                  {canAddExpense && onOpenAddExpense && (
-                    <li>
-                      <button
-                        type="button"
-                        onClick={() => { onOpenAddExpense(); if (window.innerWidth < 768) onCloseSidebar(); }}
-                        className="w-full flex items-center p-2 text-sm font-medium rounded-lg transition duration-75 cursor-pointer text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
-                      >
-                        <Receipt className="w-5 h-5 shrink-0 text-gray-500 dark:text-gray-400" />
-                        <span className="ms-3 flex-1 text-left truncate">{t('add_expense_quick_action', 'Add Expense')}</span>
-                      </button>
-                    </li>
-                  )}
-                  {canAddServiceRequest && onOpenAddServiceRequest && (
-                    <li>
-                      <button
-                        type="button"
-                        onClick={() => { onOpenAddServiceRequest(); if (window.innerWidth < 768) onCloseSidebar(); }}
-                        className="w-full flex items-center p-2 text-sm font-medium rounded-lg transition duration-75 cursor-pointer text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
-                      >
-                        <Bell className="w-5 h-5 shrink-0 text-gray-500 dark:text-gray-400" />
-                        <span className="ms-3 flex-1 text-left truncate">{t('add_service_request_quick_action', 'Add Service Request')}</span>
-                      </button>
-                    </li>
-                  )}
                 </ul>
               </div>
 

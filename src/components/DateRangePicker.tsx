@@ -195,20 +195,16 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       todayHighlight: true,
       language: 'en',
       ...(disablePastDates ? { minDate: new Date(new Date().setHours(0, 0, 0, 0)) } : {}),
-      // No datesDisabled here (31 Aug 2026) - the range picker's own
-      // setOptions applies whatever's passed to construction/setOptions
-      // uniformly to BOTH sub-pickers, but a night being blocked only means
-      // it can't be a *check-in* - checking OUT on that same date is fine
-      // (the room turns over that day). Applying the full blocked list to
-      // BOTH sides made a valid checkout date completely unclickable
-      // (confirmed live: picking day 27 as check-in with day 28 booked
-      // elsewhere made 28 itself unselectable as checkout, when it should
-      // have been the correct boundary). Set per-side, just below.
+      // No datesDisabled here (31 Aug 2026) - applied dynamically per current
+      // start selection just below instead (syncDisabledAndCeiling), not as
+      // a static construction option. A blocked NIGHT shouldn't forbid
+      // checking OUT on that same date, and - this picker runs as one
+      // continuous popover (autohide:false), not two independently-clicked
+      // ones - a static list applied here blocks that regardless of which
+      // sub-picker instance it's nominally attached to.
     });
     rangepickerRef.current = rangepicker;
     lastBlockedDatesKeyRef.current = (blockedDates ?? []).join(',');
-    // Start side only gets the full blocked list - see the comment above.
-    rangepicker.datepickers[0].setOptions({ datesDisabled: toDisabledDates(blockedDates) });
 
     rangepicker.datepickers.forEach((dp) => {
       const footerControls = dp.pickerElement?.querySelector('.datepicker-footer .datepicker-controls');
@@ -225,18 +221,38 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       footerControls.appendChild(closeBtn);
     });
 
-    // Caps the *end*-side popover so a night that would cross a blocked date
-    // is greyed out and unclickable, instead of being pickable and only
-    // rejected once both dates are chosen (see firstBlockedInRange below,
-    // now a fallback safety net rather than the primary guard).
-    const syncEndCeiling = (startIso: string) => {
+    // Recomputes disabled dates + the end-side ceiling for BOTH sub-pickers
+    // together, not split one-per-side (31 Aug 2026, second pass). This
+    // picker runs with autohide:false as one continuous calendar - clicking
+    // a start date does NOT switch the visible popover over to the *other*
+    // Datepicker instance, it's still datepickers[0]'s own popover for the
+    // very next click too (confirmed by inspecting the live DOM: after
+    // picking day 27 as start, day 28 still carried a literal `disabled`
+    // class - not from maxDate, from datesDisabled, which an earlier version
+    // of this fix had only relaxed on datepickers[1], the side that was
+    // never actually the one rendering that click). So both instances get
+    // the SAME dynamic config: the full blocked list while no start is
+    // picked yet (so the very first click can't land on an occupied night),
+    // and - once a start exists - that same list with just the immediate
+    // boundary date (the earliest blocked night on/after start) excluded,
+    // since checking out ON that date is fine, plus maxDate capping
+    // anything past it. Falls back to no restriction (NO_END_CEILING) with
+    // no start chosen, so the very first click is never capped either.
+    const syncDisabledAndCeiling = (startIso: string) => {
       const cap = earliestBlockedOnOrAfter(startIso, blockedDatesRef.current);
-      rangepicker.datepickers[1].setOptions({
-        maxDate: cap ? (fromIsoDate(cap) ?? NO_END_CEILING) : NO_END_CEILING,
-      });
+      const baseBlocked = blockedDatesRef.current ?? [];
+      const effectiveBlocked = startIso && cap
+        ? baseBlocked.filter((d) => d.slice(0, 10) !== cap)
+        : baseBlocked;
+      const options = {
+        datesDisabled: toDisabledDates(effectiveBlocked),
+        maxDate: startIso && cap ? (fromIsoDate(cap) ?? NO_END_CEILING) : NO_END_CEILING,
+      };
+      rangepicker.datepickers[0].setOptions(options);
+      rangepicker.datepickers[1].setOptions(options);
     };
-    syncEndCeilingRef.current = syncEndCeiling;
-    syncEndCeiling(toIsoDate(rangepicker.dates[0]));
+    syncEndCeilingRef.current = syncDisabledAndCeiling;
+    syncDisabledAndCeiling(toIsoDate(rangepicker.dates[0]));
 
     const reportCurrentRange = () => {
       if (suppressRangeValidationRef.current) return;
@@ -245,10 +261,10 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       const startIso = toIsoDate(start);
       const endIso = toIsoDate(end);
 
-      syncEndCeiling(startIso);
+      syncDisabledAndCeiling(startIso);
 
-      // Fallback safety net - syncEndCeiling above should already make an
-      // invalid end date unclickable, so this should rarely fire in
+      // Fallback safety net - syncDisabledAndCeiling above should already
+      // make an invalid end date unclickable, so this should rarely fire in
       // practice, but stays in place in case a range is set programmatically
       // (setDates, or a prop sync) rather than through a calendar click.
       if (startIso && endIso) {
@@ -310,11 +326,9 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     const key = (blockedDates ?? []).join(',');
     if (key === lastBlockedDatesKeyRef.current) return;
     lastBlockedDatesKeyRef.current = key;
-    // Start side only - see the matching comment at construction above.
-    rangepicker.datepickers[0].setOptions({ datesDisabled: toDisabledDates(blockedDates) });
     // Blocked dates can change while the form is still open (another save
-    // elsewhere drains into this same list) - re-cap the end side against
-    // whatever start is currently picked, not just against clicks.
+    // elsewhere drains into this same list) - recompute against whatever
+    // start is currently picked, not just against clicks.
     syncEndCeilingRef.current(toIsoDate(rangepicker.dates[0]));
   }, [blockedDates]);
 
