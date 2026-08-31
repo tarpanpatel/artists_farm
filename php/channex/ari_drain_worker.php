@@ -316,14 +316,23 @@ class AriDrainWorker {
             if ($includeRate) {
                 $state['rate'] = $rule && $rule['rate_per_night'] !== null ? (float)$rule['rate_per_night'] : $baseTariff;
             }
+            // Channex's restrictions endpoint rejects an included min_stay_arrival/
+            // min_stay_through/max_stay key that's null ("should be a non null
+            // value" - confirmed live 31 Aug 2026: a null-valued key produced a
+            // validation warning AND Channex silently returned no task object at
+            // all, so the push had no evidence to point to). 1/1/0 is the
+            // "no restriction" baseline instead of null - min_stay fields are
+            // documented as positive integers (a 1-night minimum is really no
+            // restriction), max_stay is documented as non-negative, and 0 as
+            // "no cap" cleared the warning in that same live test.
             if (in_array('min_stay_arrival', $fields, true)) {
-                $state['min_stay_arrival'] = $rule ? ($rule['min_stay_arrival'] ? (int)$rule['min_stay_arrival'] : null) : null;
+                $state['min_stay_arrival'] = $rule && $rule['min_stay_arrival'] ? (int)$rule['min_stay_arrival'] : 1;
             }
             if (in_array('min_stay_through', $fields, true)) {
-                $state['min_stay_through'] = $rule ? ($rule['min_stay_through'] ? (int)$rule['min_stay_through'] : null) : null;
+                $state['min_stay_through'] = $rule && $rule['min_stay_through'] ? (int)$rule['min_stay_through'] : 1;
             }
             if (in_array('max_stay', $fields, true)) {
-                $state['max_stay'] = $rule ? ($rule['max_stay'] ? (int)$rule['max_stay'] : null) : null;
+                $state['max_stay'] = $rule && $rule['max_stay'] ? (int)$rule['max_stay'] : 0;
             }
             if (in_array('stop_sell', $fields, true)) {
                 $state['stop_sell'] = $rule ? (bool)$rule['stop_sell'] : false;
