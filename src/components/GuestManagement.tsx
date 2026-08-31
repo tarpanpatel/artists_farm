@@ -638,6 +638,15 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               await onAddGuest(guestObj);
               resetBookingForm();
               showToast('Guest booked successfully!', { type: 'success' });
+              // Closes right here, not inside App.tsx's onAddGuest wrapper
+              // (31 Aug 2026, second pass at this) - closing there ran BEFORE
+              // this line, since it sits earlier in the same awaited call,
+              // making the drawer disappear before this toast had even been
+              // created. onClose is only wired for the drawer-hosted render
+              // (guarded, since the inline/non-drawer usages of this
+              // component pass none) - closing after the toast, same tick,
+              // no artificial delay in either place.
+              onClose?.();
             } catch (err) {
               const message = err instanceof Error && err.message ? err.message : 'Failed to save booking. Please try again.';
               showToast(message, { type: 'error' });

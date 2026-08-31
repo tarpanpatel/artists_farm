@@ -2620,18 +2620,17 @@ ${itemsStr}
               rooms={preloadedData.currentProperty?.rooms || []}
               onAddGuest={async (guest) => {
                 await handleAddGuest(guest);
-                // Closes instantly on success (31 Aug 2026, reverted the
-                // artificial 1s delay added earlier the same day). That delay
-                // assumed closing the drawer risked cutting off the "Guest
-                // booked successfully!" toast - wrong: ToastContext.tsx
-                // renders toasts at z-[9999] via a stable, app-level
-                // ToastProvider well above this drawer's own z-60, and they
-                // are not scoped to the drawer's subtree, so the toast's own
-                // 3s duration plays out fully regardless of when the drawer
-                // closes. The delay was pure added latency with no actual
-                // benefit - removed per explicit feedback that even a 1s gap
-                // after clicking Save was too slow.
-                setIsAddBookingModalOpen(false);
+                // Does NOT close here (31 Aug 2026, second pass). Closing
+                // inside this wrapper runs BEFORE it resolves - which is
+                // BEFORE GuestManagement.tsx's onSubmit gets to its own
+                // resetBookingForm()/showToast('Guest booked successfully!')
+                // right after awaiting this same call. That's close-then-
+                // toast, the exact wrong order, even with no artificial delay
+                // in between - removing the earlier 1s setTimeout fixed the
+                // latency but silently un-fixed the ordering it was also
+                // covering for. onSubmit now calls onClose() itself, right
+                // after showToast fires, so the sequence is always toast-
+                // triggered-then-close, both immediate, no delay either way.
               }}
               onCheckoutGuest={handleCheckoutGuest}
               onDispatchTelegram={dispatchTelegramAlert}
