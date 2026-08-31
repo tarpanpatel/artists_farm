@@ -1190,6 +1190,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
     kitchen: canSeeNavKey('take_food_order'),
     finances: canSeeNavKey('finances'),
     addExpense: canSeeNavKey('expenses'),
+    addServiceRequest: canSeeNavKey('service_requests'),
     addBooking: canSeeNavKey('all_bookings'),
     addFoodOrder: canSeeNavKey('take_food_order'),
     viewLiveKitchenOrder: canSeeNavKey('take_food_order'),
@@ -2075,6 +2076,8 @@ ${itemsStr}
             isSidebarOpen={isSidebarOpen}
             kitchenModuleEnabled={kitchenEnabled}
             onOpenAddBooking={() => setIsAddBookingModalOpen(true)}
+            onOpenAddExpense={() => { setInitialExpenseData(null); setIsAddExpenseModalOpen(true); }}
+            onOpenAddServiceRequest={() => { setInitialServiceRequestData(null); handleNavigateTab('service_requests', 'service_requests'); }}
             permissions={mobileNavPermissions}
           />
         )}
