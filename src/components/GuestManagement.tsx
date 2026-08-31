@@ -148,6 +148,19 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   // Form Checkin State
   const [guestName, setGuestName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  // Suppresses the live duplicate check (below) while a submission is in
+  // flight (31 Aug 2026). App.tsx's handleAddGuest adds the new guest to
+  // `guests` optimistically, synchronously, before the network call even
+  // starts - so for the whole round trip the live check saw the
+  // just-submitted booking as an existing one with the same phone+check-in
+  // date as the still-populated form, and flagged it as a duplicate of
+  // itself. Harmless once the round trip was near-instant, but very visible
+  // during the 13-21s the response used to take before the LiteSpeed
+  // Content-Length fix (see router.php's ob_start() and outbox.php's
+  // triggerEventDrivenChannexDrain()) - and still a real, if brief, false
+  // positive without this guard. The actual submit-time duplicate guard
+  // further below is unaffected: it runs before the optimistic add happens.
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [roomNumber, setRoomNumber] = useState('');
   const [guestNameTouched, setGuestNameTouched] = useState(false);
   const [phoneNumberTouched, setPhoneNumberTouched] = useState(false);
@@ -178,7 +191,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   // Phone Number field as you type instead of only after clicking Save. Only
   // judges once a full 10-digit number is entered - a partial number isn't
   // "wrong", it's just unfinished, so it stays quiet until then.
-  const duplicateBookingLive = phoneNumber.length === 10 && guests.some((g) => {
+  const duplicateBookingLive = !isSubmitting && phoneNumber.length === 10 && guests.some((g) => {
     if (g.status === 'CheckedOut' || (g.status as string) === GUEST_STATUS_CHECKED_OUT || (g.status as string) === 'Cancelled') return false;
     const gPhone = (g.phoneNumber || '').trim();
     const gCheckin = (g.checkinDate || '').split(' ')[0];
@@ -606,6 +619,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               extraCharges,
             };
 
+            setIsSubmitting(true);
             try {
               await onAddGuest(guestObj);
               resetBookingForm();
@@ -613,6 +627,8 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             } catch (err) {
               const message = err instanceof Error && err.message ? err.message : 'Failed to save booking. Please try again.';
               showToast(message, { type: 'error' });
+            } finally {
+              setIsSubmitting(false);
             }
           }}>
             {/* Row 0: Guest Name (Full width) */}
