@@ -151,16 +151,6 @@ class ChannexAdapter implements ChannelManagerAdapter {
             $callbackUrl = (string)($cfg['webhook_callback_url'] ?? 'https://staging.ground-code.com/php/api/router.php?action=channex_webhook');
         }
 
-        // Check existing webhooks to ensure idempotency
-        $existing = $this->client->get('webhooks');
-        $existingList = $existing['data'] ?? [];
-        foreach ($existingList as $item) {
-            $attrs = $item['attributes'] ?? [];
-            if (($attrs['callback_url'] ?? '') === $callbackUrl) {
-                return ['success' => true, 'data' => $item, 'action' => 'already_registered'];
-            }
-        }
-
         $payload = [
             'webhook' => [
                 'callback_url' => $callbackUrl,
@@ -174,6 +164,44 @@ class ChannexAdapter implements ChannelManagerAdapter {
         ];
         if ($channexPropertyId) {
             $payload['webhook']['property_id'] = $channexPropertyId;
+        } else {
+            // No property scope requested: cover every property on the account,
+            // present and future, rather than leaving Channex to pick one.
+            $payload['webhook']['property_id'] = null;
+            $payload['webhook']['is_global'] = true;
+        }
+
+        // Matching by callback_url alone made this idempotency check a trap: a
+        // property gets re-provisioned (a fresh channex_property_id), this
+        // still finds the OLD webhook row by URL and reports "already
+        // registered" - so the registration silently keeps pointing at a now
+        // orphaned property forever. Confirmed live 31 Aug 2026: the webhook
+        // was scoped to a stale property with zero rows in channex_mappings,
+        // so every real inbound booking webhook since the re-provision was
+        // rejected (422 unmapped property) while still being invisible here,
+        // because this function never got as far as looking. Now it compares
+        // property scope too, and PUTs the existing webhook to correct it
+        // in place instead of treating a URL match as good enough.
+        $existing = $this->client->get('webhooks');
+        $existingList = $existing['data'] ?? [];
+        foreach ($existingList as $item) {
+            $attrs = $item['attributes'] ?? [];
+            if (($attrs['callback_url'] ?? '') !== $callbackUrl) {
+                continue;
+            }
+            $existingPropertyId = $attrs['property_id'] ?? ($item['relationships']['property']['data']['id'] ?? null);
+            $wantPropertyId = $payload['webhook']['property_id'];
+            $existingIsGlobal = !empty($attrs['is_global']);
+            $wantIsGlobal = !empty($payload['webhook']['is_global']);
+            if ($existingPropertyId === $wantPropertyId && $existingIsGlobal === $wantIsGlobal) {
+                return ['success' => true, 'data' => $item, 'action' => 'already_registered'];
+            }
+            $webhookId = $item['id'] ?? ($attrs['id'] ?? null);
+            if ($webhookId) {
+                $res = $this->client->put("webhooks/{$webhookId}", $payload);
+                $res['action'] = 'rescoped';
+                return $res;
+            }
         }
 
         return $this->client->post('webhooks', $payload);
