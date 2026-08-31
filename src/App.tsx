@@ -1976,6 +1976,13 @@ ${itemsStr}
     }
   };
 
+  // Hold render until the real backend session has been confirmed by check_session.
+  // Gating on authChecked prevents the optimistic localStorage state from prematurely
+  // rendering the dashboard on cold boot before a 401/expired session can be discovered.
+  if (!authChecked) {
+    return <LoadingScreen message="Verifying session..." />;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col font-sans text-gray-900 dark:text-gray-100 antialiased transition-colors">
         {!isAuthenticated && propertySelection && (
@@ -2962,14 +2969,13 @@ export function App() {
     localStorage.setItem('artists_farm_user_session', JSON.stringify(session));
     setUserSession(session);
 
-    // Redirect based on role
+    // Redirect based on role if not already on destination route
     if (session.is_platform_admin) {
-      window.location.href = '/root_dashboard/';
+      if (!isRootDashboardPath) {
+        window.location.href = '/root_dashboard/';
+      }
     } else if (session.default_tenant_id) {
-      // If we are already on a valid tenant dashboard, just reload the page to refresh state
-      if (resolvedTenant) {
-        window.location.reload();
-      } else {
+      if (!resolvedTenant && !isTenantDashboardPath) {
         window.location.href = '/tenant_dashboard/';
       }
     }
