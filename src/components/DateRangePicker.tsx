@@ -252,6 +252,13 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     });
     rangepickerRef.current = rangepicker;
     lastBlockedDatesKeyRef.current = (blockedDates ?? []).join(',');
+    (window as any).__dbg2 = (window as any).__dbg2 || [];
+    (window as any).__dbg2.push({
+      t: 'construct',
+      propsCheckin: checkinDate, propsCheckout: checkoutDate,
+      startInputValue: startEl.value, endInputValue: endEl.value,
+      dates0: toIsoDate(rangepicker.dates[0]), dates1: toIsoDate(rangepicker.dates[1]),
+    });
 
     rangepicker.datepickers.forEach((dp) => {
       // Arms userClickPendingRef so the settle pass below can tell a real
@@ -436,6 +443,8 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       }
 
       setRangeError(undefined);
+      (window as any).__dbg2 = (window as any).__dbg2 || [];
+      (window as any).__dbg2.push({ t: 'report', startIso, endIso, wasUserClick, forcedEmptyCheckout });
       callbacksRef.current.onCheckinChange(startIso);
       callbacksRef.current.onCheckoutChange(endIso);
     };
@@ -483,10 +492,22 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     const [currentStart, currentEnd] = rangepicker.dates;
     if (toIsoDate(currentStart) === checkinDate && toIsoDate(currentEnd) === checkoutDate) return;
 
+    (window as any).__dbg2 = (window as any).__dbg2 || [];
+    (window as any).__dbg2.push({
+      t: 'props-sync-call',
+      checkinDate, checkoutDate,
+      startArg: fromIsoDate(checkinDate)?.toString(),
+      endArg: fromIsoDate(checkoutDate)?.toString(),
+    });
     rangepicker.setDates(
       fromIsoDate(checkinDate) ?? { clear: true },
       fromIsoDate(checkoutDate) ?? { clear: true }
     );
+    (window as any).__dbg2.push({
+      t: 'props-sync-after',
+      dates0: toIsoDate(rangepicker.dates[0]),
+      dates1: toIsoDate(rangepicker.dates[1]),
+    });
   }, [checkinDate, checkoutDate]);
 
   useEffect(() => {
