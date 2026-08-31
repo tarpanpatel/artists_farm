@@ -499,10 +499,30 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       startArg: fromIsoDate(checkinDate)?.toString(),
       endArg: fromIsoDate(checkoutDate)?.toString(),
     });
+    // Instrumenting the library's own two internal setDate calls directly
+    // (1 Sep 2026, third pass) - wrapping each Datepicker instance's own
+    // setDate just for this one call, to see the intermediate state between
+    // them, since setDates() itself only exposes the end result.
+    const d0 = rangepicker.datepickers[0] as any;
+    const d1 = rangepicker.datepickers[1] as any;
+    const origSetDate0 = d0.setDate.bind(d0);
+    const origSetDate1 = d1.setDate.bind(d1);
+    d0.setDate = (...args: any[]) => {
+      const r = origSetDate0(...args);
+      (window as any).__dbg2.push({ t: 'd0.setDate called', args: args.map(String), afterD0: toIsoDate(d0.dates[0]), afterD1: toIsoDate(d1.dates[0]) });
+      return r;
+    };
+    d1.setDate = (...args: any[]) => {
+      const r = origSetDate1(...args);
+      (window as any).__dbg2.push({ t: 'd1.setDate called', args: args.map(String), afterD0: toIsoDate(d0.dates[0]), afterD1: toIsoDate(d1.dates[0]) });
+      return r;
+    };
     rangepicker.setDates(
       fromIsoDate(checkinDate) ?? { clear: true },
       fromIsoDate(checkoutDate) ?? { clear: true }
     );
+    d0.setDate = origSetDate0;
+    d1.setDate = origSetDate1;
     (window as any).__dbg2.push({
       t: 'props-sync-after',
       dates0: toIsoDate(rangepicker.dates[0]),
