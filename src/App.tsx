@@ -2060,6 +2060,10 @@ ${itemsStr}
               const kitchenModule = preloadedData.modules?.find((m: any) => m.slug === 'kitchen');
               return kitchenModule?.is_enabled ?? true;
             })()}
+            onOpenAddExpense={() => { setInitialExpenseData(null); setIsAddExpenseModalOpen(true); }}
+            onOpenAddServiceRequest={() => { setInitialServiceRequestData(null); handleNavigateTab('service_requests', 'service_requests'); }}
+            canAddExpense={canSeeNavKey('expenses')}
+            canAddServiceRequest={canSeeNavKey('service_requests')}
           />
         )}
 

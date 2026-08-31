@@ -1187,6 +1187,8 @@ export const strings: Record<string, string> = {
   logged_in_as_label: "Logged in as",
   quick_actions_label: "Quick Actions",
   share_food_menu_button: "Share Menu",
+  add_expense_quick_action: "Add Expense",
+  add_service_request_quick_action: "Add Service Request",
   sign_out_terminal_button: "Sign Out Terminal",
   toggle_sidebar_tooltip: "Toggle Sidebar Menu",
   toggle_sidebar_aria: "Toggle Sidebar Navigation",
