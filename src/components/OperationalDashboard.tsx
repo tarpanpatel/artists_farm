@@ -1726,6 +1726,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           }}
           onDelete={onDeleteBooking ? async (id) => { await onDeleteBooking(id); setSelectedBooking(null); setSelectedBookingFocusSection(null); } : undefined}
           rooms={rooms}
+          isMultiKeyProperty={isMultiKeyProperty}
           checkedInGuests={guests}
           propertyName={propertyName}
           propertyMapsLink={propertyMapsLink || propertyGoogleMapsLink}

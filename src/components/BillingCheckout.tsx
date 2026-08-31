@@ -1187,6 +1187,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
             showToast(`Booking changes saved successfully!`, { type: 'success' });
           }}
           rooms={rooms}
+          isMultiKeyProperty={isMultiKeyProperty}
           checkedInGuests={guests}
           propertyName={propertyName}
           propertyPhone={propertyPhone}

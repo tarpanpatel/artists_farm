@@ -24,6 +24,8 @@ import {
   GUEST_STATUS_CONFIRMED_LEGACY,
   GUEST_STATUS_CHECKED_IN,
   GUEST_STATUS_ACTIVE_LEGACY,
+  GUEST_STATUS_CHECKED_OUT,
+  GUEST_STATUS_CHECKEDOUT_LEGACY,
 } from '../constants/guestStatus';
 
 interface BookingDetailsModalProps {
@@ -65,6 +67,7 @@ interface BookingDetailsModalProps {
   // ID upload flow directly, since that one's just opening a place to
   // upload - not a mutation - so there's no equivalent safety concern.
   initialFocusSection?: 'c_form' | 'checkin' | 'id_verification' | null;
+  isMultiKeyProperty?: boolean;
 }
 
 const formatDate = (dateStr: string) => {
@@ -108,6 +111,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   onCheckedIn,
   onCheckout,
   initialFocusSection = null,
+  isMultiKeyProperty,
 }) => {
   const { staff } = useStaff();
   const { showToast } = useToast();
@@ -329,18 +333,35 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const getEditBlockedDateStrings = (): string[] => {
     const blocked: string[] = [];
     const selectedRoomId = editRoomId ? parseInt(editRoomId, 10) : undefined;
+    const isMultiKey = isMultiKeyProperty ?? (rooms && rooms.length > 1);
 
-    checkedInGuests
+    (checkedInGuests || [])
       .filter((other) => other.id !== guest.id)
       .filter((other) => {
-        const otherRoomId = (other as any).roomId ?? (other as any).room_id;
-        if (selectedRoomId != null && otherRoomId != null) {
-          return Number(otherRoomId) === Number(selectedRoomId);
+        if ((other.status as string) === GUEST_STATUS_CHECKED_OUT || (other.status as string) === GUEST_STATUS_CHECKEDOUT_LEGACY || (other.status as string) === 'Cancelled') {
+          return false;
         }
-        // Single-property fallback (no Assigned Room dropdown rendered at
-        // all when rooms.length === 0) - match by room name instead.
-        return !!guest.roomNumber && !!other.roomNumber
-          && other.roomNumber.toLowerCase().trim() === guest.roomNumber.toLowerCase().trim();
+
+        // On a single-unit property (where isMultiKey is false), ALL active bookings block dates for this property!
+        if (!isMultiKey) return true;
+
+        const otherRoomId = (other as any).roomId ?? (other as any).room_id;
+        if (selectedRoomId != null && otherRoomId != null && Number(otherRoomId) === Number(selectedRoomId)) {
+          return true;
+        }
+
+        const selectedRoomObj = rooms.find((r) => String(r.id) === editRoomId);
+        const targetRoom = selectedRoomObj?.name || guest.roomNumber;
+        if (targetRoom && targetRoom.toLowerCase().trim() !== 'unassigned' && other.roomNumber && other.roomNumber.toLowerCase().trim() === targetRoom.toLowerCase().trim()) {
+          return true;
+        }
+
+        // If the booking's room is unassigned on a multi-key property, block dates for other bookings on default/unassigned
+        if (!selectedRoomId && (!targetRoom || targetRoom.toLowerCase().trim() === 'unassigned')) {
+          return true;
+        }
+
+        return false;
       })
       .forEach((other) => {
         const checkinStr = (other.checkinDate || '').split(' ')[0].split('T')[0];
