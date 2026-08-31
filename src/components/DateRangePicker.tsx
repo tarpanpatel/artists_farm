@@ -195,10 +195,20 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       todayHighlight: true,
       language: 'en',
       ...(disablePastDates ? { minDate: new Date(new Date().setHours(0, 0, 0, 0)) } : {}),
-      datesDisabled: toDisabledDates(blockedDates),
+      // No datesDisabled here (31 Aug 2026) - the range picker's own
+      // setOptions applies whatever's passed to construction/setOptions
+      // uniformly to BOTH sub-pickers, but a night being blocked only means
+      // it can't be a *check-in* - checking OUT on that same date is fine
+      // (the room turns over that day). Applying the full blocked list to
+      // BOTH sides made a valid checkout date completely unclickable
+      // (confirmed live: picking day 27 as check-in with day 28 booked
+      // elsewhere made 28 itself unselectable as checkout, when it should
+      // have been the correct boundary). Set per-side, just below.
     });
     rangepickerRef.current = rangepicker;
     lastBlockedDatesKeyRef.current = (blockedDates ?? []).join(',');
+    // Start side only gets the full blocked list - see the comment above.
+    rangepicker.datepickers[0].setOptions({ datesDisabled: toDisabledDates(blockedDates) });
 
     rangepicker.datepickers.forEach((dp) => {
       const footerControls = dp.pickerElement?.querySelector('.datepicker-footer .datepicker-controls');
@@ -300,7 +310,8 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     const key = (blockedDates ?? []).join(',');
     if (key === lastBlockedDatesKeyRef.current) return;
     lastBlockedDatesKeyRef.current = key;
-    rangepicker.setOptions({ datesDisabled: toDisabledDates(blockedDates) });
+    // Start side only - see the matching comment at construction above.
+    rangepicker.datepickers[0].setOptions({ datesDisabled: toDisabledDates(blockedDates) });
     // Blocked dates can change while the form is still open (another save
     // elsewhere drains into this same list) - re-cap the end side against
     // whatever start is currently picked, not just against clicks.
