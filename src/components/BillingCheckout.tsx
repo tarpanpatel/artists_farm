@@ -1213,7 +1213,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
           open={showAddBookingModal}
           onClose={() => setShowAddBookingModal(false)}
           position="right"
-          className="z-[60] z-60 relative w-full sm:max-w-lg md:max-w-xl p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+          className="z-58 w-full sm:max-w-lg md:max-w-xl p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
         >
           <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
             <div className="flex items-center gap-2.5">
