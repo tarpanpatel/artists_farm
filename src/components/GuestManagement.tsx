@@ -395,11 +395,18 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
         }
       });
 
-    // 2. Existing guest bookings for the currently selected room
+    // 2. Existing guest bookings for the currently selected room. Mirrors the
+    // iCal filter's !isMultiKeyProperty short-circuit above (31 Aug 2026) -
+    // without it, a single-unit property (no room selector, so roomNumber/
+    // selectedRoomId never get set to anything) matched nothing here at all:
+    // both branches require a non-empty roomNumber/selectedRoomId on both
+    // sides, so every existing booking silently failed to block its own
+    // dates on the one property type that actually needs this the most.
 
     guests
       .filter((g) => g.status === GUEST_STATUS_CHECKED_IN || (g.status as string) === GUEST_STATUS_ACTIVE_LEGACY || g.status === GUEST_STATUS_BOOKED)
       .filter((g) => {
+        if (!isMultiKeyProperty) return true;
         const gRoomId = (g as any).roomId || (g as any).room_id;
         if (selectedRoomId && gRoomId && Number(gRoomId) === Number(selectedRoomId)) return true;
         if (g.roomNumber && roomNumber && g.roomNumber.toLowerCase().trim() === roomNumber.toLowerCase().trim()) return true;
@@ -552,7 +559,14 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               if ((g.status as string) === GUEST_STATUS_CHECKED_OUT || (g.status as string) === GUEST_STATUS_CHECKEDOUT_LEGACY || (g.status as string) === 'Cancelled') return false;
               const gRoomId = (g as any).roomId || (g as any).room_id;
 
-              const isSameRoom = (selectedRoomId && gRoomId && Number(gRoomId) === Number(selectedRoomId)) ||
+              // Same fix as getBlockedDateStrings() above (31 Aug 2026): on a
+              // single-unit property there's no room selector, so roomNumber/
+              // selectedRoomId are permanently empty and this check matched
+              // nothing - a real overlap only got caught by the backend's own
+              // validation, as a generic toast instead of this one's specific
+              // room-named rejection.
+              const isSameRoom = !isMultiKeyProperty ||
+                (selectedRoomId && gRoomId && Number(gRoomId) === Number(selectedRoomId)) ||
                 (g.roomNumber && roomNumber && g.roomNumber.toLowerCase().trim() === roomNumber.toLowerCase().trim());
 
               if (!isSameRoom) return false;
