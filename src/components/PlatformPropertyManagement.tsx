@@ -2087,7 +2087,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
         position="right"
         open={!!viewPropertiesTenant}
         onClose={() => setViewPropertiesTenant(null)}
-        className="w-full max-w-xl md:max-w-2xl z-58 p-0 bg-white dark:bg-slate-900 shadow-2xl flex flex-col justify-between"
+        className="w-full max-w-xl md:max-w-2xl z-[60] z-60 p-0 bg-white dark:bg-slate-900 shadow-2xl flex flex-col justify-between"
       >
         {viewPropertiesTenant && (() => {
           const tenantProperties = properties.filter((p) => {
