@@ -325,6 +325,10 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     };
     syncEndCeilingRef.current = syncDisabledAndCeiling;
     syncDisabledAndCeiling(toIsoDate(rangepicker.dates[0]));
+    // Seed prevStartIsoRef from the picker's actual constructed state (not
+    // the checkinDate prop) - see processSettledRange's own comment on why
+    // this can't wait for a settle pass.
+    prevStartIsoRef.current = toIsoDate(rangepicker.dates[0]);
 
     const processSettledRange = () => {
       if (suppressRangeValidationRef.current) return;
@@ -337,10 +341,15 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       let endIso = toIsoDate(end);
 
       // Re-picking checkin bug fix (1 Sep 2026) - see the refs' own comment
-      // above for the full mechanics. A real click that changed checkin on
-      // top of an already-settled checkin (prevStartIsoRef only gets its
-      // first value from the very first settle, so this never fires on the
-      // initial props-driven load of an existing booking) means whatever
+      // above for the full mechanics. prevStartIsoRef is seeded once right
+      // after construction (below), from whatever checkin the picker loaded
+      // with - NOT from this settle pass, since the library's constructor
+      // reads an existing input value directly into datepicker.dates without
+      // going through setDate, so no 'changeDate' event - and therefore no
+      // settle - ever fires for it (confirmed live: without the explicit
+      // seed, the very first click after opening Edit Booking on an
+      // existing range slipped straight past this check). A real click that
+      // changed checkin on top of an already-settled checkin means whatever
       // the library's own swap/mirror math landed the checkout on - the old
       // value, the new value, anything - must be discarded; the user always
       // gets an explicit second pick.
