@@ -829,16 +829,31 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     $noOfGuests = intval($input['no_of_guests'] ?? 1);
                     $phone = $input['phone_number'] ?? $input['contact'] ?? 'N/A';
 
-                    $telegramMessage = "🏨 <b>NEW GUEST BOOKING</b>\n\n";
-                    $telegramMessage .= "👤 <b>Guest Name:</b> {$guestName}\n";
-                    $telegramMessage .= "📱 <b>Phone:</b> {$phone}\n";
-                    $telegramMessage .= "👥 <b>No. of Guests:</b> {$noOfGuests}\n\n";
-                    $telegramMessage .= "📅 <b>Check-in:</b> {$checkinDate}\n";
-                    $telegramMessage .= "📅 <b>Check-out:</b> {$checkoutDate}\n\n";
-                    $telegramMessage .= "💰 <b>Total Charge:</b> ₹{$totalCharge}\n";
-                    $telegramMessage .= "✅ <b>Advance Paid:</b> ₹{$advancePaid}\n";
-                    $telegramMessage .= "⏳ <b>Pending:</b> ₹{$pendingAmount}\n\n";
-                    $telegramMessage .= "🆔 <b>Booking ID:</b> {$newId}";
+                    require_once __DIR__ . '/../telegram/templates.php';
+                    if (class_exists('TelegramTemplates') && method_exists('TelegramTemplates', 'render')) {
+                        $telegramMessage = TelegramTemplates::render($pdo, 'new_guest_booking', [
+                            'guest_name' => $guestName,
+                            'phone' => $phone,
+                            'no_of_guests' => $noOfGuests,
+                            'checkin_date' => $checkinDate,
+                            'checkout_date' => $checkoutDate,
+                            'total_charge' => $totalCharge,
+                            'advance_paid' => $advancePaid,
+                            'pending_amount' => $pendingAmount,
+                            'booking_id' => $newId,
+                        ]);
+                    } else {
+                        $telegramMessage = "🏨 <b>NEW GUEST BOOKING</b>\n\n";
+                        $telegramMessage .= "👤 <b>Guest Name:</b> {$guestName}\n";
+                        $telegramMessage .= "📱 <b>Phone:</b> {$phone}\n";
+                        $telegramMessage .= "👥 <b>No. of Guests:</b> {$noOfGuests}\n\n";
+                        $telegramMessage .= "📅 <b>Check-in:</b> {$checkinDate}\n";
+                        $telegramMessage .= "📅 <b>Check-out:</b> {$checkoutDate}\n\n";
+                        $telegramMessage .= "💰 <b>Total Charge:</b> ₹{$totalCharge}\n";
+                        $telegramMessage .= "✅ <b>Advance Paid:</b> ₹{$advancePaid}\n";
+                        $telegramMessage .= "⏳ <b>Pending:</b> ₹{$pendingAmount}\n\n";
+                        $telegramMessage .= "🆔 <b>Booking ID:</b> {$newId}";
+                    }
 
                     // "Mark Checked-In" only makes sense for a fresh reservation - a
                     // booking created as already Checked In (walk-in, OTA conversion)

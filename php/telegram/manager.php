@@ -234,6 +234,14 @@ $defaultTemplates = [
         'available_variables' => '{request_type},{room_name},{staff_name},{fulfill_time}',
         'content' => "✅ <b>SERVICE REQUEST FULFILLED</b>\n\n🧾 <b>Type:</b> {request_type}\n🚪 <b>Room:</b> {room_name}\n👤 <b>Fulfilled By:</b> {staff_name}\n🕒 <b>At:</b> {fulfill_time}"
     ],
+    'new_guest_booking' => [
+        'template_key' => 'new_guest_booking',
+        'title' => 'New Guest Booking',
+        'category' => 'Guest Check-in',
+        'description' => 'Sent to Admin group when a new guest reservation or booking is created.',
+        'available_variables' => '{guest_name},{phone},{no_of_guests},{checkin_date},{checkout_date},{total_charge},{advance_paid},{pending_amount},{booking_id}',
+        'content' => "🏨 <b>NEW GUEST BOOKING</b>\n\n👤 <b>Guest Name:</b> {guest_name}\n📱 <b>Phone:</b> {phone}\n👥 <b>No. of Guests:</b> {no_of_guests}\n\n📅 <b>Check-in:</b> {checkin_date}\n📅 <b>Check-out:</b> {checkout_date}\n\n💰 <b>Total Charge:</b> ₹{total_charge}\n✅ <b>Advance Paid:</b> ₹{advance_paid}\n⏳ <b>Pending:</b> ₹{pending_amount}\n\n🆔 <b>Booking ID:</b> {booking_id}"
+    ],
     'booking_updated' => [
         'template_key' => 'booking_updated',
         'title' => 'Booking Updated',
