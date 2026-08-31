@@ -22,6 +22,12 @@ declare module 'flowbite-datepicker/DateRangePicker' {
     readonly pickerElement: HTMLElement | undefined;
     hide(): void;
     setOptions(options: { datesDisabled?: Date[]; maxDate?: Date | string | number }): void;
+    // picker.viewDate/changeFocus: restoring the displayed month after Clear
+    // (31 Aug 2026) - see DateRangePicker.tsx's clear-btn interceptor.
+    readonly picker: {
+      readonly viewDate: number;
+      changeFocus(newViewDate: number | Date): unknown;
+    };
   }
 
   export default class DateRangePicker {

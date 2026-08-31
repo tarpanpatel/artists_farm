@@ -213,6 +213,28 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         btn.classList.remove('w-1/2');
         btn.classList.add('flex-1');
       });
+      // Clear jumps the visible month back to "today" (31 Aug 2026) - the
+      // library's own click handler (bound during construction, so it runs
+      // before any listener added here) clears the selection via setDate,
+      // whose internal view-reset falls back to config.defaultViewDate
+      // (captured as `today()` once, at construction time) whenever there's
+      // no date left to base the view on - it has no notion of "the month
+      // you were already looking at". mousedown fires before click
+      // regardless of listener registration order, so it reliably captures
+      // the pre-clear view; the click listener registered right after it
+      // then fires after the library's own (same event, later registration)
+      // and restores that captured month immediately.
+      let preClearViewDate: number | null = null;
+      footerControls.querySelectorAll('.clear-btn').forEach((btn) => {
+        btn.addEventListener('mousedown', () => {
+          preClearViewDate = dp.picker.viewDate;
+        });
+        btn.addEventListener('click', () => {
+          if (preClearViewDate !== null) {
+            dp.picker.changeFocus(preClearViewDate);
+          }
+        });
+      });
       const closeBtn = document.createElement('button');
       closeBtn.type = 'button';
       closeBtn.textContent = 'Close';
