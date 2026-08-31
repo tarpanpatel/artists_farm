@@ -3,6 +3,7 @@ import { Button, Badge, Checkbox } from 'flowbite-react';
 import {
   Trash2,
   Plus,
+  Loader2,
 } from './icons/FlowbiteIcons';
 import { Guest, BillingReceipt, MiscChargeTemplate, MenuItem } from '../types';
 import { Popover } from './Popover';
@@ -1033,8 +1034,20 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               </div>
             )}
 
-            <Button type="submit" color="blue" className="w-full mt-4 font-semibold">
-              {t('save_guest_booking_button', 'Save Guest Booking')}
+            <Button
+              type="submit"
+              color="blue"
+              disabled={isSubmitting}
+              className="w-full mt-4 font-semibold flex items-center justify-center gap-2"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                  <span>{t('saving_booking_button', 'Saving Booking...')}</span>
+                </>
+              ) : (
+                <span>{t('save_guest_booking_button', 'Save Guest Booking')}</span>
+              )}
             </Button>
           </form>
         </div>
