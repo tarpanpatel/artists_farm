@@ -14,6 +14,7 @@ import {
   getRoomSlugFromHash,
 } from '../services/api';
 import { t } from '../i18n/en';
+import { useAuthOptional } from '../contexts/AuthContext';
 
 export interface PreloadedData {
   currentProperty: any;
@@ -37,6 +38,8 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [, setCurrentRoomSlug] = useState<string | null>(null);
+  const authCtx = useAuthOptional();
+  const authChecked = authCtx ? authCtx.authChecked : true;
 
   const [invalidProperty, setInvalidProperty] = useState<string | null>(null);
 
@@ -430,7 +433,7 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
     return <InvalidPropertyPage propertySlug={invalidProperty} />;
   }
 
-  if (isLoading) {
+  if (isLoading || !authChecked) {
     return <LoadingScreen message={t('loading_screen_default_message')} />;
   }
 
