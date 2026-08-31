@@ -240,6 +240,40 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusGuestId]);
 
+  // Deep-link to a specific booking from URL (e.g. #guests?booking_id=708 or ?guest_id=708)
+  useEffect(() => {
+    const checkDeepLink = () => {
+      if (!guests || guests.length === 0) return;
+      if (typeof window === 'undefined') return;
+
+      const rawHash = window.location.hash.replace('#', '').trim();
+      const hashQuery = rawHash.includes('?') ? rawHash.split('?')[1] : '';
+      const searchParams = new URLSearchParams(hashQuery || window.location.search);
+      const targetBookingId = searchParams.get('booking_id') || searchParams.get('guest_id') || searchParams.get('id');
+
+      if (targetBookingId) {
+        const cleanTargetId = targetBookingId.trim();
+        const matched = guests.find((g) =>
+          String(g.id) === cleanTargetId ||
+          String((g as any).bookingId) === cleanTargetId ||
+          String((g as any).booking_id) === cleanTargetId
+        );
+        if (matched) {
+          setSelectedGuestForDetails(matched);
+          const category = getGuestTabCategory(matched);
+          if (category === 'today' || category === 'upcoming' || category === 'past_bookings') {
+            setActiveTab(category);
+          }
+        }
+      }
+    };
+
+    checkDeepLink();
+    window.addEventListener('hashchange', checkDeepLink);
+    return () => window.removeEventListener('hashchange', checkDeepLink);
+  }, [guests]);
+
+
   // Helper for badge labels on cards
   const getGuestStayStatus = (guest: Guest) => {
     // A cancelled booking is otherwise indistinguishable from a genuinely
@@ -1178,7 +1212,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
           open={showAddBookingModal}
           onClose={() => setShowAddBookingModal(false)}
           position="right"
-          className="z-58 w-full sm:max-w-4xl lg:max-w-5xl p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+          className="z-58 w-full sm:max-w-lg md:max-w-xl p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
         >
           <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
             <div className="flex items-center gap-2.5">

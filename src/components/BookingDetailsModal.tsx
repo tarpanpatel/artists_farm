@@ -1112,10 +1112,10 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               )}
             </div>
           </div>
+        </DrawerItems>
 
-          {/* Modal Actions Footer: Clean Layout with Checkout on Bottom Right */}
-          {/* Modal Actions Footer: 3 Columns for Delete/Share/Edit, 2 Columns for Cancel/Save */}
-          <div id="printableBookingDetailsActionsBar" className="booking-details-modal__footer mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
+        {/* Modal Actions Footer: Sticky / Pinned at bottom of drawer */}
+        <div id="printableBookingDetailsActionsBar" className="booking-details-modal__footer shrink-0 p-4 sm:p-5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800">
             {!isEditing ? (
               <div className="space-y-3 w-full">
                 {/* Mark Checked In (Full-width action if status is Booked) */}
@@ -1211,8 +1211,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 </button>
               </div>
             )}
-          </div>
-        </DrawerItems>
+        </div>
       </FlowbiteDrawer>
 
       {isIdModalOpen && (

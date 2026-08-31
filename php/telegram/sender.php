@@ -148,46 +148,45 @@ if (!function_exists('appendAppUrlToMessage')) {
                 $stmt->execute([$propertyId]);
                 $row = $stmt->fetch(PDO::FETCH_ASSOC);
                 if ($row) {
-                    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-                    $host = $_SERVER['HTTP_HOST'] ?? 'localhost:3000';
-                    // Telegram's own link-entity parser silently refuses to
-                    // linkify any URL whose host is literally "localhost" (a
-                    // literal IP like 127.0.0.1 or a real domain both work
-                    // fine, confirmed by direct testing 28 Aug 2026) - the <a>
-                    // tag gets dropped entirely, and Telegram's independent
-                    // hashtag auto-detector then picks up the leftover
-                    // "#dashboard" text on its own, which is what produced the
-                    // half-blue, half-plain, wrong-tap-target link reported live
-                    // that day. Production/staging never hit this (real
-                    // domains aren't affected) - this substitution only changes
-                    // local XAMPP dev's own links.
+                    global $server_name;
+                    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443) ? 'https' : 'http';
+                    $host = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? $server_name ?? 'staging.ground-code.com';
+                    if (strpos($host, 'ground-code.com') !== false) {
+                        $scheme = 'https';
+                    }
                     $host = preg_replace('/^localhost(?=:|$)/i', '127.0.0.1', $host);
+                    
                     $hash = 'dashboard';
+                    $queryParams = [];
+
                     if ($category === 'kitchen' || strpos($message, 'KITCHEN') !== false) {
                         $hash = 'kitchen';
                     } else if ($category === 'finance' || strpos($message, 'FINANCIAL') !== false || strpos($message, 'EXPENSE') !== false) {
                         $hash = 'finance';
                     } else if (strpos($message, 'MATERIAL') !== false || strpos($message, 'REQUISITION') !== false) {
                         $hash = 'stock_requests';
-                    } else if (strpos($message, 'SERVICE') !== false) {
+                    } else if ($category === 'service' || strpos($message, 'SERVICE') !== false) {
                         $hash = 'service_requests';
-                    } else if (strpos($message, 'GUEST') !== false || strpos($message, 'BOOKING') !== false || strpos($message, 'CHECK-IN') !== false) {
+                        if (preg_match('/(?:Service\s*Request|Request)\s*#?(\d+)/i', $message, $m)) {
+                            $queryParams['request_id'] = $m[1];
+                        }
+                    } else if ($category === 'admin' || strpos($message, 'GUEST') !== false || strpos($message, 'BOOKING') !== false || strpos($message, 'CHECK-IN') !== false) {
                         $hash = 'guests';
+                        // Extract booking id e.g. "Booking ID: 708" or "Booking ID: #708" or "ID: 708"
+                        if (preg_match('/(?:Booking|Guest)\s*ID:\s*#?([a-zA-Z0-9_-]+)/i', $message, $m)) {
+                            $queryParams['booking_id'] = $m[1];
+                        } elseif (preg_match('/\bID:\s*#?([a-zA-Z0-9_-]+)/i', $message, $m)) {
+                            $queryParams['booking_id'] = $m[1];
+                        }
                     }
-                    $appUrl = "{$scheme}://{$host}/{$row['tenant_slug']}/{$row['prop_slug']}/#{$hash}";
+
+                    $queryPart = !empty($queryParams) ? '?' . http_build_query($queryParams) : '';
+                    $appUrl = "{$scheme}://{$host}/{$row['tenant_slug']}/{$row['prop_slug']}/#{$hash}{$queryPart}";
                 }
             }
         } catch (Exception $e) {}
 
         if ($appUrl) {
-            // Link text must NOT be the raw URL - it contains a #hash fragment
-            // (e.g. #dashboard), which Telegram's own entity parser detects as
-            // a hashtag INSIDE the <a> tag's text and renders as a separate,
-            // overlapping "hashtag" entity. That splits the link visually (only
-            // the #fragment portion shows as tappable blue) and, worse, tapping
-            // it does a Telegram hashtag search instead of opening the URL -
-            // reported live 28 Aug 2026 via a real Admin Farm Group screenshot.
-            // A plain, non-URL anchor text sidesteps the collision entirely.
             $message .= "\n\n🔗 <a href=\"{$appUrl}\">Open in App</a>";
         }
         return $message;

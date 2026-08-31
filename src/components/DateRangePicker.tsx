@@ -174,6 +174,44 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   blockedDatesRef.current = blockedDates;
   const suppressRangeValidationRef = useRef(false);
   const syncEndCeilingRef = useRef<(startIso: string) => void>(() => {});
+  // Re-picking checkin bug (1 Sep 2026): this picker always routes calendar
+  // clicks through datepickers[0] (see the "one continuous popover" note
+  // below), so the library has no way to know whether a given click is
+  // "pick a fresh checkin" or "pick the checkout" - it just compares the
+  // clicked value against whatever the OTHER side currently holds and
+  // swaps/mirrors accordingly. That's exactly how a genuinely blocked
+  // trailing-month padding cell (e.g. clicking "3" in the row that's
+  // actually showing November while October is in view) can silently
+  // become the new checkout via that swap, demoting the OLD checkout into
+  // the checkin slot - a single misclick quietly rewrites both ends of an
+  // existing range. These four refs implement "picking a new checkin must
+  // always require an explicit, separate checkout pick" on top of that
+  // swap machinery rather than fighting it:
+  //  - scheduledRef/userClickPendingRef: the library's own onChangeDate
+  //    normalization (DateRangePicker.js) can synchronously re-dispatch
+  //    'changeDate' on both inputs multiple times for a single click (each
+  //    setDate call during a swap fires its own event) - queueMicrotask
+  //    coalesces those into one settle pass per click, and
+  //    userClickPendingRef (armed by a real day-cell click, consumed on
+  //    settle) distinguishes an actual click from the props-sync effect's
+  //    own programmatic setDates call below, which dispatches the same
+  //    event.
+  //  - prevStartIsoRef: lets the settle pass detect "checkin actually
+  //    changed since we last settled" without caring which DOM input the
+  //    event nominally targeted (meaningless here, always datepickers[0]).
+  //  - skipNextPropsSyncRef: the correction below re-mirrors
+  //    datepickers[1] to the checkin (the only stable state this library's
+  //    allowOneSidedRange:false config permits - clearing just one side
+  //    makes the library auto-clear the OTHER side too, verified against
+  //    DateRangePicker.js's onChangeDate), then blanks the END input's
+  //    display only, WITHOUT that flowing back through the props-sync
+  //    effect's own rangepicker.setDates call - that call's clear:true
+  //    would trigger the exact same "prevent one-sided range" normalization
+  //    and wipe the checkin right back out too.
+  const scheduledRef = useRef(false);
+  const userClickPendingRef = useRef(false);
+  const prevStartIsoRef = useRef('');
+  const skipNextPropsSyncRef = useRef(false);
 
   const [rangeError, setRangeError] = useState<string | undefined>(undefined);
   const hasError = Boolean(error) || Boolean(rangeError);
@@ -207,6 +245,18 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     lastBlockedDatesKeyRef.current = (blockedDates ?? []).join(',');
 
     rangepicker.datepickers.forEach((dp) => {
+      // Arms userClickPendingRef so the settle pass below can tell a real
+      // day-cell click apart from a programmatic setDates call (both fire
+      // the same 'changeDate' event) - registered unconditionally, ahead of
+      // the footerControls early-return just below, since it doesn't depend
+      // on the Close-button injection succeeding.
+      dp.pickerElement?.addEventListener('click', (ev) => {
+        const target = ev.target;
+        if (target instanceof Element && target.closest('.datepicker-cell.day:not(.disabled)')) {
+          userClickPendingRef.current = true;
+        }
+      });
+
       const footerControls = dp.pickerElement?.querySelector('.datepicker-footer .datepicker-controls');
       if (!footerControls || footerControls.querySelector('.datepicker-close-btn')) return;
       footerControls.querySelectorAll('.clear-btn').forEach((btn) => {
@@ -276,12 +326,45 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     syncEndCeilingRef.current = syncDisabledAndCeiling;
     syncDisabledAndCeiling(toIsoDate(rangepicker.dates[0]));
 
-    const reportCurrentRange = () => {
+    const processSettledRange = () => {
       if (suppressRangeValidationRef.current) return;
+
+      const wasUserClick = userClickPendingRef.current;
+      userClickPendingRef.current = false;
 
       const [start, end] = rangepicker.dates;
       const startIso = toIsoDate(start);
-      const endIso = toIsoDate(end);
+      let endIso = toIsoDate(end);
+
+      // Re-picking checkin bug fix (1 Sep 2026) - see the refs' own comment
+      // above for the full mechanics. A real click that changed checkin on
+      // top of an already-settled checkin (prevStartIsoRef only gets its
+      // first value from the very first settle, so this never fires on the
+      // initial props-driven load of an existing booking) means whatever
+      // the library's own swap/mirror math landed the checkout on - the old
+      // value, the new value, anything - must be discarded; the user always
+      // gets an explicit second pick.
+      if (wasUserClick && prevStartIsoRef.current && startIso && startIso !== prevStartIsoRef.current) {
+        // Re-mirror the end side to the checkin internally (the only stable
+        // state allowOneSidedRange:false permits - see comment above) so the
+        // NEXT click's swap comparison runs against the current checkin,
+        // not a stale value from whatever the checkout used to be.
+        suppressRangeValidationRef.current = true;
+        try {
+          rangepicker.datepickers[1].setDate(start as number, { render: false });
+        } finally {
+          suppressRangeValidationRef.current = false;
+        }
+        // ...but only that internal mirroring - the visible field stays
+        // blank, and skipNextPropsSyncRef stops the props-sync effect from
+        // "helpfully" pushing checkoutDate='' back through
+        // rangepicker.setDates, which would trigger the same one-sided-range
+        // normalization and wipe checkin back out too.
+        endEl.value = '';
+        endIso = '';
+        skipNextPropsSyncRef.current = true;
+      }
+      prevStartIsoRef.current = startIso;
 
       syncDisabledAndCeiling(startIso);
 
@@ -318,6 +401,20 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       callbacksRef.current.onCheckinChange(startIso);
       callbacksRef.current.onCheckoutChange(endIso);
     };
+
+    // Coalesces however many 'changeDate' events a single click produced
+    // (the library's own swap normalization re-dispatches on both inputs
+    // synchronously, see the refs' comment above) into one settle pass that
+    // runs after that whole synchronous cascade has finished.
+    const reportCurrentRange = () => {
+      if (suppressRangeValidationRef.current) return;
+      if (scheduledRef.current) return;
+      scheduledRef.current = true;
+      queueMicrotask(() => {
+        scheduledRef.current = false;
+        processSettledRange();
+      });
+    };
     startEl.addEventListener('changeDate', reportCurrentRange);
     endEl.addEventListener('changeDate', reportCurrentRange);
 
@@ -333,6 +430,18 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   useEffect(() => {
     const rangepicker = rangepickerRef.current;
     if (!rangepicker) return;
+    // The re-picking-checkin correction (processSettledRange, mount effect
+    // above) already put the picker in the exact state this checkinDate/
+    // checkoutDate pair describes - checkin set, checkout internally
+    // mirrored to it but blanked on-screen. Following through here with a
+    // real rangepicker.setDates(checkin, {clear:true}) would hit the
+    // library's own "prevent one-sided range" normalization and clear
+    // checkin right back out too (allowOneSidedRange is false), undoing the
+    // fix - see that effect's own comment for why.
+    if (skipNextPropsSyncRef.current) {
+      skipNextPropsSyncRef.current = false;
+      return;
+    }
     const [currentStart, currentEnd] = rangepicker.dates;
     if (toIsoDate(currentStart) === checkinDate && toIsoDate(currentEnd) === checkoutDate) return;
 

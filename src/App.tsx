@@ -157,7 +157,8 @@ function AppBody({ preloadedData }: AppBodyProps) {
 
   const getInitialActiveState = (): { tab: TabType; key: string } => {
     if (typeof window !== 'undefined') {
-      const hash = window.location.hash.replace('#', '').trim();
+      const rawHash = window.location.hash.replace('#', '').trim();
+      const hash = rawHash.split('?')[0].split('/')[0];
       const routeMap: Record<string, { tab: TabType; key: string }> = {
         dashboard: { tab: 'dashboard', key: 'dashboard' },
         guest_registration: { tab: 'guests', key: 'all_bookings' },
@@ -1244,7 +1245,8 @@ function AppBody({ preloadedData }: AppBodyProps) {
       if (typeof window === 'undefined') return;
       if (!authChecked || !isAuthenticated) return;
 
-      const hash = window.location.hash.replace('#', '').trim();
+      const rawHash = window.location.hash.replace('#', '').trim();
+      const hash = rawHash.split('?')[0].split('/')[0];
       if (!hash) return;
 
       // If hash is a menu item (not a room), clear room override.
