@@ -252,7 +252,9 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       // on the Close-button injection succeeding.
       dp.pickerElement?.addEventListener('click', (ev) => {
         const target = ev.target;
-        if (target instanceof Element && target.closest('.datepicker-cell.day:not(.disabled)')) {
+        const matched = target instanceof Element && target.closest('.datepicker-cell.day:not(.disabled)');
+        console.error('DBG_CLICK', matched ? 'matched' : 'no-match', (target as Element)?.className);
+        if (matched) {
           userClickPendingRef.current = true;
         }
       });
@@ -339,6 +341,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       const [start, end] = rangepicker.dates;
       const startIso = toIsoDate(start);
       let endIso = toIsoDate(end);
+      console.error('DBG_SETTLE', JSON.stringify({ wasUserClick, prevStart: prevStartIsoRef.current, startIso, endIso }));
 
       // Re-picking checkin bug fix (1 Sep 2026) - see the refs' own comment
       // above for the full mechanics. prevStartIsoRef is seeded once right
