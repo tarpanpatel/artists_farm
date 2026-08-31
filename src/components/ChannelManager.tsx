@@ -518,6 +518,7 @@ export const ChannelManager: React.FC<ChannelManagerProps> = ({ onLogAudit }) =>
               onCheckoutChange={setDateTo}
               fromLabel={t('date_from_label', 'Start Date')}
               toLabel={t('date_to_label', 'End Date')}
+              disablePastDates
             />
           </div>
           <div>

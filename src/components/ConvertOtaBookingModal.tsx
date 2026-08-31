@@ -51,6 +51,7 @@ const toDateInputValue = (raw: string): string => (raw || '').split(' ')[0].spli
 export const ConvertOtaBookingModal: React.FC<ConvertOtaBookingModalProps> = ({
   otaBlock,
   roomNumber,
+  blockedDates = [],
   onClose,
   onConvert,
 }) => {
@@ -217,6 +218,8 @@ export const ConvertOtaBookingModal: React.FC<ConvertOtaBookingModalProps> = ({
           checkoutDate={checkout}
           onCheckinChange={setCheckin}
           onCheckoutChange={setCheckout}
+          disablePastDates
+          blockedDates={blockedDates}
         />
 
         <div className="grid grid-cols-2 gap-4">
