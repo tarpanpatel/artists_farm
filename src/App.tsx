@@ -17,7 +17,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { FinanceProvider } from './contexts/FinanceContext';
 import { InventoryProvider, useInventoryContext } from './contexts/InventoryContext';
 import { KitchenProvider } from './contexts/KitchenContext';
-import { ServiceRequestProvider } from './contexts/ServiceRequestContext';
+import { ServiceRequestProvider, useServiceRequestContext } from './contexts/ServiceRequestContext';
 import { recordTelescopeLog } from './utils/telescopeLogger';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 import { formatDateDDMMYYYY } from './utils/dateUtils';
@@ -734,6 +734,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // client-side, so that case must still hit the network).
   const preloadedPropertyIdRef = useRef<number | undefined>(preloadedData.currentProperty?.id);
   const { showToast } = useToast();
+  const { requestAddDrawer: requestOpenServiceRequestDrawer } = useServiceRequestContext();
   const { staff, refreshStaff, refreshAttendance } = useStaff();
 
   const { inventory, updateStock, addInventoryItem, updateInventoryItemImage, addRequisition } = useInventoryContext();
@@ -2069,7 +2070,7 @@ ${itemsStr}
               return kitchenModule?.is_enabled ?? true;
             })()}
             onOpenAddExpense={() => { setInitialExpenseData(null); setIsAddExpenseModalOpen(true); }}
-            onOpenAddServiceRequest={() => { setInitialServiceRequestData(null); handleNavigateTab('service_requests', 'service_requests'); }}
+            onOpenAddServiceRequest={() => { setInitialServiceRequestData(null); handleNavigateTab('service_requests', 'service_requests'); requestOpenServiceRequestDrawer(); }}
             canAddExpense={canSeeNavKey('expenses')}
             canAddServiceRequest={canSeeNavKey('service_requests')}
           />
@@ -2084,7 +2085,7 @@ ${itemsStr}
             kitchenModuleEnabled={kitchenEnabled}
             onOpenAddBooking={() => setIsAddBookingModalOpen(true)}
             onOpenAddExpense={() => { setInitialExpenseData(null); setIsAddExpenseModalOpen(true); }}
-            onOpenAddServiceRequest={() => { setInitialServiceRequestData(null); handleNavigateTab('service_requests', 'service_requests'); }}
+            onOpenAddServiceRequest={() => { setInitialServiceRequestData(null); handleNavigateTab('service_requests', 'service_requests'); requestOpenServiceRequestDrawer(); }}
             permissions={mobileNavPermissions}
           />
         )}
@@ -2816,6 +2817,10 @@ ${itemsStr}
             setIsAIChatOpen(false);
             setActiveTab('service_requests' as any);
             setActiveMenuItemKey('service_requests');
+            // Only force the drawer open for a bare "add a request" intent - a
+            // prefilled deep-link ("send towels to 102") already auto-opens it
+            // from its own prefill effect, and bumping this too would fight that.
+            if (!data) requestOpenServiceRequestDrawer();
           }}
         />
         {/* Gated on is_public_demo / demo tenant properties - the public marketing /

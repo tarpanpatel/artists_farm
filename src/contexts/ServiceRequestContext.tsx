@@ -8,6 +8,17 @@ interface ServiceRequestContextValue {
   pendingCount: number;
   loading: boolean;
   refreshRequests: () => Promise<void>;
+  // Bumped by the mobile bottom nav / sidebar / AI-chat "Add Service Request"
+  // quick actions. ServiceRequestsManagement only mounts on the service_requests
+  // tab, so those entry points navigate there AND bump this - the component
+  // watches it, opens its New Service Request drawer once mounted (instead of
+  // just dropping the user on the tab to hunt for the "New Request" button),
+  // then calls consumeAddDrawer() so simply revisiting the tab later doesn't
+  // re-pop the drawer (the component fully unmounts when the tab changes, so a
+  // component-local "already handled" ref wouldn't survive to prevent that).
+  addDrawerNonce: number;
+  requestAddDrawer: () => void;
+  consumeAddDrawer: () => void;
 }
 
 const ServiceRequestContext = createContext<ServiceRequestContextValue | null>(null);
@@ -30,6 +41,10 @@ export const ServiceRequestProvider: React.FC<{ children: React.ReactNode }> = (
   const { isAuthenticated, authChecked } = useAuth();
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [addDrawerNonce, setAddDrawerNonce] = useState(0);
+
+  const requestAddDrawer = useCallback(() => setAddDrawerNonce((n) => n + 1), []);
+  const consumeAddDrawer = useCallback(() => setAddDrawerNonce(0), []);
 
   const refreshRequests = useCallback(async () => {
     const data = await fetchServiceRequestsFromDB();
@@ -53,6 +68,9 @@ export const ServiceRequestProvider: React.FC<{ children: React.ReactNode }> = (
         pendingCount: pendingRequests.length,
         loading,
         refreshRequests,
+        addDrawerNonce,
+        requestAddDrawer,
+        consumeAddDrawer,
       }}
     >
       {children}
