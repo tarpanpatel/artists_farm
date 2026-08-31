@@ -18,6 +18,7 @@ import { DateRangePicker } from './DateRangePicker';
 import { CheckinVerificationModal } from './CheckinVerificationModal';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
 import { shareTextContent } from '../utils/shareText';
+import { parseDateToYMD } from '../utils/dateUtils';
 import { t } from '../i18n/en';
 import {
   GUEST_STATUS_BOOKED,
@@ -364,16 +365,15 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         return false;
       })
       .forEach((other) => {
-        const checkinStr = (other.checkinDate || '').split(' ')[0].split('T')[0];
-        const checkoutStr = (other.expectedCheckout || other.checkoutDate || other.checkinDate || '').split(' ')[0].split('T')[0];
-        if (!checkinStr) return;
+        const startYmd = parseDateToYMD(other.checkinDate || '');
+        const endYmd = parseDateToYMD(other.expectedCheckout || other.checkoutDate || other.checkinDate || '');
+        if (!startYmd) return;
 
-        const [sy, sm, sd] = checkinStr.split('-').map(Number);
-        const [ey, em, ed] = (checkoutStr || checkinStr).split('-').map(Number);
-        if (!sy || !sm || !sd) return;
+        const [sy, sm, sd] = startYmd;
+        const [ey, em, ed] = endYmd || startYmd;
 
         const start = new Date(sy, sm - 1, sd, 12, 0, 0);
-        const end = ey && em && ed ? new Date(ey, em - 1, ed, 12, 0, 0) : new Date(start);
+        const end = new Date(ey, em - 1, ed, 12, 0, 0);
 
         const current = new Date(start);
         while (current < end) {

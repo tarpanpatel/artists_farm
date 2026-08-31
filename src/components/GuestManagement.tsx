@@ -19,6 +19,7 @@ import {
   GUEST_STATUS_CHECKEDOUT_LEGACY,
 } from '../constants/guestStatus';
 import { getPropertySlug } from '../services/api';
+import { parseDateToYMD } from '../utils/dateUtils';
 import { DateRangePicker } from './DateRangePicker';
 import { StyledSelect } from './StyledSelect';
 import { Input } from './Input';
@@ -414,17 +415,15 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
         return false;
       })
       .forEach((g) => {
-        const checkinStr = (g.checkinDate || '').split(' ')[0].split('T')[0];
-        const checkoutStr = (g.expectedCheckout || g.checkoutDate || g.checkinDate || '').split(' ')[0].split('T')[0];
-        if (!checkinStr) return;
+        const startYmd = parseDateToYMD(g.checkinDate || '');
+        const endYmd = parseDateToYMD(g.expectedCheckout || g.checkoutDate || g.checkinDate || '');
+        if (!startYmd) return;
 
-        const [sy, sm, sd] = checkinStr.split('-').map(Number);
-        const [ey, em, ed] = (checkoutStr || checkinStr).split('-').map(Number);
-
-        if (!sy || !sm || !sd) return;
+        const [sy, sm, sd] = startYmd;
+        const [ey, em, ed] = endYmd || startYmd;
 
         const start = new Date(sy, sm - 1, sd, 12, 0, 0);
-        const end = ey && em && ed ? new Date(ey, em - 1, ed, 12, 0, 0) : new Date(start);
+        const end = new Date(ey, em - 1, ed, 12, 0, 0);
 
         const current = new Date(start);
         while (current < end) {

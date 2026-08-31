@@ -24,6 +24,29 @@ export const formatDateDDMMYYYY = (dateStr: string | null): string => {
   return cleaned;
 };
 
+export const parseDateToYMD = (dateStr?: string | null): [number, number, number] | null => {
+  if (!dateStr) return null;
+  const cleaned = String(dateStr).trim();
+  if (!cleaned) return null;
+  const raw = cleaned.split(' ')[0].split('T')[0].trim();
+  if (!raw) return null;
+
+  const parts = raw.split(/[\/\-]/).map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) return null;
+
+  let y: number, m: number, d: number;
+  if (parts[0] > 1000) {
+    [y, m, d] = parts;
+  } else if (parts[2] > 1000) {
+    [d, m, y] = parts;
+  } else {
+    return null;
+  }
+
+  if (y < 2000 || m < 1 || m > 12 || d < 1 || d > 31) return null;
+  return [y, m, d];
+};
+
 export const formatDateDDMMYY = formatDateDDMMYYYY;
 
 export const formatDateTimeDDMMYYYY = (dateStr?: string | null): string => {
