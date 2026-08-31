@@ -2620,18 +2620,18 @@ ${itemsStr}
               rooms={preloadedData.currentProperty?.rooms || []}
               onAddGuest={async (guest) => {
                 await handleAddGuest(guest);
-                // Close after a beat, not instantly (31 Aug 2026). Closing in
-                // the same tick as the network response meant the drawer
-                // could start vanishing before GuestManagement.tsx's own
-                // "Guest booked successfully!" toast (fired right after this
-                // promise resolves) had registered - success and the drawer
-                // disappearing looked simultaneous/ambiguous, particularly
-                // right after the response-time and false-duplicate-flash
-                // fixes above. Not awaited - onAddGuest resolves immediately
-                // so the toast/form-reset in GuestManagement's onSubmit still
-                // fire right away, while the drawer itself lingers just long
-                // enough for that toast to be clearly seen before closing.
-                setTimeout(() => setIsAddBookingModalOpen(false), 1000);
+                // Closes instantly on success (31 Aug 2026, reverted the
+                // artificial 1s delay added earlier the same day). That delay
+                // assumed closing the drawer risked cutting off the "Guest
+                // booked successfully!" toast - wrong: ToastContext.tsx
+                // renders toasts at z-[9999] via a stable, app-level
+                // ToastProvider well above this drawer's own z-60, and they
+                // are not scoped to the drawer's subtree, so the toast's own
+                // 3s duration plays out fully regardless of when the drawer
+                // closes. The delay was pure added latency with no actual
+                // benefit - removed per explicit feedback that even a 1s gap
+                // after clicking Save was too slow.
+                setIsAddBookingModalOpen(false);
               }}
               onCheckoutGuest={handleCheckoutGuest}
               onDispatchTelegram={dispatchTelegramAlert}
