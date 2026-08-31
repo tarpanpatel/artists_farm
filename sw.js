@@ -13,7 +13,13 @@
 // PWA). A fully automatic per-build version stamp would close this gap for
 // every future deploy, not just this one - worth doing later, out of scope
 // for this immediate fix.
-const CACHE_NAME = 'farm-pos-v22';
+// v23 (31 Aug 2026): the PWA icon/manifest fix shipping in this same deploy
+// edits index.html's <head> (relative ./app-icons/ + ./favicon.ico links ->
+// root-absolute) and php/manifest.php. Installed PWAs only pick those up once
+// the cached HTML shell is replaced, which the stale-while-revalidate handler
+// below does lazily over a couple of launches. Bumping this forces the
+// `activate` cache wipe so they get the corrected shell immediately.
+const CACHE_NAME = 'farm-pos-v23';
 
 // Hashed asset pattern — Vite content-hashed files (e.g. index-CrXjaekR.js)
 // These must NEVER be cached by the SW; the browser cache handles them natively
