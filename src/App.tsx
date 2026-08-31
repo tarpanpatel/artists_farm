@@ -2717,32 +2717,32 @@ ${itemsStr}
                 {isIOSDevice ? (
                   <ol className="mt-2 space-y-1.5">
                     <li className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
-                      <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-semibold flex items-center justify-center">1</span>
+                      <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-semibold flex items-center justify-center border border-blue-500">1</span>
                       <span>
                         Tap <Share className="w-3.5 h-3.5 inline mx-0.5 text-blue-600 dark:text-blue-400 -mt-0.5" /><strong>Share</strong> {isIPadDevice ? 'at the top of Safari' : 'in Safari\'s bottom bar'}
                       </span>
                     </li>
                     <li className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
-                      <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-semibold flex items-center justify-center">2</span>
+                      <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-semibold flex items-center justify-center border border-blue-500">2</span>
                       <span>Scroll down & tap <strong>"Add to Home Screen"</strong> <PlusSquare className="w-3.5 h-3.5 inline mx-0.5 text-blue-600 dark:text-blue-400 -mt-0.5" /></span>
                     </li>
                     <li className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
-                      <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-semibold flex items-center justify-center">3</span>
+                      <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-semibold flex items-center justify-center border border-blue-500">3</span>
                       <span>Tap <strong>"Add"</strong> in the top-right corner</span>
                     </li>
                   </ol>
                 ) : (
                   <ol className="mt-2 space-y-1.5">
                     <li className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
-                      <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-semibold flex items-center justify-center">1</span>
+                      <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-semibold flex items-center justify-center border border-blue-500">1</span>
                       <span>Tap <MoreVertical className="w-3.5 h-3.5 inline mx-0.5 text-blue-600 dark:text-blue-400 -mt-0.5" /><strong>3 Dots Menu</strong> in browser top-right</span>
                     </li>
                     <li className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
-                      <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-semibold flex items-center justify-center">2</span>
+                      <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-semibold flex items-center justify-center border border-blue-500">2</span>
                       <span>Tap <strong>"Install App"</strong> or <strong>"Add to Home screen"</strong></span>
                     </li>
                     <li className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
-                      <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-semibold flex items-center justify-center">3</span>
+                      <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-semibold flex items-center justify-center border border-blue-500">3</span>
                       <span>Tap <strong>"Install"</strong> to confirm</span>
                     </li>
                   </ol>

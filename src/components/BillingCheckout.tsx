@@ -959,7 +959,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                 <span className="inline-flex items-center gap-1.5">
                   <span>{t('today_tab', 'Today')}</span>
                   {tabCounts.today > 0 && (
-                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
+                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                       {tabCounts.today}
                     </span>
                   )}
@@ -972,7 +972,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                 <span className="inline-flex items-center gap-1.5">
                   <span>{t('upcoming_tab', 'Upcoming')}</span>
                   {tabCounts.upcoming > 0 && (
-                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
+                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                       {tabCounts.upcoming}
                     </span>
                   )}
@@ -985,7 +985,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                 <span className="inline-flex items-center gap-1.5">
                   <span>{t('past_bookings_tab', 'Past')}</span>
                   {tabCounts.past_bookings > 0 && (
-                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-full bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
+                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-full bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
                       {tabCounts.past_bookings}
                     </span>
                   )}

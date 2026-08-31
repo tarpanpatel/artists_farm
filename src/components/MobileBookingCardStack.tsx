@@ -142,8 +142,8 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
               onClick={() => setFilterStatus('all')}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
                 filterStatus === 'all'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                  ? 'bg-blue-600 text-white shadow-md border border-blue-600'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600'
               }`}
             >
               All ({counts.all})
@@ -153,8 +153,8 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
               onClick={() => setFilterStatus('checked_in')}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
                 filterStatus === 'checked_in'
-                  ? 'bg-emerald-600 text-white shadow-md'
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                  ? 'bg-emerald-600 text-white shadow-md border border-emerald-600'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600'
               }`}
             >
               Checked-In ({counts.checked_in})
@@ -164,8 +164,8 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
               onClick={() => setFilterStatus('upcoming')}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
                 filterStatus === 'upcoming'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                  ? 'bg-blue-600 text-white shadow-md border border-blue-600'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600'
               }`}
             >
               Upcoming ({counts.upcoming})
@@ -175,8 +175,8 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
               onClick={() => setFilterStatus('checked_out')}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
                 filterStatus === 'checked_out'
-                  ? 'bg-slate-700 text-white shadow-md'
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                  ? 'bg-slate-700 text-white shadow-md border border-slate-700'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600'
               }`}
             >
               Checked-Out ({counts.checked_out})

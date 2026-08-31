@@ -833,11 +833,11 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 {t('alerts_heading', 'Booking Alerts')}
               </h3>
               {totalAlerts > 0 ? (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-300">
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-300 border border-red-300 dark:border-red-700">
                   {totalAlerts}
                 </span>
               ) : (
-                <span className="bg-emerald-100 text-emerald-800 text-[10px] font-semibold px-2 py-0.5 rounded border border-emerald-200">
+                <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-700">
                   All Clear
                 </span>
               )}
@@ -970,7 +970,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                   <Utensils className="w-4 h-4 text-blue-600" />
                   {t('live_kitchen_tickets_heading', 'Live Kitchen Orders')}
                 </h3>
-                <span className="bg-amber-100 text-amber-800 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-amber-300">
+                <span className="bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-amber-300 dark:border-amber-700">
                   {pendingOrders.length}
                 </span>
               </div>
@@ -992,10 +992,10 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                       <span
                         className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
                           ord.status === 'Pending'
-                            ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700'
                             : ord.status === 'Preparing'
-                            ? 'bg-blue-100 text-blue-800 border border-blue-300'
-                            : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 border border-blue-300 dark:border-blue-700'
+                            : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
                         }`}
                       >
                         {ord.status}
@@ -1384,7 +1384,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                         >
                           <div className="flex items-center justify-between">
                             {isToday ? (
-                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold shadow-xs">
+                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold shadow-xs border border-blue-500">
                                 {d}
                               </span>
                             ) : (

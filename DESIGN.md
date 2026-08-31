@@ -47,6 +47,7 @@ one - it gives every future change a plausible-looking but wrong thing to match 
 - **Dark mode**: every color utility needs a `dark:` variant - no exceptions.
 - **Z-index**: governed by the scale documented directly in `src/index.css` - never adjust
   header/sidebar/modal z-index in isolation.
+- **Bordered Count & Number Badges Rule**: All count pills, number badges, and indicator badges across the entire site (including tab counters, card header counts, alert badges, notification counts, filter count pills, and table status/number badges) must strictly have borders (e.g. `border border-blue-200 dark:border-blue-800`, `border border-slate-200 dark:border-slate-700`, `border border-red-200 dark:border-red-800`, `border border-amber-200 dark:border-amber-800`, `border border-emerald-200 dark:border-emerald-800`, `border border-gray-200 dark:border-gray-700`). Never render a count badge with a solid or pastel background without its corresponding border token in both light and dark modes.
 - **Colors**: not a separate hand-picked palette - follow `flowbite-react`'s own semantic color
   tokens per `node_modules/flowbite-react/dist/components/*/theme.js` rather than hand-picking
   Tailwind color classes, same ground-truth approach as everything else here.

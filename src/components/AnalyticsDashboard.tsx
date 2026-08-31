@@ -1406,7 +1406,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
               <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <IndianRupee className="w-4 h-4 text-amber-600" /> {t('additional_charges_breakdown_heading', 'Additional Charges Breakdown')}
               </h3>
-              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                 ₹{extraChargesTotal.toLocaleString('en-IN')} {t('total_label', 'total')}
               </span>
             </div>
@@ -1786,7 +1786,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
                           <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">{s.name}</span>
-                          {i < 5 && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300 shrink-0">{t('volatile_badge', 'Volatile')}</span>}
+                          {i < 5 && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300 border border-red-200 dark:border-red-800 shrink-0">{t('volatile_badge', 'Volatile')}</span>}
                         </div>
                         <p className="text-[9px] text-slate-400 mt-0.5">
                           ±{s.fluctuationPct.toFixed(0)}% {t('fluctuation_label', 'fluctuation')} · {t('every_label', 'every')} ~{s.avgFrequencyDays.toFixed(1)}d · {s.count}x

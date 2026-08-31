@@ -768,7 +768,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
           <div className="nav-menu-editor__title-block flex flex-wrap items-center gap-2">
             <Layers className="w-5 h-5 text-blue-600" />
             <h3 className="nav-menu-editor__heading font-semibold text-slate-900 text-sm">{t('nav_menu_structure_title', 'Menu Structure')}</h3>
-            <span className="nav-menu-editor__count-badge text-[10px] font-semibold bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full">{visibleItems.length} items</span>
+            <span className="nav-menu-editor__count-badge text-[10px] font-semibold bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600 px-2 py-0.5 rounded-full">{visibleItems.length} items</span>
             {hiddenItems.length > 0 && (
               <span className="nav-menu-editor__hidden-hint text-[10px] font-medium text-slate-400" title={t('nav_kitchen_hidden_tooltip', "Kitchen items are hidden here because this property's kitchen module is off — they're untouched and will still be saved as-is.")}>
                 ({hiddenItems.length} kitchen item{hiddenItems.length === 1 ? '' : 's'} hidden)

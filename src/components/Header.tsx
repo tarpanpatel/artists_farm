@@ -507,7 +507,7 @@ export const Header: React.FC<HeaderProps> = ({
                     {t('notifications_label', 'Notifications')}
                   </span>
                   <span className="flex items-center gap-2 shrink-0">
-                    <span className="header__dropdown-count text-[10px] bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 font-semibold px-2 py-0.5 rounded-full">
+                    <span className="header__dropdown-count text-[10px] bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-semibold px-2 py-0.5 rounded-full">
                       {totalCount} updates
                     </span>
                     <button
@@ -531,7 +531,7 @@ export const Header: React.FC<HeaderProps> = ({
                           {isShowingServed ? t('recently_served_orders_label', 'Recently Served Orders') : t('live_kitchen_tickets_label', 'Live Kitchen Tickets')}
                         </span>
                         <span className="flex items-center gap-1.5">
-                          <span className={`header__section-badge text-[9px] font-semibold px-1.5 py-0.5 rounded ${isShowingServed ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'}`}>
+                          <span className={`header__section-badge text-[9px] font-semibold px-1.5 py-0.5 rounded border ${isShowingServed ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800'}`}>
                             {isShowingServed ? t('kitchen_served_badge', 'Served') : t('kitchen_active_badge', 'Active')}
                           </span>
                           <button
@@ -584,7 +584,7 @@ export const Header: React.FC<HeaderProps> = ({
                           {t('property_bookings_label', 'Property Bookings')}
                         </span>
                         <span className="flex items-center gap-1.5">
-                          <span className="header__section-badge text-[9px] font-semibold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
+                          <span className="header__section-badge text-[9px] font-semibold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                             {t('today_tomorrow_badge', 'Today & Tomorrow')}
                           </span>
                           <button
@@ -602,13 +602,13 @@ export const Header: React.FC<HeaderProps> = ({
                           const checkin = guest.checkinDate?.split(' ')[0] || guest.checkinDate?.split('T')[0] || '';
                           const checkout = guest.expectedCheckout?.split(' ')[0] || guest.expectedCheckout?.split('T')[0] || '';
                           let badgeText = t('checked_in_badge', 'Active Stay');
-                          let badgeStyle = 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300';
+                          let badgeStyle = 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800';
                           if (checkin === todayStr) {
                             badgeText = t('checkin_today_badge', 'Check-in Today');
-                            badgeStyle = 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300';
+                            badgeStyle = 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 border border-teal-200 dark:border-teal-800';
                           } else if (checkout === todayStr) {
                             badgeText = t('checkout_today_badge', 'Checkout Today');
-                            badgeStyle = 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300';
+                            badgeStyle = 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300 border border-orange-200 dark:border-orange-800';
                           }
 
                           return (
@@ -649,7 +649,7 @@ export const Header: React.FC<HeaderProps> = ({
                                 {t('upcoming_tomorrow_label', 'Upcoming tomorrow')}
                               </p>
                             </div>
-                            <span className="header__guest-badge header__guest-badge--tomorrow text-[9px] font-semibold px-2 py-0.5 rounded-full shrink-0 bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300">
+                            <span className="header__guest-badge header__guest-badge--tomorrow text-[9px] font-semibold px-2 py-0.5 rounded-full shrink-0 bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
                               {t('checking_in_tomorrow_badge', 'Checking in Tomorrow')}
                             </span>
                           </div>
@@ -658,11 +658,7 @@ export const Header: React.FC<HeaderProps> = ({
                     </div>
                   )}
 
-                  {/* Service Requests (12 Aug 2026) - last 5 pending, most
-                      recent first (get_service_requests already orders by
-                      created_at DESC server-side). Shared ServiceRequestContext
-                      so marking one fulfilled on the Service Requests page
-                      drops it from here immediately. */}
+                  {/* Service Requests (12 Aug 2026) */}
                   {recentServiceRequests.length > 0 && (
                     <div className="header__section header__section--service-requests p-3 space-y-2">
                       <div className="header__section-header flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-400">
@@ -670,7 +666,7 @@ export const Header: React.FC<HeaderProps> = ({
                           <ClipboardList className="w-3.5 h-3.5 text-indigo-600" />
                           {t('recent_service_requests_label', 'Guest Service Requests')}
                         </span>
-                        <span className="header__section-badge text-[9px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                        <span className="header__section-badge text-[9px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                           {t('pending_status_badge', 'Pending')}
                         </span>
                       </div>

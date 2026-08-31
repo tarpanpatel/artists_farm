@@ -673,7 +673,7 @@ export const ChannelManager: React.FC<ChannelManagerProps> = ({ onLogAudit }) =>
             <h3 className="text-base font-bold text-gray-900 dark:text-white">
               Sync Activity & Outbox Queue
             </h3>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 font-semibold text-gray-600 dark:text-gray-300">
+            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 font-semibold text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600">
               {filteredOutbox.length}
             </span>
           </div>
