@@ -249,16 +249,22 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       // day-cell click apart from a programmatic setDates call (both fire
       // the same 'changeDate' event) - registered unconditionally, ahead of
       // the footerControls early-return just below, since it doesn't depend
-      // on the Close-button injection succeeding.
+      // on the Close-button injection succeeding. Capture phase (1 Sep
+      // 2026) - matches Picker.js's own onClickPicker listener on this same
+      // element, which it registers with {capture:true}. A bubble-phase
+      // listener here measurably fired AFTER this same click's own settle
+      // pass had already run (verified with an in-page execution-order
+      // probe) even though dispatchEvent is synchronous and nothing here
+      // calls stopPropagation - capture runs before the library's bubble-
+      // phase day-cell handler (main's onClickView) even starts, so it
+      // can't lose that race.
       dp.pickerElement?.addEventListener('click', (ev) => {
         const target = ev.target;
         const matched = target instanceof Element && target.closest('.datepicker-cell.day:not(.disabled)');
-        (window as any).__dbg = (window as any).__dbg || [];
-        (window as any).__dbg.push({ t: 'click', matched: !!matched, cls: (target as Element)?.className });
         if (matched) {
           userClickPendingRef.current = true;
         }
-      });
+      }, true);
 
       const footerControls = dp.pickerElement?.querySelector('.datepicker-footer .datepicker-controls');
       if (!footerControls || footerControls.querySelector('.datepicker-close-btn')) return;
@@ -342,8 +348,6 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       const [start, end] = rangepicker.dates;
       const startIso = toIsoDate(start);
       let endIso = toIsoDate(end);
-      (window as any).__dbg = (window as any).__dbg || [];
-      (window as any).__dbg.push({ t: 'settle', wasUserClick, prevStart: prevStartIsoRef.current, startIso, endIso });
 
       // Re-picking checkin bug fix (1 Sep 2026) - see the refs' own comment
       // above for the full mechanics. prevStartIsoRef is seeded once right
@@ -421,8 +425,6 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     // synchronously, see the refs' comment above) into one settle pass that
     // runs after that whole synchronous cascade has finished.
     const reportCurrentRange = () => {
-      (window as any).__dbg = (window as any).__dbg || [];
-      (window as any).__dbg.push({ t: 'changeDate-fired', suppressed: suppressRangeValidationRef.current, scheduled: scheduledRef.current });
       if (suppressRangeValidationRef.current) return;
       if (scheduledRef.current) return;
       scheduledRef.current = true;
