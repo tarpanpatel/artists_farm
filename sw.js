@@ -13,7 +13,12 @@
 // PWA). A fully automatic per-build version stamp would close this gap for
 // every future deploy, not just this one - worth doing later, out of scope
 // for this immediate fix.
-const CACHE_NAME = 'farm-pos-v22';
+// v23 (31 Aug 2026): 805a19d3 fixed the React <LoadingScreen> (inlined logo,
+// render gated on authChecked) but sw.js was never bumped alongside it, so
+// installed/cached browsers keep serving a pre-805a19d3 HTML shell - old
+// bundle refs 404, forcing a recovery reload, and the boot logo flashes.
+// Bumping CACHE_NAME fires the activate cache-wipe so they get the fixed shell.
+const CACHE_NAME = 'farm-pos-v23';
 
 // Hashed asset pattern — Vite content-hashed files (e.g. index-CrXjaekR.js)
 // These must NEVER be cached by the SW; the browser cache handles them natively
