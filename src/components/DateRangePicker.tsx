@@ -252,13 +252,6 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     });
     rangepickerRef.current = rangepicker;
     lastBlockedDatesKeyRef.current = (blockedDates ?? []).join(',');
-    (window as any).__dbg2 = (window as any).__dbg2 || [];
-    (window as any).__dbg2.push({
-      t: 'construct',
-      propsCheckin: checkinDate, propsCheckout: checkoutDate,
-      startInputValue: startEl.value, endInputValue: endEl.value,
-      dates0: toIsoDate(rangepicker.dates[0]), dates1: toIsoDate(rangepicker.dates[1]),
-    });
 
     rangepicker.datepickers.forEach((dp) => {
       // Arms userClickPendingRef so the settle pass below can tell a real
@@ -443,8 +436,6 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       }
 
       setRangeError(undefined);
-      (window as any).__dbg2 = (window as any).__dbg2 || [];
-      (window as any).__dbg2.push({ t: 'report', startIso, endIso, wasUserClick, forcedEmptyCheckout });
       callbacksRef.current.onCheckinChange(startIso);
       callbacksRef.current.onCheckoutChange(endIso);
     };
@@ -492,43 +483,38 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     const [currentStart, currentEnd] = rangepicker.dates;
     if (toIsoDate(currentStart) === checkinDate && toIsoDate(currentEnd) === checkoutDate) return;
 
-    (window as any).__dbg2 = (window as any).__dbg2 || [];
-    (window as any).__dbg2.push({
-      t: 'props-sync-call',
-      checkinDate, checkoutDate,
-      startArg: fromIsoDate(checkinDate)?.toString(),
-      endArg: fromIsoDate(checkoutDate)?.toString(),
-    });
-    // Instrumenting the library's own two internal setDate calls directly
-    // (1 Sep 2026, third pass) - wrapping each Datepicker instance's own
-    // setDate just for this one call, to see the intermediate state between
-    // them, since setDates() itself only exposes the end result.
-    const d0 = rangepicker.datepickers[0] as any;
-    const d1 = rangepicker.datepickers[1] as any;
-    const origSetDate0 = d0.setDate.bind(d0);
-    const origSetDate1 = d1.setDate.bind(d1);
-    d0.setDate = (...args: any[]) => {
-      const r = origSetDate0(...args);
-      (window as any).__dbg2.push({ t: 'd0.setDate called', args: args.map(String), afterD0: toIsoDate(d0.dates[0]), afterD1: toIsoDate(d1.dates[0]) });
-      return r;
-    };
-    d1.setDate = (...args: any[]) => {
-      const r = origSetDate1(...args);
-      (window as any).__dbg2.push({ t: 'd1.setDate called', args: args.map(String), afterD0: toIsoDate(d0.dates[0]), afterD1: toIsoDate(d1.dates[0]) });
-      return r;
-    };
+    if (disablePastDates) {
+      // disablePastDates sets minDate to today - correct for stopping a NEW
+      // pick from landing in the past, but a booking being loaded here can
+      // already legitimately have a checkin (or checkout) before today: any
+      // guest who has actually checked in, or whose stay dates simply
+      // elapsed while the record sat unedited. datepicker.setDate() silently
+      // drops a date outside [minDate,maxDate] - it doesn't clamp or error,
+      // the side just stays empty - and the library's own "no one-sided
+      // range" normalization (DateRangePicker.js's onChangeDate) then
+      // copies the OTHER, successfully-set side onto it. Net effect,
+      // reproduced live (1 Sep 2026): loading a guest checked in yesterday
+      // showed checkin AND checkout both as today's date, not the guest's
+      // real checkin. Relaxing minDate down to whichever of today/checkin/
+      // checkout is earliest - only when a load is about to set an
+      // out-of-range value - keeps "can't pick a NEW past date" intact
+      // while letting an already-past value actually load and display.
+      const todayMidnight = new Date(new Date().setHours(0, 0, 0, 0));
+      const loadedDates = [fromIsoDate(checkinDate), fromIsoDate(checkoutDate)]
+        .filter((d): d is Date => d !== undefined);
+      const effectiveMinDate = loadedDates.reduce(
+        (min, d) => (d < min ? d : min),
+        todayMidnight,
+      );
+      rangepicker.datepickers[0].setOptions({ minDate: effectiveMinDate });
+      rangepicker.datepickers[1].setOptions({ minDate: effectiveMinDate });
+    }
+
     rangepicker.setDates(
       fromIsoDate(checkinDate) ?? { clear: true },
       fromIsoDate(checkoutDate) ?? { clear: true }
     );
-    d0.setDate = origSetDate0;
-    d1.setDate = origSetDate1;
-    (window as any).__dbg2.push({
-      t: 'props-sync-after',
-      dates0: toIsoDate(rangepicker.dates[0]),
-      dates1: toIsoDate(rangepicker.dates[1]),
-    });
-  }, [checkinDate, checkoutDate]);
+  }, [checkinDate, checkoutDate, disablePastDates]);
 
   useEffect(() => {
     const rangepicker = rangepickerRef.current;
