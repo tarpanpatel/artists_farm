@@ -18,7 +18,6 @@ interface LoginPageProps {
 export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', onLoginSuccess, onLoginFailed, onNeedsPropertySelection, onStartTrial }) => {
   const isTerminal = variant === 'terminal';
   const auth = useAuthOptional();
-  const sessionMismatchNotice = auth?.sessionMismatchNotice ?? null;
   const clearSessionMismatchNotice = auth?.clearSessionMismatchNotice ?? NOOP;
 
   const [mobileNumber, setMobileNumber] = useState('');
@@ -461,11 +460,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
           </h1>
 
           <form onSubmit={handleLogin} ref={loginFormRef} className="space-y-4 md:space-y-6">
-            {sessionMismatchNotice && !error && (
-              <Alert color="warning" icon={AlertCircle} className="rounded-lg">
-                <span>{sessionMismatchNotice}</span>
-              </Alert>
-            )}
 
             {error && (
               <Alert color="failure" icon={AlertCircle} className="rounded-lg">

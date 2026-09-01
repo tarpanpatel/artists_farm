@@ -28,26 +28,33 @@
 // coincidence let a users-table session inherit an unrelated staff
 // account's property access during testing of the original router.php fix.
 function isPropertyAccessAllowed(PDO $pdo, int $propertyId): bool {
-    // Platform admins manage every tenant/property by design - this must be
-    // checked BEFORE the !$propertyId guard below, not after. Root-admin-only
-    // actions called from /root_dashboard/ (get_all_tenants, get_all_properties,
-    // get_tenant_credentials, reset_staff_passcodes, the admin profile actions,
-    // ...) have no real property in scope at all, so $propertyId resolves to 0 -
-    // with the old ordering that hit the early "return false" before ever
-    // reaching this bypass, 403ing every one of those actions for the actual
-    // platform admin they're root-admin-gated for in the first place.
-    if (!empty($_SESSION['is_platform_admin']) || (($_SESSION['role'] ?? '') === 'root_admin')) return true;
+    // Platform admins manage every tenant/property by design
+    if (!empty($_SESSION['is_platform_admin']) || (strtolower($_SESSION['role'] ?? '') === 'root_admin')) return true;
+
+    // Resolve platform admin status directly from users table if user_id is set
+    if (!empty($_SESSION['user_id'])) {
+        $uStmt = $pdo->prepare("SELECT is_platform_admin, role, default_tenant_id FROM users WHERE id = ? LIMIT 1");
+        $uStmt->execute([$_SESSION['user_id']]);
+        $uRow = $uStmt->fetch();
+        if ($uRow) {
+            if (!empty($uRow['is_platform_admin']) || strtolower($uRow['role'] ?? '') === 'root_admin') {
+                $_SESSION['is_platform_admin'] = true;
+                return true;
+            }
+            if ($propertyId && !empty($uRow['default_tenant_id'])) {
+                $pStmt = $pdo->prepare("SELECT tenant_id FROM properties WHERE id = ? LIMIT 1");
+                $pStmt->execute([$propertyId]);
+                $pRow = $pStmt->fetch();
+                if ($pRow && (int)$pRow['tenant_id'] === (int)$uRow['default_tenant_id']) {
+                    return true;
+                }
+            }
+        }
+    }
 
     if (!$propertyId) return false;
 
-    // "Access All Properties" staff (11 Aug 2026, see router.php/authenticate.php
-    // login_user): allowed into any property under their own tenant, not locked to
-    // one property_id. Checked BEFORE the plain isset($_SESSION['property_id'])
-    // branch below on purpose - once this kind of staff navigates into a property,
-    // the sync below also sets $_SESSION['property_id'] (so other code that reads
-    // it directly, e.g. calendar_session.php, sees the right value), and if the
-    // isset() branch ran first afterwards it would wrongly narrow them back down
-    // to that one property instead of their whole tenant.
+    // "Access All Properties" staff: allowed into any property under their own tenant
     if (!empty($_SESSION['staff_access_all_properties']) && !empty($_SESSION['staff_tenant_id'])) {
         $stmt = $pdo->prepare("SELECT tenant_id FROM properties WHERE id = ? LIMIT 1");
         $stmt->execute([$propertyId]);
@@ -57,33 +64,9 @@ function isPropertyAccessAllowed(PDO $pdo, int $propertyId): bool {
         return $allowed;
     }
 
-    // Exact match is the fast/common path (ordinary single-property staff),
-    // but a MISMATCH must fall through to the tenant-ownership check below
-    // rather than returning false outright (bug found 28 Aug 2026, live via
-    // check_session reporting session_property_mismatch for a Super Admin
-    // navigating into a property under their own tenant that just isn't
-    // their own literal "home" property_id - e.g. a demo super-admin account
-    // whose own property_id is 1 visiting a sibling property under the same
-    // tenant). login_user always sets $_SESSION['property_id'] to the user's
-    // row, even for tenant/platform accounts (contradicting this file's own
-    // top comment, which assumed such sessions carry no property_id at all)
-    // - so this branch used to short-circuit false before the tenant check
-    // ever ran, making that check effectively dead code for any logged-in
-    // tenant-owning user whose home property wasn't the one being viewed.
+    // Exact match is the fast/common path (ordinary single-property staff)
     if (isset($_SESSION['property_id']) && (int)$_SESSION['property_id'] === $propertyId) {
         return true;
-    }
-
-    if (isset($_SESSION['user_id']) && isset($_SESSION['username'])) {
-        $stmt = $pdo->prepare("SELECT default_tenant_id FROM users WHERE id = ? LIMIT 1");
-        $stmt->execute([$_SESSION['user_id']]);
-        $row = $stmt->fetch();
-        if ($row && !empty($row['default_tenant_id'])) {
-            $stmt2 = $pdo->prepare("SELECT tenant_id FROM properties WHERE id = ? LIMIT 1");
-            $stmt2->execute([$propertyId]);
-            $prow = $stmt2->fetch();
-            if ($prow && (int)$prow['tenant_id'] === (int)$row['default_tenant_id']) return true;
-        }
     }
 
     return false;
