@@ -2435,7 +2435,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
           <div className="relative max-w-sm w-full bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xl">
             <button
               onClick={() => setPayeeLightboxUrl(null)}
-              className="absolute top-2 right-2 p-1 bg-slate-100 dark:bg-slate-700 rounded-full text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-650 transition-colors"
+              className="absolute top-2 right-2 p-1 bg-slate-100 dark:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-650 transition-colors"
             >
               <X className="w-4 h-4" />
             </button>

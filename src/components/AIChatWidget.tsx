@@ -509,7 +509,7 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({
                 href={SUPPORT_WHATSAPP_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-2xs font-semibold whitespace-nowrap transition-colors cursor-pointer no-underline"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-2xs font-semibold whitespace-nowrap transition-colors cursor-pointer no-underline"
               >
                 <WhatsappIcon className="w-3.5 h-3.5" />
                 WhatsApp
@@ -518,7 +518,7 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({
                 href={SUPPORT_TELEGRAM_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-sky-600 hover:bg-sky-700 text-white rounded-full text-2xs font-semibold whitespace-nowrap transition-colors cursor-pointer no-underline"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-2xs font-semibold whitespace-nowrap transition-colors cursor-pointer no-underline"
               >
                 <TelegramIcon className="w-3.5 h-3.5" />
                 Telegram
@@ -532,21 +532,21 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({
           <button
             type="button"
             onClick={() => handleSend('add booking')}
-            className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950 dark:hover:bg-blue-900 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-full text-2xs font-semibold whitespace-nowrap transition-colors cursor-pointer"
+            className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950 dark:hover:bg-blue-900 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg text-2xs font-semibold whitespace-nowrap transition-colors cursor-pointer"
           >
             ⚡ + Add Booking
           </button>
           <button
             type="button"
             onClick={() => handleSend('add expense')}
-            className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950 dark:hover:bg-emerald-900 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-full text-2xs font-semibold whitespace-nowrap transition-colors cursor-pointer"
+            className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950 dark:hover:bg-emerald-900 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-lg text-2xs font-semibold whitespace-nowrap transition-colors cursor-pointer"
           >
             ⚡ Log Expense
           </button>
           <button
             type="button"
             onClick={() => handleSend('go to kitchen')}
-            className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950 dark:hover:bg-amber-900 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded-full text-2xs font-semibold whitespace-nowrap transition-colors cursor-pointer"
+            className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950 dark:hover:bg-amber-900 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded-lg text-2xs font-semibold whitespace-nowrap transition-colors cursor-pointer"
           >
             ⚡ KDS Kitchen
           </button>
@@ -556,7 +556,7 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({
             href={SUPPORT_WHATSAPP_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-2.5 py-1 bg-gray-50 hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 rounded-full text-2xs font-semibold whitespace-nowrap transition-colors cursor-pointer no-underline ml-auto"
+            className="px-2.5 py-1 bg-gray-50 hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 rounded-lg text-2xs font-semibold whitespace-nowrap transition-colors cursor-pointer no-underline ml-auto"
           >
             Talk to a person
           </a>

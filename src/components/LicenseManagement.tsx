@@ -460,7 +460,7 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
                       onClick={() => handleDelete(license)}
                       disabled={deletingId === license.id}
                       title={t('delete_button', 'Delete')}
-                      className="p-1.5 rounded-full text-red-500 hover:text-red-700 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="p-1.5 rounded-lg text-red-500 hover:text-red-700 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {deletingId === license.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                     </button>
@@ -586,7 +586,7 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
                     type="button"
                     onClick={() => setForm((prev) => ({ ...prev, document_url: null }))}
                     title={t('remove_document_label', 'Remove')}
-                    className="p-1 rounded-full text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors cursor-pointer shrink-0"
+                    className="p-1 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors cursor-pointer shrink-0"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>

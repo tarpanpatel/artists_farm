@@ -354,7 +354,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         cancelBtn.type = 'button';
         cancelBtn.setAttribute('aria-label', 'Cancel');
         cancelBtn.title = 'Cancel';
-        cancelBtn.className = 'datepicker-cancel-btn absolute top-2 right-2 z-10 flex items-center justify-center w-7 h-7 rounded-full text-slate-400 hover:text-slate-700 hover:bg-neutral-tertiary-medium dark:text-slate-500 dark:hover:text-slate-200 transition-colors cursor-pointer';
+        cancelBtn.className = 'datepicker-cancel-btn absolute top-2 right-2 z-10 flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-neutral-tertiary-medium dark:text-slate-500 dark:hover:text-slate-200 transition-colors cursor-pointer';
         cancelBtn.innerHTML = '<svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 17.94 6M18 18 6.06 6"/></svg>';
         cancelBtn.addEventListener('click', () => {
           callbacksRef.current.onCheckinChange(openedStartIsoRef.current);

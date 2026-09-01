@@ -514,7 +514,7 @@ export const DemoOnboardingTour: React.FC<DemoOnboardingTourProps> = ({
       <button
         type="button"
         onClick={startTour}
-        className="flex items-center gap-2 px-4 py-2.5 bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold rounded-full shadow-2xl transition-all hover:scale-105 cursor-pointer ring-4 ring-blue-600/20 active:scale-95"
+        className="flex items-center gap-2 px-4 py-2.5 bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold rounded-lg shadow-xl transition-all hover:scale-102 cursor-pointer ring-4 ring-blue-600/20 active:scale-98"
       >
         <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
         <span>
