@@ -798,15 +798,18 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
 
   const pastBookingsColumns = [
     {
+      name: t('booking_id_column', 'Booking ID'),
+      cell: (row: Guest) => (
+        <span className="text-xs font-semibold text-gray-900 dark:text-white whitespace-nowrap">
+          #{row.id}
+        </span>
+      ),
+    },
+    {
       name: t('guest_details_column', 'Guest Details'),
       cell: (row: Guest) => (
         <div className="flex flex-col py-1">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-bold text-gray-900 dark:text-white text-sm">{row.guestName}</span>
-            <span className="inline-flex items-center px-1.5 py-0.5 text-2xs font-semibold rounded bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
-              #{row.id}
-            </span>
-          </div>
+          <div className="font-bold text-gray-900 dark:text-white text-sm">{row.guestName}</div>
           <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2 mt-0.5">
             <span>({row.numberOfGuests || 1} {(row.numberOfGuests || 1) === 1 ? 'guest' : 'guests'})</span>
             {row.phoneNumber ? (

@@ -1548,6 +1548,7 @@ export const strings: Record<string, string> = {
   all_nations_option: "All Nations",
   foreign_nations_option: "Foreign Nationals (C-Form required)",
   indian_nations_option: "Indian Nationals",
+  booking_id_column: "Booking ID",
   guest_details_column: "Guest Details",
   passport_badge: "Passport",
   stay_dates_column: "Stay Dates",
