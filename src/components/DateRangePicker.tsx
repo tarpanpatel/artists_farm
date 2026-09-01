@@ -514,7 +514,17 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       prevStartIsoRef.current = startIso;
       prevEndIsoRef.current = endIso;
       if (startIso && endIso) {
-        awaitingCheckoutPickRef.current = false;
+        // Equal, not just both-truthy (fifth pass, 1 Sep 2026 - found live:
+        // broke the ordinary FRESH-form flow, first click mirroring
+        // start=end=X via the library's own "no one-sided range" branch,
+        // not forcedEmptyCheckout - since that path never touches
+        // awaitingCheckoutPickRef at all, it stayed permanently false, so
+        // the very next click's genuine-checkout math never engaged and a
+        // later date just became a brand new checkin instead). Equal means
+        // a solo pick still awaiting its real completion, whichever branch
+        // produced it; genuinely different means a complete range that's
+        // done needing one.
+        awaitingCheckoutPickRef.current = startIso === endIso;
       }
 
       syncDisabledAndCeiling(startIso);
