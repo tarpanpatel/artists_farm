@@ -863,11 +863,10 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                             ['text' => '🛎️ Mark Checked-In', 'callback_data' => "checkin_guest_{$newId}"]
                         ]]]
                         : null;
-                    $bookingSendResult = sendPropertyTelegramMessage($pdo, $propertyId, 'admin', $telegramMessage, $bookingReplyMarkup);
-                    $bookingDecoded = is_string($bookingSendResult) ? json_decode($bookingSendResult, true) : null;
-                    if (!empty($bookingDecoded['ok']) && !empty($bookingDecoded['result'])) {
-                        $pdo->prepare("UPDATE guests SET telegram_booking_chat_id = ?, telegram_booking_message_id = ? WHERE id = ?")
-                            ->execute([$bookingDecoded['result']['chat']['id'], $bookingDecoded['result']['message_id'], $newId]);
+                    if (function_exists('enqueueTelegramMessage')) {
+                        enqueueTelegramMessage($pdo, (int)$propertyId, 'admin', $telegramMessage, $bookingReplyMarkup, 'new_guest_booking', (string)$newId, 'booking');
+                    } else {
+                        sendPropertyTelegramMessage($pdo, $propertyId, 'admin', $telegramMessage, $bookingReplyMarkup);
                     }
 
                     // WhatsApp booking confirmation direct to the guest (staff-facing
@@ -1211,7 +1210,11 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                                 'booking_id'   => $guestId,
                                 'changes_list' => implode("\n", $changedLines),
                             ]);
-                            sendPropertyTelegramMessage($pdo, $propertyId, 'admin', $editMsg);
+                            if (function_exists('enqueueTelegramMessage')) {
+                                enqueueTelegramMessage($pdo, (int)$propertyId, 'admin', $editMsg, null, 'booking_updated');
+                            } else {
+                                sendPropertyTelegramMessage($pdo, $propertyId, 'admin', $editMsg);
+                            }
                         }
                     } catch (Exception $e) {}
 
@@ -1236,7 +1239,11 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                                 $msg .= "🚪 <b>Room:</b> {$guestInfo['room_name']}\n";
                                 $msg .= "🔢 <b>Guests:</b> {$previousNoOfGuests} → {$newNoOfGuests}\n";
                                 $msg .= "📋 <b>ID Documents:</b> {$uploadedCount}/{$newNoOfGuests} uploaded";
-                                sendPropertyTelegramMessage($pdo, $propertyId, 'admin', $msg);
+                                if (function_exists('enqueueTelegramMessage')) {
+                                    enqueueTelegramMessage($pdo, (int)$propertyId, 'admin', $msg);
+                                } else {
+                                    sendPropertyTelegramMessage($pdo, $propertyId, 'admin', $msg);
+                                }
                             }
                         } catch (Exception $e) {
                             error_log("Failed to send guest-count-updated Telegram notification: " . $e->getMessage());

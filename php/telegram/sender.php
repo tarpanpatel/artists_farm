@@ -683,3 +683,192 @@ if (!function_exists('answerTelegramCallbackQuery')) {
         );
     }
 }
+
+if (!function_exists('ensureTelegramOutboxSchema')) {
+    function ensureTelegramOutboxSchema(PDO $pdo): void {
+        if ($pdo->inTransaction()) {
+            return;
+        }
+        if (function_exists('isSchemaVerified') && isSchemaVerified('schema_telegram_outbox')) {
+            return;
+        }
+        try {
+            $pdo->exec("
+                CREATE TABLE IF NOT EXISTS `telegram_outbox` (
+                    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    `property_id` INT NOT NULL,
+                    `category` VARCHAR(64) NOT NULL DEFAULT 'admin',
+                    `message` MEDIUMTEXT NOT NULL,
+                    `reply_markup` TEXT NULL,
+                    `template_key` VARCHAR(64) NULL,
+                    `guest_id` VARCHAR(64) NULL,
+                    `guest_field` VARCHAR(32) NULL,
+                    `status` ENUM('pending', 'sending', 'sent', 'failed') NOT NULL DEFAULT 'pending',
+                    `attempts` INT NOT NULL DEFAULT 0,
+                    `next_attempt_at` DATETIME NULL,
+                    `last_error` TEXT NULL,
+                    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX `idx_tg_outbox_claim` (`status`, `next_attempt_at`),
+                    INDEX `idx_tg_outbox_prop` (`property_id`, `status`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            ");
+            if (function_exists('markSchemaVerified')) {
+                markSchemaVerified('schema_telegram_outbox');
+            }
+        } catch (PDOException $e) {}
+    }
+}
+
+if (!function_exists('enqueueTelegramMessage')) {
+    /**
+     * Queues a Telegram notification to be sent asynchronously by the background worker.
+     * Never blocks the user HTTP request.
+     */
+    function enqueueTelegramMessage(
+        PDO $pdo,
+        int $propertyId,
+        string $category,
+        string $message,
+        $replyMarkup = null,
+        ?string $templateKey = null,
+        ?string $guestId = null,
+        ?string $guestField = null
+    ): bool {
+        ensureTelegramOutboxSchema($pdo);
+        if ($propertyId <= 0 || empty($message)) {
+            return false;
+        }
+        try {
+            $markupJson = $replyMarkup !== null ? (is_array($replyMarkup) ? json_encode($replyMarkup, JSON_UNESCAPED_SLASHES) : $replyMarkup) : null;
+            $stmt = $pdo->prepare("
+                INSERT INTO telegram_outbox (property_id, category, message, reply_markup, template_key, guest_id, guest_field, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
+            ");
+            $stmt->execute([$propertyId, $category, $message, $markupJson, $templateKey, $guestId, $guestField]);
+            
+            // Fire non-blocking trigger so worker drains in background
+            triggerAsyncBackgroundWorker(5);
+            return true;
+        } catch (Exception $e) {
+            error_log("Failed to enqueue Telegram message: " . $e->getMessage());
+            return false;
+        }
+    }
+}
+
+if (!function_exists('drainTelegramOutbox')) {
+    /**
+     * Drains pending Telegram outbox rows and dispatches them to Telegram API.
+     */
+    function drainTelegramOutbox(PDO $pdo, int $limit = 25): array {
+        ensureTelegramOutboxSchema($pdo);
+        try {
+            $stmt = $pdo->prepare("
+                SELECT id, property_id, category, message, reply_markup, template_key, guest_id, guest_field
+                FROM telegram_outbox
+                WHERE status = 'pending'
+                   OR (status = 'failed' AND next_attempt_at IS NOT NULL AND next_attempt_at <= NOW())
+                ORDER BY id ASC
+                LIMIT ?
+            ");
+            $stmt->bindValue(1, $limit, PDO::PARAM_INT);
+            $stmt->execute();
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            if (empty($rows)) {
+                return ['processed' => 0];
+            }
+
+            $processed = 0;
+            foreach ($rows as $row) {
+                $outboxId = (int)$row['id'];
+                $propId = (int)$row['property_id'];
+                $cat = $row['category'];
+                $msg = $row['message'];
+                $markup = !empty($row['reply_markup']) ? json_decode($row['reply_markup'], true) : null;
+                $tKey = $row['template_key'] ?? null;
+                $guestId = $row['guest_id'] ?? null;
+                $guestField = $row['guest_field'] ?? null;
+
+                try {
+                    $res = sendPropertyTelegramMessage($pdo, $propId, $cat, $msg, $markup, $tKey);
+                    
+                    // If sent successfully, update guest table message references if needed
+                    if (!empty($res) && is_string($res)) {
+                        $parsed = json_decode($res, true);
+                        if (!empty($parsed['ok']) && !empty($parsed['result']['message_id']) && !empty($guestId) && !empty($guestField)) {
+                            $chatId = $parsed['result']['chat']['id'] ?? null;
+                            $msgId = (int)$parsed['result']['message_id'];
+                            if ($chatId && $msgId) {
+                                if ($guestField === 'booking') {
+                                    $upStmt = $pdo->prepare("UPDATE guests SET telegram_booking_chat_id = ?, telegram_booking_message_id = ? WHERE id = ?");
+                                    $upStmt->execute([$chatId, $msgId, $guestId]);
+                                } elseif ($guestField === 'checkout') {
+                                    $upStmt = $pdo->prepare("UPDATE guests SET telegram_checkout_chat_id = ?, telegram_checkout_message_id = ? WHERE id = ?");
+                                    $upStmt->execute([$chatId, $msgId, $guestId]);
+                                }
+                            }
+                        }
+                    }
+
+                    $up = $pdo->prepare("UPDATE telegram_outbox SET status = 'sent', last_error = NULL WHERE id = ?");
+                    $up->execute([$outboxId]);
+                    $processed++;
+                } catch (Exception $e) {
+                    $err = $e->getMessage();
+                    $up = $pdo->prepare("
+                        UPDATE telegram_outbox 
+                        SET status = 'failed', attempts = attempts + 1, next_attempt_at = DATE_ADD(NOW(), INTERVAL 30 SECOND), last_error = ?
+                        WHERE id = ?
+                    ");
+                    $up->execute([$err, $outboxId]);
+                }
+            }
+
+            return ['processed' => $processed];
+        } catch (Exception $e) {
+            error_log("Error draining Telegram outbox: " . $e->getMessage());
+            return ['processed' => 0, 'error' => $e->getMessage()];
+        }
+    }
+}
+
+if (!function_exists('triggerAsyncBackgroundWorker')) {
+    /**
+     * Triggers the background worker asynchronously without blocking the caller.
+     */
+    function triggerAsyncBackgroundWorker(int $delaySeconds = 5): void {
+        static $triggered = false;
+        if ($triggered) return; // Only trigger once per request
+        $triggered = true;
+
+        $workerPath = dirname(__DIR__) . '/channex/worker_runner.php';
+        if (!is_file($workerPath)) return;
+
+        // 1. Try local detached CLI command if popen is enabled
+        if (function_exists('popen') && function_exists('pclose') && !in_array('popen', explode(',', (string)ini_get('disable_functions')))) {
+            $cmd = (PHP_OS_FAMILY === 'Windows' ? 'start /B php ' : 'php ') . escapeshellarg($workerPath) . ' ' . $delaySeconds . ' > /dev/null 2>&1 &';
+            $handle = @popen($cmd, 'r');
+            if ($handle) {
+                @pclose($handle);
+                return;
+            }
+        }
+
+        // 2. Fallback: Fast non-blocking loopback HTTP curl (150ms timeout)
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
+        $scriptPath = dirname($_SERVER['SCRIPT_NAME'] ?? '') . '/../channex/worker_runner.php?delay=' . $delaySeconds;
+        $url = $scheme . '://' . $host . $scriptPath;
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_TIMEOUT_MS, 150);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, 100);
+        curl_setopt($ch, CURLOPT_NOSIGNAL, 1);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        @curl_exec($ch);
+        @curl_close($ch);
+    }
+}

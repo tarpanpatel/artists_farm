@@ -178,44 +178,25 @@ if (!function_exists('triggerEventDrivenChannexDrain')) {
      * the same drain batch.
      */
     function triggerEventDrivenChannexDrain(PDO $pdo, int $delaySeconds = 6): void {
-        if (!is_file(__DIR__ . '/ari_drain_worker.php')) {
-            return;
+        if (is_file(__DIR__ . '/../telegram/sender.php')) {
+            require_once __DIR__ . '/../telegram/sender.php';
         }
-        require_once __DIR__ . '/ari_drain_worker.php';
-        if (!class_exists('AriDrainWorker')) {
+        if (function_exists('triggerAsyncBackgroundWorker')) {
+            triggerAsyncBackgroundWorker($delaySeconds);
             return;
         }
 
-        if (function_exists('fastcgi_finish_request')) {
-            fastcgi_finish_request();
-        } else {
-            // fastcgi_finish_request() doesn't exist under this host's LiteSpeed
-            // SAPI. Without an explicit Content-Length, LiteSpeed has no way to
-            // tell the client the response is complete short of the PHP process
-            // actually exiting - so plain ob_end_flush()+flush() silently does
-            // nothing useful and the client blocks for the full sleep + Channex
-            // round trip below. Content-Length (computed from the buffer
-            // router.php's ob_start() has been holding since the top of the
-            // request) plus Connection: close is what actually lets LiteSpeed
-            // release the response early - verified live 31 Aug 2026: 8s
-            // without this, 0.9s with it, identical payload.
-            if (!headers_sent() && ob_get_level() > 0) {
-                header('Content-Length: ' . ob_get_length());
-                header('Connection: close');
+        // Direct fallback if worker runner is unavailable
+        if (is_file(__DIR__ . '/ari_drain_worker.php')) {
+            require_once __DIR__ . '/ari_drain_worker.php';
+            if (class_exists('AriDrainWorker')) {
+                try {
+                    $worker = new AriDrainWorker($pdo);
+                    $worker->processBatch();
+                } catch (Exception $e) {
+                    error_log("Channex drain fallback error: " . $e->getMessage());
+                }
             }
-            @ob_end_flush();
-            @flush();
-        }
-
-        if ($delaySeconds > 0) {
-            sleep($delaySeconds);
-        }
-
-        try {
-            $worker = new AriDrainWorker($pdo);
-            $worker->processBatch();
-        } catch (Exception $e) {
-            error_log("Channex event-driven drain failed: " . $e->getMessage());
         }
     }
 }
