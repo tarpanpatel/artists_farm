@@ -359,14 +359,20 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   }, [guests, activeTab, todayStr]);
 
   // Search applied once, up front, so every view built from it (room-grid,
-  // date-grouped) reflects the same filtered set.
+  // date-grouped, table) reflects the same filtered set.
   const searchedGuests = useMemo(
-    () =>
-      targetGuests.filter((g) =>
-        g.guestName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        g.phoneNumber.includes(searchTerm) ||
-        g.roomNumber.toLowerCase().includes(searchTerm.toLowerCase())
-      ),
+    () => {
+      const q = searchTerm.toLowerCase().trim();
+      const numOnly = q.replace(/^#/, '');
+      return targetGuests.filter((g) => {
+        if (!q) return true;
+        const nameMatch = (g.guestName || '').toLowerCase().includes(q);
+        const phoneMatch = (g.phoneNumber || '').includes(q);
+        const roomMatch = (g.roomNumber || '').toLowerCase().includes(q);
+        const idMatch = numOnly.length > 0 && String(g.id || '').includes(numOnly);
+        return nameMatch || phoneMatch || roomMatch || idMatch;
+      });
+    },
     [targetGuests, searchTerm]
   );
 
@@ -1067,7 +1073,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                 id="bookings-search"
                 type="text"
                 icon={Search}
-                placeholder={t('search_guest_placeholder', 'Search by guest, phone, or room...')}
+                placeholder={t('search_guest_placeholder', 'Search by booking ID, guest, phone, or room...')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />

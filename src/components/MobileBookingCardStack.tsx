@@ -65,11 +65,13 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
           : true;
 
       const q = searchQuery.toLowerCase().trim();
+      const numOnly = q.replace(/^#/, '');
       const matchesSearch =
         !q ||
         (g.guestName || '').toLowerCase().includes(q) ||
         (g.roomNumber || '').toLowerCase().includes(q) ||
-        (g.phoneNumber || '').toLowerCase().includes(q);
+        (g.phoneNumber || '').toLowerCase().includes(q) ||
+        (numOnly.length > 0 && String(g.id || '').includes(numOnly));
 
       return matchesFilter && matchesSearch;
     });
