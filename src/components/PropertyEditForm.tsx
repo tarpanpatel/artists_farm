@@ -412,8 +412,35 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
             </div>
           </div>
           <div className="bg-[#e5ddd5] dark:bg-[#111b21] p-3 rounded-lg max-w-md mx-auto shadow-inner border border-slate-300/40 dark:border-slate-800">
-            <div className="bg-white dark:bg-[#202c33] p-3 rounded-lg shadow-md text-xs text-slate-800 dark:text-slate-100 whitespace-pre-wrap leading-relaxed border-l-4 border-emerald-500">
-              {getPreviewText()}
+            <div className="bg-white dark:bg-[#202c33] p-3.5 rounded-lg shadow-md text-xs text-slate-800 dark:text-slate-100 whitespace-pre-wrap leading-relaxed border-l-4 border-emerald-500">
+              {(() => {
+                const text = getPreviewText();
+                const lines = text.split('\n');
+                return lines.map((line, idx) => {
+                  const qrMatch = line.match(/^📷\s*\*?Payment QR Code:\*?\s*(https?:\/\/\S+)/i);
+                  if (qrMatch) {
+                    const qrUrl = qrMatch[1];
+                    return (
+                      <div key={idx} className="my-2.5 p-2 bg-slate-50 dark:bg-[#111b21] rounded-lg border border-slate-200 dark:border-slate-700 flex flex-col items-start gap-1.5 shadow-2xs">
+                        <div className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                          <span>📷 Payment QR Code</span>
+                        </div>
+                        <img
+                          src={qrUrl}
+                          alt="Payment QR Code"
+                          className="w-32 h-32 object-contain rounded border border-slate-200 dark:border-slate-700 bg-white p-1"
+                        />
+                      </div>
+                    );
+                  }
+                  return (
+                    <React.Fragment key={idx}>
+                      {line}
+                      {idx < lines.length - 1 && '\n'}
+                    </React.Fragment>
+                  );
+                });
+              })()}
             </div>
           </div>
         </div>
