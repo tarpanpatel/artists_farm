@@ -238,21 +238,25 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     return detailed;
   };
 
-  // Jump to whichever tab actually has the requested booking, and filter the
-  // When focusGuestId is passed (e.g. from clicking Checkout & Settle Bill on
-  // Dashboard), switch to the guest's tab and open their Checkout modal directly
-  // over the Bookings page while keeping all tab bookings visible in the background.
+  // When focusGuestId is passed (e.g. from Telegram "Open in App" or deep-link),
+  // switch to the guest's tab and open their Booking Details drawer directly.
   useEffect(() => {
-    if (!focusGuestId) return;
-    const target = guests.find((g) => String(g.id) === String(focusGuestId));
+    if (!focusGuestId || !guests || guests.length === 0) return;
+    const cleanId = String(focusGuestId).trim().replace(/^#/, '');
+    const target = guests.find((g) =>
+      String(g.id) === cleanId ||
+      String((g as any).bookingId) === cleanId ||
+      String((g as any).booking_id) === cleanId
+    );
     if (!target) return;
-    setActiveTab(getGuestTabCategory(target));
-    setGuestForReceipt(target);
-    setModalMode('edit-and-checkout');
-    setReceiptModalOpen(true);
+    const category = getGuestTabCategory(target);
+    if (category === 'today' || category === 'upcoming' || category === 'past_bookings') {
+      setActiveTab(category);
+    }
+    setSelectedGuestForDetails(target);
     setSearchTerm('');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusGuestId]);
+  }, [focusGuestId, guests]);
 
   // Deep-link to a specific booking from URL (e.g. #guests?booking_id=708 or ?guest_id=708)
   useEffect(() => {

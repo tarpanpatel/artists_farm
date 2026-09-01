@@ -158,24 +158,23 @@ if (!function_exists('appendAppUrlToMessage')) {
                     
                     $hash = 'dashboard';
                     $queryParams = [];
+                    $cleanMsg = strip_tags($message);
 
-                    if ($category === 'kitchen' || strpos($message, 'KITCHEN') !== false) {
+                    if ($category === 'kitchen' || stripos($cleanMsg, 'KITCHEN') !== false) {
                         $hash = 'kitchen';
-                    } else if ($category === 'finance' || strpos($message, 'FINANCIAL') !== false || strpos($message, 'EXPENSE') !== false) {
+                    } else if ($category === 'finance' || stripos($cleanMsg, 'FINANCIAL') !== false || stripos($cleanMsg, 'EXPENSE') !== false) {
                         $hash = 'finance';
-                    } else if (strpos($message, 'MATERIAL') !== false || strpos($message, 'REQUISITION') !== false) {
+                    } else if (stripos($cleanMsg, 'MATERIAL') !== false || stripos($cleanMsg, 'REQUISITION') !== false) {
                         $hash = 'stock_requests';
-                    } else if ($category === 'service' || strpos($message, 'SERVICE') !== false) {
+                    } else if ($category === 'service' || stripos($cleanMsg, 'SERVICE') !== false) {
                         $hash = 'service_requests';
-                        if (preg_match('/(?:Service\s*Request|Request)\s*#?(\d+)/i', $message, $m)) {
+                        if (preg_match('/(?:Service\s*Request|Request)\s*#?(\d+)/i', $cleanMsg, $m)) {
                             $queryParams['request_id'] = $m[1];
                         }
-                    } else if ($category === 'admin' || strpos($message, 'GUEST') !== false || strpos($message, 'BOOKING') !== false || strpos($message, 'CHECK-IN') !== false) {
+                    } else if ($category === 'admin' || stripos($cleanMsg, 'GUEST') !== false || stripos($cleanMsg, 'BOOKING') !== false || stripos($cleanMsg, 'CHECK-IN') !== false) {
                         $hash = 'bookings';
                         // Extract booking id e.g. "Booking ID: 708" or "Booking ID: #708" or "ID: 708"
-                        if (preg_match('/(?:Booking|Guest)\s*ID:\s*#?([a-zA-Z0-9_-]+)/i', $message, $m)) {
-                            $queryParams['booking_id'] = $m[1];
-                        } elseif (preg_match('/\bID:\s*#?([a-zA-Z0-9_-]+)/i', $message, $m)) {
+                        if (preg_match('/(?:Booking|Guest)?\s*ID:?\s*#?([a-zA-Z0-9_-]+)/i', $cleanMsg, $m)) {
                             $queryParams['booking_id'] = $m[1];
                         }
                     }
