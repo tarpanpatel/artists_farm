@@ -542,15 +542,36 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           );
           const keepStartIso = startItselfBlocked ? '' : startIso;
 
+          // Same _updating-guarded per-instance setDate pattern as the
+          // forcedEmptyCheckout correction above, not a bare
+          // rangepicker.setDates(realDate, {clear:true}) call (fifth pass,
+          // 1 Sep 2026 - found live: rejecting a range that crossed a real
+          // booking wiped checkin too, not just the invalid checkout, even
+          // though keepStartIso was correctly non-empty and reported to
+          // React state - the library's own "prevent one-sided range"
+          // normalization doesn't care that ONE side came from a
+          // deliberate rollback rather than a genuine clear, it reacts to
+          // the SAME shape (one real date, one cleared) either way).
+          const keepDate = keepStartIso ? fromIsoDate(keepStartIso) : undefined;
           suppressRangeValidationRef.current = true;
+          (rangepicker as unknown as { _updating?: boolean })._updating = true;
           try {
-            rangepicker.setDates(
-              keepStartIso ? (fromIsoDate(keepStartIso) ?? { clear: true }) : { clear: true },
-              { clear: true },
-            );
+            if (keepDate) {
+              rangepicker.datepickers[0].setDate(keepDate, { render: false });
+              rangepicker.datepickers[1].setDate(keepDate, { render: false });
+            } else {
+              rangepicker.datepickers[0].setDate({ clear: true }, { render: false });
+              rangepicker.datepickers[1].setDate({ clear: true }, { render: false });
+            }
           } finally {
+            delete (rangepicker as unknown as { _updating?: boolean })._updating;
             suppressRangeValidationRef.current = false;
           }
+          endEl.value = '';
+          prevStartIsoRef.current = keepStartIso;
+          prevEndIsoRef.current = '';
+          awaitingCheckoutPickRef.current = !!keepStartIso;
+          skipNextPropsSyncRef.current = true;
 
           setRangeError(`${formatIsoNice(clash)} isn't available - pick a range that doesn't cover it.`);
           callbacksRef.current.onCheckinChange(keepStartIso);
