@@ -383,6 +383,7 @@ export const strings: Record<string, string> = {
   templates_catalog_heading: "Templates Catalog",
   no_edit_permission_hint: "Templates are designed at the root admin level. Ask your root admin to enable customization for this property if you need to edit wording here.",
   save_changes_button: "Save Changes",
+  no_changes_to_save_button: "No Changes to Save",
   send_to_label: "Send to:",
   no_groups_found_option: "No groups found",
   not_sent_option: "Not sent",

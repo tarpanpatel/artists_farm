@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2, Share2, LogOut, Upload, CreditCard, Globe, AlertTriangle, X, ScanLine } from './icons/FlowbiteIcons';
 import { Drawer as FlowbiteDrawer, DrawerItems, Checkbox, Modal } from 'flowbite-react';
 import { Badge } from './Badge';
@@ -285,6 +285,59 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     // checkbox/initialFocusSection opens it.
     setCFormSectionOpen(isFiled);
   };
+
+  const isDirty = useMemo(() => {
+    if (!guest) return false;
+    const g = guest as any;
+    const origNoGuests = String(g.no_of_guests ?? g.numberOfGuests ?? 1);
+    const origRent = String(g.base_room_rent ?? g.roomRate ?? 0);
+    const origAdv = String(g.advance_paid ?? g.advanceAmount ?? 0);
+    const origCheckin = guest.checkinDate?.split(' ')[0] || '';
+    const origCheckout = guest.expectedCheckout?.split(' ')[0] || guest.checkoutDate?.split(' ')[0] || '';
+    const origRoomId = String(g.roomId ?? g.room_id ?? '');
+    const origAdvanceReceivedBy = g.advance_received_by || guest.advanceReceivedBy || '';
+    const origPendingReceivedBy = g.pending_received_by || guest.pendingReceivedBy || '';
+    const origSource = guest.bookingSource || 'Offline';
+    const origNotes = guest.notes || '';
+    const origForeign = !!guest.isForeignGuest;
+    const origCFormFiled = !!(guest.cFormFiledAt || g.c_form_filed_at || g.c_form_filed || g.cFormFiled);
+    const origCFormNum = g.c_form_number || g.cFormNumber || '';
+
+    return (
+      editName.trim() !== (guest.guestName || '').trim() ||
+      editPhone.trim() !== (guest.phoneNumber || '').trim() ||
+      editRoomId !== origRoomId ||
+      editGuests !== origNoGuests ||
+      editCheckin !== origCheckin ||
+      editCheckout !== origCheckout ||
+      editRoomRent !== origRent ||
+      editAdvance !== origAdv ||
+      editAdvanceReceivedBy !== origAdvanceReceivedBy ||
+      editPendingReceivedBy !== origPendingReceivedBy ||
+      editBookingSource !== origSource ||
+      editNotes.trim() !== origNotes.trim() ||
+      editIsForeignGuest !== origForeign ||
+      cFormFiledState !== origCFormFiled ||
+      cFormNumberState.trim() !== origCFormNum.trim()
+    );
+  }, [
+    guest,
+    editName,
+    editPhone,
+    editRoomId,
+    editGuests,
+    editCheckin,
+    editCheckout,
+    editRoomRent,
+    editAdvance,
+    editAdvanceReceivedBy,
+    editPendingReceivedBy,
+    editBookingSource,
+    editNotes,
+    editIsForeignGuest,
+    cFormFiledState,
+    cFormNumberState,
+  ]);
 
   useEffect(() => {
     syncEditFieldsFromGuest(guest);
@@ -1321,12 +1374,32 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 <button
                   type="button"
                   onClick={handleSave}
-                  disabled={isSaving || !editCheckin || !editCheckout}
-                  title={!editCheckin || !editCheckout ? 'Pick both check-in and check-out dates before saving' : undefined}
-                  className="w-full h-10 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
+                  disabled={isSaving || !isDirty || !editCheckin || !editCheckout}
+                  title={
+                    !editCheckin || !editCheckout
+                      ? 'Pick both check-in and check-out dates before saving'
+                      : !isDirty
+                      ? 'No changes have been made to save'
+                      : undefined
+                  }
+                  className={`w-full h-10 px-4 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 shadow-sm ${
+                    !isDirty || !editCheckin || !editCheckout
+                      ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-600 cursor-not-allowed'
+                      : 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer'
+                  }`}
                 >
-                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin shrink-0" /> : <Save className="w-4 h-4 shrink-0" />}
-                  <span>{t('save_button', 'Save')}</span>
+                  {isSaving ? (
+                    <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                  ) : isDirty ? (
+                    <Save className="w-4 h-4 shrink-0" />
+                  ) : null}
+                  <span>
+                    {isSaving
+                      ? t('saving_button', 'Saving...')
+                      : isDirty
+                      ? t('save_changes_button', 'Save Changes')
+                      : t('no_changes_to_save_button', 'No Changes to Save')}
+                  </span>
                 </button>
               </div>
             )}
