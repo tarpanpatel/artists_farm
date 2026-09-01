@@ -165,6 +165,21 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     return checkout < todayStr;
   })();
 
+  // Check-in is pending/due only when the guest is in Booked status AND their
+  // check-in date is today or in the past (an Upcoming booking with a future
+  // check-in date is NOT pending check-in yet).
+  const isCheckinDue = (() => {
+    const statusStr = String(guest?.status || '');
+    if (statusStr !== GUEST_STATUS_BOOKED && statusStr !== GUEST_STATUS_CONFIRMED_LEGACY) {
+      return false;
+    }
+    const checkinRaw = guest?.checkinDate || '';
+    const checkin = String(checkinRaw).split(' ')[0].split('T')[0];
+    if (!checkin) return false;
+    const todayStr = new Date().toISOString().split('T')[0];
+    return checkin <= todayStr;
+  })();
+
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -764,8 +779,8 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             </div>
           )}
 
-          {/* Action Banner 0.5: Check-in Pending */}
-          {canActOnBooking && (guest.status === GUEST_STATUS_BOOKED || (guest.status as string) === GUEST_STATUS_CONFIRMED_LEGACY) && (
+          {/* Action Banner 0.5: Check-in Pending (only if due today or past) */}
+          {canActOnBooking && isCheckinDue && (
             <div
               ref={checkinBannerRef}
               className={`w-full mb-3 px-3.5 py-2.5 rounded-lg border flex items-center justify-between gap-2 shadow-2xs transition-shadow ${
@@ -1279,8 +1294,8 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         <div id="printableBookingDetailsActionsBar" className="booking-details-modal__footer shrink-0 p-4 sm:p-5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800">
             {!isEditing ? (
               <div className="space-y-3 w-full">
-                {/* Mark Checked In (Full-width action if status is Booked) */}
-                {canActOnBooking && (guest.status === GUEST_STATUS_BOOKED || (guest.status as string) === GUEST_STATUS_CONFIRMED_LEGACY) && (
+                {/* Mark Checked In (Full-width action if check-in is due today or past) */}
+                {canActOnBooking && isCheckinDue && (
                   <button
                     type="button"
                     onClick={handleMarkCheckedIn}
