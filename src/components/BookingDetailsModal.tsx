@@ -623,6 +623,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 dark:border-gray-700 shrink-0 bg-white dark:bg-gray-800">
           <h2 className="booking-details-modal__title text-base sm:text-lg font-semibold text-slate-900 dark:text-white flex flex-wrap items-center gap-2 pr-2">
             <span>{isEditing ? t('edit_booking_header', 'Edit Booking') : t('today_booking_details_heading', 'Booking Details')}</span>
+            <span className="inline-flex items-center px-1.5 py-0.5 text-xs font-semibold rounded bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
+              #{guest.id}
+            </span>
             {guest.otaSource && (
               // Click-triggered Popover (24 Aug 2026) - see BillingCheckout.tsx's
               // matching room-card badge for why (was a hover-only Badge `title`,

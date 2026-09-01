@@ -639,6 +639,34 @@ function AppBody({ preloadedData }: AppBodyProps) {
     setGuestsLoading(!!preloadedData.guestsFetchPending);
   }, [preloadedData.navItems, preloadedData.initialGuests, preloadedData.guestsFetchPending]);
 
+  // Handle Telegram deep link / URL parameters (booking_id / request_id / focusGuestId)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const parseDeepLink = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const rawHash = window.location.hash.replace('#', '').trim();
+      const hashParts = rawHash.split('?');
+      const hashQuery = hashParts[1] ? new URLSearchParams(hashParts[1]) : null;
+
+      const bookingId = urlParams.get('booking_id') || urlParams.get('guest_id') || hashQuery?.get('booking_id') || hashQuery?.get('guest_id');
+      if (bookingId) {
+        setFocusGuestId(bookingId);
+        setActiveTab('guests');
+        setActiveMenuItemKey('all_bookings');
+      }
+
+      const reqId = urlParams.get('request_id') || hashQuery?.get('request_id');
+      if (reqId) {
+        setActiveTab('service_requests');
+        setActiveMenuItemKey('service_requests');
+      }
+    };
+
+    parseDeepLink();
+    window.addEventListener('hashchange', parseDeepLink);
+    return () => window.removeEventListener('hashchange', parseDeepLink);
+  }, []);
+
   // Re-validates the CURRENT page against the CURRENT role whenever either
   // changes, and bounces to Dashboard if it's no longer allowed - hiding a
   // nav link (Navigation.tsx's isVisible) only stops someone from clicking

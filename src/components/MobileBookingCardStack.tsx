@@ -224,6 +224,9 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <h4 className="font-bold text-slate-900 dark:text-white text-sm">{guest.guestName}</h4>
+                      <span className="inline-flex items-center px-1.5 py-0.5 text-2xs font-semibold rounded bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
+                        #{guest.id}
+                      </span>
                       {guest.roomNumber && (
                         <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 text-xs font-semibold border border-blue-200 dark:border-blue-800">
                           {guest.roomNumber}
