@@ -389,17 +389,27 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           // Restores BOTH sub-pickers' views, not just this button's own dp
           // (second pass, 1 Sep 2026) - each side gets its own Clear button
           // in its own footer, but only ONE popover is ever visible at a
-          // time (this picker's "always datepickers[0]'s popover" behavior
-          // - see the comment on syncDisabledAndCeiling below), and
-          // processSettledRange's own view checks read datepickers[0]
-          // specifically. Restoring only THIS button's dp left datepickers[0]
-          // still reset to today whenever the click actually landed on
-          // datepickers[1]'s own Clear button, which is exactly what was
-          // happening here - the fix silently "worked" on the wrong
-          // instance, so nothing visible ever changed.
+          // time, and processSettledRange's own view-affecting call
+          // (syncDisabledAndCeiling) touches datepickers[0] specifically.
+          //
+          // .render() after changeFocus() is not optional (third pass, 1 Sep
+          // 2026 - the actual bug behind both earlier "fixes" doing nothing
+          // visible): changeFocus() ONLY updates the internal viewDate
+          // property and queues a render method flag - every other call site
+          // in the library's own source chains .render() onto it immediately
+          // (Datepicker.esm.js: `picker.changeFocus(newViewDate).render()`,
+          // three separate places). Without it here, the correct viewDate
+          // was being set every time (confirmed by direct inspection) but
+          // never actually painted - whatever the NEXT real render() call
+          // happened to run with (syncDisabledAndCeiling's, moments later,
+          // still holding the library's own pre-restore reset) is what
+          // stayed on screen, making the fix look like it silently did
+          // nothing at all.
           if (preClearViewDateRef.current !== null) {
             rangepicker.datepickers[0].picker.changeFocus(preClearViewDateRef.current);
+            (rangepicker.datepickers[0].picker as any).render();
             rangepicker.datepickers[1].picker.changeFocus(preClearViewDateRef.current);
+            (rangepicker.datepickers[1].picker as any).render();
           }
         });
       });
@@ -806,8 +816,12 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     // already-wrong current value would just re-commit that same wrong
     // month instead of correcting it.
     if (isClearRoundTrip && preClearViewDateRef.current !== null) {
+      // .render() required - see the Clear button's own listener above for
+      // why changeFocus() alone never paints anything.
       rangepicker.datepickers[0].picker.changeFocus(preClearViewDateRef.current);
+      (rangepicker.datepickers[0].picker as any).render();
       rangepicker.datepickers[1].picker.changeFocus(preClearViewDateRef.current);
+      (rangepicker.datepickers[1].picker as any).render();
     }
   }, [checkinDate, checkoutDate, disablePastDates]);
 
