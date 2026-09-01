@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Alert } from 'flowbite-react';
 import { AlertCircle, Lock, ShieldCheck, Mail, CheckCircle2, ArrowLeft, Loader2, Backspace, Sparkles } from './icons/FlowbiteIcons';
 import { Input } from './Input';
@@ -48,19 +48,44 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
   const [isSendingLoginInfo, setIsSendingLoginInfo] = useState(false);
   const [forgotResult, setForgotResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Validation state calculations
-  const mobileEmpty = mobileTouched && !mobileNumber.trim();
-  const mobileInvalid = mobileTouched && mobileNumber.length > 0 && mobileNumber.length < 10 && mobileNumber !== 'admin' && mobileNumber !== 'root';
+  // Sync browser autofill on mount & delay ticks
+  useEffect(() => {
+    const syncAutofill = () => {
+      if (mobileInputRef.current?.value && !mobileNumber) {
+        setMobileNumber(mobileInputRef.current.value);
+      }
+      if (passcodeInputRef.current?.value && !passcode) {
+        setPasscode(passcodeInputRef.current.value);
+      }
+    };
 
-  const passcodeEmpty = passcodeTouched && !passcode.trim();
-  const passcodeInvalid = passcodeTouched && passcode.length > 0 && passcode.length < 6 && passcode !== '123456' && passcode !== 'admin';
+    syncAutofill();
+    const t1 = setTimeout(syncAutofill, 50);
+    const t2 = setTimeout(syncAutofill, 200);
+    const t3 = setTimeout(syncAutofill, 600);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, [mobileNumber, passcode]);
+
+  // Validation state calculations with DOM autofill fallback
+  const effectiveMobile = mobileNumber || mobileInputRef.current?.value || '';
+  const effectivePasscode = passcode || passcodeInputRef.current?.value || '';
+
+  const mobileEmpty = mobileTouched && !effectiveMobile.trim();
+  const mobileInvalid = mobileTouched && effectiveMobile.length > 0 && effectiveMobile.length < 10 && effectiveMobile !== 'admin' && effectiveMobile !== 'root';
+
+  const passcodeEmpty = passcodeTouched && !effectivePasscode.trim();
+  const passcodeInvalid = passcodeTouched && effectivePasscode.length > 0 && effectivePasscode.length < 6 && effectivePasscode !== '123456' && effectivePasscode !== 'admin';
 
   const forgotMobileEmpty = forgotMobileTouched && !forgotMobile.trim();
   const forgotMobileInvalid = forgotMobileTouched && forgotMobile.length > 0 && forgotMobile.length < 10 && forgotMobile !== 'admin' && forgotMobile !== 'root';
 
   const newPasscodeEmpty = newPasscodeTouched && !newPasscode.trim();
   const newPasscodeInvalid = newPasscodeTouched && newPasscode.length > 0 && !/^\d{6}$/.test(newPasscode);
-  const newPasscodeSameAsOld = newPasscodeTouched && newPasscode.length === 6 && newPasscode === passcode;
+  const newPasscodeSameAsOld = newPasscodeTouched && newPasscode.length === 6 && newPasscode === effectivePasscode;
 
   const handleMobileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawVal = e.target.value;
@@ -120,11 +145,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
     setPasscodeTouched(true);
     setError(null);
 
-    if (mobileNumber.length > 0 && mobileNumber.length < 10 && mobileNumber !== 'admin' && mobileNumber !== 'root') {
+    const loginMobile = (mobileNumber || mobileInputRef.current?.value || '').trim();
+    const loginPasscode = (passcode || passcodeInputRef.current?.value || '').trim();
+
+    if (loginMobile.length > 0 && loginMobile.length < 10 && loginMobile !== 'admin' && loginMobile !== 'root') {
       setError(t('enter_10_digit_mobile_error'));
       return;
     }
-    if (passcode.length < 6 && passcode !== '123456' && passcode !== 'admin') {
+    if (loginPasscode.length < 6 && loginPasscode !== '123456' && loginPasscode !== 'admin') {
       setError(t('enter_6_digit_passcode_error'));
       return;
     }
@@ -135,7 +163,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mobile_number: mobileNumber, passcode }),
+        body: JSON.stringify({ mobile_number: loginMobile, passcode: loginPasscode }),
       });
       const data = await response.json();
 
@@ -475,7 +503,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
                 label={t('mobile_username_label', 'Mobile Number / Username')}
                 value={mobileNumber}
                 onChange={handleMobileChange}
-                onBlur={() => setMobileTouched(true)}
+                onBlur={() => {
+                  if (mobileInputRef.current?.value && !mobileNumber) {
+                    setMobileNumber(mobileInputRef.current.value);
+                  }
+                  setMobileTouched(true);
+                }}
                 placeholder={t('mobile_number_placeholder', '10-digit mobile number')}
                 disabled={isLoading}
                 autoFocus
@@ -512,7 +545,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
                   label={t('pin_passcode_label', '6-Digit Security Passcode')}
                   value={passcode}
                   onChange={handlePasscodeChange}
-                  onBlur={() => setPasscodeTouched(true)}
+                  onBlur={() => {
+                    if (passcodeInputRef.current?.value && !passcode) {
+                      setPasscode(passcodeInputRef.current.value);
+                    }
+                    setPasscodeTouched(true);
+                  }}
                   placeholder="••••••"
                   maxLength={6}
                   inputMode="numeric"
