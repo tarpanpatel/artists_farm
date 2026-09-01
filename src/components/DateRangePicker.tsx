@@ -269,6 +269,19 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   // wherever prevStartIsoRef/prevEndIsoRef themselves are (processSettledRange,
   // plus the initial seed right below the mount block).
   const saveBtnsRef = useRef<HTMLButtonElement[]>([]);
+  // The view month/year at the instant Clear is pressed (captured on
+  // mousedown, before anything reacts to the click) - a ref, not a local
+  // variable scoped to the Clear button's own listener, so the LATER props-
+  // sync effect can restore to this exact original value too, rather than
+  // re-reading "whatever the view currently is" at that later point (which,
+  // by then, may already have been reset by an earlier, untraced pass -
+  // found live, 1 Sep 2026: the button's own immediate restore worked, but
+  // the props round-trip it triggers - Clear reporting the new empty range
+  // up to the parent, which comes back down as checkinDate/checkoutDate
+  // both '' - hits the props-sync effect's own setDates call, which
+  // independently re-triggers the library's "no date left -> jump to
+  // today" reset a beat later, undoing the fix again).
+  const preClearViewDateRef = useRef<number | null>(null);
 
   const [rangeError, setRangeError] = useState<string | undefined>(undefined);
   const hasError = Boolean(error) || Boolean(rangeError);
@@ -368,14 +381,13 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       // the pre-clear view; the click listener registered right after it
       // then fires after the library's own (same event, later registration)
       // and restores that captured month immediately.
-      let preClearViewDate: number | null = null;
       footerControls.querySelectorAll('.clear-btn').forEach((btn) => {
         btn.addEventListener('mousedown', () => {
-          preClearViewDate = dp.picker.viewDate;
+          preClearViewDateRef.current = dp.picker.viewDate;
         });
         btn.addEventListener('click', () => {
-          if (preClearViewDate !== null) {
-            dp.picker.changeFocus(preClearViewDate);
+          if (preClearViewDateRef.current !== null) {
+            dp.picker.changeFocus(preClearViewDateRef.current);
           }
         });
       });
@@ -770,16 +782,20 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     // Cancel restoring real dates) should still jump to show its own
     // month, same as it always has.
     const isClearRoundTrip = !checkinDate && !checkoutDate;
-    const preClearSyncViewDate = isClearRoundTrip ? rangepicker.datepickers[0].picker.viewDate : null;
 
     rangepicker.setDates(
       fromIsoDate(checkinDate) ?? { clear: true },
       fromIsoDate(checkoutDate) ?? { clear: true }
     );
 
-    if (preClearSyncViewDate !== null) {
-      rangepicker.datepickers[0].picker.changeFocus(preClearSyncViewDate);
-      rangepicker.datepickers[1].picker.changeFocus(preClearSyncViewDate);
+    // Restores from the ORIGINAL pre-clear snapshot (see preClearViewDateRef
+    // above), not from "whatever the view is right now" - by this point an
+    // earlier pass may already have reset it, and re-reading a possibly-
+    // already-wrong current value would just re-commit that same wrong
+    // month instead of correcting it.
+    if (isClearRoundTrip && preClearViewDateRef.current !== null) {
+      rangepicker.datepickers[0].picker.changeFocus(preClearViewDateRef.current);
+      rangepicker.datepickers[1].picker.changeFocus(preClearViewDateRef.current);
     }
   }, [checkinDate, checkoutDate, disablePastDates]);
 
