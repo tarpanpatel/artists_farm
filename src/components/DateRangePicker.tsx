@@ -752,10 +752,35 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       rangepicker.datepickers[1].setOptions({ minDate: effectiveMinDate });
     }
 
+    // A Clear round-trips through here too (found live, 1 Sep 2026): the
+    // Clear BUTTON's own click handler restores the pre-clear view
+    // immediately (see preClearViewDate above), but that same click's
+    // settle pass also reports the now-empty range up to the parent, which
+    // comes back down as checkinDate/checkoutDate both '' - landing right
+    // here, moments later, as a SEPARATE setDates({clear:true},{clear:true})
+    // call. That second, indirect clear re-triggers the library's own
+    // "no date left to base the view on -> jump to defaultViewDate" reset
+    // (same mechanism the Clear button note above describes), silently
+    // undoing the button's own fix a beat later - reported as "blocked
+    // dates only visible after clicking Clear", which was really just
+    // Clear accidentally jumping the view to today's month, which happened
+    // to have real bookings to show as blocked while whatever month was
+    // being viewed before often didn't. Only guarded for the genuine
+    // clear case (both sides empty) - a real load (a different guest, or
+    // Cancel restoring real dates) should still jump to show its own
+    // month, same as it always has.
+    const isClearRoundTrip = !checkinDate && !checkoutDate;
+    const preClearSyncViewDate = isClearRoundTrip ? rangepicker.datepickers[0].picker.viewDate : null;
+
     rangepicker.setDates(
       fromIsoDate(checkinDate) ?? { clear: true },
       fromIsoDate(checkoutDate) ?? { clear: true }
     );
+
+    if (preClearSyncViewDate !== null) {
+      rangepicker.datepickers[0].picker.changeFocus(preClearSyncViewDate);
+      rangepicker.datepickers[1].picker.changeFocus(preClearSyncViewDate);
+    }
   }, [checkinDate, checkoutDate, disablePastDates]);
 
   useEffect(() => {
