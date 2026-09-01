@@ -553,6 +553,9 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                             <h4 className="text-sm font-semibold text-slate-900 dark:text-white m-0">
                               {guest.guestName}
                             </h4>
+                            <span className="inline-flex items-center px-1.5 py-0.5 text-2xs font-semibold rounded bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
+                              #{guest.id}
+                            </span>
                             <span className="text-xs text-slate-500 dark:text-slate-400 font-normal shrink-0">
                               ({guest.numberOfGuests || 1} {(guest.numberOfGuests || 1) === 1 ? 'guest' : 'guests'})
                             </span>
@@ -798,7 +801,12 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       name: t('guest_details_column', 'Guest Details'),
       cell: (row: Guest) => (
         <div className="flex flex-col py-1">
-          <div className="font-bold text-gray-900 dark:text-white text-sm">{row.guestName}</div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="font-bold text-gray-900 dark:text-white text-sm">{row.guestName}</span>
+            <span className="inline-flex items-center px-1.5 py-0.5 text-2xs font-semibold rounded bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
+              #{row.id}
+            </span>
+          </div>
           <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2 mt-0.5">
             <span>({row.numberOfGuests || 1} {(row.numberOfGuests || 1) === 1 ? 'guest' : 'guests'})</span>
             {row.phoneNumber ? (

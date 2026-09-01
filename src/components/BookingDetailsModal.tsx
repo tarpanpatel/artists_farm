@@ -223,37 +223,51 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const cFormSectionRef = useRef<HTMLDivElement>(null);
   const checkinBannerRef = useRef<HTMLDivElement>(null);
 
+  // Pulls every edit* field back from the guest's real saved data - shared
+  // by the mount/guest-change effect below AND by Cancel/Close (see there):
+  // without this second use, clearing the Booking Dates picker then hitting
+  // Cancel used to leave editCheckin/editCheckout latched onto the blanked
+  // value (setIsEditing(false) alone never touched them), which the very
+  // next Save - now with no guard on empty dates either - happily persisted
+  // as a blank checkin/checkout straight to the DB (MySQL then substitutes
+  // its own zero-date default, '0000-00-00'). Re-running this same sync is
+  // what makes "clear, then back out without picking new dates" actually
+  // restore the original booking instead of corrupting it.
+  const syncEditFieldsFromGuest = (source: typeof guest) => {
+    if (!source) return;
+    const g = source as any;
+    const noGuests = g.no_of_guests ?? g.numberOfGuests ?? 1;
+    const rent = g.base_room_rent ?? g.roomRate ?? 0;
+    const adv = g.advance_paid ?? g.advanceAmount ?? 0;
+
+    setEditName(source.guestName || '');
+    setEditPhone(source.phoneNumber || '');
+    setEditRoomId(String(g.roomId ?? g.room_id ?? ''));
+    setEditGuests(String(noGuests));
+    setEditCheckin(source.checkinDate?.split(' ')[0] || '');
+    setEditCheckout(source.expectedCheckout?.split(' ')[0] || source.checkoutDate?.split(' ')[0] || '');
+    setEditRoomRent(String(rent));
+    setEditAdvance(String(adv));
+    setEditAdvanceReceivedBy(g.advance_received_by || source.advanceReceivedBy || '');
+    setEditPendingReceivedBy(g.pending_received_by || source.pendingReceivedBy || '');
+    setEditBookingSource(source.bookingSource || 'Offline');
+    setEditNotes(source.notes || '');
+    setEditShowNotes(!!source.notes);
+    setEditIsForeignGuest(!!source.isForeignGuest);
+
+    const isFiled = !!(source.cFormFiledAt || g.c_form_filed_at || g.c_form_filed || g.cFormFiled);
+    setCFormFiledState(isFiled);
+    setCFormNumberState(g.c_form_number || g.cFormNumber || '');
+    // Section starts open if already genuinely filed (so a returning look
+    // at an already-filed guest still shows the saved number/document
+    // without an extra click) - otherwise closed until the banner/
+    // checkbox/initialFocusSection opens it.
+    setCFormSectionOpen(isFiled);
+  };
+
   useEffect(() => {
-    if (guest) {
-      const g = guest as any;
-      const noGuests = g.no_of_guests ?? g.numberOfGuests ?? 1;
-      const rent = g.base_room_rent ?? g.roomRate ?? 0;
-      const adv = g.advance_paid ?? g.advanceAmount ?? 0;
-
-      setEditName(guest.guestName || '');
-      setEditPhone(guest.phoneNumber || '');
-      setEditRoomId(String(g.roomId ?? g.room_id ?? ''));
-      setEditGuests(String(noGuests));
-      setEditCheckin(guest.checkinDate?.split(' ')[0] || '');
-      setEditCheckout(guest.expectedCheckout?.split(' ')[0] || guest.checkoutDate?.split(' ')[0] || '');
-      setEditRoomRent(String(rent));
-      setEditAdvance(String(adv));
-      setEditAdvanceReceivedBy(g.advance_received_by || guest.advanceReceivedBy || '');
-      setEditPendingReceivedBy(g.pending_received_by || guest.pendingReceivedBy || '');
-      setEditBookingSource(guest.bookingSource || 'Offline');
-      setEditNotes(guest.notes || '');
-      setEditShowNotes(!!guest.notes);
-      setEditIsForeignGuest(!!guest.isForeignGuest);
-
-      const isFiled = !!(guest.cFormFiledAt || g.c_form_filed_at || g.c_form_filed || g.cFormFiled);
-      setCFormFiledState(isFiled);
-      setCFormNumberState(g.c_form_number || g.cFormNumber || '');
-      // Section starts open if already genuinely filed (so a returning look
-      // at an already-filed guest still shows the saved number/document
-      // without an extra click) - otherwise closed until the banner/
-      // checkbox/initialFocusSection opens it.
-      setCFormSectionOpen(isFiled);
-    }
+    syncEditFieldsFromGuest(guest);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [guest]);
 
   // External "take me to X" entry point (24 Aug 2026) - see initialFocusSection's
@@ -436,6 +450,15 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   };
 
   const handleSave = async () => {
+    // Defense in depth alongside the Save button's own disabled state above -
+    // a cleared-but-unsaved date range must never reach the backend. Without
+    // this, MySQL silently substitutes '0000-00-00' for an empty date string,
+    // which is exactly how a real booking ended up permanently showing
+    // 00/00/0000 (found live, 1 Sep 2026).
+    if (!editCheckin || !editCheckout) {
+      showToast('Pick both check-in and check-out dates before saving.', { type: 'error' });
+      return;
+    }
     const newRoom = rooms.find((r) => String(r.id) === editRoomId);
     const newRoomRent = parseFloat(editRoomRent) || 0;
     const newAdvance = parseFloat(editAdvance) || 0;
@@ -593,7 +616,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     <>
       <FlowbiteDrawer
         open={Boolean(guest)}
-        onClose={() => { onClose(); setIsEditing(false); }}
+        onClose={() => { syncEditFieldsFromGuest(guest); onClose(); setIsEditing(false); }}
         position="right"
         className="z-60 w-full sm:max-w-lg md:max-w-xl h-full bg-white dark:bg-gray-800 p-0 flex flex-col shadow-2xl transition-transform border-l border-gray-200 dark:border-gray-700"
       >
@@ -1257,7 +1280,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               <div className="grid grid-cols-2 gap-2.5 w-full">
                 <button
                   type="button"
-                  onClick={() => setIsEditing(false)}
+                  onClick={() => { syncEditFieldsFromGuest(guest); setIsEditing(false); }}
                   disabled={isSaving}
                   className="w-full h-10 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 dark:border-gray-600 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                 >
@@ -1267,7 +1290,8 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 <button
                   type="button"
                   onClick={handleSave}
-                  disabled={isSaving}
+                  disabled={isSaving || !editCheckin || !editCheckout}
+                  title={!editCheckin || !editCheckout ? 'Pick both check-in and check-out dates before saving' : undefined}
                   className="w-full h-10 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
                 >
                   {isSaving ? <Loader2 className="w-4 h-4 animate-spin shrink-0" /> : <Save className="w-4 h-4 shrink-0" />}

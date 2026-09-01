@@ -171,7 +171,7 @@ if (!function_exists('appendAppUrlToMessage')) {
                             $queryParams['request_id'] = $m[1];
                         }
                     } else if ($category === 'admin' || strpos($message, 'GUEST') !== false || strpos($message, 'BOOKING') !== false || strpos($message, 'CHECK-IN') !== false) {
-                        $hash = 'guests';
+                        $hash = 'bookings';
                         // Extract booking id e.g. "Booking ID: 708" or "Booking ID: #708" or "ID: 708"
                         if (preg_match('/(?:Booking|Guest)\s*ID:\s*#?([a-zA-Z0-9_-]+)/i', $message, $m)) {
                             $queryParams['booking_id'] = $m[1];
@@ -181,7 +181,7 @@ if (!function_exists('appendAppUrlToMessage')) {
                     }
 
                     $queryPart = !empty($queryParams) ? '?' . http_build_query($queryParams) : '';
-                    $appUrl = "{$scheme}://{$host}/{$row['tenant_slug']}/{$row['prop_slug']}/#{$hash}{$queryPart}";
+                    $appUrl = "{$scheme}://{$host}/{$row['tenant_slug']}/{$row['prop_slug']}/{$queryPart}#{$hash}";
                 }
             }
         } catch (Exception $e) {}
