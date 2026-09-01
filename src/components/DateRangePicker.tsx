@@ -253,13 +253,22 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   // whatever the user actually clicked (found live, 1 Sep 2026: clicking
   // day 5 on a checkin=31/checkout=2 range settled as checkin=2, not 5).
   const prevEndIsoRef = useRef('');
-  // Snapshot of prevStartIsoRef/prevEndIsoRef taken the instant Clear is
-  // pressed (see the Clear button listener below) - lets the Close button
-  // tell "cleared, nothing picked since" apart from "genuinely never had a
-  // range" and restore accordingly. Re-captured fresh on every Clear click,
-  // so there's no stale-value risk across repeated clear/restore cycles.
-  const preClearStartIsoRef = useRef<string | null>(null);
-  const preClearEndIsoRef = useRef<string | null>(null);
+  // Snapshot of prevStartIsoRef/prevEndIsoRef taken the moment the calendar
+  // opens (see the 'show' listener below) - not on Clear. The X button
+  // (top-right, replacing the old footer Close button - 1 Sep 2026, second
+  // pass) always reverts to this on click, unconditionally, regardless of
+  // what happened during this opening (cleared, partially re-picked, or a
+  // whole new complete range) - X now means "cancel this popover session",
+  // full stop, rather than the old Close's "restore only if nothing was
+  // picked since Clear". The only way to actually commit a change is Save.
+  const openedStartIsoRef = useRef('');
+  const openedEndIsoRef = useRef('');
+  // Every injected Save button across both sub-pickers' own footers (one
+  // visible at a time, per the "one continuous popover" note below) - kept
+  // in sync so both reflect the same enabled/disabled state, updated
+  // wherever prevStartIsoRef/prevEndIsoRef themselves are (processSettledRange,
+  // plus the initial seed right below the mount block).
+  const saveBtnsRef = useRef<HTMLButtonElement[]>([]);
 
   const [rangeError, setRangeError] = useState<string | undefined>(undefined);
   const hasError = Boolean(error) || Boolean(rangeError);
@@ -314,8 +323,36 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         }
       }, true);
 
+      // Top-right X (1 Sep 2026, second pass - replaces the old footer Close
+      // button entirely): unconditional cancel for this popover session,
+      // positioned like a standard dialog dismiss rather than sitting among
+      // the confirm/clear actions in the footer, so its meaning ("never
+      // mind, forget what I did in here") reads as distinct from Save's
+      // ("commit this"). Needs the picker element to be a positioning
+      // context for the button's absolute placement - flowbite's own CSS
+      // already makes it one in practice (it's a popover), but that's
+      // forced explicitly here rather than assumed.
+      const pickerEl = dp.pickerElement;
+      if (pickerEl && !pickerEl.querySelector('.datepicker-cancel-btn')) {
+        if (getComputedStyle(pickerEl).position === 'static') {
+          pickerEl.style.position = 'relative';
+        }
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.setAttribute('aria-label', 'Cancel');
+        cancelBtn.title = 'Cancel';
+        cancelBtn.className = 'datepicker-cancel-btn absolute top-2 right-2 z-10 flex items-center justify-center w-7 h-7 rounded-full text-slate-400 hover:text-slate-700 hover:bg-neutral-tertiary-medium dark:text-slate-500 dark:hover:text-slate-200 transition-colors cursor-pointer';
+        cancelBtn.innerHTML = '<svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 17.94 6M18 18 6.06 6"/></svg>';
+        cancelBtn.addEventListener('click', () => {
+          callbacksRef.current.onCheckinChange(openedStartIsoRef.current);
+          callbacksRef.current.onCheckoutChange(openedEndIsoRef.current);
+          dp.hide();
+        });
+        pickerEl.appendChild(cancelBtn);
+      }
+
       const footerControls = dp.pickerElement?.querySelector('.datepicker-footer .datepicker-controls');
-      if (!footerControls || footerControls.querySelector('.datepicker-close-btn')) return;
+      if (!footerControls || footerControls.querySelector('.datepicker-save-btn')) return;
       footerControls.querySelectorAll('.clear-btn').forEach((btn) => {
         btn.classList.remove('w-1/2');
         btn.classList.add('flex-1');
@@ -335,14 +372,6 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       footerControls.querySelectorAll('.clear-btn').forEach((btn) => {
         btn.addEventListener('mousedown', () => {
           preClearViewDate = dp.picker.viewDate;
-          // Captured alongside the view date (1 Sep 2026) - Clear's own
-          // settle pass (processSettledRange below) blanks prevStartIsoRef/
-          // prevEndIsoRef immediately, so by the time Close is clicked
-          // there's no way left to tell "genuinely started blank" apart
-          // from "was just cleared" without grabbing this first. Close
-          // reads it below to decide whether to restore.
-          preClearStartIsoRef.current = prevStartIsoRef.current || null;
-          preClearEndIsoRef.current = prevEndIsoRef.current || null;
         });
         btn.addEventListener('click', () => {
           if (preClearViewDate !== null) {
@@ -350,27 +379,39 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           }
         });
       });
-      const closeBtn = document.createElement('button');
-      closeBtn.type = 'button';
-      closeBtn.textContent = 'Close';
-      closeBtn.className = 'datepicker-close-btn flex-1 text-body bg-neutral-secondary-medium border border-default-medium hover:bg-neutral-tertiary-medium focus:ring-4 focus:ring-neutral-tertiary font-medium rounded-base text-sm px-5 py-2 text-center';
-      closeBtn.addEventListener('click', () => {
-        // Closing on a cleared-and-untouched range restores whatever was
-        // there right before Clear was clicked, rather than committing an
-        // empty Booking Dates field (found live, 1 Sep 2026 - Clear then
-        // Close left the form with blank dates and no way back short of
-        // cancelling the whole edit). Only fires when NOTHING has been
-        // picked since the clear - prevStartIsoRef being non-empty means a
-        // real new checkin (complete or still awaiting checkout) came in,
-        // which is left alone rather than clobbered.
-        if (!prevStartIsoRef.current && preClearStartIsoRef.current) {
-          callbacksRef.current.onCheckinChange(preClearStartIsoRef.current);
-          callbacksRef.current.onCheckoutChange(preClearEndIsoRef.current || '');
-        }
+      // Save (1 Sep 2026, second pass): the only action that actually
+      // commits anything now - disabled until a genuinely complete range
+      // exists (updateSaveButtonState below, called from processSettledRange
+      // on every pick and once right after construction), so a half-picked
+      // or cleared range simply can't be "saved". The live onCheckinChange/
+      // onCheckoutChange calls already happen on every settle same as
+      // before (Save doesn't need to push anything itself) - clicking it is
+      // purely "I'm satisfied, close the calendar".
+      const saveBtn = document.createElement('button');
+      saveBtn.type = 'button';
+      saveBtn.textContent = 'Save';
+      saveBtn.className = 'datepicker-save-btn flex-1 text-body bg-brand hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50 text-white font-medium rounded-base text-sm px-5 py-2 text-center transition-opacity';
+      saveBtn.disabled = true;
+      saveBtn.addEventListener('click', () => {
+        if (saveBtn.disabled) return;
         dp.hide();
       });
-      footerControls.appendChild(closeBtn);
+      footerControls.appendChild(saveBtn);
+      saveBtnsRef.current.push(saveBtn);
     });
+
+    // Keeps every injected Save button (one per sub-picker footer) in sync
+    // with whether prevStartIsoRef/prevEndIsoRef currently describe a real,
+    // complete, distinct range - called from processSettledRange after every
+    // pick/clear, and once more right after construction below so a booking
+    // that already had valid dates when the calendar first mounts doesn't
+    // require a throwaway click just to enable Save.
+    const updateSaveButtonState = () => {
+      const complete = Boolean(
+        prevStartIsoRef.current && prevEndIsoRef.current && prevStartIsoRef.current !== prevEndIsoRef.current,
+      );
+      saveBtnsRef.current.forEach((btn) => { btn.disabled = !complete; });
+    };
 
     // Recomputes disabled dates for BOTH sub-pickers together, not split
     // one-per-side (31 Aug 2026, second pass). This picker runs with
@@ -428,6 +469,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     // settle pass.
     prevStartIsoRef.current = toIsoDate(rangepicker.dates[0]);
     prevEndIsoRef.current = toIsoDate(rangepicker.dates[1]);
+    updateSaveButtonState();
 
     const processSettledRange = () => {
       if (suppressRangeValidationRef.current) return;
@@ -615,6 +657,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           setRangeError(`${formatIsoNice(clash)} isn't available - pick a range that doesn't cover it.`);
           callbacksRef.current.onCheckinChange(keepStartIso);
           callbacksRef.current.onCheckoutChange('');
+          updateSaveButtonState();
           return;
         }
       }
@@ -622,6 +665,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       setRangeError(undefined);
       callbacksRef.current.onCheckinChange(startIso);
       callbacksRef.current.onCheckoutChange(endIso);
+      updateSaveButtonState();
     };
 
     // Coalesces however many 'changeDate' events a single click produced
@@ -640,9 +684,23 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     startEl.addEventListener('changeDate', reportCurrentRange);
     endEl.addEventListener('changeDate', reportCurrentRange);
 
+    // Snapshots the committed range at the moment the popover opens (fired
+    // by the library itself, see Datepicker.js's triggerDatepickerEvent) -
+    // this is what the top-right X reverts to on click, unconditionally.
+    // Listening on both inputs since either sub-picker can be the one that's
+    // actually opened; both read the same already-mirrored state either way.
+    const captureOpenedRange = () => {
+      openedStartIsoRef.current = prevStartIsoRef.current;
+      openedEndIsoRef.current = prevEndIsoRef.current;
+    };
+    startEl.addEventListener('show', captureOpenedRange);
+    endEl.addEventListener('show', captureOpenedRange);
+
     return () => {
       startEl.removeEventListener('changeDate', reportCurrentRange);
       endEl.removeEventListener('changeDate', reportCurrentRange);
+      startEl.removeEventListener('show', captureOpenedRange);
+      endEl.removeEventListener('show', captureOpenedRange);
       rangepicker.destroy();
       rangepickerRef.current = null;
     };
