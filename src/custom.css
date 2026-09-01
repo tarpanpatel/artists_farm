@@ -320,6 +320,43 @@ div[datepicker-popover],
   color: white !important;
 }
 
+/* A second, separate flowbite-datepicker v2.0.0 bug in the SAME two
+   branches above (found 1 Sep 2026, live: a lone selected day - checkin
+   just re-picked, checkout not chosen yet - rendered as a lopsided "half
+   capsule", rounded on one side only, described as "facing the wrong
+   direction"). DaysView.js's render() (its full rebuild path, distinct
+   from the lighter refresh() it normally uses) runs the range-start check
+   before the range-end check; when a cell is BOTH (rangeStart === rangeEnd
+   === this cell, i.e. no real range yet, just one day picked), range-
+   start's branch adds rounded-s-base, then range-end's branch runs next
+   and explicitly REMOVES rounded-s-base on its way to adding rounded-e-
+   base - so only the end-side rounding survives, on a cell that's visually
+   supposed to read as an ordinary solo selection, not the tail of some
+   range extending off to its left. --radius-base matches flowbite's own
+   token (flowbite/src/themes/default.css) so this exactly matches the
+   corner radius every other unselected cell already uses. */
+.datepicker-cell.range-start.range-end {
+  border-radius: var(--radius-base, 12px) !important;
+}
+
+/* Today's own marker (1 Sep 2026, live request: "should have different
+   styling... may be just give font accent color") - DaysView.js paints
+   today as a filled bg-gray-100/dark:bg-gray-600 chip, which visually
+   competed with the actual selection/range/disabled states instead of
+   reading as a lightweight "you are here" reference point. Neutralizes
+   that fill and marks today with brand-colored bold text instead - only
+   when today ISN'T also part of the current selection, since selected/
+   range-start/range-end already paint a solid brand background with white
+   text for contrast (self-contained !important rules above/in DaysView.js)
+   that this must not fight over the same cell. */
+.datepicker-cell.today {
+  background-color: transparent !important;
+}
+.datepicker-cell.today:not(.selected):not(.range-start):not(.range-end) {
+  color: var(--color-brand, #1d4ed8) !important;
+  font-weight: 700;
+}
+
 /* Booked/unavailable calendar dates (added 22 Aug 2026 - "Booking Dates"
    pickers must grey out + strike through + block already-booked days for the
    selected room, see CLAUDE.md's Multi-Key Rooms & Bookings section).
