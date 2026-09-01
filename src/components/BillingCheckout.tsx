@@ -48,6 +48,7 @@ interface BillingCheckoutProps {
   onCheckoutClick?: (guestId: string) => void;
   onNavigateToGuestRegistration?: () => void;
   kitchenModuleEnabled?: boolean;
+  isLoading?: boolean;
   propertyGstin?: string;
   propertyName?: string;
   propertyPhone?: string;
@@ -94,6 +95,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   onCheckoutClick: _onCheckoutClick,
   onNavigateToGuestRegistration,
   kitchenModuleEnabled = true,
+  isLoading = false,
   propertyGstin = '',
   propertyName = '',
   propertyPhone = '',
@@ -1099,14 +1101,23 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
               <div className="hidden md:block billing-checkout__past-table overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
                 {searchedGuests.length === 0 ? (
                   <div className="p-12 text-center">
-                    <Search className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-                    <h3 className="billing-checkout__subtitle text-lg font-semibold text-gray-800 dark:text-gray-200">
-                      {activeTab === 'upcoming'
-                        ? t('no_upcoming_bookings', 'No upcoming bookings.')
-                        : activeTab === 'past_bookings'
-                        ? t('no_past_bookings', 'No past bookings.')
-                        : t('no_bookings_today', 'No bookings today.')}
-                    </h3>
+                    {isLoading ? (
+                      <div className="flex flex-col items-center justify-center">
+                        <Loader2 className="w-8 h-8 text-blue-600 dark:text-blue-400 animate-spin mx-auto mb-3" />
+                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Loading bookings...</p>
+                      </div>
+                    ) : (
+                      <>
+                        <Search className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                        <h3 className="billing-checkout__subtitle text-lg font-semibold text-gray-800 dark:text-gray-200">
+                          {activeTab === 'upcoming'
+                            ? t('no_upcoming_bookings', 'No upcoming bookings.')
+                            : activeTab === 'past_bookings'
+                            ? t('no_past_bookings', 'No past bookings.')
+                            : t('no_bookings_today', 'No bookings today.')}
+                        </h3>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <>
@@ -1147,10 +1158,19 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
               Bookings table has its own noDataComponent above. */}
           {activeTab === 'today' && filteredGroups.length === 0 && (
             <div className="billing-checkout__empty-state p-12 text-center">
-              <Search className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-              <h3 className="billing-checkout__subtitle text-lg font-semibold text-gray-800 dark:text-gray-200">
-                {t('no_bookings_today', 'No bookings today.')}
-              </h3>
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center">
+                  <Loader2 className="w-8 h-8 text-blue-600 dark:text-blue-400 animate-spin mx-auto mb-3" />
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Loading bookings...</p>
+                </div>
+              ) : (
+                <>
+                  <Search className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                  <h3 className="billing-checkout__subtitle text-lg font-semibold text-gray-800 dark:text-gray-200">
+                    {t('no_bookings_today', 'No bookings today.')}
+                  </h3>
+                </>
+              )}
             </div>
           )}
           </div>

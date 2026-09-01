@@ -633,7 +633,10 @@ function AppBody({ preloadedData }: AppBodyProps) {
     if (preloadedData.navItems && preloadedData.navItems.length > 0) {
       setNavItems(preloadedData.navItems);
     }
-  }, [preloadedData.navItems]);
+    if (preloadedData.initialGuests && preloadedData.initialGuests.length > 0) {
+      setGuests(preloadedData.initialGuests);
+    }
+  }, [preloadedData.navItems, preloadedData.initialGuests]);
 
   // Re-validates the CURRENT page against the CURRENT role whenever either
   // changes, and bounces to Dashboard if it's no longer allowed - hiding a
@@ -2328,6 +2331,7 @@ ${itemsStr}
                   <GuestManagement
                     guests={guests}
                     receipts={receipts}
+                    isLoading={!guests || guests.length === 0}
                     onAddGuest={handleAddGuest}
                     onCheckoutGuest={handleCheckoutGuest}
                     onUpdateGuest={handleUpdateGuest}

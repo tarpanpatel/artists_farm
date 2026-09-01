@@ -80,9 +80,8 @@ interface GuestManagementProps {
   propertyInstructions?: string;
   propertyCheckinTime?: string;
   propertyCheckoutTime?: string;
+  isLoading?: boolean;
 }
-
-
 
 export interface IncidentalsItem {
   id: string;
@@ -108,6 +107,7 @@ export interface PaymentSplitRow {
 export const GuestManagement: React.FC<GuestManagementProps> = ({
   guests,
   receipts,
+  isLoading = false,
   menu: _menu,
   onAddGuest,
   onCheckoutGuest,
@@ -1062,6 +1062,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     <BillingCheckout
       guests={guests}
       receipts={receipts}
+      isLoading={isLoading}
       onCheckoutGuest={onCheckoutGuest}
       onUpdateGuest={onUpdateGuest}
       onAddGuest={onAddGuest}

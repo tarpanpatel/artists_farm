@@ -747,7 +747,18 @@ export const Navigation: React.FC<NavigationProps> = ({
               </div>
 
               <ul className="space-y-1 font-medium">
-                {tree.map(node => renderNode(node, 0))}
+                {tree.length === 0 ? (
+                  <div className="space-y-2 py-2 px-1 animate-pulse">
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                      <div key={i} className="flex items-center gap-3 p-2 rounded-lg bg-gray-100 dark:bg-gray-700/40">
+                        <div className="w-5 h-5 rounded bg-gray-200 dark:bg-gray-600 shrink-0" />
+                        <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-28" />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  tree.map(node => renderNode(node, 0))
+                )}
               </ul>
 
               {customUrlRootItems.length > 0 && (
