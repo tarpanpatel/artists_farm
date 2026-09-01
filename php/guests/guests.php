@@ -948,14 +948,14 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     $prevCheckoutDatePart = $prevCheckoutRaw !== '' ? explode(' ', trim($prevCheckoutRaw))[0] : '';
                     $wasAlreadyPast = in_array($prevStatus, [GUEST_STATUS_CHECKED_OUT, GUEST_STATUS_CHECKEDOUT_LEGACY, 'Cancelled'], true)
                         || ($prevCheckoutDatePart !== '' && $prevCheckoutDatePart < date('Y-m-d'));
-                    if (isset($input['__zzdbg'])) {
-                        echo json_encode(['status' => 'zzdbg', 'prevStatus' => $prevStatus, 'prevCheckoutRaw' => $prevCheckoutRaw, 'prevCheckoutDatePart' => $prevCheckoutDatePart, 'todayYmd' => date('Y-m-d'), 'wasAlreadyPast' => $wasAlreadyPast, 'previousGuestEmpty' => empty($previousGuest), 'previousGuestKeys' => array_keys($previousGuest)]);
-                        break;
-                    }
                     if ($wasAlreadyPast && !empty($previousGuest)) {
                         $prevCheckinDatePart = explode(' ', trim((string)($previousGuest['checkin_date'] ?? '')))[0];
                         $newCheckinDatePart = explode(' ', trim((string)$newCheckin))[0];
                         $newCheckoutDatePart = explode(' ', trim((string)$newCheckout))[0];
+                        if (isset($input['__zzdbg'])) {
+                            echo json_encode(['status' => 'zzdbg', 'newCheckin' => $newCheckin, 'newCheckout' => $newCheckout, 'newCheckinDatePart' => $newCheckinDatePart, 'newCheckoutDatePart' => $newCheckoutDatePart, 'prevCheckinDatePart' => $prevCheckinDatePart, 'prevCheckoutDatePart' => $prevCheckoutDatePart, 'wouldBlock' => ($newCheckinDatePart !== $prevCheckinDatePart || $newCheckoutDatePart !== $prevCheckoutDatePart)]);
+                            break;
+                        }
                         if ($newCheckinDatePart !== $prevCheckinDatePart || $newCheckoutDatePart !== $prevCheckoutDatePart) {
                             http_response_code(403);
                             echo json_encode(['status' => 'error', 'message' => 'This booking is already past - its dates can no longer be changed.']);
