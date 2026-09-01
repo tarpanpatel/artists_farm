@@ -36,6 +36,19 @@ interface BookingDetailsModalProps {
   onDelete?: (guestId: string) => Promise<void>;
   rooms?: Array<{ id: number; name: string; slug: string }>;
   checkedInGuests?: Guest[];
+  // External OTA (Airbnb/Booking.com etc, via iCal sync) blocked dates - the
+  // SAME array GuestManagement.tsx already fetches once for the Add Booking
+  // flow's own getBlockedDateStrings(), threaded down through
+  // BillingCheckout rather than re-fetched here (1 Sep 2026 - found live:
+  // an iCal-blocked night showed correctly as unavailable when ADDING a
+  // booking but was fully clickable when EDITING one, since this modal's
+  // own getEditBlockedDateStrings only ever looked at other guests' own
+  // bookings, never at synced external blocks at all).
+  icalBlockedDates?: Array<{
+    event_start: string;
+    event_end: string;
+    room_id?: number;
+  }>;
   propertyName?: string;
   propertyAddress?: string;
   propertyMapsLink?: string;
@@ -113,6 +126,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   onCheckout,
   initialFocusSection = null,
   isMultiKeyProperty,
+  icalBlockedDates = [],
 }) => {
   const { staff } = useStaff();
   const { showToast } = useToast();
@@ -336,6 +350,28 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     const selectedRoomId = editRoomId ? parseInt(editRoomId, 10) : undefined;
     const isMultiKey = isMultiKeyProperty ?? (rooms && rooms.length > 1);
 
+    // 1. External OTA (iCal-synced) blocked dates - mirrors
+    // GuestManagement.tsx's own getBlockedDateStrings() section 1 (1 Sep
+    // 2026): on a single-unit property every synced block applies; on a
+    // multi-key one, only the currently assigned room's own blocks do -
+    // an unassigned/undefined room_id is skipped rather than blocked, same
+    // "under-block over false-block" call as that other copy makes.
+    (icalBlockedDates || [])
+      .filter((bd) => !isMultiKey || (selectedRoomId != null && Number(bd.room_id) === Number(selectedRoomId)))
+      .forEach((bd) => {
+        const start = new Date(bd.event_start.split(' ')[0]);
+        const end = new Date(bd.event_end.split(' ')[0]);
+        let current = new Date(start);
+        while (current < end) {
+          const y = current.getFullYear();
+          const m = String(current.getMonth() + 1).padStart(2, '0');
+          const d = String(current.getDate()).padStart(2, '0');
+          blocked.push(`${y}-${m}-${d}`);
+          current = new Date(current.getTime() + 86400000);
+        }
+      });
+
+    // 2. Existing guest bookings for the currently selected room.
     (checkedInGuests || [])
       .filter((other) => other.id !== guest.id)
       .filter((other) => {

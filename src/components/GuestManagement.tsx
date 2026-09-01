@@ -1060,6 +1060,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       onAddGuest={onAddGuest}
       isMultiKeyProperty={isMultiKeyProperty}
       rooms={rooms}
+      icalBlockedDates={blockedDates}
       onCheckoutClick={onNavigateToBilling}
       kitchenModuleEnabled={kitchenModuleEnabled}
       propertyGstin={propertyGstin}
