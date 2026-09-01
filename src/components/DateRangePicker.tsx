@@ -570,6 +570,54 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           // checkin itself). Whatever the library's own swap/mirror math
           // landed the checkout on must be discarded either way; the user
           // always gets an explicit second pick for it.
+          //
+          // Reject outright if newValue is itself a blocked night (1 Sep
+          // 2026, found live: booking #708 could be re-picked straight onto
+          // #710's own checkin night with no warning at all - a genuine
+          // double-booking on a single-unit property). syncDisabledAndCeiling
+          // below deliberately un-disables the immediate next blocked night
+          // so the ORIGINAL checkin can still check OUT on it (turnover) -
+          // but that makes the same calendar cell freely clickable as a
+          // fresh CHECKIN too, and a checkin-only pick never reaches
+          // firstBlockedInRange further down (that only runs once a
+          // complete range exists to validate). This is the one place a
+          // brand new checkin is ever accepted, so it's the one place that
+          // needs its own direct check against the raw blocked list, not
+          // datesDisabled's deliberately-relaxed version of it.
+          const newCheckinBlocked = (blockedDatesRef.current ?? []).some(
+            (d) => d.slice(0, 10) === newValue,
+          );
+          if (newCheckinBlocked) {
+            const revertStartIso = prevStartIsoRef.current;
+            const revertEndIso = prevEndIsoRef.current;
+            const revertStartDate = revertStartIso ? fromIsoDate(revertStartIso) : undefined;
+            const revertEndDate = revertEndIso ? fromIsoDate(revertEndIso) : revertStartDate;
+            suppressRangeValidationRef.current = true;
+            (rangepicker as unknown as { _updating?: boolean })._updating = true;
+            try {
+              rangepicker.datepickers[0].setDate(revertStartDate ?? { clear: true }, { render: false });
+              rangepicker.datepickers[1].setDate(revertEndDate ?? { clear: true }, { render: false });
+            } finally {
+              delete (rangepicker as unknown as { _updating?: boolean })._updating;
+              suppressRangeValidationRef.current = false;
+            }
+            // Only force the checkout field blank when reverting to a
+            // pending (mirrored, not a real range) prior state - a real
+            // prior checkout's own text should stand as-is, same
+            // distinction the mirroring convention elsewhere in this file
+            // already relies on.
+            if (!revertEndIso) {
+              endEl.value = '';
+            }
+            awaitingCheckoutPickRef.current = !!revertStartIso && !revertEndIso;
+            skipNextPropsSyncRef.current = true;
+            syncDisabledAndCeiling(revertStartIso);
+            setRangeError(`${formatIsoNice(newValue)} isn't available - pick a range that doesn't cover it.`);
+            callbacksRef.current.onCheckinChange(revertStartIso);
+            callbacksRef.current.onCheckoutChange(revertEndIso);
+            updateSaveButtonState();
+            return;
+          }
           startIso = newValue;
           forcedEmptyCheckout = true;
         }

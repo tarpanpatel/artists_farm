@@ -1003,21 +1003,49 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         }
                     }
 
-                    if ($roomId !== null) {
-                        $pdo->prepare("SELECT id FROM properties WHERE id = ? FOR UPDATE")->execute([$roomId]);
+                    // Whole-property (SINGLE) bookings carry no room_id at all, so the
+                    // room-scoped branch below never ran for them - meaning moving an
+                    // existing booking's dates on a whole villa/homestay had NO overlap
+                    // protection whatsoever (found 1 Sep 2026: booking #708 could be
+                    // re-picked onto #710's own occupied night on staging, with nothing
+                    // here to stop the save even though the frontend calendar should
+                    // already have refused the pick). add_guest got this exact fix on 30
+                    // Aug 2026 (see its own copy of this comment) - update_guest was
+                    // simply missed. Deliberately scoped to genuinely room-less
+                    // properties: a MULTI_KEY property can also hold legacy room_id-NULL
+                    // rows ("Other / Unassigned Rooms"), and those must NOT block each
+                    // other, since they're not a single shared physical unit.
+                    $isWholePropertyBooking = false;
+                    if ($roomId === null) {
+                        $typeStmt = $pdo->prepare("SELECT property_type FROM properties WHERE id = ? LIMIT 1");
+                        $typeStmt->execute([$propertyId]);
+                        $isWholePropertyBooking = ($typeStmt->fetchColumn() === 'SINGLE');
+                    }
+
+                    if ($roomId !== null || $isWholePropertyBooking) {
+                        $lockTargetId = $roomId !== null ? $roomId : $propertyId;
+                        $pdo->prepare("SELECT id FROM properties WHERE id = ? FOR UPDATE")->execute([$lockTargetId]);
+
                         // Was missing GUEST_STATUS_BOOKED - a future reservation is the
                         // most common thing this check needs to catch (moving a stay
                         // into a room that's already reserved later on), and it was
                         // silently excluded (found + fixed alongside add_guest's
                         // missing check, 20 Aug 2026).
-                        $conflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id = ? AND status IN (?, ?, ?) AND id != ? AND property_id = ? AND checkin_date < ? AND expected_checkout > ? LIMIT 1 FOR UPDATE");
-                        $conflictStmt->execute([$roomId, GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_IN, GUEST_STATUS_BOOKED, $guestId, $propertyId, $newCheckout, $newCheckin]);
+                        if ($roomId !== null) {
+                            $conflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id = ? AND status IN (?, ?, ?) AND id != ? AND property_id = ? AND checkin_date < ? AND expected_checkout > ? LIMIT 1 FOR UPDATE");
+                            $conflictStmt->execute([$roomId, GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_IN, GUEST_STATUS_BOOKED, $guestId, $propertyId, $newCheckout, $newCheckin]);
+                        } else {
+                            $conflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id IS NULL AND status IN (?, ?, ?) AND id != ? AND property_id = ? AND checkin_date < ? AND expected_checkout > ? LIMIT 1 FOR UPDATE");
+                            $conflictStmt->execute([GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_IN, GUEST_STATUS_BOOKED, $guestId, $propertyId, $newCheckout, $newCheckin]);
+                        }
                         if ($conflictStmt->fetch()) {
                             if ($pdo->inTransaction()) {
                                 $pdo->rollBack();
                             }
                             http_response_code(409);
-                            echo json_encode(['status' => 'error', 'message' => 'Selected room already has an active booking for these dates']);
+                            echo json_encode(['status' => 'error', 'message' => $roomId !== null
+                                ? 'Selected room already has an active booking for these dates'
+                                : 'This property already has an active booking for these dates']);
                             break;
                         }
                     }
