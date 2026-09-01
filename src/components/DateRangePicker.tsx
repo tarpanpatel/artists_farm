@@ -333,8 +333,6 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       // already makes it one in practice (it's a popover), but that's
       // forced explicitly here rather than assumed.
       const pickerEl = dp.pickerElement;
-      (window as any).__cancelDbg = (window as any).__cancelDbg || [];
-      (window as any).__cancelDbg.push({ hasPickerEl: !!pickerEl, alreadyHasCancel: pickerEl ? !!pickerEl.querySelector('.datepicker-cancel-btn') : null });
       if (pickerEl && !pickerEl.querySelector('.datepicker-cancel-btn')) {
         if (getComputedStyle(pickerEl).position === 'static') {
           pickerEl.style.position = 'relative';
@@ -351,7 +349,6 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           dp.hide();
         });
         pickerEl.appendChild(cancelBtn);
-        (window as any).__cancelDbg.push({ appended: true, nowHas: !!pickerEl.querySelector('.datepicker-cancel-btn') });
       }
 
       const footerControls = dp.pickerElement?.querySelector('.datepicker-footer .datepicker-controls');
