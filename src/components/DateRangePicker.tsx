@@ -241,6 +241,18 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   // click gets explicitly routed by comparing it to prevStartIsoRef instead
   // of trusting whatever the library's own swap decided.
   const awaitingCheckoutPickRef = useRef(false);
+  // Last settled checkout, mirroring prevStartIsoRef (fourth pass, 1 Sep
+  // 2026) - needed alongside it to correctly identify which of the two raw
+  // post-click values is the NEW one a click actually introduced. Re-
+  // picking checkin on an already-COMPLETE (non-pending) range hit the
+  // exact same swap trap awaitingCheckoutPickRef's branch already guards
+  // against, just not yet caught there too: clicking a date later than the
+  // OLD checkout swaps the OLD checkout into the start slot (not the OLD
+  // checkin), so comparing the raw start value only against prevStartIsoRef
+  // silently accepted that stale checkout as the "new checkin" instead of
+  // whatever the user actually clicked (found live, 1 Sep 2026: clicking
+  // day 5 on a checkin=31/checkout=2 range settled as checkin=2, not 5).
+  const prevEndIsoRef = useRef('');
 
   const [rangeError, setRangeError] = useState<string | undefined>(undefined);
   const hasError = Boolean(error) || Boolean(rangeError);
@@ -381,10 +393,12 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     };
     syncEndCeilingRef.current = syncDisabledAndCeiling;
     syncDisabledAndCeiling(toIsoDate(rangepicker.dates[0]));
-    // Seed prevStartIsoRef from the picker's actual constructed state (not
-    // the checkinDate prop) - see processSettledRange's own comment on why
-    // this can't wait for a settle pass.
+    // Seed prevStartIsoRef/prevEndIsoRef from the picker's actual
+    // constructed state (not the checkinDate/checkoutDate props) - see
+    // processSettledRange's own comment on why this can't wait for a
+    // settle pass.
     prevStartIsoRef.current = toIsoDate(rangepicker.dates[0]);
+    prevEndIsoRef.current = toIsoDate(rangepicker.dates[1]);
 
     const processSettledRange = () => {
       if (suppressRangeValidationRef.current) return;
@@ -398,27 +412,34 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       let startIso = rawStartIso;
       let endIso = rawEndIso;
 
-      // Re-picking checkin bug fix (1 Sep 2026, third pass) - see
-      // awaitingCheckoutPickRef's own comment above for the full mechanics.
-      // prevStartIsoRef is seeded once right after construction (below),
-      // from whatever checkin the picker loaded with - NOT from this settle
-      // pass, since the library's constructor reads an existing input value
-      // directly into datepicker.dates without going through setDate, so no
-      // 'changeDate' event - and therefore no settle - ever fires for it.
+      // Re-picking checkin bug fix (1 Sep 2026, fourth pass) - see
+      // awaitingCheckoutPickRef's and prevEndIsoRef's own comments above for
+      // the full mechanics. prevStartIsoRef/prevEndIsoRef are seeded once
+      // right after construction (below), from whatever range the picker
+      // loaded with - NOT from a settle pass, since the library's
+      // constructor reads an existing input value directly into
+      // datepicker.dates without going through setDate, so no 'changeDate'
+      // event - and therefore no settle - ever fires for it.
       let forcedEmptyCheckout = false;
-      if (wasUserClick && awaitingCheckoutPickRef.current && prevStartIsoRef.current) {
-        // Checkin is pending (checkout force-blanked by an earlier pass,
-        // internal end still mirrored to it) - this click is the follow-up.
-        // Internal state going in was [pendingCheckin, pendingCheckin], so
-        // whichever raw value now differs from it is what THIS click
-        // introduced, regardless of which side the library's own swap
-        // filed it under.
+      if (wasUserClick && prevStartIsoRef.current) {
         const pendingCheckin = prevStartIsoRef.current;
-        const newValue = rawStartIso !== pendingCheckin ? rawStartIso
-          : (rawEndIso !== pendingCheckin ? rawEndIso : null);
+        const pendingCheckout = prevEndIsoRef.current;
+        // Whichever raw value ISN'T one of the two values true immediately
+        // before this click is what the click actually introduced -
+        // regardless of which side the library's own swap math filed it
+        // under. This matters even outside the pending-checkout state: re-
+        // picking checkin on an already-COMPLETE range hits the identical
+        // trap (clicking a date later than the OLD checkout swaps that OLD
+        // checkout into the start slot, not the old checkin - naively
+        // trusting "start" as the new checkin silently kept the stale
+        // checkout instead of the date actually clicked).
+        const newValue = (rawStartIso && rawStartIso !== pendingCheckin && rawStartIso !== pendingCheckout) ? rawStartIso
+          : (rawEndIso && rawEndIso !== pendingCheckin && rawEndIso !== pendingCheckout) ? rawEndIso
+          : null;
 
-        if (newValue && newValue > pendingCheckin) {
-          // Later than the pending checkin - a genuine checkout pick. Pin
+        if (newValue && awaitingCheckoutPickRef.current && newValue > pendingCheckin) {
+          // Checkin is pending (checkout force-blanked by an earlier pass)
+          // and this click is later than it - a genuine checkout pick. Pin
           // checkin back to exactly what it was (the swap ordinarily
           // already puts it there correctly on its own; this only corrects
           // it if it didn't) and accept newValue as checkout.
@@ -437,18 +458,16 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           }
           awaitingCheckoutPickRef.current = false;
         } else if (newValue) {
-          // Same day or earlier than the pending checkin - not a valid
-          // checkout, so this reads as "actually, a different checkin" -
-          // restart the pending-checkout cycle on this new value instead.
+          // Every other case reads as "the user picked a new checkin":
+          // not currently pending at all (re-picking on a complete range),
+          // or pending but this click landed on/before the pending checkin
+          // (not a valid checkout, so - the user's changed their mind about
+          // checkin itself). Whatever the library's own swap/mirror math
+          // landed the checkout on must be discarded either way; the user
+          // always gets an explicit second pick for it.
           startIso = newValue;
           forcedEmptyCheckout = true;
         }
-      } else if (wasUserClick && prevStartIsoRef.current && rawStartIso && rawStartIso !== prevStartIsoRef.current) {
-        // Re-picking checkin on top of an already-COMPLETE (non-pending)
-        // range - whatever the library's own swap/mirror math landed the
-        // checkout on must be discarded; the user always gets an explicit
-        // second pick.
-        forcedEmptyCheckout = true;
       }
 
       if (forcedEmptyCheckout) {
@@ -472,6 +491,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       }
 
       prevStartIsoRef.current = startIso;
+      prevEndIsoRef.current = endIso;
       if (startIso && endIso) {
         awaitingCheckoutPickRef.current = false;
       }

@@ -307,14 +307,14 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
         ) : (
           <div className="flex items-center justify-end gap-2 whitespace-nowrap">
             <Button
-              variant="primary"
+              variant="edit"
               size="sm"
               onClick={() => {
                 setIsEditing(row.id);
                 setEditForm(row);
                 setIsCreatingCategoryInline(false);
               }}
-              leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
+              leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
               className="h-8 text-xs font-medium whitespace-nowrap shrink-0"
             >
               {t('edit_button', 'Edit')}

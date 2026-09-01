@@ -508,11 +508,11 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
       cell: (item: MenuItem) => (
         <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
           <Button
-            variant="secondary"
+            variant="edit"
             size="sm"
             onClick={() => requirePasscode(() => handleOpenEditFood(item))}
             className="whitespace-nowrap shrink-0"
-            leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
+            leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
           >
             {t('edit_button', 'Edit')}
           </Button>
@@ -818,7 +818,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                         <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between mt-1 text-xs">
                           <span className="font-mono text-2xs text-slate-400 dark:text-slate-500">#{item.id}</span>
                           <div className="flex items-center gap-1">
-                            <Button variant="secondary" size="sm" onClick={() => requirePasscode(() => handleOpenEditFood(item))} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                            <Button variant="edit" size="sm" onClick={() => requirePasscode(() => handleOpenEditFood(item))} leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}>
                               {t('edit_item_tooltip', 'Edit Item')}
                             </Button>
                             <button
@@ -917,7 +917,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                             ₹{item.price}
                           </span>
                           <div className="flex items-center gap-1.5">
-                            <Button variant="secondary" size="sm" onClick={() => requirePasscode(() => handleOpenEditFood(item))} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                            <Button variant="edit" size="sm" onClick={() => requirePasscode(() => handleOpenEditFood(item))} leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}>
                               {t('edit_item_tooltip', 'Edit Item')}
                             </Button>
                             <button

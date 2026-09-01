@@ -536,7 +536,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                                     <Button variant="primary" size="sm" onClick={() => window.open(dashboardUrl, '_blank', 'noopener,noreferrer')} leftIcon={<ExternalLink className="w-3.5 h-3.5 shrink-0" />}>
                                       {t('open_dashboard_link', 'Open Property')}
                                     </Button>
-                                    <Button variant="secondary" size="sm" onClick={() => setModal({ type: 'edit', property })} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                                    <Button variant="edit" size="sm" onClick={() => setModal({ type: 'edit', property })} leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}>
                                       Edit
                                     </Button>
                                   </>
@@ -639,7 +639,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                           {t('open_dashboard_link', 'Open Property')}
                         </Button>
                         <div className="flex items-center gap-1.5">
-                          <Button variant="secondary" size="sm" onClick={() => setModal({ type: 'edit', property })} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                          <Button variant="edit" size="sm" onClick={() => setModal({ type: 'edit', property })} leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}>
                             Edit
                           </Button>
                           <Button variant="ghost" size="xs" onClick={() => setModal({ type: 'delete', property })} className="text-red-600 dark:text-red-400 hover:text-red-700">

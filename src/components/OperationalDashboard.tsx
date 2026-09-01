@@ -829,10 +829,10 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                         setIsEditingRoomName(true);
                         setEditingRoomName(roomName || '');
                       }}
-                      className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition text-slate-600 hover:text-slate-900"
+                      className="p-1.5 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded-lg transition cursor-pointer"
                       title={t('edit_room_name_tooltip', 'Edit room name')}
                     >
-                      <Pencil className="w-4 h-4" />
+                      <Pencil className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
                     </button>
                   </div>
                   <div className="flex items-center gap-4 mt-1">

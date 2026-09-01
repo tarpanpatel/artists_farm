@@ -1026,7 +1026,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                           ) : (
                             <>
                               {canEdit && (
-                                <Button variant="secondary" size="sm" onClick={() => handleEditUser(row)} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                                <Button variant="edit" size="sm" onClick={() => handleEditUser(row)} leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}>
                                   <span className="whitespace-nowrap">Edit</span>
                                 </Button>
                               )}
@@ -1143,7 +1143,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                           {!isCurrentUser && (
                             <>
                               {canEdit && (
-                                <Button onClick={() => handleEditUser(row)} variant="secondary" size="xs" leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />} className="cursor-pointer px-2 shrink-0">{t('edit_button', 'Edit')}</Button>
+                                <Button onClick={() => handleEditUser(row)} variant="edit" size="xs" leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />} className="cursor-pointer px-2 shrink-0">{t('edit_button', 'Edit')}</Button>
                               )}
                               {canDelete && (
                                 <Button onClick={() => handleDeleteUser(row.id)} variant="danger" size="xs" className="font-semibold cursor-pointer px-2 shrink-0">{t('delete_button', 'Delete')}</Button>
@@ -1847,7 +1847,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         </Button>
                       </div>
                     ) : (
-                      <Button variant="secondary" size="sm" onClick={() => { setEditingStaffId(row.id); setEditStaffRole(row.role); setEditStaffPhone(row.phone); setEditStaffSalary(row.monthlySalary); setEditStaffStatus(row.status); }} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                      <Button variant="edit" size="sm" onClick={() => { setEditingStaffId(row.id); setEditStaffRole(row.role); setEditStaffPhone(row.phone); setEditStaffSalary(row.monthlySalary); setEditStaffStatus(row.status); }} leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}>
                         {t('edit_button', 'Edit')}
                       </Button>
                     ),

@@ -1039,10 +1039,10 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                               {t('visit_tenant_dashboard_tooltip', 'Open Business')}
                             </Button>
                             <Button
-                              variant="secondary"
+                              variant="edit"
                               size="sm"
                               onClick={() => handleManageTenant(tenant)}
-                              leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
+                              leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
                             >
                               Edit
                             </Button>
@@ -1121,10 +1121,10 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                           {t('visit_tenant_dashboard_tooltip', 'Open Business')}
                         </Button>
                         <Button
-                          variant="secondary"
+                          variant="edit"
                           size="sm"
                           onClick={() => handleManageTenant(tenant)}
-                          leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
+                          leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
                         >
                           Edit
                         </Button>
@@ -2212,7 +2212,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                                 setIsEditingBotToken(false);
                                 setShowPropertyModal('edit');
                               }}
-                              variant="secondary"
+                              variant="edit"
                               size="sm"
                               title={t('edit_property_tooltip', 'Edit Property')}
                               leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}

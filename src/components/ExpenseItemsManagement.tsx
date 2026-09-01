@@ -222,12 +222,12 @@ export const ExpenseItemsManagement: React.FC = () => {
       cell: (row: ExpenseItem) => (
         <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
           <Button
-            variant="secondary"
+            variant="edit"
             size="sm"
             onClick={() => handleEditClick(row)}
             disabled={saving}
             className="whitespace-nowrap shrink-0"
-            leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
+            leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
           >
             {t('edit_button', 'Edit')}
           </Button>
@@ -477,11 +477,11 @@ export const ExpenseItemsManagement: React.FC = () => {
 
                             <div className="flex items-center gap-1.5 shrink-0">
                               <Button
-                                variant="secondary"
+                                variant="edit"
                                 size="xs"
                                 onClick={() => handleEditClick(item)}
                                 disabled={saving}
-                                leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
+                                leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
                               >
                                 {t('edit_button', 'Edit')}
                               </Button>

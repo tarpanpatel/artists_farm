@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button as FlowbiteButton, createTheme } from 'flowbite-react';
 
-type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'success' | 'danger' | 'warning' | 'dark' | 'link' | 'ghost';
+type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'success' | 'danger' | 'warning' | 'dark' | 'link' | 'ghost' | 'edit';
 type ButtonSize = 'xs' | 'sm' | 'md' | 'lg';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -51,6 +51,8 @@ const buttonTheme = createTheme({
       'text-blue-600 hover:text-blue-800 dark:text-blue-500 dark:hover:text-blue-400 underline focus:ring-0 p-0 h-auto active:scale-100',
     ghost:
       'bg-transparent hover:bg-gray-100 active:bg-gray-200 text-gray-700 focus:ring-4 focus:ring-gray-100 border border-transparent dark:text-gray-300 dark:hover:bg-gray-700 dark:focus:ring-gray-700',
+    edit:
+      'bg-blue-50 border border-blue-200 hover:bg-blue-100 active:bg-blue-200 text-blue-700 focus:ring-4 focus:ring-blue-100 shadow-none dark:bg-blue-950/60 dark:border-blue-800 dark:hover:bg-blue-900/60 dark:active:bg-blue-900 dark:text-blue-300 dark:focus:ring-blue-800 font-semibold',
   },
 });
 

@@ -1243,10 +1243,10 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                     <button
                       type="button"
                       onClick={() => startEditing()}
-                      className="w-full h-10 px-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-300 dark:border-gray-600 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                      className="w-full h-10 px-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 dark:text-blue-300 dark:border-blue-800 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                       title={t('edit_button', 'Edit')}
                     >
-                      <Pencil className="w-4 h-4 text-gray-600 dark:text-gray-400 shrink-0" />
+                      <Pencil className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
                       <span className="truncate">{t('edit_button', 'Edit')}</span>
                     </button>
                   )}
@@ -1320,9 +1320,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   <button
                     type="button"
                     onClick={handleEditSharePreview}
-                    className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+                    className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/60 cursor-pointer transition-colors"
                   >
-                    <Pencil className="w-3.5 h-3.5" />
+                    <Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                     <span>{t('edit_button', 'Edit')}</span>
                   </button>
                 ) : (

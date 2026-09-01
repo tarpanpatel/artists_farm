@@ -423,9 +423,9 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
                     ) : (
                       <button
                         onClick={() => handleStartEditTariff(room)}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
+                        className="inline-flex items-center gap-1.5 px-2 py-1 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg text-xs font-semibold cursor-pointer transition-colors"
                       >
-                        <Pencil className="w-3 h-3 text-slate-400 hover:text-blue-600" />
+                        <Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
                         <span>
                           {room.default_tariff != null
                             ? t('default_tariff_display', 'Default Tariff: {{currency}} {{amount}}/night')

@@ -1688,11 +1688,11 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 cell: (entry: any) => (
                   <div className="flex items-center gap-2 whitespace-nowrap">
                     <Button
-                      variant="primary"
+                      variant="edit"
                       size="sm"
                       className="whitespace-nowrap shrink-0 text-xs font-medium"
                       onClick={() => setEditingEntry({ ...entry, time: entry.time || new Date().toTimeString().slice(0, 5) })}
-                      leftIcon={<Edit2 className="w-3.5 h-3.5 shrink-0" />}
+                      leftIcon={<Edit2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
                     >
                       {t('edit_button', 'Edit')}
                     </Button>
@@ -1796,11 +1796,11 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                         {canManageExpense && (
                           <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-700">
                             <Button
-                              variant="primary"
+                              variant="edit"
                               size="sm"
                               className="whitespace-nowrap shrink-0 text-xs font-medium"
                               onClick={() => setEditingEntry({ ...entry, time: entry.time || new Date().toTimeString().slice(0, 5) })}
-                              leftIcon={<Edit2 className="w-3.5 h-3.5 shrink-0" />}
+                              leftIcon={<Edit2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
                             >
                               {t('edit_button', 'Edit')}
                             </Button>
@@ -2182,7 +2182,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                           <td className="px-4 py-3 text-right">
                             <div className="flex items-center justify-end gap-1.5">
                               <Button
-                                variant="secondary"
+                                variant="edit"
                                 size="xs"
                                 onClick={() => setEditingPayee(p)}
                                 leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
@@ -2397,10 +2397,10 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                           <td className="px-4 py-3 text-right">
                             <div className="flex items-center justify-end gap-1.5">
                               <Button
-                                variant="secondary"
+                                variant="edit"
                                 size="xs"
                                 onClick={() => setEditingCustomItem({ id: p.id, label: p.label, category: p.category, defaultAmount: p.default_amount.toString(), description: p.description || '' })}
-                                leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
+                                leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
                               >
                                 Edit
                               </Button>

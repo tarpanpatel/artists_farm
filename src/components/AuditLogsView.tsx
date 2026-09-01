@@ -322,7 +322,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
               {
                 name: t('actions_column', 'Actions'),
                 cell: (rec: BillingReceipt) => (
-                  <Button variant="primary" size="sm" onClick={() => handleOpenEditModal(rec)} leftIcon={<Edit2 className="w-3.5 h-3.5 shrink-0" />}>
+                  <Button variant="edit" size="sm" onClick={() => handleOpenEditModal(rec)} leftIcon={<Edit2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}>
                     {t('edit_button', 'Edit')}
                   </Button>
                 ),
@@ -403,7 +403,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                           <Badge variant="success" size="sm">
                             {rec.paymentMethod || 'Cash'}
                           </Badge>
-                          <Button variant="primary" size="sm" onClick={() => handleOpenEditModal(rec)} leftIcon={<Edit2 className="w-3.5 h-3.5 shrink-0" />}>
+                          <Button variant="edit" size="sm" onClick={() => handleOpenEditModal(rec)} leftIcon={<Edit2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}>
                             {t('edit_button', 'Edit')}
                           </Button>
                         </div>

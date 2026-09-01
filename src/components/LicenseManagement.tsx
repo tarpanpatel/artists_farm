@@ -452,7 +452,7 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
                     <span />
                   )}
                   <div className="flex items-center gap-1.5">
-                    <Button variant="secondary" size="sm" onClick={() => openEditModal(license)} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                    <Button variant="edit" size="sm" onClick={() => openEditModal(license)} leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}>
                       {t('edit_button', 'Edit')}
                     </Button>
                     <button

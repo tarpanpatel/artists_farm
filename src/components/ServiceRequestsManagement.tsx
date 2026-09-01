@@ -951,7 +951,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                           <span className="text-2xs text-slate-400 block mt-0.5">{rt.category}</span>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
-                          <Button variant="primary" size="sm" onClick={() => handleStartEditType(rt)} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                          <Button variant="edit" size="sm" onClick={() => handleStartEditType(rt)} leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}>
                             Edit
                           </Button>
                           <Popover

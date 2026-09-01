@@ -743,7 +743,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                       </div>
                     ) : canCheckout && canCheckoutBookingRole ? (
                       <div className="billing-checkout__guest-card-actions grid grid-cols-2 gap-2 pt-0.5">
-                        <Button variant="primary" size="sm" onClick={() => handleEditGuest(guest)} leftIcon={<Edit2 className="w-3.5 h-3.5 shrink-0" />}>
+                        <Button variant="edit" size="sm" onClick={() => handleEditGuest(guest)} leftIcon={<Edit2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}>
                           {t('edit_button', 'Edit')}
                         </Button>
                         <Button
@@ -759,12 +759,12 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                     ) : (
                       <div className="billing-checkout__guest-card-actions pt-0.5">
                         <Button
-                          variant="primary"
+                          variant="edit"
                           size="sm"
                           block
                           disabled={isProcessing}
                           onClick={() => handleEditGuest(guest)}
-                          leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
+                          leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
                         >
                           {t('edit_booking_button', 'Edit Booking')}
                         </Button>
@@ -929,10 +929,10 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
         <div className="whitespace-nowrap flex items-center gap-2">
           {canActOnBooking ? (
             <Button
-              variant="primary"
+              variant="edit"
               size="sm"
               onClick={() => handleEditGuest(row)}
-              leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
+              leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
             >
               {t('edit_booking_button', 'Edit Booking')}
             </Button>

@@ -1371,7 +1371,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                               {t('approve_button')}
                             </Button>
                           )}
-                          <Button variant="secondary" size="sm" onClick={() => handleEditCatalogItem(row)} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                          <Button variant="edit" size="sm" onClick={() => handleEditCatalogItem(row)} leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}>
                             {t('edit_button')}
                           </Button>
                           {canDeleteCatalogItem && (
@@ -1941,7 +1941,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                       <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
                         {row.status === 'PENDING' ? (
                           <>
-                            <Button variant="secondary" size="sm" onClick={() => handleEditFulfill(row)} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                            <Button variant="edit" size="sm" onClick={() => handleEditFulfill(row)} leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}>
                               Edit & Deliver
                             </Button>
                             <Button variant="secondary" size="sm" onClick={() => handleQuickComplete(row)} leftIcon={<CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}>
@@ -2074,7 +2074,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                         <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100 dark:border-slate-700/60">
                           {row.status === 'PENDING' ? (
 <>
-                            <Button variant="secondary" size="sm" onClick={() => handleEditFulfill(row)} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                            <Button variant="edit" size="sm" onClick={() => handleEditFulfill(row)} leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}>
                               Edit & Deliver
                             </Button>
                           </>
