@@ -253,6 +253,13 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   // whatever the user actually clicked (found live, 1 Sep 2026: clicking
   // day 5 on a checkin=31/checkout=2 range settled as checkin=2, not 5).
   const prevEndIsoRef = useRef('');
+  // Snapshot of prevStartIsoRef/prevEndIsoRef taken the instant Clear is
+  // pressed (see the Clear button listener below) - lets the Close button
+  // tell "cleared, nothing picked since" apart from "genuinely never had a
+  // range" and restore accordingly. Re-captured fresh on every Clear click,
+  // so there's no stale-value risk across repeated clear/restore cycles.
+  const preClearStartIsoRef = useRef<string | null>(null);
+  const preClearEndIsoRef = useRef<string | null>(null);
 
   const [rangeError, setRangeError] = useState<string | undefined>(undefined);
   const hasError = Boolean(error) || Boolean(rangeError);
@@ -328,6 +335,14 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       footerControls.querySelectorAll('.clear-btn').forEach((btn) => {
         btn.addEventListener('mousedown', () => {
           preClearViewDate = dp.picker.viewDate;
+          // Captured alongside the view date (1 Sep 2026) - Clear's own
+          // settle pass (processSettledRange below) blanks prevStartIsoRef/
+          // prevEndIsoRef immediately, so by the time Close is clicked
+          // there's no way left to tell "genuinely started blank" apart
+          // from "was just cleared" without grabbing this first. Close
+          // reads it below to decide whether to restore.
+          preClearStartIsoRef.current = prevStartIsoRef.current || null;
+          preClearEndIsoRef.current = prevEndIsoRef.current || null;
         });
         btn.addEventListener('click', () => {
           if (preClearViewDate !== null) {
@@ -339,7 +354,21 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       closeBtn.type = 'button';
       closeBtn.textContent = 'Close';
       closeBtn.className = 'datepicker-close-btn flex-1 text-body bg-neutral-secondary-medium border border-default-medium hover:bg-neutral-tertiary-medium focus:ring-4 focus:ring-neutral-tertiary font-medium rounded-base text-sm px-5 py-2 text-center';
-      closeBtn.addEventListener('click', () => dp.hide());
+      closeBtn.addEventListener('click', () => {
+        // Closing on a cleared-and-untouched range restores whatever was
+        // there right before Clear was clicked, rather than committing an
+        // empty Booking Dates field (found live, 1 Sep 2026 - Clear then
+        // Close left the form with blank dates and no way back short of
+        // cancelling the whole edit). Only fires when NOTHING has been
+        // picked since the clear - prevStartIsoRef being non-empty means a
+        // real new checkin (complete or still awaiting checkout) came in,
+        // which is left alone rather than clobbered.
+        if (!prevStartIsoRef.current && preClearStartIsoRef.current) {
+          callbacksRef.current.onCheckinChange(preClearStartIsoRef.current);
+          callbacksRef.current.onCheckoutChange(preClearEndIsoRef.current || '');
+        }
+        dp.hide();
+      });
       footerControls.appendChild(closeBtn);
     });
 
