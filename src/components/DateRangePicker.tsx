@@ -413,6 +413,8 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       const rawEndIso = toIsoDate(end);
       let startIso = rawStartIso;
       let endIso = rawEndIso;
+      (window as any).ZZDBG = (window as any).ZZDBG || [];
+      (window as any).ZZDBG.push('A:' + JSON.stringify({ wasUserClick, rawStartIso, rawEndIso, pendC: prevStartIsoRef.current, pendO: prevEndIsoRef.current, awaiting: awaitingCheckoutPickRef.current }));
 
       // Re-picking checkin bug fix (1 Sep 2026, fourth pass) - see
       // awaitingCheckoutPickRef's and prevEndIsoRef's own comments above for
@@ -438,6 +440,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         const newValue = (rawStartIso && rawStartIso !== pendingCheckin && rawStartIso !== pendingCheckout) ? rawStartIso
           : (rawEndIso && rawEndIso !== pendingCheckin && rawEndIso !== pendingCheckout) ? rawEndIso
           : null;
+        (window as any).ZZDBG.push('B:' + JSON.stringify({ newValue }));
 
         if (newValue && awaitingCheckoutPickRef.current && newValue > pendingCheckin) {
           // Checkin is pending (checkout force-blanked by an earlier pass)
@@ -541,6 +544,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       }
 
       setRangeError(undefined);
+      (window as any).ZZDBG.push('C:' + JSON.stringify({ startIso, endIso }));
       callbacksRef.current.onCheckinChange(startIso);
       callbacksRef.current.onCheckoutChange(endIso);
     };
