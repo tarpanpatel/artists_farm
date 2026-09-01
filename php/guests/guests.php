@@ -936,6 +936,29 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     $previousGuest = $prevStmt->fetch(PDO::FETCH_ASSOC) ?: [];
                     $previousNoOfGuests = intval($previousGuest['no_of_guests'] ?? 0);
 
+                    // PAST BOOKING DATE LOCK (1 Sep 2026): the frontend already disables
+                    // the Booking Dates picker once a booking is past (BookingDetailsModal's
+                    // isPastBooking), but that's UX only - this is the actual enforcement.
+                    // A completed stay's dates are historical record; the only reason a
+                    // past booking reaches update_guest at all is the Settle Bill/Assign
+                    // Receiver flow (payment fields only), so date changes are rejected
+                    // here regardless of what the client sends, without blocking those.
+                    $prevStatus = (string)($previousGuest['status'] ?? '');
+                    $prevCheckoutRaw = (string)($previousGuest['expected_checkout'] ?? '');
+                    $prevCheckoutDatePart = $prevCheckoutRaw !== '' ? explode(' ', trim($prevCheckoutRaw))[0] : '';
+                    $wasAlreadyPast = in_array($prevStatus, [GUEST_STATUS_CHECKED_OUT, GUEST_STATUS_CHECKEDOUT_LEGACY, 'Cancelled'], true)
+                        || ($prevCheckoutDatePart !== '' && $prevCheckoutDatePart < date('Y-m-d'));
+                    if ($wasAlreadyPast && !empty($previousGuest)) {
+                        $prevCheckinDatePart = explode(' ', trim((string)($previousGuest['checkin_date'] ?? '')))[0];
+                        $newCheckinDatePart = explode(' ', trim((string)$newCheckin))[0];
+                        $newCheckoutDatePart = explode(' ', trim((string)$newCheckout))[0];
+                        if ($newCheckinDatePart !== $prevCheckinDatePart || $newCheckoutDatePart !== $prevCheckoutDatePart) {
+                            http_response_code(403);
+                            echo json_encode(['status' => 'error', 'message' => 'This booking is already past - its dates can no longer be changed.']);
+                            break;
+                        }
+                    }
+
                     // CONCURRENCY (30 Aug 2026): same fix as add_guest's - see the long
                     // comment there for why a plain SELECT could not enforce this. Two
                     // extra wrinkles specific to this path:

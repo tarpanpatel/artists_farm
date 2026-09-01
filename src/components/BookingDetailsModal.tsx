@@ -144,6 +144,27 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const canActOnBooking = !isStaffKitchenRole;
   const canCheckoutBooking = !isStaffKitchenRole && normalizedActiveRole !== 'staff';
 
+  // A booking is past once it's already checked out/cancelled, or its
+  // checkout date has slipped behind today - same classification
+  // BillingCheckout's own getGuestDetailedStatus uses for the Past tab, kept
+  // in sync here so "shows under Past" and "can't be edited" never disagree.
+  // Added 1 Sep 2026 after a real booking's dates got corrupted to
+  // '0000-00-00' via Edit -> Clear -> Save with no guard: a completed stay
+  // has no legitimate reason to have its dates/room/rent rewritten after the
+  // fact, and every edit path here (the Edit toggle AND handleSave itself)
+  // needs to agree on that, not just the entry-point button.
+  const isPastBooking = (() => {
+    const statusStr = String(guest?.status || '');
+    if (statusStr === GUEST_STATUS_CHECKED_OUT || statusStr === GUEST_STATUS_CHECKEDOUT_LEGACY || statusStr === 'Cancelled') {
+      return true;
+    }
+    const checkoutRaw = guest?.expectedCheckout || (guest as any)?.checkoutDate || '';
+    const checkout = String(checkoutRaw).split(' ')[0].split('T')[0];
+    if (!checkout) return false;
+    const todayStr = new Date().toISOString().split('T')[0];
+    return checkout < todayStr;
+  })();
+
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -472,8 +493,12 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         ...(rooms.length > 0
           ? { roomId: editRoomId ? parseInt(editRoomId, 10) : undefined, room_id: editRoomId ? parseInt(editRoomId, 10) : undefined, roomNumber: newRoom?.name || guest.roomNumber }
           : {}),
-        checkinDate: editCheckin,
-        expectedCheckout: editCheckout,
+        // Past bookings keep their original dates no matter what editCheckin/
+        // editCheckout currently hold - the picker above is disabled for
+        // them, but this is the actual enforcement point (the same defense-
+        // in-depth reasoning as the blank-date guard just above).
+        checkinDate: isPastBooking ? guest.checkinDate : editCheckin,
+        expectedCheckout: isPastBooking ? guest.expectedCheckout : editCheckout,
         numberOfGuests: parseInt(editGuests, 10) || 1,
         no_of_guests: parseInt(editGuests, 10) || 1,
         roomRate: newRoomRent,
@@ -893,15 +918,18 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               </div>
             </div>
 
-            {/* Row 3: Booking Dates (DateRangePicker) */}
+            {/* Row 3: Booking Dates (DateRangePicker) - locked once the
+                booking is past (see isPastBooking above): a completed stay's
+                dates are historical record, not something Settle Bill/Assign
+                Receiver's post-checkout editing should ever be able to touch. */}
             <div>
               <DateRangePicker
-                label="Booking Dates *"
+                label={isPastBooking ? 'Booking Dates (locked - past booking)' : 'Booking Dates *'}
                 checkinDate={editCheckin}
                 checkoutDate={editCheckout}
                 onCheckinChange={setEditCheckin}
                 onCheckoutChange={setEditCheckout}
-                disabled={!isEditing}
+                disabled={!isEditing || isPastBooking}
                 disablePastDates
                 blockedDates={getEditBlockedDateStrings()}
               />
