@@ -636,7 +636,8 @@ function AppBody({ preloadedData }: AppBodyProps) {
     if (preloadedData.initialGuests && preloadedData.initialGuests.length > 0) {
       setGuests(preloadedData.initialGuests);
     }
-  }, [preloadedData.navItems, preloadedData.initialGuests]);
+    setGuestsLoading(!!preloadedData.guestsFetchPending);
+  }, [preloadedData.navItems, preloadedData.initialGuests, preloadedData.guestsFetchPending]);
 
   // Re-validates the CURRENT page against the CURRENT role whenever either
   // changes, and bounces to Dashboard if it's no longer allowed - hiding a
@@ -718,6 +719,12 @@ function AppBody({ preloadedData }: AppBodyProps) {
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
 
   const [guests, setGuests] = useState<Guest[]>(() => preloadedData.initialGuests || []);
+  // Whether the initial guests fetch itself is still in flight (DataLoader's
+  // background retry after a failed/timed-out first attempt) - NOT whether
+  // `guests` is empty. A property with genuinely zero bookings must show its
+  // real empty state immediately, not spin forever just because the array
+  // happens to be empty (see GuestManagement's isLoading prop below).
+  const [guestsLoading, setGuestsLoading] = useState<boolean>(() => !!preloadedData.guestsFetchPending);
   const [receipts, setReceipts] = useState<BillingReceipt[]>(() => preloadedData.initialReceipts || []);
   const [menu, setMenu] = useState<MenuItem[]>(() => preloadedData.initialMenu || []);
   const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>([]);
@@ -2331,7 +2338,7 @@ ${itemsStr}
                   <GuestManagement
                     guests={guests}
                     receipts={receipts}
-                    isLoading={!guests || guests.length === 0}
+                    isLoading={guestsLoading}
                     onAddGuest={handleAddGuest}
                     onCheckoutGuest={handleCheckoutGuest}
                     onUpdateGuest={handleUpdateGuest}

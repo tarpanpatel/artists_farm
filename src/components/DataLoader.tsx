@@ -27,6 +27,14 @@ export interface PreloadedData {
   initialGuests?: any[];
   initialReceipts?: any[];
   initialMenu?: any[];
+  // True only while the initial guests fetch itself failed/timed out and the
+  // background retry below (see anyRealDataFetchFailed) hasn't landed yet -
+  // NOT "guests array is empty". A property with zero real guests still
+  // gets false here (the fetch succeeded, it just legitimately returned []),
+  // so consumers can tell "still loading" apart from "genuinely no bookings"
+  // instead of guessing from array length (which can never tell the two
+  // apart and would show a loading spinner forever on an empty property).
+  guestsFetchPending?: boolean;
 }
 
 interface DataLoaderProps {
@@ -269,6 +277,7 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
           initialGuests: Array.isArray(initialGuests) ? initialGuests : [],
           initialReceipts: Array.isArray(initialReceipts) ? initialReceipts : [],
           initialMenu: Array.isArray(initialMenu) ? initialMenu : [],
+          guestsFetchPending: initialGuestsR.failed,
         });
 
         // Rooms fetch failed OR was skipped above (see BUG note near fetchMultiKeyRooms) -
@@ -341,6 +350,11 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
               initialGuests: !realGuests.failed && Array.isArray(realGuests.value) ? realGuests.value : prev.initialGuests,
               initialReceipts: !realReceipts.failed && Array.isArray(realReceipts.value) ? realReceipts.value : prev.initialReceipts,
               initialMenu: !realMenu.failed && Array.isArray(realMenu.value) ? realMenu.value : prev.initialMenu,
+              // Retry has now settled either way (succeeded or exhausted) -
+              // stop signalling "still loading" regardless of outcome, or a
+              // guests fetch that keeps failing would leave consumers
+              // spinning forever instead of falling back to real (empty) data.
+              guestsFetchPending: false,
             } : prev);
           });
         }
