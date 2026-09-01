@@ -349,10 +349,8 @@ div[datepicker-popover],
    range-start/range-end already paint a solid brand background with white
    text for contrast (self-contained !important rules above/in DaysView.js)
    that this must not fight over the same cell. */
-.datepicker-cell.today {
-  background-color: transparent !important;
-}
 .datepicker-cell.today:not(.selected):not(.range-start):not(.range-end) {
+  background-color: transparent !important;
   color: var(--color-brand, #1d4ed8) !important;
   font-weight: 700;
 }
