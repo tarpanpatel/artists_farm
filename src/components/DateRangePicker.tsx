@@ -384,13 +384,22 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       footerControls.querySelectorAll('.clear-btn').forEach((btn) => {
         btn.addEventListener('mousedown', () => {
           preClearViewDateRef.current = dp.picker.viewDate;
-          (window as any).__viewDbg = (window as any).__viewDbg || [];
-          (window as any).__viewDbg.push({ at: 'clear-mousedown-capture', view: preClearViewDateRef.current });
         });
         btn.addEventListener('click', () => {
+          // Restores BOTH sub-pickers' views, not just this button's own dp
+          // (second pass, 1 Sep 2026) - each side gets its own Clear button
+          // in its own footer, but only ONE popover is ever visible at a
+          // time (this picker's "always datepickers[0]'s popover" behavior
+          // - see the comment on syncDisabledAndCeiling below), and
+          // processSettledRange's own view checks read datepickers[0]
+          // specifically. Restoring only THIS button's dp left datepickers[0]
+          // still reset to today whenever the click actually landed on
+          // datepickers[1]'s own Clear button, which is exactly what was
+          // happening here - the fix silently "worked" on the wrong
+          // instance, so nothing visible ever changed.
           if (preClearViewDateRef.current !== null) {
-            dp.picker.changeFocus(preClearViewDateRef.current);
-            (window as any).__viewDbg.push({ at: 'clear-click-restored', view: dp.picker.viewDate });
+            rangepicker.datepickers[0].picker.changeFocus(preClearViewDateRef.current);
+            rangepicker.datepickers[1].picker.changeFocus(preClearViewDateRef.current);
           }
         });
       });
@@ -488,8 +497,6 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
 
     const processSettledRange = () => {
       if (suppressRangeValidationRef.current) return;
-      (window as any).__viewDbg = (window as any).__viewDbg || [];
-      (window as any).__viewDbg.push({ at: 'settle-start', view: rangepicker.datepickers[0].picker.viewDate });
 
       const wasUserClick = userClickPendingRef.current;
       userClickPendingRef.current = false;
@@ -615,9 +622,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         awaitingCheckoutPickRef.current = startIso === endIso;
       }
 
-      (window as any).__viewDbg.push({ at: 'before-syncDisabled', view: rangepicker.datepickers[0].picker.viewDate });
       syncDisabledAndCeiling(startIso);
-      (window as any).__viewDbg.push({ at: 'after-syncDisabled', view: rangepicker.datepickers[0].picker.viewDate });
       // Blanking the END field's displayed text has to happen AFTER
       // syncDisabledAndCeiling, not before (1 Sep 2026, second pass) -
       // that call's own setOptions() does an unconditional full refreshUI
@@ -789,14 +794,11 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     // Cancel restoring real dates) should still jump to show its own
     // month, same as it always has.
     const isClearRoundTrip = !checkinDate && !checkoutDate;
-    (window as any).__viewDbg = (window as any).__viewDbg || [];
-    (window as any).__viewDbg.push({ at: 'propssync-before-setDates', view: rangepicker.datepickers[0].picker.viewDate, checkinDate, checkoutDate, isClearRoundTrip, preClearRef: preClearViewDateRef.current });
 
     rangepicker.setDates(
       fromIsoDate(checkinDate) ?? { clear: true },
       fromIsoDate(checkoutDate) ?? { clear: true }
     );
-    (window as any).__viewDbg.push({ at: 'propssync-after-setDates', view: rangepicker.datepickers[0].picker.viewDate });
 
     // Restores from the ORIGINAL pre-clear snapshot (see preClearViewDateRef
     // above), not from "whatever the view is right now" - by this point an
