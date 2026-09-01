@@ -311,23 +311,37 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       footerControls.appendChild(closeBtn);
     });
 
-    // Recomputes disabled dates + the end-side ceiling for BOTH sub-pickers
-    // together, not split one-per-side (31 Aug 2026, second pass). This
-    // picker runs with autohide:false as one continuous calendar - clicking
-    // a start date does NOT switch the visible popover over to the *other*
-    // Datepicker instance, it's still datepickers[0]'s own popover for the
-    // very next click too (confirmed by inspecting the live DOM: after
-    // picking day 27 as start, day 28 still carried a literal `disabled`
-    // class - not from maxDate, from datesDisabled, which an earlier version
-    // of this fix had only relaxed on datepickers[1], the side that was
-    // never actually the one rendering that click). So both instances get
-    // the SAME dynamic config: the full blocked list while no start is
-    // picked yet (so the very first click can't land on an occupied night),
-    // and - once a start exists - that same list with just the immediate
-    // boundary date (the earliest blocked night on/after start) excluded,
-    // since checking out ON that date is fine, plus maxDate capping
-    // anything past it. Falls back to no restriction (NO_END_CEILING) with
-    // no start chosen, so the very first click is never capped either.
+    // Recomputes disabled dates for BOTH sub-pickers together, not split
+    // one-per-side (31 Aug 2026, second pass). This picker runs with
+    // autohide:false as one continuous calendar - clicking a start date
+    // does NOT switch the visible popover over to the *other* Datepicker
+    // instance, it's still datepickers[0]'s own popover for the very next
+    // click too (confirmed by inspecting the live DOM: after picking day 27
+    // as start, day 28 still carried a literal `disabled` class - not from
+    // maxDate, from datesDisabled, which an earlier version of this fix had
+    // only relaxed on datepickers[1], the side that was never actually the
+    // one rendering that click). So both instances get the SAME dynamic
+    // datesDisabled: the full blocked list while no start is picked yet (so
+    // the very first click can't land on an occupied night), and - once a
+    // start exists - that same list with just the immediate boundary date
+    // (the earliest blocked night on/after start) excluded, since checking
+    // out ON that date is fine.
+    //
+    // No maxDate ceiling here (1 Sep 2026, third pass - removed, was here
+    // briefly) - it was meant to stop a checkout being picked past the next
+    // blocked night, but goToPrevOrNext (events/functions.js) clamps ANY
+    // month navigation into [minDate,maxDate] via limitToRange, and since
+    // both instances always share whatever the nearer of start/end
+    // currently is (see the "always datepickers[0]" note above), a close
+    // maxDate silently breaks Next/Prev entirely - clicking either one
+    // clamps right back into the same month, looking like the buttons do
+    // nothing (found live, 1 Sep 2026: editing a booking with a real block
+    // just a few days out made the calendar impossible to navigate at all,
+    // only "Clear" un-stuck it). Crossing into a blocked night by drawing a
+    // range past one is still caught - firstBlockedInRange below rejects it
+    // with an error message once the range is drawn, same as it always has
+    // for a range that skips over a blocked day entirely (its own
+    // longstanding job, independent of this ceiling).
     const syncDisabledAndCeiling = (startIso: string) => {
       const cap = earliestBlockedOnOrAfter(startIso, blockedDatesRef.current);
       const baseBlocked = blockedDatesRef.current ?? [];
@@ -336,7 +350,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         : baseBlocked;
       const options = {
         datesDisabled: toDisabledDates(effectiveBlocked),
-        maxDate: startIso && cap ? (fromIsoDate(cap) ?? NO_END_CEILING) : NO_END_CEILING,
+        maxDate: NO_END_CEILING,
       };
       rangepicker.datepickers[0].setOptions(options);
       rangepicker.datepickers[1].setOptions(options);

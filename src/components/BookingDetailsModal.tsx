@@ -28,6 +28,7 @@ import {
   GUEST_STATUS_CHECKED_OUT,
   GUEST_STATUS_CHECKEDOUT_LEGACY,
 } from '../constants/guestStatus';
+import { ICAL_BLOCKING_ENABLED } from '../constants/featureFlags';
 
 interface BookingDetailsModalProps {
   guest: Guest | null;
@@ -355,21 +356,26 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     // 2026): on a single-unit property every synced block applies; on a
     // multi-key one, only the currently assigned room's own blocks do -
     // an unassigned/undefined room_id is skipped rather than blocked, same
-    // "under-block over false-block" call as that other copy makes.
-    (icalBlockedDates || [])
-      .filter((bd) => !isMultiKey || (selectedRoomId != null && Number(bd.room_id) === Number(selectedRoomId)))
-      .forEach((bd) => {
-        const start = new Date(bd.event_start.split(' ')[0]);
-        const end = new Date(bd.event_end.split(' ')[0]);
-        let current = new Date(start);
-        while (current < end) {
-          const y = current.getFullYear();
-          const m = String(current.getMonth() + 1).padStart(2, '0');
-          const d = String(current.getDate()).padStart(2, '0');
-          blocked.push(`${y}-${m}-${d}`);
-          current = new Date(current.getTime() + 86400000);
-        }
-      });
+    // "under-block over false-block" call as that other copy makes. Gated
+    // off entirely while the site is in testing mode - see
+    // ICAL_BLOCKING_ENABLED's own comment (same flag GuestManagement.tsx
+    // gates its own copy of this behind).
+    if (ICAL_BLOCKING_ENABLED) {
+      (icalBlockedDates || [])
+        .filter((bd) => !isMultiKey || (selectedRoomId != null && Number(bd.room_id) === Number(selectedRoomId)))
+        .forEach((bd) => {
+          const start = new Date(bd.event_start.split(' ')[0]);
+          const end = new Date(bd.event_end.split(' ')[0]);
+          let current = new Date(start);
+          while (current < end) {
+            const y = current.getFullYear();
+            const m = String(current.getMonth() + 1).padStart(2, '0');
+            const d = String(current.getDate()).padStart(2, '0');
+            blocked.push(`${y}-${m}-${d}`);
+            current = new Date(current.getTime() + 86400000);
+          }
+        });
+    }
 
     // 2. Existing guest bookings for the currently selected room.
     (checkedInGuests || [])

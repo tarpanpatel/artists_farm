@@ -18,6 +18,7 @@ import {
   GUEST_STATUS_ACTIVE_LEGACY,
   GUEST_STATUS_CHECKEDOUT_LEGACY,
 } from '../constants/guestStatus';
+import { ICAL_BLOCKING_ENABLED } from '../constants/featureFlags';
 import { getPropertySlug } from '../services/api';
 import { parseDateToYMD } from '../utils/dateUtils';
 import { DateRangePicker } from './DateRangePicker';
@@ -382,20 +383,26 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     // isMultiKeyProperty ? undefined room_id rows (shouldn't happen once every
     // sync is tied to a room) fall through and are ignored, not blocked -
     // safer to under-block than to falsely block an available room.
-    blockedDates
-      .filter((bd) => !isMultiKeyProperty || (selectedRoomId != null && Number(bd.room_id) === Number(selectedRoomId)))
-      .forEach((bd) => {
-        const start = new Date(bd.event_start.split(' ')[0]);
-        const end = new Date(bd.event_end.split(' ')[0]);
-        let current = new Date(start);
-        while (current < end) {
-          const year = current.getFullYear();
-          const month = String(current.getMonth() + 1).padStart(2, '0');
-          const day = String(current.getDate()).padStart(2, '0');
-          blocked.push(`${year}-${month}-${day}`);
-          current = new Date(current.getTime() + 86400000);
-        }
-      });
+    // Gated off entirely while the site is in testing mode (1 Sep 2026, see
+    // ICAL_BLOCKING_ENABLED's own comment) - the backend sync itself keeps
+    // running, this just stops that real external data from showing up as
+    // confusing "blocked" test dates with no in-app booking behind them.
+    if (ICAL_BLOCKING_ENABLED) {
+      blockedDates
+        .filter((bd) => !isMultiKeyProperty || (selectedRoomId != null && Number(bd.room_id) === Number(selectedRoomId)))
+        .forEach((bd) => {
+          const start = new Date(bd.event_start.split(' ')[0]);
+          const end = new Date(bd.event_end.split(' ')[0]);
+          let current = new Date(start);
+          while (current < end) {
+            const year = current.getFullYear();
+            const month = String(current.getMonth() + 1).padStart(2, '0');
+            const day = String(current.getDate()).padStart(2, '0');
+            blocked.push(`${year}-${month}-${day}`);
+            current = new Date(current.getTime() + 86400000);
+          }
+        });
+    }
 
     // 2. Existing guest bookings for the currently selected room. Mirrors the
     // iCal filter's !isMultiKeyProperty short-circuit above (31 Aug 2026) -
