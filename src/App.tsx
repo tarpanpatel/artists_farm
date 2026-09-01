@@ -2015,7 +2015,7 @@ ${itemsStr}
 
         {!isAuthenticated && !propertySelection && (
           <LoginPage
-            variant="terminal"
+            variant="management"
             onLoginSuccess={handleLoginSuccess}
             onLoginFailed={handleLoginFailed}
             onNeedsPropertySelection={setPropertySelection}
