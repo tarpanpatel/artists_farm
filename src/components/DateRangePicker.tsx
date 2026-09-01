@@ -264,8 +264,6 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     const container = containerRef.current;
     const startEl = startInputRef.current;
     const endEl = endInputRef.current;
-    (window as any).__dbg4 = (window as any).__dbg4 || [];
-    (window as any).__dbg4.push({ t: 'mount-effect-fired', hasContainer: !!container, hasStart: !!startEl, hasEnd: !!endEl, startVal: startEl?.value, endVal: endEl?.value, propsCheckin: checkinDate, propsCheckout: checkoutDate });
     if (!container || !startEl || !endEl) return;
 
     const rangepicker = new FlowbiteDateRangePicker(container, {
@@ -413,8 +411,6 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       const rawEndIso = toIsoDate(end);
       let startIso = rawStartIso;
       let endIso = rawEndIso;
-      (window as any).ZZDBG = (window as any).ZZDBG || [];
-      (window as any).ZZDBG.push('A:' + JSON.stringify({ wasUserClick, rawStartIso, rawEndIso, pendC: prevStartIsoRef.current, pendO: prevEndIsoRef.current, awaiting: awaitingCheckoutPickRef.current }));
 
       // Re-picking checkin bug fix (1 Sep 2026, fourth pass) - see
       // awaitingCheckoutPickRef's and prevEndIsoRef's own comments above for
@@ -440,7 +436,6 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         const newValue = (rawStartIso && rawStartIso !== pendingCheckin && rawStartIso !== pendingCheckout) ? rawStartIso
           : (rawEndIso && rawEndIso !== pendingCheckin && rawEndIso !== pendingCheckout) ? rawEndIso
           : null;
-        (window as any).ZZDBG.push('B:' + JSON.stringify({ newValue }));
 
         if (newValue && awaitingCheckoutPickRef.current && newValue > pendingCheckin) {
           // Checkin is pending (checkout force-blanked by an earlier pass)
@@ -476,17 +471,38 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       }
 
       if (forcedEmptyCheckout) {
-        // Re-mirror the end side to the (possibly just-reassigned) checkin
+        // Mirror BOTH sides to the (possibly just-reassigned) checkin
         // internally (the only stable state allowOneSidedRange:false
         // permits - see awaitingCheckoutPickRef's comment above) so the
         // NEXT click's swap comparison runs against the current checkin,
         // not a stale value from whatever the checkout used to be.
+        //
+        // BOTH sides, not just datepickers[1] (fifth pass, 1 Sep 2026) -
+        // startIso only equals rawStartIso (what datepickers[0] already
+        // holds) when newValue itself came from rawStartIso. When newValue
+        // came from rawEndIso instead - the library's own swap filed the
+        // user's actual click under the END slot, with some OLDER value
+        // (the previous checkout, or a misclick like a trailing-month
+        // padding cell) left sitting in datepickers[0] - startIso and
+        // rawStartIso genuinely differ, and datepickers[0] needs correcting
+        // too, or it - and the START field's own displayed text, which
+        // setDate's own refreshUI re-stamps from datepickers[0].dates -
+        // stay on that stale value while the app's own state silently holds
+        // the right one (found live, 1 Sep 2026: reported startIso matched
+        // what got typed into React state, but the visible start FIELD kept
+        // showing the old value). rangepicker._updating (the same private
+        // flag the library's own setDates() method uses for exactly this)
+        // stops the two setDate calls below from triggering a nested swap
+        // against each other while they're set one at a time.
         const startDate = fromIsoDate(startIso);
         if (startDate) {
           suppressRangeValidationRef.current = true;
+          (rangepicker as unknown as { _updating?: boolean })._updating = true;
           try {
+            rangepicker.datepickers[0].setDate(startDate, { render: false });
             rangepicker.datepickers[1].setDate(startDate, { render: false });
           } finally {
+            delete (rangepicker as unknown as { _updating?: boolean })._updating;
             suppressRangeValidationRef.current = false;
           }
         }
@@ -544,7 +560,6 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       }
 
       setRangeError(undefined);
-      (window as any).ZZDBG.push('C:' + JSON.stringify({ startIso, endIso }));
       callbacksRef.current.onCheckinChange(startIso);
       callbacksRef.current.onCheckoutChange(endIso);
     };
