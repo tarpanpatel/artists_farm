@@ -1306,48 +1306,53 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 )}
 
                 {/* Delete, Share with Guest, Edit - 3 columns when Delete is
-                    available, otherwise a real 2-column grid so Share/Edit
-                    split the full width evenly instead of an invisible
-                    placeholder div eating a third column (found 21 Aug 2026). */}
-                <div className={`grid gap-2.5 w-full ${
-                  onDelete && canActOnBooking ? 'grid-cols-3' : canActOnBooking ? 'grid-cols-2' : 'grid-cols-1'
-                }`}>
-                  {onDelete && canActOnBooking && (
-                    <button
-                      type="button"
-                      onClick={handleDelete}
-                      disabled={isDeleting}
-                      className="w-full h-10 px-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 dark:text-rose-300 dark:border-rose-800 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
-                      title={t('today_delete_booking_button', 'Delete Booking')}
-                    >
-                      <Trash2 className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
-                      <span className="truncate">{isDeleting ? t('deleting_button', 'Deleting...') : t('delete_button', 'Delete')}</span>
-                    </button>
-                  )}
+                    available (non-OTA bookings), otherwise a real 2-column grid. */}
+                {(() => {
+                  const isOtaBooking = Boolean(guest.otaSource || (guest as any).ota_source);
+                  const canDelete = Boolean(onDelete && canActOnBooking && !isOtaBooking);
 
-                  <button
-                    type="button"
-                    data-tour="whatsapp-invoicing"
-                    onClick={handleShareBooking}
-                    className="w-full h-10 px-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-300 dark:border-gray-600 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-                    title={t('share_with_guest_button', 'Share with guest')}
-                  >
-                    <Share2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span className="truncate">{t('share_with_guest_button', 'Share')}</span>
-                  </button>
+                  return (
+                    <div className={`grid gap-2.5 w-full ${
+                      canDelete ? 'grid-cols-3' : canActOnBooking ? 'grid-cols-2' : 'grid-cols-1'
+                    }`}>
+                      {canDelete && (
+                        <button
+                          type="button"
+                          onClick={handleDelete}
+                          disabled={isDeleting}
+                          className="w-full h-10 px-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 dark:text-rose-300 dark:border-rose-800 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                          title={t('today_delete_booking_button', 'Delete Booking')}
+                        >
+                          <Trash2 className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                          <span className="truncate">{isDeleting ? t('deleting_button', 'Deleting...') : t('delete_button', 'Delete')}</span>
+                        </button>
+                      )}
 
-                  {canActOnBooking && (
-                    <button
-                      type="button"
-                      onClick={() => startEditing()}
-                      className="w-full h-10 px-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 dark:text-blue-300 dark:border-blue-800 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                      title={t('edit_button', 'Edit')}
-                    >
-                      <Pencil className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                      <span className="truncate">{t('edit_button', 'Edit')}</span>
-                    </button>
-                  )}
-                </div>
+                      <button
+                        type="button"
+                        data-tour="whatsapp-invoicing"
+                        onClick={handleShareBooking}
+                        className="w-full h-10 px-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-300 dark:border-gray-600 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                        title={t('share_with_guest_button', 'Share with guest')}
+                      >
+                        <Share2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span className="truncate">{t('share_with_guest_button', 'Share')}</span>
+                      </button>
+
+                      {canActOnBooking && (
+                        <button
+                          type="button"
+                          onClick={() => startEditing()}
+                          className="w-full h-10 px-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 dark:text-blue-300 dark:border-blue-800 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                          title={t('edit_button', 'Edit')}
+                        >
+                          <Pencil className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                          <span className="truncate">{t('edit_button', 'Edit')}</span>
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             ) : (
               /* 2 Columns: Cancel, Save */

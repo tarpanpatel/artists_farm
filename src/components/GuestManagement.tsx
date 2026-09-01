@@ -112,7 +112,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   onAddGuest,
   onCheckoutGuest,
   onUpdateGuest,
-  onDeleteGuest: _onDeleteGuest,
+  onDeleteGuest,
   activeMenuItemKey,
   onDispatchTelegram: _onDispatchTelegram,
   isMultiKeyProperty = false,
@@ -1065,6 +1065,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       isLoading={isLoading}
       onCheckoutGuest={onCheckoutGuest}
       onUpdateGuest={onUpdateGuest}
+      onDeleteGuest={onDeleteGuest}
       onAddGuest={onAddGuest}
       isMultiKeyProperty={isMultiKeyProperty}
       rooms={rooms}

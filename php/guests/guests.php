@@ -1261,9 +1261,24 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                 $guestId = validateGuestIdOrRespond($input['id'] ?? null);
                 if ($guestId === null) break;
                 try {
-                    $lookupStmt = $pdo->prepare("SELECT room_id, checkin_date, expected_checkout FROM guests WHERE id = ? AND property_id = ?");
+                    $lookupStmt = $pdo->prepare("SELECT room_id, checkin_date, expected_checkout, ota_source, booking_source FROM guests WHERE id = ? AND property_id = ?");
                     $lookupStmt->execute([$guestId, $propertyId]);
                     $guestRow = $lookupStmt->fetch(PDO::FETCH_ASSOC);
+
+                    if (!$guestRow) {
+                        http_response_code(404);
+                        echo json_encode(['status' => 'error', 'message' => 'Booking not found']);
+                        break;
+                    }
+
+                    if (!empty($guestRow['ota_source'])) {
+                        http_response_code(400);
+                        echo json_encode([
+                            'status' => 'error',
+                            'message' => 'OTA reservations (from ' . htmlspecialchars($guestRow['ota_source']) . ') cannot be deleted directly from the app. Please cancel the reservation on the channel portal.'
+                        ]);
+                        break;
+                    }
 
                     $stmt = $pdo->prepare("DELETE FROM guests WHERE id = ? AND property_id = ?");
                     $stmt->execute([$guestId, $propertyId]);

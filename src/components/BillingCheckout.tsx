@@ -42,6 +42,7 @@ interface BillingCheckoutProps {
   receipts: BillingReceipt[];
   onCheckoutGuest: (receipt: BillingReceipt) => void;
   onUpdateGuest?: (updatedGuest: Guest) => void;
+  onDeleteGuest?: (guestId: string) => Promise<void>;
   onAddGuest?: (guest: Guest) => Promise<void>;
   isMultiKeyProperty?: boolean;
   rooms?: Array<{ id: number; name: string; slug: string }>;
@@ -89,6 +90,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   receipts,
   onCheckoutGuest,
   onUpdateGuest,
+  onDeleteGuest,
   onAddGuest,
   isMultiKeyProperty = false,
   rooms = [],
@@ -1228,6 +1230,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
           guest={selectedGuestForDetails}
           initialFocusSection={detailsModalFocusSection}
           onClose={() => { setSelectedGuestForDetails(null); setDetailsModalFocusSection(null); }}
+          onDelete={onDeleteGuest}
           onSave={async (updatedGuest) => {
             onUpdateGuest?.(updatedGuest);
             setSelectedGuestForDetails(null);
