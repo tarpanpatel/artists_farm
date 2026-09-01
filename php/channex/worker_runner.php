@@ -43,7 +43,15 @@ if ($delay > 0) {
 }
 
 try {
-    $pdo = getDbConnection();
+    // database.php (required above) already sets $pdo directly at its own
+    // top level - there's no getDbConnection() wrapper anywhere in this
+    // codebase (confirmed 1 Sep 2026, found live: every other entry point,
+    // e.g. router.php, just uses $pdo straight after its own require_once
+    // of this same file). Calling one here was a fatal
+    // "Call to undefined function" on every single background worker run -
+    // silently breaking the Channex ARI outbox drain and the Telegram
+    // notifications outbox drain both, since the whole try block below
+    // never got past this line.
 
     // 1. Process Channel Manager ARI Outbox Batch
     if (class_exists('AriDrainWorker')) {
