@@ -755,7 +755,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         </div>
         <DrawerItems id="printableBookingDetailsContent" className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
           {/* Action Banner 0: OTA cancellation drift */}
-          {guest.otaCancelledDetectedAt && !isEditing && (
+          {guest.otaCancelledDetectedAt && (
             <div className="w-full mb-3 px-3.5 py-2.5 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 flex items-center gap-2 shadow-2xs">
               <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
               <span className="text-xs font-semibold text-amber-900 dark:text-amber-200">
@@ -764,16 +764,8 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             </div>
           )}
 
-          {/* Action Banner 0.5: Check-in Pending (added 24 Aug 2026 - reported
-              as "Check in still pending but it's not showing the warning on
-              top". The action itself already existed as a full-width footer
-              button ("Mark Checked In"), but nothing up here where the other
-              warnings live said so - easy to miss on a guest who's still just
-              "Booked", especially scrolled past the ID/C-Form banners below
-              which show regardless of check-in status. Shares
-              handleMarkCheckedIn with that same footer button now, not a
-              second copy of the same logic. */}
-          {canActOnBooking && !isEditing && (guest.status === GUEST_STATUS_BOOKED || (guest.status as string) === GUEST_STATUS_CONFIRMED_LEGACY) && (
+          {/* Action Banner 0.5: Check-in Pending */}
+          {canActOnBooking && (guest.status === GUEST_STATUS_BOOKED || (guest.status as string) === GUEST_STATUS_CONFIRMED_LEGACY) && (
             <div
               ref={checkinBannerRef}
               className={`w-full mb-3 px-3.5 py-2.5 rounded-lg border flex items-center justify-between gap-2 shadow-2xs transition-shadow ${
@@ -798,46 +790,44 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           )}
 
           {/* Action Banner 1: Check-in ID Verification */}
-          {!isEditing && (
-            <div
-              data-tour="checkin-folio"
-              className={`booking-details-modal__id-btn w-full mb-3 px-3.5 py-2.5 rounded-lg border flex items-center justify-between gap-2 transition-colors ${
+          <div
+            data-tour="checkin-folio"
+            className={`booking-details-modal__id-btn w-full mb-3 px-3.5 py-2.5 rounded-lg border flex items-center justify-between gap-2 transition-colors ${
+              guest.idVerificationStatus === 'Complete'
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800'
+                : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800'
+            }`}
+          >
+            <span className={`flex items-center gap-2 text-xs font-semibold ${
+              guest.idVerificationStatus === 'Complete'
+                ? 'text-slate-700 dark:text-slate-100'
+                : 'text-rose-900 dark:text-rose-200'
+            }`}>
+              <IdCard className={`w-4 h-4 shrink-0 ${
                 guest.idVerificationStatus === 'Complete'
-                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800'
-                  : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800'
-              }`}
-            >
-              <span className={`flex items-center gap-2 text-xs font-semibold ${
-                guest.idVerificationStatus === 'Complete'
-                  ? 'text-slate-700 dark:text-slate-100'
-                  : 'text-rose-900 dark:text-rose-200'
-              }`}>
-                <IdCard className={`w-4 h-4 shrink-0 ${
+                  ? 'text-emerald-500'
+                  : 'text-rose-600 dark:text-rose-400'
+              }`} />
+              {t('checkin_id_verification_label', 'Check-in ID Verification')}
+            </span>
+            {canActOnBooking && (
+              <button
+                type="button"
+                onClick={handleOpenId}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs flex items-center gap-1.5 shrink-0 ${
                   guest.idVerificationStatus === 'Complete'
-                    ? 'text-emerald-500'
-                    : 'text-rose-600 dark:text-rose-400'
-                }`} />
-                {t('checkin_id_verification_label', 'Check-in ID Verification')}
-              </span>
-              {canActOnBooking && (
-                <button
-                  type="button"
-                  onClick={handleOpenId}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs flex items-center gap-1.5 shrink-0 ${
-                    guest.idVerificationStatus === 'Complete'
-                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                      : 'bg-rose-600 hover:bg-rose-700 text-white'
-                  }`}
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                  {guest.idVerificationStatus === 'Complete' ? 'View / Re-upload ID' : 'Upload Guest ID'}
-                </button>
-              )}
-            </div>
-          )}
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                    : 'bg-rose-600 hover:bg-rose-700 text-white'
+                }`}
+              >
+                <Upload className="w-3.5 h-3.5" />
+                {guest.idVerificationStatus === 'Complete' ? 'View / Re-upload ID' : 'Upload Guest ID'}
+              </button>
+            )}
+          </div>
 
           {/* Action Banner 1.5: Foreign Guest C-Form Warning */}
-          {guest.isForeignGuest && !isCFormFiled && !isEditing && canActOnBooking && (
+          {guest.isForeignGuest && !isCFormFiled && canActOnBooking && (
             <div className="w-full mb-3 px-3.5 py-2.5 rounded-lg border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 flex items-center justify-between gap-2 shadow-2xs">
               <div className="flex items-center gap-2 text-xs font-semibold text-rose-900 dark:text-rose-200">
                 <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
