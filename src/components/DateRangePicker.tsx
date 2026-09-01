@@ -264,6 +264,8 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     const container = containerRef.current;
     const startEl = startInputRef.current;
     const endEl = endInputRef.current;
+    (window as any).__dbg4 = (window as any).__dbg4 || [];
+    (window as any).__dbg4.push({ t: 'mount-effect-fired', hasContainer: !!container, hasStart: !!startEl, hasEnd: !!endEl, startVal: startEl?.value, endVal: endEl?.value, propsCheckin: checkinDate, propsCheckout: checkoutDate });
     if (!container || !startEl || !endEl) return;
 
     const rangepicker = new FlowbiteDateRangePicker(container, {
