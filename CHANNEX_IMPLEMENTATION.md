@@ -58,6 +58,112 @@ There is no dedicated whole-property room kind; this is Channex's intended
 shape for vacation rentals, and their certification notes explicitly permit
 single-unit systems to "adapt to 1 unit / 1 rate plan and declare the adaptation".
 
+### Channel creation — the API disagrees with the docs
+
+Established 30 Aug 2026 by trial against the live sandbox. Channex's own written
+guidance is wrong or incomplete on three points, each of which costs an hour if
+you trust the docs:
+
+1. **The field is `channel`, NOT `channel_type`.** Sending `channel_type`
+   returns `{"channel":["can't be blank"]}`.
+2. **`group_id` is REQUIRED.** Omitting it returns
+   `"You not have access to requested group"` — which reads like an account
+   permissions failure and will send you to support for nothing. It is not a
+   permissions problem. Get the id from `GET /groups`; the property's own
+   `relationships.groups` also carries it.
+3. **`property_id` in the create payload is silently ignored.** The channel is
+   created attached to the *group* only, with `relationships.properties` empty —
+   so it does not appear under the property in the dashboard, and
+   `filter[property_id]` correctly returns nothing.
+
+   Link it afterwards with `PUT /channels/{id}` and an **array**:
+   `{"channel": {"properties": ["<property_uuid>"]}}`. Confirm by re-reading the
+   channel and checking `relationships.properties.data` is non-empty — the PUT
+   returns 200 either way.
+
+   > Worth stating plainly, because it wasted an hour: on first seeing
+   > `filter[property_id]` return `[]` while `GET /channels` listed three
+   > channels, the obvious-looking conclusion is "the filter is broken". It is
+   > not. The filter was right and the channels genuinely had no property. The
+   > tell was in `relationships.properties`, which nobody looks at until the
+   > dashboard shows an empty list. When an API's filter disagrees with its list
+   > endpoint, suspect the data before the filter.
+
+Valid `channel` codes, confirmed empirically (casing matters):
+
+| Code | Result |
+|---|---|
+| `OpenChannel` | created — simulator, needs no OTA credentials |
+| `AirBNB` | created (note the capitalisation; `Airbnb` is rejected) |
+| `Expedia` | created |
+| `BookingCom`, `Agoda` | recognised but HTTP 500 without real credentials |
+| `Airbnb`, `Booking`, `Open`, `GMT`, `Simulator`, `TestChannel` | invalid |
+
+### Mapping and activation — the shapes that actually work
+
+`settings.mapping` is a red herring: Channex accepts and stores it, but it is
+NOT the mapping, and activation still fails with
+`{"channel":["mapping shouldn't be empty"]}` while it is populated. The
+documented `POST /channels/{id}/map` returns 404.
+
+The real mapping lives in the channel's **`rate_plans`** attribute:
+
+```json
+PUT /channels/{id}
+{"channel": {
+  "group_id":   "<group>",
+  "properties": ["<property uuid>"],
+  "rate_plans": [
+    {"rate_plan_id": "<local rate plan uuid>",
+     "settings": {"room_type_code": 101001, "rate_plan_code": 202001,
+                  "occupancy": 2, "pricing_type": "OBP",
+                  "primary_occ": true, "readonly": false, "occ_changed": false}}
+  ],
+  "settings": {"hotel_code": "<code>"}
+}}
+```
+
+Three things that each cost a round trip:
+
+- **`room_type_code` / `rate_plan_code` must be INTEGERS.** Strings are accepted
+  and silently land under "removed rates" — the OTA side then reads
+  "Not mapped". For a live channel these come from
+  `POST /channels/mapping_details`, whose response nests rates under `rooms[].rates[]`
+  (note: `rooms`, not `room_types`).
+- **OpenChannel wants `settings.hotel_code`; Booking.com wants `settings.hotel_id`.**
+  Sending the wrong one returns `{"settings":["hotel_code is required"]}`. The
+  channex-pms-integration skill's example shows `hotel_id` because it was written
+  against Booking.com — do not copy it verbatim for a simulator channel.
+- **Activation is `POST /channels/{id}/activate`, not `PUT {is_active: true}`.**
+  The PUT returns HTTP 200 and silently ignores the flag. There is a matching
+  `POST /channels/{id}/deactivate`, and DELETE requires the channel be inactive
+  first.
+
+Activation error meanings, in the order you will hit them:
+`{"channel":["is not ready"]}` → mapping still empty.
+`{"errors":"invalid_credentials"}` → mapping is fine; the channel is now trying
+to authenticate against a real OTA and your `hotel_code` has nothing behind it.
+That second one is the genuine wall: per Channex's own docs, a sandbox account
+without real OTA credentials needs **support to provision a shared test hotel**
+or bind a simulated feed. Stop probing at that point and raise a ticket.
+
+There is a configured sandbox channel already in place:
+
+```
+Certification Simulator  (OpenChannel)
+  id          3bde9156-1373-438b-ae47-c863d5f219f9
+  hotel_code  CERT-TEST-001
+  property    4286428a-5561-4508-bd28-1f9ae55d8795  (linked via PUT, see above)
+  mapping     room_type 4ca732c0-6f4f-457c-9c48-396f3d784590 <-> ota_room_101
+              rate_plan 2d0dfacb-0239-4ec9-9eba-f6962ff3ecd8 <-> ota_rate_bar
+```
+
+**Known unresolved**: `is_active` will not flip via the API. `PUT` with
+`is_active: true` returns HTTP 200 and the flag stays `false` — it is silently
+ignored rather than rejected. Activation is presumably a dashboard action or
+depends on a verified connection. Do not sink time into this; toggle it in the
+UI.
+
 Credentials: `php/config/channex_config.json` (gitignored by the blanket
 `*.json` rule). **Never commit it or echo the key.**
 

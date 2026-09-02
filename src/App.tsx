@@ -3041,9 +3041,9 @@ export function App() {
       // "scroll first"/"check the box" prompts - this branch is rendered directly by App(),
       // never through AppWithProviders, so it needs its own ToastProvider the same way the
       // Root Admin dashboard branch below does. Without it that throws "useToast must be
-      // used within ToastProvider". The ErrorBoundary is the second half of that lesson:
-      // the same gap recurred with useAuth, so a missing provider now degrades to a visible
-      // error rather than a blank page.
+      // used within ToastProvider", blanking the entire page. On 30 Aug 2026 the same gap
+      // recurred with useAuth, so a missing provider now degrades to a visible error rather
+      // than a blank page - the ErrorBoundary is the second half of that lesson.
       <ErrorBoundary section="Tenant Dashboard">
         <ToastProvider>
           <Suspense fallback={<LoadingScreen message="Loading tenant dashboard..." />}>

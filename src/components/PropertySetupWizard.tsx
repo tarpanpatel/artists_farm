@@ -6,6 +6,8 @@ import {
 } from './icons/FlowbiteIcons';
 import { Button } from './Button';
 import { Input } from './Input';
+import { StyledSelect } from './StyledSelect';
+import { PROPERTY_CURRENCY_OPTIONS } from '../utils/currencies';
 import { Textarea } from './Textarea';
 import { UpiPaymentBlock, isValidUpiIdSyntax } from '../utils/upiQrCode';
 import { t } from '../i18n/en';
@@ -49,6 +51,7 @@ interface PropertySetupWizardProps {
   checkoutTime?: string;
   defaultTariff?: number | string | null;
   walkInTableCount?: number | string | null;
+  currency?: string | null;
   instructions?: string;
   /** Called after any step saves successfully - reloads to pick up fresh data everywhere. */
   onSaved: () => void;
@@ -102,6 +105,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
   checkoutTime = '11:00',
   defaultTariff,
   walkInTableCount,
+  currency = 'INR',
   instructions = '',
   onSaved,
 }) => {
@@ -130,6 +134,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
   const [editCheckoutTime, setEditCheckoutTime] = useState(checkoutTime);
   const [editDefaultTariff, setEditDefaultTariff] = useState(defaultTariff != null ? String(defaultTariff) : '');
   const [editWalkInTableCount, setEditWalkInTableCount] = useState(walkInTableCount != null ? String(walkInTableCount) : '10');
+  const [editCurrency, setEditCurrency] = useState(currency || 'INR');
   const [editInstructions, setEditInstructions] = useState(instructions);
 
   const basicsDone = !!name.trim() && (!!editAddress.trim() || !!address.trim());
@@ -177,7 +182,8 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
           ? { upi_id: editUpiId.trim(), gstin: editGstin.trim() }
           : activeStep.key === 'operations'
           ? {
-              checkin_time: editCheckinTime,
+              currency: editCurrency,
+          checkin_time: editCheckinTime,
               checkout_time: editCheckoutTime,
               walk_in_table_count: editWalkInTableCount,
               ...(isMultiKey ? {} : { default_tariff: editDefaultTariff }),
@@ -467,7 +473,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
             {!isMultiKey && (
               <Input
                 type="number"
-                label="Default Tariff / Night (₹, optional)"
+                label="Default Tariff / Night (â‚¹, optional)"
                 value={editDefaultTariff}
                 onChange={(e) => setEditDefaultTariff(e.target.value)}
                 placeholder="e.g. 2000"
@@ -482,6 +488,12 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
               value={editWalkInTableCount}
               onChange={(e) => setEditWalkInTableCount(e.target.value)}
               placeholder="10"
+            />
+            <StyledSelect
+              label="Currency"
+              value={editCurrency}
+              onChange={setEditCurrency}
+              options={PROPERTY_CURRENCY_OPTIONS}
             />
           </div>
         )}
@@ -498,7 +510,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
                 label="Other Notes (optional)"
                 value={editInstructions}
                 onChange={(e) => setEditInstructions(e.target.value)}
-                placeholder="e.g. How to reach, check-in instructions, parking notes…"
+                placeholder="e.g. How to reach, check-in instructions, parking notesâ€¦"
                 rows={4}
               />
             )}

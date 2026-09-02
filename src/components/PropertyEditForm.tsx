@@ -4,6 +4,8 @@ import { Loader2, CheckCircle2, AlertCircle, MessageCircle } from './icons/Flowb
 import { t } from '../i18n/en';
 import { Button } from './Button';
 import { Input } from './Input';
+import { StyledSelect } from './StyledSelect';
+import { PROPERTY_CURRENCY_OPTIONS } from '../utils/currencies';
 import { WhatsAppEditor } from './WhatsAppEditor';
 import { UpiPaymentBlock, isValidUpiIdSyntax } from '../utils/upiQrCode';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
@@ -89,6 +91,10 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
   const [instructions, setInstructions] = useState(property.instructions || '');
   const [checkinTime, setCheckinTime] = useState(property.checkin_time || '14:00');
   const [checkoutTime, setCheckoutTime] = useState(property.checkout_time || '11:00');
+  // The properties.currency column existed from the start but nothing could
+  // ever set it, so every property was stuck on the 'INR' default - a hard
+  // ceiling for onboarding a tenant outside India (30 Aug 2026).
+  const [currency, setCurrency] = useState((property as { currency?: string }).currency || 'INR');
   // Only meaningful for SINGLE properties - a MULTI_KEY parent isn't itself
   // bookable, each of its rooms has its own tariff (set in RoomsManagement.tsx).
   const [defaultTariff, setDefaultTariff] = useState(
@@ -173,6 +179,9 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
         payload.address = address.trim();
         payload.google_maps_link = mapsLink.trim();
         payload.instructions = instructions;
+        // Property-level only: a room can never be priced in a different
+        // currency from its parent property.
+        payload.currency = currency;
       }
       const res = await fetch('/php/api/router.php?action=update_property', {
         method: 'POST',
@@ -316,6 +325,20 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
             placeholder="10"
             helperText={t('walk_in_table_count_help', "How many number of tables the Kitchen can serve.")}
           />
+        </div>
+      )}
+
+      {!isRoom && (
+        <div className="property-edit-form__field">
+          <StyledSelect
+            label={t('property_currency_label', 'Currency')}
+            value={currency}
+            onChange={setCurrency}
+            options={PROPERTY_CURRENCY_OPTIONS}
+          />
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            {t('property_currency_help', 'Used for this property and every room under it. Changing it does not convert existing amounts.')}
+          </p>
         </div>
       )}
 

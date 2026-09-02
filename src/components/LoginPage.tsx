@@ -18,12 +18,18 @@ interface LoginPageProps {
 export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', onLoginSuccess, onLoginFailed, onNeedsPropertySelection, onStartTrial }) => {
   const isTerminal = variant === 'terminal';
   const auth = useAuthOptional();
+  const sessionMismatchNotice = auth?.sessionMismatchNotice ?? null;
   const clearSessionMismatchNotice = auth?.clearSessionMismatchNotice ?? NOOP;
 
   const [mobileNumber, setMobileNumber] = useState('');
   const [passcode, setPasscode] = useState('');
   const [mobileTouched, setMobileTouched] = useState(false);
   const [passcodeTouched, setPasscodeTouched] = useState(false);
+  // Set once the user actually tries to submit - "required" errors below only
+  // show after that, never on a bare blur. A blur-triggered "required" misfires
+  // on browser autofill (the field is visibly filled but the change event that
+  // would update state never fired), which is exactly what this whole block fixes.
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -48,44 +54,24 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
   const [isSendingLoginInfo, setIsSendingLoginInfo] = useState(false);
   const [forgotResult, setForgotResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Sync browser autofill on mount & delay ticks
-  useEffect(() => {
-    const syncAutofill = () => {
-      if (mobileInputRef.current?.value && !mobileNumber) {
-        setMobileNumber(mobileInputRef.current.value);
-      }
-      if (passcodeInputRef.current?.value && !passcode) {
-        setPasscode(passcodeInputRef.current.value);
-      }
-    };
+  // Validation state calculations. "Empty" only after a submit attempt (a bare
+  // blur must not flag a field the browser autofilled but React hasn't synced
+  // yet - see the syncAutofilledValues effect below, which is what keeps
+  // mobileNumber/passcode themselves correct rather than reading the DOM ref
+  // at validation time). "Invalid" (a partial value) is safe to show on blur
+  // too: autofill always lands a complete value or nothing.
+  const mobileEmpty = attemptedSubmit && !mobileNumber.trim();
+  const mobileInvalid = (mobileTouched || attemptedSubmit) && mobileNumber.length > 0 && mobileNumber.length < 10 && mobileNumber !== 'admin' && mobileNumber !== 'root';
 
-    syncAutofill();
-    const t1 = setTimeout(syncAutofill, 50);
-    const t2 = setTimeout(syncAutofill, 200);
-    const t3 = setTimeout(syncAutofill, 600);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-    };
-  }, [mobileNumber, passcode]);
-
-  // Validation state calculations with DOM autofill fallback
-  const effectiveMobile = mobileNumber || mobileInputRef.current?.value || '';
-  const effectivePasscode = passcode || passcodeInputRef.current?.value || '';
-
-  const mobileEmpty = mobileTouched && !effectiveMobile.trim();
-  const mobileInvalid = mobileTouched && effectiveMobile.length > 0 && effectiveMobile.length < 10 && effectiveMobile !== 'admin' && effectiveMobile !== 'root';
-
-  const passcodeEmpty = passcodeTouched && !effectivePasscode.trim();
-  const passcodeInvalid = passcodeTouched && effectivePasscode.length > 0 && effectivePasscode.length < 6 && effectivePasscode !== '123456' && effectivePasscode !== 'admin';
+  const passcodeEmpty = attemptedSubmit && !passcode.trim();
+  const passcodeInvalid = (passcodeTouched || attemptedSubmit) && passcode.length > 0 && passcode.length < 6 && passcode !== '123456' && passcode !== 'admin';
 
   const forgotMobileEmpty = forgotMobileTouched && !forgotMobile.trim();
   const forgotMobileInvalid = forgotMobileTouched && forgotMobile.length > 0 && forgotMobile.length < 10 && forgotMobile !== 'admin' && forgotMobile !== 'root';
 
   const newPasscodeEmpty = newPasscodeTouched && !newPasscode.trim();
   const newPasscodeInvalid = newPasscodeTouched && newPasscode.length > 0 && !/^\d{6}$/.test(newPasscode);
-  const newPasscodeSameAsOld = newPasscodeTouched && newPasscode.length === 6 && newPasscode === effectivePasscode;
+  const newPasscodeSameAsOld = newPasscodeTouched && newPasscode.length === 6 && newPasscode === passcode;
 
   const handleMobileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawVal = e.target.value;
@@ -139,10 +125,42 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
     setError(null);
   };
 
+  // Browser autofill (Chrome in particular) writes the input value directly
+  // without firing a React change event, so mobileNumber/passcode state stays
+  // '' while the field visibly holds a value - the submit button then stays
+  // disabled and, on blur, the "required" check misfires. Copy whatever the
+  // browser filled off the refs into state. Chrome also hides an autofilled
+  // password's value from JS until the first user gesture on the page, so this
+  // runs on a short post-mount poll AND again on each field blur (a gesture).
+  const syncAutofilledValues = () => {
+    const rawMobile = mobileInputRef.current?.value ?? '';
+    if (rawMobile) {
+      const clean = rawMobile === 'admin' || rawMobile === 'root' ? rawMobile : rawMobile.replace(/\D/g, '').slice(0, 10);
+      if (clean) setMobileNumber((prev) => prev || clean);
+    }
+    const rawPass = passcodeInputRef.current?.value ?? '';
+    if (rawPass) {
+      const clean = rawPass.replace(/\D/g, '').slice(0, 6);
+      if (clean) setPasscode((prev) => prev || clean);
+    }
+  };
+
+  useEffect(() => {
+    syncAutofilledValues();
+    const interval = setInterval(syncAutofilledValues, 150);
+    const stop = setTimeout(() => clearInterval(interval), 2000);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(stop);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setMobileTouched(true);
     setPasscodeTouched(true);
+    setAttemptedSubmit(true);
     setError(null);
 
     const loginMobile = (mobileNumber || mobileInputRef.current?.value || '').trim();
@@ -503,12 +521,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
                 label={t('mobile_username_label', 'Mobile Number / Username')}
                 value={mobileNumber}
                 onChange={handleMobileChange}
-                onBlur={() => {
-                  if (mobileInputRef.current?.value && !mobileNumber) {
-                    setMobileNumber(mobileInputRef.current.value);
-                  }
-                  setMobileTouched(true);
-                }}
+                onBlur={() => { setMobileTouched(true); syncAutofilledValues(); }}
                 placeholder={t('mobile_number_placeholder', '10-digit mobile number')}
                 disabled={isLoading}
                 autoFocus
@@ -545,12 +558,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
                   label={t('pin_passcode_label', '6-Digit Security Passcode')}
                   value={passcode}
                   onChange={handlePasscodeChange}
-                  onBlur={() => {
-                    if (passcodeInputRef.current?.value && !passcode) {
-                      setPasscode(passcodeInputRef.current.value);
-                    }
-                    setPasscodeTouched(true);
-                  }}
+                  onBlur={() => { setPasscodeTouched(true); syncAutofilledValues(); }}
                   placeholder="••••••"
                   maxLength={6}
                   inputMode="numeric"

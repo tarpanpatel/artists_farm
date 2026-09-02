@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Dynamic PWA manifest.
  *
@@ -15,6 +15,13 @@
  * index.php rewrites the <link rel="manifest"> href on every page to point
  * here with the CURRENT page's tenant_slug/property_slug, so whichever
  * page a visitor installs from is the page the installed icon reopens.
+ *
+ * NOTE: this file must have NO leading UTF-8 BOM and no whitespace before
+ * `<?php` - any byte emitted before header() below makes PHP fall back to the
+ * default `text/html` Content-Type (and prepends that byte to the JSON body),
+ * which some browsers reject, silently dropping the manifest (no start_url,
+ * no theme/background colour, no icons) and leaving the PWA on default splash
+ * + icon behaviour. Found live on staging 31 Aug 2026.
  */
 header('Content-Type: application/manifest+json');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -60,4 +67,3 @@ $manifest = [
 ];
 
 echo json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-
