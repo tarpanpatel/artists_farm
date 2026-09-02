@@ -508,7 +508,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   // the main Today/Past view and each date-section under Upcoming, so the
   // room card itself (guest list, financials, actions) only exists once.
   const renderRoomGroupsGrid = (groups: GroupedRoomBooking[]) => (
-    <div className="billing-checkout__grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+    <div className="billing-checkout__grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 items-start">
       {groups.map((group) => {
         return (
           <Card
@@ -523,10 +523,10 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
             // root.children directly (the documented way to reach it) is
             // what actually removes it.
             theme={{ root: { children: 'flex h-full flex-col gap-0 p-0' } }}
-            className="billing-checkout__room-card shadow-md overflow-hidden flex flex-col justify-between !p-0"
+            className="billing-checkout__room-card rounded-none sm:rounded-lg border-x-0 sm:border border-y sm:border-y shadow-none sm:shadow-md overflow-hidden flex flex-col justify-between !p-0"
           >
             {/* Room Header */}
-            <div className="billing-checkout__room-card-header bg-gray-50 dark:bg-gray-700 px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+            <div className="billing-checkout__room-card-header bg-gray-50 dark:bg-gray-700 px-4 py-2.5 sm:py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
               <h3 className="billing-checkout__room-card-title text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5 truncate">
                 <Building className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
                 {group.roomName}
@@ -534,7 +534,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
             </div>
 
             {/* Guest Card(s) stacked inside Room Column */}
-            <div className="billing-checkout__room-card-body p-4 space-y-4">
+            <div className="billing-checkout__room-card-body px-4 py-3 sm:p-4 space-y-4">
               {group.guests.map((guest) => {
                 const amountDue = calculateGuestTotal(guest);
                 const nights = calculateNights(guest.checkinDate, guest.expectedCheckout);
@@ -555,7 +555,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                     // booking maximum"), so this is virtually always a single
                     // item - space-y-4 on the parent is enough separation
                     // for the rare case of more than one.
-                    className="billing-checkout__guest-card flex flex-col justify-between space-y-3"
+                    className="billing-checkout__guest-card flex flex-col justify-between space-y-3 first:pt-0 pt-4 border-t border-slate-200 dark:border-slate-700 first:border-t-0"
                   >
                     {/* Top Header: Guest Name & Status Badge */}
                     <div>
@@ -1096,7 +1096,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
               empty-state message had their own redundant outer Card removed
               since they fill this whole area rather than sitting alongside
               other items in it. */}
-          <div className="billing-checkout__list-content border-t border-gray-200 pt-4 dark:border-gray-700">
+          <div className="billing-checkout__list-content border-t border-gray-200 pt-3 dark:border-gray-700 -mx-4 sm:mx-0">
           {/* Upcoming & Past Bookings: Mobile Card Stack on phone viewports (md:hidden), Desktop Flowbite Table on md+ */}
           {(activeTab === 'upcoming' || activeTab === 'past_bookings') ? (
             <>
