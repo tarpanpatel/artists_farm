@@ -18,7 +18,8 @@
 // installed/cached browsers keep serving a pre-805a19d3 HTML shell - old
 // bundle refs 404, forcing a recovery reload, and the boot logo flashes.
 // v24 (2 Sep 2026): mobile card layout overhaul and auto-sync toolbar styling
-const CACHE_NAME = 'farm-pos-v24';
+// v25 (2 Sep 2026): logo un-rounding and interactive operational manual accordion
+const CACHE_NAME = 'farm-pos-v25';
 
 // Hashed asset pattern — Vite content-hashed files (e.g. index-CrXjaekR.js)
 // These must NEVER be cached by the SW; the browser cache handles them natively
