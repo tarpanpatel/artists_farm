@@ -596,6 +596,14 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
                   accept="application/pdf,image/jpeg,image/png,image/webp"
                   onChange={handleDocumentSelected}
                   helperText={t('upload_document_button', 'PDF, JPG, or PNG')}
+                  // upload_document.php deliberately does NOT resize/recompress
+                  // (unlike upload_image.php's thumbnailing pipeline) - this is
+                  // compliance paperwork (FSSAI/homestay licence certificates)
+                  // someone may need to show an inspector at full resolution,
+                  // not a thumbnail. Compressing on the client before it even
+                  // reaches that endpoint would defeat the point (found 3 Sep
+                  // 2026, code review).
+                  autoCompressImage={false}
                 />
               )}
             </div>

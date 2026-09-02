@@ -299,16 +299,65 @@ function runCronJobNow(PDO $pdo, string $jobKey, array $def): array {
         $message = 'Script file not found: ' . $def['script_path'];
     } else {
         $phpBinary = defined('PHP_BINARY') && PHP_BINARY ? PHP_BINARY : 'php';
-        $cmd = escapeshellarg($phpBinary) . ' ' . escapeshellarg($scriptPath) . ' 2>&1';
-        $output = @shell_exec($cmd);
-        $message = trim((string)$output);
-        if ($message === '') {
-            $message = '(no output - check the job\'s own log file for details)';
+        $cmd = escapeshellarg($phpBinary) . ' ' . escapeshellarg($scriptPath);
+        // Hard wall-clock cap via proc_open, not a bare shell_exec (found 3
+        // Sep 2026, code review). shell_exec has no timeout of its own, so
+        // one wedged job (a curl call hung on a dead TCP connection, a DB
+        // lock wait) used to block this call indefinitely - and since
+        // dispatcher.php (the only caller that matters in production) holds
+        // its own file lock for its ENTIRE run, a single stuck job silently
+        // disabled every OTHER scheduled job on the account until someone
+        // noticed. Time blocked in a syscall doesn't count against PHP's own
+        // max_execution_time either, so that never rescued it. proc_open (not
+        // an external `timeout` binary) so this still works on a local
+        // Windows dev box, not just Linux/cPanel.
+        $maxRuntimeSeconds = 300;
+        $process = @proc_open($cmd, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+        if (!is_resource($process)) {
+            $status = 'error';
+            $message = 'Failed to start job process';
+        } else {
+            stream_set_blocking($pipes[1], false);
+            stream_set_blocking($pipes[2], false);
+            $output = '';
+            $timedOut = false;
+            while (true) {
+                $output .= stream_get_contents($pipes[1]);
+                $output .= stream_get_contents($pipes[2]);
+                $procStatus = proc_get_status($process);
+                if (!$procStatus['running']) {
+                    break;
+                }
+                if ((microtime(true) - $start) > $maxRuntimeSeconds) {
+                    $timedOut = true;
+                    proc_terminate($process, 9);
+                    break;
+                }
+                usleep(150000); // 150ms poll - fine-grained enough without busy-looping
+            }
+            // Final drain - the process may have written more between the
+            // last read above and it actually exiting/being killed.
+            $output .= stream_get_contents($pipes[1]);
+            $output .= stream_get_contents($pipes[2]);
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+            proc_close($process);
+
+            $message = trim($output);
+            if ($timedOut) {
+                $status = 'error';
+                $message = "Timed out after {$maxRuntimeSeconds}s and was killed. Output before kill: "
+                    . ($message !== '' ? $message : '(none)');
+            } else {
+                $status = 'success';
+                if ($message === '') {
+                    $message = '(no output - check the job\'s own log file for details)';
+                }
+            }
+            if (strlen($message) > 2000) {
+                $message = substr($message, 0, 2000) . '... (truncated)';
+            }
         }
-        if (strlen($message) > 2000) {
-            $message = substr($message, 0, 2000) . '... (truncated)';
-        }
-        $status = 'success';
     }
 
     $durationMs = (int) round((microtime(true) - $start) * 1000);

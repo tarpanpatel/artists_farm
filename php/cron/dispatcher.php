@@ -28,10 +28,23 @@ ensureCronJobsSchema($pdo);
 
 $dispatcherLog = __DIR__ . '/dispatcher.log';
 $lockFile = __DIR__ . '/dispatcher.lock';
-$lockHandle = fopen($lockFile, 'c');
-if (!$lockHandle || !flock($lockHandle, LOCK_EX | LOCK_NB)) {
-    // Another dispatcher instance is actively running. Exit immediately to prevent process stacking.
+$lockHandle = @fopen($lockFile, 'c');
+if ($lockHandle && !flock($lockHandle, LOCK_EX | LOCK_NB)) {
+    // Another dispatcher instance is actively running. Log it (found 3 Sep
+    // 2026, code review - this used to exit silently with zero log output,
+    // so a wedged prior run left NO trace of why every job stopped firing)
+    // and exit to prevent process stacking.
+    file_put_contents($dispatcherLog, date('Y-m-d H:i:s') . " - SKIPPED: another dispatcher instance holds the lock\n", FILE_APPEND);
     exit(0);
+}
+if (!$lockHandle) {
+    // Could not even open the lock file (permissions, disk full,
+    // open_basedir) - proceed WITHOUT the lock rather than exit(0). Losing
+    // the overlap guard for one run is far better than this becoming a
+    // second, unrelated way for every scheduled job to go silently
+    // uninvoked forever (see this file's own header comment on how long
+    // that already went unnoticed once before).
+    file_put_contents($dispatcherLog, date('Y-m-d H:i:s') . " - WARNING: could not open lock file $lockFile, proceeding without the overlap guard\n", FILE_APPEND);
 }
 
 $now = time();
@@ -68,8 +81,10 @@ foreach ($jobs as $job) {
     }
 }
 
-flock($lockHandle, LOCK_UN);
-fclose($lockHandle);
+if ($lockHandle) {
+    flock($lockHandle, LOCK_UN);
+    fclose($lockHandle);
+}
 
 function isCronJobDue(array $job, int $now): bool {
     $lastRun = $job['last_run_at'] ? strtotime($job['last_run_at']) : null;

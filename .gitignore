@@ -103,6 +103,13 @@ php/uploads/documents/*/
 
 php/database/log.txt
 
+# Runtime file-lock guards (dispatcher.php/worker_runner.php's flock() overlap
+# guards, added 3 Sep 2026) - transient process-coordination state, not project
+# content; scoped narrowly so this doesn't touch bun.lock (a real, tracked
+# package-manager lockfile at the repo root).
+php/cron/*.lock
+php/channex/*.lock
+
 # Custom CSS override (17 Aug 2026) - written directly to disk by
 # php/api/configuration.php whenever an admin edits "Custom CSS" on ANY
 # environment. Being git-tracked meant every such edit created an

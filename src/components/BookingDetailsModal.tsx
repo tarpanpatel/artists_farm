@@ -1150,6 +1150,15 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                       id="c-form-file-input"
                       accept="application/pdf,image/jpeg,image/png,image/webp"
                       disabled={cFormLocked}
+                      // Compression must stay OFF here (found 3 Sep 2026, code
+                      // review): scanApplicantIdFromFile below renders/decodes
+                      // the barcode at 2x scale specifically because a phone
+                      // photo shrunk much below that can drop the bars below
+                      // what the decoder can reliably tell apart (see
+                      // cFormBarcodeScanner.ts's own comment on this) - letting
+                      // FileInput downscale the source file first would work
+                      // directly against that.
+                      autoCompressImage={false}
                       // A real file input is always clickable to pick a different file -
                       // no separate "Reupload" trigger needed once a document is attached.
                       helperText={

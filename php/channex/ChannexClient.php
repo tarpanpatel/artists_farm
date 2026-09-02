@@ -91,8 +91,21 @@ class ChannexClient {
     protected function request(string $method, string $url, ?array $body = null): array {
         $attempt = 0;
         $lastException = null;
+        // Only retry idempotent methods (found 3 Sep 2026, code review,
+        // alongside the CURLOPT_TIMEOUT reduction below making a timeout more
+        // likely to fire mid-request). A POST that Channex actually received
+        // and processed - but whose response we simply never got back in
+        // time - used to get retried exactly like a GET, which for
+        // content_sync.php's non-idempotent property/room_type/rate_plan
+        // creation POSTs risks creating a duplicate record on Channex's side
+        // rather than just re-reading the same state. PUT is safe to retry
+        // (applying the same update twice is the same end state); DELETE too
+        // (a second attempt on an already-deleted resource is a 404, which
+        // this method already returns without retrying, further down).
+        $isIdempotentMethod = in_array($method, ['GET', 'PUT', 'DELETE'], true);
+        $maxAttempts = $isIdempotentMethod ? $this->maxRetries : 1;
 
-        while ($attempt < $this->maxRetries) {
+        while ($attempt < $maxAttempts) {
             $attempt++;
             self::waitForRateLimit();
             $ch = curl_init($url);
@@ -137,14 +150,23 @@ class ChannexClient {
                 ];
             }
 
-            // Exponential backoff retry on 429 Too Many Requests or 5xx server errors
-            if ($httpCode === 429 || ($httpCode >= 500 && $httpCode <= 599)) {
+            // Exponential backoff retry on 429 Too Many Requests or 5xx server
+            // errors - idempotent methods only (see $isIdempotentMethod's own
+            // comment above). A non-idempotent POST/PATCH falls through to the
+            // same "return the real response" path immediately below instead
+            // of looping (previously: it would still sleep then exit the loop
+            // anyway once maxAttempts=1 was reached, losing the real
+            // http_code/error to the generic "Max retry attempts exceeded"
+            // fallback at the bottom of this method).
+            if (($httpCode === 429 || ($httpCode >= 500 && $httpCode <= 599)) && $isIdempotentMethod && $attempt < $maxAttempts) {
                 $backoffMicroseconds = (int)(pow(2, $attempt - 1) * 1000000); // 1s, 2s, 4s
                 usleep($backoffMicroseconds);
                 continue;
             }
 
-            // Client errors (400, 401, 403, 404, 422) return immediately without retry
+            // Client errors (400, 401, 403, 404, 422) return immediately without
+            // retry - as does a 429/5xx that reached here because the method
+            // wasn't idempotent or attempts were already exhausted (see above).
             return [
                 'success' => false,
                 'http_code' => $httpCode,

@@ -106,10 +106,24 @@ export async function compressImageFile(
       (drawSource as ImageBitmap).close();
     }
 
-    // Export to JPEG blob (universally supported across all mobile browsers)
-    const mimeType = 'image/jpeg';
+    // Preserve PNG/WebP output for PNG/WebP input (found 3 Sep 2026, code
+    // review) - this used to always export as JPEG regardless of the source
+    // format. Canvas has no alpha channel of its own, so ctx.drawImage()
+    // onto an opaque canvas silently flattens any transparent pixel to
+    // solid black before the JPEG encode even runs - confirmed live on a
+    // transparent-background PNG. That's exactly the QR-code/logo upload
+    // case (PettyCashManagement's UPI QR graphic, MenuManager/
+    // KitchenManagement item images) this app already has a deliberate
+    // "preserve PNG" comment for elsewhere (services/api.ts's
+    // resizeImageFile, upload_image.php's own PNG branch) - this function
+    // was the one place that didn't follow it. GIF/SVG never reach here
+    // (skipped above); every other raster type still downgrades to JPEG.
+    const preserveMimeType = file.type === 'image/png' || file.type === 'image/webp'
+      ? file.type
+      : 'image/jpeg';
+    const outputExt = preserveMimeType === 'image/png' ? '.png' : preserveMimeType === 'image/webp' ? '.webp' : '.jpg';
     const blob = await new Promise<Blob | null>((resolve) => {
-      canvas.toBlob((b) => resolve(b), mimeType, quality);
+      canvas.toBlob((b) => resolve(b), preserveMimeType, quality);
     });
 
     if (!blob) {
@@ -121,10 +135,9 @@ export async function compressImageFile(
       return file;
     }
 
-    // Rename extension to .jpg if needed
-    const newName = file.name.replace(/\.[^.]+$/, '.jpg');
+    const newName = file.name.replace(/\.[^.]+$/, outputExt);
     return new File([blob], newName, {
-      type: mimeType,
+      type: preserveMimeType,
       lastModified: Date.now()
     });
   } catch (err) {

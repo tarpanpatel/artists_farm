@@ -50,10 +50,40 @@ if ($delay > 0) {
     sleep($delay);
 }
 
-$lockFile = sys_get_temp_dir() . '/groundcode_worker_runner.lock';
-$lockHandle = fopen($lockFile, 'c');
-if (!$lockHandle || !flock($lockHandle, LOCK_EX | LOCK_NB)) {
-    // Another worker runner is actively processing outbox items. Exit cleanly.
+// Fixed, app-owned path (found 3 Sep 2026, code review) - NOT
+// sys_get_temp_dir(). On cPanel/CageFS the web SAPI (loopback HTTP trigger)
+// and CLI (cron trigger) can resolve the system temp dir to two DIFFERENT
+// directories, in which case the two trigger paths would take different
+// lock files and this guard would silently do nothing between exactly the
+// two paths it exists to serialise.
+$lockFile = __DIR__ . '/worker_runner.lock';
+$lockHandle = @fopen($lockFile, 'c');
+
+// Lost-wakeup fix (found 3 Sep 2026, code review): a plain non-blocking
+// attempt-once-then-exit used to drop real work - a row enqueued right
+// after another runner already ran its own SELECT would sit until the
+// 5-minute drain_worker_outbox safety-net cron instead of draining within
+// seconds, a real availability-push delay to Airbnb/Booking.com. Retry
+// acquiring for a bounded window instead of giving up immediately: whoever
+// currently holds the lock is mid-drain, not stuck, so waiting briefly for
+// a turn (then doing OUR OWN fresh queue read once acquired) catches
+// anything that arrived after the original holder's own SELECT.
+$acquired = false;
+if ($lockHandle) {
+    $waitDeadline = microtime(true) + 10;
+    do {
+        if (flock($lockHandle, LOCK_EX | LOCK_NB)) {
+            $acquired = true;
+            break;
+        }
+        usleep(250000); // 250ms
+    } while (microtime(true) < $waitDeadline);
+}
+if (!$acquired) {
+    // Either the lock file couldn't be opened at all, or another runner
+    // held it for the entire wait window (genuinely still busy, not just a
+    // brief overlap) - exit cleanly either way; the safety-net cron still
+    // bounds how long anything can wait.
     exit(0);
 }
 

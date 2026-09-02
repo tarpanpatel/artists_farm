@@ -40,7 +40,7 @@ This document tracks identified bugs, pending backend API integrations, and upco
       - Credit entries for `<LEDGERNAME>Room Accommodation Sales</LEDGERNAME>` (SAC 996311) and `<LEDGERNAME>Restaurant & Food Sales</LEDGERNAME>` (SAC 996331).
       - Tax allocations: `<LEDGERNAME>CGST Output @ 6%/9%</LEDGERNAME>` and `<LEDGERNAME>SGST Output @ 6%/9%</LEDGERNAME>` (or IGST for out-of-state B2B).
   - **Tally XML Payment Vouchers (`Petty Cash / Cost Logs`)**:
-    - Exports cost logs from `costs` table grouped by category into Tally Payment Vouchers (`Kitchen Expenses`, `Housekeeping Supplies`, `Salaries & Wages`, `Repairs & Maintenance`).
+    - Exports cost logs from the `petty_cash`/`farm_utility_expenses` tables (there is no `costs` table - corrected 3 Sep 2026, code review) grouped by category into Tally Payment Vouchers (`Kitchen Expenses`, `Housekeeping Supplies`, `Salaries & Wages`, `Repairs & Maintenance`).
   - **GSTR-1 Ready Government CSV Format**:
     - **Table 4 (B2B)**: Filterable for corporate/business bookings with Guest GSTIN, Invoice Number, Invoice Date, Total Invoice Value, Place of Supply (POS state code e.g. `08-Rajasthan`), Tax Rate (12% / 18%), Taxable Value, Cess.
     - **Table 7 (B2C Small)**: Consolidated net taxable values aggregated by POS State Code and Tax Rate.
@@ -55,7 +55,7 @@ This document tracks identified bugs, pending backend API integrations, and upco
       - Current in-house guests and room assignments.
       - Today's upcoming arrivals with contact phone numbers and balance due.
       - Room inventory availability map for today + tomorrow.
-    - Automatically refreshed in background on every successful fetch to `/php/api/router.php?action=get_all_tenants` or operational polling.
+    - Automatically refreshed in background on every successful fetch of this property's own operational data (`get_all_tenants` is a Root-Admin-only platform action, corrected 3 Sep 2026 - the property app never calls it).
   - **Proactive Offline Visual Affordance**:
     - When `navigator.onLine === false` or API fetches fail:
     - Display a persistent amber indicator badge at the top:
@@ -83,7 +83,7 @@ This document tracks identified bugs, pending backend API integrations, and upco
     - If Foreign Guest: Captures Passport Number, Visa Number, Expiry, Place of Issue, Date of Arrival in India (automatically pre-populates Form-C FRRO compliance!).
     - Digital signature: Touch-friendly signature canvas pad.
   - **Instant PMS Update & Telegram Alert**:
-    - On submission, stores files in `php/uploads/guest_ids/`, automatically sets `idVerificationStatus = 'Complete'`, and updates Form-C metadata.
+    - On submission, stores files following the existing convention (`php/uploads/images/{tenantSlug}/{propertySlug}/id_documents/`, corrected 3 Sep 2026 - not a separate `guest_ids/` path), automatically sets `idVerificationStatus = 'Complete'`, and updates Form-C metadata.
     - Sends Telegram notification to property staff bot:
       *"✅ Self Check-In Done: {{guest_name}} for {{room_name}} has uploaded ID and signed registration card."*
 

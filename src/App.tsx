@@ -2853,15 +2853,27 @@ ${itemsStr}
             defaultPropertySlug are what let LegalDrawer's FAQ turn page-name
             mentions into real clickable links (see its own prop doc comment) -
             both already computed above for the Switch Property flow, reused as-is. */}
+        {/* ErrorBoundary added around each of these three (3 Sep 2026, code
+            review) - lazyWithRetry() reloads the page once per chunk per
+            session on a stale-chunk failure, then rethrows; with no boundary
+            above them (this whole branch sits outside AuthProvider/
+            DataLoader, and main.tsx mounts <App/> with no top-level boundary
+            either), that rethrow used to unmount the entire app to a white
+            screen instead of degrading to just this one drawer/modal failing
+            - exactly the class of failure a user hits on a stale tab right
+            after a deploy. Every other lazyWithRetry() site in this file
+            already has one; these three didn't. */}
         {legalDrawerActiveTab && (
-          <Suspense fallback={null}>
-            <LegalDrawer
-              activeTab={legalDrawerActiveTab}
-              onClose={() => setLegalDrawerActiveTab(null)}
-              tenantSlug={effectiveSwitchTenantSlug}
-              defaultPropertySlug={getPropertySlug()}
-            />
-          </Suspense>
+          <ErrorBoundary section="Help & FAQ">
+            <Suspense fallback={null}>
+              <LegalDrawer
+                activeTab={legalDrawerActiveTab}
+                onClose={() => setLegalDrawerActiveTab(null)}
+                tenantSlug={effectiveSwitchTenantSlug}
+                defaultPropertySlug={getPropertySlug()}
+              />
+            </Suspense>
+          </ErrorBoundary>
         )}
         {/* Gated on is_public_demo / demo tenant properties - the public marketing /
             demo walkthrough, mounted on demo properties so visitors and testers can experience the tour. */}
@@ -2871,26 +2883,30 @@ ${itemsStr}
           (preloadedData.currentProperty as any)?.is_demo ||
           preloadedData.currentProperty?.slug === 'demo'
         ) && (
-          <Suspense fallback={null}>
-            <DemoOnboardingTour
-              onStartTrialRequested={() => setIsSelfOnboardingOpen(true)}
-              handleNavigateTab={handleNavigateTab}
-              onNavigateToRoom={handleNavigateToRoom}
-              firstChildRoomSlug={preloadedData.currentProperty?.rooms?.[0]?.slug ?? null}
-            />
-          </Suspense>
+          <ErrorBoundary section="Demo Onboarding Tour">
+            <Suspense fallback={null}>
+              <DemoOnboardingTour
+                onStartTrialRequested={() => setIsSelfOnboardingOpen(true)}
+                handleNavigateTab={handleNavigateTab}
+                onNavigateToRoom={handleNavigateToRoom}
+                firstChildRoomSlug={preloadedData.currentProperty?.rooms?.[0]?.slug ?? null}
+              />
+            </Suspense>
+          </ErrorBoundary>
         )}
         {isSelfOnboardingOpen && (
-          <Suspense fallback={null}>
-            <SelfOnboardingWizard
-              isOpen={isSelfOnboardingOpen}
-              onClose={() => setIsSelfOnboardingOpen(false)}
-              onSuccess={(redirectUrl) => {
-                setIsSelfOnboardingOpen(false);
-                window.location.href = redirectUrl;
-              }}
-            />
-          </Suspense>
+          <ErrorBoundary section="Start Trial">
+            <Suspense fallback={null}>
+              <SelfOnboardingWizard
+                isOpen={isSelfOnboardingOpen}
+                onClose={() => setIsSelfOnboardingOpen(false)}
+                onSuccess={(redirectUrl) => {
+                  setIsSelfOnboardingOpen(false);
+                  window.location.href = redirectUrl;
+                }}
+              />
+            </Suspense>
+          </ErrorBoundary>
         )}
     </div>
   );
