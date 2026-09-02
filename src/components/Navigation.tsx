@@ -747,7 +747,24 @@ export const Navigation: React.FC<NavigationProps> = ({
               </div>
 
               <ul className="space-y-1 font-medium">
-                {tree.length === 0 ? (
+                {/* filteredNavItems.length, not tree.length (2 Sep 2026, user
+                    report: sidebar shows only "Kitchen" for a while before the
+                    real menu pops in - the "eventually self-corrects" flash
+                    this comment used to just live with). buildTree()'s own
+                    synthetic-Kitchen placeholder (see its "IMPORTANT" comment,
+                    23 Aug 2026) exists specifically so Kitchen doesn't flicker
+                    away during this same cold-start window - but that meant
+                    `tree` was NEVER actually empty during the wait (it always
+                    held that one synthetic node), so this skeleton branch
+                    could never fire; real navItems arriving replaced the
+                    synthetic tree with the full one, which is exactly the
+                    "only Kitchen, then the whole sidebar" flash reported.
+                    filteredNavItems reads the raw navItems prop before
+                    buildTree runs, so it's actually empty for that whole
+                    window regardless of the synthetic node - the skeleton (or
+                    the synthetic Kitchen shortcut inside it below) shows for
+                    the real cold-start duration instead. */}
+                {filteredNavItems.length === 0 ? (
                   <div className="space-y-2 py-2 px-1 animate-pulse">
                     {[1, 2, 3, 4, 5, 6].map((i) => (
                       <div key={i} className="flex items-center gap-3 p-2 rounded-lg bg-gray-100 dark:bg-gray-700/40">
