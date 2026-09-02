@@ -19,7 +19,8 @@
 // bundle refs 404, forcing a recovery reload, and the boot logo flashes.
 // v24 (2 Sep 2026): mobile card layout overhaul and auto-sync toolbar styling
 // v25 (2 Sep 2026): logo un-rounding and interactive operational manual accordion
-const CACHE_NAME = 'farm-pos-v25';
+// v26 (2 Sep 2026): permanent drawer footer WhatsApp button and header title cleanup
+const CACHE_NAME = 'farm-pos-v26';
 
 // Hashed asset pattern — Vite content-hashed files (e.g. index-CrXjaekR.js)
 // These must NEVER be cached by the SW; the browser cache handles them natively

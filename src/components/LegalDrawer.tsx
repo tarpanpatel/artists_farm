@@ -75,18 +75,23 @@ export const LegalDrawer: React.FC<LegalDrawerProps> = ({ activeTab, onClose, te
     const meaningfulTokens = rawTokens.filter((t) => !STOP_WORDS.has(t));
     const activeTokens = meaningfulTokens.length > 0 ? meaningfulTokens : rawTokens;
 
+    const isSearching = activeTokens.length > 0;
+
     return HELP_MANUAL_ITEMS.filter((item) => {
-      if (selectedCategory !== 'all' && item.category !== selectedCategory) {
+      // When searching, match across all categories so queries like "add expense"
+      // aren't blocked by a previously selected category pill.
+      if (!isSearching && selectedCategory !== 'all' && item.category !== selectedCategory) {
         return false;
       }
 
-      if (activeTokens.length === 0) return true;
+      if (!isSearching) return true;
 
       const searchableText = [
         item.question,
         ...item.keywords,
         item.summary,
-        ...item.steps
+        ...item.steps,
+        item.categoryLabel
       ]
         .join(' ')
         .toLowerCase();
@@ -158,7 +163,6 @@ export const LegalDrawer: React.FC<LegalDrawerProps> = ({ activeTab, onClose, te
               {activeTab === 'support' && 'Contact Support'}
               {activeTab === 'faq' && 'Frequently Asked Questions'}
             </h3>
-            <p className="text-2xs text-slate-500 dark:text-slate-400 font-medium">Ground Code™ SaaS Platform & Policy Agreement</p>
           </div>
         </div>
         <button
@@ -491,7 +495,20 @@ export const LegalDrawer: React.FC<LegalDrawerProps> = ({ activeTab, onClose, te
           Footer Safe Area" rule. This sits outside DrawerItems (the
           scrollable region) as a shrink-0 sibling pinned to the physical
           bottom edge. */}
-      <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 flex items-center justify-end shrink-0">
+      <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 flex items-center justify-between gap-3 shrink-0">
+        <a
+          href={faqSearch.trim()
+            ? `https://wa.me/919983196863?text=${encodeURIComponent(`Hi Ground Code Support, I need help with: ${faqSearch.trim()}`)}`
+            : `https://wa.me/919983196863?text=${encodeURIComponent('Hi Ground Code Support, I have a question about Ground Code PMS.')}`
+          }
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-lg shadow-2xs transition-colors cursor-pointer"
+        >
+          <WhatsappIcon className="w-3.5 h-3.5 shrink-0" />
+          <span>Ask Support on WhatsApp</span>
+        </a>
+
         <Button variant="secondary" size="xs" onClick={onClose}>
           Close
         </Button>
