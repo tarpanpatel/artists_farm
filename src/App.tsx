@@ -22,6 +22,7 @@ import { recordTelescopeLog } from './utils/telescopeLogger';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 import { formatDateDDMMYYYY } from './utils/dateUtils';
 import { detectClientInfo } from './utils/clientInfo';
+import { normalizeNavItems } from './utils/navItems';
 import { isKitchenModuleNavItem } from './data/appConfig';
 import { fetchThemeSettings, applyThemeSettings, getDefaultTheme } from './services/themeService';
 import { fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fetchNavMenuFromDB, sendTelegramAlertDB, fetchGuestsFromDB, fetchAuditLogsFromDB, addAuditLogDB, saveReceiptToDB, addGuestToDB, updateGuestInDB, checkoutGuestInDB, deleteGuestFromDB, resolveTelegramTemplate, dedupMenuDB, fetchReceiptsFromDB, getPropertySlug, fetchServiceRequestsFromDB, ServiceRequest, createServiceRequestInDB, apiFetch } from './services/api';
@@ -966,33 +967,16 @@ function AppBody({ preloadedData }: AppBodyProps) {
     refreshStaff();
     let cancelled = false;
     const applyNavItems = (data: any[]) => {
-      // Filter out removed nav items (Audit Logs, Staff Activity Trail, Error Logs)
-      const removedKeys = new Set(['audit_logs_main', 'staff_activity_trail', 'errors']);
-      const filtered = data.filter((dbItem: any) => !removedKeys.has(dbItem.uniqueKey));
-
-      // Use the DB as source of truth wholesale, including order - filtered
-      // is already sorted by display_order ASC (see fetchNavMenuFromDB's
-      // query), so idx reflects the DB's actual current order. This used to
-      // instead reuse prev.indexOf(initial) - the position the item
-      // happened to have in whatever loaded first - which meant a reorder
-      // in Root Admin's editor would show correctly there but a tab that
-      // had already loaded before the reorder stayed stuck on the old order
-      // for the rest of its session.
-      setNavItems(filtered.map((dbItem: any, idx: number) => ({
-        id: dbItem.id,
-        title: dbItem.title,
-        tabKey: dbItem.tabKey,
-        uniqueKey: dbItem.uniqueKey,
-        urlSlug: dbItem.urlSlug,
-        category: dbItem.category,
-        iconName: dbItem.iconName,
-        order: idx + 1,
-        roles: dbItem.roles || ['Super Admin'],
-        isVisible: dbItem.isVisible,
-        parentId: dbItem.parentId ?? null,
-        customUrl: dbItem.customUrl || undefined,
-        openInNewTab: dbItem.openInNewTab || false,
-      })));
+      // Use the DB as source of truth wholesale, including order -
+      // normalizeNavItems' own mapping assigns order from array index, and
+      // `data` is already sorted by display_order ASC (see
+      // fetchNavMenuFromDB's query), so that reflects the DB's actual
+      // current order. This used to instead reuse prev.indexOf(initial) -
+      // the position the item happened to have in whatever loaded first -
+      // which meant a reorder in Root Admin's editor would show correctly
+      // there but a tab that had already loaded before the reorder stayed
+      // stuck on the old order for the rest of its session.
+      setNavItems(normalizeNavItems(data));
     };
 
     const loadWithRetry = async (attemptsLeft: number) => {

@@ -905,8 +905,23 @@ if (!function_exists('triggerAsyncBackgroundWorker')) {
         }
 
         // 2. Fallback: Fast non-blocking loopback HTTP curl (150ms timeout)
+        //
+        // BUG (2 Sep 2026, found in review): scheme detection only checked
+        // $_SERVER['HTTPS'] === 'on', which some proxy/LiteSpeed setups don't
+        // reliably set - a wrong-scheme loopback can be refused/redirected
+        // (no CURLOPT_FOLLOWLOCATION here, so a redirect just burns the
+        // 150ms timeout on nothing) and, since this whole call is
+        // @-suppressed, that failure is invisible - the trigger silently
+        // does nothing. Matches the more robust check appendAppUrlToMessage()
+        // above already uses (HTTPS header OR port 443 OR a ground-code.com
+        // host, which is always HTTPS) instead of the single narrow check.
         $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-        $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443)
+            ? 'https' : 'http';
+        if (strpos($host, 'ground-code.com') !== false) {
+            $scheme = 'https';
+        }
         $scriptPath = dirname($_SERVER['SCRIPT_NAME'] ?? '') . '/../channex/worker_runner.php?delay=' . $delaySeconds;
         $url = $scheme . '://' . $host . $scriptPath;
 

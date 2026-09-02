@@ -16,6 +16,7 @@ import { FileInput } from './FileInput';
 import { Textarea } from './Textarea';
 import { DateRangePicker } from './DateRangePicker';
 import { CheckinVerificationModal } from './CheckinVerificationModal';
+import { MessageQrPreview } from './MessageQrPreview';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
 import { shareTextContent } from '../utils/shareText';
 import { parseDateToYMD } from '../utils/dateUtils';
@@ -1483,33 +1484,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 />
               ) : (
                 <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-lg p-4 text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">
-                  {(() => {
-                    const lines = sharePreviewMessage.split('\n');
-                    return lines.map((line, idx) => {
-                      const qrMatch = line.match(/^📷\s*\*?Payment QR Code:\*?\s*(https?:\/\/\S+)/i);
-                      if (qrMatch) {
-                        const qrUrl = qrMatch[1];
-                        return (
-                          <div key={idx} className="my-2.5 p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 flex flex-col items-start gap-1.5 shadow-2xs">
-                            <div className="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-                              <span>📷 Payment QR Code</span>
-                            </div>
-                            <img
-                              src={qrUrl}
-                              alt="Payment QR Code"
-                              className="w-32 h-32 object-contain rounded border border-slate-200 dark:border-slate-700 bg-white p-1"
-                            />
-                          </div>
-                        );
-                      }
-                      return (
-                        <React.Fragment key={idx}>
-                          {line}
-                          {idx < lines.length - 1 && '\n'}
-                        </React.Fragment>
-                      );
-                    });
-                  })()}
+                  <MessageQrPreview text={sharePreviewMessage} />
                 </div>
               )}
             </div>

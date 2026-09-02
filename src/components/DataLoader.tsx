@@ -15,6 +15,7 @@ import {
 } from '../services/api';
 import { t } from '../i18n/en';
 import { useAuthOptional } from '../contexts/AuthContext';
+import { normalizeNavItems } from '../utils/navItems';
 
 export interface PreloadedData {
   currentProperty: any;
@@ -181,24 +182,7 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
             if (!Array.isArray(value) || value.length === 0) {
               return { value: [], failed: true };
             }
-            const removedKeys = new Set(['audit_logs_main', 'staff_activity_trail', 'errors']);
-            const filtered = value.filter((dbItem: any) => !removedKeys.has(dbItem.uniqueKey));
-            const normalized = filtered.map((dbItem: any, idx: number) => ({
-              id: dbItem.id,
-              title: dbItem.title,
-              tabKey: dbItem.tabKey,
-              uniqueKey: dbItem.uniqueKey,
-              urlSlug: dbItem.urlSlug,
-              category: dbItem.category,
-              iconName: dbItem.iconName,
-              order: idx + 1,
-              roles: dbItem.roles || ['Super Admin'],
-              isVisible: dbItem.isVisible,
-              parentId: dbItem.parentId ?? null,
-              customUrl: dbItem.customUrl || undefined,
-              openInNewTab: dbItem.openInNewTab || false,
-            }));
-            return { value: normalized, failed: false };
+            return { value: normalizeNavItems(value), failed: false };
           } catch (err) {
             console.error('Failed to fetch nav items:', err);
             return { value: [], failed: true };

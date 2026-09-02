@@ -100,6 +100,33 @@ function getCronJobDefinitions(): array {
             'daily_at_time' => '22:00:00',
         ],
         [
+            // SAFETY NET (2 Sep 2026, found in review): the app already
+            // triggers php/channex/worker_runner.php after every booking
+            // write via triggerAsyncBackgroundWorker() (sender.php) - a
+            // detached CLI popen(), or a loopback curl if popen is disabled.
+            // Both are best-effort and can fail silently (popen disabled by
+            // hosting, a scheme-mismatch loopback, a proxy eating the
+            // request) - until this was registered there was NOTHING that
+            // would ever drain a stuck outbox again on its own; queued
+            // Telegram messages and Channex ARI updates would just sit
+            // forever unless some unrelated later request happened to
+            // trigger a successful fire. Reuses worker_runner.php directly
+            // (script_path resolves to php/channex/worker_runner.php,
+            // outside this directory) rather than duplicating its drain
+            // logic in a second copy - it already behaves correctly under
+            // CLI (skips the HTTP-response block, defaults its own delay to
+            // 5s with no $argv[1], same as this job's own run cadence makes
+            // reasonable).
+            'job_key' => 'drain_worker_outbox',
+            'name' => 'Channex/Telegram Outbox Safety-Net Drain',
+            'description' => 'Fallback drain for the Telegram + Channex ARI background worker, in case the app\'s own real-time trigger (popen or a loopback HTTP call) silently failed after a booking edit.',
+            'script_path' => '../channex/worker_runner.php',
+            'log_file' => null,
+            'schedule_type' => 'interval_minutes',
+            'interval_minutes' => 5,
+            'daily_at_time' => null,
+        ],
+        [
             'job_key' => 'trial_lifecycle_cadence',
             'name' => '30-Day Trial Lifecycle & Renewal Cadence',
             'description' => 'Automated Day 1/3/7/14/21/23(7-day notice)/28/30 follow-up nudges, trial expiry notices, and subscription status transitions.',
@@ -113,7 +140,14 @@ function getCronJobDefinitions(): array {
 }
 
 function ensureCronJobsSchema(PDO $pdo): void {
-    if (!isSchemaVerified('schema_cron_jobs_v4')) {
+    // Bumped to v5 (2 Sep 2026) to seed the new drain_worker_outbox job below
+    // onto an already-provisioned cron_jobs table - the seed loop right below
+    // only ever runs while its own version marker is unset, so simply adding
+    // a new entry to getCronJobDefinitions() above does nothing on staging/
+    // production without also bumping this (INSERT IGNORE means existing
+    // jobs' live-edited settings are untouched either way - only a genuinely
+    // new job_key actually inserts).
+    if (!isSchemaVerified('schema_cron_jobs_v5')) {
         $pdo->exec("CREATE TABLE IF NOT EXISTS cron_jobs (
             job_key VARCHAR(64) PRIMARY KEY,
             name VARCHAR(150) NOT NULL,
@@ -137,7 +171,7 @@ function ensureCronJobsSchema(PDO $pdo): void {
                 $job['schedule_type'], $job['interval_minutes'], $job['daily_at_time'],
             ]);
         }
-        markSchemaVerified('schema_cron_jobs_v4');
+        markSchemaVerified('schema_cron_jobs_v5');
     }
 }
 
