@@ -173,8 +173,16 @@ if (!function_exists('appendAppUrlToMessage')) {
                         }
                     } else if ($category === 'admin' || stripos($cleanMsg, 'GUEST') !== false || stripos($cleanMsg, 'BOOKING') !== false || stripos($cleanMsg, 'CHECK-IN') !== false) {
                         $hash = 'bookings';
-                        // Extract booking id e.g. "Booking ID: 708" or "Booking ID: #708" or "ID: 708"
-                        if (preg_match('/(?:Booking|Guest)?\s*ID:?\s*#?([a-zA-Z0-9_-]+)/i', $cleanMsg, $m)) {
+                        // Extract booking id e.g. "Booking ID: 708" or "Booking ID: #708" or "ID: 708".
+                        // BUG (2 Sep 2026, found in review): the ":"/"#" separator after "ID" was
+                        // optional and the capture accepted any word chars, so unrelated "ID" text
+                        // with no real id after it - "ID Documents: 3/4 uploaded" (guests.php's Guest
+                        // Count Updated message), "ID Document(s): 2" (checkin_verification_complete's
+                        // photo caption) - matched too, capturing "Documents"/"Document" as the
+                        // booking_id and producing a deep link to a guest that doesn't exist. A real id
+                        // is always immediately followed by ':' or '#' (no word text in between) and is
+                        // always numeric (guests.id is an auto-increment int), so both are now required.
+                        if (preg_match('/(?:Booking|Guest)?\s*ID\s*[:#]\s*#?(\d+)/i', $cleanMsg, $m)) {
                             $queryParams['booking_id'] = $m[1];
                         }
                     }
@@ -791,10 +799,41 @@ if (!function_exists('drainTelegramOutbox')) {
 
                 try {
                     $res = sendPropertyTelegramMessage($pdo, $propId, $cat, $msg, $markup, $tKey);
-                    
+
+                    // BUG (2 Sep 2026, found in review): sendRawTelegramMessage() never
+                    // throws - it catches curl failures internally and returns false, or
+                    // returns Telegram's own response body verbatim, which can itself carry
+                    // "ok":false (blocked bot, stale chat_id, rate limit, ...). This try/catch
+                    // never saw those failures, so every send fell straight through to the
+                    // unconditional "mark sent" below regardless of whether Telegram actually
+                    // accepted it - silently defeating the attempts/next_attempt_at retry this
+                    // outbox table exists for. Determine real success explicitly first.
+                    $parsed = is_string($res) ? json_decode($res, true) : null;
+                    $sendSucceeded = false;
+                    if (is_array($res) && !empty($res['skipped'])) {
+                        // Not configured / no group routed for this category - there's
+                        // nothing to retry, this delivery genuinely can't happen.
+                        $sendSucceeded = true;
+                    } elseif (is_array($res)) {
+                        // 'all' category: array of raw per-chat-id responses.
+                        $sendSucceeded = true;
+                        foreach ($res as $chatResponse) {
+                            $p = is_string($chatResponse) ? json_decode($chatResponse, true) : null;
+                            if (empty($p['ok'])) {
+                                $sendSucceeded = false;
+                                break;
+                            }
+                        }
+                    } elseif ($parsed !== null) {
+                        $sendSucceeded = !empty($parsed['ok']);
+                    }
+                    if (!$sendSucceeded) {
+                        $errMsg = is_string($res) ? $res : 'Telegram send failed (no response - curl error)';
+                        throw new Exception(substr($errMsg, 0, 500));
+                    }
+
                     // If sent successfully, update guest table message references if needed
                     if (!empty($res) && is_string($res)) {
-                        $parsed = json_decode($res, true);
                         if (!empty($parsed['ok']) && !empty($parsed['result']['message_id']) && !empty($guestId) && !empty($guestField)) {
                             $chatId = $parsed['result']['chat']['id'] ?? null;
                             $msgId = (int)$parsed['result']['message_id'];
@@ -846,7 +885,18 @@ if (!function_exists('triggerAsyncBackgroundWorker')) {
 
         // 1. Try local detached CLI command if popen is enabled
         if (function_exists('popen') && function_exists('pclose') && !in_array('popen', explode(',', (string)ini_get('disable_functions')))) {
-            $cmd = (PHP_OS_FAMILY === 'Windows' ? 'start /B php ' : 'php ') . escapeshellarg($workerPath) . ' ' . $delaySeconds . ' > /dev/null 2>&1 &';
+            // BUG (2 Sep 2026, found in review): this used Unix-only redirection/
+            // backgrounding syntax (/dev/null, trailing &) even on the Windows branch -
+            // cmd.exe has no /dev/null (only NUL) and start /B already returns
+            // immediately without needing a trailing &. popen() still returns a
+            // truthy handle even when the inner command errors, so the broken
+            // command silently masked itself and the code never fell through to the
+            // working curl fallback below - the background worker (Channex ARI
+            // drain + Telegram outbox drain) never actually ran on Windows/XAMPP,
+            // this repo's own local dev environment.
+            $cmd = PHP_OS_FAMILY === 'Windows'
+                ? 'start "" /B php ' . escapeshellarg($workerPath) . ' ' . $delaySeconds . ' > NUL 2>&1'
+                : 'php ' . escapeshellarg($workerPath) . ' ' . $delaySeconds . ' > /dev/null 2>&1 &';
             $handle = @popen($cmd, 'r');
             if ($handle) {
                 @pclose($handle);

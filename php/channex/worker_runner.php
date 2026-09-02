@@ -18,10 +18,18 @@ if (php_sapi_name() !== 'cli') {
     while (ob_get_level() > 0) {
         @ob_end_clean();
     }
+    // BUG (2 Sep 2026, found in review): Content-Length was hardcoded to 25,
+    // but json_encode(['status' => 'accepted']) is 21 bytes - a wrong length
+    // here breaks the exact trick this header exists for (telling the server
+    // the response is complete after 21 bytes so it releases the connection
+    // immediately instead of waiting, per outbox.php's own note that this was
+    // measured at 0.9s vs 8s on LiteSpeed). Computed from the real body now so
+    // it can't drift out of sync with it again.
+    $body = json_encode(['status' => 'accepted']);
     header('Content-Type: application/json');
     header('Connection: close');
-    header('Content-Length: 25');
-    echo json_encode(['status' => 'accepted']);
+    header('Content-Length: ' . strlen($body));
+    echo $body;
     @ob_flush();
     @flush();
 

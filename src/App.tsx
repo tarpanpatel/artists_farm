@@ -2213,6 +2213,7 @@ ${itemsStr}
                   activeTab={activeTab}
                   setActiveTab={handleNavigateTab}
                   guests={guests}
+                  guestsLoading={guestsLoading}
                   menu={menu}
                   receipts={receipts}
                   onAddGuest={handleAddGuest}

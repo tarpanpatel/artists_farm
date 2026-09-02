@@ -1183,7 +1183,13 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
             <div className="billing-checkout__empty-state p-12 text-center">
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center">
-                  <Loader2 className="w-8 h-8 text-blue-600 dark:text-blue-400 animate-spin mx-auto mb-3" />
+                  {/* CLAUDE.md hard rule (One Loading Spinner Identity, App-Wide): never a
+                      Loader2/icon spinner - it silently falls back to a different glyph
+                      (refresh icon) if the icon set has no real spinner shape, which is
+                      exactly how this regressed before. Plain CSS border-ring only, same
+                      size/style/speed as App.tsx's TabContentFallback (found in review,
+                      2 Sep 2026 - this was a Loader2 icon). */}
+                  <div className="w-8 h-8 mx-auto mb-3 rounded-full border-[3px] border-blue-100 border-t-blue-500 dark:border-slate-800 dark:border-t-blue-400 loading-screen-spinner-spin" />
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Loading bookings...</p>
                 </div>
               ) : (
