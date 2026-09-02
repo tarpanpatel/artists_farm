@@ -171,6 +171,7 @@ if ('serviceWorker' in navigator) {
 const flowbiteTheme = {
   card: {
     root: {
+      base: 'flex rounded-none sm:rounded-lg border-y sm:border border-gray-200 bg-white shadow-xs sm:shadow-md dark:border-gray-700 dark:bg-gray-800',
       children: 'flex h-full flex-col justify-center gap-4 p-4 sm:p-6',
     },
   },

@@ -2182,7 +2182,7 @@ ${itemsStr}
                 of this shared shell (TenantDashboard.tsx, EditPropertyPage's Card) used their
                 own unrelated padding decisions - see CLAUDE.md's "Page & Card Padding
                 Standard" for the full scale this now matches. */}
-            <main className="flex-1 px-4 py-1 sm:px-6 sm:py-3 lg:px-8 lg:py-4 w-full space-y-2 sm:space-y-4 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] md:pb-4">
+            <main className="flex-1 px-0 py-1 sm:px-6 sm:py-3 lg:px-8 lg:py-4 w-full space-y-2 sm:space-y-4 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] md:pb-4">
               <Suspense fallback={<TabContentFallback />}>
 
               {/* MultiKey room view - takes priority over everything */}
