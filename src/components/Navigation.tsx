@@ -30,7 +30,8 @@ export type TabType =
   | 'service_requests'
   | 'edit_property'
   | 'licenses'
-  | 'channel_manager';
+  | 'channel_manager'
+  | 'connect_channels';
 
 interface NavigationProps {
   activeTab: TabType;
