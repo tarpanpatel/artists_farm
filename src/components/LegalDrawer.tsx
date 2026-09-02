@@ -1,10 +1,26 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Drawer as FlowbiteDrawer, DrawerItems } from 'flowbite-react';
-import { Scale, ShieldCheck, Cookie, Headset, X, CheckCircle2, Mail, Phone, MessageSquare, HelpCircle, Search } from './icons/FlowbiteIcons';
+import {
+  Scale,
+  ShieldCheck,
+  Cookie,
+  Headset,
+  X,
+  CheckCircle2,
+  Mail,
+  Phone,
+  MessageSquare,
+  HelpCircle,
+  Search,
+  ChevronDown,
+  ExternalLink,
+  BookOpen,
+} from './icons/FlowbiteIcons';
 import { WhatsappIcon } from './icons/WhatsappIcon';
 import { TelegramIcon } from './icons/TelegramIcon';
 import { Button } from './Button';
 import { API_ROOT_BASE } from '../services/api';
+import { HELP_CATEGORIES, HELP_MANUAL_ITEMS, HelpManualItem } from '../data/helpManual';
 
 export type LegalTabType = 'terms' | 'privacy' | 'cookies' | 'support' | 'faq' | null;
 
@@ -28,36 +44,66 @@ interface LegalDrawerProps {
 export const LegalDrawer: React.FC<LegalDrawerProps> = ({ activeTab, onClose, tenantSlug, defaultPropertySlug }) => {
   const isOpen = activeTab !== null;
 
-  // FAQ search (added 27 Aug 2026) - deliberately DOM-based rather than restructuring the 55+
-  // hand-written Q&A cards into a data array: every card already carries a `data-faq-card`
-  // marker (see the JSX below), so filtering is just a matter of checking each card's own
-  // rendered text against the query and toggling display - no risk of transcribing 55 answers
-  // into a new format and introducing a mismatch. Category headers hide themselves too when
-  // every card inside them is filtered out, so search never leaves a floating empty heading.
+  // Operational Manual & FAQ state
   const [faqSearch, setFaqSearch] = useState('');
-  const faqContainerRef = useRef<HTMLDivElement>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
+  const toggleAccordion = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const STOP_WORDS = useMemo(
+    () =>
+      new Set([
+        'how', 'do', 'i', 'to', 'the', 'a', 'an', 'can', 'you', 'me', 'what',
+        'where', 'when', 'why', 'is', 'are', 'in', 'of', 'for', 'my', 'we', 'our'
+      ]),
+    []
+  );
+
+  const filteredItems = useMemo(() => {
+    const rawTokens = faqSearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const meaningfulTokens = rawTokens.filter((t) => !STOP_WORDS.has(t));
+    const activeTokens = meaningfulTokens.length > 0 ? meaningfulTokens : rawTokens;
+
+    return HELP_MANUAL_ITEMS.filter((item) => {
+      if (selectedCategory !== 'all' && item.category !== selectedCategory) {
+        return false;
+      }
+
+      if (activeTokens.length === 0) return true;
+
+      const searchableText = [
+        item.question,
+        ...item.keywords,
+        item.summary,
+        ...item.steps
+      ]
+        .join(' ')
+        .toLowerCase();
+
+      return activeTokens.every((token) => searchableText.includes(token));
+    });
+  }, [faqSearch, selectedCategory, STOP_WORDS]);
+
+  // When search query is entered, auto-expand matching items so answers are immediately visible
   useEffect(() => {
-    if (activeTab !== 'faq') return;
-    const container = faqContainerRef.current;
-    if (!container) return;
-    const query = faqSearch.trim().toLowerCase();
-    const cards = container.querySelectorAll<HTMLElement>('[data-faq-card]');
-    cards.forEach((card) => {
-      const matches = query === '' || (card.textContent || '').toLowerCase().includes(query);
-      card.style.display = matches ? '' : 'none';
-    });
-    // Category wrapper = the card-group's own parent (`.space-y-2.5` holds the cards directly;
-    // its parent is the `pt-*` div carrying the category title span above it).
-    const groups = container.querySelectorAll<HTMLElement>('.space-y-2\\.5');
-    groups.forEach((group) => {
-      const anyVisible = Array.from(group.querySelectorAll<HTMLElement>('[data-faq-card]')).some(
-        (card) => card.style.display !== 'none'
-      );
-      const categoryWrapper = group.parentElement;
-      if (categoryWrapper) categoryWrapper.style.display = anyVisible ? '' : 'none';
-    });
-  }, [faqSearch, activeTab]);
+    const query = faqSearch.trim();
+    if (query.length > 0) {
+      setExpandedIds(new Set(filteredItems.map((i) => i.id)));
+    } else {
+      setExpandedIds(new Set());
+    }
+  }, [faqSearch, filteredItems]);
 
   /**
    * Renders a page-name reference inside an FAQ answer as a real clickable link when tenant +
@@ -126,16 +172,47 @@ export const LegalDrawer: React.FC<LegalDrawerProps> = ({ activeTab, onClose, te
       </div>
 
       {activeTab === 'faq' && (
-        <div className="px-4 sm:px-5 py-3 border-b border-slate-200 dark:border-slate-800 shrink-0">
+        <div className="px-4 sm:px-5 py-3 border-b border-slate-200 dark:border-slate-800 shrink-0 space-y-2.5 bg-slate-50/50 dark:bg-slate-900/50">
           <div className="relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               value={faqSearch}
               onChange={(e) => setFaqSearch(e.target.value)}
-              placeholder="Search the FAQ..."
-              className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"
+              placeholder="Search manual (e.g. how to edit booking, add guest, checkout)..."
+              className="w-full pl-9 pr-8 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 shadow-2xs"
             />
+            {faqSearch && (
+              <button
+                type="button"
+                onClick={() => setFaqSearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 cursor-pointer"
+                aria-label="Clear search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Category Filter Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-2xs">
+            {HELP_CATEGORIES.map((cat) => {
+              const isSelected = selectedCategory === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className={`px-2.5 py-1 rounded-full whitespace-nowrap font-semibold border transition-colors cursor-pointer ${
+                    isSelected
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                      : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -306,607 +383,104 @@ export const LegalDrawer: React.FC<LegalDrawerProps> = ({ activeTab, onClose, te
         )}
 
         {activeTab === 'faq' && (
-          <div className="space-y-4" ref={faqContainerRef}>
-            <div className="p-3.5 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/60 rounded-xl">
-              <div className="flex items-center gap-1.5 font-bold text-purple-900 dark:text-purple-300 text-xs">
-                <HelpCircle className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
-                <span>Frequently Asked Questions (FAQ)</span>
+          <div className="space-y-4">
+            {/* Header info card */}
+            <div className="p-3.5 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-xl flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                <span className="font-bold text-blue-950 dark:text-blue-200 text-xs">
+                  Operational Manual &amp; FAQs
+                </span>
               </div>
+              <span className="text-[10px] font-semibold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/60 px-2 py-0.5 rounded-full border border-blue-200 dark:border-blue-800">
+                {filteredItems.length} {filteredItems.length === 1 ? 'guide' : 'guides'}
+              </span>
             </div>
 
-            <div className="space-y-3">
-              {/* Category 1: General & Pricing */}
-              <div className="pt-1">
-                <span className="text-2xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">General &amp; Subscription</span>
-                
-                <div className="space-y-2.5">
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: What is Ground Code?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Ground Code is a specialized property management system (PMS) designed for homestays, villas, guest houses, and boutique resorts in India. It helps hosts manage bookings, guest check-ins, kitchen orders (KDS), petty cash, and staff attendance with zero booking commission.
-                    </p>
-                  </div>
+            {/* Accordion list */}
+            {filteredItems.length > 0 ? (
+              <div className="space-y-2.5">
+                {filteredItems.map((item) => {
+                  const isExpanded = expandedIds.has(item.id);
+                  return (
+                    <div
+                      key={item.id}
+                      className="border border-slate-200 dark:border-slate-700/80 rounded-xl overflow-hidden bg-white dark:bg-slate-850 shadow-2xs transition-all"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => toggleAccordion(item.id)}
+                        className="w-full flex items-center justify-between p-3.5 text-left font-bold text-xs text-slate-900 dark:text-white bg-slate-50/70 dark:bg-slate-800/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors cursor-pointer gap-2"
+                        aria-expanded={isExpanded}
+                      >
+                        <div className="flex items-center gap-2 min-w-0 pr-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
+                          <span className="leading-snug">{item.question}</span>
+                        </div>
+                        <ChevronDown
+                          className={`w-4 h-4 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+                            isExpanded ? 'rotate-180 text-blue-600 dark:text-blue-400' : ''
+                          }`}
+                        />
+                      </button>
 
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: How does the 30-Day Free Trial work?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      You get 100% full access to GroundCode Pro for 30 days without entering a credit card or signing a contract. Our team hops on a personal 1-on-1 setup call to help configure your room keys, staff PINs, and booking calendar.
-                    </p>
-                  </div>
+                      {isExpanded && (
+                        <div className="p-4 border-t border-slate-200/80 dark:border-slate-700/80 text-2xs text-slate-600 dark:text-slate-300 space-y-3 bg-white dark:bg-slate-900/40">
+                          <p className="font-medium text-slate-700 dark:text-slate-200 leading-relaxed">
+                            {item.summary}
+                          </p>
 
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: How much does Ground Code cost after the trial?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Ground Code operates on ONE single simple plan: <strong>GroundCode Pro</strong> at ₹1,499/month (includes 1st villa or room key). Extra room keys cost just +₹350/room/month. You can also save 2 months free with annual billing (₹14,990/year).
-                    </p>
-                  </div>
-                </div>
+                          {item.steps && item.steps.length > 0 && (
+                            <ol className="space-y-2 pl-0 list-none pt-1">
+                              {item.steps.map((step, idx) => (
+                                <li key={idx} className="flex items-start gap-2.5 leading-relaxed">
+                                  <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 font-bold text-[10px] shrink-0 mt-0.5 border border-blue-200 dark:border-blue-800">
+                                    {idx + 1}
+                                  </span>
+                                  <span className="text-slate-600 dark:text-slate-300">{step}</span>
+                                </li>
+                              ))}
+                            </ol>
+                          )}
+
+                          {item.actionLink && (
+                            <div className="pt-2">
+                              <FaqLink itemKey={item.actionLink.itemKey}>
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 font-semibold text-xs border border-blue-200 dark:border-blue-800 transition-colors">
+                                  <span>{item.actionLink.label}</span>
+                                  <ExternalLink className="w-3 h-3" />
+                                </span>
+                              </FaqLink>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-
-              {/* Category 2: Bookings & OTA Calendar Sync */}
-              <div className="pt-2">
-                <span className="text-2xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">Bookings &amp; iCal Calendar Sync</span>
-
-                <div className="space-y-2.5">
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Do you charge any booking commission?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      No, never! Ground Code charges ZERO commission on any booking. Unlike OTAs that take 15–25% per reservation, you keep 100% of your guest revenue.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: How does calendar sync with Airbnb &amp; Booking.com work?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      We provide standard iCal (.ics) feed synchronization. Import and export links automatically poll availability across your connected OTAs with a ~15–30 minute update window.
-                    </p>
-                  </div>
+            ) : (
+              <div className="text-center py-8 px-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 space-y-3">
+                <HelpCircle className="w-8 h-8 text-slate-400 mx-auto" />
+                <div>
+                  <h4 className="font-bold text-xs text-slate-900 dark:text-white">
+                    No matching manual article for "{faqSearch}"
+                  </h4>
+                  <p className="text-2xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
+                    Have a specific question not covered in this guide? Chat directly with Ground Code Hospitality Support.
+                  </p>
                 </div>
+                <a
+                  href={`https://wa.me/919983196863?text=${encodeURIComponent(`Hi Ground Code Support, I need help with: ${faqSearch}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-lg shadow-sm transition-colors cursor-pointer"
+                >
+                  <WhatsappIcon className="w-4 h-4" />
+                  <span>Ask Support on WhatsApp</span>
+                </a>
               </div>
-
-              {/* Category 3: Staff Roles & Kitchen KDS */}
-              <div className="pt-2">
-                <span className="text-2xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">Staff Roles &amp; Kitchen (KDS)</span>
-
-                <div className="space-y-2.5">
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Can my cook and front-desk staff use different screens?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Yes! You can assign specific staff roles and PINs. Your cook gets a Kitchen Order Screen (KDS), front-desk staff get guest check-in &amp; petty cash tools, while revenue reports remain private to the owner.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: How do Telegram phone alerts work?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      You can connect your property's Telegram bot in 2 minutes to receive instant phone alerts for new guest bookings, check-in arrivals, and cash drawer adjustments.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Category 4: Data Privacy & Compliance */}
-              <div className="pt-2">
-                <span className="text-2xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">Data Protection &amp; Compliance</span>
-
-                <div className="space-y-2.5">
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Is my property and guest data safe?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      100% safe. We enforce a strict Zero Data Selling Guarantee. Your guest lists, ID proofs, and property income logs are private to your property and never shared or sold to third parties or OTAs.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Does Ground Code support Police C-Form &amp; GST compliance?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Yes! Ground Code stores encrypted guest ID proofs (Aadhaar, Passport) to help hosts fulfill statutory police verification registers, and generates GST-compliant guest bills and invoices.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Category 5: Day-to-Day Operations (added 27 Aug 2026) - unlike Categories 1-4
-                  above (pitch/marketing-angled: pricing, "how does X work"), these are literal
-                  step-by-step "how do I do this" answers for staff already using the app day to
-                  day - the exact question shapes tested against the AI assistant's offline engine
-                  the same night this was added, reusing its own verified reply text/destinations
-                  rather than writing new, unvetted copy. Telegram alerts and OTA calendar sync
-                  already have their own pitch-style entries above, so they're not repeated here. */}
-              <div className="pt-2">
-                <span className="text-2xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">Day-to-Day Operations</span>
-
-                <div className="space-y-2.5">
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: How do I add a new guest booking / check someone in?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Click the '+ Add Booking' button in the top header bar or on the <FaqLink itemKey="all_bookings">Bookings</FaqLink> page. Fill in the guest's name, mobile number, room number, check-in date, and expected checkout. Upload ID document verification if required and click 'Save Booking'.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: How do I check out a guest and generate their final bill?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Click 'Checkout' on their booking card in the <FaqLink itemKey="all_bookings">Bookings</FaqLink> or Today tab. Review room charges, advance payments, and food bills, then print the GST receipt or send it directly on WhatsApp.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: How do I add a new staff member and set what they're allowed to access?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Go to Staff → <FaqLink itemKey="staff_directory_salaries">Staff Directory &amp; Salaries</FaqLink> → '+ Add Staff Member'. Enter their name, phone number (this becomes their login), and a role such as Front Desk, Kitchen, Supervisor, or Admin — the role you pick determines exactly what they can see and do in the app.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: How do I record a petty cash expense, like a vendor payment or salary advance?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Go to <FaqLink itemKey="expenses">Expenses</FaqLink> on the left sidebar and click '+ Add Expense'. Select the Category (Bills, Staff Advance, Kitchen, or Other), enter the amount and item details, choose the payment source (Property Funds vs Out-of-Pocket), and click 'Add Expense'.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: How do I add or update kitchen inventory/stock items?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Go to Kitchen → Inventory → <FaqLink itemKey="edit_kitchen_stock">Edit Kitchen Stock</FaqLink> to add raw materials with their unit (kg/liters/pcs) and quantity. Link them to a dish under <FaqLink itemKey="beta_recipe_builder">Dish Recipes (Auto-Stock)</FaqLink> so stock automatically depletes every time that dish is sold.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: How do I add a property license (like FSSAI or homestay) and get expiry reminders?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Go to Admin Control → <FaqLink itemKey="license_management">Licenses</FaqLink>, click '+ Add License', choose the type (Homestay, FSSAI, Fire Safety, GST, etc.), upload the document, and set its expiry date. You'll automatically get Telegram reminders 7, 4, and 1 day before it expires.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: How do I set up my UPI ID so guests can pay by scanning a QR code?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Go to <FaqLink itemKey="edit_property">Edit Property</FaqLink> and enter your UPI ID in the payment settings section. A scannable QR code is generated automatically from it and appears on checkout bills and booking-confirmation WhatsApp shares — no need to upload your own QR image unless you prefer to.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: How do I add a new room to my multi-key property?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Go to <FaqLink itemKey="edit_property">Edit Property</FaqLink> and scroll to the Rooms section, then click '+ Add Room'. Give it a name/number and rate, and it appears immediately as a new bookable key under your property.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Category 6: Multi-Property & Multi-Key Properties (added 27 Aug 2026, corrected
-                  same day - originally called this "Multi-Key Rooms" and described every key as
-                  "a room" throughout; a multi-key property's keys can just as easily be whole
-                  villas or cottages, not only bedrooms in one building - see the sitewide
-                  Multi-Room -> Multi-Key terminology fix in i18n/en.ts and the property-type
-                  picker copy for the same correction). */}
-              <div className="pt-2">
-                <span className="text-2xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">Multi-Property &amp; Multi-Key Properties</span>
-
-                <div className="space-y-2.5">
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Can I manage more than one property from a single account?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Yes. Ground Code is built for owners with multiple properties — you can switch between them from the same login, and a Root Admin can see every property from one dashboard.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: What's the difference between a single property and a multi-key property?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      A single property has one bookable unit. A multi-key property has several separately bookable keys under one address — each key could be a hotel-style room, a suite, or a whole independent villa or cottage — and each keeps its own booking calendar, while staff and settings are shared across the whole property.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Can one key in a multi-key property get double-booked?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      No — every key can only ever have one active booking at a time. The system blocks it before it can happen, and the date picker greys out and strikes through any day that's already booked for that key.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Category 7: Guest Communication & Payments (added 27 Aug 2026) */}
-              <div className="pt-2">
-                <span className="text-2xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">Guest Communication &amp; Payments</span>
-
-                <div className="space-y-2.5">
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Can guests pay me directly via UPI?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Yes. Add your UPI ID once in Edit Property and Ground Code automatically generates a scannable QR code that appears on checkout bills and WhatsApp booking confirmations — no separate QR app needed.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Do you send WhatsApp booking confirmations and bills automatically?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Booking confirmations, checkout bills, and walk-in tab bills can each be shared as a ready-formatted WhatsApp message in one click, including your UPI QR code if you've set one up.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Do I need to set up my own Telegram bot for alerts?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      No — Telegram alerts are fully managed for you. You'll never see a bot token or a pairing code; we configure your kitchen/admin/finance alert groups on your behalf and simply add you to them.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Category 8: Reports, Exports & Analytics (added 27 Aug 2026) */}
-              <div className="pt-2">
-                <span className="text-2xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">Reports, Exports &amp; Analytics</span>
-
-                <div className="space-y-2.5">
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Can I export my bookings or financial data?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Yes — from <FaqLink itemKey="data_export_center">Download Data &amp; Excel</FaqLink> you can export bookings, receipts, and expenses as CSV files for any date range, ready to open in Excel or share with your accountant.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Does Ground Code show me business analytics?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Yes — <FaqLink itemKey="dashboard_analytics">Reports &amp; Earnings</FaqLink> shows occupancy rate, average room rate, average length of stay, profit per room-night, and room vs. kitchen revenue, so you see how your property is performing over time, not just what's happening today.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Can I see which menu items make me the most money, not just which sell the most?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Yes, Reports &amp; Earnings ranks dishes by actual revenue and factors in kitchen purchase cost, so you see real profit per dish, not just order counts.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Are the guest bills GST-compliant?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Yes — once your GSTIN is entered in Edit Property, checkout receipts include it and itemize charges the way a GST invoice requires.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Category 9: Ground Code AI Assistant (added 27 Aug 2026) */}
-              <div className="pt-2">
-                <span className="text-2xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">Ground Code AI Assistant</span>
-
-                <div className="space-y-2.5">
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: What can the Ground Code AI assistant actually do?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Ask it in plain English and it can open pre-filled forms for you — add a booking, log an expense, add a staff member — answer "how do I..." questions about the app, and tell you things like how many bookings or team members you have.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Does using the AI assistant cost extra?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      No — by default it runs on a free, built-in engine with zero ongoing cost. A Root Admin can optionally turn on a smarter online AI model, but it's off by default.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: What happens if the AI doesn't understand my question?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      It says so honestly rather than guessing, and after a couple of unclear replies in a row it offers a direct link to talk to a real person on WhatsApp or Telegram.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Category 10: Staff Roles & Access Control (added 27 Aug 2026) */}
-              <div className="pt-2">
-                <span className="text-2xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">Staff Roles &amp; Access Control</span>
-
-                <div className="space-y-2.5">
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: What staff roles are available?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Admin, Staff, Staff Kitchen, and Staff Supervisor — each role controls exactly which pages and actions that person can see and use.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Can I track staff attendance?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Yes, Admins and Supervisors can mark daily attendance for the team from the <FaqLink itemKey="attendance_calendar">Attendance Calendar</FaqLink>.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Can I stop a staff member from seeing financial data?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Yes — financial pages like petty cash and ledger reports are restricted to Admin and above by default, so a regular Staff or Kitchen login never sees them.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Category 11: Getting Started (added 27 Aug 2026) */}
-              <div className="pt-2">
-                <span className="text-2xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">Getting Started</span>
-
-                <div className="space-y-2.5">
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: How do I get started with Ground Code?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Sign up for the 30-day free trial — no credit card needed — and our team helps configure your first property, rooms, and staff during onboarding.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Do I need any technical knowledge to use this?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      No. Ground Code is built for hotel and homestay staff, not developers — every setup step, including Telegram alerts, UPI QR, and licenses, is a simple form, never code or a config file.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: What if I get stuck during setup?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Ask the in-app AI assistant, check this FAQ, or reach a real person directly on WhatsApp or Telegram from the same support menu.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Category 12: Kitchen & Inventory Deep Dive (added 27 Aug 2026) */}
-              <div className="pt-2">
-                <span className="text-2xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">Kitchen &amp; Inventory Deep Dive</span>
-
-                <div className="space-y-2.5">
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Can I track ingredient-level recipes so stock depletes automatically?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Yes — the <FaqLink itemKey="beta_recipe_builder">Recipe Builder</FaqLink> (Kitchen → Dish Recipes) lets you set ingredients, yield factor, and servings per dish, so raw stock auto-depletes whenever that dish is sold.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: How do I record kitchen wastage or spoiled stock?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Go to Kitchen → Inventory → <FaqLink itemKey="deficit_shortfalls_log">Kitchen Wastage</FaqLink> to log stock lost to spoilage, breakage, or shortfalls — kept separate from stock that was actually used in orders.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Can staff request raw materials from the kitchen store?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Yes — <FaqLink itemKey="stock_requests">Stock Requisitions</FaqLink> lets staff request items like vegetables or a gas cylinder, which a supervisor can then fulfil from the same page.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Category 13: Walk-In Guests & Table Billing (added 27 Aug 2026) */}
-              <div className="pt-2">
-                <span className="text-2xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">Walk-In Guests &amp; Table Billing</span>
-
-                <div className="space-y-2.5">
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Can I bill a walk-in restaurant customer who isn't a hotel guest?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Yes — open a Walk-In Tab from Kitchen → <FaqLink itemKey="take_food_order">Take Order</FaqLink>, assign it to a numbered table, add items throughout their visit, and bill the whole tab at once when they're ready to pay.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Do walk-in tabs need a guest booking?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      No — walk-in tabs are completely independent of room bookings, for customers using only your restaurant or kitchen, not staying at the property.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Category 14: Service Requests & Guest Needs (added 27 Aug 2026) */}
-              <div className="pt-2">
-                <span className="text-2xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">Service Requests &amp; Guest Needs</span>
-
-                <div className="space-y-2.5">
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: How do I log a guest request, like extra towels or a repair?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Go to <FaqLink itemKey="service_requests">Service Requests</FaqLink> and click '+ New Request', or just tell the AI assistant something like "extra towels for room 102" — it opens the same form pre-filled.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Can I track whether a service request was completed?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Yes, every request has a status — Pending, In Progress, or Completed — so nothing gets forgotten.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Category 15: Foreign Guests & ID Verification (added 27 Aug 2026) */}
-              <div className="pt-2">
-                <span className="text-2xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">Foreign Guests &amp; ID Verification</span>
-
-                <div className="space-y-2.5">
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Do I need to do anything extra for foreign guests?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Yes — foreign guests require a C-Form filing. You can mark C-Form status as Pending or Filed directly from the guest details modal or guest list.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Can I store guest ID documents securely?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Yes, guest ID uploads (Aadhaar, Passport, Driving License) are stored encrypted and only accessible to your own property's authorized staff.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Category 16: App Experience (added 27 Aug 2026) */}
-              <div className="pt-2">
-                <span className="text-2xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">App Experience</span>
-
-                <div className="space-y-2.5">
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Can I install Ground Code like an app on my phone?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Yes, Ground Code works as an installable app (PWA) — your browser will prompt you to "Add to Home Screen" for quick access without opening a browser each time.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Does Ground Code support dark mode?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Yes, every screen supports both light and dark mode.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: What languages does Ground Code support?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      English by default, with additional languages available on request.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Category 17: Cash Management & Reconciliation (added 27 Aug 2026) */}
-              <div className="pt-2">
-                <span className="text-2xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">Cash Management &amp; Reconciliation</span>
-
-                <div className="space-y-2.5">
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: How do I hand over cash from one staff member to another?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      From <FaqLink itemKey="finances">Finances</FaqLink>, use Cash Handover to record the amount, who received it, and any notes — it automatically posts a Telegram alert to your Finance group and updates the running balance.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Can I correct a mistake in the cash balance?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Yes, Manual Adjustment on the same <FaqLink itemKey="finances">Finances</FaqLink> page lets you add a correction with a note explaining why, so the balance stays accurate without deleting the original entry.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Where do I log a kitchen purchase from a vendor?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Under <FaqLink itemKey="expenses">Expenses</FaqLink>, category Kitchen — vendor purchases used to have their own page, but that's now unified into the same Expenses list as every other cost, so all your spending is in one place.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Category 18: Booking Extras & Charges (added 27 Aug 2026) */}
-              <div className="pt-2">
-                <span className="text-2xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">Booking Extras &amp; Charges</span>
-
-                <div className="space-y-2.5">
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Can I add extra charges to a guest's bill, like a late checkout fee?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Yes — set up reusable charge templates (late checkout, laundry, extra bed, etc.) under <FaqLink itemKey="misc_charges">Extra Charges &amp; Fees</FaqLink>, then add any of them to a guest's bill in one click at checkout.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Category 19: Property Setup Wizard (added 27 Aug 2026) */}
-              <div className="pt-2">
-                <span className="text-2xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">Property Setup Wizard</span>
-
-                <div className="space-y-2.5">
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Do I have to complete every setup step before I can start taking bookings?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      No — only the Basics step is required to publish your property. The rest of the 5-step checklist (rooms, staff, Telegram, licenses, payments) is fully optional and can be finished later from the "Finish Setting Up This Property" banner.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Can I skip a setup step and come back to it later?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Yes, every step past Basics can be skipped or snoozed, and the banner keeps track of how many of the 5 steps you've completed.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Category 20: WhatsApp & Voucher Templates (added 27 Aug 2026) */}
-              <div className="pt-2">
-                <span className="text-2xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">WhatsApp &amp; Voucher Templates</span>
-
-                <div className="space-y-2.5">
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Can I customize the wording of my WhatsApp booking confirmations?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Yes — the WhatsApp voucher template on <FaqLink itemKey="edit_property">Edit Property</FaqLink> lets you edit the exact wording guests receive, with tokens like guest name, dates, and UPI ID that get filled in automatically.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: What happens if I leave a token blank, like no UPI ID set up?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      The template quietly drops that line instead of showing an empty placeholder, so a guest never sees something like "Pay via UPI: " with nothing after it.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Category 21: Guest Check-In & ID Verification (added 27 Aug 2026) */}
-              <div className="pt-2">
-                <span className="text-2xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">Guest Check-In &amp; ID Verification</span>
-
-                <div className="space-y-2.5">
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Can I verify a guest's ID document during check-in?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Yes — opening a booking's details from <FaqLink itemKey="all_bookings">Bookings</FaqLink> gives you an ID verification step right there, so uploading and confirming a guest's document doesn't need a separate page or app.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Category 22: Menu & Pricing (added 27 Aug 2026) */}
-              <div className="pt-2">
-                <span className="text-2xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">Menu &amp; Pricing</span>
-
-                <div className="space-y-2.5">
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: How do I organize my kitchen menu into categories, like Starters or Beverages?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      From <FaqLink itemKey="edit_food_menu">Menu &amp; Pricing</FaqLink>, every dish gets a category (Starters, Main Course, Beverages, Desserts, Farm Specials), so the KDS and ordering screens group them automatically.
-                    </p>
-                  </div>
-
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Can I change a menu item's price later without affecting old bills?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Yes, updating a price on <FaqLink itemKey="edit_food_menu">Menu &amp; Pricing</FaqLink> only applies going forward — receipts and bills already generated keep the price that was charged at the time.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Category 23: Past Bills & Receipts (added 27 Aug 2026) */}
-              <div className="pt-2">
-                <span className="text-2xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">Past Bills &amp; Receipts</span>
-
-                <div className="space-y-2.5">
-                  <div data-faq-card className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-1">Q: Can I look up or reprint an old guest's bill?</h4>
-                    <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Yes, every checkout bill is saved under <FaqLink itemKey="past_receipts_log">Past Bills &amp; Receipts</FaqLink>, searchable by guest name or date, and can be reprinted or re-shared on WhatsApp any time.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
         )}
       </DrawerItems>
