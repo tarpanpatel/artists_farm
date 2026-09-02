@@ -21,7 +21,8 @@
 // v25 (2 Sep 2026): logo un-rounding and interactive operational manual accordion
 // v26 (2 Sep 2026): permanent drawer footer WhatsApp button and header title cleanup
 // v27 (2 Sep 2026): standardize help drawer font sizes with rest of site
-const CACHE_NAME = 'farm-pos-v27';
+// v28 (2 Sep 2026): enforce universal DD/MM/YYYY date formatting across entire site
+const CACHE_NAME = 'farm-pos-v28';
 
 // Hashed asset pattern — Vite content-hashed files (e.g. index-CrXjaekR.js)
 // These must NEVER be cached by the SW; the browser cache handles them natively

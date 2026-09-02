@@ -1560,7 +1560,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                                       <div className="flex items-center justify-between text-2xs">
                                         <span className="text-gray-500 dark:text-gray-400">Dates:</span>
                                         <span className="font-medium text-gray-700 dark:text-gray-200">
-                                          {(dayBooking.checkinDate || '').split(' ')[0].split('T')[0]} → {(dayBooking.expectedCheckout || (dayBooking as any).checkoutDate || '').split(' ')[0].split('T')[0]}
+                                          {formatDateDDMMYYYY(dayBooking.checkinDate)} → {formatDateDDMMYYYY(dayBooking.expectedCheckout || (dayBooking as any).checkoutDate)}
                                         </span>
                                       </div>
                                       {hasDayPending && (

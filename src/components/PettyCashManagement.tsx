@@ -1773,7 +1773,10 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                       <div key={entry.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3.5 space-y-2.5 shadow-md">
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">
-                            <span className="font-bold text-xs text-slate-400 block">#{entry.id}</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-xs text-slate-400">#{entry.id}</span>
+                              <span className="text-2xs text-slate-400 font-normal">· {formatDateDDMMYYYY(entry.date)} {entry.time || '12:00'}</span>
+                            </div>
                             <h4 className="font-semibold text-slate-900 dark:text-white text-xs mt-0.5">{entry.description}</h4>
                             {payer && <span className="text-2xs text-slate-500 dark:text-slate-400 font-medium">Vendor/Payee: {payer}</span>}
                           </div>

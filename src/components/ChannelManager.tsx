@@ -19,6 +19,7 @@ import { PageHeader } from './PageHeader';
 import { Button } from './Button';
 import { Badge } from './Badge';
 import { DateRangePicker } from './DateRangePicker';
+import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../utils/dateUtils';
 import { t } from '../i18n/en';
 
 interface ChannexMapping {
@@ -413,7 +414,7 @@ export const ChannelManager: React.FC<ChannelManagerProps> = ({ onLogAudit }) =>
             <div className="flex items-center justify-between">
               <span className="text-gray-500 dark:text-gray-400">Last Synced:</span>
               <span className="text-gray-600 dark:text-gray-400">
-                {data?.mappings[0]?.last_synced_at ? new Date(data.mappings[0].last_synced_at).toLocaleDateString() : 'Never'}
+                {data?.mappings[0]?.last_synced_at ? formatDateTimeDDMMYYYY(data.mappings[0].last_synced_at) : 'Never'}
               </span>
             </div>
           </div>
@@ -549,7 +550,7 @@ export const ChannelManager: React.FC<ChannelManagerProps> = ({ onLogAudit }) =>
           <div className="p-4 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-lg space-y-2 text-xs">
             <div className="font-semibold text-blue-900 dark:text-blue-200 flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              ARI pushed for {lastPushResult.dateFrom} to {lastPushResult.dateTo} (2 Channex Calls Generated):
+              ARI pushed for {formatDateDDMMYYYY(lastPushResult.dateFrom)} to {formatDateDDMMYYYY(lastPushResult.dateTo)} (2 Channex Calls Generated):
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {lastPushResult.taskRows.map((tr) => (
@@ -756,7 +757,7 @@ export const ChannelManager: React.FC<ChannelManagerProps> = ({ onLogAudit }) =>
                         </span>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-gray-900 dark:text-white font-medium">
-                        {row.date_from} → {row.date_to}
+                        {formatDateDDMMYYYY(row.date_from)} → {formatDateDDMMYYYY(row.date_to)}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <Badge
@@ -793,12 +794,7 @@ export const ChannelManager: React.FC<ChannelManagerProps> = ({ onLogAudit }) =>
                         )}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-2xs text-gray-500">
-                        {new Date(row.created_at).toLocaleString([], {
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
+                        {formatDateTimeDDMMYYYY(row.created_at)}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-right">
                         {isFailed && (
@@ -841,7 +837,7 @@ export const ChannelManager: React.FC<ChannelManagerProps> = ({ onLogAudit }) =>
                 </Badge>
               </div>
               <div className="text-xs text-gray-700 dark:text-gray-300">
-                Range: <span className="font-semibold">{row.date_from} → {row.date_to}</span>
+                Range: <span className="font-semibold">{formatDateDDMMYYYY(row.date_from)} → {formatDateDDMMYYYY(row.date_to)}</span>
               </div>
               {row.task_id && (
                 <div className="flex items-center justify-between text-2xs font-mono bg-gray-50 dark:bg-gray-700/50 p-2 rounded">

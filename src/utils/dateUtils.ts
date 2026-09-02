@@ -5,7 +5,7 @@ export const formatDateDDMMYYYY = (dateStr: string | null): string => {
 
   // Accept YYYY-MM-DD (ISO) or MM/DD/YYYY or DD/MM/YYYY formats
   // and always output DD/MM/YYYY
-  const ymd = cleaned.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const ymd = cleaned.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (ymd) return `${ymd[3]}/${ymd[2]}/${ymd[1]}`;
 
   const dmy = cleaned.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);

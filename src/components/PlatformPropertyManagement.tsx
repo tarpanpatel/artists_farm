@@ -11,6 +11,7 @@ import { API_ROOT_BASE } from '../services/api';
 import { t } from '../i18n/en';
 import { useConfirm } from './ConfirmDialogContext';
 import { useToast } from './ToastContext';
+import { formatDateDDMMYYYY } from '../utils/dateUtils';
 
 interface Tenant {
   id: number;
@@ -1000,7 +1001,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                               </div>
                               <div className="text-2xs text-slate-400 dark:text-slate-500 font-mono">
                                 /{tenant.slug} · ID: {tenant.id}
-                                {tenant.subscription_expires_at && ` · Renews: ${tenant.subscription_expires_at}`}
+                                {tenant.subscription_expires_at && ` · Renews: ${formatDateDDMMYYYY(tenant.subscription_expires_at)}`}
                               </div>
                             </div>
                           </div>
@@ -1343,14 +1344,14 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                               : h.new_plan_type}
                           </span>
                           <span className="text-slate-400 dark:text-slate-500 shrink-0">
-                            {new Date(h.recorded_at).toLocaleDateString('en-GB')}
+                            {formatDateDDMMYYYY(h.recorded_at)}
                           </span>
                         </div>
                         {h.new_expires_at && (
                           <p className="text-slate-500 dark:text-slate-400 mt-0.5">
-                            Renews: {new Date(h.new_expires_at).toLocaleDateString('en-GB')}
+                            Renews: {formatDateDDMMYYYY(h.new_expires_at)}
                             {h.old_expires_at && h.old_expires_at !== h.new_expires_at
-                              ? ` (was ${new Date(h.old_expires_at).toLocaleDateString('en-GB')})`
+                              ? ` (was ${formatDateDDMMYYYY(h.old_expires_at)})`
                               : ''}
                           </p>
                         )}

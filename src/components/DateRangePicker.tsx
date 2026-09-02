@@ -128,7 +128,7 @@ const NO_END_CEILING = new Date(2099, 0, 1);
 function formatIsoNice(iso: string): string {
   const d = fromIsoDate(iso);
   return d
-    ? d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+    ? `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
     : iso;
 }
 

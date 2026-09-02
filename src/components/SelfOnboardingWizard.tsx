@@ -53,7 +53,7 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
   const expiryDate = new Date(todayDate);
   expiryDate.setDate(expiryDate.getDate() + 30);
 
-  const formatDate = (d: Date) => d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  const formatDate = (d: Date) => `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 
   const isStep1Valid = !!fullName.trim() && !!email.trim() && phone.replace(/\D/g, '').length === 10 && passcode.length === 6;
   const isStep3Valid = !!propertyName.trim() && hasKitchen !== null;
