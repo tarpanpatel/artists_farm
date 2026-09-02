@@ -1898,7 +1898,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           return (
             <div
               key={item.id}
-              className="pos-food-row bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-2.5 flex items-center justify-between gap-3 hover:border-blue-500 transition-all shadow-xs"
+              className="pos-food-row bg-white dark:bg-gray-800 rounded-none sm:rounded-lg border-x-0 sm:border border-y sm:border-y border-gray-200 dark:border-gray-700 px-4 py-2.5 sm:p-2.5 flex items-center justify-between gap-3 hover:border-blue-500 transition-all shadow-none sm:shadow-xs -mt-px sm:mt-0"
             >
               <div className="flex items-center gap-2.5 min-w-0 flex-1">
                 <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 overflow-hidden flex items-center justify-center shrink-0">
@@ -2289,7 +2289,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                             {items.map((item) => renderFoodCard(item))}
                           </div>
                         ) : (
-                          <div className="pos-menu-list space-y-1.5">
+                          <div className="pos-menu-list -mx-3.5 sm:mx-0 space-y-0 sm:space-y-1.5">
                             {items.map((item) => renderFoodRow(item))}
                           </div>
                         )}
@@ -2303,7 +2303,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       {filteredPosMenuItems.map((item) => renderFoodCard(item))}
                     </div>
                   ) : (
-                    <div className="pos-menu-list space-y-1.5">
+                    <div className="pos-menu-list -mx-3.5 sm:mx-0 space-y-0 sm:space-y-1.5">
                       {filteredPosMenuItems.map((item) => renderFoodRow(item))}
                     </div>
                   )
