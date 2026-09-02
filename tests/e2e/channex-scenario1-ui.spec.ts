@@ -9,9 +9,17 @@ import { test, expect } from '@playwright/test';
 test('Channel Manager UI: login, load screen, and push ARI produces real task IDs', async ({ page }) => {
   await page.goto('/jaipur/');
 
-  await page.locator('#mobileNumber').fill('9999999001');
-  await page.locator('#passcode').fill('424242');
-  await page.getByRole('button', { name: 'Login to Terminal' }).click();
+  // BUG (2 Sep 2026, found running this spec): 9999999001/424242 is a real
+  // login (usr-ai-test-1, created locally for exactly this purpose - see
+  // this repo's own ground-code-local-test-login memory / channex-booking-
+  // ari.spec.ts's login() for the same account), but "Login to Terminal" is
+  // not this form's real button label - it reads "Sign In" (LoginPage.tsx's
+  // variant='management' default), and fill() raced this form's own
+  // validation state (the button stayed disabled). This had apparently
+  // never been proven to actually pass end-to-end before.
+  await page.locator('#mobileNumber').pressSequentially('9999999001', { delay: 50 });
+  await page.locator('#passcode').pressSequentially('424242', { delay: 50 });
+  await page.getByRole('button', { name: 'Sign In', exact: true }).click();
 
   // Wait for the property dashboard to actually load post-login.
   await expect(page.getByText('Access Denied')).toHaveCount(0);

@@ -354,7 +354,16 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         cancelBtn.type = 'button';
         cancelBtn.setAttribute('aria-label', 'Cancel');
         cancelBtn.title = 'Cancel';
-        cancelBtn.className = 'datepicker-cancel-btn absolute top-2 right-2 z-10 flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-neutral-tertiary-medium dark:text-slate-500 dark:hover:text-slate-200 transition-colors cursor-pointer';
+        // BUG (2 Sep 2026, found writing a Playwright test that clicks the
+        // real Next-month arrow): top-2/right-2 put this button's hit area
+        // ~19x11px inside the header's own .next-btn hit area (measured
+        // live: cancel y:[430.6,458.6] x:[990,1018] vs next-btn
+        // y:[447.6,487.6] x:[973,1009]) - a real user clicking the top
+        // portion of Next, not just this test, could silently hit Cancel
+        // instead. Floats fully above the picker's own top border now
+        // (like a standard modal-corner close button) instead of
+        // overlapping its header row at all.
+        cancelBtn.className = 'datepicker-cancel-btn absolute -top-6 -right-2 z-10 flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-neutral-tertiary-medium dark:text-slate-500 dark:hover:text-slate-200 transition-colors cursor-pointer';
         cancelBtn.innerHTML = '<svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 17.94 6M18 18 6.06 6"/></svg>';
         cancelBtn.addEventListener('click', () => {
           callbacksRef.current.onCheckinChange(openedStartIsoRef.current);
