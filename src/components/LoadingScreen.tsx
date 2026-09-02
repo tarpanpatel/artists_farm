@@ -34,7 +34,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
           alt=""
           width={64}
           height={64}
-          className="w-16 h-16 rounded-2xl loading-screen-logo-pulse loading-screen__logo-img"
+          className="w-16 h-16 loading-screen-logo-pulse loading-screen__logo-img"
         />
 
         {/* Standard Loading Spinner Ring - a plain CSS border-ring div, NOT an icon component

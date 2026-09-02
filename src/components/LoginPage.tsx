@@ -477,7 +477,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
           was still on the old Lock-icon-in-a-box treatment even after the management variant
           was fixed). */}
       <a href="/" className="flex items-center mb-6 text-2xl font-semibold text-gray-900 dark:text-white">
-        <img src="/app-icons/icon-source.png" alt="" className="w-8 h-8 mr-2 rounded-lg" />
+        <img src="/app-icons/icon-source.png" alt="" className="w-8 h-8 mr-2" />
         <span>{isTerminal ? t('login_modal_brand') : 'Ground Code'}</span>
       </a>
 
