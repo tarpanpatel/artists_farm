@@ -1847,16 +1847,32 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
     return (
       <div data-tour="stock-requisition">
+      {/* attachedTabsTheme/attachedTabsClearTheme, not an ad-hoc one-off theme
+          (2 Sep 2026, user report: "Requisitions page is not following design
+          rules like bookings page") - this was the only Tabs usage in the
+          attached-tabs family still building its own theme object from
+          scratch instead of the shared utils/tabsTheme.ts, which is why it
+          rendered as a grey segmented pill control instead of the individual
+          bordered/attached tabs every other page uses. Merged in (rather than
+          replaced outright) since the flex-nowrap/overflow-x-auto variant
+          fix below is still needed and isn't part of the shared theme. */}
       <Tabs
         aria-label="Stock Request Tabs"
         variant="default"
-        // flex-nowrap + overflow-x-auto: flowbite's default tablist is
-        // flex-wrap, which was dropping "Request Materials" onto its own
-        // second row on mobile once the first tab's title pushed past the
-        // available width - both tabs now stay on one row, scrolling
-        // horizontally instead of wrapping if a title is ever still too
-        // long for a very narrow screen (found 21 Aug 2026).
-        theme={{ tablist: { base: 'justify-center', variant: { default: 'flex-nowrap overflow-x-auto' } } }}
+        theme={{
+          ...attachedTabsTheme,
+          tablist: {
+            ...attachedTabsTheme.tablist,
+            // flex-nowrap + overflow-x-auto: flowbite's default tablist is
+            // flex-wrap, which was dropping "Request Materials" onto its own
+            // second row on mobile once the first tab's title pushed past the
+            // available width - both tabs now stay on one row, scrolling
+            // horizontally instead of wrapping if a title is ever still too
+            // long for a very narrow screen (found 21 Aug 2026).
+            variant: { default: 'flex-nowrap overflow-x-auto' },
+          },
+        }}
+        clearTheme={attachedTabsClearTheme}
         onActiveTabChange={(tabIndex: number) => {
           const tabs: ('fulfill' | 'requisitions')[] = ['fulfill', 'requisitions'];
           if (tabs[tabIndex]) setActiveTab(tabs[tabIndex]);
@@ -1879,9 +1895,18 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           {/* Chrome (bg/border/rounded/padding) is mobile-only - at md: and up
               the table's own card below already provides it, so keeping
               this unconditional just doubled the border/shadow around a
-              single piece of content ("block inside a block", 20 Aug 2026). */}
-          <div className="space-y-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3.5 sm:p-4 md:bg-transparent md:dark:bg-transparent md:border-0 md:rounded-none md:p-0">
-            <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md overflow-x-auto">
+              single piece of content ("block inside a block", 20 Aug 2026).
+              rounded-tl-none border-t-0 -mt-px (2 Sep 2026, same "attached
+              tabs" flush treatment as BillingCheckout.tsx's desk-body Card -
+              see its comment for the fuller writeup): the Tabs row above
+              doesn't span this card's full width, so only the top-left
+              corner sits under a tab and needs to stay square; top-right
+              stays rounded like the bottom two. */}
+          <div className="space-y-4 bg-white dark:bg-gray-800 rounded-lg rounded-tl-none border border-t-0 border-gray-200 dark:border-gray-700 p-3.5 sm:p-4 -mt-px md:bg-transparent md:dark:bg-transparent md:border-0 md:rounded-none md:p-0 md:mt-0">
+            {/* Same flush treatment as the mobile wrapper above, for the same
+                reason - this desktop table card sits directly under the same
+                Tabs row at md: and up. */}
+            <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg rounded-tl-none border border-t-0 border-slate-200 dark:border-slate-700 shadow-md overflow-x-auto -mt-px">
               <div className="w-full flex flex-col sm:flex-row sm:items-center gap-3 p-4 border-b border-slate-100 dark:border-slate-700/80">
                 <FlowbiteTextInput
                   type="text"
@@ -2219,7 +2244,12 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     </div>
                   </DrawerItems>
 
-                  <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/90 shrink-0 flex items-center justify-end gap-2">
+                  {/* pb-[calc(1rem+env(safe-area-inset-bottom,0px))], not plain
+                      p-4 (2 Sep 2026, site-wide audit) - see DESIGN.md's
+                      "Bottom-Anchored Drawer Footer Safe Area" rule. Sibling of
+                      DrawerItems above, shrink-0, pinned to the physical
+                      bottom edge. */}
+                  <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/90 shrink-0 flex items-center justify-end gap-2">
                     <Button onClick={() => setSelectedFulfillSheet(null)} variant="secondary">
                       {t('cancel_button', 'Cancel')}
                     </Button>
@@ -2559,8 +2589,16 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               ))}
             </div>
 
-            {/* Action Footer */}
-            <div className="p-3 bg-white border-t border-slate-200 shrink-0 space-y-2">
+            {/* Action Footer.
+                pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))], not plain
+                p-3 (2 Sep 2026, site-wide audit) - see DESIGN.md's "Bottom-
+                Anchored Drawer Footer Safe Area" rule. Unlike Kitchen's own
+                mobile cart sheet (fixed, offset above the bottom nav bar by
+                design), this one is sticky bottom-0 inside the Drawer's own
+                scrollable body - its bottom edge sits flush with the
+                physical screen edge on mobile, same risk as any other pinned
+                drawer footer. */}
+            <div className="p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] bg-white border-t border-slate-200 shrink-0 space-y-2">
               <Textarea
                 rows={1}
                 value={specialRequestText}

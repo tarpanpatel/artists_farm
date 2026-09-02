@@ -3,6 +3,7 @@ import { Building2, Layers, Home, ExternalLink, LogOut, Loader2, ArrowLeft } fro
 import { API_ROOT_BASE } from '../services/api';
 import { StaffMember } from '../types';
 import { t } from '../i18n/en';
+import { Button } from './Button';
 
 interface PickerProperty {
   id: number;
@@ -111,25 +112,31 @@ export const StaffPropertyPicker: React.FC<StaffPropertyPickerProps> = ({
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {onClose && (
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={onClose}
-              className="staff-property-picker__back flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer"
+              leftIcon={<ArrowLeft className="w-3.5 h-3.5 shrink-0" />}
+              className="staff-property-picker__back text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
             >
-              <ArrowLeft className="w-3.5 h-3.5" /> {t('back_button', 'Back')}
-            </button>
+              {t('back_button', 'Back')}
+            </Button>
           )}
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={onLogout}
-            className="staff-property-picker__logout flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors cursor-pointer"
+            leftIcon={<LogOut className="w-3.5 h-3.5 shrink-0 text-red-600 dark:text-red-400" />}
+            className="staff-property-picker__logout text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/40 font-medium"
           >
-            <LogOut className="w-3.5 h-3.5" /> {t('logout_button', 'Log Out')}
-          </button>
+            {t('logout_button', 'Log Out')}
+          </Button>
         </div>
       </div>
 
-      <div className="staff-property-picker__body flex-1 max-w-5xl w-full mx-auto px-6 py-8">
+      <div className="staff-property-picker__body flex-1 max-w-5xl w-full mx-auto px-6 pt-8 pb-[calc(2rem+env(safe-area-inset-bottom,0px))]">
         <p className="staff-property-picker__subtitle text-sm text-slate-500 dark:text-slate-400 mb-6">
           {t('staff_picker_subtitle', 'This account can access every property under this tenant. Pick one to continue.')}
         </p>
@@ -145,30 +152,46 @@ export const StaffPropertyPicker: React.FC<StaffPropertyPickerProps> = ({
             {t('staff_picker_no_properties', 'No active properties found for this tenant.')}
           </div>
         ) : (
-          <div className="staff-property-picker__grid grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+          <div className="staff-property-picker__grid grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 sm:gap-4">
             {properties.map((property) => {
               const isMultiKey = property.property_type === 'MULTI_KEY';
               return (
-                <button
+                <div
                   key={property.id}
                   onClick={() => handleSelectProperty(property)}
-                  className="staff-property-picker__card text-left bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 sm:p-6 shadow-md hover:shadow-md transition-all group cursor-pointer"
+                  className="staff-property-picker__card text-left bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-3.5 sm:p-4 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all flex items-center justify-between gap-3 group cursor-pointer"
                 >
-                  <div className={`staff-property-picker__card-icon w-11 h-11 rounded-lg flex items-center justify-center shadow-sm mb-4 ${isMultiKey ? 'bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/40 dark:to-purple-900/40' : 'bg-gradient-to-br from-teal-100 to-emerald-100 dark:from-teal-900/40 dark:to-emerald-900/40'}`}>
-                    {isMultiKey ? (
-                      <Layers className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                    ) : (
-                      <Home className="w-5 h-5 text-teal-600 dark:text-teal-400" />
-                    )}
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className={`staff-property-picker__card-icon w-10 h-10 rounded-lg flex items-center justify-center shrink-0 shadow-xs ${isMultiKey ? 'bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/40 dark:to-purple-900/40' : 'bg-gradient-to-br from-teal-100 to-emerald-100 dark:from-teal-900/40 dark:to-emerald-900/40'}`}>
+                      {isMultiKey ? (
+                        <Layers className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                      ) : (
+                        <Home className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="staff-property-picker__card-name font-semibold text-slate-900 dark:text-white text-sm sm:text-base leading-snug truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                        {property.name}
+                      </h3>
+                      <p className="staff-property-picker__card-slug text-xs text-slate-400 dark:text-slate-500 font-mono truncate">
+                        /{property.slug}
+                      </p>
+                    </div>
                   </div>
-                  <h3 className="staff-property-picker__card-name font-semibold text-slate-900 dark:text-white mb-1 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
-                    {property.name}
-                  </h3>
-                  <p className="staff-property-picker__card-slug text-xs text-slate-400 dark:text-slate-500 mb-3">/{property.slug}</p>
-                  <div className="staff-property-picker__card-open flex items-center gap-1.5 text-xs font-semibold text-teal-600 dark:text-teal-400">
-                    <ExternalLink className="w-3 h-3" /> {t('open_dashboard_link', 'Open Property')}
+                  <div className="shrink-0">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectProperty(property);
+                      }}
+                      leftIcon={<ExternalLink className="w-3.5 h-3.5 shrink-0" />}
+                    >
+                      {t('open_dashboard_link', 'Open Property')}
+                    </Button>
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>

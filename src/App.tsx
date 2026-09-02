@@ -2024,7 +2024,7 @@ ${itemsStr}
           // (fixed z-50, no literal inset-0 so the app-wide z-50->58 bump rule
           // in custom.css never applies to it either) which would otherwise
           // poke through this overlay's background.
-          <div className="fixed inset-0 z-[60]">
+          <div className="fixed inset-0 z-[60] overflow-y-auto">
             <StaffPropertyPicker
               tenantId={effectiveSwitchTenantId}
               tenantSlug={effectiveSwitchTenantSlug}

@@ -911,8 +911,13 @@ export const LegalDrawer: React.FC<LegalDrawerProps> = ({ activeTab, onClose, te
         )}
       </DrawerItems>
 
-      {/* Drawer Footer Actions */}
-      <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 flex items-center justify-end shrink-0">
+      {/* Drawer Footer Actions.
+          pb-[calc(1rem+env(safe-area-inset-bottom,0px))], not plain p-4 (2 Sep
+          2026, site-wide audit) - see DESIGN.md's "Bottom-Anchored Drawer
+          Footer Safe Area" rule. This sits outside DrawerItems (the
+          scrollable region) as a shrink-0 sibling pinned to the physical
+          bottom edge. */}
+      <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 flex items-center justify-end shrink-0">
         <Button variant="secondary" size="xs" onClick={onClose}>
           Close
         </Button>

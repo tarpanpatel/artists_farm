@@ -500,8 +500,19 @@ export const Header: React.FC<HeaderProps> = ({
                 Escape dismiss (see the effect above) as a real fix for that
                 second part, not just a side effect of this position fix. */}
             {showNotificationDropdown && (
-              <div className="header__dropdown notifications-popover-dropdown fixed left-2 right-2 top-[calc(4rem+env(safe-area-inset-top,0px))] max-sm:w-auto sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-96 bg-white dark:bg-slate-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 py-2 z-50 animate-in fade-in slide-in-from-top-2">
-                <div className="header__dropdown-header px-4 py-2.5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between gap-2">
+              /* bg-blue-100 dark:bg-blue-900/60 (2 Sep 2026, explicit request) -
+                 the exact same "active" classes the bell button itself uses
+                 (see btn-notification-bell above), so the open dropdown
+                 visually reads as an extension of that active bell state.
+                 pt-2 on the header row, not py-2.5 (explicit request: top
+                 padding should match left/right) - this outer container's
+                 own py-2 already contributes 8px top+bottom that the
+                 horizontal sides never get (no px- here, only the header
+                 row's own px-4 provides that), so the header row's own top
+                 padding needs to be 8px less than its bottom/sides to make
+                 the TOTAL top gap (outer + header) equal the total side gap. */
+              <div className="header__dropdown notifications-popover-dropdown fixed left-2 right-2 top-[calc(4rem+env(safe-area-inset-top,0px))] max-sm:w-auto sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-96 bg-blue-100 dark:bg-blue-900/60 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 py-2 z-50 animate-in fade-in slide-in-from-top-2">
+                <div className="header__dropdown-header px-4 pt-2 pb-2.5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between gap-2">
                   <span className="header__dropdown-title text-[10px] font-semibold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
                     <Bell className="w-3.5 h-3.5 text-blue-600" />
                     {t('notifications_label', 'Notifications')}
@@ -717,9 +728,13 @@ export const Header: React.FC<HeaderProps> = ({
                             Staff requested material requisitions for kitchen/inventory
                           </p>
                         </div>
+                        {/* Text-link style, matching every other section's View
+                            button (2 Sep 2026, explicit request: "make all view
+                            buttons same") - this and Low Stock's below were the
+                            only two still using the old solid-color-pill style. */}
                         <button
                           onClick={() => handleNavigateAndClose('kitchen', 'stock_requests')}
-                          className="text-[9px] font-bold px-2 py-1 rounded bg-amber-600 hover:bg-amber-700 text-white cursor-pointer transition-colors shrink-0 inline-flex items-center gap-1"
+                          className="text-[9px] font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer shrink-0 inline-flex items-center gap-0.5"
                         >
                           <span>{t('view_button', 'View')}</span>
                           <ArrowRight className="w-2.5 h-2.5" />
@@ -745,7 +760,7 @@ export const Header: React.FC<HeaderProps> = ({
                         </div>
                         <button
                           onClick={() => handleNavigateAndClose('inventory', 'stock_requests')}
-                          className="text-[9px] font-bold px-2 py-1 rounded bg-red-600 hover:bg-red-700 text-white cursor-pointer transition-colors shrink-0 inline-flex items-center gap-1"
+                          className="text-[9px] font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer shrink-0 inline-flex items-center gap-0.5"
                         >
                           <span>{t('view_button', 'View')}</span>
                           <ArrowRight className="w-2.5 h-2.5" />

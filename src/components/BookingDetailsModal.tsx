@@ -1291,8 +1291,15 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           </div>
         </DrawerItems>
 
-        {/* Modal Actions Footer: Sticky / Pinned at bottom of drawer */}
-        <div id="printableBookingDetailsActionsBar" className="booking-details-modal__footer shrink-0 p-4 sm:p-5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800">
+        {/* Modal Actions Footer: Sticky / Pinned at bottom of drawer.
+            pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:pb-[calc(1.25rem+...)],
+            not plain p-4 sm:p-5 (2 Sep 2026, site-wide audit) - see DESIGN.md's
+            "Bottom-Anchored Drawer Footer Safe Area" rule. This footer is a
+            shrink-0 sibling AFTER DrawerItems (this file's own comment above
+            already calls it "Pinned at bottom of drawer") - DESIGN.md's rule
+            text cites this exact footer as the non-pinned exempt case, but
+            that no longer matches the actual structure here. */}
+        <div id="printableBookingDetailsActionsBar" className="booking-details-modal__footer shrink-0 p-4 sm:p-5 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800">
             {!isEditing ? (
               <div className="space-y-3 w-full">
                 {/* Mark Checked In (Full-width action if check-in is due today or past) */}
