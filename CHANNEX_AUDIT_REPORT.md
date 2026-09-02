@@ -1,9 +1,9 @@
 # Comprehensive Channex Channel Manager Integration Audit Report
 
-**Date:** 30 August 2026  
+**Date:** 30 August 2026 (certification passed 2 September 2026 — see update below)  
 **Environment:** Staging Sandbox (`https://staging.channex.io/api/v1`)  
 **Target:** Official Channex PMS Certification (Scenarios 1–8)  
-**Status:** **All 8 scenarios verified against the live sandbox. Not yet driven from the UI by a human, and the OTA channel cannot be activated — see Known gaps.**
+**Status:** **CERTIFIED (2 Sep 2026).** All 8 scenarios passed the live screenshare audit. Production credentials (API key, base URL, webhook secret) requested from Channex and pending — see "Post-certification" below. The "Known gaps" row below is now historical: it describes the pre-certification sandbox state, not the current one.
 
 ---
 
@@ -96,3 +96,57 @@ During the 30-minute certification screenshare with the Channex auditor:
 1. **Scenario 1**: Open **System Controls $\rightarrow$ Channel Manager**, click **Push 500 Days**, and provide the auditor with the 2 generated Task IDs.
 2. **Scenarios 2–6**: Use the **Rate Rules** modal to create/update rates and stay restrictions, then verify the generated Task IDs in the Outbox Log.
 3. **Scenarios 7–8**: Trigger test bookings from the Channex Sandbox Simulator (`ota_name: "Offline"`) and verify live ingestion on the PMS Calendar and ACK status in the revisions log.
+
+---
+
+## 7. Post-certification — pending production go-live (added 2 Sep 2026)
+
+**Certification passed.** Waiting on Channex to issue production credentials
+(API key, base URL — likely `https://app.channex.io/api/v1` mirroring the
+staging→app naming pattern, and a separate production `webhook_secret`).
+Switching environments is config-only: `ChannexClient.php` reads all three
+from `php/config/channex_config.json` and has no staging/production branching
+in code.
+
+**Correction to §4's branching note**: "merged only once certified" means
+merged into **`multi-tenant`**, not `main` — `main` is an ancient,
+undeployed, single-property snapshot (last commit 29 Jul 2026, no
+`AuthContext`). `multi-tenant` is the actual product trunk; `channel-manager`
+is `multi-tenant` + this integration. See the repo-layout memory / `git
+worktree list` for the standing `artists_farm-mt` checkout on `multi-tenant`.
+
+**Merge-readiness check (2 Sep 2026, dry-run in a disposable worktree, no
+branch touched):** `channel-manager` is 133 commits ahead of `multi-tenant`,
+and 14 behind — trying the merge produces conflicts in exactly 6 files:
+
+| File | Nature |
+|---|---|
+| `sw.js` | Cosmetic — both branches independently bumped `CACHE_NAME` to `v23` for unrelated reasons, then `channel-manager` bumped again to `v24`. Resolve by bumping to `v25` with a comment covering both. |
+| `src/components/LoadingScreen.tsx` | `multi-tenant` still has `rounded-2xl` on the boot logo; `channel-manager`'s latest commit deliberately removed rounded-corner styling from brand logo elements. Keep the removal. |
+| `src/App.tsx` | Real conflict, not mechanical: `multi-tenant` still imports and renders `AIChatWidget`; `channel-manager` replaced it with the Help/FAQ `LegalDrawer` swap (2 Sep 2026, "remove all AI chat code from the site"). Needs a decision — does that removal apply product-wide, or was it scoped to this branch only? |
+| `src/components/LoginPage.tsx` | 4 hunks — `multi-tenant`'s autofill-misfire fix + `useAuthOptional`/`ErrorBoundary` wrapping vs. `channel-manager`'s own login changes. Not yet triaged line-by-line. |
+| `availability.php`, `php/rates/rate_rules.php` | Expected — both branches evolved the restrictions/outbox feature independently after the Phase 0 split (§5). `channel-manager`'s version is the later, more complete implementation (full restriction display; diff-scoped outbox enqueue comparing old vs. new rule state) and should win almost entirely; fold in `multi-tenant`'s "optional-require guard" comment/fix for `rate_rules.php` if `channel-manager` doesn't already have equivalent protection against a missing `php/channex/` directory. |
+
+Nothing else conflicts — the other ~120 commits on each side (PWA/login/PMS
+fixes on `multi-tenant`; the rest of the Channex build-out on
+`channel-manager`) merge cleanly. Not yet resolved on the real branch —
+this needs the `src/App.tsx` product decision above before merging for real,
+and this checkout currently has unrelated uncommitted work in progress
+(`src/components/LegalDrawer.tsx` / new `src/data/helpManual.ts` — a Help/FAQ
+knowledge-base rewrite) that must not be swept into that merge.
+
+**Sequence once production credentials arrive:**
+1. Store the production key/URL/secret in a production-only
+   `channex_config.json` (never committed).
+2. Resolve the `multi-tenant` merge above and merge `channel-manager` in.
+3. Deploy to production (`ground-code.com` / `deploy.ps1`) — this integration
+   has never touched production; only staging so far.
+4. Connect the real Airbnb/Booking.com listings per property inside the
+   Channex dashboard — everything certified ran against the sandbox's
+   Offline test channel / Certification Simulator property, not a live OTA.
+5. Flip `ICAL_BLOCKING_ENABLED` back to `true` in
+   `src/constants/featureFlags.ts`.
+6. Settle Booking.com's payment handling per property (masked-cards breaks
+   their virtual-card model) before that channel specifically goes live.
+7. Watch the outbox and webhook ACK status closely on the first real
+   bookings — everything tested so far was sandbox volume.
