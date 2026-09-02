@@ -1433,10 +1433,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               const activeOrders = orders.filter((o) => o.status === 'Pending' || o.status === 'Preparing');
 
               return (
-        <div className={`kds-orders-container space-y-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-3.5 sm:p-4 ${isRestrictedStaffKitchenView ? '' : 'rounded-t-none -mt-px border-t-0'}`}>
-          <div className="kds-status-filter-bar flex flex-col sm:flex-row items-start sm:items-center justify-end text-xs gap-3">
+        <div className={`kds-orders-container space-y-3 sm:space-y-4 bg-transparent sm:bg-white dark:sm:bg-slate-800 rounded-none sm:rounded-lg border-0 sm:border border-slate-200 dark:border-slate-700 p-0 sm:p-4 ${isRestrictedStaffKitchenView ? '' : 'rounded-t-none -mt-px border-t-0'}`}>
+          <div className="kds-status-filter-bar flex flex-col sm:flex-row items-start sm:items-center justify-end text-xs">
             {/* Smart Polling / Live Sync Bar */}
-            <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg w-full sm:w-auto justify-between sm:justify-start">
+            <div className="flex items-center gap-2.5 bg-white sm:bg-slate-50 dark:bg-slate-800 dark:sm:bg-slate-900 border-b sm:border border-slate-200 dark:border-slate-700 px-4 sm:px-3 py-2 sm:py-1.5 rounded-none sm:rounded-lg w-full sm:w-auto justify-between sm:justify-start">
               <div className="flex items-center gap-2">
                 {/* Always-on live indicator, not a toggle - see the state
                     declaration above for why this can't be paused. */}
@@ -1454,7 +1454,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 <button
                   onClick={triggerManualSync}
                   disabled={isSyncing}
-                  className="px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 active:scale-98 text-xs font-semibold rounded-lg shadow-md transition-colors cursor-pointer flex items-center justify-center gap-1.5 shrink-0 disabled:opacity-50"
+                  className="px-3 py-1.5 bg-slate-50 sm:bg-white dark:bg-slate-700 dark:sm:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 active:scale-98 text-xs font-semibold rounded-lg shadow-xs sm:shadow-md transition-colors cursor-pointer flex items-center justify-center gap-1.5 shrink-0 disabled:opacity-50"
                   title={t('check_for_updates_tooltip')}
                 >
                   <RefreshCw className={`w-3.5 h-3.5 shrink-0 ${isSyncing ? 'animate-spin text-blue-600' : ''}`} />

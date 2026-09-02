@@ -1895,7 +1895,6 @@ pre,
   .gen_page_head,
   .page-header,
   .tab-buttons-container,
-  .kds-status-filter-bar,
   .today-overview__header,
   .billing-checkout__header,
   .kitchen-management__desk > .flex {
@@ -2061,5 +2060,31 @@ pre,
   html.dark .pos-menu-list .pos-food-row {
     border-top-color: #1f2937 !important;
     border-bottom-color: #374151 !important;
+  }
+
+  /* Kitchen: auto-sync bar sits flush under tabs with clean border-b, no floating island styling */
+  .kds-status-filter-bar {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-bottom: 0.75rem !important;
+    width: 100% !important;
+  }
+
+  .kds-status-filter-bar > div {
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-top: none !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    width: 100% !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    background-color: #ffffff !important;
+    box-shadow: none !important;
+  }
+
+  html.dark .kds-status-filter-bar > div {
+    background-color: #1e293b !important;
+    border-bottom-color: #334155 !important;
   }
 }
