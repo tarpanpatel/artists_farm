@@ -3,9 +3,9 @@ import {
   Building2, LogOut, Plus, AlertCircle,
   Pencil, Trash2, ExternalLink, CheckCircle, Layers,
   Home, TrendingUp, ChevronRight, Lock, Zap, User,
-  Calendar, Bell, ArrowRight,
+  Calendar, Bell, ArrowRight, HelpCircle,
 } from './icons/FlowbiteIcons';
-import { ContactSupportMenu } from './ContactSupportMenu';
+import { Popover } from './Popover';
 import { StyledSelect } from './StyledSelect';
 import { LoadingScreen } from './LoadingScreen';
 import { API_ROOT_BASE, apiFetch } from '../services/api';
@@ -345,11 +345,25 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 {isPlatformAdmin ? t('root_admin_label', 'Root Admin') : t('tenant_manager_label', 'Property Owner')}
               </p>
             </div>
-            <ContactSupportMenu
-              showLabel
-              onOpenFaq={() => setLegalDrawerTab('faq')}
-              onOpenMoreSupport={() => setLegalDrawerTab('support')}
-            />
+            {/* Help/FAQ trigger (replaces ContactSupportMenu chat button - matches Header.tsx on property page) */}
+            <Popover
+              trigger="hover"
+              placement="bottom"
+              content={
+                <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                  {t('help_tooltip', 'Help & FAQ')}
+                </div>
+              }
+            >
+              <button
+                type="button"
+                onClick={() => setLegalDrawerTab('faq')}
+                aria-label={t('help_aria', 'Help & FAQ')}
+                className="tenant-dashboard__faq-toggle p-2 rounded-lg text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              >
+                <HelpCircle className="w-5 h-5" />
+              </button>
+            </Popover>
             <button
               onClick={handleLogout}
               className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors tenant-dashboard__logout-button"

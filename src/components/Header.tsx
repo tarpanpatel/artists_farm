@@ -414,15 +414,24 @@ export const Header: React.FC<HeaderProps> = ({
               see HeaderProps.onOpenFaq). Opens LegalDrawer.tsx straight to its FAQ
               tab, same "click icon, panel opens" pattern as the notification bell
               next to it. */}
-          <button
-            type="button"
-            onClick={() => onOpenFaq?.()}
-            title={t('help_tooltip', 'Help & FAQ')}
-            aria-label={t('help_aria', 'Help & FAQ')}
-            className="header__faq-toggle p-2 rounded-lg text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+          <Popover
+            trigger="hover"
+            placement="bottom"
+            content={
+              <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                {t('help_tooltip', 'Help & FAQ')}
+              </div>
+            }
           >
-            <HelpCircle className="w-5 h-5" />
-          </button>
+            <button
+              type="button"
+              onClick={() => onOpenFaq?.()}
+              aria-label={t('help_aria', 'Help & FAQ')}
+              className="header__faq-toggle p-2 rounded-lg text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+            >
+              <HelpCircle className="w-5 h-5" />
+            </button>
+          </Popover>
 
           {/* Notification Bell Button */}
           <div className="header__notification relative" ref={notificationWrapperRef}>

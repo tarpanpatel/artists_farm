@@ -1833,6 +1833,8 @@ export const strings: Record<string, string> = {
   channex_mappings_title: "Inventory Mappings",
   channex_queue_title: "Outbox Queue",
   copied_to_clipboard: "Copied to clipboard!",
+  help_tooltip: "Help & FAQ",
+  help_aria: "Help & FAQ",
 };
 
 export function t(key: string, fallback?: string, params?: Record<string, string | number>): string {
