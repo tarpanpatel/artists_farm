@@ -199,7 +199,7 @@ export const LegalDrawer: React.FC<LegalDrawerProps> = ({ activeTab, onClose, te
           </div>
 
           {/* Category Filter Pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-2xs">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
             {HELP_CATEGORIES.map((cat) => {
               const isSelected = selectedCategory === cat.id;
               return (
@@ -207,7 +207,7 @@ export const LegalDrawer: React.FC<LegalDrawerProps> = ({ activeTab, onClose, te
                   key={cat.id}
                   type="button"
                   onClick={() => setSelectedCategory(cat.id)}
-                  className={`px-2.5 py-1 rounded-full whitespace-nowrap font-semibold border transition-colors cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-full whitespace-nowrap font-medium text-xs border transition-colors cursor-pointer ${
                     isSelected
                       ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
                       : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
@@ -230,7 +230,7 @@ export const LegalDrawer: React.FC<LegalDrawerProps> = ({ activeTab, onClose, te
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <span>1-Month Free Trial • No Credit Card Required • No Lock-In</span>
               </div>
-              <p className="text-2xs text-emerald-700 dark:text-emerald-400 leading-normal">
+              <p className="text-xs text-emerald-700 dark:text-emerald-400 leading-normal">
                 Every property receives a 30-Day Free Trial. Billed at ₹1,499/month (includes 1st room key) + ₹350/extra key/month after trial via direct manual invoice.
               </p>
             </div>
@@ -266,7 +266,7 @@ export const LegalDrawer: React.FC<LegalDrawerProps> = ({ activeTab, onClose, te
                 <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
                 <span>STRICT ZERO DATA SELLING GUARANTEE</span>
               </div>
-              <p className="text-2xs text-blue-800 dark:text-blue-400 leading-normal">
+              <p className="text-xs text-blue-800 dark:text-blue-400 leading-normal">
                 Ground Code NEVER sells, rents, or monetizes property data, guest databases, or financial income records to third-party ad networks or OTAs.
               </p>
             </div>
@@ -297,7 +297,7 @@ export const LegalDrawer: React.FC<LegalDrawerProps> = ({ activeTab, onClose, te
                 <Cookie className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
                 <span>Essential Session Cookies Only</span>
               </div>
-              <p className="text-2xs text-amber-800 dark:text-amber-400 leading-normal">
+              <p className="text-xs text-amber-800 dark:text-amber-400 leading-normal">
                 Ground Code uses session tokens strictly to keep your staff logged into the dashboard securely. We do not use third-party ad tracking cookies.
               </p>
             </div>
@@ -323,7 +323,7 @@ export const LegalDrawer: React.FC<LegalDrawerProps> = ({ activeTab, onClose, te
                 <Headset className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0" />
                 <span>Ground Code Dedicated Support</span>
               </div>
-              <p className="text-2xs text-sky-800 dark:text-sky-400 leading-normal">
+              <p className="text-xs text-sky-800 dark:text-sky-400 leading-normal">
                 Our support team is available 7 days a week to assist with property configuration, staff PINs, KDS menus, and iCal calendar setup.
               </p>
             </div>
@@ -370,7 +370,7 @@ export const LegalDrawer: React.FC<LegalDrawerProps> = ({ activeTab, onClose, te
                   <MessageSquare className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                   <div>
                     <span className="font-bold text-slate-900 dark:text-white block">Telegram Staff Alerts Bot</span>
-                    <span className="text-2xs text-slate-500 dark:text-slate-400">Native automated property alerts & KDS notifications</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">Native automated property alerts & KDS notifications</span>
                   </div>
                 </div>
 
@@ -378,7 +378,7 @@ export const LegalDrawer: React.FC<LegalDrawerProps> = ({ activeTab, onClose, te
                   <Phone className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
                   <div>
                     <span className="font-bold text-slate-900 dark:text-white block">Guided Onboarding Setup Call</span>
-                    <span className="text-2xs text-slate-500 dark:text-slate-400">Schedule your personal 30-minute 1-on-1 setup session</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">Schedule your personal 30-minute 1-on-1 setup session</span>
                   </div>
                 </div>
               </div>
@@ -392,11 +392,11 @@ export const LegalDrawer: React.FC<LegalDrawerProps> = ({ activeTab, onClose, te
             <div className="p-3.5 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-xl flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                <span className="font-bold text-blue-950 dark:text-blue-200 text-xs">
+                <span className="font-semibold text-blue-950 dark:text-blue-200 text-sm">
                   Operational Manual &amp; FAQs
                 </span>
               </div>
-              <span className="text-[10px] font-semibold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/60 px-2 py-0.5 rounded-full border border-blue-200 dark:border-blue-800">
+              <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/60 px-2.5 py-0.5 rounded-full border border-blue-200 dark:border-blue-800">
                 {filteredItems.length} {filteredItems.length === 1 ? 'guide' : 'guides'}
               </span>
             </div>
@@ -414,7 +414,7 @@ export const LegalDrawer: React.FC<LegalDrawerProps> = ({ activeTab, onClose, te
                       <button
                         type="button"
                         onClick={() => toggleAccordion(item.id)}
-                        className="w-full flex items-center justify-between p-3.5 text-left font-bold text-xs text-slate-900 dark:text-white bg-slate-50/70 dark:bg-slate-800/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors cursor-pointer gap-2"
+                        className="w-full flex items-center justify-between p-3.5 text-left font-semibold text-sm text-slate-900 dark:text-white bg-slate-50/70 dark:bg-slate-800/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors cursor-pointer gap-2"
                         aria-expanded={isExpanded}
                       >
                         <div className="flex items-center gap-2 min-w-0 pr-1">
@@ -429,7 +429,7 @@ export const LegalDrawer: React.FC<LegalDrawerProps> = ({ activeTab, onClose, te
                       </button>
 
                       {isExpanded && (
-                        <div className="p-4 border-t border-slate-200/80 dark:border-slate-700/80 text-2xs text-slate-600 dark:text-slate-300 space-y-3 bg-white dark:bg-slate-900/40">
+                        <div className="p-4 border-t border-slate-200/80 dark:border-slate-700/80 text-xs text-slate-600 dark:text-slate-300 space-y-3 bg-white dark:bg-slate-900/40">
                           <p className="font-medium text-slate-700 dark:text-slate-200 leading-relaxed">
                             {item.summary}
                           </p>
@@ -438,7 +438,7 @@ export const LegalDrawer: React.FC<LegalDrawerProps> = ({ activeTab, onClose, te
                             <ol className="space-y-2 pl-0 list-none pt-1">
                               {item.steps.map((step, idx) => (
                                 <li key={idx} className="flex items-start gap-2.5 leading-relaxed">
-                                  <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 font-bold text-[10px] shrink-0 mt-0.5 border border-blue-200 dark:border-blue-800">
+                                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 font-bold text-xs shrink-0 mt-0.5 border border-blue-200 dark:border-blue-800">
                                     {idx + 1}
                                   </span>
                                   <span className="text-slate-600 dark:text-slate-300">{step}</span>
@@ -467,10 +467,10 @@ export const LegalDrawer: React.FC<LegalDrawerProps> = ({ activeTab, onClose, te
               <div className="text-center py-8 px-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 space-y-3">
                 <HelpCircle className="w-8 h-8 text-slate-400 mx-auto" />
                 <div>
-                  <h4 className="font-bold text-xs text-slate-900 dark:text-white">
+                  <h4 className="font-semibold text-sm text-slate-900 dark:text-white">
                     No matching manual article for "{faqSearch}"
                   </h4>
-                  <p className="text-2xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
                     Have a specific question not covered in this guide? Chat directly with Ground Code Hospitality Support.
                   </p>
                 </div>
