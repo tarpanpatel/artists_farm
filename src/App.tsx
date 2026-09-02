@@ -964,6 +964,24 @@ function AppBody({ preloadedData }: AppBodyProps) {
     }
   }, [isAuthenticated, authChecked, preloadedData.currentProperty?.id, (preloadedData.currentProperty as any)?.tenant_subscription_status, (preloadedData.currentProperty as any)?.tenant_subscription_expires_at]);
 
+  // Ensure favicon is always active and dynamically update document title with property name
+  useEffect(() => {
+    let favicon = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+    if (!favicon) {
+      favicon = document.createElement('link');
+      favicon.rel = 'icon';
+      document.head.appendChild(favicon);
+    }
+    favicon.href = '/favicon.ico';
+  }, []);
+
+  useEffect(() => {
+    const propName = preloadedData.currentProperty?.name;
+    if (propName) {
+      document.title = `${propName} — Ground Code`;
+    }
+  }, [preloadedData.currentProperty?.name]);
+
 
 
   // Hydrate nav menu from DB on startup.

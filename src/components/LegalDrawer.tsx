@@ -20,7 +20,7 @@ import { WhatsappIcon } from './icons/WhatsappIcon';
 import { TelegramIcon } from './icons/TelegramIcon';
 import { Button } from './Button';
 import { API_ROOT_BASE } from '../services/api';
-import { HELP_CATEGORIES, HELP_MANUAL_ITEMS, HelpManualItem } from '../data/helpManual';
+import { HELP_CATEGORIES, HELP_MANUAL_ITEMS } from '../data/helpManual';
 
 export type LegalTabType = 'terms' | 'privacy' | 'cookies' | 'support' | 'faq' | null;
 

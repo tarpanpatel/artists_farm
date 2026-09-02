@@ -32,6 +32,11 @@ DirectoryIndex index.php index.html
     RewriteRule ^availability/([a-z0-9-_]+)/?$ availability.php?property_slug=$1 [QSA,L]
     RewriteRule ^availability/?$ availability.php [QSA,L]
 
+    # Favicon and App Icons: route any subpath requests (e.g. /jaipur/favicon.ico or /jaipur/app-icons/...)
+    # to the actual root static files so browsers receive the real image rather than an HTML SPA rewrite.
+    RewriteRule (^|.*/)(favicon\.ico)$ /favicon.ico [L]
+    RewriteRule (^|.*/)(app-icons/.+)$ /$2 [L]
+
     # Handle tenant/property routing for multi-tenant SaaS
     # e.g., /tenant-slug/property-slug/anything -> /index.php?tenant_slug=tenant-slug&property_slug=property-slug
     # Only rewrites when the full path isn't a real file/directory, so

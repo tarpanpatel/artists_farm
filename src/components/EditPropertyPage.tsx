@@ -4,7 +4,6 @@ import { t } from '../i18n/en';
 import { PropertyEditForm } from './PropertyEditForm';
 import { RoomsManagement } from './RoomsManagement';
 import { PageHeader } from './PageHeader';
-import { ICalSyncManager } from './ICalSyncManager';
 
 interface EditPropertyPageProps {
   onNavigateToRoom?: (roomSlug: string, initialTab?: string) => void;
@@ -75,21 +74,11 @@ export const EditPropertyPage: React.FC<EditPropertyPageProps> = ({ property, on
         </Card>
       </div>
 
-      {/* Calendar Sync (formerly its own standalone "iCal Sync" sidebar page,
-          removed - a single property has exactly one calendar to manage, so
-          this is just another property-level setting. A MULTI_KEY parent
-          isn't itself bookable (each room is), so it has no calendar of its
-          own here - see the room's own Edit Room page in
-          MultiKeyPropertyOverview.tsx for that case instead. Only two real
-          property types exist (SINGLE/MULTI_KEY, see TenantDashboard.tsx's
-          creation UI) - any other value is stale legacy data self-healed to
-          SINGLE in php/config/database.php, not a type this should branch
-          on. */}
-      {property.property_type === 'SINGLE' && (
-        <div className="edit-property-page__ical-card bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 sm:p-6">
-          <ICalSyncManager propertyId={property.id} propertySlug={property.slug} embedded />
-        </div>
-      )}
+      {/* iCal Sync card (ARCHIVED 3 Sep 2026 - superseded by the Channex channel-manager
+          integration; see _unwanted/ical/README.md). ICalSyncManager.tsx moved there, not
+          deleted - the backend (php/api/ical_sync.php, sync_all_icals.php, and the
+          unconverted-OTA-alerts cron that requires it as a function library) is untouched
+          and still live for any already-configured feeds. Only this settings UI is gone. */}
     </div>
   );
 };

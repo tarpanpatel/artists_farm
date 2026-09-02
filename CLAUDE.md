@@ -110,6 +110,30 @@ Features whose UI/backend wiring isn't obvious from file names alone - check her
 - Daily cron `php/cron/check_licenses.php` sends 7/4/1-day-out Telegram expiry alerts.
 - The i18n keys for this (`license_management_heading`, `license_type_*`, etc.) existed in `en.ts` for a while before the UI did - if you find orphaned-looking i18n keys again elsewhere, ask whether a page was planned but never finished, don't assume they're dead.
 
+### AI Assistant (DISABLED AGAIN 2 Sep 2026 - do not trust the "RESTORED" section below without reading this first)
+The AI Assistant went through a full remove → restore cycle already (see below), then was disabled
+a second time on 2 Sep 2026 at the user's request ("Replace ai chat icon with help icon... Also put
+all ai files in safe and remove all codes from the site. We will use it in future"). This time it
+was **not** archived to `_unwanted/ai/` the way the first removal was - `AIChatWidget.tsx` and its
+backend files all stay in their normal locations, just disconnected:
+- `src/App.tsx` - `AIChatWidget` import, `isAIChatOpen` state, and its render block are gone
+  (replaced with `LegalDrawer`'s FAQ tab, opened from a new `legalDrawerActiveTab` state).
+- `src/components/Header.tsx` - the chat-trigger button now opens FAQ instead (`Bot` icon → `HelpCircle`,
+  `onToggleAIChat` prop → `onOpenFaq`).
+- `php/api/ai_assistant.php` - a `410` guard was added right after the file's top doc comment
+  (`http_response_code(410); ... exit;`), all real logic below it untouched. Reversible by deleting
+  just that one block.
+- `php/api/ai_config.php` (Root Admin's AI provider credentials page) was deliberately left alone -
+  it's a separate admin surface, not the chat feature itself.
+- The five `initialXxx` deep-link-prefill states in `App.tsx` this feature used to populate are still
+  there (still threaded as props elsewhere) but permanently null now - their setters were removed
+  since nothing writes to them any more.
+
+Given this class of feature has now been fully removed-and-restored once already, don't assume this
+second disable is permanent either - check git history / ask before doing a deeper cleanup pass, and
+don't be surprised if it comes back a third time. The section below is the original remove/restore
+writeup and is otherwise still accurate for the file layout **as it stood 27 Aug - 2 Sep 2026**.
+
 ### AI Assistant (RESTORED 27 Aug 2026, after being removed 26 Aug 2026)
 Removed entirely on 26 Aug 2026 at the user's explicit request ("There shouldn't be a single line
 of code related to AI in working files of the app"), archived byte-for-byte at `_unwanted/ai/`
@@ -152,6 +176,20 @@ CLAUDE.md's own dates before trusting a "REMOVED"/"do not re-add" note is still 
   `PettyCashManagement.tsx` (their deep-link-prefill `useEffect` blocks + `initialXxx` props), and
   `php/errors/logger.php`'s `$routineNoise` allowlist (`'AI Query'`/`'AI Outcome'`/
   `'AI Config Updated'` added back so normal chat usage doesn't push a phone alert per message).
+
+### iCal Sync Settings UI (ARCHIVED 3 Sep 2026 - narrower than it looks, read before touching anything "ical")
+Only the settings/management UI is archived (superseded by the Channex channel-manager integration
+- see `CHANNEX_GO_LIVE_CHECKLIST.md`), moved to `_unwanted/ical/` (full detail in that folder's own
+`README.md`, same convention as `_unwanted/ai/`). **The backend is untouched and still live** -
+`php/api/ical_sync.php` is `require_once`'d directly by `check_unconverted_ota_bookings.php` (a real,
+currently-running cron), so don't guard, move, or "clean up" any `php/*ical*` file assuming this
+archive covers it. During any site-wide sweep (design consistency, safe-area audit, etc.), skip
+`_unwanted/ical/` entirely - it's retired, not something to bring up to current design standards.
+Severed frontend touchpoints: `EditPropertyPage.tsx`, `MultiKeyPropertyOverview.tsx` (both dropped
+their `<ICalSyncManager>` card), `Header.tsx` (dropped the calendar-sync quick-action button), and
+`DemoOnboardingTour.tsx` (removed the `'ota-sync'` step entirely, not just left dangling - that
+tour runs with `skipMissingElement: false`, so a step whose target vanished would have silently
+truncated the whole tour rather than skipping just that step).
 
 ### QR Code & UPI Payment Sharing (added 15 Aug 2026)
 - Booking-confirmation and checkout-bill WhatsApp shares can include a scannable UPI QR code + the property's UPI ID, so guests can pay by scanning rather than typing details.

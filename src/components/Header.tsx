@@ -13,7 +13,6 @@ import {
   Smartphone,
   Download,
   ClipboardList,
-  RefreshCw,
   ArrowRight,
   Eye,
   Check,
@@ -31,7 +30,7 @@ import { GUEST_STATUS_CHECKEDOUT_LEGACY, GUEST_STATUS_CHECKED_OUT } from '../con
 import { t } from '../i18n';
 import { TabType } from './Navigation';
 
-import { getPropertyAndRoomSlugs, fetchIcalCalendarsFromDB, syncAllIcalCalendarsInDB, fulfillServiceRequestInDB } from '../services/api';
+import { fulfillServiceRequestInDB } from '../services/api';
 import { useToast } from './ToastContext';
 
 interface HeaderProps {
@@ -95,7 +94,7 @@ export const Header: React.FC<HeaderProps> = ({
   onSwitchProperty,
   canSwitchProperties,
 }) => {
-  const { currentUser, activeRole, setActiveRole, isAuthenticated, authChecked } = useAuth();
+  const { currentUser, activeRole, setActiveRole } = useAuth();
   // "View site as" (Root Admin only) - a pure frontend preview: it only
   // changes what activeRole-gated UI shows/hides, never the real backend
   // session, so nothing about actual permissions is gained or lost. Gated
@@ -181,31 +180,10 @@ export const Header: React.FC<HeaderProps> = ({
     };
   }, [showNotificationDropdown]);
 
-  // Calendar Sync quick-action - only shown once at least one iCal feed
-  // exists (any room for a MultiKey property, or the property itself for a
-  // single property). Uses the PARENT property slug, not the current room's
-  // own slug, so this still reflects "does this property have calendars set
-  // up anywhere" even while browsing an individual room page - see
-  // fetchIcalCalendarsFromDB's own comment for why that distinction matters.
-  const [icalCalendars, setIcalCalendars] = useState<{ id: number; service_name: string }[]>([]);
-  const [isSyncingIcal, setIsSyncingIcal] = useState(false);
-  const { propertySlug: icalPropertySlug } = getPropertyAndRoomSlugs();
-
-  useEffect(() => {
-    if (!authChecked || !isAuthenticated) return;
-    fetchIcalCalendarsFromDB(icalPropertySlug).then(setIcalCalendars);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, authChecked, icalPropertySlug]);
-
-  const handleSyncAllCalendars = async () => {
-    if (icalCalendars.length === 0 || isSyncingIcal) return;
-    setIsSyncingIcal(true);
-    const { successCount, total } = await syncAllIcalCalendarsInDB(icalPropertySlug, icalCalendars.map((c) => c.id));
-    setIsSyncingIcal(false);
-    showToast(`Calendar sync complete: ${successCount}/${total} channels synchronized`, {
-      type: successCount === total ? 'success' : 'warning',
-    });
-  };
+  // Calendar Sync quick-action removed (ARCHIVED 3 Sep 2026) along with the rest of the
+  // ICalSyncManager UI - see _unwanted/ical/README.md. fetchIcalCalendarsFromDB/
+  // syncAllIcalCalendarsInDB stay in services/api.ts, unused for now, in case this is ever
+  // revisited per-tenant.
 
   // Date strings for today and tomorrow
   const today = new Date();
@@ -404,14 +382,15 @@ export const Header: React.FC<HeaderProps> = ({
           )}
 
           {/* Switch Property icon (28 Aug 2026, explicit request) - takes this exact header
-              slot INSTEAD OF the calendar-sync icon below, for any session that can actually
-              use it: a staff account with access_all_properties, the tenant owner (both via
-              currentUser.canSwitchProperties - see check_session/login_user in router.php),
-              or Root Admin previewing "View site as Super Admin" above (App.tsx computes the
-              final canSwitchProperties prop, folding in that preview case too - a real Super
-              Admin always has this). Everyone else keeps the calendar-sync icon in this slot,
-              unchanged. */}
-          {canSwitchProperties ? (
+              slot for any session that can actually use it: a staff account with
+              access_all_properties, the tenant owner (both via currentUser.canSwitchProperties -
+              see check_session/login_user in router.php), or Root Admin previewing "View site as
+              Super Admin" above (App.tsx computes the final canSwitchProperties prop, folding in
+              that preview case too - a real Super Admin always has this). Everyone else gets
+              nothing in this slot now - it used to fall back to a calendar-sync quick action,
+              archived 3 Sep 2026 along with the rest of ICalSyncManager - see
+              _unwanted/ical/README.md. */}
+          {canSwitchProperties && (
             <Popover
               trigger="hover"
               placement="bottom"
@@ -427,25 +406,6 @@ export const Header: React.FC<HeaderProps> = ({
                 className="header__switch-property relative p-2 text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
               >
                 <ArrowRightLeft className="w-5 h-5" />
-              </button>
-            </Popover>
-          ) : icalCalendars.length > 0 && (
-            <Popover
-              trigger="hover"
-              placement="bottom"
-              content={
-                <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
-                  {isSyncingIcal ? 'Syncing calendars...' : `Sync ${icalCalendars.length} calendar${icalCalendars.length !== 1 ? 's' : ''}`}
-                </div>
-              }
-            >
-              <button
-                onClick={handleSyncAllCalendars}
-                disabled={isSyncingIcal}
-                aria-label="Sync calendars"
-                className="header__sync-calendars relative p-2 text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <RefreshCw className={`w-5 h-5 ${isSyncingIcal ? 'animate-spin' : ''}`} />
               </button>
             </Popover>
           )}

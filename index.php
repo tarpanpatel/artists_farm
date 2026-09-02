@@ -57,6 +57,10 @@ if (file_exists($dist_index)) {
     $html = str_replace('src="dist/', 'src="/dist/', $html);
     $html = str_replace('href="dist/', 'href="/dist/', $html);
     $html = str_replace('="/assets/', '="/dist/assets/', $html);
+    $html = str_replace('href="./favicon.ico"', 'href="/favicon.ico"', $html);
+    $html = str_replace('href="./app-icons/', 'href="/app-icons/', $html);
+    $html = str_replace('href="favicon.ico"', 'href="/favicon.ico"', $html);
+    $html = str_replace('href="app-icons/', 'href="/app-icons/', $html);
 
     // Point the manifest link at the dynamic per-request generator (php/manifest.php)
     $manifestUrl = '/php/manifest.php?tenant_slug=' . urlencode($tenantSlug) . '&property_slug=' . urlencode($propertySlug);

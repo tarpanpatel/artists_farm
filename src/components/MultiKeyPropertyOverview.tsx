@@ -6,7 +6,6 @@ import { KpiCard } from './KpiCard';
 import { OperationalDashboard } from './OperationalDashboard';
 import { GuestManagement } from './GuestManagement';
 import { PropertyEditForm } from './PropertyEditForm';
-import { ICalSyncManager } from './ICalSyncManager';
 import { useAuth } from '../contexts/AuthContext';
 
 interface Room {
@@ -398,9 +397,9 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                     </div>
                   </div>
 
-                  <div data-tour="ota-sync" className="edit-room-page__ical-card bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 sm:p-6">
-                    <ICalSyncManager propertyId={selectedRoom.id} propertySlug={selectedRoom.slug} parentPropertySlug={propertySlug} embedded />
-                  </div>
+                  {/* iCal Sync card (ARCHIVED 3 Sep 2026) - see _unwanted/ical/README.md and the
+                      matching removal in EditPropertyPage.tsx. The 'ota-sync' onboarding tour
+                      step that targeted this div is removed too (DemoOnboardingTour.tsx). */}
                 </div>
               )}
             </>

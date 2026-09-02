@@ -137,6 +137,11 @@ export function getPropertyAndRoomSlugs(): { propertySlug: string; roomSlug: str
 }
 
 /**
+ * Unused as of 3 Sep 2026 - Header.tsx's calendar-sync quick action (the only
+ * caller) was removed along with the rest of ICalSyncManager's UI, see
+ * _unwanted/ical/README.md. Left here, not deleted, in case a scoped-down
+ * version of that UI comes back later.
+ *
  * Fetch every configured iCal calendar for a property, scoped by the given
  * property slug. Talks to ical_sync.php directly (like ICalSyncManager.tsx
  * already does), not through router.php's API_BASE dispatcher. The backend
@@ -164,6 +169,8 @@ export async function fetchIcalCalendarsFromDB(propertySlug: string): Promise<{ 
 }
 
 /**
+ * Unused as of 3 Sep 2026 - see fetchIcalCalendarsFromDB's comment above.
+ *
  * Sync every given calendar id, same one-at-a-time loop as ICalSyncManager's
  * own "Sync All" button. Returns how many succeeded so the caller can report
  * a summary toast.
