@@ -27,6 +27,66 @@ This document tracks identified bugs, pending backend API integrations, and upco
   - `support_tickets` (`id`, `ticket_number`, `tenant_id`, `property_id`, `contact_phone`, `contact_name`, `status`, `priority`, `category`, `last_message_at`, `unread_admin_count`).
   - `support_ticket_messages` (`id`, `ticket_id`, `sender_type`, `sender_name`, `sender_phone`, `body`, `whatsapp_message_id`, `delivery_status`, `created_at`).
 
+### 📊 Indian Hospitality Strategic Workflows (Planned - Sep 2026)
+
+#### 1. 🧾 Accountant Tally XML & GSTR-1 Tax File Export
+- **Goal**: Prevent resort accountants and Chartered Accountants (CAs) from rejecting Ground Code by eliminating manual monthly re-entry of guest invoices and petty cash vouchers into Tally Prime / Zoho Books.
+- **Location**: `src/components/DataExportCenter.tsx` + `php/api/export_tally.php` (or client-side generation).
+- **Core Deliverables**:
+  - **Tally.ERP 9 / Tally Prime XML Export (`Sales Vouchers`)**:
+    - Conforms to standard Tally XML envelope: `<ENVELOPE><HEADER><TALLYREQUEST>Import Data</TALLYREQUEST></HEADER><BODY><DATA><TALLYMESSAGE xmlns:UDF="TallyUDF">`.
+    - Auto-generates `<VOUCHER VCHTYPE="Sales" ACTION="Create">` with:
+      - `<DATE>YYYYMMDD</DATE>`, `<VOUCHERNUMBER>INV-...`, `<PARTYLEDGERNAME>Sundry Debtors / Guest Name`.
+      - Credit entries for `<LEDGERNAME>Room Accommodation Sales</LEDGERNAME>` (SAC 996311) and `<LEDGERNAME>Restaurant & Food Sales</LEDGERNAME>` (SAC 996331).
+      - Tax allocations: `<LEDGERNAME>CGST Output @ 6%/9%</LEDGERNAME>` and `<LEDGERNAME>SGST Output @ 6%/9%</LEDGERNAME>` (or IGST for out-of-state B2B).
+  - **Tally XML Payment Vouchers (`Petty Cash / Cost Logs`)**:
+    - Exports cost logs from `costs` table grouped by category into Tally Payment Vouchers (`Kitchen Expenses`, `Housekeeping Supplies`, `Salaries & Wages`, `Repairs & Maintenance`).
+  - **GSTR-1 Ready Government CSV Format**:
+    - **Table 4 (B2B)**: Filterable for corporate/business bookings with Guest GSTIN, Invoice Number, Invoice Date, Total Invoice Value, Place of Supply (POS state code e.g. `08-Rajasthan`), Tax Rate (12% / 18%), Taxable Value, Cess.
+    - **Table 7 (B2C Small)**: Consolidated net taxable values aggregated by POS State Code and Tax Rate.
+    - **Table 12 (HSN/SAC Summary)**: Total quantity, taxable amount, integrated tax, central tax, state tax.
+
+#### 2. ⚡ Offline-Resilient Room Status & Arrival Cache (Remote Internet Drops)
+- **Goal**: Allow remote resort and farmstay front-desk staff (Jim Corbett, Coorg, Udaipur, Lonavala) to continue front-desk operations (view room allocations, lookup guest contact numbers, review arrival manifests, and queue check-ins) even during 2-to-4 hour broadband/fiber drops.
+- **Location**: `sw.js` + `src/services/offlineCache.ts` + `OperationalDashboard.tsx`.
+- **Core Deliverables**:
+  - **IndexedDB Local Storage (`groundcode_offline_pms`)**:
+    - Maintains a local mirror of `today_stay_manifest`:
+      - Current in-house guests and room assignments.
+      - Today's upcoming arrivals with contact phone numbers and balance due.
+      - Room inventory availability map for today + tomorrow.
+    - Automatically refreshed in background on every successful fetch to `/php/api/router.php?action=get_all_tenants` or operational polling.
+  - **Proactive Offline Visual Affordance**:
+    - When `navigator.onLine === false` or API fetches fail:
+    - Display a persistent amber indicator badge at the top:
+      *"⚡ Offline Mode: Operating from local snapshot (Last updated: today at 14:30). Arrivals & room allocations are accessible."*
+    - Switches timeline/grid to read-only cached view, preventing blank screen lockouts.
+  - **Offline Check-In Outbox Queue**:
+    - If staff clicks "Mark Checked In" during an outage, store action in IndexedDB store `offline_action_outbox` (`id`, `action`, `guest_id`, `timestamp`).
+    - When network connectivity restores (`window.addEventListener('online')`), automatically drain outbox queue to `php/api/router.php?action=checkin_guest` and toast *"Synced 2 offline check-ins to server"*.
+
+#### 3. 📱 Pre-Arrival Guest Self Check-In Link (WhatsApp Digital Registration Card)
+- **Goal**: Eliminate the 25-minute check-in bottleneck at the resort gate when large families or villa groups arrive with 10+ people by allowing guests to register and upload IDs prior to arrival.
+- **Location**: Public route `/register/:token` (or `public/guest_checkin.php`) + `php/guests/self_registration.php` + `BookingDetailsModal.tsx`.
+- **Core Deliverables**:
+  - **Cryptographic Tokenized Booking Link**:
+    - Add `registration_token` (random 32-char hex / UUIDv4) to `guests` table.
+    - Public mobile-responsive URL: `https://ground-code.com/register/<token>` (no login required, secured by token).
+  - **1-Click WhatsApp Invitation**:
+    - Button inside `BookingDetailsModal.tsx` and `OperationalDashboard.tsx`: `[Share Self Check-in Link via WhatsApp]`.
+    - Triggers WhatsApp template via `sendWhatsAppDirectTextMessage()`:
+      *"Namaste {{1}}, welcome to {{2}}! To ensure an instant check-in upon arrival, please tap here to register your group and upload your IDs: https://ground-code.com/register/{{3}}"*
+  - **Touch-First Mobile Registration Card (Guest View)**:
+    - Displays property banner, booking stay dates, and villa/room name.
+    - Form fields: Primary guest address, nationality, purpose of visit, vehicle number (for resort parking).
+    - Camera upload: Direct snapshot or file upload of Aadhaar / Driving License / Passport.
+    - If Foreign Guest: Captures Passport Number, Visa Number, Expiry, Place of Issue, Date of Arrival in India (automatically pre-populates Form-C FRRO compliance!).
+    - Digital signature: Touch-friendly signature canvas pad.
+  - **Instant PMS Update & Telegram Alert**:
+    - On submission, stores files in `php/uploads/guest_ids/`, automatically sets `idVerificationStatus = 'Complete'`, and updates Form-C metadata.
+    - Sends Telegram notification to property staff bot:
+      *"✅ Self Check-In Done: {{guest_name}} for {{room_name}} has uploaded ID and signed registration card."*
+
 ### Concurrency: what remains irreducible (audited 30 Aug 2026)
 
 A full multi-user concurrency audit was done 30 Aug 2026 (prompted by "what
