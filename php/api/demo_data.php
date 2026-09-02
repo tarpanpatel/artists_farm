@@ -599,110 +599,11 @@ function generateDemoData($pdo, $propertyId) {
             }
         }
 
-        // 3b. Demo OTA (iCal) Blocks - unconverted Airbnb/Booking.com reservations
-        // for the new "Convert to Booking" feature to act on. clearDemoData()
-        // below has always known how to clean these up (scoped per-room, same
-        // as ICalSyncManager::getBlockedDates()) but nothing ever actually
-        // generated them - this was the missing half. Originally placed at a
-        // fixed +12/+20 day offset on the assumption that guest bookings only
-        // ever reached +7 days out - that stopped being true once the "Advance
-        // bookings beyond $windowEnd" block above started generating real
-        // stays up to +84 days out, and a fixed offset then had no way to
-        // notice a collision (confirmed 18 Aug 2026: Room 102's "Booking.com
-        // Calendar (Demo)" block landed directly on top of a real future
-        // guest's stay, showing the room as simultaneously booked and
-        // OTA-closed). Retry against this room's own bookings the same way
-        // the future-booking placement above does, instead of trusting a
-        // fixed offset - still tries the original 12/20-day placement first
-        // since that's what reads as realistic, only falling back to a
-        // search once that specific offset is actually taken.
-        // Tracks every OTA-block date range placed below, keyed by room id, so
-        // section 6g further down (which seeds its own OTA blocks per room)
-        // can avoid landing on top of these too - not just on top of real
-        // guest bookings. Without this, both sections independently checked
-        // only against $allBookings and stayed blind to each other's inserts,
-        // so a room could end up with an Airbnb/Booking.com block from this
-        // section directly overlapping another synced block from 6g (found 20
-        // Aug 2026 - Room 101 showed two OTA bars stacked on the same dates).
-        $otaBlockedRangesByRoom = [];
-
-        if (count($rooms) >= 2) {
-            $otaDemoBlocks = [
-                [
-                    'room' => $rooms[0],
-                    'service_type' => 'ical',
-                    'service_name' => 'Airbnb Calendar (Demo)',
-                    'external_event_id' => 'demo-ota-' . $rooms[0]['id'] . '-1@airbnb.com',
-                    'event_title' => 'Reserved',
-                    'start_offset' => 12,
-                    'nights' => 3,
-                ],
-                [
-                    'room' => $rooms[1],
-                    'service_type' => 'ical',
-                    'service_name' => 'Booking.com Calendar (Demo)',
-                    'external_event_id' => 'demo-ota-' . $rooms[1]['id'] . '-1@booking.com',
-                    'event_title' => 'CLOSED - Not available',
-                    'start_offset' => 20,
-                    'nights' => 4,
-                ],
-            ];
-
-            foreach ($otaDemoBlocks as $block) {
-                if (empty($block['room']['id'])) continue;
-
-                $blockRoomId = $block['room']['id'];
-                $ownBookingRanges = [];
-                foreach ($allBookings as $b) {
-                    if ((int)$b['room_id'] === (int)$blockRoomId) {
-                        $ownBookingRanges[] = ['start' => new DateTime($b['checkin']), 'end' => new DateTime($b['checkout'])];
-                    }
-                }
-
-                $candidateOffset = $block['start_offset'];
-                $placedStart = null;
-                $placedEnd = null;
-                for ($attempt = 0; $attempt < 30; $attempt++) {
-                    $candidateStart = (clone $today)->modify('+' . $candidateOffset . ' days');
-                    $candidateEnd = (clone $today)->modify('+' . ($candidateOffset + $block['nights']) . ' days');
-                    $overlaps = false;
-                    foreach ($ownBookingRanges as $range) {
-                        if ($candidateStart < $range['end'] && $candidateEnd > $range['start']) { $overlaps = true; break; }
-                    }
-                    if (!$overlaps) {
-                        $placedStart = $candidateStart;
-                        $placedEnd = $candidateEnd;
-                        break;
-                    }
-                    $candidateOffset = rand(7, 80);
-                }
-                if ($placedStart === null) continue;
-
-                $otaBlockedRangesByRoom[(int)$blockRoomId][] = ['start' => $placedStart, 'end' => $placedEnd];
-
-                $configStmt = $pdo->prepare("
-                    INSERT INTO ical_sync_configs (property_id, service_type, service_name, ical_url, sync_enabled, sync_direction, is_demo, last_sync)
-                    VALUES (?, ?, ?, ?, 1, 'bidirectional', 1, NOW())
-                ");
-                $configStmt->execute([
-                    $block['room']['id'],
-                    $block['service_type'],
-                    $block['service_name'],
-                    'https://example.com/demo-ical-feed-' . $block['room']['id'] . '.ics',
-                ]);
-                $configId = $pdo->lastInsertId();
-
-                $eventStart = $placedStart->format('Y-m-d 00:00:00');
-                $eventEnd = $placedEnd->format('Y-m-d 00:00:00');
-                $eventData = json_encode(['source' => 'ical', 'source_label' => $block['service_name']]);
-
-                $eventStmt = $pdo->prepare("
-                    INSERT INTO ical_synced_events (sync_config_id, external_event_id, event_title, event_start, event_end, event_data, sync_status)
-                    VALUES (?, ?, ?, ?, ?, ?, 'synced')
-                ");
-                $eventStmt->execute([$configId, $block['external_event_id'], $block['event_title'], $eventStart, $eventEnd, $eventData]);
-            }
-        }
+        // 3b. Demo OTA (iCal) Blocks - removed 3 Sep 2026, iCal sync retired
+        // app-wide (superseded by the Channex channel manager - see
+        // _unwanted/ical/README.md). This used to seed unconverted Airbnb/
+        // Booking.com ical_sync_configs/ical_synced_events rows for the
+        // now-archived "Convert to Booking" dashboard feature to act on.
 
         // 4. Demo Food Menu Items - copied from the reference property (Artists
         // Farm Jaipur, id 1)'s real ~70-item categorized menu instead of a small
@@ -1372,131 +1273,13 @@ function generateDemoData($pdo, $propertyId) {
             }
         }
 
-        // 6g. Demo iCal/OTA Sync Feeds - Airbnb + Booking.com connected on a
-        // couple of the rooms (not every room - not every listing is
-        // multi-channel in real life either), each with a few synced
-        // blocked-date ranges that land in gaps between that room's own
-        // already-seeded direct bookings above, so a room's timeline reads
-        // as "some direct bookings, some OTA-only blocks" like a real
-        // multi-channel property - never overlapping/double-booking the
-        // same dates.
-        $otaRooms = array_slice($rooms, 0, min(2, count($rooms)));
-        // Past edge squared off to match $windowStart (-30 days, 17 Aug 2026
-        // fix) - was -20 days, the one dataset whose "how far back" didn't
-        // match everything else's exact one-month reach. Forward edge (+30)
-        // is unrelated to the Pace tab's own +84-day forward window and is
-        // left as-is - it only governs how far out a synced-but-unconverted
-        // OTA calendar block can land, not confirmed bookings.
-        $otaWindowStart = (clone $today)->modify('-30 days');
-        $otaWindowEnd = (clone $today)->modify('+30 days');
-
+        // 6g. Demo iCal/OTA Sync Feeds - removed 3 Sep 2026, iCal sync
+        // retired app-wide (superseded by the Channex channel manager - see
+        // _unwanted/ical/README.md). This used to seed fake Airbnb/
+        // Booking.com ical_sync_configs feeds with synced ical_synced_events
+        // blocks on a couple of rooms. $guestNames (used by section 7 below)
+        // is kept here since section 7 was never part of this block.
         $guestNames = ['John Doe', 'Jane Smith', 'Priya Sharma', 'Carlos Mendez', 'Aisha Patel', 'Liam O\'Brien'];
-
-        foreach ($otaRooms as $otaRoom) {
-            $otaRoomId = $otaRoom['id'];
-            if (!$otaRoomId) continue;
-
-            // This room's own direct bookings (from section 3 above) - OTA
-            // blocks must never land on top of one of these.
-            $roomOwnBookings = array_values(array_filter($allBookings, function ($b) use ($otaRoomId) {
-                return (int)$b['room_id'] === (int)$otaRoomId;
-            }));
-
-            // Seeded from real bookings AND section 3b's already-placed OTA
-            // block for this room (see $otaBlockedRangesByRoom above), then
-            // built up as this room's own feeds place blocks below - kept
-            // OUTSIDE the per-feed loop so Airbnb's blocks are visible when
-            // placing Booking.com's for the same room, and vice versa,
-            // instead of each feed only ever checking against bookings.
-            $placedRanges = array_map(function ($b) {
-                return ['start' => new DateTime($b['checkin']), 'end' => new DateTime($b['checkout'])];
-            }, $roomOwnBookings);
-            foreach (($otaBlockedRangesByRoom[(int)$otaRoomId] ?? []) as $range) {
-                $placedRanges[] = $range;
-            }
-
-            $feeds = [
-                [
-                    'service_type' => 'airbnb',
-                    'channel' => 'Airbnb',
-                    'sync_interval' => 15,
-                    'service_name' => 'Airbnb - ' . $otaRoom['name'],
-                    'ical_url' => 'https://www.airbnb.com/calendar/ical/' . rand(10000000, 99999999) . '.ics?s=' . substr(md5('airbnb' . $otaRoomId), 0, 32),
-                    'uid_suffix' => '@airbnb.com',
-                ],
-                [
-                    // enum('google','airbnb','ical','other') has no distinct
-                    // 'booking' value - service_name is what actually drives
-                    // the label everywhere this is displayed (see
-                    // getBlockedDates()'s source/source_label resolution in
-                    // ical_sync.php), so 'ical' here still reads correctly
-                    // as "Booking.com" throughout the UI.
-                    'service_type' => 'ical',
-                    'channel' => 'Booking.com',
-                    'sync_interval' => 30,
-                    'service_name' => 'Booking.com - ' . $otaRoom['name'],
-                    'ical_url' => 'https://ical.booking.com/v1/export?t=' . substr(md5('booking' . $otaRoomId), 0, 8) . '-' . substr(md5('booking2' . $otaRoomId), 0, 4) . '-' . substr(md5('booking3' . $otaRoomId), 0, 4) . '-' . substr(md5('booking4' . $otaRoomId), 0, 12),
-                    'uid_suffix' => '@booking.com',
-                ],
-            ];
-
-            foreach ($feeds as $feed) {
-                $lastSyncAt = (clone $today)->modify('-' . rand(0, 6) . ' hours')->format('Y-m-d H:i:s');
-                $syncCount = rand(15, 60);
-                $configStmt = $pdo->prepare("
-                    INSERT INTO ical_sync_configs (property_id, service_type, service_name, ical_url, sync_interval, sync_enabled, sync_direction, last_sync, sync_count, is_demo)
-                    VALUES (?, ?, ?, ?, ?, 1, 'import', ?, ?, 1)
-                ");
-                $configStmt->execute([$otaRoomId, $feed['service_type'], $feed['service_name'], $feed['ical_url'], $feed['sync_interval'], $lastSyncAt, $syncCount]);
-                $syncConfigId = $pdo->lastInsertId();
-
-                // 2-3 blocked ranges, each checked against every existing
-                // direct booking AND every OTA block already placed on this
-                // same room - by this feed, an earlier feed on the same room,
-                // or section 3b above - so nothing ever overlaps. $placedRanges
-                // is intentionally the same array across every feed/room-level
-                // block placed so far (built above, appended to below), not
-                // reset per feed.
-                $blockCount = rand(2, 3);
-                $attempts = 0;
-                $placed = 0;
-                while ($placed < $blockCount && $attempts < 40) {
-                    $attempts++;
-                    $spanDays = $otaWindowStart->diff($otaWindowEnd)->days;
-                    $startOffset = rand(0, max(0, $spanDays - 5));
-                    $blockStart = (clone $otaWindowStart)->modify("+$startOffset days");
-                    $blockLen = rand(2, 4);
-                    $blockEnd = (clone $blockStart)->modify("+$blockLen days");
-
-                    $overlaps = false;
-                    foreach ($placedRanges as $range) {
-                        if ($blockStart < $range['end'] && $blockEnd > $range['start']) {
-                            $overlaps = true;
-                            break;
-                        }
-                    }
-                    if ($overlaps) continue;
-
-                    $externalId = 'demo-' . uniqid() . '-' . $syncConfigId . $feed['uid_suffix'];
-                    $refCode = ($feed['channel'] === 'Airbnb')
-                        ? 'HM' . strtoupper(substr(md5(uniqid()), 0, 8))
-                        : (string)rand(1000000000, 9999999999);
-                    $eventTitle = $feed['channel'] . ' #' . $refCode;
-                    $eventData = json_encode(['source' => $feed['service_type'], 'source_label' => $feed['service_name']]);
-                    $eventStmt = $pdo->prepare("
-                        INSERT INTO ical_synced_events (sync_config_id, external_event_id, event_title, event_start, event_end, event_data, sync_status)
-                        VALUES (?, ?, ?, ?, ?, ?, 'synced')
-                    ");
-                    $eventStmt->execute([
-                        $syncConfigId, $externalId, $eventTitle,
-                        $blockStart->format('Y-m-d 00:00:00'), $blockEnd->format('Y-m-d 00:00:00'),
-                        $eventData,
-                    ]);
-                    $placedRanges[] = ['start' => $blockStart, 'end' => $blockEnd];
-                    $placed++;
-                }
-            }
-        }
 
         // 7. Demo Service Requests - real varied guests (not one generic "Demo
         // Guest" for every request), correct status vocabulary, and a genuine

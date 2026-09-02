@@ -40,16 +40,6 @@ function getCronJobDefinitions(): array {
             'daily_at_time' => '08:00:00',
         ],
         [
-            'job_key' => 'check_unconverted_ota_bookings',
-            'name' => 'Unconverted OTA Booking Alerts',
-            'description' => 'Alerts admins about synced OTA holds (Airbnb/Booking.com/etc) that already began but were never converted to a real booking.',
-            'script_path' => 'check_unconverted_ota_bookings.php',
-            'log_file' => 'ota_unconverted_check.log',
-            'schedule_type' => 'interval_minutes',
-            'interval_minutes' => 360,
-            'daily_at_time' => null,
-        ],
-        [
             'job_key' => 'cleanup_orphaned_images',
             'name' => 'Orphaned Image Cleanup',
             'description' => 'Deletes uploaded QR/menu/catalog photos no longer referenced by any property once they are 24h+ old.',
@@ -58,16 +48,6 @@ function getCronJobDefinitions(): array {
             'schedule_type' => 'daily_at',
             'interval_minutes' => null,
             'daily_at_time' => '04:00:00',
-        ],
-        [
-            'job_key' => 'sync_all_icals',
-            'name' => 'iCal Sync Worker',
-            'description' => 'Refreshes every enabled OTA calendar sync (Airbnb/Booking.com/Google/etc) across all tenants.',
-            'script_path' => 'sync_all_icals.php',
-            'log_file' => 'ical_sync.log',
-            'schedule_type' => 'interval_minutes',
-            'interval_minutes' => 15,
-            'daily_at_time' => null,
         ],
         [
             'job_key' => 'checkin_verification_reminders',

@@ -9,7 +9,6 @@ import { Guest, BillingReceipt, MiscChargeTemplate, MenuItem } from '../types';
 import { Popover } from './Popover';
 import { useToast } from './ToastContext';
 import { useStaff } from '../contexts/StaffContext';
-import { useAuth } from '../contexts/AuthContext';
 import { useConfigurationData } from '../contexts/ConfigurationDataContext';
 import {
   GUEST_STATUS_CHECKED_IN,
@@ -18,8 +17,6 @@ import {
   GUEST_STATUS_ACTIVE_LEGACY,
   GUEST_STATUS_CHECKEDOUT_LEGACY,
 } from '../constants/guestStatus';
-import { ICAL_BLOCKING_ENABLED } from '../constants/featureFlags';
-import { getPropertySlug } from '../services/api';
 import { parseDateToYMD } from '../utils/dateUtils';
 import { DateRangePicker } from './DateRangePicker';
 import { StyledSelect } from './StyledSelect';
@@ -145,7 +142,6 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 }) => {
   const { showToast } = useToast();
   const { staff } = useStaff();
-  const { isAuthenticated, authChecked } = useAuth();
   const { miscCharges } = useConfigurationData();
 
   // Form Checkin State
@@ -330,79 +326,22 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     const totalExtra = calcTotalBookingExtraCharges(updated, showBookingExtraCharges);
     setBookingPending(bookingRoomTariff + totalExtra - bookingAdvance);
   };
-  const [blockedDates, setBlockedDates] = useState<Array<{
-    event_start: string;
-    event_end: string;
-    event_title: string;
-    reservation_url?: string;
-    source?: string;
-    source_label?: string;
-    room_id?: number;
-  }>>([]);
-
   useEffect(() => {
     setMiscChargesList(miscCharges as MiscChargeTemplate[]);
   }, [miscCharges]);
-
-  // Fetch blocked dates from iCal, once authenticated (27 Aug 2026, app-wide
-  // sweep - see KitchenManagement.tsx's identical fix for the full writeup).
-  useEffect(() => {
-    if (!authChecked || !isAuthenticated) return;
-    const fetchBlockedDates = async () => {
-      try {
-        const propertySlug = getPropertySlug();
-        const response = await fetch('/php/api/ical_sync.php?action=get_blocked_dates', {
-          headers: { 'X-Property-Slug': propertySlug },
-          credentials: 'include',
-        });
-        const data = await response.json();
-        if (data.status === 'success' && data.data) {
-          setBlockedDates(data.data);
-        }
-      } catch (error) {
-        console.error('Failed to fetch blocked dates:', error);
-      }
-    };
-    fetchBlockedDates();
-  }, [isAuthenticated, authChecked]);
 
   // Get all blocked date strings for DatePicker
   const getBlockedDateStrings = (): string[] => {
     const blocked: string[] = [];
 
-    // Resolved once, used by both sections below - iCal blocks need this too
-    // (see 1.), not just existing guest bookings (2.).
+    // Resolved once, used below for existing-guest-booking overlap checks.
     const selectedRoomObj = rooms.find((r) => r.name === roomNumber || r.slug === roomNumber);
     const selectedRoomId = selectedRoomObj?.id;
 
-    // 1. iCal blocked dates - only the currently selected room's own blocks.
-    // For a multi-key property, ical_sync.php's get_blocked_dates returns every
-    // room's synced events in one call (room_id per row) so the calendar view
-    // can show all of them - but here, picking a date for Room 101 must not
-    // also disable dates that are only actually blocked on Room 102's feed.
-    // isMultiKeyProperty ? undefined room_id rows (shouldn't happen once every
-    // sync is tied to a room) fall through and are ignored, not blocked -
-    // safer to under-block than to falsely block an available room.
-    // Gated off entirely while the site is in testing mode (1 Sep 2026, see
-    // ICAL_BLOCKING_ENABLED's own comment) - the backend sync itself keeps
-    // running, this just stops that real external data from showing up as
-    // confusing "blocked" test dates with no in-app booking behind them.
-    if (ICAL_BLOCKING_ENABLED) {
-      blockedDates
-        .filter((bd) => !isMultiKeyProperty || (selectedRoomId != null && Number(bd.room_id) === Number(selectedRoomId)))
-        .forEach((bd) => {
-          const start = new Date(bd.event_start.split(' ')[0]);
-          const end = new Date(bd.event_end.split(' ')[0]);
-          let current = new Date(start);
-          while (current < end) {
-            const year = current.getFullYear();
-            const month = String(current.getMonth() + 1).padStart(2, '0');
-            const day = String(current.getDate()).padStart(2, '0');
-            blocked.push(`${year}-${month}-${day}`);
-            current = new Date(current.getTime() + 86400000);
-          }
-        });
-    }
+    // iCal blocked dates (previously section 1 here) removed 3 Sep 2026 -
+    // iCal sync retired app-wide, superseded by the Channex channel manager
+    // (see _unwanted/ical/README.md). Was already gated off since 1 Sep
+    // behind ICAL_BLOCKING_ENABLED.
 
     // 2. Existing guest bookings for the currently selected room. Mirrors the
     // iCal filter's !isMultiKeyProperty short-circuit above (31 Aug 2026) -
@@ -1069,7 +1008,6 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       onAddGuest={onAddGuest}
       isMultiKeyProperty={isMultiKeyProperty}
       rooms={rooms}
-      icalBlockedDates={blockedDates}
       onCheckoutClick={onNavigateToBilling}
       kitchenModuleEnabled={kitchenModuleEnabled}
       propertyGstin={propertyGstin}

@@ -29,7 +29,6 @@ import {
   GUEST_STATUS_CHECKED_OUT,
   GUEST_STATUS_CHECKEDOUT_LEGACY,
 } from '../constants/guestStatus';
-import { ICAL_BLOCKING_ENABLED } from '../constants/featureFlags';
 
 interface BookingDetailsModalProps {
   guest: Guest | null;
@@ -38,19 +37,6 @@ interface BookingDetailsModalProps {
   onDelete?: (guestId: string) => Promise<void>;
   rooms?: Array<{ id: number; name: string; slug: string }>;
   checkedInGuests?: Guest[];
-  // External OTA (Airbnb/Booking.com etc, via iCal sync) blocked dates - the
-  // SAME array GuestManagement.tsx already fetches once for the Add Booking
-  // flow's own getBlockedDateStrings(), threaded down through
-  // BillingCheckout rather than re-fetched here (1 Sep 2026 - found live:
-  // an iCal-blocked night showed correctly as unavailable when ADDING a
-  // booking but was fully clickable when EDITING one, since this modal's
-  // own getEditBlockedDateStrings only ever looked at other guests' own
-  // bookings, never at synced external blocks at all).
-  icalBlockedDates?: Array<{
-    event_start: string;
-    event_end: string;
-    room_id?: number;
-  }>;
   propertyName?: string;
   propertyAddress?: string;
   propertyMapsLink?: string;
@@ -128,7 +114,6 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   onCheckout,
   initialFocusSection = null,
   isMultiKeyProperty,
-  icalBlockedDates = [],
 }) => {
   const { staff } = useStaff();
   const { showToast } = useToast();
@@ -455,31 +440,10 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     const selectedRoomId = editRoomId ? parseInt(editRoomId, 10) : undefined;
     const isMultiKey = isMultiKeyProperty ?? (rooms && rooms.length > 1);
 
-    // 1. External OTA (iCal-synced) blocked dates - mirrors
-    // GuestManagement.tsx's own getBlockedDateStrings() section 1 (1 Sep
-    // 2026): on a single-unit property every synced block applies; on a
-    // multi-key one, only the currently assigned room's own blocks do -
-    // an unassigned/undefined room_id is skipped rather than blocked, same
-    // "under-block over false-block" call as that other copy makes. Gated
-    // off entirely while the site is in testing mode - see
-    // ICAL_BLOCKING_ENABLED's own comment (same flag GuestManagement.tsx
-    // gates its own copy of this behind).
-    if (ICAL_BLOCKING_ENABLED) {
-      (icalBlockedDates || [])
-        .filter((bd) => !isMultiKey || (selectedRoomId != null && Number(bd.room_id) === Number(selectedRoomId)))
-        .forEach((bd) => {
-          const start = new Date(bd.event_start.split(' ')[0]);
-          const end = new Date(bd.event_end.split(' ')[0]);
-          let current = new Date(start);
-          while (current < end) {
-            const y = current.getFullYear();
-            const m = String(current.getMonth() + 1).padStart(2, '0');
-            const d = String(current.getDate()).padStart(2, '0');
-            blocked.push(`${y}-${m}-${d}`);
-            current = new Date(current.getTime() + 86400000);
-          }
-        });
-    }
+    // 1. External OTA (iCal-synced) blocked dates - removed 3 Sep 2026,
+    // iCal sync retired app-wide (was already gated off since 1 Sep behind
+    // ICAL_BLOCKING_ENABLED, and icalBlockedDates is now permanently empty
+    // regardless - see GuestManagement.tsx, its only source).
 
     // 2. Existing guest bookings for the currently selected room.
     (checkedInGuests || [])
@@ -736,11 +700,6 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 content={
                   <div className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-300 leading-relaxed max-w-xs space-y-1.5">
                     <p>{t('ota_converted_badge_tooltip', 'Converted from an OTA calendar sync - editing this only changes this app, not the original platform.')}</p>
-                    <p>
-                      <a href="#ical_sync" className="text-blue-600 dark:text-blue-400 font-semibold underline cursor-pointer">
-                        {t('manage_calendar_sync_link', 'Manage Calendar Sync Settings')}
-                      </a>
-                    </p>
                   </div>
                 }
               >

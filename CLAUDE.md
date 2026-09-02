@@ -177,19 +177,20 @@ CLAUDE.md's own dates before trusting a "REMOVED"/"do not re-add" note is still 
   `php/errors/logger.php`'s `$routineNoise` allowlist (`'AI Query'`/`'AI Outcome'`/
   `'AI Config Updated'` added back so normal chat usage doesn't push a phone alert per message).
 
-### iCal Sync Settings UI (ARCHIVED 3 Sep 2026 - narrower than it looks, read before touching anything "ical")
-Only the settings/management UI is archived (superseded by the Channex channel-manager integration
-- see `CHANNEX_GO_LIVE_CHECKLIST.md`), moved to `_unwanted/ical/` (full detail in that folder's own
-`README.md`, same convention as `_unwanted/ai/`). **The backend is untouched and still live** -
-`php/api/ical_sync.php` is `require_once`'d directly by `check_unconverted_ota_bookings.php` (a real,
-currently-running cron), so don't guard, move, or "clean up" any `php/*ical*` file assuming this
-archive covers it. During any site-wide sweep (design consistency, safe-area audit, etc.), skip
-`_unwanted/ical/` entirely - it's retired, not something to bring up to current design standards.
-Severed frontend touchpoints: `EditPropertyPage.tsx`, `MultiKeyPropertyOverview.tsx` (both dropped
-their `<ICalSyncManager>` card), `Header.tsx` (dropped the calendar-sync quick-action button), and
-`DemoOnboardingTour.tsx` (removed the `'ota-sync'` step entirely, not just left dangling - that
-tour runs with `skipMissingElement: false`, so a step whose target vanished would have silently
-truncated the whole tour rather than skipping just that step).
+### iCal Sync (FULLY RETIRED 3 Sep 2026 - not just the settings UI, read before touching anything "ical")
+Superseded by the Channex channel-manager integration (`CHANNEX_GO_LIVE_CHECKLIST.md`). Started as
+archiving just the settings UI that morning ("i dont want any ai to work on it, if i give a sidewide
+task") - became a full retirement hours later, prompted by a live staging screenshot still showing
+an "Airbnb Calendar - Double-Booking Conflict" alert with a "Convert to Booking" button, and an
+explicit "remove anything related to ical syncing etc..". Everything moved to `_unwanted/ical/` is
+now backend AND frontend - full detail, including exactly what's still deliberately untouched
+(`ota_source`/`ical_external_event_id` guest metadata columns - generic origin-channel tracking,
+not iCal-specific) and what's blocked pending explicit permission (a direct SSH DB cleanup of
+already-synced rows on staging, harmless leftover data since nothing can read it any more), is in
+that folder's own `README.md` - **read it fully before touching anything "ical" again**, the old
+"backend is still live" note this section used to have is no longer true. During any site-wide
+sweep (design consistency, safe-area audit, etc.), skip `_unwanted/ical/` entirely - it's retired,
+not something to bring up to current design standards.
 
 ### QR Code & UPI Payment Sharing (added 15 Aug 2026)
 - Booking-confirmation and checkout-bill WhatsApp shares can include a scannable UPI QR code + the property's UPI ID, so guests can pay by scanning rather than typing details.

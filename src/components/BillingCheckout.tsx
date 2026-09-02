@@ -62,15 +62,6 @@ interface BillingCheckoutProps {
   propertyUpiId?: string;
   propertyUpiQrCodeUrl?: string;
   focusGuestId?: string | null;
-  // Threaded straight to BookingDetailsModal's Edit Booking calendar (1 Sep
-  // 2026) - see that component's own prop comment for why this needs to
-  // exist here at all (GuestManagement.tsx already fetches this once for
-  // its own Add Booking flow; this avoids a second, redundant fetch).
-  icalBlockedDates?: Array<{
-    event_start: string;
-    event_end: string;
-    room_id?: number;
-  }>;
 }
 
 interface GroupedRoomBooking {
@@ -110,7 +101,6 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   propertyUpiId = '',
   propertyUpiQrCodeUrl = '',
   focusGuestId = null,
-  icalBlockedDates = [],
 }) => {
   const { showToast } = useToast();
   const { activeRole } = useAuth();
@@ -606,11 +596,6 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                                 content={
                                   <div className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-300 leading-relaxed max-w-xs space-y-1.5">
                                     <p>{t('ota_converted_badge_tooltip', 'Converted from an OTA calendar sync - editing this only changes this app, not the original platform.')}</p>
-                                    <p>
-                                      <a href="#ical_sync" className="text-blue-600 dark:text-blue-400 font-semibold underline cursor-pointer">
-                                        {t('manage_calendar_sync_link', 'Manage Calendar Sync Settings')}
-                                      </a>
-                                    </p>
                                   </div>
                                 }
                               >
@@ -1270,7 +1255,6 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
           rooms={rooms}
           isMultiKeyProperty={isMultiKeyProperty}
           checkedInGuests={guests}
-          icalBlockedDates={icalBlockedDates}
           propertyName={propertyName}
           propertyPhone={propertyPhone}
           propertyMapsLink={propertyMapsLink}
