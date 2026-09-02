@@ -1077,16 +1077,21 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
               redundant second surface for the same signal. */}
         </div>
 
-        {/* sm:rounded-t-none sm:border-t-0 (2 Sep 2026, user report: unwanted
-            rounded corner + border reappearing under the tabs on tablet/
-            desktop) - the global Card theme (main.tsx) added border-y sm:border
-            and this Card's own flush override was only ever the bare/mobile
-            rounded-t-none border-t-0. Bare and sm:-prefixed utilities live in
-            different Tailwind variant scopes, so they don't cancel each other
-            out - the sm: rule from the theme kept winning at >=640px. Matching
-            the prefix on both makes the cancellation apply at the same scope
-            the conflict is actually happening in. */}
-        <Card className="billing-checkout__desk-body shadow-md space-y-4 rounded-t-none border-t-0 sm:rounded-t-none sm:border-t-0 -mt-px">
+        {/* rounded-tl-none, not rounded-t-none (2 Sep 2026, user report: top-
+            right corner should stay rounded like the bottom two, only
+            top-left needs to be flush). The Tabs row above only clusters on
+            the left (Today/Upcoming/Past), not the card's full width, so only
+            the top-left corner actually sits under a tab - the top-right
+            corner has empty space above it and looks broken/half-finished
+            squared off to match nothing. sm:rounded-tl-none/sm:border-t-0
+            alongside the bare versions for the same reason as before: the
+            global Card theme (main.tsx) added border-y sm:border, and bare
+            vs sm:-prefixed utilities live in different Tailwind variant
+            scopes so they don't cancel each other out on their own - the
+            sm: rule from the theme kept winning at >=640px. border-t-0 still
+            drops the WHOLE top border (not just the left corner's) since the
+            seam under the tabs runs the full width, not just under Today. */}
+        <Card className="billing-checkout__desk-body shadow-md space-y-4 rounded-tl-none border-t-0 sm:rounded-tl-none sm:border-t-0 -mt-px">
 
           {/* Search Bar - covers room too (guest name, phone, OR room number) */}
           <div className="billing-checkout__search flex flex-col items-center gap-3 sm:flex-row">

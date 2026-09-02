@@ -1621,8 +1621,16 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             </div>
         )}
 
+        {/* rounded-t-none -> rounded-tl-none (2 Sep 2026, user report on the
+            same pattern elsewhere: top-right corner should stay rounded like
+            the bottom two - the "Kitchen Stock Tabs" row above doesn't span
+            this panel's full width, so only the top-left corner sits under a
+            tab; border-t-0 still drops the whole top border since the Tabs'
+            own tablist border-b already spans the full width underneath it -
+            see BillingCheckout.tsx's billing-checkout__desk-body Card for
+            the fuller writeup of this pattern). */}
         {catalogView === 'categories' && (
-            <div className="bg-white dark:bg-slate-800 border border-t-0 border-slate-200 dark:border-slate-700 rounded-lg rounded-t-none p-4 sm:p-5 shadow-md space-y-3 -mt-px">
+            <div className="bg-white dark:bg-slate-800 border border-t-0 border-slate-200 dark:border-slate-700 rounded-lg rounded-tl-none p-4 sm:p-5 shadow-md space-y-3 -mt-px">
               <div className="flex items-center gap-2">
                 <Input
                   type="text"

@@ -1432,16 +1432,21 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         {activeTab === 'kds' && (() => {
               const activeOrders = orders.filter((o) => o.status === 'Pending' || o.status === 'Preparing');
 
-              /* sm:rounded-t-none sm:border-t-0 alongside the bare versions (2 Sep
-                 2026, user report: unwanted rounded corner + border reappearing
-                 under the tabs on tablet/desktop) - border-0 sm:border/rounded-none
-                 sm:rounded-lg just above only get cancelled by a flush override in
-                 the SAME variant scope; the bare-only rounded-t-none/border-t-0
+              /* rounded-tl-none, not rounded-t-none, + sm:rounded-tl-none
+                 sm:border-t-0 alongside the bare versions (2 Sep 2026, user
+                 report: top-right corner should stay rounded like the bottom
+                 two - the tab row doesn't span this container's full width,
+                 so only the top-left corner sits under a tab; border-t-0
+                 still drops the whole top border since the Tabs' own tablist
+                 border-b already spans the full width underneath it). Also,
+                 separately: border-0 sm:border/rounded-none sm:rounded-lg
+                 just above only get cancelled by a flush override in the
+                 SAME variant scope; the bare-only rounded-tl-none/border-t-0
                  never touched the sm: side of that same conflict. See
-                 BillingCheckout.tsx's billing-checkout__desk-body Card for the
-                 fuller writeup of this pattern. */
+                 BillingCheckout.tsx's billing-checkout__desk-body Card for
+                 the fuller writeup of this pattern. */
               return (
-        <div className={`kds-orders-container space-y-3 sm:space-y-4 bg-transparent sm:bg-white dark:sm:bg-slate-800 rounded-none sm:rounded-lg border-0 sm:border border-slate-200 dark:border-slate-700 p-0 sm:p-4 ${isRestrictedStaffKitchenView ? '' : 'rounded-t-none border-t-0 sm:rounded-t-none sm:border-t-0 -mt-px'}`}>
+        <div className={`kds-orders-container space-y-3 sm:space-y-4 bg-transparent sm:bg-white dark:sm:bg-slate-800 rounded-none sm:rounded-lg border-0 sm:border border-slate-200 dark:border-slate-700 p-0 sm:p-4 ${isRestrictedStaffKitchenView ? '' : 'rounded-tl-none border-t-0 sm:rounded-tl-none sm:border-t-0 -mt-px'}`}>
           <div className="kds-status-filter-bar flex flex-col sm:flex-row items-start sm:items-center justify-end text-xs">
             {/* Smart Polling / Live Sync Bar */}
             <div className="flex items-center gap-2.5 bg-white sm:bg-slate-50 dark:bg-slate-800 dark:sm:bg-slate-900 border-b sm:border border-slate-200 dark:border-slate-700 px-4 sm:px-3 py-2 sm:py-1.5 rounded-none sm:rounded-lg w-full sm:w-auto justify-between sm:justify-start">
