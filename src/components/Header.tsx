@@ -19,7 +19,7 @@ import {
   Check,
   Home as RoomIcon,
   X,
-  Bot,
+  HelpCircle,
   ArrowRightLeft,
 } from './icons/FlowbiteIcons';
 import { useAuth } from '../contexts/AuthContext';
@@ -54,12 +54,15 @@ interface HeaderProps {
   showInstallIcon?: boolean;
   onInstallIconClick?: () => void;
   onNavigate?: (tab: TabType, itemKey?: string) => void;
-  // Opens the AI Assistant chat widget (restored 27 Aug 2026 - see AI.md). Replaces the
-  // WhatsApp/Telegram ContactSupportMenu that briefly lived in this slot: the AI now answers
-  // first, and only surfaces those same WhatsApp/Telegram links as an in-chat escalation once it
-  // can't help (see AIChatWidget.tsx's consecutiveUnmatched banner) - TenantDashboard.tsx keeps
-  // ContactSupportMenu as-is since it has no per-property operational context for the bot to act on.
-  onToggleAIChat?: () => void;
+  // Opens LegalDrawer.tsx straight to its FAQ tab (2 Sep 2026, explicit request -
+  // replaces the AI Assistant chat trigger that lived in this slot, restored 27 Aug
+  // 2026, see AI.md/git history). FAQ already has its own search field and a
+  // Support tab one click away (WhatsApp/Telegram) for anything not answered there,
+  // so this keeps the same "answer first, escalate if needed" shape without a
+  // second, separate chat surface. TenantDashboard.tsx keeps its own
+  // ContactSupportMenu/DashboardFooter FAQ entry as-is - this only affects the
+  // per-property operational Header.
+  onOpenFaq?: () => void;
   // Opens StaffPropertyPicker.tsx as a mid-session overlay (28 Aug 2026) - only rendered
   // when canSwitchProperties below is true, so this can stay optional/no-op for every
   // other session.
@@ -88,7 +91,7 @@ export const Header: React.FC<HeaderProps> = ({
   showInstallIcon = false,
   onInstallIconClick,
   onNavigate,
-  onToggleAIChat,
+  onOpenFaq,
   onSwitchProperty,
   canSwitchProperties,
 }) => {
@@ -447,17 +450,18 @@ export const Header: React.FC<HeaderProps> = ({
             </Popover>
           )}
 
-          {/* AI Assistant chat trigger (restored 27 Aug 2026 - see AI.md). Opens the offline-first
-              chat widget mounted in App.tsx; WhatsApp/Telegram live inside it now as the
-              escalation path, not as a separate header entry (see HeaderProps.onToggleAIChat). */}
+          {/* Help/FAQ trigger (2 Sep 2026, replaces the AI Assistant chat trigger -
+              see HeaderProps.onOpenFaq). Opens LegalDrawer.tsx straight to its FAQ
+              tab, same "click icon, panel opens" pattern as the notification bell
+              next to it. */}
           <button
             type="button"
-            onClick={() => onToggleAIChat?.()}
-            title={t('help_tooltip', 'Help & AI Assistant')}
-            aria-label={t('help_aria', 'Help & AI Assistant')}
-            className="header__ai-chat-toggle p-2 rounded-lg text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+            onClick={() => onOpenFaq?.()}
+            title={t('help_tooltip', 'Help & FAQ')}
+            aria-label={t('help_aria', 'Help & FAQ')}
+            className="header__faq-toggle p-2 rounded-lg text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
           >
-            <Bot className="w-5 h-5" />
+            <HelpCircle className="w-5 h-5" />
           </button>
 
           {/* Notification Bell Button */}

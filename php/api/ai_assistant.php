@@ -12,6 +12,16 @@
  * well-built offline matcher covers it without that ongoing cost).
  */
 
+// DISABLED (2 Sep 2026, explicit request): the AI Assistant chat feature has been taken off the
+// live site - Header.tsx's chat trigger was replaced with a Help/FAQ button, and this endpoint
+// is the only thing that ever called it, so nothing legitimate reaches this file anymore. Kept
+// in place (not deleted) for a future re-enable - "we will use it in future" - so this guard is
+// the ENTIRE change here; every line below is untouched. To bring it back, delete this block.
+http_response_code(410);
+header('Content-Type: application/json');
+echo json_encode(['status' => 'error', 'message' => 'The AI Assistant is currently unavailable.']);
+exit;
+
 // SECURITY (24 Aug 2026, found in review): this endpoint is never routed through router.php, so
 // it never got router.php's login/property-ownership gates - it had ZERO auth check at all.
 // $userRole used to come straight from the client's own request body, so the "STRICT SECURITY

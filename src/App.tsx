@@ -33,7 +33,12 @@ import { Smartphone, Download, X as CloseIcon, Share, PlusSquare, MoreVertical, 
 import { LoadingScreen } from './components/LoadingScreen';
 import { LoginPage } from './components/LoginPage';
 import { MultiKeyPropertyOverview } from './components/MultiKeyPropertyOverview';
-import { AIChatWidget } from './components/AIChatWidget';
+// AIChatWidget (2 Sep 2026, explicit request): taken off the live site - Header.tsx's chat
+// trigger was replaced with a Help/FAQ button (see LegalDrawer import below). Left unimported
+// here and unrendered further down rather than deleted - "we will use it in future" - the file
+// itself is untouched, just disconnected. php/api/ai_assistant.php (the only endpoint it ever
+// called) got the matching disable guard.
+import { LegalDrawer } from './components/LegalDrawer';
 // Lazy-loaded (28 Aug 2026, explicit request: "make sure driver.js only loads on demo property")
 // via the same lazyWithRetry() pattern every tab component below already uses - this keeps
 // driver.js (and its CSS) out of the main bundle entirely for the common case (a real tenant's
@@ -318,12 +323,18 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // initialXxx props; the screen pre-fills its form and opens it, but a human always still
   // clicks the real "Save"/"Log Request" button themselves - see AIChatWidget.tsx's callback wiring below.
   const [initialExpenseData, setInitialExpenseData] = useState<{ amount?: number; description?: string } | null>(null);
-  const [initialStaffMealName, setInitialStaffMealName] = useState<string | null>(null);
-  const [initialEditStaffName, setInitialEditStaffName] = useState<string | null>(null);
-  const [initialReqData, setInitialReqData] = useState<{ itemName?: string; qty?: number; unit?: string } | null>(null);
+  // Setters below are unused now that AIChatWidget (the only thing that ever called
+  // them) is disconnected (2 Sep 2026, see the import comment above) - the getters
+  // stay, still threaded through to each screen's own initialXxx prop, they just
+  // never receive a non-null value anymore. Dropped rather than renamed/suppressed
+  // so a real "declared but never used" regression elsewhere doesn't get lost in
+  // the noise if this whole block is ever fully removed later.
+  const [initialStaffMealName] = useState<string | null>(null);
+  const [initialEditStaffName] = useState<string | null>(null);
+  const [initialReqData] = useState<{ itemName?: string; qty?: number; unit?: string } | null>(null);
   const [initialServiceRequestData, setInitialServiceRequestData] = useState<{ roomNumber?: string; item?: string } | null>(null);
-  const [initialAddStaffData, setInitialAddStaffData] = useState<{ name?: string; phone?: string; role?: string; salary?: number } | null>(null);
-  const [initialNewMenuItemData, setInitialNewMenuItemData] = useState<{ name?: string; price?: number; category?: string } | null>(null);
+  const [initialAddStaffData] = useState<{ name?: string; phone?: string; role?: string; salary?: number } | null>(null);
+  const [initialNewMenuItemData] = useState<{ name?: string; price?: number; category?: string } | null>(null);
   const [propertyName] = useState<string>(
     preloadedData.currentProperty?.name || getPropertySlug().charAt(0).toUpperCase() + getPropertySlug().slice(1).replace(/-/g, ' ') || 'Property'
   );
@@ -745,7 +756,9 @@ function AppBody({ preloadedData }: AppBodyProps) {
   const [isIconOnly, setIsIconOnly] = useState(false);
   const [isAddBookingModalOpen, setIsAddBookingModalOpen] = useState(false);
   const [isAddExpenseModalOpen, setIsAddExpenseModalOpen] = useState(false);
-  const [isAIChatOpen, setIsAIChatOpen] = useState(false);
+  // FAQ (2 Sep 2026): Header.tsx's Help button opens LegalDrawer straight to its
+  // 'faq' tab - replaces the old isAIChatOpen toggle for this same header slot.
+  const [legalDrawerActiveTab, setLegalDrawerActiveTab] = useState<'faq' | null>(null);
 
   const [guests, setGuests] = useState<Guest[]>(() => preloadedData.initialGuests || []);
   // Whether the initial guests fetch itself is still in flight (DataLoader's
@@ -774,7 +787,9 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // client-side, so that case must still hit the network).
   const preloadedPropertyIdRef = useRef<number | undefined>(preloadedData.currentProperty?.id);
   const { showToast } = useToast();
-  const { staff, refreshStaff, refreshAttendance } = useStaff();
+  // staff itself dropped from this destructure (2 Sep 2026) - it was only ever
+  // passed to AIChatWidget, now disconnected (see the import comment above).
+  const { refreshStaff, refreshAttendance } = useStaff();
 
   const { inventory, updateStock, addInventoryItem, updateInventoryItemImage, addRequisition } = useInventoryContext();
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
@@ -2061,7 +2076,7 @@ ${itemsStr}
             showInstallIcon={canShowInstallIcon}
             onInstallIconClick={handleHeaderInstallClick}
             onNavigate={(tab, itemKey) => handleNavigateTab(tab, itemKey)}
-            onToggleAIChat={() => setIsAIChatOpen((prev) => !prev)}
+            onOpenFaq={() => setLegalDrawerActiveTab('faq')}
             onSwitchProperty={() => setIsSwitchingProperty(true)}
             canSwitchProperties={effectiveCanSwitchProperties}
           />
@@ -2810,57 +2825,16 @@ ${itemsStr}
         )}
 
         <GlobalModal />
-        <AIChatWidget
-          isOpen={isAIChatOpen}
-          onClose={() => setIsAIChatOpen(false)}
-          userRole={activeRole}
-          propertyName={preloadedData.currentProperty?.name}
-          guests={guests}
-          staff={staff}
-          onNavigate={(tab, itemKey, extraData) => {
-            setIsAIChatOpen(false);
-            setActiveTab(tab as any);
-            if (itemKey) setActiveMenuItemKey(itemKey);
-            if (extraData?.staffName) {
-              if (itemKey === 'staff_directory_salaries') {
-                setInitialEditStaffName(extraData.staffName);
-              } else {
-                setInitialStaffMealName(extraData.staffName);
-              }
-            }
-            if (extraData?.reqItemName || extraData?.reqQty) {
-              setInitialReqData({ itemName: extraData.reqItemName, qty: extraData.reqQty, unit: extraData.reqUnit });
-            }
-            if (extraData?.addStaffName || extraData?.addStaffPhone || extraData?.addStaffRole || extraData?.addStaffSalary) {
-              setInitialAddStaffData({ name: extraData.addStaffName, phone: extraData.addStaffPhone, role: extraData.addStaffRole, salary: extraData.addStaffSalary });
-            }
-            if (extraData?.newMenuItemName || extraData?.newMenuItemPrice || extraData?.newMenuItemCategory) {
-              setInitialNewMenuItemData({ name: extraData.newMenuItemName, price: extraData.newMenuItemPrice, category: extraData.newMenuItemCategory });
-            }
-          }}
-          onOpenAddBooking={() => {
-            setIsAIChatOpen(false);
-            setIsAddBookingModalOpen(true);
-          }}
-          onOpenAddExpense={(data) => {
-            setInitialExpenseData(data || null);
-            setIsAIChatOpen(false);
-            setIsAddExpenseModalOpen(true);
-          }}
-          onOpenTelegramModal={() => {
-            setIsAIChatOpen(false);
-            setIsTelegramModalOpen(true);
-          }}
-          onOpenAddServiceRequest={(data) => {
-            // Unlike Add Booking/Expense (globally-mounted modals), the New Service Request
-            // drawer lives inside ServiceRequestsManagement itself, only mounted when that tab
-            // is active - so this has to switch tabs too, same as the staff_meals/edit_staff
-            // navigate flow, not just set data and expect a hidden component to react to it.
-            setInitialServiceRequestData(data || null);
-            setIsAIChatOpen(false);
-            setActiveTab('service_requests' as any);
-            setActiveMenuItemKey('service_requests');
-          }}
+        {/* Help/FAQ (2 Sep 2026) - replaces the old AIChatWidget mount in this exact
+            slot (see the import comment above for the full why). tenantSlug/
+            defaultPropertySlug are what let LegalDrawer's FAQ turn page-name
+            mentions into real clickable links (see its own prop doc comment) -
+            both already computed above for the Switch Property flow, reused as-is. */}
+        <LegalDrawer
+          activeTab={legalDrawerActiveTab}
+          onClose={() => setLegalDrawerActiveTab(null)}
+          tenantSlug={effectiveSwitchTenantSlug}
+          defaultPropertySlug={getPropertySlug()}
         />
         {/* Gated on is_public_demo / demo tenant properties - the public marketing /
             demo walkthrough, mounted on demo properties so visitors and testers can experience the tour. */}
