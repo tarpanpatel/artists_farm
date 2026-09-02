@@ -5,6 +5,29 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   base: './',
   plugins: [react(), tailwindcss()],
+  build: {
+    chunkSizeWarningLimit: 650,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('apexcharts') || id.includes('react-apexcharts')) {
+              return 'vendor-charts';
+            }
+            if (id.includes('html2canvas') || id.includes('html-to-image') || id.includes('pdfjs-dist') || id.includes('@zxing')) {
+              return 'vendor-imaging';
+            }
+            if (id.includes('flowbite-react-icons')) {
+              return 'vendor-icons';
+            }
+            if (id.includes('flowbite') || id.includes('flowbite-react')) {
+              return 'vendor-flowbite';
+            }
+          }
+        }
+      }
+    }
+  },
   server: {
     host: '0.0.0.0',
     port: 3000,

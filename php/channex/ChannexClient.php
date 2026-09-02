@@ -106,7 +106,8 @@ class ChannexClient {
             curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
             curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 12);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
 
             if ($body !== null && in_array($method, ['POST', 'PUT', 'PATCH'], true)) {

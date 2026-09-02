@@ -5,7 +5,6 @@ import { Navigation, TabType } from './components/Navigation';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { OperationalDashboard } from './components/OperationalDashboard';
-import { PropertySetupWizard } from './components/PropertySetupWizard';
 import { TodayOverview } from './components/TodayOverview';
 import { GuestManagement } from './components/GuestManagement';
 import { GlobalModal } from './components/GlobalModal';
@@ -32,19 +31,6 @@ import { DataLoader, PreloadedData } from './components/DataLoader';
 import { Smartphone, Download, X as CloseIcon, Share, PlusSquare, MoreVertical, Receipt } from './components/icons/FlowbiteIcons';
 import { LoadingScreen } from './components/LoadingScreen';
 import { LoginPage } from './components/LoginPage';
-import { MultiKeyPropertyOverview } from './components/MultiKeyPropertyOverview';
-// AIChatWidget (2 Sep 2026, explicit request): taken off the live site - Header.tsx's chat
-// trigger was replaced with a Help/FAQ button (see LegalDrawer import below). Left unimported
-// here and unrendered further down rather than deleted - "we will use it in future" - the file
-// itself is untouched, just disconnected. php/api/ai_assistant.php (the only endpoint it ever
-// called) got the matching disable guard.
-import { LegalDrawer } from './components/LegalDrawer';
-// Lazy-loaded (28 Aug 2026, explicit request: "make sure driver.js only loads on demo property")
-// via the same lazyWithRetry() pattern every tab component below already uses - this keeps
-// driver.js (and its CSS) out of the main bundle entirely for the common case (a real tenant's
-// property, where the render below never mounts it), fetched only the moment a public-demo
-// property actually renders it.
-import { SelfOnboardingWizard } from './components/SelfOnboardingWizard';
 import { getPropertyAndRoomSlugs } from './services/api';
 
 // Code-split: everything below is either a secondary/admin tab that most
@@ -80,6 +66,10 @@ const EditPropertyPage = lazyWithRetry(() => import('./components/EditPropertyPa
 const PlatformPropertyManagement = lazyWithRetry(() => import('./components/PlatformPropertyManagement').then(m => ({ default: m.PlatformPropertyManagement })), 'PlatformPropertyManagement');
 const TenantDashboard = lazyWithRetry(() => import('./components/TenantDashboard').then(m => ({ default: m.TenantDashboard })), 'TenantDashboard');
 const RootAdminDashboard = lazyWithRetry(() => import('./components/RootAdminDashboard').then(m => ({ default: m.RootAdminDashboard })), 'RootAdminDashboard');
+const MultiKeyPropertyOverview = lazyWithRetry(() => import('./components/MultiKeyPropertyOverview').then(m => ({ default: m.MultiKeyPropertyOverview })), 'MultiKeyPropertyOverview');
+const LegalDrawer = lazyWithRetry(() => import('./components/LegalDrawer').then(m => ({ default: m.LegalDrawer })), 'LegalDrawer');
+const SelfOnboardingWizard = lazyWithRetry(() => import('./components/SelfOnboardingWizard').then(m => ({ default: m.SelfOnboardingWizard })), 'SelfOnboardingWizard');
+const PropertySetupWizard = lazyWithRetry(() => import('./components/PropertySetupWizard').then(m => ({ default: m.PropertySetupWizard })), 'PropertySetupWizard');
 
 // Small inline fallback for tab-content Suspense boundaries - deliberately
 // NOT LoadingScreen (that's a fixed-inset-0 full-page overlay meant for app
@@ -2192,24 +2182,26 @@ ${itemsStr}
               !preloadedData.currentProperty?.tenant_is_demo &&
               !preloadedData.currentProperty?.is_public_demo && (
               <ErrorBoundary section="Property Setup Wizard">
-                <PropertySetupWizard
-                  propertyId={preloadedData.currentProperty.id}
-                  propertyType={preloadedData.currentProperty?.property_type}
-                  name={preloadedData.currentProperty?.name || ''}
-                  address={preloadedData.currentProperty?.address || ''}
-                  googleMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
-                  email={preloadedData.currentProperty?.email || ''}
-                  phone={preloadedData.currentProperty?.phone || ''}
-                  gstin={preloadedData.currentProperty?.gstin || ''}
-                  upiId={preloadedData.currentProperty?.upi_id || ''}
-                  upiQrCodeUrl={preloadedData.currentProperty?.upi_qr_code_url || ''}
-                  checkinTime={preloadedData.currentProperty?.checkin_time || ''}
-                  checkoutTime={preloadedData.currentProperty?.checkout_time || ''}
-                  defaultTariff={preloadedData.currentProperty?.default_tariff}
-                  walkInTableCount={preloadedData.currentProperty?.walk_in_table_count}
-                  instructions={preloadedData.currentProperty?.instructions || ''}
-                  onSaved={() => window.location.reload()}
-                />
+                <Suspense fallback={null}>
+                  <PropertySetupWizard
+                    propertyId={preloadedData.currentProperty.id}
+                    propertyType={preloadedData.currentProperty?.property_type}
+                    name={preloadedData.currentProperty?.name || ''}
+                    address={preloadedData.currentProperty?.address || ''}
+                    googleMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
+                    email={preloadedData.currentProperty?.email || ''}
+                    phone={preloadedData.currentProperty?.phone || ''}
+                    gstin={preloadedData.currentProperty?.gstin || ''}
+                    upiId={preloadedData.currentProperty?.upi_id || ''}
+                    upiQrCodeUrl={preloadedData.currentProperty?.upi_qr_code_url || ''}
+                    checkinTime={preloadedData.currentProperty?.checkin_time || ''}
+                    checkoutTime={preloadedData.currentProperty?.checkout_time || ''}
+                    defaultTariff={preloadedData.currentProperty?.default_tariff}
+                    walkInTableCount={preloadedData.currentProperty?.walk_in_table_count}
+                    instructions={preloadedData.currentProperty?.instructions || ''}
+                    onSaved={() => window.location.reload()}
+                  />
+                </Suspense>
               </ErrorBoundary>
             )}
             {/* px-0 on mobile, not px-4 (superseded 31 Aug/1 Sep 2026 by the mobile
@@ -2861,12 +2853,16 @@ ${itemsStr}
             defaultPropertySlug are what let LegalDrawer's FAQ turn page-name
             mentions into real clickable links (see its own prop doc comment) -
             both already computed above for the Switch Property flow, reused as-is. */}
-        <LegalDrawer
-          activeTab={legalDrawerActiveTab}
-          onClose={() => setLegalDrawerActiveTab(null)}
-          tenantSlug={effectiveSwitchTenantSlug}
-          defaultPropertySlug={getPropertySlug()}
-        />
+        {legalDrawerActiveTab && (
+          <Suspense fallback={null}>
+            <LegalDrawer
+              activeTab={legalDrawerActiveTab}
+              onClose={() => setLegalDrawerActiveTab(null)}
+              tenantSlug={effectiveSwitchTenantSlug}
+              defaultPropertySlug={getPropertySlug()}
+            />
+          </Suspense>
+        )}
         {/* Gated on is_public_demo / demo tenant properties - the public marketing /
             demo walkthrough, mounted on demo properties so visitors and testers can experience the tour. */}
         {Boolean(
@@ -2884,14 +2880,18 @@ ${itemsStr}
             />
           </Suspense>
         )}
-        <SelfOnboardingWizard
-          isOpen={isSelfOnboardingOpen}
-          onClose={() => setIsSelfOnboardingOpen(false)}
-          onSuccess={(redirectUrl) => {
-            setIsSelfOnboardingOpen(false);
-            window.location.href = redirectUrl;
-          }}
-        />
+        {isSelfOnboardingOpen && (
+          <Suspense fallback={null}>
+            <SelfOnboardingWizard
+              isOpen={isSelfOnboardingOpen}
+              onClose={() => setIsSelfOnboardingOpen(false)}
+              onSuccess={(redirectUrl) => {
+                setIsSelfOnboardingOpen(false);
+                window.location.href = redirectUrl;
+              }}
+            />
+          </Suspense>
+        )}
     </div>
   );
 }
@@ -3195,14 +3195,18 @@ export function App() {
       <ErrorBoundary section="Management Login">
         <ToastProvider>
           <LoginPage variant="management" onLoginSuccess={handleLoginSuccess} onStartTrial={() => setIsSelfOnboardingOpen(true)} />
-          <SelfOnboardingWizard
-            isOpen={isSelfOnboardingOpen}
-            onClose={() => setIsSelfOnboardingOpen(false)}
-            onSuccess={(redirectUrl) => {
-              setIsSelfOnboardingOpen(false);
-              window.location.href = redirectUrl;
-            }}
-          />
+          {isSelfOnboardingOpen && (
+            <Suspense fallback={null}>
+              <SelfOnboardingWizard
+                isOpen={isSelfOnboardingOpen}
+                onClose={() => setIsSelfOnboardingOpen(false)}
+                onSuccess={(redirectUrl) => {
+                  setIsSelfOnboardingOpen(false);
+                  window.location.href = redirectUrl;
+                }}
+              />
+            </Suspense>
+          )}
         </ToastProvider>
       </ErrorBoundary>
     );
@@ -3215,14 +3219,18 @@ export function App() {
         <ErrorBoundary section="Root Login">
           <ToastProvider>
             <LoginPage variant="management" onLoginSuccess={handleLoginSuccess} onStartTrial={() => setIsSelfOnboardingOpen(true)} />
-            <SelfOnboardingWizard
-              isOpen={isSelfOnboardingOpen}
-              onClose={() => setIsSelfOnboardingOpen(false)}
-              onSuccess={(redirectUrl) => {
-                setIsSelfOnboardingOpen(false);
-                window.location.href = redirectUrl;
-              }}
-            />
+            {isSelfOnboardingOpen && (
+              <Suspense fallback={null}>
+                <SelfOnboardingWizard
+                  isOpen={isSelfOnboardingOpen}
+                  onClose={() => setIsSelfOnboardingOpen(false)}
+                  onSuccess={(redirectUrl) => {
+                    setIsSelfOnboardingOpen(false);
+                    window.location.href = redirectUrl;
+                  }}
+                />
+              </Suspense>
+            )}
           </ToastProvider>
         </ErrorBoundary>
       );

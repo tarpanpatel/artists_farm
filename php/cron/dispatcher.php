@@ -27,6 +27,13 @@ require_once __DIR__ . '/cron_jobs.php';
 ensureCronJobsSchema($pdo);
 
 $dispatcherLog = __DIR__ . '/dispatcher.log';
+$lockFile = __DIR__ . '/dispatcher.lock';
+$lockHandle = fopen($lockFile, 'c');
+if (!$lockHandle || !flock($lockHandle, LOCK_EX | LOCK_NB)) {
+    // Another dispatcher instance is actively running. Exit immediately to prevent process stacking.
+    exit(0);
+}
+
 $now = time();
 
 $definitions = [];
@@ -60,6 +67,9 @@ foreach ($jobs as $job) {
         file_put_contents($dispatcherLog, date('Y-m-d H:i:s') . " - {$job['job_key']}: EXCEPTION " . $e->getMessage() . "\n", FILE_APPEND);
     }
 }
+
+flock($lockHandle, LOCK_UN);
+fclose($lockHandle);
 
 function isCronJobDue(array $job, int $now): bool {
     $lastRun = $job['last_run_at'] ? strtotime($job['last_run_at']) : null;

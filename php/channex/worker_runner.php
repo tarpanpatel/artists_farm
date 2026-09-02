@@ -50,6 +50,13 @@ if ($delay > 0) {
     sleep($delay);
 }
 
+$lockFile = sys_get_temp_dir() . '/groundcode_worker_runner.lock';
+$lockHandle = fopen($lockFile, 'c');
+if (!$lockHandle || !flock($lockHandle, LOCK_EX | LOCK_NB)) {
+    // Another worker runner is actively processing outbox items. Exit cleanly.
+    exit(0);
+}
+
 try {
     // database.php (required above) already sets $pdo directly at its own
     // top level - there's no getDbConnection() wrapper anywhere in this
@@ -73,4 +80,9 @@ try {
     }
 } catch (Exception $e) {
     error_log("Background worker runner error: " . $e->getMessage());
+} finally {
+    if ($lockHandle) {
+        flock($lockHandle, LOCK_UN);
+        fclose($lockHandle);
+    }
 }
