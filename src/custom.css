@@ -1885,8 +1885,13 @@ pre,
    and bottom box shadow.
    ========================================================================== */
 @media (max-width: 639.98px) {
-  /* Eliminate horizontal padding from main view container on phones */
-  main.flex-1 {
+  /* Eliminate horizontal padding from main view container on phones.
+     .app-shell__main specifically (not the old bare main.flex-1), since
+     RootAdminDashboard.tsx's own separate <main> also happens to carry a
+     flex-1 class for unrelated flex-sizing reasons - matching on that alone
+     would silently rope its page into a full-bleed treatment it never
+     opted into. */
+  .app-shell__main {
     padding-left: 0 !important;
     padding-right: 0 !important;
   }
@@ -1924,9 +1929,17 @@ pre,
   .whatsapp-template-settings,
   .add-expenses-container,
   .app-card,
-  div[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute),
-  div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute),
-  div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute) {
+  /* Wildcard matches scoped to .app-shell__main descendants only (2 Sep 2026,
+     user report: TenantDashboard.tsx/RootAdminDashboard.tsx cards were losing
+     their rounded corners/side borders via this selector while sitting
+     inside their own, still-padded page containers - a broken half-bled
+     hybrid, since those pages render their own separate <main> and were
+     never part of the full-bleed initiative or its padding removal above).
+     Everything else in this list is already scoped by a specific component
+     class name, so it's unaffected either way. */
+  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute),
+  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute),
+  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute) {
     border-radius: 0 !important;
     border-left-width: 0 !important;
     border-right-width: 0 !important;
@@ -1965,12 +1978,28 @@ pre,
   html.dark .whatsapp-template-settings,
   html.dark .add-expenses-container,
   html.dark .app-card,
-  html.dark div[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute),
-  html.dark div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute),
-  html.dark div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute) {
+  html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute),
+  html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute),
+  html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute) {
     border-top-color: #334155 !important;
     border-bottom-color: #334155 !important;
     box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.35), 0 1px 2px -1px rgba(0, 0, 0, 0.25) !important;
+  }
+
+  /* Seamless "attached flush under a tab bar" panels (BillingCheckout's
+     desk-body, ServiceRequestsManagement's desk-body, InventoryManagement's
+     Categories panel, TelegramNotificationModal's template list, etc.) mark
+     themselves with border-t-0/rounded-t-none in their own className - that's
+     the signal this full-bleed block above must not fight. It still matches
+     them (border-t-0/rounded-t-none coexist with rounded-lg/border/shadow/
+     bg-white in the same className, so the wildcard selectors above still
+     apply) and had been forcing a 1px top border back on unconditionally
+     since found 2 Sep 2026 (user report: seam reappearing under the tabs on
+     mobile). Placed after that block so it wins the cascade at equal
+     specificity; only touches the top edge, leaving the full-bleed radius/
+     side-border/shadow treatment above untouched for these panels. */
+  [class*="border-t-0"] {
+    border-top-width: 0 !important;
   }
 
   /* In Kitchen, remove outer wrapper box styling on mobile so child tickets shine edge-to-edge */

@@ -1432,8 +1432,16 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         {activeTab === 'kds' && (() => {
               const activeOrders = orders.filter((o) => o.status === 'Pending' || o.status === 'Preparing');
 
+              /* sm:rounded-t-none sm:border-t-0 alongside the bare versions (2 Sep
+                 2026, user report: unwanted rounded corner + border reappearing
+                 under the tabs on tablet/desktop) - border-0 sm:border/rounded-none
+                 sm:rounded-lg just above only get cancelled by a flush override in
+                 the SAME variant scope; the bare-only rounded-t-none/border-t-0
+                 never touched the sm: side of that same conflict. See
+                 BillingCheckout.tsx's billing-checkout__desk-body Card for the
+                 fuller writeup of this pattern. */
               return (
-        <div className={`kds-orders-container space-y-3 sm:space-y-4 bg-transparent sm:bg-white dark:sm:bg-slate-800 rounded-none sm:rounded-lg border-0 sm:border border-slate-200 dark:border-slate-700 p-0 sm:p-4 ${isRestrictedStaffKitchenView ? '' : 'rounded-t-none -mt-px border-t-0'}`}>
+        <div className={`kds-orders-container space-y-3 sm:space-y-4 bg-transparent sm:bg-white dark:sm:bg-slate-800 rounded-none sm:rounded-lg border-0 sm:border border-slate-200 dark:border-slate-700 p-0 sm:p-4 ${isRestrictedStaffKitchenView ? '' : 'rounded-t-none border-t-0 sm:rounded-t-none sm:border-t-0 -mt-px'}`}>
           <div className="kds-status-filter-bar flex flex-col sm:flex-row items-start sm:items-center justify-end text-xs">
             {/* Smart Polling / Live Sync Bar */}
             <div className="flex items-center gap-2.5 bg-white sm:bg-slate-50 dark:bg-slate-800 dark:sm:bg-slate-900 border-b sm:border border-slate-200 dark:border-slate-700 px-4 sm:px-3 py-2 sm:py-1.5 rounded-none sm:rounded-lg w-full sm:w-auto justify-between sm:justify-start">
@@ -1898,7 +1906,13 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           return (
             <div
               key={item.id}
-              className="pos-food-row bg-white dark:bg-gray-800 rounded-none sm:rounded-lg border-x-0 sm:border border-y sm:border-y border-gray-200 dark:border-gray-700 px-4 py-2.5 sm:p-2.5 flex items-center justify-between gap-3 hover:border-blue-500 transition-all shadow-none sm:shadow-xs -mt-px sm:mt-0"
+              // first:mt-0 (2 Sep 2026, review finding: -mt-px was meant to
+              // collapse the border between two ADJACENT rows, but with no
+              // first-child exception it also pulled the very first row of
+              // every category 1px up into whatever precedes it). :first-child
+              // adds real specificity over the bare -mt-px, so this wins
+              // deterministically regardless of Tailwind's generated class order.
+              className="pos-food-row bg-white dark:bg-gray-800 rounded-none sm:rounded-lg border-x-0 sm:border border-y sm:border-y border-gray-200 dark:border-gray-700 px-4 py-2.5 sm:p-2.5 flex items-center justify-between gap-3 hover:border-blue-500 transition-all shadow-none sm:shadow-xs -mt-px first:mt-0 sm:mt-0"
             >
               <div className="flex items-center gap-2.5 min-w-0 flex-1">
                 <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 overflow-hidden flex items-center justify-center shrink-0">

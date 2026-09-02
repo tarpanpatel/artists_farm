@@ -2175,14 +2175,26 @@ ${itemsStr}
                 />
               </ErrorBoundary>
             )}
-            {/* px-4 (27 Aug 2026, full-app padding sweep - user report: pages/cards show
-                inconsistent left/right insets against each other). Was px-1 (4px) on mobile -
-                every tab sharing this <main> (Dashboard/Bookings/Team/Kitchen/Edit Property)
-                sat nearly flush against the screen edge, while other pages built independently
-                of this shared shell (TenantDashboard.tsx, EditPropertyPage's Card) used their
-                own unrelated padding decisions - see CLAUDE.md's "Page & Card Padding
-                Standard" for the full scale this now matches. */}
-            <main className="flex-1 px-0 py-1 sm:px-6 sm:py-3 lg:px-8 lg:py-4 w-full space-y-2 sm:space-y-4 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] md:pb-4">
+            {/* px-0 on mobile, not px-4 (superseded 31 Aug/1 Sep 2026 by the mobile
+                full-bleed card initiative - see custom.css's "Full-bleed card standard
+                on mobile screens"). Cards inside this <main> now span edge-to-edge on
+                phones with custom.css stripping their own side borders/radius/margin;
+                if this container kept its own px-4 gutter too, every card would be
+                inset from the screen edge AGAIN while ALSO having lost its rounded
+                corners/side borders - the exact "flat card floating in a padded box"
+                bug this class must avoid causing. Non-card content (headers,
+                breadcrumbs, toolbars) that still needs a gutter gets it back via
+                custom.css's own curated selector list, not from this container.
+                sm:px-6 lg:px-8 (tablet/desktop) is unaffected - the full-bleed
+                treatment is mobile-only. app-shell__main tags this specific <main>
+                so custom.css's full-bleed selectors can be scoped to descendants of
+                it - TenantDashboard.tsx/RootAdminDashboard.tsx render their own
+                separate <main> outside this shell with their own unreduced padding,
+                and must NOT have the same card treatment applied without the
+                matching padding compensation (found 2 Sep 2026: their cards were
+                losing rounded corners/side borders via the old ungated selector
+                while sitting in still-padded containers, a broken half-bled hybrid). */}
+            <main className="app-shell__main flex-1 px-0 py-1 sm:px-6 sm:py-3 lg:px-8 lg:py-4 w-full space-y-2 sm:space-y-4 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] md:pb-4">
               <Suspense fallback={<TabContentFallback />}>
 
               {/* MultiKey room view - takes priority over everything */}

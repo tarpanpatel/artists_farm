@@ -562,7 +562,10 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
           </Tabs>
         </div>
 
-        <Card className="shadow-md space-y-4 rounded-t-none border-t-0 -mt-px service-requests-management__desk-body">
+        {/* sm:rounded-t-none sm:border-t-0 - see BillingCheckout.tsx's
+            billing-checkout__desk-body Card for the full explanation (same
+            global-theme-vs-bare-override variant-scope mismatch, same fix). */}
+        <Card className="shadow-md space-y-4 rounded-t-none border-t-0 sm:rounded-t-none sm:border-t-0 -mt-px service-requests-management__desk-body">
           {loading ? (
             <div className="text-center py-6 text-slate-500 dark:text-slate-400 text-sm service-requests-management__loading">{t('loading_spinner_default_message', 'Loading...')}</div>
           ) : requests.length === 0 ? (

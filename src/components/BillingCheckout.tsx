@@ -525,13 +525,20 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
             theme={{ root: { children: 'flex h-full flex-col gap-0 p-0' } }}
             className="billing-checkout__room-card rounded-none sm:rounded-lg border-x-0 sm:border border-y sm:border-y shadow-none sm:shadow-md overflow-hidden flex flex-col justify-between !p-0"
           >
-            {/* Room Header */}
-            <div className="billing-checkout__room-card-header bg-gray-50 dark:bg-gray-700 px-4 py-2.5 sm:py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-              <h3 className="billing-checkout__room-card-title text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5 truncate">
-                <Building className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
-                {group.roomName}
-              </h3>
-            </div>
+            {/* Room Header - only meaningful when there's more than one room/
+                unit to tell apart (multi-key properties). A single-property
+                account only ever has the one synthetic "Main Property / Villa"
+                group from buildRoomGroups' rooms.length===0 fallback above, so
+                this header just repeated the property's own name/context for
+                no reason (found 2 Sep 2026, user report). */}
+            {rooms.length > 0 && (
+              <div className="billing-checkout__room-card-header bg-gray-50 dark:bg-gray-700 px-4 py-2.5 sm:py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                <h3 className="billing-checkout__room-card-title text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5 truncate">
+                  <Building className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
+                  {group.roomName}
+                </h3>
+              </div>
+            )}
 
             {/* Guest Card(s) stacked inside Room Column */}
             <div className="billing-checkout__room-card-body px-4 py-3 sm:p-4 space-y-4">
@@ -1070,7 +1077,16 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
               redundant second surface for the same signal. */}
         </div>
 
-        <Card className="billing-checkout__desk-body shadow-md space-y-4 rounded-t-none border-t-0 -mt-px">
+        {/* sm:rounded-t-none sm:border-t-0 (2 Sep 2026, user report: unwanted
+            rounded corner + border reappearing under the tabs on tablet/
+            desktop) - the global Card theme (main.tsx) added border-y sm:border
+            and this Card's own flush override was only ever the bare/mobile
+            rounded-t-none border-t-0. Bare and sm:-prefixed utilities live in
+            different Tailwind variant scopes, so they don't cancel each other
+            out - the sm: rule from the theme kept winning at >=640px. Matching
+            the prefix on both makes the cancellation apply at the same scope
+            the conflict is actually happening in. */}
+        <Card className="billing-checkout__desk-body shadow-md space-y-4 rounded-t-none border-t-0 sm:rounded-t-none sm:border-t-0 -mt-px">
 
           {/* Search Bar - covers room too (guest name, phone, OR room number) */}
           <div className="billing-checkout__search flex flex-col items-center gap-3 sm:flex-row">
