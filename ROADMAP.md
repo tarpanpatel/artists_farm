@@ -6,6 +6,27 @@ This document tracks identified bugs, pending backend API integrations, and upco
 
 ## 🟢 Open Items
 
+### 💬 Custom WhatsApp-Powered SaaS Customer Support Desk (Planned - Sep 2026)
+
+- **Goal**: Build a 100% proprietary, zero-subscription customer support desk inside Ground Code powered directly by Meta's WhatsApp Cloud API (`php/whatsapp/sender.php`).
+- **Host / Staff Experience**:
+  - Front-desk and property owners message Ground Code on WhatsApp or via the in-app Help Drawer.
+  - Automatically captures system diagnostics: property slug, active screen (e.g. `#bookings`, `#kitchen_kds`), user role, and browser info.
+- **Inbound Webhook (`php/whatsapp/webhook.php`)**:
+  - Meta Webhook endpoint verifying `hub.verify_token` and `hub.challenge`.
+  - Inbound listener reverse-matches sender phone numbers against `tenants.phone` or `staff.phone` to attribute messages to the exact property (`Artists Farm Jaipur`).
+  - Automatically creates/threads tickets in MySQL (`support_tickets` & `support_ticket_messages`).
+  - Dispatches immediate Telegram alert to Root Admin bot:
+    *"💬 Support Ticket #GC-1001 from Jaipur: 'Printer not printing KOT' [Reply in Dashboard]"*.
+- **Root Admin Support Desk UI (`src/components/SupportDesk.tsx` in `RootAdminDashboard.tsx`)**:
+  - Dedicated "Support Desk" tab with live unread badge count.
+  - Split-view inbox: searchable conversation list with status filters (`Open`, `In Progress`, `Resolved`, `Closed`).
+  - Two-way chat thread with client/admin bubbles and one-click `[Jump to Property]` diagnostic button.
+  - Outbound reply box executing `sendWhatsAppDirectTextMessage()` to deliver replies straight to the host's WhatsApp in real time.
+- **Database Schema (`php/schema/support_tickets.sql`)**:
+  - `support_tickets` (`id`, `ticket_number`, `tenant_id`, `property_id`, `contact_phone`, `contact_name`, `status`, `priority`, `category`, `last_message_at`, `unread_admin_count`).
+  - `support_ticket_messages` (`id`, `ticket_id`, `sender_type`, `sender_name`, `sender_phone`, `body`, `whatsapp_message_id`, `delivery_status`, `created_at`).
+
 ### Concurrency: what remains irreducible (audited 30 Aug 2026)
 
 A full multi-user concurrency audit was done 30 Aug 2026 (prompted by "what
