@@ -320,6 +320,10 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
   if (!isOpen) return null;
 
   const prereq = selectedCode ? CHANNEL_PREREQUISITES[selectedCode] : null;
+  // Only Booking.com has an external prerequisite step; every other channel
+  // has no checkbox to tick, so gating Test Connection on prereqConfirmed
+  // being literally true left it permanently disabled for Airbnb et al.
+  const prereqSatisfied = !prereq || prereqConfirmed;
 
   return (
     <Drawer
@@ -576,8 +580,8 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
           <Button
             variant="primary"
             onClick={handleTestConnection}
-            disabled={testing || !prereqConfirmed || !isFormValid}
-            className={(!prereqConfirmed || !isFormValid) ? 'opacity-50' : ''}
+            disabled={testing || !prereqSatisfied || !isFormValid}
+            className={(!prereqSatisfied || !isFormValid) ? 'opacity-50' : ''}
           >
             {testing ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
             {testing ? 'Testing Connection...' : 'Test Connection'}

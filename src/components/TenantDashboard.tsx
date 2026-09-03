@@ -763,7 +763,6 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {safeProperties.map((property) => {
                     const isMultiKey = property.property_type === 'MULTI_KEY';
-                    const roomCount = property.room_count ?? 0;
                     const tenantSlug = tenantInfo?.slug ?? '';
                     const dashboardUrl = tenantSlug
                       ? `${API_ROOT_BASE}/${tenantSlug}/${property.slug}/#dashboard`
