@@ -478,25 +478,9 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
             })}
           </ul>
 
-          {/* Quick Support & Legal Links */}
+          {/* Quick Legal Link */}
           <div className="pt-3 mt-3 border-t border-gray-200 dark:border-gray-700 space-y-1">
-            <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-              Support & Legal
-            </div>
             <ul className="space-y-1 font-medium text-xs">
-              <li>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLegalDrawerTab('faq');
-                    setIsSidebarOpen(false);
-                  }}
-                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors cursor-pointer"
-                >
-                  <HelpCircle className="w-4 h-4 text-gray-400" />
-                  <span>Help & FAQ</span>
-                </button>
-              </li>
               <li>
                 <button
                   type="button"
@@ -577,7 +561,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
               <p className="text-2xs text-slate-500 dark:text-slate-400 truncate">
                 {activeTab === 'dashboard' && 'Dashboard Overview & Live Operations'}
                 {activeTab === 'analytics' && 'Combined Portfolio Analytics & Performance'}
-                {activeTab === 'properties' && 'Properties & Units Configuration'}
+                {activeTab === 'properties' && 'Create, edit, toggle active status, and access direct management portals'}
                 {activeTab === 'account' && 'Super Admin Account Details & Security'}
                 {activeTab === 'billing' && 'Subscription Plan, Slots & Invoices'}
               </p>
@@ -604,33 +588,14 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 <HelpCircle className="w-5 h-5" />
               </button>
             </Popover>
-
-            {/* Quick Header Sign Out */}
-            <Popover
-              trigger="hover"
-              placement="bottom"
-              content={
-                <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
-                  {t('sign_out_terminal_button', 'Sign Out')}
-                </div>
-              }
-            >
-              <button
-                type="button"
-                onClick={handleLogout}
-                aria-label={t('sign_out_terminal_button', 'Sign Out')}
-                className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 transition-colors cursor-pointer"
-              >
-                <LogOut className="w-5 h-5 text-red-500" />
-              </button>
-            </Popover>
           </div>
         </div>
       </header>
 
       {/* ──────────────── Main Content Area ──────────────── */}
-      <main className="md:pl-64 min-h-[calc(100vh-4rem)] pb-[calc(5rem+env(safe-area-inset-bottom,0px))] md:pb-12">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      <main className="md:pl-64 min-h-[calc(100vh-4rem)] pb-[calc(5rem+env(safe-area-inset-bottom,0px))] md:pb-6 flex flex-col flex-1">
+        <div className="max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 flex flex-col justify-between space-y-6">
+          <div className="space-y-6 flex-1">
           {/* Success Toast Notification */}
           {successMsg && (
             <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-9999 bg-emerald-600 text-white px-5 py-3 rounded-lg shadow-2xl text-sm font-medium flex items-center gap-2 animate-pulse">
@@ -898,11 +863,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           {/* ═══════════ TAB 3: PROPERTIES ═══════════ */}
           {activeTab === 'properties' && (
             <section className="space-y-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('your_properties_heading', 'Your Properties')}</h2>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Create, edit, toggle active status, and access direct management portals</p>
-                </div>
+              <div className="flex items-center justify-end">
                 {remaining > 0 ? (
                   <Button
                     id="tenant-add-property-btn"
@@ -1299,6 +1260,8 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
               />
             </section>
           )}
+
+          </div>
 
           {/* Footer */}
           <DashboardFooter />

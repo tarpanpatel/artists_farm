@@ -21,7 +21,7 @@ export const DashboardFooter: React.FC = () => {
 
   return (
     <>
-      <Footer container className="mt-8 border border-gray-200 dark:border-gray-700">
+      <Footer container className="mt-auto border border-gray-200 dark:border-gray-700">
         <span className="text-sm text-gray-500 sm:text-center dark:text-gray-400">
           © 2026{' '}
           <a
