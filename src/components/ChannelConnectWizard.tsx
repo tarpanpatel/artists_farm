@@ -618,16 +618,18 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
                   </Button>
                 </div>
                 <div className="pt-1">
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    size="xs"
                     onClick={() => {
                       setAirbnbAuthOpened(false);
                       setCachedAirbnbAuthUrl(null);
                     }}
-                    className="text-2xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 underline cursor-pointer"
+                    leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
+                    className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                   >
-                    Restart Airbnb Authorization
-                  </button>
+                    <span>Restart Airbnb Authorization</span>
+                  </Button>
                 </div>
               </div>
             ) : (

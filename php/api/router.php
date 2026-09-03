@@ -4005,10 +4005,32 @@ switch ($action) {
         // are Channex's own, appended per its documented contract.
         require_once __DIR__ . '/../channex/channel_connections.php';
         header('Content-Type: text/html; charset=utf-8');
-        $landingPropertyId = (int)($_GET['property_id'] ?? 0);
-        $landingToken = (string)($_GET['token'] ?? '');
-        $landingSuccess = ($_GET['outcome'] ?? '') === 'success' && ($_GET['success'] ?? '') !== 'false';
-        $landingChannelId = (string)($_GET['channel_id'] ?? '');
+        // Channex appends its own params with a literal "?", not "&" (its
+        // docs quote the suffix as "?success=true&channel_id={id}&token={token}"
+        // verbatim) - it does not check whether redirect_uri already has a
+        // query string. Confirmed live 3 Sep 2026: our own redirect_uri
+        // (…&outcome=success) plus that literal "?" produces a URL with TWO
+        // "?" characters. PHP's $_GET only parses up to the FIRST "?" -
+        // everything Channex appended lands inside the STRING VALUE of
+        // whatever our own last param was ($_GET['outcome'] became
+        // "success?success=true&channel_id=...&token=..."), so success/
+        // channel_id/token were always empty and a genuinely successful
+        // authorization got recorded as "not completed". Parse the raw query
+        // string ourselves, splitting on "?" to separate our own params
+        // (before the first "?") from Channex's appended ones (after it).
+        $rawQuery = (string)($_SERVER['QUERY_STRING'] ?? '');
+        $queryChunks = explode('?', $rawQuery);
+        $ownParams = [];
+        parse_str($queryChunks[0] ?? '', $ownParams);
+        $channexParams = [];
+        if (isset($queryChunks[1])) {
+            parse_str($queryChunks[1], $channexParams);
+        }
+        $landingPropertyId = (int)($ownParams['property_id'] ?? 0);
+        $landingToken = (string)($channexParams['token'] ?? $ownParams['token'] ?? '');
+        $landingSuccess = ($ownParams['outcome'] ?? '') === 'success'
+            && (($channexParams['success'] ?? $ownParams['success'] ?? '') !== 'false');
+        $landingChannelId = (string)($channexParams['channel_id'] ?? $ownParams['channel_id'] ?? '');
 
         $conn = $landingPropertyId > 0 ? getChannexChannelConnection($pdo, $landingPropertyId, 'AirBNB') : null;
         $storedSettings = $conn && $conn['settings'] ? (json_decode($conn['settings'], true) ?: []) : [];
