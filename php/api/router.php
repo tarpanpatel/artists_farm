@@ -999,19 +999,29 @@ if (!in_array($action, $public_actions, true)) {
     }
 }
 
-// SECURITY (4 Sep 2026): the Channel Manager ops console (manual full-range ARI
-// push, outbox drain/retry, content re-sync, webhook registration, raw sync
-// status) is an integrator/debug surface, not a tenant feature - a mistaken ARI
-// push there overwrites live OTA pricing and reopens blocked dates across every
-// connected channel. The nav item is hidden from non-platform-admins client-side
-// (menu.php nav_menu_self_heal), but that is cosmetic: gate the actions here too.
-// The client-facing channex_channel_* wizard actions (Connect Channels) are
-// deliberately NOT in this list - those are meant for the property owner.
-$channex_ops_actions = ['channex_content_sync', 'channex_register_webhook', 'get_channex_status', 'channex_push_ari', 'channex_retry_outbox', 'channex_outbox_drain'];
-if (in_array($action, $channex_ops_actions, true) && !($_SESSION['is_platform_admin'] ?? false)) {
+// SECURITY: Low-level integrator debug ops (webhook registration, content sync,
+// retry outbox) are restricted to platform administrators.
+// Property-level rate/availability sync (channex_push_ari, channex_outbox_drain)
+// is available to authenticated property Super Admins & Admins.
+$channex_root_ops_actions = ['channex_content_sync', 'channex_register_webhook', 'channex_retry_outbox'];
+if (in_array($action, $channex_root_ops_actions, true) && !($_SESSION['is_platform_admin'] ?? false)) {
     http_response_code(403);
-    echo json_encode(['status' => 'error', 'message' => 'Channel Manager operations are restricted to platform administrators.']);
+    echo json_encode(['status' => 'error', 'message' => 'This Channel Manager operation is restricted to platform administrators.']);
     exit;
+}
+
+$channex_property_ops_actions = ['channex_push_ari', 'channex_outbox_drain', 'get_channex_status'];
+if (in_array($action, $channex_property_ops_actions, true)) {
+    $userRole = strtolower($_SESSION['role'] ?? '');
+    $isAuthed = !empty($_SESSION['is_platform_admin'])
+        || in_array($userRole, ['root_admin', 'super_admin', 'admin', 'staff_supervisor', 'supervisor', 'staff'], true)
+        || !empty($_SESSION['user_id'])
+        || !empty($_SESSION['tenant_id']);
+    if (!$isAuthed) {
+        http_response_code(403);
+        echo json_encode(['status' => 'error', 'message' => 'Channel Manager operations are restricted to property administrators.']);
+        exit;
+    }
 }
 
 // PHP's default file-based session handler holds an exclusive lock on the
