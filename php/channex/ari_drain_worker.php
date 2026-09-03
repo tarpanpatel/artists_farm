@@ -160,6 +160,17 @@ class AriDrainWorker {
                     $taskId = $res['data'][0]['id'] ?? ($res['task_id'] ?? null);
                     $this->markRowsDone($rowIds, $taskId);
                     $processedCount += count($rowIds);
+
+                    // Guaranteed-visibility rate push alert (4 Sep 2026, see
+                    // recordRatePushAlert()'s own doc comment in outbox.php) -
+                    // every rate/restriction push that actually reaches
+                    // Channex gets recorded here, regardless of what enqueued
+                    // it, so the app can prompt the user about it on next
+                    // load even when the trigger was a script run directly
+                    // against the server, not a confirm()'d UI action.
+                    if ($kind !== 'availability' && function_exists('recordRatePushAlert')) {
+                        recordRatePushAlert($this->pdo, $propId, $roomId, $startDate, $endDate);
+                    }
                 } else {
                     $this->markRowsFailed($rowIds, $attempts, json_encode($res['error'] ?? 'API reject'));
                 }

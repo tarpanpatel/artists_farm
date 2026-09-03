@@ -94,6 +94,16 @@ function handleRateRuleRequests($pdo, $requestMethod, $action, $propertyId) {
             }
             break;
 
+        case 'get_pending_rate_push_alerts':
+            getPendingRatePushAlerts($pdo, $propertyId);
+            break;
+
+        case 'acknowledge_rate_push_alerts':
+            if ($requestMethod === 'POST') {
+                acknowledgeRatePushAlerts($pdo, $propertyId);
+            }
+            break;
+
         default:
             http_response_code(400);
             echo json_encode(['status' => 'error', 'message' => 'Invalid rate rules action']);
@@ -404,6 +414,71 @@ function updatePricingMode($pdo, $propertyId) {
         if (function_exists('triggerEventDrivenChannexDrain')) {
             triggerEventDrivenChannexDrain($pdo);
         }
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+    }
+}
+
+/**
+ * Unacknowledged rate/restriction pushes for the current scope (added 4 Sep
+ * 2026 - see recordRatePushAlert()'s doc comment in outbox.php for why this
+ * exists: a UI confirm() dialog can't cover a push triggered by a script run
+ * directly against the server, so this is the guaranteed, can't-be-bypassed
+ * half - every completed rate push gets recorded regardless of trigger, and
+ * the app prompts about it on next load via this endpoint). Scoped like
+ * every other rate-rule lookup in this file (room_id = this scope, OR a
+ * property-wide push with room_id NULL against this scope's own
+ * property_id) - PLUS, when this scope is a MULTI_KEY parent, every one of
+ * its own child rooms too, so the aggregate dashboard surfaces a push made
+ * while drilled into any single room.
+ */
+function getPendingRatePushAlerts($pdo, $propertyId) {
+    try {
+        if (is_file(__DIR__ . '/../channex/outbox.php')) {
+            require_once __DIR__ . '/../channex/outbox.php';
+        }
+        if (!function_exists('ensureRatePushAlertSchema')) {
+            echo json_encode(['status' => 'success', 'data' => []]);
+            return;
+        }
+        ensureRatePushAlertSchema($pdo);
+
+        $childStmt = $pdo->prepare("SELECT id FROM properties WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM'");
+        $childStmt->execute([$propertyId]);
+        $childIds = array_map('intval', $childStmt->fetchAll(PDO::FETCH_COLUMN));
+        $scopeIds = array_unique(array_merge([(int)$propertyId], $childIds));
+        $placeholders = implode(',', array_fill(0, count($scopeIds), '?'));
+
+        $stmt = $pdo->prepare("
+            SELECT a.id, a.property_id, a.room_id, a.date_from, a.date_to, a.reason, a.created_at,
+                   r.name AS room_name
+            FROM channex_rate_push_alerts a
+            LEFT JOIN properties r ON r.id = a.room_id
+            WHERE a.acknowledged_at IS NULL
+              AND (a.property_id IN ($placeholders) OR a.room_id IN ($placeholders))
+            ORDER BY a.created_at DESC
+            LIMIT 50
+        ");
+        $stmt->execute(array_merge($scopeIds, $scopeIds));
+        echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+    } catch (Exception $e) {
+        echo json_encode(['status' => 'success', 'data' => []]);
+    }
+}
+
+function acknowledgeRatePushAlerts($pdo, $propertyId) {
+    try {
+        $input = json_decode(file_get_contents('php://input'), true) ?? [];
+        $ids = array_values(array_filter(array_map('intval', $input['ids'] ?? [])));
+        if (empty($ids)) {
+            echo json_encode(['status' => 'success', 'message' => 'Nothing to acknowledge.']);
+            return;
+        }
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $pdo->prepare("UPDATE channex_rate_push_alerts SET acknowledged_at = NOW() WHERE id IN ($placeholders) AND acknowledged_at IS NULL");
+        $stmt->execute($ids);
+        echo json_encode(['status' => 'success', 'message' => 'Acknowledged.']);
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);

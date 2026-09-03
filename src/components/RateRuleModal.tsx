@@ -79,11 +79,11 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
     // backend effect instead of just hiding the dialog cosmetically.
     if (rateRules.length > 0) {
       const confirmed = await confirm({
-        title: newMode === 'flat' ? 'Switch to Flat Base Rate?' : 'Switch to Date Range Rules?',
+        title: newMode === 'flat' ? 'Switch to Flat Base Rate?' : 'Switch to Dynamic Rules?',
         message: newMode === 'flat'
-          ? `This immediately suspends every saved date-range rule for this ${rooms.length > 1 ? 'room/property' : 'property'} everywhere - your own calendar, Airbnb, Booking.com, and your public availability page all switch to the flat base rate with no restrictions right away. Any dates a rule had Stop Sell-blocked will reopen. Rules stay saved and can be reactivated by switching back.`
-          : `This immediately activates every saved date-range rule for this ${rooms.length > 1 ? 'room/property' : 'property'} everywhere - your own calendar, Airbnb, Booking.com, and your public availability page will start showing rule rates and enforcing any Stop Sell/stay restrictions right away.`,
-        confirmText: newMode === 'flat' ? 'Switch to Flat Rate' : 'Switch to Date Range Rules',
+          ? `This immediately suspends every saved rate rule for this ${rooms.length > 1 ? 'room/property' : 'property'} everywhere - your own calendar, Airbnb, Booking.com, and your public availability page all switch to the flat base rate with no restrictions right away. Any dates a rule had Stop Sell-blocked will reopen. Rules stay saved and can be reactivated by switching back.`
+          : `This immediately activates every saved rate rule for this ${rooms.length > 1 ? 'room/property' : 'property'} everywhere - your own calendar, Airbnb, Booking.com, and your public availability page will start showing rule rates and enforcing any Stop Sell/stay restrictions right away.`,
+        confirmText: newMode === 'flat' ? 'Switch to Flat Rate' : 'Switch to Dynamic Rules',
         variant: 'warning',
       });
       if (!confirmed) return;
@@ -93,7 +93,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
       const res = await updatePricingModeDB(newMode);
       if (res.success) {
         setCurrentPricingMode(newMode);
-        showToast(`Pricing mode set to ${newMode === 'variable' ? 'Date Range Rules' : 'Flat Base Rate'}.`, { type: 'success' });
+        showToast(`Pricing mode set to ${newMode === 'variable' ? 'Dynamic Date-Range' : 'Flat Base Rate'}.`, { type: 'success' });
         onRulesUpdated();
       } else {
         showToast(res.message || 'Failed to update pricing mode', { type: 'error' });
@@ -154,7 +154,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
 
       const res = await saveRateRuleDB(payload);
       if (res.success) {
-        showToast('Date-range rate & restriction rule saved successfully.', { type: 'success' });
+        showToast('Dynamic rate & restriction rule saved successfully.', { type: 'success' });
         setRatePerNight('');
         setRuleName('');
         setMinStay('');
@@ -239,7 +239,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
             </h4>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               {currentPricingMode === 'variable'
-                ? 'Your saved date-range rules override the standard base rate for matching dates.'
+                ? 'Dynamic rules override standard base rates for matching date ranges.'
                 : `Using flat base rate (₹${defaultTariff ? Math.round(defaultTariff) : '0'}/night) for all dates.`}
             </p>
           </div>
@@ -265,7 +265,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
               }`}
             >
-              Date Range Rules
+              Dynamic Rules
             </button>
           </div>
         </div>

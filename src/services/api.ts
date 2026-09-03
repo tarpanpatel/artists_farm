@@ -3042,5 +3042,47 @@ export async function updatePricingModeDB(pricing_mode: 'flat' | 'variable'): Pr
   }
 }
 
+export interface RatePushAlert {
+  id: number;
+  property_id: number;
+  room_id: number | null;
+  room_name: string | null;
+  date_from: string;
+  date_to: string;
+  reason: string;
+  created_at: string;
+}
+
+// Guaranteed-visibility prompt for a rate/restriction push (4 Sep 2026, see
+// recordRatePushAlert() in outbox.php) - fetched once per property load so
+// the user gets told about a push even when it was triggered by something
+// other than an in-app confirm() dialog (a background drain, or a script
+// run directly against the server).
+export async function fetchPendingRatePushAlertsDB(): Promise<RatePushAlert[]> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=get_pending_rate_push_alerts`);
+    const json = await res.json();
+    return json.status === 'success' && Array.isArray(json.data) ? json.data : [];
+  } catch (err) {
+    console.error('Failed to fetch rate push alerts:', err);
+    return [];
+  }
+}
+
+export async function acknowledgeRatePushAlertsDB(ids: number[]): Promise<boolean> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=acknowledge_rate_push_alerts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    });
+    const json = await res.json();
+    return json.status === 'success';
+  } catch (err) {
+    console.error('Failed to acknowledge rate push alerts:', err);
+    return false;
+  }
+}
+
 
 

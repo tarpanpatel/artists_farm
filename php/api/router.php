@@ -3586,6 +3586,8 @@ switch ($action) {
     case 'save_rate_rule':
     case 'delete_rate_rule':
     case 'update_pricing_mode':
+    case 'get_pending_rate_push_alerts':
+    case 'acknowledge_rate_push_alerts':
         handleRateRuleRequests($pdo, $request_method, $action, $propertyId);
         break;
 

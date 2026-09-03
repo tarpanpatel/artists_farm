@@ -30,7 +30,7 @@ import { GUEST_STATUS_CHECKEDOUT_LEGACY, GUEST_STATUS_CHECKED_OUT } from '../con
 import { t } from '../i18n';
 import { TabType } from './Navigation';
 
-import { fulfillServiceRequestInDB } from '../services/api';
+import { fulfillServiceRequestInDB, fetchPendingRatePushAlertsDB, acknowledgeRatePushAlertsDB } from '../services/api';
 import { useToast } from './ToastContext';
 
 interface HeaderProps {
@@ -148,6 +148,43 @@ export const Header: React.FC<HeaderProps> = ({
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Rate Push Alert prompt (4 Sep 2026, direct user request: "how to make
+  // sure rates don't get pushed without user's knowledge" - see
+  // recordRatePushAlert() in outbox.php). Fires once per property session
+  // (this component only remounts on a property switch) - checks for any
+  // rate/restriction push that reached Channex since the user last saw one,
+  // no matter what triggered it (a UI action, a background drain, or a
+  // script run directly against the server all funnel through the same
+  // AriDrainWorker chokepoint that records these), and surfaces it as a real
+  // modal prompt via GlobalModal's window.showAlert - not a passive log
+  // entry the user would have to remember to go check.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const alerts = await fetchPendingRatePushAlertsDB();
+      if (cancelled || alerts.length === 0) return;
+
+      const roomLabel = (a: (typeof alerts)[number]) => a.room_name || propertyName;
+      const roomNames = Array.from(new Set(alerts.map(roomLabel)));
+      const earliestFrom = alerts.reduce((min, a) => (a.date_from < min ? a.date_from : min), alerts[0].date_from);
+      const latestTo = alerts.reduce((max, a) => (a.date_to > max ? a.date_to : max), alerts[0].date_to);
+      const roomsLine = roomNames.length <= 4
+        ? roomNames.join(', ')
+        : `${roomNames.length} rooms`;
+
+      (window as any).showAlert?.(
+        `Rates and/or stay restrictions were just pushed to your connected channels (Airbnb/Booking.com) for ${roomsLine}, covering ${earliestFrom} to ${latestTo}.\n\nThis may have come from an action here in Ground Code or a correction made on your behalf - check Channel Manager's Sync Activity log or your channel's own dashboard if you want the exact details.`,
+        'alert',
+        'Rates Were Pushed to Your Channels'
+      );
+
+      acknowledgeRatePushAlertsDB(alerts.map((a) => a.id));
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [lastSeenHash, setLastSeenHash] = useState<string>('');
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
   const notificationWrapperRef = useRef<HTMLDivElement | null>(null);

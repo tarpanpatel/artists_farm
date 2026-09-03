@@ -233,3 +233,71 @@ if (!function_exists('triggerEventDrivenChannexDrain')) {
         }
     }
 }
+
+/**
+ * Rate Push Alerts (added 4 Sep 2026, direct user request after being
+ * surprised by a real rate push they hadn't consciously triggered - see
+ * CLAUDE.md's Channex protocol). A confirm() dialog in the app only ever
+ * covers actions taken THROUGH the app; it does nothing for a rate push
+ * caused by a one-off script run directly against the server (exactly what
+ * happened that day). This is the guaranteed-visibility half of the fix:
+ * every rate push that actually completes - no matter what triggered it -
+ * gets a row here, and AriDrainWorker::processBatch() is the one place
+ * every single rate push (UI-triggered, background-drained, or a manual
+ * script) already has to pass through to reach Channex at all, so it's the
+ * one correct place to record this unconditionally rather than trying to
+ * catch every current and future call site individually.
+ */
+if (!function_exists('ensureRatePushAlertSchema')) {
+    function ensureRatePushAlertSchema(PDO $pdo): void {
+        // Same "never run DDL inside an open transaction" guard as
+        // ensureChannexOutboxSchema() above - processBatch() calls this
+        // from inside its own claim transaction on the very first drain
+        // after a fresh install/cold schema cache.
+        if ($pdo->inTransaction()) {
+            return;
+        }
+        if (isSchemaVerified('schema_channex_rate_push_alerts')) {
+            return;
+        }
+        try {
+            $pdo->exec("
+                CREATE TABLE IF NOT EXISTS `channex_rate_push_alerts` (
+                    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    `property_id` INT NOT NULL,
+                    `room_id` INT NULL,
+                    `date_from` DATE NOT NULL,
+                    `date_to` DATE NOT NULL,
+                    `reason` VARCHAR(64) NOT NULL DEFAULT 'rate_push',
+                    `acknowledged_at` DATETIME NULL,
+                    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX `idx_rate_push_alert_scope` (`property_id`, `acknowledged_at`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            ");
+            markSchemaVerified('schema_channex_rate_push_alerts');
+        } catch (PDOException $e) {}
+    }
+}
+
+if (!function_exists('recordRatePushAlert')) {
+    function recordRatePushAlert(PDO $pdo, int $propertyId, ?int $roomId, string $dateFrom, string $dateTo, string $reason = 'rate_push'): void {
+        try {
+            ensureRatePushAlertSchema($pdo);
+            $stmt = $pdo->prepare("
+                INSERT INTO channex_rate_push_alerts (property_id, room_id, date_from, date_to, reason)
+                VALUES (?, ?, ?, ?, ?)
+            ");
+            $stmt->execute([$propertyId, $roomId, substr($dateFrom, 0, 10), substr($dateTo, 0, 10), $reason]);
+        } catch (Exception $e) {
+            // Never let alert recording itself break a real push that already
+            // succeeded - same "log and move on" posture enqueueOutboxItem()
+            // takes above.
+            if (class_exists('TelescopeLogger')) {
+                TelescopeLogger::log('channel_manager', 'Rate Push Alert Error', $e->getMessage(), 'Failed to record rate push alert', [
+                    'property_id' => $propertyId,
+                    'room_id' => $roomId,
+                ]);
+            }
+        }
+    }
+}
