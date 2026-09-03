@@ -680,7 +680,7 @@ $provided_key = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
 // non-sensitive branding/config columns (name, slug, type, currency,
 // colors, ...) - no guest, financial, or staff data - so this is exactly
 // the same "safe to read before login" class as the settings above.
-$public_actions = ['login_user', 'verify_admin_passcode', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token', 'check_session', 'logout', 'get_tenant_by_slug', 'get_demo_login_credentials', 'get_system_settings', 'get_theme_settings', 'get_current_property', 'register_tenant_trial', 'channex_webhook'];
+$public_actions = ['login_user', 'verify_admin_passcode', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token', 'check_session', 'logout', 'get_tenant_by_slug', 'get_demo_login_credentials', 'get_system_settings', 'get_theme_settings', 'get_current_property', 'register_tenant_trial', 'channex_webhook', 'channex_airbnb_oauth_landing'];
 
 
 $request_method = $_SERVER['REQUEST_METHOD'];
@@ -3994,6 +3994,83 @@ switch ($action) {
         }
         break;
 
+    case 'channex_airbnb_oauth_landing':
+        // Deliberately public - Channex sends the browser here with NO session
+        // of ours attached (the whole point of a browser-based OAuth round trip
+        // is that it can start in one context and land in another). Renders
+        // plain HTML, not JSON - this IS the page the owner's browser shows,
+        // not an API response a frontend fetch()es. ?property_id and ?outcome
+        // are ours (baked into the redirect_uri we gave Channex in
+        // channex_channel_airbnb_connection_link); ?success/?channel_id/?token
+        // are Channex's own, appended per its documented contract.
+        require_once __DIR__ . '/../channex/channel_connections.php';
+        header('Content-Type: text/html; charset=utf-8');
+        // Channex appends its own params with a literal "?", not "&" (its
+        // docs quote the suffix as "?success=true&channel_id={id}&token={token}"
+        // verbatim) - it does not check whether redirect_uri already has a
+        // query string. Confirmed live 3 Sep 2026: our own redirect_uri
+        // (…&outcome=success) plus that literal "?" produces a URL with TWO
+        // "?" characters. PHP's $_GET only parses up to the FIRST "?" -
+        // everything Channex appended lands inside the STRING VALUE of
+        // whatever our own last param was ($_GET['outcome'] became
+        // "success?success=true&channel_id=...&token=..."), so success/
+        // channel_id/token were always empty and a genuinely successful
+        // authorization got recorded as "not completed". Parse the raw query
+        // string ourselves, splitting on "?" to separate our own params
+        // (before the first "?") from Channex's appended ones (after it).
+        $rawQuery = (string)($_SERVER['QUERY_STRING'] ?? '');
+        $queryChunks = explode('?', $rawQuery);
+        $ownParams = [];
+        parse_str($queryChunks[0] ?? '', $ownParams);
+        $channexParams = [];
+        if (isset($queryChunks[1])) {
+            parse_str($queryChunks[1], $channexParams);
+        }
+        $landingPropertyId = (int)($ownParams['property_id'] ?? 0);
+        $landingToken = (string)($channexParams['token'] ?? $ownParams['token'] ?? '');
+        $landingSuccess = ($ownParams['outcome'] ?? '') === 'success'
+            && (($channexParams['success'] ?? $ownParams['success'] ?? '') !== 'false');
+        $landingChannelId = (string)($channexParams['channel_id'] ?? $ownParams['channel_id'] ?? '');
+
+        $conn = $landingPropertyId > 0 ? getChannexChannelConnection($pdo, $landingPropertyId, 'AirBNB') : null;
+        $storedSettings = $conn && $conn['settings'] ? (json_decode($conn['settings'], true) ?: []) : [];
+        $storedToken = (string)($storedSettings['oauth_token'] ?? '');
+        $tokenOk = $conn && $storedToken !== '' && hash_equals($storedToken, $landingToken);
+
+        if ($landingSuccess && $tokenOk && $landingChannelId !== '') {
+            upsertChannexChannelConnection($pdo, $landingPropertyId, 'AirBNB', [
+                'channex_channel_id' => $landingChannelId,
+                'status' => 'mapping',
+                'last_error' => null,
+            ]);
+            $heading = 'Airbnb connected';
+            $body = "Your Airbnb account is now linked. You can close this tab and go back to Ground Code to finish mapping your rooms.";
+        } elseif (!$tokenOk && $conn) {
+            upsertChannexChannelConnection($pdo, $landingPropertyId, 'AirBNB', [
+                'status' => 'error',
+                'last_error' => 'Authorization link token mismatch - possibly a stale or reused link.',
+            ]);
+            $heading = 'Something went wrong';
+            $body = "We couldn't verify this authorization attempt. Close this tab, go back to Ground Code, and click \"Authorize with Airbnb\" again for a fresh link.";
+        } else {
+            if ($conn) {
+                upsertChannexChannelConnection($pdo, $landingPropertyId, 'AirBNB', [
+                    'status' => 'error',
+                    'last_error' => 'Airbnb authorization was not completed or was declined.',
+                ]);
+            }
+            $heading = 'Authorization not completed';
+            $body = "Airbnb authorization wasn't completed. Close this tab, go back to Ground Code, and try \"Authorize with Airbnb\" again.";
+        }
+
+        echo '<!doctype html><html><head><meta charset="utf-8"><title>' . htmlspecialchars($heading) . '</title>'
+            . '<meta name="viewport" content="width=device-width, initial-scale=1">'
+            . '<style>body{font-family:-apple-system,system-ui,sans-serif;background:#f8fafc;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0;padding:24px;box-sizing:border-box}'
+            . '.card{max-width:420px;background:#fff;border-radius:16px;padding:32px;box-shadow:0 1px 3px rgba(0,0,0,.1);text-align:center}'
+            . 'h1{font-size:18px;margin:0 0 12px;color:#0f172a}p{font-size:14px;color:#475569;line-height:1.5;margin:0}</style></head>'
+            . '<body><div class="card"><h1>' . htmlspecialchars($heading) . '</h1><p>' . htmlspecialchars($body) . '</p></div></body></html>';
+        break;
+
     case 'channex_content_sync':
         if (is_file(__DIR__ . '/../channex/content_sync.php')) {
             require_once __DIR__ . '/../channex/content_sync.php';
@@ -4045,6 +4122,7 @@ switch ($action) {
     case 'channex_channel_connection_status':
     case 'channex_channel_test_connection':
     case 'channex_channel_start_airbnb':
+    case 'channex_channel_airbnb_connection_link':
     case 'channex_channel_mapping_details':
     case 'channex_channel_save_mapping':
     case 'channex_channel_check_readiness':
@@ -4279,6 +4357,66 @@ switch ($action) {
                     'status' => 'success',
                     'data' => ['channex_channel_id' => $createRes['data']['id'], 'connection_status' => 'staff_action_required'],
                 ]);
+                break 2;
+
+            case 'channex_channel_airbnb_connection_link':
+                // The REAL Airbnb connect flow (confirmed against Channex's own docs
+                // 3 Sep 2026, https://docs.channex.io/channel-api-examples/airbnb.md):
+                // POST /meta/airbnb/connection_link, NOT a hand-built
+                // airbnb.com/oauth2/auth URL. Channex tracks the resulting link
+                // server-side (valid 2 hours) and creates the channel connection
+                // itself once the owner authorizes - our job is just to ask for the
+                // link and later read the result off channex_airbnb_oauth_landing's
+                // redirect. A hand-built URL has no state Channex recognizes, which
+                // is exactly the "invalid_state" error a client-built version
+                // produced live on 3 Sep 2026.
+                if ($targetPropertyId <= 0) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'property_id is required']);
+                    break 2;
+                }
+                $channexPropId = $resolveChannexPropertyId($targetPropertyId);
+                if (!$channexPropId) {
+                    http_response_code(422);
+                    echo json_encode(['status' => 'error', 'message' => 'Could not sync this property with Channex - check the Channex configuration and try again.']);
+                    break 2;
+                }
+                $groupId = $channelClient->resolveGroupIdForProperty($channexPropId);
+                if (!$groupId) {
+                    http_response_code(422);
+                    echo json_encode(['status' => 'error', 'message' => 'No Channex group has access to this property - contact support.']);
+                    break 2;
+                }
+                $linkToken = bin2hex(random_bytes(16));
+                $appOrigin = rtrim((string)($_ENV['APP_BASE_URL'] ?? 'https://staging.ground-code.com'), '/');
+                $landingBase = $appOrigin . '/php/api/router.php?action=channex_airbnb_oauth_landing&property_id=' . $targetPropertyId;
+                $linkRes = $channelClient->getAirbnbConnectionLink(
+                    $groupId,
+                    [$channexPropId],
+                    $landingBase . '&outcome=success',
+                    $landingBase . '&outcome=failure',
+                    $linkToken
+                );
+                if (!$linkRes['success'] || empty($linkRes['data']['attributes']['url'])) {
+                    http_response_code($linkRes['http_code'] ?: 502);
+                    echo json_encode(['status' => 'error', 'message' => 'Failed to generate the Airbnb authorization link', 'error' => $linkRes['error'] ?? null]);
+                    break 2;
+                }
+                // Stash the token + group so the landing page (a separate, unauthenticated
+                // request - the browser leaves our app entirely for Airbnb, then Channex,
+                // then comes back) can verify the callback and finish setting up the
+                // connection row. channex_channel_id stays null until that callback
+                // actually lands - deliberately, this is what makes the earlier
+                // "reallyConnected" check correctly keep the wizard off room-mapping
+                // until authorization has genuinely completed.
+                upsertChannexChannelConnection($pdo, $targetPropertyId, 'AirBNB', [
+                    'channex_group_id' => $groupId,
+                    'status' => 'awaiting_prerequisite',
+                    'settings' => ['oauth_token' => $linkToken, 'link_generated_at' => date('c')],
+                    'last_error' => null,
+                    'created_by_user_id' => $_SESSION['user_id'] ?? null,
+                ]);
+                echo json_encode(['status' => 'success', 'data' => ['url' => $linkRes['data']['attributes']['url']]]);
                 break 2;
 
             case 'channex_channel_mapping_details':
