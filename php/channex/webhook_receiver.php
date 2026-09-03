@@ -262,8 +262,20 @@ class ChannexWebhookReceiver {
             ?? ($booking['ota_source']
             ?? ($booking['ota_name']
             ?? ($booking['channel'] ?? 'Channex OTA')));
-        $checkinDate = $booking['arrival_date'] ?? $booking['checkin_date'] ?? date('Y-m-d');
-        $checkoutDate = $booking['departure_date'] ?? $booking['checkout_date'] ?? date('Y-m-d', strtotime('+1 day'));
+        // Pull property's configured check-in and check-out times from properties table
+        $propTimeStmt = $this->pdo->prepare("SELECT checkin_time, checkout_time FROM properties WHERE id = ? LIMIT 1");
+        $propTimeStmt->execute([$propertyId]);
+        $propTimes = $propTimeStmt->fetch(PDO::FETCH_ASSOC);
+        $propCheckinTime = trim($propTimes['checkin_time'] ?? '') ?: '14:00';
+        $propCheckoutTime = trim($propTimes['checkout_time'] ?? '') ?: '11:00';
+
+        $rawArrival = trim((string)($booking['arrival_date'] ?? ($booking['checkin_date'] ?? date('Y-m-d'))));
+        $rawDeparture = trim((string)($booking['departure_date'] ?? ($booking['checkout_date'] ?? date('Y-m-d', strtotime('+1 day')))));
+        $checkinDateOnly = substr($rawArrival, 0, 10);
+        $checkoutDateOnly = substr($rawDeparture, 0, 10);
+
+        $checkinDate = "{$checkinDateOnly} {$propCheckinTime}:00";
+        $checkoutDate = "{$checkoutDateOnly} {$propCheckoutTime}:00";
         $customer = $booking['customer'] ?? [];
         $guestName = trim(($customer['name'] ?? '') ?: (($customer['first_name'] ?? '') . ' ' . ($customer['last_name'] ?? ''))) ?: 'OTA Guest';
         $phone = $customer['phone'] ?? ($customer['telephone'] ?? 'N/A');

@@ -517,12 +517,16 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
               if (!isSameRoom) return false;
 
-              const existingCheckin = new Date(g.checkinDate);
-              const existingCheckout = new Date(g.expectedCheckout || g.checkoutDate || g.checkinDate);
-              const newCheckin = new Date(newCheckinStr);
-              const newCheckout = new Date(newCheckoutStr);
+              // Compare stay nights using calendar dates (YYYY-MM-DD).
+              // In hotel operations, a departure on date X (11:00 AM) and an arrival on date X (2:00 PM) do not conflict.
+              const gCheckinYmd = (g.checkinDate || '').split(' ')[0].split('T')[0];
+              const gCheckoutYmd = (g.expectedCheckout || g.checkoutDate || g.checkinDate || '').split(' ')[0].split('T')[0];
+              const newCheckinYmd = checkinDate.split(' ')[0].split('T')[0];
+              const newCheckoutYmd = expectedCheckout.split(' ')[0].split('T')[0];
 
-              return newCheckin < existingCheckout && existingCheckin < newCheckout;
+              if (!gCheckinYmd || !gCheckoutYmd || !newCheckinYmd || !newCheckoutYmd) return false;
+
+              return newCheckinYmd < gCheckoutYmd && gCheckinYmd < newCheckoutYmd;
             });
 
             if (hasRoomConflict) {
