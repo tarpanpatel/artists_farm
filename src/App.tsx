@@ -61,6 +61,7 @@ const ServiceRequestsManagement = lazyWithRetry(() => import('./components/Servi
 const LicenseManagement = lazyWithRetry(() => import('./components/LicenseManagement').then(m => ({ default: m.LicenseManagement })), 'LicenseManagement');
 const ChannelManager = lazyWithRetry(() => import('./components/ChannelManager').then(m => ({ default: m.ChannelManager })), 'ChannelManager');
 const ChannelConnectionsPage = lazyWithRetry(() => import('./components/ChannelConnectionsPage').then(m => ({ default: m.ChannelConnectionsPage })), 'ChannelConnectionsPage');
+const SubscriptionPanel = lazyWithRetry(() => import('./components/SubscriptionPanel').then(m => ({ default: m.SubscriptionPanel })), 'SubscriptionPanel');
 const TelegramNotificationModal = lazyWithRetry(() => import('./components/TelegramNotificationModal').then(m => ({ default: m.TelegramNotificationModal })), 'TelegramNotificationModal');
 const EditPropertyPage = lazyWithRetry(() => import('./components/EditPropertyPage').then(m => ({ default: m.EditPropertyPage })), 'EditPropertyPage');
 const PlatformPropertyManagement = lazyWithRetry(() => import('./components/PlatformPropertyManagement').then(m => ({ default: m.PlatformPropertyManagement })), 'PlatformPropertyManagement');
@@ -253,6 +254,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         license_management: { tab: 'licenses', key: 'license_management' },
         channel_manager: { tab: 'channel_manager', key: 'channel_manager' },
         connect_channels: { tab: 'connect_channels', key: 'connect_channels' },
+        subscription: { tab: 'subscription', key: 'subscription' },
       };
 
       const baseHash = hash.split('?')[0].split('/')[0].trim();
@@ -527,6 +529,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
       licenses: 'license_management',
       channel_manager: 'channel_manager',
       connect_channels: 'connect_channels',
+      subscription: 'subscription',
     };
     const targetKey = menuItemKey || defaults[tab] || tab;
     setActiveMenuItemKey(targetKey);
@@ -1313,7 +1316,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         // room's own feeds), so visiting either from within a room should
         // stay in that room too, not kick out to the parent property.
         'edit_food_menu', 'beta_recipe_builder', 'misc_charges', 'edit_items_group',
-        'service_requests', 'license_management', 'channel_manager', 'connect_channels'
+        'service_requests', 'license_management', 'channel_manager', 'connect_channels', 'subscription'
       ]);
 
       // 'edit_property' is deliberately NOT in `reserved` above - clicking it
@@ -1413,6 +1416,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         license_management: { tab: 'licenses', key: 'license_management' },
         channel_manager: { tab: 'channel_manager', key: 'channel_manager' },
         connect_channels: { tab: 'connect_channels', key: 'connect_channels' },
+        subscription: { tab: 'subscription', key: 'subscription' },
       };
 
       const baseHash = hash.split('?')[0].split('/')[0].trim();
@@ -2646,6 +2650,15 @@ ${itemsStr}
               {!selectedRoomSlugOverride && activeTab === 'connect_channels' && (
                 <ErrorBoundary section="Connect Channels">
                   <ChannelConnectionsPage propertyId={preloadedData.currentProperty?.id || 0} onLogAudit={logAudit} />
+                </ErrorBoundary>
+              )}
+
+              {/* Tenant-facing subscription status + cancel/close request panel
+                  (3 Sep 2026) - gated ["Super Admin","Admin"] same as Channel
+                  Manager/Connect Channels above, see nav_menu_self_heal_v10. */}
+              {!selectedRoomSlugOverride && activeTab === 'subscription' && (
+                <ErrorBoundary section="Subscription">
+                  <SubscriptionPanel propertyId={preloadedData.currentProperty?.id || 0} onNavigate={(tab) => handleNavigateTab(tab)} />
                 </ErrorBoundary>
               )}
 

@@ -3533,6 +3533,174 @@ switch ($action) {
         }
         break;
 
+    // --- TENANT SUBSCRIPTION PANEL (added 3 Sep 2026) ---
+    // Tenant-facing: read this property's own tenant subscription state and
+    // let its owner request a cancel/close. Ground Code bills offline only
+    // (UPI/NEFT, Root Admin sets status/expiry by hand - PRODUCT_STRATEGY.md),
+    // so there is nothing here that mutates subscription_status or calls
+    // delete_tenant - see tenant_closure_requests.php's own header comment.
+    case 'get_subscription_summary':
+    case 'request_subscription_action':
+    case 'get_tenant_closure_requests':
+    case 'resolve_tenant_closure_request':
+        require_once __DIR__ . '/../subscription/tenant_closure_requests.php';
+        ensureTenantClosureRequestsSchema($pdo);
+
+        if ($action === 'get_tenant_closure_requests' || $action === 'resolve_tenant_closure_request') {
+            // Root-Admin-only side, same gate every other root-admin action in
+            // this file uses (see get_all_tenants above).
+            if (!($_SESSION['is_platform_admin'] ?? false)) {
+                http_response_code(403);
+                echo json_encode(['status' => 'error', 'message' => 'Root admin access required']);
+                exit;
+            }
+
+            if ($action === 'get_tenant_closure_requests') {
+                try {
+                    $stmt = $pdo->query("
+                        SELECT r.*, t.name AS tenant_name, t.slug AS tenant_slug
+                        FROM tenant_closure_requests r
+                        JOIN tenants t ON t.id = r.tenant_id
+                        ORDER BY (r.status = 'pending') DESC, r.created_at DESC
+                        LIMIT 200
+                    ");
+                    echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+                } catch (Exception $e) {
+                    http_response_code(500);
+                    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+                }
+                break;
+            }
+
+            // resolve_tenant_closure_request
+            $input = json_decode(file_get_contents('php://input'), true) ?: [];
+            $reqId = (int)($input['id'] ?? 0);
+            $adminAction = $input['action'] ?? '';
+            $statusMap = ['acknowledge' => 'acknowledged', 'decline' => 'declined', 'complete' => 'completed'];
+            if (!$reqId || !isset($statusMap[$adminAction])) {
+                http_response_code(400);
+                echo json_encode(['status' => 'error', 'message' => 'id and a valid action (acknowledge|decline|complete) are required']);
+                break;
+            }
+            try {
+                $stmt = $pdo->prepare("UPDATE tenant_closure_requests SET status = ?, resolved_at = NOW(), resolved_by = ?, admin_note = ? WHERE id = ?");
+                $stmt->execute([
+                    $statusMap[$adminAction],
+                    $_SESSION['username'] ?? 'Root Admin',
+                    isset($input['admin_note']) ? trim((string)$input['admin_note']) : null,
+                    $reqId,
+                ]);
+                echo json_encode(['status' => 'success', 'message' => 'Request updated']);
+            } catch (Exception $e) {
+                http_response_code(500);
+                echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            }
+            break;
+        }
+
+        // Tenant-facing side, below: strictly scoped to the SESSION's own
+        // property's tenant_id - never a tenant_id from the request, same
+        // discipline as every other owner-facing action in this file.
+        if (empty($currentProperty['tenant_id'])) {
+            http_response_code(404);
+            echo json_encode(['status' => 'error', 'message' => 'No tenant associated with this property']);
+            break;
+        }
+        $subTenantId = (int)$currentProperty['tenant_id'];
+
+        if ($action === 'get_subscription_summary') {
+            try {
+                $tStmt = $pdo->prepare("SELECT id, name, subscription_status, subscription_expires_at, billing_cycle FROM tenants WHERE id = ? LIMIT 1");
+                $tStmt->execute([$subTenantId]);
+                $tenantRow = $tStmt->fetch(PDO::FETCH_ASSOC);
+                if (!$tenantRow) {
+                    http_response_code(404);
+                    echo json_encode(['status' => 'error', 'message' => 'Tenant not found']);
+                    break;
+                }
+
+                // Room-key count for pricing: SINGLE properties and MULTI_KEY_ROOM
+                // children are each their own billable key; a MULTI_KEY parent row
+                // is just a container, not a separately billable unit.
+                $kStmt = $pdo->prepare("SELECT COUNT(*) FROM properties WHERE tenant_id = ? AND is_deleted = 0 AND property_type IN ('SINGLE','MULTI_KEY_ROOM')");
+                $kStmt->execute([$subTenantId]);
+                $keyCount = (int)$kStmt->fetchColumn();
+
+                $openRequest = getOpenTenantClosureRequest($pdo, $subTenantId);
+
+                echo json_encode([
+                    'status' => 'success',
+                    'data' => [
+                        // Canonical display name regardless of the stored plan_type
+                        // string (see PRODUCT_STRATEGY.md - flagged to the user as a
+                        // real inconsistency between that doc and PlatformPropertyManagement's
+                        // still-live 'Starter'/'Growth' picker; PRODUCT_STRATEGY.md's
+                        // single-plan model was confirmed canonical for THIS panel).
+                        'plan_name' => 'GroundCode Pro',
+                        'subscription_status' => $tenantRow['subscription_status'],
+                        'subscription_expires_at' => $tenantRow['subscription_expires_at'],
+                        'billing_cycle' => $tenantRow['billing_cycle'],
+                        'key_count' => $keyCount,
+                        'open_request' => $openRequest,
+                    ],
+                ]);
+            } catch (Exception $e) {
+                http_response_code(500);
+                echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            }
+            break;
+        }
+
+        // request_subscription_action
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        $requestType = $input['request_type'] ?? '';
+        if (!in_array($requestType, ['cancel', 'delete'], true)) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => "request_type must be 'cancel' or 'delete'"]);
+            break;
+        }
+        if (getOpenTenantClosureRequest($pdo, $subTenantId)) {
+            http_response_code(409);
+            echo json_encode(['status' => 'error', 'message' => 'A request is already pending for this account. Your account manager has already been notified.']);
+            break;
+        }
+        try {
+            $reason = trim((string)($input['reason'] ?? ''));
+            $requestedByName = $_SESSION['username'] ?? 'Property Owner';
+            $insStmt = $pdo->prepare("INSERT INTO tenant_closure_requests (tenant_id, requested_by, requested_by_name, request_type, reason) VALUES (?, ?, ?, ?, ?)");
+            $insStmt->execute([
+                $subTenantId,
+                $_SESSION['user_id'] ?? null,
+                $requestedByName,
+                $requestType,
+                $reason !== '' ? $reason : null,
+            ]);
+            $newRequest = [
+                'id' => (int)$pdo->lastInsertId(),
+                'tenant_id' => $subTenantId,
+                'requested_by_name' => $requestedByName,
+                'request_type' => $requestType,
+                'reason' => $reason,
+            ];
+            $tNameStmt = $pdo->prepare("SELECT name FROM tenants WHERE id = ? LIMIT 1");
+            $tNameStmt->execute([$subTenantId]);
+            $tenantForNotify = ['name' => $tNameStmt->fetchColumn() ?: null];
+
+            // Notification failing must never fail the request itself - the DB
+            // row is already committed above by the time this runs.
+            try {
+                notifyRootAdminOfClosureRequest($pdo, $newRequest, $tenantForNotify);
+            } catch (Throwable $eNotify) {
+                error_log('notifyRootAdminOfClosureRequest failed: ' . $eNotify->getMessage());
+            }
+
+            echo json_encode(['status' => 'success', 'message' => 'Request received']);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+        break;
+
     // --- THEME SETTINGS ---
     case 'get_theme_settings':
     case 'save_theme_settings':

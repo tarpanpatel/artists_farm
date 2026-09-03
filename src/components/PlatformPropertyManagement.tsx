@@ -58,6 +58,21 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
   const { confirm } = useConfirm();
   const { showToast } = useToast();
   const [tenants, setTenants] = useState<Tenant[]>([]);
+  // Tenant-initiated cancel/close requests (3 Sep 2026, see
+  // php/subscription/tenant_closure_requests.php) - loaded independently of
+  // loadData()/tenants below so a failure here can never block the main
+  // tenant list from rendering.
+  const [closureRequests, setClosureRequests] = useState<Array<{
+    id: number;
+    tenant_id: number;
+    tenant_name: string;
+    request_type: 'cancel' | 'delete';
+    status: 'pending' | 'acknowledged' | 'completed' | 'declined';
+    reason: string | null;
+    requested_by_name: string | null;
+    created_at: string;
+  }>>([]);
+  const [closureRequestActionLoadingId, setClosureRequestActionLoadingId] = useState<number | null>(null);
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -142,7 +157,45 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
 
   useEffect(() => {
     loadData();
+    loadClosureRequests();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const loadClosureRequests = async () => {
+    try {
+      const res = await fetch('/php/api/router.php?action=get_tenant_closure_requests', { credentials: 'include' });
+      const json = await res.json();
+      if (json?.status === 'success') {
+        setClosureRequests(json.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to load tenant closure requests:', err);
+    }
+  };
+
+  const handleResolveClosureRequest = async (id: number, action: 'acknowledge' | 'decline') => {
+    setClosureRequestActionLoadingId(id);
+    try {
+      const res = await fetch('/php/api/router.php?action=resolve_tenant_closure_request', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, action }),
+      });
+      const json = await res.json();
+      if (json?.status === 'success') {
+        showToast(action === 'decline' ? 'Request declined' : 'Request acknowledged', { type: 'success' });
+        loadClosureRequests();
+      } else {
+        showToast(json?.message || 'Failed to update request', { type: 'error' });
+      }
+    } catch (err) {
+      console.error('Failed to resolve closure request:', err);
+      showToast('Failed to update request', { type: 'error' });
+    } finally {
+      setClosureRequestActionLoadingId(null);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -899,6 +952,63 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
           <div className="mb-6 flex gap-3 p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
             <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
             <p className="text-sm text-red-800 dark:text-red-300">{error}</p>
+          </div>
+        )}
+
+        {/* Pending tenant cancel/close requests (3 Sep 2026) - a tenant's own
+            SubscriptionPanel.tsx can only ever REQUEST one of these, never
+            mutate subscription_status or delete anything itself. "Acknowledge"
+            just marks it seen; "Act" for a cancel means manually setting
+            subscription_status below and letting it lapse at expiry, for a
+            delete means using the existing Delete Tenant flow further down
+            after whatever grace period this admin chooses - nothing here
+            calls delete_tenant automatically. Only shown when there's
+            something pending, so this doesn't add permanent clutter to an
+            already-long page for the common case of zero open requests. */}
+        {closureRequests.filter((r) => r.status === 'pending').length > 0 && (
+          <div className="bg-white dark:bg-slate-800 border border-amber-200 dark:border-amber-800 rounded-lg overflow-hidden">
+            <div className="px-4 py-3 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <h3 className="text-sm font-bold text-amber-900 dark:text-amber-200">
+                Pending Tenant Requests ({closureRequests.filter((r) => r.status === 'pending').length})
+              </h3>
+            </div>
+            <div className="divide-y divide-slate-100 dark:divide-slate-700">
+              {closureRequests.filter((r) => r.status === 'pending').map((req) => (
+                <div key={req.id} className="p-4 flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-semibold text-slate-900 dark:text-white">{req.tenant_name}</span>
+                      <span className={`text-2xs font-bold px-2 py-0.5 rounded-full ${req.request_type === 'delete' ? 'bg-red-100 text-red-700 dark:bg-red-900/60 dark:text-red-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300'}`}>
+                        {req.request_type === 'delete' ? 'Close Account' : 'Cancel Subscription'}
+                      </span>
+                    </div>
+                    <p className="text-2xs text-slate-500 dark:text-slate-400 mt-1">
+                      Requested by {req.requested_by_name || 'Unknown'} on {formatDateDDMMYYYY(req.created_at)}
+                    </p>
+                    {req.reason && <p className="text-2xs text-slate-600 dark:text-slate-300 mt-1 italic">"{req.reason}"</p>}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      variant="secondary"
+                      size="xs"
+                      disabled={closureRequestActionLoadingId === req.id}
+                      onClick={() => handleResolveClosureRequest(req.id, 'acknowledge')}
+                    >
+                      Acknowledge
+                    </Button>
+                    <Button
+                      variant="danger"
+                      size="xs"
+                      disabled={closureRequestActionLoadingId === req.id}
+                      onClick={() => handleResolveClosureRequest(req.id, 'decline')}
+                    >
+                      Decline
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

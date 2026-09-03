@@ -270,6 +270,16 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                 markSchemaVerified('nav_menu_self_heal_v9');
             }
 
+            if (!isSchemaVerified('nav_menu_self_heal_v10')) {
+                try {
+                    $pdo->exec("INSERT IGNORE INTO nav_menu_items
+                        (id, property_id, title, tab_key, unique_key, url_slug, category, icon_name, display_order, roles_json, is_visible, parent_id)
+                        VALUES
+                        ('nav-subscription', 1, 'Subscription', 'subscription', 'subscription', 'subscription', 'System Controls', 'CreditCard', 34, '[\"Super Admin\",\"Admin\"]', 1, NULL)");
+                } catch (Exception $e) {}
+                markSchemaVerified('nav_menu_self_heal_v10');
+            }
+
             if (!isSchemaVerified('nav_menu_self_heal_v2')) {
             try {
 
