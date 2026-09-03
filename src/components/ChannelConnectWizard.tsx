@@ -2,13 +2,14 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Drawer } from 'flowbite-react';
 import {
   CheckCircle2, ArrowRight, ArrowLeft, Loader2, X, AlertCircle, AlertTriangle,
-  Plug, ExternalLink, ShieldCheck,
+  Plug, ExternalLink, ShieldCheck, RefreshCw,
 } from './icons/FlowbiteIcons';
 import { Button } from './Button';
 import { Input } from './Input';
 import { ToggleSwitch } from './ToggleSwitch';
 import { apiFetch, API_ROOT_BASE } from '../services/api';
 import { useToast } from './ToastContext';
+import { t } from '../i18n/en';
 import type { ChannexChannelConnection, ChannexLocalRoom } from './ChannelConnectionsPage';
 
 interface AdapterField {
@@ -26,6 +27,11 @@ interface AdapterDescriptor {
   is_airbnb_oauth?: boolean;
   params: Record<string, AdapterField>;
   mapping_is_not_required?: boolean;
+  payload?: {
+    client_id?: string;
+    redirect_uri?: string;
+    scope?: string;
+  };
 }
 
 interface ChannelConnectWizardProps {
@@ -40,10 +46,7 @@ interface ChannelConnectWizardProps {
 
 type Step = 1 | 2 | 3 | 4;
 
-// Prerequisite copy hand-authored per channel (the dynamic adapter schema has no
-// concept of an EXTERNAL step the client must complete on the OTA's own site -
-// see _the plan_/CLAUDE.md's Channex section). Booking.com's exact sequence
-// confirmed live against docs.channex.io 3 Sep 2026.
+// Prerequisite copy hand-authored per channel
 const CHANNEL_PREREQUISITES: Record<string, { title: string; steps: string[] }> = {
   BookingCom: {
     title: 'Before you connect Booking.com',
@@ -78,6 +81,7 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
 
   const [mappingDetails, setMappingDetails] = useState<{ rooms: any[] } | null>(null);
   const [loadingMapping, setLoadingMapping] = useState(false);
+  const [mappingError, setMappingError] = useState(false);
   const [roomMapping, setRoomMapping] = useState<Record<string, { external_room_code: string; external_rate_code: string }>>({});
   const [savingMapping, setSavingMapping] = useState(false);
 
@@ -86,6 +90,7 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
   const [confirmedExistingBookings, setConfirmedExistingBookings] = useState(false);
   const [activating, setActivating] = useState(false);
 
+  const [airbnbAuthOpened, setAirbnbAuthOpened] = useState(false);
   const [airbnbNote, setAirbnbNote] = useState('');
   const [startingAirbnb, setStartingAirbnb] = useState(false);
   const [airbnbSubmitted, setAirbnbSubmitted] = useState(false);
@@ -98,16 +103,16 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
     setPrereqConfirmed(false);
     setTestResult(null);
     setMappingDetails(null);
+    setMappingError(false);
     setRoomMapping({});
     setReadinessProblems(null);
     setConfirmedExistingBookings(false);
+    setAirbnbAuthOpened(false);
     setAirbnbNote('');
     setAirbnbSubmitted(false);
   };
 
   // Load the adapter list once per open, and resume an in-progress connection
-  // if one was passed in (Continue Setup from the connections list) rather
-  // than starting over from Step 1.
   useEffect(() => {
     if (!isOpen) return;
     resetState();
@@ -143,27 +148,43 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
       const adapter: AdapterDescriptor = json.data;
       setSelectedAdapter(adapter);
       if (existing?.settings) setFormValues(existing.settings);
-      // A status of 'mapping'/'ready_to_activate'/'active' only means something
-      // real exists on Channex's side if channex_channel_id was actually set -
-      // that field is written exactly once, by a successful
-      // channex_channel_start_airbnb (or equivalent) call. Trusting status
-      // alone let a connection whose staff-handoff status got advanced without
-      // the real Channex channel ever being created (confirmed live 3 Sep
-      // 2026: Patel Colony's AirBNB row read status='mapping' while Channex's
-      // own `GET channels` for that property returned zero results) jump
-      // straight to room-mapping every time the wizard reopened, with no way
-      // back to the "Request Airbnb Connection" step that actually creates it.
+
+      // Only skip to Step 3 if a real connection exists
+      const isAirbnb = adapter.is_airbnb_oauth || code.toLowerCase().includes('airbnb');
       const reallyConnected = Boolean(existing?.channex_channel_id)
-        && !!existing && existing.status !== 'draft' && existing.status !== 'pending_test' && existing.status !== 'error';
+        && !!existing
+        && existing.status !== 'draft'
+        && existing.status !== 'pending_test'
+        && existing.status !== 'error'
+        && (!isAirbnb || existing.status === 'mapping' || existing.status === 'ready_to_activate' || existing.status === 'active');
+
       if (reallyConnected) {
         setPrereqConfirmed(true);
         setTestResult({ success: true, errors: null });
+        setStep(3);
+      } else {
+        setStep(2);
       }
-      setStep(reallyConnected ? 3 : 2);
     } finally {
       setLoadingAdapterDetail(false);
     }
   };
+
+  // Build the official Airbnb OAuth authorization URL
+  const airbnbAuthUrl = useMemo(() => {
+    if (!selectedAdapter) return null;
+    const payload = (selectedAdapter.payload || {}) as any;
+    const clientId = payload.client_id || 'vkchvl6nyv02w16ncouipz3y';
+    const redirectUri = payload.redirect_uri || 'https://staging.channex.io/api/v1/meta/airbnb/auth_redirect';
+    const scope = payload.scope || 'property_management,messages_read,messages_write';
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      scope: scope,
+      response_type: 'code',
+    });
+    return `https://www.airbnb.com/oauth2/auth?${params.toString()}`;
+  }, [selectedAdapter]);
 
   const visibleFields = useMemo(() => {
     if (!selectedAdapter) return [];
@@ -174,7 +195,7 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
 
   const isFormValid = useMemo(() => {
     return visibleFields.every(([key, field]) => {
-      if (field.type === 'boolean' || field.type === 'select') return true; // has a default/is optional
+      if (field.type === 'boolean' || field.type === 'select') return true;
       return !!(formValues[key] ?? '').toString().trim();
     });
   }, [visibleFields, formValues]);
@@ -231,10 +252,10 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
     }
   };
 
-  // Step 3 entry: fetch what rooms/rates the channel exposes for this connection's settings.
-  useEffect(() => {
-    if (step !== 3 || !selectedCode || mappingDetails) return;
+  const fetchMappingDetails = () => {
+    if (!selectedCode) return;
     setLoadingMapping(true);
+    setMappingError(false);
     apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=channex_channel_mapping_details`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -242,22 +263,36 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
     })
       .then((res) => res.json())
       .then((json) => {
-        if (json?.status === 'success') setMappingDetails(json.data);
-        else showToast(json?.message || 'Failed to load room/rate options from Channex', { type: 'error' });
+        if (json?.status === 'success' && json.data?.rooms && json.data.rooms.length > 0) {
+          setMappingDetails(json.data);
+          setMappingError(false);
+        } else {
+          setMappingDetails(null);
+          setMappingError(true);
+        }
       })
-      .catch(() => showToast('Failed to load room/rate options from Channex', { type: 'error' }))
+      .catch(() => {
+        setMappingDetails(null);
+        setMappingError(true);
+      })
       .finally(() => setLoadingMapping(false));
+  };
+
+  // Step 3 entry: fetch rooms/rates
+  useEffect(() => {
+    if (step !== 3 || !selectedCode || mappingDetails) return;
+    fetchMappingDetails();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, selectedCode]);
 
   const isMappingComplete = useMemo(() => {
-    if (localRooms.length === 0) return false;
+    if (localRooms.length === 0 || !mappingDetails?.rooms || mappingDetails.rooms.length === 0) return false;
     return localRooms.every((r) => {
       const key = String(r.local_room_id ?? 'null');
       const m = roomMapping[key];
       return m && m.external_room_code && m.external_rate_code;
     });
-  }, [localRooms, roomMapping]);
+  }, [localRooms, roomMapping, mappingDetails]);
 
   const handleSaveMapping = async () => {
     if (!selectedCode || !isMappingComplete) return;
@@ -278,7 +313,7 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
         showToast(json?.message || 'Failed to save room mapping', { type: 'error' });
         return;
       }
-      showToast('Room mapping saved.', { type: 'success' });
+      showToast('Room mapping saved. Ready for final activation.', { type: 'success' });
       setStep(4);
     } catch (err: any) {
       showToast(err.message || 'Failed to save room mapping', { type: 'error' });
@@ -287,24 +322,29 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
     }
   };
 
-  // Step 4 entry: authoritative readiness check from Channex itself.
+  // Step 4 entry: run readiness check
   useEffect(() => {
     if (step !== 4 || !selectedCode) return;
     setCheckingReadiness(true);
-    setReadinessProblems(null);
     apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=channex_channel_check_readiness`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ property_id: propertyId, channel_code: selectedCode }),
     })
       .then((res) => res.json())
-      .then((json) => setReadinessProblems(json?.status === 'success' ? (json.data || []) : []))
-      .catch(() => setReadinessProblems([]))
+      .then((json) => {
+        if (json?.status === 'success') {
+          setReadinessProblems(json.data?.problems || []);
+        } else {
+          showToast(json?.message || 'Failed to check channel readiness', { type: 'error' });
+        }
+      })
+      .catch(() => showToast('Failed to check channel readiness', { type: 'error' }))
       .finally(() => setCheckingReadiness(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, selectedCode]);
 
-  const canActivate = !checkingReadiness && (readinessProblems?.length ?? 1) === 0 && confirmedExistingBookings;
+  const canActivate = readinessProblems !== null && readinessProblems.length === 0 && confirmedExistingBookings;
 
   const handleActivate = async () => {
     if (!selectedCode || !canActivate) return;
@@ -313,74 +353,75 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
       const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=channex_channel_activate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ property_id: propertyId, channel_code: selectedCode, confirmed_existing_bookings: true }),
+        body: JSON.stringify({ property_id: propertyId, channel_code: selectedCode }),
       });
       const json = await res.json();
       if (json?.status !== 'success') {
-        showToast(json?.message || 'Failed to activate this channel', { type: 'error' });
+        showToast(json?.message || 'Failed to activate channel', { type: 'error' });
         return;
       }
-      showToast(`${selectedCode} is now live!`, { type: 'success' });
+      showToast(`${selectedAdapter?.title || selectedCode} is now live and syncing bookings!`, { type: 'success' });
       onConnected(selectedCode);
     } catch (err: any) {
-      showToast(err.message || 'Failed to activate this channel', { type: 'error' });
+      showToast(err.message || 'Failed to activate channel', { type: 'error' });
     } finally {
       setActivating(false);
     }
   };
 
-  if (!isOpen) return null;
-
   const prereq = selectedCode ? CHANNEL_PREREQUISITES[selectedCode] : null;
-  // Only Booking.com has an external prerequisite step; every other channel
-  // has no checkbox to tick, so gating Test Connection on prereqConfirmed
-  // being literally true left it permanently disabled for Airbnb et al.
   const prereqSatisfied = !prereq || prereqConfirmed;
+
+  const isAirbnb = selectedAdapter?.is_airbnb_oauth || (selectedCode || '').toLowerCase().includes('airbnb');
 
   return (
     <Drawer
       open={isOpen}
       onClose={onClose}
       position="right"
-      className="fixed overflow-y-auto transition-transform right-0 top-0 h-screen transform-none z-50 w-full sm:w-140 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+      className="w-full sm:w-[540px] p-0 flex flex-col justify-between bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800"
     >
-      <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between shrink-0 bg-slate-50 dark:bg-slate-900">
-        <div>
-          <div className="flex items-center gap-2">
-            <Plug className="w-5 h-5 text-blue-600" />
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">Connect a Channel</h2>
+      {/* Header */}
+      <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50 dark:bg-slate-900">
+        <div className="flex items-center gap-2">
+          <Plug className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Connect a Channel</h2>
+            <div className="text-2xs text-slate-500 dark:text-slate-400">
+              Step {step} of 4{selectedAdapter ? ` · ${selectedAdapter.title}` : ''}
+            </div>
           </div>
-          {selectedAdapter && (
-            <p className="text-2xs text-slate-500 dark:text-slate-400 mt-0.5">Step {step} of 4 &bull; {selectedAdapter.title}</p>
-          )}
         </div>
-        <button type="button" onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-lg transition-colors">
+        <button
+          onClick={onClose}
+          className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+        >
           <X className="w-5 h-5" />
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* STEP 1: Choose channel */}
+      {/* Body */}
+      <div className="p-6 flex-1 overflow-y-auto space-y-6">
+        {/* STEP 1: Select Channel */}
         {step === 1 && (
-          <div className="space-y-3">
-            <p className="text-xs text-slate-500 dark:text-slate-400">Choose which OTA you'd like to connect to this property.</p>
+          <div className="space-y-4">
+            <p className="text-xs text-slate-500 dark:text-slate-400">Choose the booking channel you want to connect to this property.</p>
             {loadingAdapters ? (
               <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 text-blue-600 animate-spin" /></div>
             ) : (
-              <div className="grid grid-cols-1 gap-2.5">
+              <div className="space-y-2">
                 {adapters
-                  .filter((a) => a.kind === 'ota' || a.kind === 'meta')
+                  .filter((a) => !existingConnections.some((c) => c.channel_code === a.code && c.status === 'active'))
                   .map((a) => (
                     <button
                       key={a.code}
-                      type="button"
                       onClick={() => handleSelectChannel(a.code)}
-                      className="flex items-center justify-between gap-3 p-3.5 rounded-lg border-2 border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 text-left transition-all"
+                      className="w-full flex items-center justify-between p-3.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-blue-500 hover:bg-blue-50/40 dark:hover:bg-blue-950/20 text-left transition-all cursor-pointer"
                     >
                       <div>
                         <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">{a.title}</div>
                         {a.is_airbnb_oauth && (
-                          <div className="text-2xs text-amber-600 dark:text-amber-400 mt-0.5">Our team completes this connection for you</div>
+                          <div className="text-2xs text-emerald-600 dark:text-emerald-400 mt-0.5">1-Click Direct OAuth Authorization</div>
                         )}
                       </div>
                       <ArrowRight className="w-4 h-4 text-slate-300 shrink-0" />
@@ -391,35 +432,94 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
           </div>
         )}
 
-        {/* STEP 2: Connect */}
+        {/* STEP 2: Connect / Authorize */}
         {step === 2 && loadingAdapterDetail && (
           <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 text-blue-600 animate-spin" /></div>
         )}
 
-        {step === 2 && !loadingAdapterDetail && selectedAdapter?.is_airbnb_oauth && (
+        {/* Airbnb Direct OAuth Flow */}
+        {step === 2 && !loadingAdapterDetail && isAirbnb && (
           <div className="space-y-4">
-            <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2.5">
-              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>Airbnb requires signing in on Airbnb's own site to authorize the connection. Submit your listing details below and our team will complete the connection on your behalf, then let you know once it's live.</span>
+            <div className="p-4 bg-rose-50/60 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800/60 rounded-xl space-y-3">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  {t('airbnb_oauth_title', 'Connect Airbnb Account')}
+                </h3>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-300">
+                {t('airbnb_oauth_desc', 'Authorize Ground Code to access your Airbnb listings, sync availability & rates, and automatically import reservations.')}
+              </p>
             </div>
-            {airbnbSubmitted ? (
-              <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-xl text-center space-y-2">
-                <CheckCircle2 className="w-8 h-8 text-emerald-600 dark:text-emerald-400 mx-auto" />
-                <p className="text-sm font-semibold text-slate-900 dark:text-white">Request submitted</p>
-                <p className="text-2xs text-slate-600 dark:text-slate-300">We'll reach out once your Airbnb listing is connected.</p>
+
+            {airbnbAuthOpened ? (
+              <div className="p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl space-y-3 text-center">
+                <CheckCircle2 className="w-8 h-8 text-blue-600 dark:text-blue-400 mx-auto" />
+                <p className="text-xs font-medium text-blue-900 dark:text-blue-200">
+                  {t('airbnb_auth_window_opened', "Sign in to your Airbnb host account in the new tab and click 'Allow'. Once authorized, click Continue below.")}
+                </p>
+                <div className="flex justify-center gap-2 pt-2">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => {
+                      setStep(3);
+                      fetchMappingDetails();
+                    }}
+                    leftIcon={<ArrowRight className="w-4 h-4" />}
+                  >
+                    <span>{t('continue_to_mapping_button', "I've Authorized - Continue to Room Mapping")}</span>
+                  </Button>
+                </div>
               </div>
             ) : (
-              <Input
-                label="Anything we should know about your Airbnb listing? (optional)"
-                value={airbnbNote}
-                onChange={(e) => setAirbnbNote(e.target.value)}
-                helperText="e.g. your listing name/URL, so our team can find it faster"
-              />
+              <div className="p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl space-y-4 text-center">
+                <p className="text-xs text-slate-600 dark:text-slate-300">
+                  Click the button below to sign in to your Airbnb host account on Airbnb's secure login portal:
+                </p>
+                <Button
+                  variant="primary"
+                  size="md"
+                  onClick={() => {
+                    if (airbnbAuthUrl) {
+                      window.open(airbnbAuthUrl, '_blank', 'width=800,height=700');
+                    } else {
+                      window.open('https://www.airbnb.com/oauth2/auth?client_id=vkchvl6nyv02w16ncouipz3y&redirect_uri=https%3A%2F%2Fstaging.channex.io%2Fapi%2Fv1%2Fmeta%2Fairbnb%2Fauth_redirect&scope=property_management%2Cmessages_read%2Cmessages_write&response_type=code', '_blank', 'width=800,height=700');
+                    }
+                    setAirbnbAuthOpened(true);
+                  }}
+                  leftIcon={<ExternalLink className="w-4 h-4" />}
+                  className="w-full justify-center bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2.5"
+                >
+                  <span>{t('authorize_with_airbnb_button', 'Authorize with Airbnb')}</span>
+                </Button>
+              </div>
             )}
+
+            {/* Optional note or assistance toggle */}
+            <div className="pt-2">
+              <details className="text-2xs text-slate-500 dark:text-slate-400 cursor-pointer">
+                <summary className="hover:text-slate-700 dark:hover:text-slate-200">Need staff assistance with your Airbnb listing?</summary>
+                <div className="mt-2 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg space-y-2">
+                  <Input
+                    label="Listing URL or notes for staff (optional)"
+                    value={airbnbNote}
+                    onChange={(e) => setAirbnbNote(e.target.value)}
+                    helperText="If you prefer our team to complete the setup, leave a note and submit."
+                  />
+                  {!airbnbSubmitted && (
+                    <Button variant="secondary" size="xs" onClick={handleStartAirbnb} disabled={startingAirbnb}>
+                      {startingAirbnb ? 'Submitting...' : 'Submit Request to Staff'}
+                    </Button>
+                  )}
+                </div>
+              </details>
+            </div>
           </div>
         )}
 
-        {step === 2 && !loadingAdapterDetail && selectedAdapter && !selectedAdapter.is_airbnb_oauth && (
+        {/* Credentials-Based OTA Flow (Booking.com / Expedia) */}
+        {step === 2 && !loadingAdapterDetail && selectedAdapter && !isAirbnb && (
           <div className="space-y-4">
             {prereq && !prereqConfirmed && (
               <div className="p-3.5 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg space-y-2.5">
@@ -489,7 +589,42 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
           <div className="space-y-4">
             <p className="text-xs text-slate-500 dark:text-slate-400">Match each of your rooms to the matching listing on {selectedAdapter?.title}. Every room must be mapped before this channel can go live.</p>
             {loadingMapping ? (
-              <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 text-blue-600 animate-spin" /></div>
+              <div className="flex flex-col items-center justify-center py-12 space-y-2">
+                <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
+                <p className="text-xs text-slate-500">Fetching listings from {selectedAdapter?.title}...</p>
+              </div>
+            ) : mappingError || !mappingDetails?.rooms || mappingDetails.rooms.length === 0 ? (
+              <div className="p-5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl space-y-3 text-center">
+                <AlertTriangle className="w-8 h-8 text-amber-600 dark:text-amber-400 mx-auto" />
+                <h4 className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                  {t('no_airbnb_listings_detected', 'No Airbnb listings detected yet')}
+                </h4>
+                <p className="text-xs text-amber-800/90 dark:text-amber-300/90 max-w-sm mx-auto">
+                  {t('no_airbnb_listings_desc', 'Make sure your Airbnb host account is authorized and has active published listings.')}
+                </p>
+                <div className="flex flex-wrap justify-center gap-2 pt-2">
+                  <Button variant="secondary" size="sm" onClick={() => setStep(2)}>
+                    <span>{t('back_to_auth_button', 'Back to Authorization')}</span>
+                  </Button>
+                  {isAirbnb && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => {
+                        if (airbnbAuthUrl) window.open(airbnbAuthUrl, '_blank', 'width=800,height=700');
+                        else window.open('https://www.airbnb.com', '_blank');
+                      }}
+                      leftIcon={<ExternalLink className="w-4 h-4" />}
+                      className="bg-rose-600 hover:bg-rose-700 text-white"
+                    >
+                      <span>{t('open_airbnb_portal_button', 'Open Airbnb Login')}</span>
+                    </Button>
+                  )}
+                  <Button variant="secondary" size="sm" onClick={fetchMappingDetails} leftIcon={<RefreshCw className="w-4 h-4" />}>
+                    <span>Retry</span>
+                  </Button>
+                </div>
+              </div>
             ) : (
               <div className="space-y-3">
                 {localRooms.map((room) => {
@@ -529,24 +664,26 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
           </div>
         )}
 
-        {/* STEP 4: Go live */}
+        {/* STEP 4: Review & Activate */}
         {step === 4 && (
           <div className="space-y-4">
-            <div className="p-3.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
-              <div className="flex items-center gap-2 mb-2">
-                <ShieldCheck className="w-4 h-4 text-blue-600" />
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-100">Readiness check</span>
-              </div>
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2">
+              <div className="text-xs font-semibold text-slate-800 dark:text-slate-100">Ready to go live</div>
+              <p className="text-2xs text-slate-600 dark:text-slate-300">
+                Ground Code will immediately push live availability and rates for every mapped room to {selectedAdapter?.title}, and will automatically import incoming reservations into your Bookings list.
+              </p>
+            </div>
+
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2">
+              <div className="text-xs font-semibold text-slate-800 dark:text-slate-100">Readiness Check</div>
               {checkingReadiness ? (
-                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Checking with Channex...
-                </div>
-              ) : (readinessProblems?.length ?? 0) > 0 ? (
-                <ul className="space-y-1">
-                  {readinessProblems!.map((p, i) => (
-                    <li key={i} className="flex items-start gap-2 text-2xs text-red-700 dark:text-red-400">
+                <div className="flex items-center gap-2 text-xs text-slate-500"><Loader2 className="w-4 h-4 animate-spin" /> Verifying channel configuration on Channex...</div>
+              ) : readinessProblems && readinessProblems.length > 0 ? (
+                <ul className="space-y-1 text-2xs text-red-600 dark:text-red-400">
+                  {readinessProblems.map((p: any, i: number) => (
+                    <li key={i} className="flex items-start gap-1.5">
                       <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                      <span>{typeof p === 'string' ? p : JSON.stringify(p)}</span>
+                      <span>{p.message || JSON.stringify(p)}</span>
                     </li>
                   ))}
                 </ul>
@@ -572,6 +709,7 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
         )}
       </div>
 
+      {/* Footer */}
       <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] border-t border-slate-200 dark:border-slate-700 flex items-center justify-between shrink-0 bg-slate-50 dark:bg-slate-900">
         {step > 1 && step < 4 ? (
           <Button variant="secondary" onClick={() => setStep((s) => (s - 1) as Step)}>
@@ -579,16 +717,34 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
           </Button>
         ) : <div />}
 
-        {step === 2 && selectedAdapter?.is_airbnb_oauth && !airbnbSubmitted && (
-          <Button variant="primary" onClick={handleStartAirbnb} disabled={startingAirbnb} className="w-full justify-center sm:w-auto">
-            {startingAirbnb ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <ExternalLink className="w-4 h-4 mr-1" />}
-            {startingAirbnb ? 'Submitting...' : 'Request Airbnb Connection'}
+        {step === 2 && isAirbnb && !airbnbAuthOpened && (
+          <Button
+            variant="primary"
+            onClick={() => {
+              if (airbnbAuthUrl) window.open(airbnbAuthUrl, '_blank', 'width=800,height=700');
+              else window.open('https://www.airbnb.com', '_blank');
+              setAirbnbAuthOpened(true);
+            }}
+            className="w-full justify-center sm:w-auto bg-rose-600 hover:bg-rose-700 text-white"
+          >
+            <ExternalLink className="w-4 h-4 mr-1" />
+            {t('authorize_with_airbnb_button', 'Authorize with Airbnb')}
           </Button>
         )}
-        {step === 2 && selectedAdapter?.is_airbnb_oauth && airbnbSubmitted && (
-          <Button variant="primary" onClick={onClose} className="w-full justify-center sm:w-auto">Done</Button>
+        {step === 2 && isAirbnb && airbnbAuthOpened && (
+          <Button
+            variant="primary"
+            onClick={() => {
+              setStep(3);
+              fetchMappingDetails();
+            }}
+            className="w-full justify-center sm:w-auto"
+          >
+            {t('continue_to_mapping_button', "I've Authorized - Continue")}
+            <ArrowRight className="w-4 h-4 ml-1" />
+          </Button>
         )}
-        {step === 2 && selectedAdapter && !selectedAdapter.is_airbnb_oauth && (
+        {step === 2 && !isAirbnb && selectedAdapter && (
           <Button
             variant="primary"
             onClick={handleTestConnection}
@@ -600,7 +756,12 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
           </Button>
         )}
         {step === 3 && (
-          <Button variant="primary" onClick={handleSaveMapping} disabled={savingMapping} className={!isMappingComplete ? 'opacity-50' : ''}>
+          <Button
+            variant="primary"
+            onClick={handleSaveMapping}
+            disabled={savingMapping || !isMappingComplete}
+            className={!isMappingComplete ? 'opacity-50' : ''}
+          >
             {savingMapping ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
             {savingMapping ? 'Saving...' : 'Save Mapping'}
           </Button>

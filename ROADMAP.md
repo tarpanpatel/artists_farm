@@ -29,24 +29,7 @@ This document tracks identified bugs, pending backend API integrations, and upco
 
 ### 📊 Indian Hospitality Strategic Workflows (Planned - Sep 2026)
 
-#### 1. 🧾 Accountant Tally XML & GSTR-1 Tax File Export
-- **Goal**: Prevent resort accountants and Chartered Accountants (CAs) from rejecting Ground Code by eliminating manual monthly re-entry of guest invoices and petty cash vouchers into Tally Prime / Zoho Books.
-- **Location**: `src/components/DataExportCenter.tsx` + `php/api/export_tally.php` (or client-side generation).
-- **Core Deliverables**:
-  - **Tally.ERP 9 / Tally Prime XML Export (`Sales Vouchers`)**:
-    - Conforms to standard Tally XML envelope: `<ENVELOPE><HEADER><TALLYREQUEST>Import Data</TALLYREQUEST></HEADER><BODY><DATA><TALLYMESSAGE xmlns:UDF="TallyUDF">`.
-    - Auto-generates `<VOUCHER VCHTYPE="Sales" ACTION="Create">` with:
-      - `<DATE>YYYYMMDD</DATE>`, `<VOUCHERNUMBER>INV-...`, `<PARTYLEDGERNAME>Sundry Debtors / Guest Name`.
-      - Credit entries for `<LEDGERNAME>Room Accommodation Sales</LEDGERNAME>` (SAC 996311) and `<LEDGERNAME>Restaurant & Food Sales</LEDGERNAME>` (SAC 996331).
-      - Tax allocations: `<LEDGERNAME>CGST Output @ 6%/9%</LEDGERNAME>` and `<LEDGERNAME>SGST Output @ 6%/9%</LEDGERNAME>` (or IGST for out-of-state B2B).
-  - **Tally XML Payment Vouchers (`Petty Cash / Cost Logs`)**:
-    - Exports cost logs from the `petty_cash`/`farm_utility_expenses` tables (there is no `costs` table - corrected 3 Sep 2026, code review) grouped by category into Tally Payment Vouchers (`Kitchen Expenses`, `Housekeeping Supplies`, `Salaries & Wages`, `Repairs & Maintenance`).
-  - **GSTR-1 Ready Government CSV Format**:
-    - **Table 4 (B2B)**: Filterable for corporate/business bookings with Guest GSTIN, Invoice Number, Invoice Date, Total Invoice Value, Place of Supply (POS state code e.g. `08-Rajasthan`), Tax Rate (12% / 18%), Taxable Value, Cess.
-    - **Table 7 (B2C Small)**: Consolidated net taxable values aggregated by POS State Code and Tax Rate.
-    - **Table 12 (HSN/SAC Summary)**: Total quantity, taxable amount, integrated tax, central tax, state tax.
-
-#### 2. ⚡ Offline-Resilient Room Status & Arrival Cache (Remote Internet Drops)
+#### 1. ⚡ Offline-Resilient Room Status & Arrival Cache (Remote Internet Drops)
 - **Goal**: Allow remote resort and farmstay front-desk staff (Jim Corbett, Coorg, Udaipur, Lonavala) to continue front-desk operations (view room allocations, lookup guest contact numbers, review arrival manifests, and queue check-ins) even during 2-to-4 hour broadband/fiber drops.
 - **Location**: `sw.js` + `src/services/offlineCache.ts` + `OperationalDashboard.tsx`.
 - **Core Deliverables**:

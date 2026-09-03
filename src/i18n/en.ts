@@ -1835,6 +1835,38 @@ export const strings: Record<string, string> = {
   copied_to_clipboard: "Copied to clipboard!",
   help_tooltip: "Help & FAQ",
   help_aria: "Help & FAQ",
+
+  // Tally & GSTR-1 Exports
+  tally_hub_title: "Tally Prime Accounting Hub (XML Import)",
+  tally_hub_description: "Generate pre-formatted Tally.ERP 9 / Tally Prime XML files for instant voucher imports, eliminating manual bookkeeping.",
+  tally_sales_export_title: "Tally Sales Vouchers (XML)",
+  tally_sales_export_description: "Exports room sales (SAC 996311) and food sales (SAC 996331) with output CGST/SGST/IGST allocations into Tally Sales vouchers.",
+  tally_payments_export_title: "Tally Expense & Payment Vouchers (XML)",
+  tally_payments_export_description: "Exports petty cash and property cost logs grouped by accounting ledgers (Kitchen, Housekeeping, Salaries, Repairs, Utilities) into Tally Payment vouchers.",
+  export_tally_sales_button: "EXPORT SALES XML",
+  export_tally_payments_button: "EXPORT PAYMENTS XML",
+  gstr1_center_title: "GST Tax Compliance Center (GSTR-1 Ready)",
+  gstr1_center_description: "Export Government GST portal-ready CSV spreadsheets for monthly and quarterly GSTR-1 returns filing.",
+  gstr1_table4_title: "GSTR-1 Table 4: B2B Invoices (CSV)",
+  gstr1_table4_description: "Extracts taxable supplies made to registered business guests with recipient GSTIN, Place of Supply state codes, and rate breakdown.",
+  gstr1_table7_title: "GSTR-1 Table 7: B2C Small Invoices (CSV)",
+  gstr1_table7_description: "Aggregates taxable supplies made to unregistered retail guests grouped by Place of Supply state code and tax rate slabs.",
+  gstr1_table12_title: "GSTR-1 Table 12: HSN / SAC Summary (CSV)",
+  gstr1_table12_description: "Compiles hospitality SAC codes 996311 (Accommodation) and 996331 (Restaurant Food) with total taxable values and tax totals.",
+  gstr1_master_title: "GSTR-1 Consolidated Master Workbook (CSV)",
+  gstr1_master_description: "Comprehensive tax audit workbook including Executive Tax Summary, B2B list, B2C summary, and Table 12 HSN splits.",
+  export_gstr1_button: "EXPORT GSTR-1 CSV",
+
+  // Airbnb OAuth Strings
+  airbnb_oauth_title: "Connect Airbnb Account",
+  airbnb_oauth_desc: "Authorize Ground Code to access your Airbnb listings, sync availability & rates, and automatically import reservations.",
+  authorize_with_airbnb_button: "Authorize with Airbnb",
+  airbnb_auth_window_opened: "Sign in to your Airbnb host account in the new tab and click 'Allow'. Once authorized, click Continue below.",
+  continue_to_mapping_button: "I've Authorized - Continue to Room Mapping",
+  no_airbnb_listings_detected: "No Airbnb listings detected yet",
+  no_airbnb_listings_desc: "Make sure your Airbnb host account is authorized and has active published listings.",
+  back_to_auth_button: "Back to Authorization",
+  open_airbnb_portal_button: "Open Airbnb Login",
 };
 
 export function t(key: string, fallback?: string, params?: Record<string, string | number>): string {

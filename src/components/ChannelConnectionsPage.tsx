@@ -176,7 +176,7 @@ export const ChannelConnectionsPage: React.FC<ChannelConnectionsPageProps> = ({ 
                     <span className="text-sm font-semibold text-slate-900 dark:text-white truncate">{c.channel_code}</span>
                     <Badge variant={badge.variant}>{badge.label}</Badge>
                   </div>
-                  {c.status === 'error' && c.last_error && (
+                  {c.status === 'error' && c.last_error && c.last_error !== 'null' && c.last_error.trim() !== '' && (
                     <p className="text-2xs text-red-600 dark:text-red-400 mt-1 truncate">{c.last_error}</p>
                   )}
                   {c.status === 'staff_action_required' && (

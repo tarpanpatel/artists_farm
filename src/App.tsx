@@ -2566,6 +2566,8 @@ ${itemsStr}
                     menu={menu}
                     auditLogs={auditLogs}
                     kitchenModuleEnabled={isModuleEnabled('kitchen')}
+                    propertyGstin={preloadedData.currentProperty?.gstin || ''}
+                    propertyName={propertyName}
                   />
                 </ErrorBoundary>
               )}

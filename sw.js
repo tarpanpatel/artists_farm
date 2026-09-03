@@ -23,7 +23,9 @@
 // v27 (2 Sep 2026): standardize help drawer font sizes with rest of site
 // v29 (2 Sep 2026): fix missing browser tab favicon across all tenant/property routes
 // v30 (3 Sep 2026): performance bundle splitting and client-side image downscaler
-const CACHE_NAME = 'farm-pos-v30';
+// v31 (3 Sep 2026): Tally Prime XML export and GSTR-1 government tax CSV suite
+// v32 (3 Sep 2026): direct Airbnb OAuth authorization and resilient room mapping
+const CACHE_NAME = 'farm-pos-v32';
 
 // Hashed asset pattern — Vite content-hashed files (e.g. index-CrXjaekR.js)
 // These must NEVER be cached by the SW; the browser cache handles them natively
