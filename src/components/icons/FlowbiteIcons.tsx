@@ -104,6 +104,7 @@ export const LogOut = wrap(getOutline('ArrowRightToBracket'));
 export const Save = wrap(getOutline('FloppyDisk') || getOutline('Check') || getOutline('Download'));
 export const Share2 = wrap(getOutline('ShareNodes') || getOutline('ShareAll'));
 export const LinkIcon = wrap(getOutline('Link'));
+export const LinkBreak = wrap(getOutline('LinkBreak'));
 export const ExternalLink = wrap(getOutline('ArrowUpRightFromSquare') || getOutline('Link'));
 export const Eye = wrap(getOutline('Eye'));
 export const EyeOff = wrap(getOutline('EyeSlash'));

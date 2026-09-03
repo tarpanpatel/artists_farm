@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Drawer } from 'flowbite-react';
 import {
   CheckCircle2, ArrowRight, ArrowLeft, Loader2, X, AlertCircle, AlertTriangle,
-  Plug, ExternalLink, ShieldCheck, RefreshCw, ChevronDown,
+  LinkBreak, ExternalLink, ShieldCheck, RefreshCw, ChevronDown,
 } from './icons/FlowbiteIcons';
 import { Button } from './Button';
 import { Input } from './Input';
@@ -67,7 +67,7 @@ const AirbnbSwitchSoftwareGuide: React.FC = () => {
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="w-full flex items-center justify-between text-amber-900 dark:text-amber-200 font-bold text-xs cursor-pointer gap-2"
+        className="w-full flex items-center justify-between text-amber-900 dark:text-amber-200 font-bold text-sm cursor-pointer gap-2"
       >
         <div className="flex items-center gap-2">
           <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
@@ -77,7 +77,7 @@ const AirbnbSwitchSoftwareGuide: React.FC = () => {
       </button>
 
       {open && (
-        <div className="space-y-2.5 pt-1 text-2xs text-slate-700 dark:text-slate-300 border-t border-amber-200/80 dark:border-amber-800/60">
+        <div className="space-y-2.5 pt-1 text-xs text-slate-700 dark:text-slate-300 border-t border-amber-200/80 dark:border-amber-800/60">
           <p className="text-amber-900 dark:text-amber-200 font-medium">
             Airbnb allows only <strong>1 Property Management App</strong> at a time. If your Airbnb account was previously connected to another software provider, follow these 3 quick steps in your browser:
           </p>
@@ -496,7 +496,7 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
       const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=channex_channel_activate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ property_id: propertyId, channel_code: selectedCode }),
+        body: JSON.stringify({ property_id: propertyId, channel_code: selectedCode, confirmed_existing_bookings: confirmedExistingBookings }),
       });
       const json = await res.json();
       if (json?.status !== 'success') {
@@ -527,9 +527,9 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
       {/* Header */}
       <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50 dark:bg-slate-900">
         <div className="flex items-center gap-2">
-          <Plug className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          <LinkBreak className="w-5 h-5 text-blue-600 dark:text-blue-400" />
           <div>
-            <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Connect a Channel</h2>
+            <h2 className="text-base font-semibold text-slate-900 dark:text-white">Connect a Channel</h2>
             <div className="text-2xs text-slate-500 dark:text-slate-400">
               Step {step} of 4{selectedAdapter ? ` · ${selectedAdapter.title}` : ''}
             </div>
@@ -548,7 +548,7 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
         {/* STEP 1: Select Channel */}
         {step === 1 && (
           <div className="space-y-4">
-            <p className="text-xs text-slate-500 dark:text-slate-400">Choose the booking channel you want to connect to this property.</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Choose the booking channel you want to connect to this property.</p>
             {loadingAdapters ? (
               <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 text-blue-600 animate-spin" /></div>
             ) : (
@@ -564,7 +564,7 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
                       <div>
                         <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">{a.title}</div>
                         {a.is_airbnb_oauth && (
-                          <div className="text-2xs text-emerald-600 dark:text-emerald-400 mt-0.5">1-Click Direct OAuth Authorization</div>
+                          <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">1-Click Direct OAuth Authorization</div>
                         )}
                       </div>
                       <ArrowRight className="w-4 h-4 text-slate-300 shrink-0" />
@@ -586,11 +586,11 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
             <div className="p-4 bg-rose-50/60 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800/60 rounded-xl space-y-3">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-5 h-5 text-rose-600 dark:text-rose-400" />
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
                   {t('airbnb_oauth_title', 'Connect Airbnb Account')}
                 </h3>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300">
+              <p className="text-sm text-slate-600 dark:text-slate-300">
                 {t('airbnb_oauth_desc', 'Authorize Ground Code to access your Airbnb listings, sync availability & rates, and automatically import reservations.')}
               </p>
             </div>
@@ -598,7 +598,7 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
             {airbnbAuthOpened ? (
               <div className="p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl space-y-3 text-center">
                 <CheckCircle2 className="w-8 h-8 text-blue-600 dark:text-blue-400 mx-auto" />
-                <p className="text-xs font-medium text-blue-900 dark:text-blue-200">
+                <p className="text-sm font-medium text-blue-900 dark:text-blue-200">
                   {t('airbnb_auth_window_opened', "Sign in to your Airbnb host account in the new tab and click 'Allow'. Once authorized, click Continue below.")}
                 </p>
                 <div className="flex flex-col sm:flex-row justify-center gap-2 pt-2">
@@ -638,7 +638,7 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
               </div>
             ) : (
               <div className="p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl space-y-4 text-center">
-                <p className="text-xs text-slate-600 dark:text-slate-300">
+                <p className="text-sm text-slate-600 dark:text-slate-300">
                   Click the button below to sign in to your Airbnb host account on Airbnb's secure login portal:
                 </p>
                 <Button
@@ -659,7 +659,7 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
 
             {/* Optional note or assistance toggle */}
             <div className="pt-2">
-              <details className="text-2xs text-slate-500 dark:text-slate-400 cursor-pointer">
+              <details className="text-xs text-slate-500 dark:text-slate-400 cursor-pointer">
                 <summary className="hover:text-slate-700 dark:hover:text-slate-200">Need staff assistance with your Airbnb listing?</summary>
                 <div className="mt-2 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg space-y-2">
                   <Input
@@ -684,13 +684,13 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
           <div className="space-y-4">
             {prereq && !prereqConfirmed && (
               <div className="p-3.5 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg space-y-2.5">
-                <p className="text-xs font-bold text-blue-900 dark:text-blue-200">{prereq.title}</p>
-                <ol className="list-decimal pl-4 space-y-1 text-2xs text-blue-800 dark:text-blue-300">
+                <p className="text-sm font-bold text-blue-900 dark:text-blue-200">{prereq.title}</p>
+                <ol className="list-decimal pl-4 space-y-1 text-xs text-blue-800 dark:text-blue-300">
                   {prereq.steps.map((s, i) => <li key={i}>{s}</li>)}
                 </ol>
                 <label className="flex items-start gap-2 pt-1 cursor-pointer">
                   <input type="checkbox" checked={prereqConfirmed} onChange={(e) => setPrereqConfirmed(e.target.checked)} className="mt-0.5" />
-                  <span className="text-2xs font-semibold text-blue-900 dark:text-blue-200">I've completed these steps on {selectedAdapter.title}</span>
+                  <span className="text-xs font-semibold text-blue-900 dark:text-blue-200">I've completed these steps on {selectedAdapter.title}</span>
                 </label>
               </div>
             )}
@@ -735,7 +735,7 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
                 })}
 
                 {testResult && !testResult.success && (
-                  <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg text-xs text-amber-800 dark:text-amber-300">
+                  <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg text-sm text-amber-800 dark:text-amber-300">
                     <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                     <span>Channex couldn't verify this connection yet{typeof testResult.errors === 'string' ? `: ${testResult.errors}` : ''}. If you just completed the steps above, this can take a few minutes on {selectedAdapter.title}'s side - try again shortly.</span>
                   </div>
@@ -748,19 +748,19 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
         {/* STEP 3: Room / rate mapping */}
         {step === 3 && (
           <div className="space-y-4">
-            <p className="text-xs text-slate-500 dark:text-slate-400">Match each of your rooms to the matching listing on {selectedAdapter?.title}. Every room must be mapped before this channel can go live.</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Match each of your rooms to the matching listing on {selectedAdapter?.title}. Every room must be mapped before this channel can go live.</p>
             {loadingMapping ? (
               <div className="flex flex-col items-center justify-center py-12 space-y-2">
                 <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
-                <p className="text-xs text-slate-500">Fetching listings from {selectedAdapter?.title}...</p>
+                <p className="text-sm text-slate-500">Fetching listings from {selectedAdapter?.title}...</p>
               </div>
             ) : mappingError || !mappingDetails?.rooms || mappingDetails.rooms.length === 0 ? (
               <div className="p-5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl space-y-3 text-center">
                 <AlertTriangle className="w-8 h-8 text-amber-600 dark:text-amber-400 mx-auto" />
-                <h4 className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                <h4 className="text-base font-semibold text-amber-900 dark:text-amber-200">
                   {t('no_airbnb_listings_detected', 'No Airbnb listings detected yet')}
                 </h4>
-                <p className="text-xs text-amber-800/90 dark:text-amber-300/90 max-w-sm mx-auto">
+                <p className="text-sm text-amber-800/90 dark:text-amber-300/90 max-w-sm mx-auto">
                   {t('no_airbnb_listings_desc', 'Make sure your Airbnb host account is authorized and has active published listings.')}
                 </p>
                 <div className="flex flex-wrap justify-center gap-2 pt-2">
@@ -800,15 +800,15 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
                     const selectedOtaRoom = (mappingDetails?.rooms || []).find((r: any) => String(r.id) === current.external_room_code);
                     return (
                       <div key={key} className="p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2">
-                        <div className="text-xs font-semibold text-slate-800 dark:text-slate-100">{room.name}</div>
+                        <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">{room.name}</div>
                         {!room.channex_rate_plan_id && (
-                          <div className="text-2xs text-red-600 dark:text-red-400">Not yet synced to Channex - sync property content first.</div>
+                          <div className="text-xs text-red-600 dark:text-red-400">Not yet synced to Channex - sync property content first.</div>
                         )}
                         {isAirbnbMode ? (
                           <select
                             value={current.external_room_code}
                             onChange={(e) => setRoomMapping((prev) => ({ ...prev, [key]: { external_room_code: e.target.value, external_rate_code: e.target.value } }))}
-                            className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white px-2.5 py-2"
+                            className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white px-2.5 py-2"
                           >
                             <option value="">Select Airbnb listing...</option>
                             {(mappingDetails?.rooms || []).map((r: any) => <option key={r.id} value={r.id}>{r.title}</option>)}
@@ -818,7 +818,7 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
                             <select
                               value={current.external_room_code}
                               onChange={(e) => setRoomMapping((prev) => ({ ...prev, [key]: { external_room_code: e.target.value, external_rate_code: '' } }))}
-                              className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white px-2.5 py-2"
+                              className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white px-2.5 py-2"
                             >
                               <option value="">Select {selectedAdapter?.title} room...</option>
                               {(mappingDetails?.rooms || []).map((r: any) => <option key={r.id} value={r.id}>{r.title}</option>)}
@@ -827,7 +827,7 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
                               value={current.external_rate_code}
                               onChange={(e) => setRoomMapping((prev) => ({ ...prev, [key]: { ...current, external_rate_code: e.target.value } }))}
                               disabled={!selectedOtaRoom}
-                              className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white px-2.5 py-2 disabled:opacity-50"
+                              className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white px-2.5 py-2 disabled:opacity-50"
                             >
                               <option value="">Select rate...</option>
                               {(selectedOtaRoom?.rates || []).map((rate: any) => <option key={rate.id} value={rate.id}>{rate.title}</option>)}
@@ -847,18 +847,18 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
         {step === 4 && (
           <div className="space-y-4">
             <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2">
-              <div className="text-xs font-semibold text-slate-800 dark:text-slate-100">Ready to go live</div>
-              <p className="text-2xs text-slate-600 dark:text-slate-300">
+              <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">Ready to go live</div>
+              <p className="text-sm text-slate-600 dark:text-slate-300">
                 Ground Code will immediately push live availability and rates for every mapped room to {selectedAdapter?.title}, and will automatically import incoming reservations into your Bookings list.
               </p>
             </div>
 
             <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2">
-              <div className="text-xs font-semibold text-slate-800 dark:text-slate-100">Readiness Check</div>
+              <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">Readiness Check</div>
               {checkingReadiness ? (
-                <div className="flex items-center gap-2 text-xs text-slate-500"><Loader2 className="w-4 h-4 animate-spin" /> Verifying channel configuration on Channex...</div>
+                <div className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="w-4 h-4 animate-spin" /> Verifying channel configuration on Channex...</div>
               ) : readinessProblems && readinessProblems.length > 0 ? (
-                <ul className="space-y-1 text-2xs text-red-600 dark:text-red-400">
+                <ul className="space-y-1 text-xs text-red-600 dark:text-red-400">
                   {readinessProblems.map((p: any, i: number) => (
                     <li key={i} className="flex items-start gap-1.5">
                       <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
@@ -867,7 +867,7 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
                   ))}
                 </ul>
               ) : (
-                <div className="flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400">
+                <div className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-400">
                   <CheckCircle2 className="w-4 h-4" /> Ready to go live.
                 </div>
               )}
@@ -880,7 +880,7 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
                 onChange={(e) => setConfirmedExistingBookings(e.target.checked)}
                 className="mt-0.5"
               />
-              <span className="text-2xs font-semibold text-amber-900 dark:text-amber-300">
+              <span className="text-sm font-semibold text-amber-900 dark:text-amber-300">
                 I confirm any bookings that already exist on {selectedAdapter?.title} for this listing are already entered in Ground Code. Activating without this can double-book a room.
               </span>
             </label>
