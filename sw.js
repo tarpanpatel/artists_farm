@@ -41,7 +41,8 @@
 // v46 (3 Sep 2026): Full layout, header, sidebar, page titles, and card parity of TenantDashboard with Property pages
 // v47 (3 Sep 2026): Remove Menu label from TenantDashboard sidebar nav
 // v48 (4 Sep 2026): Remove interior field icons in Passcode form as per DESIGN.md
-const CACHE_NAME = 'farm-pos-v48';
+// v49 (4 Sep 2026): Strict Booking.com brand matching in getOtaIcon (do not match other channels containing 'booking')
+const CACHE_NAME = 'farm-pos-v49';
 
 // Hashed asset pattern — Vite content-hashed files (e.g. index-CrXjaekR.js)
 // These must NEVER be cached by the SW; the browser cache handles them natively

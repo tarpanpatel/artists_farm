@@ -19,9 +19,29 @@ export type OtaIconComponent = FC<SVGProps<SVGSVGElement> & { className?: string
  * this mirrors.
  */
 export function getOtaIcon(source: string | null | undefined): OtaIconComponent | null {
-  const s = (source || '').toLowerCase();
-  if (!s) return null;
-  if (s.includes('airbnb')) return AirbnbIcon;
-  if (s.includes('booking')) return BookingComIcon; // "BookingCom" / "Booking.com"
+  if (!source) return null;
+  const raw = source.trim().toLowerCase();
+  if (!raw) return null;
+
+  // Normalized: strip spaces, dots, hyphens, underscores, brackets
+  const normalized = raw.replace(/[\s._\-()]+/g, '');
+
+  // 1. Airbnb match
+  if (normalized === 'airbnb' || raw.includes('airbnb')) {
+    return AirbnbIcon;
+  }
+
+  // 2. Booking.com ONLY match (do NOT match "Instant Booking Page", "JoodBooking", "Julian Alps Booking", etc.)
+  if (
+    normalized === 'bookingcom' ||
+    normalized === 'booking' ||
+    normalized === 'bookingcomxml' ||
+    normalized === 'bookingdotcom' ||
+    normalized === 'bcom' ||
+    /^booking(\.|\s|_|-)?com(\s*\(xml\))?$/i.test(raw)
+  ) {
+    return BookingComIcon;
+  }
+
   return null;
 }
