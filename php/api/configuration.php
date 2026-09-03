@@ -464,6 +464,16 @@ function checkTelegramHealth($pdo) {
  * Creates tenant, owner user, property (with room slots & kitchen setting), and 30-day trial license.
  */
 function registerTenantTrial($pdo) {
+    // createMultiKeyPropertyCore()/addMultiKeyRoomCore() are needed below for
+    // a MULTI_KEY signup - router.php already requires multikey_properties.php
+    // unconditionally near its top, so this is normally a no-op, but guard it
+    // defensively anyway (same function_exists()-guard pattern used
+    // throughout this codebase) since this is a paid-signup path and must
+    // never depend on include-order elsewhere staying exactly as it is today.
+    if (!function_exists('createMultiKeyPropertyCore')) {
+        require_once __DIR__ . '/multikey_properties.php';
+    }
+
     try {
         $input = json_decode(file_get_contents('php://input'), true) ?: [];
         $fullName = trim($input['full_name'] ?? '');
@@ -476,10 +486,23 @@ function registerTenantTrial($pdo) {
         $checkinTime = trim($input['checkin_time'] ?? '14:00');
         $checkoutTime = trim($input['checkout_time'] ?? '11:00');
         $hasKitchen = (int)($input['has_kitchen'] ?? 1);
+        // MANDATORY, not optional (added 3 Sep 2026, after a real incident on
+        // an existing property where a NULL default_tariff silently fell back
+        // to a hardcoded, guessed rate the moment a channel manager was
+        // connected - see CLAUDE.md's Channel Manager protocol section).
+        // Every property this flow creates must start with a real,
+        // owner-chosen rate, never a value nobody actually typed.
+        $defaultTariff = isset($input['default_tariff']) && is_numeric($input['default_tariff']) ? (float)$input['default_tariff'] : null;
 
         if (!$fullName || !$email || !$phone || !$passcode || !$propertyName) {
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'Missing required registration fields']);
+            return;
+        }
+
+        if ($defaultTariff === null || $defaultTariff <= 0) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'A default room rate is required to set up your property']);
             return;
         }
 
@@ -539,12 +562,41 @@ function registerTenantTrial($pdo) {
         // 2. Create Property - before the owner user, since users.property_id is NOT NULL
         // and must point at this property, not silently default to property #1 (a
         // different tenant's property).
-        $propStmt = $pdo->prepare("
-            INSERT INTO properties (tenant_id, name, slug, property_type, unit_count, checkin_time, checkout_time, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'active')
-        ");
-        $propStmt->execute([$tenantId, $propertyName, $propertySlug, $propertyType, $roomCount, $checkinTime, $checkoutTime]);
-        $propertyId = (int)$pdo->lastInsertId();
+        //
+        // MULTI_KEY goes through createMultiKeyPropertyCore()/addMultiKeyRoomCore()
+        // (php/api/multikey_properties.php) - the SAME functions the admin-facing
+        // Multi-Key creation UI uses - rather than a separate inline INSERT here.
+        // Found live 3 Sep 2026: this used to be its own thinner copy that only
+        // ever inserted the bare room rows, silently skipping property_modules,
+        // property_shared_data (STAFF/EXPENSES/KITCHEN), and default expense
+        // categories that a real Multi-Key property is supposed to get - a
+        // self-signup customer who picked Multi-Key ended up with a subtly
+        // incomplete property compared to one created the normal way. One
+        // function creates a Multi-Key property now, not two that can drift.
+        if ($propertyType === 'MULTI_KEY' && $roomCount > 1) {
+            $propertyId = createMultiKeyPropertyCore($pdo, $tenantId, $propertyName, $propertySlug);
+            // Layer on the trial-signup-specific fields the core function
+            // doesn't set (it's shared with the admin-facing flow, which
+            // doesn't collect these) - checkin/checkout time and a starting
+            // rate on the parent row itself for display consistency (each
+            // room's OWN default_tariff below is what actually matters for
+            // bookings/channel-manager pricing on a Multi-Key property).
+            $pdo->prepare("UPDATE properties SET checkin_time = ?, checkout_time = ?, status = 'active', default_tariff = ? WHERE id = ?")
+                ->execute([$checkinTime, $checkoutTime, $defaultTariff, $propertyId]);
+
+            for ($i = 1; $i <= $roomCount; $i++) {
+                $roomName = "Room " . sprintf("%02d", $i);
+                $roomSlug = $propertySlug . '-room-' . $i;
+                addMultiKeyRoomCore($pdo, $propertyId, $roomName, $roomSlug, $defaultTariff);
+            }
+        } else {
+            $propStmt = $pdo->prepare("
+                INSERT INTO properties (tenant_id, name, slug, property_type, unit_count, checkin_time, checkout_time, status, default_tariff)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?)
+            ");
+            $propStmt->execute([$tenantId, $propertyName, $propertySlug, $propertyType, $roomCount, $checkinTime, $checkoutTime, $defaultTariff]);
+            $propertyId = (int)$pdo->lastInsertId();
+        }
 
         // 3. Create Master Owner User. 'Admin' (capitalized) matches the role string every
         // other admin-permission check in the app compares against exactly
@@ -555,19 +607,6 @@ function registerTenantTrial($pdo) {
         ");
         $userStmt->execute([$propertyId, $phone, $fullName, $phone, $email, $passcode, $tenantId]);
         $userId = (int)$pdo->lastInsertId();
-
-        // Provision child rooms for Multi-Key property
-        if ($propertyType === 'MULTI_KEY' && $roomCount > 1) {
-            $roomStmt = $pdo->prepare("
-                INSERT INTO properties (tenant_id, parent_property_id, name, slug, property_type, room_order, is_active)
-                VALUES (?, ?, ?, ?, 'MULTI_KEY_ROOM', ?, 1)
-            ");
-            for ($i = 1; $i <= $roomCount; $i++) {
-                $roomName = "Room " . sprintf("%02d", $i);
-                $roomSlug = $propertySlug . '-room-' . $i;
-                $roomStmt->execute([$tenantId, $propertyId, $roomName, $roomSlug, $i]);
-            }
-        }
 
         // Kitchen Module toggle
         if ($hasKitchen === 0 && function_exists('disableKitchenModuleForNewProperty')) {

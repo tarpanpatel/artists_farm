@@ -47,6 +47,12 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
   const [roomCount, setRoomCount] = useState<number>(5);
   const [checkinTime, setCheckinTime] = useState('14:00');
   const [checkoutTime, setCheckoutTime] = useState('11:00');
+  // Required, not optional (added 3 Sep 2026) - a property created with no
+  // rate at all used to silently fall back to a hardcoded guessed price the
+  // moment a channel manager got connected (see CLAUDE.md's Channel Manager
+  // protocol section). Left blank ('') rather than pre-filled with a guess of
+  // our own, so the field's emptiness is itself the validation signal.
+  const [defaultTariff, setDefaultTariff] = useState('');
   const [hasKitchen, setHasKitchen] = useState<boolean | null>(true);
 
   // Trial dates calculation
@@ -57,7 +63,7 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
   const formatDate = (d: Date) => formatDateDDMMYYYY(d.toISOString());
 
   const isStep1Valid = !!fullName.trim() && !!email.trim() && phone.replace(/\D/g, '').length === 10 && passcode.length === 6;
-  const isStep3Valid = !!propertyName.trim() && hasKitchen !== null;
+  const isStep3Valid = !!propertyName.trim() && hasKitchen !== null && Number(defaultTariff) > 0;
 
   // Field-level error messages - only surface once the user has actually tried to advance past
   // the step (step1Attempted/step3Attempted), then stay live as the field itself changes, same
@@ -67,6 +73,7 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
   const phoneError = step1Attempted && phone.replace(/\D/g, '').length !== 10 ? 'Enter a valid 10-digit mobile number' : undefined;
   const passcodeError = step1Attempted && passcode.length !== 6 ? 'Enter a 6-digit passcode' : undefined;
   const propertyNameError = step3Attempted && !propertyName.trim() ? 'Property name is required' : undefined;
+  const defaultTariffError = step3Attempted && !(Number(defaultTariff) > 0) ? 'Enter your standard room rate' : undefined;
 
   // 28 Aug 2026, explicit request: clicking "Next Step" while it looks greyed out used to do
   // nothing at all (native `disabled` blocks onClick entirely) - both step-gate buttons below are
@@ -115,6 +122,7 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
           property_name: propertyName.trim(),
           property_type: propertyType,
           room_count: propertyType === 'MULTI_KEY' ? roomCount : 1,
+          default_tariff: Number(defaultTariff),
           checkin_time: checkinTime,
           checkout_time: checkoutTime,
           has_kitchen: hasKitchen ? 1 : 0,
@@ -353,6 +361,18 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
                 onChange={(e) => setRoomCount(Math.max(1, parseInt(e.target.value) || 1))}
               />
             )}
+
+            <Input
+              type="number"
+              inputMode="decimal"
+              min={1}
+              label={propertyType === 'MULTI_KEY' ? 'Default Room Rate (₹ per room, per night)' : 'Room Rate (₹ per night)'}
+              placeholder="e.g. 2500"
+              value={defaultTariff}
+              onChange={(e) => setDefaultTariff(e.target.value)}
+              error={defaultTariffError}
+              helperText={!defaultTariffError ? 'Used as the starting price for every room - you can change it any time later.' : undefined}
+            />
 
             <div className="grid grid-cols-2 gap-3">
               <Input type="time" label="Check-in Time" value={checkinTime} onChange={(e) => setCheckinTime(e.target.value)} />

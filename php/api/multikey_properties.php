@@ -302,6 +302,141 @@ function addTenantUserToProperty($pdo) {
  * Create a new MultiKey property
  * POST /api/router.php?action=create_multikey_property
  */
+/**
+ * Core MultiKey property creation - no I/O (no php://input, no echo, no
+ * exit), so it's safely callable from any other server-side flow that needs
+ * to create a real, fully-scaffolded MultiKey property (shared_data,
+ * default modules, tenant-username staff login, Super Admin carry-forward,
+ * default expenses) without duplicating this logic. Throws Exception on any
+ * failure (tenant not found, slug conflict) - caller decides the HTTP
+ * response shape. THIS is now the single source of truth for what a real
+ * MultiKey property looks like - createMultiKeyProperty() below (the HTTP
+ * handler) and registerTenantTrial() (php/api/configuration.php, the
+ * self-service trial signup) both call this rather than each having their
+ * own partial copy (found live 3 Sep 2026: the trial-signup path had drifted
+ * into a much thinner inline version missing shared_data/modules/default
+ * expenses entirely).
+ */
+function createMultiKeyPropertyCore(PDO $pdo, int $tenant_id, string $name, string $slug, string $address = '', string $currency = 'INR', string $timezone = 'Asia/Kolkata'): int {
+    if (!$tenant_id || !$name || !$slug) {
+        throw new Exception('tenant_id, name, and slug required');
+    }
+
+    // Verify tenant exists
+    $stmt = $pdo->prepare("SELECT id FROM tenants WHERE id = ?");
+    $stmt->execute([$tenant_id]);
+    if (!$stmt->fetch()) {
+        throw new Exception('Tenant not found');
+    }
+
+    // Check slug uniqueness within tenant
+    $stmt = $pdo->prepare("SELECT id FROM properties WHERE tenant_id = ? AND slug = ?");
+    $stmt->execute([$tenant_id, $slug]);
+    if ($stmt->fetch()) {
+        throw new Exception('Property slug already exists in this tenant');
+    }
+
+    // Create MultiKey property
+    $stmt = $pdo->prepare("
+        INSERT INTO properties (tenant_id, name, slug, property_type, address, currency, timezone, is_active)
+        VALUES (?, ?, ?, 'MULTI_KEY', ?, ?, ?, 1)
+    ");
+    $stmt->execute([$tenant_id, $name, $slug, $address, $currency, $timezone]);
+    $property_id = (int)$pdo->lastInsertId();
+
+    // Create shared data record for this MultiKey property.
+    // BUG FIX (26 Aug 2026, reported live: "SQLSTATE[23000]: Integrity constraint violation:
+    // 4025 CONSTRAINT `property_shared_data.kitchen_details` failed" on every attempt to add a
+    // Multi Key property): the STAFF row used to pass '' (empty string) for kitchen_details.
+    // That column is JSON, and MariaDB auto-attaches an implicit
+    // CHECK (json_valid(kitchen_details)) constraint named after the column itself - which is
+    // exactly the constraint name in that error. An empty string is not valid JSON, so the
+    // whole INSERT was rejected and no Multi Key property could be created at all. NULL is the
+    // correct "no kitchen config on this row" value (the column is already DEFAULT NULL, and
+    // the EXPENSES row on the very next line was already doing this correctly) - never ''.
+    $stmt = $pdo->prepare("
+        INSERT INTO property_shared_data (property_id, data_type, staff_json, kitchen_details)
+        VALUES (?, 'STAFF', ?, NULL), (?, 'EXPENSES', NULL, NULL), (?, 'KITCHEN', NULL, ?)
+    ");
+    $stmt->execute([
+        $property_id, json_encode([]),
+        $property_id,
+        $property_id, json_encode([])
+    ]);
+
+    // Enable default modules
+    $default_modules = ['guests', 'billing', 'staff', 'reports'];
+    $stmt = $pdo->prepare("INSERT INTO property_modules (property_id, module_slug, is_enabled) VALUES (?, ?, 1)");
+    foreach ($default_modules as $module) {
+        $stmt->execute([$property_id, $module]);
+    }
+
+    // Get tenant username
+    $stmt = $pdo->prepare("SELECT slug, name FROM tenants WHERE id = ?");
+    $stmt->execute([$tenant_id]);
+    $tenant = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($tenant) {
+        // Auto-create staff user with tenant username
+        $tenant_username = $tenant['slug'];
+        $tenant_name = $tenant['name'];
+
+        // Check if tenant user already exists in new property
+        $check_stmt = $pdo->prepare("SELECT id FROM staff_users WHERE property_id = ? AND username = ?");
+        $check_stmt->execute([$property_id, $tenant_username]);
+        if (!$check_stmt->fetch()) {
+            $tenant_stmt = $pdo->prepare("
+                INSERT INTO staff_users (property_id, username, full_name, role, status)
+                VALUES (?, ?, ?, 'Admin', 'Active')
+            ");
+            $tenant_stmt->execute([$property_id, $tenant_username, $tenant_name]);
+        }
+    }
+
+    // Carry forward Super Admin user from tenant - a no-op the first time a
+    // tenant creates ANY property (nothing to carry forward yet), meaningful
+    // when this is an additional property for a tenant that already has one.
+    $stmt = $pdo->prepare("
+        SELECT su.id, su.username, su.full_name, su.phone, su.monthly_salary, su.is_financial_handler, su.passcode, su.qr_code_url, su.upi_id
+        FROM staff_users su
+        JOIN properties p ON su.property_id = p.id
+        WHERE p.tenant_id = ? AND su.role = 'Super Admin'
+        LIMIT 1
+    ");
+    $stmt->execute([$tenant_id]);
+    $superadmin = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($superadmin) {
+        // Check if Super Admin already exists in new property
+        $check_stmt = $pdo->prepare("SELECT id FROM staff_users WHERE property_id = ? AND role = 'Super Admin'");
+        $check_stmt->execute([$property_id]);
+        if (!$check_stmt->fetch()) {
+            // Create Super Admin in new property
+            $sa_stmt = $pdo->prepare("
+                INSERT INTO staff_users (id, property_id, username, full_name, role, phone, monthly_salary, status, is_financial_handler, passcode, qr_code_url, upi_id)
+                VALUES (?, ?, ?, ?, 'Super Admin', ?, ?, 'Active', ?, ?, ?, ?)
+            ");
+            $sa_stmt->execute([
+                'superadmin_' . $property_id,
+                $property_id,
+                $superadmin['username'],
+                $superadmin['full_name'],
+                $superadmin['phone'],
+                $superadmin['monthly_salary'],
+                $superadmin['is_financial_handler'],
+                $superadmin['passcode'],
+                $superadmin['qr_code_url'],
+                $superadmin['upi_id']
+            ]);
+        }
+    }
+
+    // Populate default expense categories for MultiKey property
+    populateDefaultExpenses($pdo, $property_id);
+
+    return $property_id;
+}
+
 function createMultiKeyProperty($pdo) {
     $input = json_decode(file_get_contents('php://input'), true);
     $tenant_id = $input['tenant_id'] ?? '';
@@ -319,120 +454,7 @@ function createMultiKeyProperty($pdo) {
     }
 
     try {
-        // Verify tenant exists
-        $stmt = $pdo->prepare("SELECT id FROM tenants WHERE id = ?");
-        $stmt->execute([$tenant_id]);
-        if (!$stmt->fetch()) {
-            http_response_code(404);
-            echo json_encode(['success' => false, 'message' => 'Tenant not found']);
-            exit;
-        }
-
-        // Check slug uniqueness within tenant
-        $stmt = $pdo->prepare("SELECT id FROM properties WHERE tenant_id = ? AND slug = ?");
-        $stmt->execute([$tenant_id, $slug]);
-        if ($stmt->fetch()) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'Property slug already exists in this tenant']);
-            exit;
-        }
-
-        // Create MultiKey property
-        $stmt = $pdo->prepare("
-            INSERT INTO properties (tenant_id, name, slug, property_type, address, currency, timezone, is_active)
-            VALUES (?, ?, ?, 'MULTI_KEY', ?, ?, ?, 1)
-        ");
-        $stmt->execute([$tenant_id, $name, $slug, $address, $currency, $timezone]);
-        $property_id = $pdo->lastInsertId();
-
-        // Create shared data record for this MultiKey property.
-        // BUG FIX (26 Aug 2026, reported live: "SQLSTATE[23000]: Integrity constraint violation:
-        // 4025 CONSTRAINT `property_shared_data.kitchen_details` failed" on every attempt to add a
-        // Multi Key property): the STAFF row used to pass '' (empty string) for kitchen_details.
-        // That column is JSON, and MariaDB auto-attaches an implicit
-        // CHECK (json_valid(kitchen_details)) constraint named after the column itself - which is
-        // exactly the constraint name in that error. An empty string is not valid JSON, so the
-        // whole INSERT was rejected and no Multi Key property could be created at all. NULL is the
-        // correct "no kitchen config on this row" value (the column is already DEFAULT NULL, and
-        // the EXPENSES row on the very next line was already doing this correctly) - never ''.
-        $stmt = $pdo->prepare("
-            INSERT INTO property_shared_data (property_id, data_type, staff_json, kitchen_details)
-            VALUES (?, 'STAFF', ?, NULL), (?, 'EXPENSES', NULL, NULL), (?, 'KITCHEN', NULL, ?)
-        ");
-        $stmt->execute([
-            $property_id, json_encode([]),
-            $property_id,
-            $property_id, json_encode([])
-        ]);
-
-        // Enable default modules
-        $default_modules = ['guests', 'billing', 'staff', 'reports'];
-        $stmt = $pdo->prepare("INSERT INTO property_modules (property_id, module_slug, is_enabled) VALUES (?, ?, 1)");
-        foreach ($default_modules as $module) {
-            $stmt->execute([$property_id, $module]);
-        }
-
-        // Get tenant username
-        $stmt = $pdo->prepare("SELECT slug, name FROM tenants WHERE id = ?");
-        $stmt->execute([$tenant_id]);
-        $tenant = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($tenant) {
-            // Auto-create staff user with tenant username
-            $tenant_username = $tenant['slug'];
-            $tenant_name = $tenant['name'];
-
-            // Check if tenant user already exists in new property
-            $check_stmt = $pdo->prepare("SELECT id FROM staff_users WHERE property_id = ? AND username = ?");
-            $check_stmt->execute([$property_id, $tenant_username]);
-            if (!$check_stmt->fetch()) {
-                $tenant_stmt = $pdo->prepare("
-                    INSERT INTO staff_users (property_id, username, full_name, role, status)
-                    VALUES (?, ?, ?, 'Admin', 'Active')
-                ");
-                $tenant_stmt->execute([$property_id, $tenant_username, $tenant_name]);
-            }
-        }
-
-        // Carry forward Super Admin user from tenant
-        $stmt = $pdo->prepare("
-            SELECT su.id, su.username, su.full_name, su.phone, su.monthly_salary, su.is_financial_handler, su.passcode, su.qr_code_url, su.upi_id
-            FROM staff_users su
-            JOIN properties p ON su.property_id = p.id
-            WHERE p.tenant_id = ? AND su.role = 'Super Admin'
-            LIMIT 1
-        ");
-        $stmt->execute([$tenant_id]);
-        $superadmin = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($superadmin) {
-            // Check if Super Admin already exists in new property
-            $check_stmt = $pdo->prepare("SELECT id FROM staff_users WHERE property_id = ? AND role = 'Super Admin'");
-            $check_stmt->execute([$property_id]);
-            if (!$check_stmt->fetch()) {
-                // Create Super Admin in new property
-                $sa_stmt = $pdo->prepare("
-                    INSERT INTO staff_users (id, property_id, username, full_name, role, phone, monthly_salary, status, is_financial_handler, passcode, qr_code_url, upi_id)
-                    VALUES (?, ?, ?, ?, 'Super Admin', ?, ?, 'Active', ?, ?, ?, ?)
-                ");
-                $sa_stmt->execute([
-                    'superadmin_' . $property_id,
-                    $property_id,
-                    $superadmin['username'],
-                    $superadmin['full_name'],
-                    $superadmin['phone'],
-                    $superadmin['monthly_salary'],
-                    $superadmin['is_financial_handler'],
-                    $superadmin['passcode'],
-                    $superadmin['qr_code_url'],
-                    $superadmin['upi_id']
-                ]);
-            }
-        }
-
-        // Populate default expense categories for MultiKey property
-        $expenseResult = populateDefaultExpenses($pdo, $property_id);
-
+        $property_id = createMultiKeyPropertyCore($pdo, (int)$tenant_id, $name, $slug, $address, $currency, $timezone);
         echo json_encode([
             'success' => true,
             'message' => 'Multi Key property created successfully',
@@ -440,10 +462,10 @@ function createMultiKeyProperty($pdo) {
             'property_type' => 'MULTI_KEY',
             'slug' => $slug
         ]);
-
     } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        $msg = $e->getMessage();
+        http_response_code($msg === 'Tenant not found' ? 404 : ($msg === 'tenant_id, name, and slug required' ? 400 : ($msg === 'Property slug already exists in this tenant' ? 400 : 500)));
+        echo json_encode(['success' => false, 'message' => $msg]);
     }
     exit;
 }
@@ -452,6 +474,76 @@ function createMultiKeyProperty($pdo) {
  * Add a room to an existing MultiKey property
  * POST /api/router.php?action=add_multikey_room
  */
+/**
+ * Core "add a room to a MultiKey property" logic - no I/O, safely callable
+ * from other server-side flows (see createMultiKeyPropertyCore()'s comment
+ * for why this split exists). Throws Exception on any failure. Returns
+ * ['room_id' => int, 'room_order' => int].
+ */
+function addMultiKeyRoomCore(PDO $pdo, int $parent_property_id, string $room_name, string $room_slug, ?float $default_tariff = null): array {
+    if (!$parent_property_id || !$room_name || !$room_slug) {
+        throw new Exception('parent_property_id, room_name, and room_slug required');
+    }
+
+    // Verify parent property exists and is MULTI_KEY type
+    $stmt = $pdo->prepare("SELECT id, tenant_id, slug FROM properties WHERE id = ? AND property_type = 'MULTI_KEY'");
+    $stmt->execute([$parent_property_id]);
+    $parent = $stmt->fetch();
+    if (!$parent) {
+        throw new Exception('Parent property not found or is not a MultiKey property');
+    }
+
+    // Count existing rooms (non-deleted)
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*) as room_count FROM properties
+        WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM' AND is_deleted = 0
+    ");
+    $stmt->execute([$parent_property_id]);
+    $result = $stmt->fetch();
+    if ($result['room_count'] >= 10) {
+        throw new Exception('Maximum 10 rooms allowed per MultiKey property');
+    }
+
+    // Check room slug uniqueness within parent property
+    $stmt = $pdo->prepare("
+        SELECT id FROM properties
+        WHERE parent_property_id = ? AND slug = ? AND is_deleted = 0
+    ");
+    $stmt->execute([$parent_property_id, $room_slug]);
+    if ($stmt->fetch()) {
+        throw new Exception('Room slug already exists in this property');
+    }
+
+    // Get next room order
+    $stmt = $pdo->prepare("
+        SELECT MAX(room_order) as max_order FROM properties
+        WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM'
+    ");
+    $stmt->execute([$parent_property_id]);
+    $result = $stmt->fetch();
+    $next_order = ($result['max_order'] ?? 0) + 1;
+
+    // Create room as MULTI_KEY_ROOM
+    $stmt = $pdo->prepare("
+        INSERT INTO properties (tenant_id, parent_property_id, name, slug, property_type, room_order, is_active, default_tariff)
+        VALUES (?, ?, ?, ?, 'MULTI_KEY_ROOM', ?, 1, ?)
+    ");
+    $stmt->execute([$parent['tenant_id'], $parent_property_id, $room_name, $room_slug, $next_order, $default_tariff]);
+    $room_id = (int)$pdo->lastInsertId();
+
+    // Enable same modules as parent
+    $stmt = $pdo->prepare("SELECT module_slug FROM property_modules WHERE property_id = ? AND is_enabled = 1");
+    $stmt->execute([$parent_property_id]);
+    $modules = $stmt->fetchAll();
+
+    $insert_stmt = $pdo->prepare("INSERT INTO property_modules (property_id, module_slug, is_enabled) VALUES (?, ?, 1)");
+    foreach ($modules as $module) {
+        $insert_stmt->execute([$room_id, $module['module_slug']]);
+    }
+
+    return ['room_id' => $room_id, 'room_order' => $next_order];
+}
+
 function addMultiKeyRoom($pdo) {
     $input = json_decode(file_get_contents('php://input'), true);
     $parent_property_id = $input['parent_property_id'] ?? '';
@@ -465,7 +557,6 @@ function addMultiKeyRoom($pdo) {
         ? (float)$input['default_tariff']
         : null;
 
-    // Validate required fields
     if (!$parent_property_id || !$room_name || !$room_slug) {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'parent_property_id, room_name, and room_slug required']);
@@ -473,82 +564,21 @@ function addMultiKeyRoom($pdo) {
     }
 
     try {
-        // Verify parent property exists and is MULTI_KEY type
-        $stmt = $pdo->prepare("SELECT id, tenant_id, slug FROM properties WHERE id = ? AND property_type = 'MULTI_KEY'");
-        $stmt->execute([$parent_property_id]);
-        $parent = $stmt->fetch();
-
-        if (!$parent) {
-            http_response_code(404);
-            echo json_encode(['success' => false, 'message' => 'Parent property not found or is not a MultiKey property']);
-            exit;
-        }
-
-        // Count existing rooms (non-deleted)
-        $stmt = $pdo->prepare("
-            SELECT COUNT(*) as room_count FROM properties
-            WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM' AND is_deleted = 0
-        ");
-        $stmt->execute([$parent_property_id]);
-        $result = $stmt->fetch();
-
-        if ($result['room_count'] >= 10) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'Maximum 10 rooms allowed per MultiKey property']);
-            exit;
-        }
-
-        // Check room slug uniqueness within parent property
-        $stmt = $pdo->prepare("
-            SELECT id FROM properties
-            WHERE parent_property_id = ? AND slug = ? AND is_deleted = 0
-        ");
-        $stmt->execute([$parent_property_id, $room_slug]);
-        if ($stmt->fetch()) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'Room slug already exists in this property']);
-            exit;
-        }
-
-        // Get next room order
-        $stmt = $pdo->prepare("
-            SELECT MAX(room_order) as max_order FROM properties
-            WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM'
-        ");
-        $stmt->execute([$parent_property_id]);
-        $result = $stmt->fetch();
-        $next_order = ($result['max_order'] ?? 0) + 1;
-
-        // Create room as MULTI_KEY_ROOM
-        $stmt = $pdo->prepare("
-            INSERT INTO properties (tenant_id, parent_property_id, name, slug, property_type, room_order, is_active, default_tariff)
-            VALUES (?, ?, ?, ?, 'MULTI_KEY_ROOM', ?, 1, ?)
-        ");
-        $stmt->execute([$parent['tenant_id'], $parent_property_id, $room_name, $room_slug, $next_order, $default_tariff]);
-        $room_id = $pdo->lastInsertId();
-
-        // Enable same modules as parent
-        $stmt = $pdo->prepare("SELECT module_slug FROM property_modules WHERE property_id = ? AND is_enabled = 1");
-        $stmt->execute([$parent_property_id]);
-        $modules = $stmt->fetchAll();
-
-        $insert_stmt = $pdo->prepare("INSERT INTO property_modules (property_id, module_slug, is_enabled) VALUES (?, ?, 1)");
-        foreach ($modules as $module) {
-            $insert_stmt->execute([$room_id, $module['module_slug']]);
-        }
-
+        $result = addMultiKeyRoomCore($pdo, (int)$parent_property_id, $room_name, $room_slug, $default_tariff);
         echo json_encode([
             'success' => true,
             'message' => 'Room added successfully',
-            'room_id' => $room_id,
+            'room_id' => $result['room_id'],
             'room_slug' => $room_slug,
             'room_name' => $room_name,
-            'room_order' => $next_order
+            'room_order' => $result['room_order']
         ]);
-
     } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        $msg = $e->getMessage();
+        $notFound = $msg === 'Parent property not found or is not a MultiKey property';
+        $badRequest = in_array($msg, ['parent_property_id, room_name, and room_slug required', 'Maximum 10 rooms allowed per MultiKey property', 'Room slug already exists in this property'], true);
+        http_response_code($notFound ? 404 : ($badRequest ? 400 : 500));
+        echo json_encode(['success' => false, 'message' => $msg]);
     }
     exit;
 }
