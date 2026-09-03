@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Building2, LogOut, Plus, AlertCircle,
   Pencil, Trash2, ExternalLink, CheckCircle, Layers,
-  Home, TrendingUp, ChevronRight, Lock, Zap, User, UserRound,
+  Home, TrendingUp, ChevronRight, Zap, User, UserRound,
   Calendar, Bell, ArrowRight, HelpCircle, LayoutDashboard,
   CreditCard, Menu, X, ShieldCheck
 } from './icons/FlowbiteIcons';
@@ -188,17 +188,33 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
     setLoading(true);
     setError(null);
     try {
-      const [propsData, slotData] = await Promise.all([
-        apiFetch<Property[]>(`/php/api/router.php?action=list_properties&tenant_id=${tenantId}`),
-        apiFetch<SlotUsage>(`/php/api/router.php?action=get_tenant_slot_usage&tenant_id=${tenantId}`),
+      const adminHeaders: Record<string, string> = {};
+      if (isPlatformAdmin && username) {
+        adminHeaders['X-Admin-Username'] = username;
+      }
+      // apiFetch() returns the raw Response, same as every other caller in
+      // this codebase (it has no generic/auto-parsing form) - manually
+      // .json() each below. action=get_tenant_properties, not
+      // list_properties (that action doesn't exist in router.php - a stray
+      // rename from elsewhere that silently 404'd this whole dashboard's data
+      // load, caught here while merging channel-manager into multi-tenant and
+      // running tsc/build per the go-live checklist's own verification step).
+      const [propsRes, slotRes] = await Promise.all([
+        apiFetch(`/php/api/router.php?action=get_tenant_properties&tenant_id=${tenantId}`, { headers: adminHeaders }),
+        apiFetch(`/php/api/router.php?action=get_tenant_slot_usage&tenant_id=${tenantId}`, { headers: adminHeaders }),
       ]);
-      setProperties(propsData);
+      const propsJson = await propsRes.json();
+      const slotJson = await slotRes.json();
+      const propsList: Property[] = Array.isArray(propsJson.data) ? propsJson.data : [];
+      const slotData: SlotUsage | null = slotJson.success !== false ? (slotJson.data ?? null) : null;
+
+      setProperties(propsList);
       setSlotUsage(slotData);
 
-      if (propsData && propsData.length > 0) {
-        const fetchPromises = propsData.flatMap((p) => [
-          apiFetch<any[]>(`/php/api/router.php?action=get_guests&property_id=${p.id}&is_multi_key=${p.property_type === 'MULTI_KEY' ? 1 : 0}`),
-          apiFetch<any[]>(`/php/api/router.php?action=get_service_requests&property_id=${p.id}`),
+      if (propsList.length > 0) {
+        const fetchPromises = propsList.flatMap((p) => [
+          apiFetch(`/php/api/router.php?action=get_guests&property_id=${p.id}`).then((r) => r.json()).catch(() => ({ data: [] })),
+          apiFetch(`/php/api/router.php?action=get_service_requests&property_id=${p.id}`).then((r) => r.json()).catch(() => ({ data: [] })),
         ]);
         const results = await Promise.all(fetchPromises);
         const allGuestsList: any[] = [];
@@ -221,7 +237,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [tenantId]);
+  }, [tenantId, isPlatformAdmin, username]);
 
   useEffect(() => {
     loadData();
@@ -697,7 +713,6 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {properties.map((property) => {
                     const isMultiKey = property.property_type === 'MULTI_KEY';
-                    const roomCount = property.room_count ?? 0;
                     const tenantSlug = tenantInfo?.slug ?? '';
                     const dashboardUrl = tenantSlug
                       ? `${API_ROOT_BASE}/${tenantSlug}/${property.slug}/#dashboard`
