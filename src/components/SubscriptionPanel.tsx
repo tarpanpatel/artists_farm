@@ -219,46 +219,49 @@ export const SubscriptionPanel: React.FC<SubscriptionPanelProps> = ({ propertyId
       )}
 
       {/* Status card */}
-      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-5 space-y-4">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-xs space-y-4">
+        <div className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          Current Plan & Entitlements
+        </div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
               <CreditCard className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-              <span className="text-sm font-bold text-slate-900 dark:text-white">{summary.plan_name}</span>
+              <span className="text-sm font-bold text-gray-900 dark:text-white">{summary.plan_name}</span>
               <Badge variant={badge.variant}>{badge.label}</Badge>
             </div>
             {summary.key_count > 1 && (
-              <p className="text-2xs text-slate-500 dark:text-slate-400 mt-1">{summary.key_count} room keys</p>
+              <p className="text-2xs text-gray-500 dark:text-gray-400 mt-1">{summary.key_count} room keys</p>
             )}
           </div>
         </div>
 
-        <div className="text-xs text-slate-600 dark:text-slate-300">
+        <div className="text-xs text-gray-600 dark:text-gray-300">
           {summary.subscription_expires_at ? (
             <>
               {summary.subscription_status === 'trial' ? 'Trial ends' : 'Renews on'}{' '}
-              <span className="font-semibold text-slate-900 dark:text-white">{formatDateDDMMYYYY(summary.subscription_expires_at)}</span>
+              <span className="font-semibold text-gray-900 dark:text-white">{formatDateDDMMYYYY(summary.subscription_expires_at)}</span>
               {daysRemaining !== null && (
-                <span className="text-slate-400 dark:text-slate-500">
+                <span className="text-gray-400 dark:text-gray-500">
                   {' '}
                   ({daysRemaining >= 0 ? `${daysRemaining} day${daysRemaining === 1 ? '' : 's'} left` : `${Math.abs(daysRemaining)} day${Math.abs(daysRemaining) === 1 ? '' : 's'} overdue`})
                 </span>
               )}
             </>
           ) : (
-            <span className="text-slate-400 dark:text-slate-500">Renewal date not yet set - contact your account manager.</span>
+            <span className="text-gray-400 dark:text-gray-500">Renewal date not yet set - contact your account manager.</span>
           )}
         </div>
 
         {summary.subscription_status === 'trial' && trialDayNumber !== null && (
           <div className="space-y-1">
-            <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+            <div className="w-full h-2 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
               <div
                 className="h-full bg-blue-600 dark:bg-blue-500 transition-all"
                 style={{ width: `${(trialDayNumber / TRIAL_DAYS) * 100}%` }}
               />
             </div>
-            <p className="text-2xs text-slate-400 dark:text-slate-500">Day {trialDayNumber} of {TRIAL_DAYS}</p>
+            <p className="text-2xs text-gray-400 dark:text-gray-500">Day {trialDayNumber} of {TRIAL_DAYS}</p>
           </div>
         )}
 
@@ -275,12 +278,15 @@ export const SubscriptionPanel: React.FC<SubscriptionPanelProps> = ({ propertyId
 
       {/* Amount due at renewal - ESTIMATE only, offline billing, never "charge"/"pay now" */}
       {pricing && monthlyTotal !== null && (
-        <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-5 space-y-2">
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white">Amount due at renewal</h3>
-          <p className="text-2xs text-slate-500 dark:text-slate-400">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-xs space-y-3">
+          <div className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+            Billing Breakdown
+          </div>
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white">Amount due at renewal</h3>
+          <p className="text-2xs text-gray-500 dark:text-gray-400">
             Estimate only - billed via UPI/NEFT by your account manager, not an automatic charge.
           </p>
-          <div className="text-xs text-slate-600 dark:text-slate-300 space-y-1 pt-1">
+          <div className="text-xs text-gray-600 dark:text-gray-300 space-y-1 pt-1">
             <div className="flex justify-between"><span>Base fee</span><span>{pricing.currency_symbol}{pricing.base_monthly_fee}</span></div>
             {extraKeys > 0 && (
               <div className="flex justify-between">
@@ -289,11 +295,11 @@ export const SubscriptionPanel: React.FC<SubscriptionPanelProps> = ({ propertyId
               </div>
             )}
             <div className="flex justify-between"><span>GST ({pricing.gst_rate_pct}%)</span><span>{pricing.currency_symbol}{monthlyGst?.toFixed(0)}</span></div>
-            <div className="flex justify-between font-bold text-slate-900 dark:text-white pt-1 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex justify-between font-bold text-gray-900 dark:text-white pt-1 border-t border-gray-100 dark:border-gray-700">
               <span>Monthly</span><span>{pricing.currency_symbol}{monthlyTotal.toFixed(0)}</span>
             </div>
             {summary.billing_cycle === 'annual' && annualTotal !== null && (
-              <div className="flex justify-between text-slate-500 dark:text-slate-400">
+              <div className="flex justify-between text-gray-500 dark:text-gray-400">
                 <span>Annual equivalent</span><span>{pricing.currency_symbol}{annualTotal.toFixed(0)}</span>
               </div>
             )}
@@ -302,8 +308,11 @@ export const SubscriptionPanel: React.FC<SubscriptionPanelProps> = ({ propertyId
       )}
 
       {/* Cancel / Close account */}
-      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-5 space-y-3">
-        <h3 className="text-sm font-bold text-slate-900 dark:text-white">Cancel or close your account</h3>
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-xs space-y-3">
+        <div className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          Account Lifecycle
+        </div>
+        <h3 className="text-sm font-bold text-gray-900 dark:text-white">Cancel subscription or close account</h3>
         {openRequest ? (
           <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
             <CheckCircle2 className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
@@ -313,7 +322,7 @@ export const SubscriptionPanel: React.FC<SubscriptionPanelProps> = ({ propertyId
           </div>
         ) : (
           <>
-            <p className="text-2xs text-slate-500 dark:text-slate-400">
+            <p className="text-2xs text-gray-500 dark:text-gray-400">
               Both of these are requests only - nothing changes immediately, and your data stays exactly as it is until your account manager follows up.
             </p>
             <div className="flex flex-wrap gap-2">
@@ -325,16 +334,16 @@ export const SubscriptionPanel: React.FC<SubscriptionPanelProps> = ({ propertyId
       </div>
 
       <Drawer open={activeRequestType !== null} onClose={() => setActiveRequestType(null)} position="right" className="fixed overflow-y-auto transition-transform right-0 top-0 h-screen transform-none z-50 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between">
-        <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between shrink-0 bg-slate-50 dark:bg-slate-900">
-          <h2 className="text-base font-bold text-slate-900 dark:text-white">
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between shrink-0 bg-gray-50 dark:bg-gray-900">
+          <h2 className="text-base font-bold text-gray-900 dark:text-white">
             {activeRequestType === 'delete' ? 'Request account closure' : 'Request cancellation'}
           </h2>
-          <button type="button" onClick={() => setActiveRequestType(null)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-lg transition-colors">
+          <button type="button" onClick={() => setActiveRequestType(null)} className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-white rounded-lg transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          <p className="text-xs text-slate-600 dark:text-slate-300">
+          <p className="text-xs text-gray-600 dark:text-gray-300">
             {activeRequestType === 'delete'
               ? "This asks us to remove your account and data. It's just a request - nothing is deleted automatically, and your account manager will follow up before anything happens."
               : "This asks us not to renew your subscription. Your access and data stay exactly as they are until your current period ends."}
@@ -342,10 +351,10 @@ export const SubscriptionPanel: React.FC<SubscriptionPanelProps> = ({ propertyId
           <button
             type="button"
             onClick={() => onNavigate?.('data_export_center' as any)}
-            className="w-full flex items-center justify-between gap-2 p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 text-left transition-colors"
+            className="w-full flex items-center justify-between gap-2 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 text-left transition-colors"
           >
-            <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">Export your data first (bookings, guests, financials)</span>
-            <ExternalLink className="w-4 h-4 text-slate-400 shrink-0" />
+            <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">Export your data first (bookings, guests, financials)</span>
+            <ExternalLink className="w-4 h-4 text-gray-400 shrink-0" />
           </button>
           <Textarea
             label="Reason (optional)"
@@ -355,7 +364,7 @@ export const SubscriptionPanel: React.FC<SubscriptionPanelProps> = ({ propertyId
             placeholder="Let us know why - it helps us improve."
           />
         </div>
-        <div className="p-4 border-t border-slate-200 dark:border-slate-700 shrink-0 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 shrink-0 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
           <Button variant={activeRequestType === 'delete' ? 'danger' : 'primary'} block disabled={submitting} onClick={handleSubmitRequest}>
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : (activeRequestType === 'delete' ? 'Submit closure request' : 'Submit cancellation request')}
           </Button>

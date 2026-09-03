@@ -410,203 +410,212 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
         />
       )}
 
-      {/* ──────────────── Sidebar Navigation ──────────────── */}
-      <aside
-        id="superAdminSidebar"
-        aria-label="Super Admin Sidebar Navigation"
-        className={`fixed top-0 left-0 bottom-0 z-56 w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-transform duration-200 flex flex-col justify-between ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
-        }`}
-      >
-        {/* Sidebar Brand Header with Safe Area Top Clearance */}
-        <div className="shrink-0 h-[calc(4rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)] px-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-white dark:bg-gray-800">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-xs shrink-0">
-              <Building2 className="w-5 h-5" />
-            </div>
-            <div className="min-w-0">
-              <h2 className="text-sm font-bold text-gray-900 dark:text-white truncate">
-                {tenantInfo?.name ?? 'Super Admin'}
-              </h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                Property Control Panel
-              </p>
-            </div>
-          </div>
+      {/* ──────────────── Top Header Bar (Full Width, Property Page Standard) ──────────────── */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 h-[calc(4rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px))] flex items-center justify-between px-4 sm:px-6">
+        <div className="flex items-center gap-3 min-w-0">
+          {/* Hamburger Menu Toggle (Mobile & Desktop) */}
           <button
             type="button"
-            onClick={() => setIsSidebarOpen(false)}
-            aria-label="Close sidebar menu"
-            className="md:hidden p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            title={t('toggle_sidebar_tooltip', 'Toggle Sidebar Menu')}
+            aria-label={t('toggle_sidebar_aria', 'Toggle Sidebar Navigation')}
+            className="p-2 -ml-2 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer shrink-0"
           >
-            <X className="w-5 h-5" />
+            <Menu className="w-5 h-5" />
           </button>
-        </div>
 
-        {/* Nav Menu Items List (Scrollable) */}
-        <div className="flex-1 overflow-y-auto px-3 py-4 space-y-2 bg-white dark:bg-gray-800">
-          <div className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-            Menu
-          </div>
-          <ul className="space-y-1 font-medium">
-            {navMenuItems.map((item) => {
-              const ItemIcon = item.icon;
-              const isActive = activeTab === item.tab;
-              return (
-                <li key={item.id}>
-                  <button
-                    type="button"
-                    onClick={() => handleTabChange(item.tab)}
-                    className={`flex items-center w-full p-2 text-sm font-medium rounded-lg group transition duration-75 cursor-pointer ${
-                      isActive
-                        ? 'bg-gray-100 text-blue-600 dark:bg-gray-700 dark:text-blue-400 font-semibold'
-                        : 'text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    <ItemIcon
-                      className={`w-5 h-5 transition duration-75 shrink-0 ${
-                        isActive
-                          ? 'text-blue-600 dark:text-blue-400'
-                          : 'text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white'
-                      }`}
-                    />
-                    <span className="ms-3 flex-1 text-left whitespace-nowrap truncate">{item.label}</span>
-                    {item.badge && (
-                      <span className="inline-flex items-center justify-center px-2 py-0.5 ms-3 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                        {item.badge}
-                      </span>
-                    )}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-
-        {/* Sidebar Footer User Profile & Sign Out with Safe Area Bottom Clearance */}
-        <div className="shrink-0 p-3 border-t border-gray-200 dark:border-gray-700 space-y-2 bg-white dark:bg-gray-800 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] md:pb-3">
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={() => handleTabChange('account')}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') handleTabChange('account');
-            }}
-            className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 hover:bg-blue-50 dark:bg-gray-700/50 dark:hover:bg-blue-950/40 border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 transition-all cursor-pointer shadow-2xs group"
-          >
-            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 ring-2 ring-blue-500/30 shrink-0">
-              <UserRound className="w-4 h-4 text-gray-600 dark:text-gray-300" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate flex items-center justify-between">
-                <span>{username}</span>
-                <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors shrink-0" />
-              </div>
-              <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate capitalize">
-                {isPlatformAdmin ? t('root_admin_label', 'Root Admin') : t('tenant_manager_label', 'Super Admin')}
-              </div>
-            </div>
+          {/* Brand Icon Badge */}
+          <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-xs shrink-0">
+            <Building2 className="w-5 h-5" />
           </div>
 
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="flex items-center w-full p-2 text-sm font-semibold rounded-lg text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/50 transition-all cursor-pointer shadow-2xs"
-            style={{ color: '#ff5252' }}
-          >
-            <LogOut className="w-4 h-4 text-red-500" />
-            <span className="ms-3">{t('sign_out_terminal_button', 'Sign Out')}</span>
-          </button>
+          {/* Brand Organization Title */}
+          <div className="min-w-0">
+            <span className="text-sm font-bold text-gray-900 dark:text-white truncate block">
+              {tenantInfo?.name ?? 'Super Admin'}
+            </span>
+          </div>
         </div>
-      </aside>
 
-      {/* ──────────────── Top Header Bar ──────────────── */}
-      <header className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40 md:pl-64 h-[calc(4rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)] flex items-center">
-        <div className="w-full px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            {/* Mobile Hamburger Toggle */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Help/FAQ trigger */}
+          <Popover
+            trigger="hover"
+            placement="bottom"
+            content={
+              <div className="px-2.5 py-1.5 text-xs font-semibold text-gray-700 dark:text-gray-200 whitespace-nowrap">
+                {t('help_tooltip', 'Help & FAQ')}
+              </div>
+            }
+          >
             <button
               type="button"
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              title={t('toggle_sidebar_tooltip', 'Toggle Sidebar Menu')}
-              aria-label={t('toggle_sidebar_aria', 'Toggle Sidebar Navigation')}
-              className="md:hidden p-2 -ml-1 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer shrink-0"
+              onClick={() => setLegalDrawerTab('faq')}
+              aria-label={t('help_aria', 'Help & FAQ')}
+              className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
             >
-              <Menu className="w-5 h-5" />
+              <HelpCircle className="w-5 h-5" />
             </button>
-
-            <div className="min-w-0">
-              <h1 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white truncate flex items-center gap-2">
-                <span>
-                  {activeTab === 'dashboard' && (tenantInfo?.name ?? 'Dashboard')}
-                  {activeTab === 'analytics' && 'Analytics'}
-                  {activeTab === 'properties' && 'Properties'}
-                  {activeTab === 'account' && 'Account Settings'}
-                  {activeTab === 'billing' && 'Subscription & Billing'}
-                </span>
-                {tenantInfo?.subscription_plan && (
-                  <span className={`hidden sm:inline-flex text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full capitalize ${planColor[tenantInfo.subscription_plan] ?? planColor.trial}`}>
-                    {tenantInfo.subscription_plan}
-                  </span>
-                )}
-              </h1>
-              <p className="text-2xs text-gray-500 dark:text-gray-400 truncate">
-                {activeTab === 'dashboard' && 'Dashboard Overview & Live Operations'}
-                {activeTab === 'analytics' && 'Combined Portfolio Analytics & Performance'}
-                {activeTab === 'properties' && 'Create, edit, toggle active status, and access direct management portals'}
-                {activeTab === 'account' && 'Super Admin Account Details & Security'}
-                {activeTab === 'billing' && 'Subscription Plan, Slots & Invoices'}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            {/* Help/FAQ trigger */}
-            <Popover
-              trigger="hover"
-              placement="bottom"
-              content={
-                <div className="px-2.5 py-1.5 text-xs font-semibold text-gray-700 dark:text-gray-200 whitespace-nowrap">
-                  {t('help_tooltip', 'Help & FAQ')}
-                </div>
-              }
-            >
-              <button
-                type="button"
-                onClick={() => setLegalDrawerTab('faq')}
-                aria-label={t('help_aria', 'Help & FAQ')}
-                className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
-              >
-                <HelpCircle className="w-5 h-5" />
-              </button>
-            </Popover>
-          </div>
+          </Popover>
         </div>
       </header>
 
-      {/* ──────────────── Main Content Area ──────────────── */}
-      <main className="md:pl-64 min-h-[calc(100vh-4rem)] pb-[calc(5rem+env(safe-area-inset-bottom,0px))] md:pb-6 flex flex-col flex-1">
-        <div className="max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 flex flex-col justify-between space-y-6">
-          <div className="space-y-6 flex-1">
-          {/* Success Toast Notification */}
-          {successMsg && (
-            <div className="fixed top-5 right-5 z-9999 animate-toast-in">
-              <FlowbiteToast className="border border-gray-200 dark:border-gray-700 shadow-xl bg-white dark:bg-gray-800">
-                <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-100 text-green-500 dark:bg-green-800 dark:text-green-200">
-                  <CheckCircle className="h-5 w-5" />
-                  <span className="sr-only">Check icon</span>
-                </div>
-                <div className="ms-3 text-sm font-normal text-gray-900 dark:text-white">{successMsg}</div>
-                <ToastToggle xIcon={X} onDismiss={() => setSuccessMsg(null)} />
-              </FlowbiteToast>
+      {/* ──────────────── Sidebar Navigation (Property Page Standard) ──────────────── */}
+      <aside
+        id="superAdminSidebar"
+        aria-label="Super Admin Sidebar Navigation"
+        className={`fixed top-0 left-0 h-screen pt-[calc(4rem+env(safe-area-inset-top,0px))] z-[45] w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-transform duration-200 flex flex-col justify-between ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        }`}
+      >
+        <div className="h-full px-3 py-4 overflow-y-auto bg-white dark:bg-gray-800 flex flex-col justify-between">
+          <div className="space-y-2">
+            <div className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+              Menu
             </div>
-          )}
+            <ul className="space-y-1 font-medium">
+              {navMenuItems.map((item) => {
+                const ItemIcon = item.icon;
+                const isActive = activeTab === item.tab;
+                return (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      onClick={() => handleTabChange(item.tab)}
+                      className={`flex items-center w-full p-2 text-sm font-medium rounded-lg group transition duration-75 cursor-pointer ${
+                        isActive
+                          ? 'bg-gray-100 text-blue-600 dark:bg-gray-700 dark:text-blue-400 font-semibold'
+                          : 'text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      <ItemIcon
+                        className={`w-5 h-5 transition duration-75 shrink-0 ${
+                          isActive
+                            ? 'text-blue-600 dark:text-blue-400'
+                            : 'text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white'
+                        }`}
+                      />
+                      <span className="ms-3 flex-1 text-left whitespace-nowrap truncate">{item.label}</span>
+                      {item.badge && (
+                        <span className="inline-flex items-center justify-center px-2 py-0.5 ms-3 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
 
-          {error && (
-            <FlowbiteAlert color="failure" icon={AlertCircle}>
-              {error}
-            </FlowbiteAlert>
-          )}
+          {/* Sidebar Footer User Profile & Sign Out (Navigation.tsx Parity) */}
+          <div className="pt-3 mt-auto border-t border-gray-200 dark:border-gray-700 space-y-2 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] md:pb-0">
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => handleTabChange('account')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') handleTabChange('account');
+              }}
+              className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 hover:bg-blue-50 dark:bg-gray-700/50 dark:hover:bg-blue-950/40 border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 transition-all cursor-pointer shadow-2xs group"
+            >
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 ring-2 ring-blue-500/30 shrink-0">
+                <UserRound className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate flex items-center justify-between">
+                  <span>{username}</span>
+                  <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors shrink-0" />
+                </div>
+                <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate capitalize">
+                  {isPlatformAdmin ? t('root_admin_label', 'Root Admin') : t('tenant_manager_label', 'Super Admin')}
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex items-center w-full p-2 text-sm font-semibold rounded-lg text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/50 transition-all cursor-pointer shadow-2xs"
+              style={{ color: '#ff5252' }}
+            >
+              <LogOut className="w-4 h-4 text-red-500" />
+              <span className="ms-3">{t('sign_out_terminal_button', 'Sign Out')}</span>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* ──────────────── Main Content Area (Property Page Standard) ──────────────── */}
+      <main className="md:pl-64 pt-[calc(4rem+env(safe-area-inset-top,0px))] min-h-screen bg-gray-50 dark:bg-gray-900 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] md:pb-8 flex flex-col flex-1">
+        <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 flex flex-col justify-between space-y-6">
+          <div className="space-y-6 flex-1">
+            {/* Page Title Row (Property Page Standard) */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {activeTab === 'dashboard' && 'Dashboard'}
+                    {activeTab === 'analytics' && 'Analytics'}
+                    {activeTab === 'properties' && 'Properties'}
+                    {activeTab === 'account' && 'Account Settings'}
+                    {activeTab === 'billing' && 'Subscription & Billing'}
+                  </h1>
+                  {activeTab === 'dashboard' && tenantInfo?.subscription_plan && (
+                    <span className={`inline-flex text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full capitalize ${planColor[tenantInfo.subscription_plan] ?? planColor.trial}`}>
+                      {tenantInfo.subscription_plan}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {activeTab === 'dashboard' && 'Dashboard overview & operational activity across all properties'}
+                  {activeTab === 'analytics' && 'Combined portfolio analytics, occupancy, and revenue performance'}
+                  {activeTab === 'properties' && 'Manage direct property PMS dashboards, configurations, and active status'}
+                  {activeTab === 'account' && 'Super Admin credentials, organization profile, and security PIN'}
+                  {activeTab === 'billing' && 'Subscription plan, slot entitlements, plan renewals, and invoices'}
+                </p>
+              </div>
+
+              {activeTab === 'properties' && (
+                <div className="flex items-center gap-2">
+                  {remaining > 0 ? (
+                    <Button
+                      id="tenant-add-property-btn"
+                      leftIcon={<Plus className="w-4 h-4" />}
+                      variant="primary"
+                      size="sm"
+                      onClick={() => setModal({ type: 'wizard' })}
+                    >
+                      {t('add_property_button', 'Add Property')}
+                    </Button>
+                  ) : (
+                    <Button variant="secondary" size="xs" leftIcon={<Zap className="w-3.5 h-3.5 text-amber-500" />} onClick={() => setModal({ type: 'upgrade' })}>
+                      {t('upgrade_package_button', 'Upgrade Package')}
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Success Toast Notification */}
+            {successMsg && (
+              <div className="fixed top-5 right-5 z-9999 animate-toast-in">
+                <FlowbiteToast className="border border-gray-200 dark:border-gray-700 shadow-xl bg-white dark:bg-gray-800">
+                  <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-100 text-green-500 dark:bg-green-800 dark:text-green-200">
+                    <CheckCircle className="h-5 w-5" />
+                    <span className="sr-only">Check icon</span>
+                  </div>
+                  <div className="ms-3 text-sm font-normal text-gray-900 dark:text-white">{successMsg}</div>
+                  <ToastToggle xIcon={X} onDismiss={() => setSuccessMsg(null)} />
+                </FlowbiteToast>
+              </div>
+            )}
+
+            {error && (
+              <FlowbiteAlert color="failure" icon={AlertCircle}>
+                {error}
+              </FlowbiteAlert>
+            )}
 
           {/* ═══════════ TAB 1: DASHBOARD ═══════════ */}
           {activeTab === 'dashboard' && (
@@ -644,7 +653,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
               </div>
 
               {/* Slot Usage Widget */}
-              <section className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-2xs">
+              <section className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-xs">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center">
@@ -689,17 +698,17 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
 
               {/* Quick Summary Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-white dark:bg-gray-800 rounded-lg p-5 border border-gray-200 dark:border-gray-700 text-center shadow-2xs">
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 text-center shadow-xs">
                   <TrendingUp className="w-5 h-5 text-indigo-500 mx-auto mb-1.5" />
                   <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('total_bookings_label', 'Total Bookings')}</p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white mt-0.5">{totalBookingsAnalytics}</p>
                 </div>
-                <div className="bg-white dark:bg-gray-800 rounded-lg p-5 border border-gray-200 dark:border-gray-700 text-center shadow-2xs">
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 text-center shadow-xs">
                   <Building2 className="w-5 h-5 text-emerald-500 mx-auto mb-1.5" />
                   <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('combined_revenue_label', 'Combined Revenue')}</p>
                   <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">₹{combinedRevenueAnalytics.toLocaleString('en-IN')}</p>
                 </div>
-                <div className="bg-white dark:bg-gray-800 rounded-lg p-5 border border-gray-200 dark:border-gray-700 text-center shadow-2xs">
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 text-center shadow-xs">
                   <Layers className="w-5 h-5 text-blue-500 mx-auto mb-1.5" />
                   <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('avg_occupancy_label', 'Avg. Occupancy')}</p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white mt-0.5">{avgOccupancyAnalytics}%</p>
@@ -707,7 +716,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
               </div>
 
               {/* Properties Overview Grid */}
-              <section className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-5 shadow-2xs space-y-4">
+              <section className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-xs space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-base font-bold text-gray-900 dark:text-white">Active Properties ({safeProperties.length})</h3>
@@ -783,11 +792,10 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
 
           {/* ═══════════ TAB 2: ANALYTICS ═══════════ */}
           {activeTab === 'analytics' && (
-            <section className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 shadow-2xs space-y-6">
+            <section className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-xs space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900 dark:text-white">{t('combined_analytics_heading', 'Combined Analytics')}</h2>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{t('across_all_properties_subtext', 'Across all your managed properties')}</p>
+                <div className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  Portfolio Performance & Key Metrics
                 </div>
                 {safeProperties.length > 1 && (
                   <div className="w-full sm:w-56">
@@ -839,17 +847,17 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
 
               {/* Analytics Summary */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-5 text-center border border-gray-200 dark:border-gray-700">
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6 text-center border border-gray-200 dark:border-gray-700">
                   <TrendingUp className="w-6 h-6 text-indigo-500 mx-auto mb-2" />
                   <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{t('total_bookings_label', 'Total Bookings')}</p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalBookingsAnalytics}</p>
                 </div>
-                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-5 text-center border border-gray-200 dark:border-gray-700">
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6 text-center border border-gray-200 dark:border-gray-700">
                   <Building2 className="w-6 h-6 text-emerald-500 mx-auto mb-2" />
                   <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{t('combined_revenue_label', 'Combined Revenue')}</p>
                   <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">₹{combinedRevenueAnalytics.toLocaleString('en-IN')}</p>
                 </div>
-                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-5 text-center border border-gray-200 dark:border-gray-700">
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6 text-center border border-gray-200 dark:border-gray-700">
                   <Layers className="w-6 h-6 text-blue-500 mx-auto mb-2" />
                   <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{t('avg_occupancy_label', 'Avg. Occupancy')}</p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">{avgOccupancyAnalytics}%</p>
@@ -861,28 +869,8 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           {/* ═══════════ TAB 3: PROPERTIES ═══════════ */}
           {activeTab === 'properties' && (
             <section className="space-y-5">
-              <div className="flex items-center justify-end">
-                {remaining > 0 ? (
-                  <Button
-                    id="tenant-add-property-btn"
-                    leftIcon={<Plus className="w-4 h-4" />}
-                    variant="primary"
-                    size="sm"
-                    onClick={() => setModal({ type: 'wizard' })}
-                  >
-                    {t('add_property_button', 'Add Property')}
-                  </Button>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Button variant="secondary" size="xs" leftIcon={<Zap className="w-3.5 h-3.5 text-amber-500" />} onClick={() => setModal({ type: 'upgrade' })}>
-                      {t('upgrade_package_button', 'Upgrade Package')}
-                    </Button>
-                  </div>
-                )}
-              </div>
-
               {safeProperties.length === 0 ? (
-                <div className="bg-white dark:bg-gray-800 rounded-lg border border-dashed border-gray-300 dark:border-gray-700 p-12 text-center">
+                <div className="bg-white dark:bg-gray-800 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-12 text-center">
                   <Building2 className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
                   <p className="text-gray-600 dark:text-gray-300 font-semibold">{t('tenant_no_properties_yet_message', 'No properties yet')}</p>
                   <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{t('add_first_property_help_text', 'Add your first property to get started')}</p>
@@ -890,7 +878,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
               ) : (
                 <>
                   {/* Desktop DataTable */}
-                  <div className="hidden md:block bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-2xs overflow-hidden">
+                  <div className="hidden md:block bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xs overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full text-xs text-left text-gray-600 dark:text-gray-300">
                         <thead className="text-2xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/60 border-b border-gray-200 dark:border-gray-700">
@@ -1101,14 +1089,12 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           {/* ═══════════ TAB 4: ACCOUNT ═══════════ */}
           {activeTab === 'account' && (
             <section className="space-y-6">
-              <div>
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white">Account Details</h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Manage your tenant profile, authentication security, and platform settings</p>
-              </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {/* Profile Card */}
-                <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6 shadow-2xs space-y-4">
+                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-xs space-y-4">
+                  <div className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    Administrator Profile
+                  </div>
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-full bg-blue-100 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-xs">
                       <UserRound className="w-7 h-7" />
@@ -1124,16 +1110,16 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                     </div>
                   </div>
 
-                  <div className="pt-4 border-t border-gray-100 dark:border-gray-800 space-y-2.5 text-xs">
-                    <div className="flex justify-between py-1 border-b border-gray-100 dark:border-gray-800/60">
+                  <div className="pt-4 border-t border-gray-100 dark:border-gray-700 space-y-2.5 text-xs">
+                    <div className="flex justify-between py-1 border-b border-gray-100 dark:border-gray-700/60">
                       <span className="text-gray-500 dark:text-gray-400 font-medium">Tenant Organization</span>
                       <span className="font-semibold text-gray-900 dark:text-white">{tenantInfo?.name || 'Default Organization'}</span>
                     </div>
-                    <div className="flex justify-between py-1 border-b border-gray-100 dark:border-gray-800/60">
+                    <div className="flex justify-between py-1 border-b border-gray-100 dark:border-gray-700/60">
                       <span className="text-gray-500 dark:text-gray-400 font-medium">Tenant ID</span>
                       <span className="font-mono text-gray-900 dark:text-white">{tenantId}</span>
                     </div>
-                    <div className="flex justify-between py-1 border-b border-gray-100 dark:border-gray-800/60">
+                    <div className="flex justify-between py-1 border-b border-gray-100 dark:border-gray-700/60">
                       <span className="text-gray-500 dark:text-gray-400 font-medium">Subscription Tier</span>
                       <span className="font-semibold capitalize text-indigo-600 dark:text-indigo-400">{tenantInfo?.subscription_plan || 'Active Plan'}</span>
                     </div>
@@ -1145,8 +1131,11 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 </div>
 
                 {/* Change Passcode Card */}
-                <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6 shadow-2xs space-y-4">
-                  <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800">
+                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-xs space-y-4">
+                  <div className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    Security Credentials
+                  </div>
+                  <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-700">
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 flex items-center justify-center">
                         <KeyRound className="w-4 h-4" />
@@ -1237,12 +1226,6 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           {/* ═══════════ TAB 5: BILLING ═══════════ */}
           {activeTab === 'billing' && (
             <section className="space-y-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900 dark:text-white">{t('subscription_heading', 'Subscription & Billing')}</h2>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">View license status, slot entitlements, plan renewals, and data backup options</p>
-                </div>
-              </div>
               <SubscriptionPanel
                 embedded
                 tenantId={tenantId}
