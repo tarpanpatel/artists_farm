@@ -118,6 +118,27 @@ class ChannexChannelClient {
         return $this->client->put("channels/{$channelId}", ['channel' => $channelFields]);
     }
 
+    /**
+     * POST /meta/airbnb/connection_link - the real way to connect Airbnb.
+     * Per Channex's own docs (confirmed 3 Sep 2026): NOT a hand-built Airbnb
+     * OAuth URL - Channex generates and tracks a real, 2-hour-valid link
+     * server-side. The property owner opens it, signs into Airbnb and
+     * authorizes; Channex creates the channel connection automatically
+     * (inactive, ready to map) and redirects the browser to $redirectUri
+     * with ?success=true&channel_id={id}&token={token} appended (or
+     * $failureRedirectUri on failure) - $token is our own free-form
+     * correlation value, echoed back verbatim, not a value Channex assigns.
+     */
+    public function getAirbnbConnectionLink(string $groupId, array $propertyUuids, string $redirectUri, string $failureRedirectUri, string $token): array {
+        return $this->client->post('meta/airbnb/connection_link', [
+            'group_id' => $groupId,
+            'properties' => $propertyUuids,
+            'redirect_uri' => $redirectUri,
+            'failure_redirect_uri' => $failureRedirectUri,
+            'token' => $token,
+        ]);
+    }
+
     /** POST /channels/:id/check_readiness - the authoritative "is Activate safe" gate. Empty list = ready. */
     public function checkReadiness(string $channelId): array {
         return $this->client->post("channels/{$channelId}/check_readiness", []);

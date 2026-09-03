@@ -246,21 +246,71 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
     }
   };
 
-  // Build the official Airbnb OAuth authorization URL
-  const airbnbAuthUrl = useMemo(() => {
-    if (!selectedAdapter) return null;
-    const payload = (selectedAdapter.payload || {}) as any;
-    const clientId = payload.client_id || 'vkchvl6nyv02w16ncouipz3y';
-    const redirectUri = payload.redirect_uri || 'https://staging.channex.io/api/v1/meta/airbnb/auth_redirect';
-    const scope = payload.scope || 'property_management,messages_read,messages_write';
-    const params = new URLSearchParams({
-      client_id: clientId,
-      redirect_uri: redirectUri,
-      scope: scope,
-      response_type: 'code',
-    });
-    return `https://www.airbnb.com/oauth2/auth?${params.toString()}`;
-  }, [selectedAdapter]);
+  // Get a REAL Airbnb authorization link from Channex and open it.
+  // A hand-built airbnb.com/oauth2/auth URL (the previous approach) has no
+  // state Channex recognizes - Channex's own auth_redirect handler rejects
+  // it with "invalid_state" regardless of the client_id/redirect_uri used,
+  // because that link was never registered with Channex in the first place.
+  // The real flow (confirmed against Channex's own docs 3 Sep 2026,
+  // https://docs.channex.io/channel-api-examples/airbnb.md) is
+  // POST /meta/airbnb/connection_link - Channex generates and tracks a
+  // real, 2-hour-valid link server-side, then creates the channel
+  // connection itself once the owner authorizes. Called fresh on every
+  // click (including "Re-open"/"Retry") rather than caching one URL, since
+  // each call gets its own valid link - reusing a stale one is exactly what
+  // produced "invalid_state" before.
+  const [airbnbLinkLoading, setAirbnbLinkLoading] = useState(false);
+  const fetchAndOpenAirbnbLink = async () => {
+    setAirbnbLinkLoading(true);
+    try {
+      const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=channex_channel_airbnb_connection_link`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ property_id: propertyId }),
+      });
+      const json = await res.json();
+      if (json?.status !== 'success' || !json.data?.url) {
+        showToast(json?.message || 'Failed to generate the Airbnb authorization link', { type: 'error' });
+        return;
+      }
+      window.open(json.data.url, '_blank', 'width=800,height=700');
+      setAirbnbAuthOpened(true);
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to generate the Airbnb authorization link', { type: 'error' });
+    } finally {
+      setAirbnbLinkLoading(false);
+    }
+  };
+
+  // After the owner finishes on Airbnb, Channex creates the channel
+  // connection itself (see fetchAndOpenAirbnbLink's comment) and our own
+  // channex_airbnb_oauth_landing redirect target records it. Re-check that
+  // before jumping to room mapping, rather than trusting the click alone -
+  // the owner may have closed the tab early, been declined, or not
+  // finished yet.
+  const [verifyingAirbnb, setVerifyingAirbnb] = useState(false);
+  const continueAfterAirbnbAuth = async () => {
+    setVerifyingAirbnb(true);
+    try {
+      const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=channex_channel_connection_status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ property_id: propertyId }),
+      });
+      const json = await res.json();
+      const conn = (json?.data?.connections || []).find((c: any) => c.channel_code === selectedCode);
+      if (conn?.channex_channel_id && ['mapping', 'ready_to_activate', 'active'].includes(conn.status)) {
+        setStep(3);
+        fetchMappingDetails();
+      } else {
+        showToast("Airbnb authorization isn't complete yet - finish signing in and clicking Allow on the Airbnb tab, then try Continue again.", { type: 'warning' });
+      }
+    } catch {
+      showToast('Could not verify the connection - try again.', { type: 'error' });
+    } finally {
+      setVerifyingAirbnb(false);
+    }
+  };
 
   const visibleFields = useMemo(() => {
     if (!selectedAdapter) return [];
@@ -538,25 +588,18 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
                   <Button
                     variant="secondary"
                     size="sm"
-                    onClick={() => {
-                      if (airbnbAuthUrl) {
-                        window.open(airbnbAuthUrl, '_blank', 'width=800,height=700');
-                      } else {
-                        window.open('https://www.airbnb.com', '_blank');
-                      }
-                    }}
-                    leftIcon={<ExternalLink className="w-4 h-4" />}
+                    onClick={fetchAndOpenAirbnbLink}
+                    disabled={airbnbLinkLoading}
+                    leftIcon={airbnbLinkLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
                   >
                     <span>Re-open Airbnb Login</span>
                   </Button>
                   <Button
                     variant="primary"
                     size="sm"
-                    onClick={() => {
-                      setStep(3);
-                      fetchMappingDetails();
-                    }}
-                    leftIcon={<ArrowRight className="w-4 h-4" />}
+                    onClick={continueAfterAirbnbAuth}
+                    disabled={verifyingAirbnb}
+                    leftIcon={verifyingAirbnb ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
                   >
                     <span>{t('continue_to_mapping_button', "Continue to Room Mapping")}</span>
                   </Button>
@@ -579,15 +622,9 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
                 <Button
                   variant="primary"
                   size="md"
-                  onClick={() => {
-                    if (airbnbAuthUrl) {
-                      window.open(airbnbAuthUrl, '_blank', 'width=800,height=700');
-                    } else {
-                      window.open('https://www.airbnb.com/oauth2/auth?client_id=vkchvl6nyv02w16ncouipz3y&redirect_uri=https%3A%2F%2Fstaging.channex.io%2Fapi%2Fv1%2Fmeta%2Fairbnb%2Fauth_redirect&scope=property_management%2Cmessages_read%2Cmessages_write&response_type=code', '_blank', 'width=800,height=700');
-                    }
-                    setAirbnbAuthOpened(true);
-                  }}
-                  leftIcon={<ExternalLink className="w-4 h-4" />}
+                  onClick={fetchAndOpenAirbnbLink}
+                  disabled={airbnbLinkLoading}
+                  leftIcon={airbnbLinkLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
                   className="w-full justify-center bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2.5"
                 >
                   <span>{t('authorize_with_airbnb_button', 'Authorize with Airbnb')}</span>
@@ -712,11 +749,9 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
                     <Button
                       variant="primary"
                       size="sm"
-                      onClick={() => {
-                        if (airbnbAuthUrl) window.open(airbnbAuthUrl, '_blank', 'width=800,height=700');
-                        else window.open('https://www.airbnb.com', '_blank');
-                      }}
-                      leftIcon={<ExternalLink className="w-4 h-4" />}
+                      onClick={fetchAndOpenAirbnbLink}
+                      disabled={airbnbLinkLoading}
+                      leftIcon={airbnbLinkLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
                       className="bg-rose-600 hover:bg-rose-700 text-white"
                     >
                       <span>{t('open_airbnb_portal_button', 'Open Airbnb Login')}</span>
@@ -828,14 +863,11 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
         {step === 2 && isAirbnb && !airbnbAuthOpened && (
           <Button
             variant="primary"
-            onClick={() => {
-              if (airbnbAuthUrl) window.open(airbnbAuthUrl, '_blank', 'width=800,height=700');
-              else window.open('https://www.airbnb.com', '_blank');
-              setAirbnbAuthOpened(true);
-            }}
+            onClick={fetchAndOpenAirbnbLink}
+            disabled={airbnbLinkLoading}
             className="w-full justify-center sm:w-auto bg-rose-600 hover:bg-rose-700 text-white"
           >
-            <ExternalLink className="w-4 h-4 mr-1" />
+            {airbnbLinkLoading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <ExternalLink className="w-4 h-4 mr-1" />}
             {t('authorize_with_airbnb_button', 'Authorize with Airbnb')}
           </Button>
         )}
@@ -844,24 +876,21 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => {
-                if (airbnbAuthUrl) window.open(airbnbAuthUrl, '_blank', 'width=800,height=700');
-                else window.open('https://www.airbnb.com', '_blank');
-              }}
+              onClick={fetchAndOpenAirbnbLink}
+              disabled={airbnbLinkLoading}
               className="text-xs"
             >
-              <ExternalLink className="w-3.5 h-3.5 mr-1" /> Re-open Login
+              {airbnbLinkLoading ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <ExternalLink className="w-3.5 h-3.5 mr-1" />}
+              Re-open Login
             </Button>
             <Button
               variant="primary"
-              onClick={() => {
-                setStep(3);
-                fetchMappingDetails();
-              }}
+              onClick={continueAfterAirbnbAuth}
+              disabled={verifyingAirbnb}
               className="w-full justify-center sm:w-auto text-xs"
             >
               {t('continue_to_mapping_button', "Continue")}
-              <ArrowRight className="w-4 h-4 ml-1" />
+              {verifyingAirbnb ? <Loader2 className="w-4 h-4 ml-1 animate-spin" /> : <ArrowRight className="w-4 h-4 ml-1" />}
             </Button>
           </div>
         )}
