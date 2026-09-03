@@ -71,6 +71,22 @@ function handleRateRuleRequests($pdo, $requestMethod, $action, $propertyId) {
         markSchemaVerified('schema_room_rate_rule_restrictions');
     }
 
+    // Day-of-week scoping (4 Sep 2026, explicit request: "Monday to Friday
+    // 3000, Saturday and Sunday 4000"). NULL/empty = every day of the week
+    // (unchanged behaviour for every existing rule - this column is purely
+    // additive). Stored as Channex's own 2-letter day codes comma-joined
+    // (mo,tu,we,th,fr,sa,su) so DAY_CODES below is the single source of
+    // truth shared with the push side - see AriDrainWorker::
+    // computeCompressedRestrictions()'s own comment on why a day-of-week
+    // scoped rule is pushed using Channex's `days` param directly instead of
+    // being flattened into one push per calendar week.
+    if (!isSchemaVerified('schema_room_rate_rule_days_of_week')) {
+        try {
+            $pdo->exec("ALTER TABLE `room_rate_rules` ADD COLUMN IF NOT EXISTS `days_of_week` VARCHAR(20) NULL");
+        } catch (PDOException $e) {}
+        markSchemaVerified('schema_room_rate_rule_days_of_week');
+    }
+
     switch ($action) {
         case 'get_rate_rules':
             getRateRules($pdo, $propertyId);
@@ -174,6 +190,22 @@ function saveRateRule($pdo, $propertyId) {
         $closedToArrival  = !empty($input['closed_to_arrival']) ? 1 : 0;
         $closedToDeparture= !empty($input['closed_to_departure']) ? 1 : 0;
 
+        // Day-of-week scoping (4 Sep 2026, "Monday to Friday 3000, Saturday
+        // and Sunday 4000") - Channex's own 2-letter day codes, so
+        // AriDrainWorker::computeCompressedRestrictions() can pass them
+        // straight through to Channex's `days` param unchanged. An empty
+        // selection, or all 7 days selected, both normalize to NULL ("every
+        // day") rather than being stored literally - keeps every existing
+        // rule (created before this field existed) and every "no day
+        // restriction" rule going forward behaving identically, and avoids
+        // the ambiguity of an explicit-but-meaningless "all 7" value.
+        $allDayCodes = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'];
+        $rawDays = is_array($input['days_of_week'] ?? null) ? $input['days_of_week'] : [];
+        $selectedDays = array_values(array_unique(array_intersect($allDayCodes, $rawDays)));
+        // Preserve Channex's own mo..su order regardless of selection order.
+        usort($selectedDays, fn($a, $b) => array_search($a, $allDayCodes) <=> array_search($b, $allDayCodes));
+        $daysOfWeek = (empty($selectedDays) || count($selectedDays) === 7) ? null : implode(',', $selectedDays);
+
         $hasRestriction = $minStayArrival !== null || $minStayThrough !== null || $maxStay !== null
             || $stopSell || $closedToArrival || $closedToDeparture;
 
@@ -240,25 +272,25 @@ function saveRateRule($pdo, $propertyId) {
                 UPDATE room_rate_rules
                 SET room_id = ?, start_date = ?, end_date = ?, rate_per_night = ?, rule_name = ?,
                     min_stay_arrival = ?, min_stay_through = ?, max_stay = ?,
-                    stop_sell = ?, closed_to_arrival = ?, closed_to_departure = ?
+                    stop_sell = ?, closed_to_arrival = ?, closed_to_departure = ?, days_of_week = ?
                 WHERE id = ? AND property_id = ?
             ");
             $stmt->execute([$roomId, $startDate, $endDate, $ratePerNight, $ruleName,
                 $minStayArrival, $minStayThrough, $maxStay,
-                $stopSell, $closedToArrival, $closedToDeparture,
+                $stopSell, $closedToArrival, $closedToDeparture, $daysOfWeek,
                 $ruleId, $propertyId]);
         } else {
             // Bulk insert for selected rooms
             $stmt = $pdo->prepare("
                 INSERT INTO room_rate_rules (property_id, room_id, start_date, end_date, rate_per_night, rule_name,
-                    min_stay_arrival, min_stay_through, max_stay, stop_sell, closed_to_arrival, closed_to_departure)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    min_stay_arrival, min_stay_through, max_stay, stop_sell, closed_to_arrival, closed_to_departure, days_of_week)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             foreach ($targetRoomIds as $rId) {
                 $roomId = !empty($rId) ? (int)$rId : null;
                 $stmt->execute([$propertyId, $roomId, $startDate, $endDate, $ratePerNight, $ruleName,
                     $minStayArrival, $minStayThrough, $maxStay,
-                    $stopSell, $closedToArrival, $closedToDeparture]);
+                    $stopSell, $closedToArrival, $closedToDeparture, $daysOfWeek]);
             }
         }
 

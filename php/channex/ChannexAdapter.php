@@ -117,6 +117,16 @@ class ChannexAdapter implements ChannelManagerAdapter {
             if (array_key_exists('closed_to_departure', $r)) {
                 $item['closed_to_departure'] = (bool)$r['closed_to_departure'];
             }
+            // Day-of-week scoping (4 Sep 2026, "Monday to Friday 3000,
+            // Saturday and Sunday 4000") - AriDrainWorker::
+            // computeCompressedRestrictions() only sets this key for a range
+            // it built from a day-of-week scoped rule; omitted entirely for
+            // an ordinary range, exactly like Channex's own API treats an
+            // absent `days` as "every day of the week", so this never needs
+            // an explicit "all 7 days" value.
+            if (!empty($r['days'])) {
+                $item['days'] = array_values($r['days']);
+            }
 
             $values[] = $item;
         }

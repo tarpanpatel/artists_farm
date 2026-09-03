@@ -171,6 +171,11 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
       return;
     }
 
+    if (selectedDays.length === 0) {
+      showToast('Select at least one day for this rule to apply on.', { type: 'error' });
+      return;
+    }
+
     const hasRestriction = minStayNum !== null || maxStayNum !== null || stopSell || closedToArrival || closedToDeparture;
 
     if (rateNum === null && !hasRestriction) {

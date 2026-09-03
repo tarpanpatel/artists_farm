@@ -282,11 +282,19 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
     loadRateRules();
   }, [roomId]);
 
+  // Channex's own 2-letter day codes - matches room_rate_rules.days_of_week
+  // (rate_rules.php) and the push side (AriDrainWorker::
+  // computeCompressedRestrictions()), so a rule scoped to "weekends" here
+  // means the exact same thing when actually pushed to Airbnb/Booking.com.
+  const DAY_CODE_BY_JS_DAY = ['su', 'mo', 'tu', 'we', 'th', 'fr', 'sa'];
+
   const getDayPrice = (dateStr: string): { rate: number; isRule: boolean; label?: string } => {
     if (pricingMode === 'variable') {
+      const dayCode = DAY_CODE_BY_JS_DAY[new Date(dateStr + 'T00:00:00').getDay()];
       const match = rateRules.find((r) => {
         const roomMatch = !r.room_id || (roomId && Number(r.room_id) === Number(roomId));
-        return roomMatch && r.start_date <= dateStr && r.end_date >= dateStr;
+        const dayMatch = !r.days_of_week || r.days_of_week.split(',').includes(dayCode);
+        return roomMatch && dayMatch && r.start_date <= dateStr && r.end_date >= dateStr;
       });
       if (match) {
         return { rate: Number(match.rate_per_night), isRule: true, label: match.rule_name };

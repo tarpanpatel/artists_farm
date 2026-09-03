@@ -162,7 +162,7 @@ if ($propertyId > 0 && !empty($scopeIds)) {
 
         $stmt = $pdo->prepare("
             SELECT room_id, start_date, end_date, rate_per_night, stop_sell,
-                   min_stay_arrival, min_stay_through, max_stay, closed_to_arrival, closed_to_departure
+                   min_stay_arrival, min_stay_through, max_stay, closed_to_arrival, closed_to_departure, days_of_week
             FROM room_rate_rules
             WHERE (property_id IN ($placeholders) OR room_id IN ($placeholders))
             AND start_date <= ? AND end_date >= ?
@@ -171,14 +171,28 @@ if ($propertyId > 0 && !empty($scopeIds)) {
         $stmt->execute(array_merge($scopeIds, $scopeIds, [$monthEndStr, $monthStartStr]));
         $rateRules = $stmt->fetchAll();
 
+        // Channex's own 2-letter day codes (mo,tu,we,th,fr,sa,su) - shared
+        // vocabulary with room_rate_rules.days_of_week and the push side
+        // (AriDrainWorker::computeCompressedRestrictions()) so a rule scoped
+        // to "weekends" here means the exact same thing when pushed.
+        $dayCodeByIso = [1 => 'mo', 2 => 'tu', 3 => 'we', 4 => 'th', 5 => 'fr', 6 => 'sa', 7 => 'su'];
+
         $restrictionsPerRoom = [];
         foreach ($rateRules as $rr) {
             $rId = $rr['room_id'] !== null ? (int)$rr['room_id'] : 0;
+            $ruleDays = !empty($rr['days_of_week']) ? explode(',', $rr['days_of_week']) : null;
             $cur = strtotime($rr['start_date']);
             $end = strtotime($rr['end_date']);
             $isStopSell = !empty($rr['stop_sell']);
             while ($cur <= $end) {
                 $dStr = date('Y-m-d', $cur);
+                // Day-of-week scoping (4 Sep 2026) - a rule with days_of_week
+                // set only claims dates falling on one of those weekdays; a
+                // rule with it NULL/empty claims every day, unchanged.
+                if ($ruleDays !== null && !in_array($dayCodeByIso[(int)date('N', $cur)], $ruleDays, true)) {
+                    $cur = strtotime('+1 day', $cur);
+                    continue;
+                }
                 if ($rr['rate_per_night'] !== null && !isset($rateRulesPerRoom[$rId][$dStr])) {
                     $rateRulesPerRoom[$rId][$dStr] = (float)$rr['rate_per_night'];
                 }

@@ -2963,6 +2963,10 @@ export interface RateRule {
   stop_sell?: number;
   closed_to_arrival?: number;
   closed_to_departure?: number;
+  // Comma-joined Channex day codes (mo,tu,we,th,fr,sa,su) - null/empty
+  // means every day of the week (4 Sep 2026, "Monday to Friday 3000,
+  // Saturday and Sunday 4000").
+  days_of_week?: string | null;
 }
 
 export async function fetchRateRulesDB(): Promise<{ rules: RateRule[]; pricing_mode: 'flat' | 'variable'; default_tariff: number | null }> {
@@ -2997,6 +3001,10 @@ export async function saveRateRuleDB(rule: {
   stop_sell?: number | boolean;
   closed_to_arrival?: number | boolean;
   closed_to_departure?: number | boolean;
+  // 2-letter day codes (e.g. ['mo','tu','we','th','fr']) - all 7 or empty
+  // both mean "every day" (4 Sep 2026, "Monday to Friday 3000, Saturday and
+  // Sunday 4000").
+  days_of_week?: string[];
 }): Promise<{ success: boolean; message: string }> {
   try {
     const res = await apiFetch(`${API_BASE}?action=save_rate_rule`, {

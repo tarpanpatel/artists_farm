@@ -294,6 +294,21 @@ class AriDrainWorker {
     /**
      * Compute compressed rate & restriction ranges for a date span, scoped
      * to $touchedFields (null = every field, used for full syncs).
+     *
+     * Day-of-week scoped rules (4 Sep 2026, "Monday to Friday 3000,
+     * Saturday and Sunday 4000" - room_rate_rules.days_of_week) are pushed
+     * as ONE value per rule, covering that rule's full claimed date span
+     * with Channex's own `days` param set - NOT flattened into the ordinary
+     * per-day run-length compression below. A plain day-by-day compression
+     * only merges literally-adjacent identical days, so an alternating
+     * weekday/weekend pattern spanning months would fragment into one tiny
+     * range PER CALENDAR WEEK (dozens of API values for a single recurring
+     * pattern) - exactly the "separate API calls where one range update
+     * would do" anti-fail Channex's own certification review flags, and
+     * needlessly burns their 10-requests/minute-per-property limit. Any day
+     * NOT claimed by a day-of-week-scoped rule (an unscoped rule, or no
+     * rule at all) still goes through the original adjacency compression
+     * unchanged.
      */
     public function computeCompressedRestrictions(int $propertyId, ?int $roomId, string $startDate, string $endDate, ?array $touchedFields = null): array {
         $scopeId = $roomId ?: $propertyId;
@@ -326,14 +341,22 @@ class AriDrainWorker {
             $rules = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
 
+        // Channex's own 2-letter day codes - shared vocabulary with
+        // room_rate_rules.days_of_week (see rate_rules.php's saveRateRule())
+        // and availability.php's own identical mapping for display.
+        $dayCodeByIso = [1 => 'mo', 2 => 'tu', 3 => 'we', 4 => 'th', 5 => 'fr', 6 => 'sa', 7 => 'su'];
+
         $rulesByDate = [];
         foreach ($rules as $r) {
+            $ruleDays = !empty($r['days_of_week']) ? explode(',', $r['days_of_week']) : null;
             $cur = strtotime($r['start_date']);
             $end = strtotime($r['end_date']);
             while ($cur <= $end) {
                 $dStr = date('Y-m-d', $cur);
-                if (!isset($rulesByDate[$dStr])) {
-                    $rulesByDate[$dStr] = $r;
+                if ($ruleDays === null || in_array($dayCodeByIso[(int)date('N', $cur)], $ruleDays, true)) {
+                    if (!isset($rulesByDate[$dStr])) {
+                        $rulesByDate[$dStr] = $r;
+                    }
                 }
                 $cur = strtotime('+1 day', $cur);
             }
@@ -341,9 +364,13 @@ class AriDrainWorker {
 
         // Build daily state - only the touched fields are set on each day,
         // so a rate-only push never carries stop_sell/closed_to_arrival/etc.
+        // Also tracks which rule (if any) claimed each day and whether that
+        // rule is day-of-week scoped, for the split below.
         $cur = strtotime($startDate);
         $end = strtotime($endDate);
         $daily = [];
+        $dailyScopedRuleId = []; // dStr => rule id, only set when that rule has days_of_week
+        $dailyScopedRuleDays = []; // dStr => that rule's days_of_week array
         while ($cur <= $end) {
             $dStr = date('Y-m-d', $cur);
             $rule = $rulesByDate[$dStr] ?? null;
@@ -379,16 +406,50 @@ class AriDrainWorker {
                 $state['closed_to_departure'] = $rule ? (bool)$rule['closed_to_departure'] : false;
             }
             $daily[$dStr] = $state;
+            if ($rule && !empty($rule['days_of_week'])) {
+                $dailyScopedRuleId[$dStr] = (int)$rule['id'];
+                $dailyScopedRuleDays[$dStr] = explode(',', $rule['days_of_week']);
+            }
             $cur = strtotime('+1 day', $cur);
         }
 
-        // Run-length compression on composite restriction state
         $ranges = [];
+
+        // Split off day-of-week scoped days, grouped by rule id, each
+        // becoming exactly one push value with `days` set - regardless of
+        // how many separate weeks it spans.
+        $datesByScopedRule = [];
+        $unscopedDaily = [];
+        foreach ($daily as $dStr => $state) {
+            if (isset($dailyScopedRuleId[$dStr])) {
+                $datesByScopedRule[$dailyScopedRuleId[$dStr]][] = $dStr;
+            } else {
+                $unscopedDaily[$dStr] = $state;
+            }
+        }
+
+        foreach ($datesByScopedRule as $ruleId => $dates) {
+            sort($dates);
+            $first = $dates[0];
+            $last = $dates[count($dates) - 1];
+            $range = array_merge(['date_from' => $first, 'date_to' => $last], $daily[$first]);
+            $range['days'] = $dailyScopedRuleDays[$first];
+            $ranges[] = $range;
+        }
+
+        // Run-length compression on the remaining (unscoped) composite
+        // restriction state. Requires an explicit calendar-adjacency check
+        // now (strtotime($dStr) - strtotime($prevDate) === 1 day), not just
+        // "is the next array entry" - $unscopedDaily can have gaps where a
+        // day-of-week-scoped rule above already claimed a date, so two
+        // identical-state days a week apart must NOT be merged into one
+        // range that would wrongly also cover the scoped days in between.
         $rangeStart = null;
         $prevDate = null;
         $prevState = null;
 
-        foreach ($daily as $dStr => $state) {
+        foreach ($unscopedDaily as $dStr => $state) {
+            $isAdjacent = $prevDate !== null && strtotime($dStr) === strtotime($prevDate) + 86400;
             if ($rangeStart === null) {
                 $rangeStart = $dStr;
                 $prevDate = $dStr;
@@ -396,7 +457,7 @@ class AriDrainWorker {
                 continue;
             }
 
-            if ($state === $prevState) {
+            if ($isAdjacent && $state === $prevState) {
                 $prevDate = $dStr;
             } else {
                 $ranges[] = array_merge(['date_from' => $rangeStart, 'date_to' => $prevDate], $prevState);
