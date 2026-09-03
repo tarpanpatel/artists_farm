@@ -65,7 +65,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, childre
   // forceRow opts a specific page back into always-flex-row (see the prop's
   // own comment) - used by Bookings, whose single compact button doesn't
   // have that collision risk and was asked to stay top-right always.
-  <div className={`gen_page_head flex ${forceRow ? 'flex-row items-center' : 'flex-col items-start sm:flex-row sm:items-center'} justify-between gap-3 pb-3 mb-4 page-header`}>
+  <div className={`gen_page_head px-4 sm:px-0 flex ${forceRow ? 'flex-row items-center' : 'flex-col items-start sm:flex-row sm:items-center'} justify-between gap-3 pb-3 mb-4 page-header`}>
     <div className="min-w-0 flex-1 page-header__left">
       <div className="flex items-center flex-wrap gap-2 page-header__title-row">
         <h1 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight sm:text-2xl page-header__title">

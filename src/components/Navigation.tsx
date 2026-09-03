@@ -29,7 +29,10 @@ export type TabType =
   | 'custom_css'
   | 'service_requests'
   | 'edit_property'
-  | 'licenses';
+  | 'licenses'
+  | 'channel_manager'
+  | 'connect_channels'
+  | 'subscription';
 
 interface NavigationProps {
   activeTab: TabType;
@@ -107,6 +110,11 @@ export const Navigation: React.FC<NavigationProps> = ({
   // a strict `===` against the raw, unnormalized prop).
   const normalizedActiveMenuItemKey = activeMenuItemKey === 'attendance_salaries' ? 'attendance_calendar' : activeMenuItemKey;
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
+
+  const isSuperAdmin = useMemo(() => {
+    const roleLower = (activeRole || '').toLowerCase().trim();
+    return roleLower === 'super admin' || roleLower === 'root admin';
+  }, [activeRole]);
 
   // The dimming overlay below used to be gated only by `isSidebarOpen &&`
   // for whether it renders at all, then hidden visually at desktop widths
@@ -322,9 +330,15 @@ export const Navigation: React.FC<NavigationProps> = ({
     return roots;
   }, [navItems, isVisible]);
 
-  // Hide Overview and Add Booking (guest_registration) sidebar items as they are merged
+  // Hide Overview, Add Booking (guest_registration), and Subscription sidebar items
   const filteredNavItems = useMemo(() => {
-    return navItems.filter(item => item.uniqueKey !== 'overview' && item.uniqueKey !== 'guest_registration');
+    return navItems.filter(
+      item =>
+        item.uniqueKey !== 'overview' &&
+        item.uniqueKey !== 'guest_registration' &&
+        item.uniqueKey !== 'subscription' &&
+        item.tabKey !== 'subscription'
+    );
   }, [navItems]);
 
   const tree = useMemo(() => buildTree(filteredNavItems), [buildTree, filteredNavItems]);
@@ -679,18 +693,40 @@ export const Navigation: React.FC<NavigationProps> = ({
             </ul>
 
             <div className="flex flex-col items-center gap-2 w-full pb-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+              {isSuperAdmin && (
+                <Popover
+                  trigger="hover"
+                  placement="right"
+                  content={
+                    <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                      {currentUser?.name || 'Owner'} · Tenant Dashboard
+                    </div>
+                  }
+                >
+                  <button
+                    type="button"
+                    aria-label="Open Tenant Dashboard"
+                    onClick={() => {
+                      window.location.href = '/tenant_dashboard/';
+                    }}
+                    className="w-10 h-10 flex items-center justify-center rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors cursor-pointer"
+                  >
+                    <UserRound className="w-5 h-5" />
+                  </button>
+                </Popover>
+              )}
               <Popover
                 trigger="hover"
                 placement="right"
                 content={
                   <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
-                    Sign Out Terminal
+                    Sign Out
                   </div>
                 }
               >
                 <button
                   type="button"
-                  aria-label="Sign Out Terminal"
+                  aria-label="Sign Out"
                   onClick={handleLogoutClick}
                   className="w-10 h-10 flex items-center justify-center rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
                 >
@@ -746,7 +782,35 @@ export const Navigation: React.FC<NavigationProps> = ({
               </div>
 
               <ul className="space-y-1 font-medium">
-                {tree.map(node => renderNode(node, 0))}
+                {/* filteredNavItems.length, not tree.length (2 Sep 2026, user
+                    report: sidebar shows only "Kitchen" for a while before the
+                    real menu pops in - the "eventually self-corrects" flash
+                    this comment used to just live with). buildTree()'s own
+                    synthetic-Kitchen placeholder (see its "IMPORTANT" comment,
+                    23 Aug 2026) exists specifically so Kitchen doesn't flicker
+                    away during this same cold-start window - but that meant
+                    `tree` was NEVER actually empty during the wait (it always
+                    held that one synthetic node), so this skeleton branch
+                    could never fire; real navItems arriving replaced the
+                    synthetic tree with the full one, which is exactly the
+                    "only Kitchen, then the whole sidebar" flash reported.
+                    filteredNavItems reads the raw navItems prop before
+                    buildTree runs, so it's actually empty for that whole
+                    window regardless of the synthetic node - the skeleton (or
+                    the synthetic Kitchen shortcut inside it below) shows for
+                    the real cold-start duration instead. */}
+                {filteredNavItems.length === 0 ? (
+                  <div className="space-y-2 py-2 px-1 animate-pulse">
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                      <div key={i} className="flex items-center gap-3 p-2 rounded-lg bg-gray-100 dark:bg-gray-700/40">
+                        <div className="w-5 h-5 rounded bg-gray-200 dark:bg-gray-600 shrink-0" />
+                        <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-28" />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  tree.map(node => renderNode(node, 0))
+                )}
               </ul>
 
               {customUrlRootItems.length > 0 && (
@@ -782,13 +846,37 @@ export const Navigation: React.FC<NavigationProps> = ({
 
             {/* Bottom User Profile & Sign Out */}
             <div className="pt-3 mt-auto border-t border-gray-200 dark:border-gray-700 space-y-2">
-              <div className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+              <div
+                {...(isSuperAdmin
+                  ? {
+                      role: 'button',
+                      tabIndex: 0,
+                      onClick: () => {
+                        window.location.href = '/tenant_dashboard/';
+                      },
+                      onKeyDown: (e: React.KeyboardEvent) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          window.location.href = '/tenant_dashboard/';
+                        }
+                      },
+                      title: 'Open Tenant Dashboard',
+                    }
+                  : {})}
+                className={`flex items-center gap-3 p-2 rounded-lg transition-all ${
+                  isSuperAdmin
+                    ? 'bg-gray-50 hover:bg-blue-50 dark:bg-gray-700/50 dark:hover:bg-blue-950/40 border border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-700 cursor-pointer shadow-2xs group'
+                    : 'bg-gray-50 dark:bg-gray-700/50 border border-transparent cursor-default'
+                }`}
+              >
                 <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 ring-2 ring-blue-500/30 shrink-0">
                   <UserRound className="w-4 h-4 text-gray-600 dark:text-gray-300" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">
-                    {currentUser?.name || 'User'}
+                  <div className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate flex items-center justify-between">
+                    <span>{currentUser?.name || 'User'}</span>
+                    {isSuperAdmin && (
+                      <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors shrink-0" />
+                    )}
                   </div>
                   <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate capitalize">
                     {activeRole}
@@ -803,7 +891,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                 style={{ color: '#ff5252' }}
               >
                 <LogOut className="w-4 h-4 text-red-500" />
-                <span className="ms-3">Sign Out Terminal</span>
+                <span className="ms-3">{t('sign_out_terminal_button', 'Sign Out')}</span>
               </button>
             </div>
           </div>

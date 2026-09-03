@@ -4,6 +4,21 @@
  * Ground Code Resort & Kitchen Management Backend System
  */
 
+// Output buffering, on from the very first line (31 Aug 2026): required for
+// channex/outbox.php's triggerEventDrivenChannexDrain() to actually return
+// the HTTP response early before its post-response Channex push. Without an
+// active buffer here, that function's fallback (ob_end_flush()+flush(), used
+// whenever fastcgi_finish_request() doesn't exist - confirmed true for this
+// host's LiteSpeed SAPI) has nothing to flush: the response was already sent
+// unbuffered, so the client just blocks until the whole script - including
+// the multi-second Channex API round trip - finishes. Measured live: 0.9s
+// with this buffer active vs 8s without it, same endpoint, same payload.
+// Every guest-booking and rate-rule save was silently taking 13-20+ seconds
+// to respond because of this, looking like a failure to the frontend (whose
+// own timeout is shorter) even though the write itself succeeded instantly -
+// found 31 Aug 2026 while dry-running the Channex certification video.
+ob_start();
+
 // PHP's default session lifetime (session.gc_maxlifetime, 1440s = 24min) is
 // too short for an admin tool where reading/deciding between actions
 // routinely exceeds it - the session silently expires mid-task, and the
@@ -665,7 +680,7 @@ $provided_key = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
 // non-sensitive branding/config columns (name, slug, type, currency,
 // colors, ...) - no guest, financial, or staff data - so this is exactly
 // the same "safe to read before login" class as the settings above.
-$public_actions = ['login_user', 'verify_admin_passcode', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token', 'check_session', 'logout', 'get_tenant_by_slug', 'get_demo_login_credentials', 'get_system_settings', 'get_theme_settings', 'get_current_property', 'register_tenant_trial'];
+$public_actions = ['login_user', 'verify_admin_passcode', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token', 'check_session', 'logout', 'get_tenant_by_slug', 'get_demo_login_credentials', 'get_system_settings', 'get_theme_settings', 'get_current_property', 'register_tenant_trial', 'channex_webhook'];
 
 
 $request_method = $_SERVER['REQUEST_METHOD'];
@@ -948,7 +963,14 @@ $currentProperty = getCurrentProperty($pdo, $propertyId); // Get the full proper
 // param, so it skips this gate) always worked fine. Confirmed via the Apache
 // access log: every POST save_nav_menu request returned 403, going back to
 // the gate's original commit - this was never a frontend bug.
-$tenant_scope_actions = ['get_tenant_properties', 'get_tenant_slot_usage', 'create_property_for_tenant', 'save_nav_menu', 'export_database_dump'];
+// get_subscription_summary/request_subscription_action added 3 Sep 2026: the
+// Tenant Dashboard (/tenant_dashboard/, a `users`-table owner login) reaches
+// these with an explicit tenant_id and no property_slug at all, same gap as
+// save_nav_menu above - they re-run their own equivalent-or-stronger checks
+// inline (isPropertyAccessAllowed() for the existing per-property path,
+// isTenantAccessAllowed() for the tenant_id path) rather than relying on this
+// gate, see the case block itself.
+$tenant_scope_actions = ['get_tenant_properties', 'get_tenant_slot_usage', 'create_property_for_tenant', 'save_nav_menu', 'export_database_dump', 'get_subscription_summary', 'request_subscription_action'];
 
 // SECURITY (10 Aug 2026): universal property-scope gate. Everything above only ever gated
 // *write* actions (POST/PUT/DELETE) - GET reads (guest lists, financial ledger, receipts,
@@ -3518,6 +3540,212 @@ switch ($action) {
         }
         break;
 
+    // --- TENANT SUBSCRIPTION PANEL (added 3 Sep 2026) ---
+    // Tenant-facing: read this property's own tenant subscription state and
+    // let its owner request a cancel/close. Ground Code bills offline only
+    // (UPI/NEFT, Root Admin sets status/expiry by hand - PRODUCT_STRATEGY.md),
+    // so there is nothing here that mutates subscription_status or calls
+    // delete_tenant - see tenant_closure_requests.php's own header comment.
+    case 'get_subscription_summary':
+    case 'request_subscription_action':
+    case 'get_tenant_closure_requests':
+    case 'resolve_tenant_closure_request':
+        require_once __DIR__ . '/../subscription/tenant_closure_requests.php';
+        ensureTenantClosureRequestsSchema($pdo);
+
+        if ($action === 'get_tenant_closure_requests' || $action === 'resolve_tenant_closure_request') {
+            // Root-Admin-only side, same gate every other root-admin action in
+            // this file uses (see get_all_tenants above).
+            if (!($_SESSION['is_platform_admin'] ?? false)) {
+                http_response_code(403);
+                echo json_encode(['status' => 'error', 'message' => 'Root admin access required']);
+                exit;
+            }
+
+            if ($action === 'get_tenant_closure_requests') {
+                try {
+                    $stmt = $pdo->query("
+                        SELECT r.*, t.name AS tenant_name, t.slug AS tenant_slug
+                        FROM tenant_closure_requests r
+                        JOIN tenants t ON t.id = r.tenant_id
+                        ORDER BY (r.status = 'pending') DESC, r.created_at DESC
+                        LIMIT 200
+                    ");
+                    echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+                } catch (Exception $e) {
+                    http_response_code(500);
+                    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+                }
+                break;
+            }
+
+            // resolve_tenant_closure_request
+            $input = json_decode(file_get_contents('php://input'), true) ?: [];
+            $reqId = (int)($input['id'] ?? 0);
+            $adminAction = $input['action'] ?? '';
+            $statusMap = ['acknowledge' => 'acknowledged', 'decline' => 'declined', 'complete' => 'completed'];
+            if (!$reqId || !isset($statusMap[$adminAction])) {
+                http_response_code(400);
+                echo json_encode(['status' => 'error', 'message' => 'id and a valid action (acknowledge|decline|complete) are required']);
+                break;
+            }
+            try {
+                $stmt = $pdo->prepare("UPDATE tenant_closure_requests SET status = ?, resolved_at = NOW(), resolved_by = ?, admin_note = ? WHERE id = ?");
+                $stmt->execute([
+                    $statusMap[$adminAction],
+                    $_SESSION['username'] ?? 'Root Admin',
+                    isset($input['admin_note']) ? trim((string)$input['admin_note']) : null,
+                    $reqId,
+                ]);
+                echo json_encode(['status' => 'success', 'message' => 'Request updated']);
+            } catch (Exception $e) {
+                http_response_code(500);
+                echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            }
+            break;
+        }
+
+        // Tenant-facing side, below. Two entry points share this action:
+        //   1. The per-property nav item (Subscription, gated Super
+        //      Admin/Admin via nav_menu_self_heal_v10) - reached from inside
+        //      one resolved property, no tenant_id in the request. Scoped
+        //      strictly to the SESSION's own property's tenant_id - never a
+        //      tenant_id from the request for this path.
+        //   2. The Tenant Dashboard (/tenant_dashboard/, added 3 Sep 2026) -
+        //      a `users`-table owner login with no single property resolved
+        //      at all, so it sends tenant_id explicitly instead.
+        // Both actions are in $tenant_scope_actions (see above), which skips
+        // the universal isPropertyAccessAllowed($propertyId) gate entirely -
+        // that gate would otherwise 403 path 2 before ever reaching here,
+        // since getCurrentPropertyId() falls back to an unrelated property
+        // when no property_slug is in the request (same issue save_nav_menu
+        // hit). Each path below re-establishes its own equivalent check
+        // instead of inheriting that skipped gate.
+        $tenantActionInput = $request_method !== 'GET' ? (json_decode(file_get_contents('php://input'), true) ?: []) : [];
+        $requestedTenantId = $_GET['tenant_id'] ?? ($tenantActionInput['tenant_id'] ?? '');
+
+        if ($requestedTenantId) {
+            // Path 2 (Tenant Dashboard). Validated purely against the
+            // session's own tenant association (isTenantAccessAllowed with
+            // $currentPropertyId=0) - NOT against $propertyId, which would be
+            // circular here: property_slug and tenant_id can both be
+            // attacker-chosen in the same request, so that function's own
+            // "requested tenant owns $currentPropertyId" fallback must not be
+            // trusted as the check for this path.
+            if (!isTenantAccessAllowed($pdo, $requestedTenantId, 0)) {
+                http_response_code(403);
+                echo json_encode(['status' => 'error', 'message' => 'Access denied']);
+                break;
+            }
+            $subTenantId = (int)$requestedTenantId;
+        } else {
+            // Path 1 (per-property nav). This action's own gate-exemption
+            // above means the usual isPropertyAccessAllowed() check never ran
+            // for it - re-run it explicitly so a staff session with no access
+            // to $propertyId can't reach its tenant's billing data just
+            // because this action is now gate-exempt.
+            if (!$propertyId || !isPropertyAccessAllowed($pdo, $propertyId) || empty($currentProperty['tenant_id'])) {
+                http_response_code(403);
+                echo json_encode(['status' => 'error', 'message' => 'Access denied']);
+                break;
+            }
+            $subTenantId = (int)$currentProperty['tenant_id'];
+        }
+
+        if ($action === 'get_subscription_summary') {
+            try {
+                $tStmt = $pdo->prepare("SELECT id, name, subscription_status, subscription_expires_at, billing_cycle FROM tenants WHERE id = ? LIMIT 1");
+                $tStmt->execute([$subTenantId]);
+                $tenantRow = $tStmt->fetch(PDO::FETCH_ASSOC);
+                if (!$tenantRow) {
+                    http_response_code(404);
+                    echo json_encode(['status' => 'error', 'message' => 'Tenant not found']);
+                    break;
+                }
+
+                // Room-key count for pricing: SINGLE properties and MULTI_KEY_ROOM
+                // children are each their own billable key; a MULTI_KEY parent row
+                // is just a container, not a separately billable unit.
+                $kStmt = $pdo->prepare("SELECT COUNT(*) FROM properties WHERE tenant_id = ? AND is_deleted = 0 AND property_type IN ('SINGLE','MULTI_KEY_ROOM')");
+                $kStmt->execute([$subTenantId]);
+                $keyCount = (int)$kStmt->fetchColumn();
+
+                $openRequest = getOpenTenantClosureRequest($pdo, $subTenantId);
+
+                echo json_encode([
+                    'status' => 'success',
+                    'data' => [
+                        // Canonical display name regardless of the stored plan_type
+                        // string (see PRODUCT_STRATEGY.md - flagged to the user as a
+                        // real inconsistency between that doc and PlatformPropertyManagement's
+                        // still-live 'Starter'/'Growth' picker; PRODUCT_STRATEGY.md's
+                        // single-plan model was confirmed canonical for THIS panel).
+                        'plan_name' => 'GroundCode Pro',
+                        'subscription_status' => $tenantRow['subscription_status'],
+                        'subscription_expires_at' => $tenantRow['subscription_expires_at'],
+                        'billing_cycle' => $tenantRow['billing_cycle'],
+                        'key_count' => $keyCount,
+                        'open_request' => $openRequest,
+                    ],
+                ]);
+            } catch (Exception $e) {
+                http_response_code(500);
+                echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            }
+            break;
+        }
+
+        // request_subscription_action - reuse $tenantActionInput parsed above
+        // rather than re-reading php://input a second time.
+        $input = $tenantActionInput;
+        $requestType = $input['request_type'] ?? '';
+        if (!in_array($requestType, ['cancel', 'delete'], true)) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => "request_type must be 'cancel' or 'delete'"]);
+            break;
+        }
+        if (getOpenTenantClosureRequest($pdo, $subTenantId)) {
+            http_response_code(409);
+            echo json_encode(['status' => 'error', 'message' => 'A request is already pending for this account. Your account manager has already been notified.']);
+            break;
+        }
+        try {
+            $reason = trim((string)($input['reason'] ?? ''));
+            $requestedByName = $_SESSION['username'] ?? 'Property Owner';
+            $insStmt = $pdo->prepare("INSERT INTO tenant_closure_requests (tenant_id, requested_by, requested_by_name, request_type, reason) VALUES (?, ?, ?, ?, ?)");
+            $insStmt->execute([
+                $subTenantId,
+                $_SESSION['user_id'] ?? null,
+                $requestedByName,
+                $requestType,
+                $reason !== '' ? $reason : null,
+            ]);
+            $newRequest = [
+                'id' => (int)$pdo->lastInsertId(),
+                'tenant_id' => $subTenantId,
+                'requested_by_name' => $requestedByName,
+                'request_type' => $requestType,
+                'reason' => $reason,
+            ];
+            $tNameStmt = $pdo->prepare("SELECT name FROM tenants WHERE id = ? LIMIT 1");
+            $tNameStmt->execute([$subTenantId]);
+            $tenantForNotify = ['name' => $tNameStmt->fetchColumn() ?: null];
+
+            // Notification failing must never fail the request itself - the DB
+            // row is already committed above by the time this runs.
+            try {
+                notifyRootAdminOfClosureRequest($pdo, $newRequest, $tenantForNotify);
+            } catch (Throwable $eNotify) {
+                error_log('notifyRootAdminOfClosureRequest failed: ' . $eNotify->getMessage());
+            }
+
+            echo json_encode(['status' => 'success', 'message' => 'Request received']);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+        break;
+
     // --- THEME SETTINGS ---
     case 'get_theme_settings':
     case 'save_theme_settings':
@@ -3608,10 +3836,726 @@ switch ($action) {
         handleDummyHistory($pdo, $action, $propertyId);
         break;
 
-    case 'list_local_llm_models':
-    case 'local_llm_chat':
-        require_once __DIR__ . '/local_llm.php';
-        handleLocalLLM($action, $propertyId);
+    // --- CHANNEX CHANNEL MANAGER INTEGRATION ---
+    case 'channex_webhook':
+        // This action is deliberately in $public_actions - Channex calls it
+        // unauthenticated, with no session and no CSRF token. That makes the
+        // shared secret the ONLY thing standing between the open internet and
+        // a code path that writes real bookings into the guests table. Without
+        // it, anyone who learns the URL can inject phantom reservations onto
+        // real rooms. The secret is set when registering the webhook (its
+        // `headers` object, see CHANNEX_IMPLEMENTATION.md) and stored beside
+        // the API key in the gitignored channex_config.json.
+        //
+        // Fails CLOSED: if no secret is configured, the endpoint refuses
+        // everything rather than silently accepting anonymous writes. An
+        // unconfigured integration should be inert, not open.
+        $channexCfgPath = __DIR__ . '/../config/channex_config.json';
+        $channexCfg = is_file($channexCfgPath)
+            ? (json_decode(file_get_contents($channexCfgPath), true) ?: [])
+            : [];
+        $expectedSecret = (string)($channexCfg['webhook_secret'] ?? '');
+        $providedSecret = (string)($_SERVER['HTTP_X_CHANNEX_WEBHOOK_SECRET'] ?? '');
+
+        if ($expectedSecret === '' || !hash_equals($expectedSecret, $providedSecret)) {
+            http_response_code(401);
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            if (class_exists('TelescopeLogger')) {
+                // Worth surfacing: a rejected call is either a misconfigured
+                // secret or someone probing the endpoint, and both need a human.
+                TelescopeLogger::log('security', 'WARNING',
+                    'Channex webhook rejected: ' . ($expectedSecret === '' ? 'no secret configured' : 'bad secret'),
+                    'channex_webhook', ['ip' => $_SERVER['REMOTE_ADDR'] ?? '?']);
+            }
+            break;
+        }
+
+        if (is_file(__DIR__ . '/../channex/webhook_receiver.php')) {
+            require_once __DIR__ . '/../channex/webhook_receiver.php';
+        }
+        if (!class_exists('ChannexWebhookReceiver')) {
+            http_response_code(503);
+            echo json_encode(['status' => 'error', 'message' => 'Channex webhook receiver not installed']);
+            break;
+        }
+        $rawInput = file_get_contents('php://input');
+        $payload = json_decode($rawInput, true) ?: [];
+
+        // Answer Channex before doing the work. Their retry timer is measured in
+        // seconds, and the HTTP 200 only means "received" - the ACK sent later,
+        // after the DB commits, is the real "processed" signal. Flushing here
+        // stops a slow booking insert from triggering duplicate deliveries.
+        ignore_user_abort(true);
+        set_time_limit(60);
+
+        http_response_code(200);
+        echo json_encode(['status' => 'success', 'received' => true]);
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        } else {
+            @ob_end_flush();
+            @flush();
+        }
+
+        try {
+            $receiver = new ChannexWebhookReceiver($pdo);
+            $receiver->handleWebhook($payload);
+        } catch (Throwable $e) {
+            if (class_exists('TelescopeLogger')) {
+                TelescopeLogger::log('error', 'ERROR', 'Channex webhook background exception: ' . $e->getMessage(), 'channex_webhook');
+            }
+        }
+        break;
+
+    case 'channex_content_sync':
+        if (is_file(__DIR__ . '/../channex/content_sync.php')) {
+            require_once __DIR__ . '/../channex/content_sync.php';
+        }
+        if (!class_exists('ChannexContentSyncer')) {
+            http_response_code(503);
+            echo json_encode(['status' => 'error', 'message' => 'Channex content sync module not installed']);
+            break;
+        }
+        $targetPropertyId = $propertyId ?: (int)($_GET['property_id'] ?? 1);
+        $syncer = new ChannexContentSyncer($pdo);
+        try {
+            $res = $syncer->syncProperty($targetPropertyId);
+            echo json_encode(['status' => 'success', 'data' => $res]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+        break;
+
+    case 'channex_register_webhook':
+        if (is_file(__DIR__ . '/../channex/ChannexAdapter.php')) {
+            require_once __DIR__ . '/../channex/ChannexAdapter.php';
+        }
+        if (!class_exists('ChannexAdapter')) {
+            http_response_code(503);
+            echo json_encode(['status' => 'error', 'message' => 'Channex adapter not installed']);
+            break;
+        }
+        $adapter = new ChannexAdapter($pdo);
+        $callbackUrl = trim((string)($_POST['callback_url'] ?? ($_GET['callback_url'] ?? '')));
+        $channexPropId = trim((string)($_POST['channex_property_id'] ?? ($_GET['channex_property_id'] ?? '')));
+        try {
+            $regRes = $adapter->registerWebhook($callbackUrl ?: null, $channexPropId ?: null);
+            echo json_encode(['status' => 'success', 'data' => $regRes]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+        break;
+
+    // --- Self-serve OTA channel-connection wizard (3 Sep 2026) ---
+    // ChannexChannelClient wraps the Channel API (connect/map/activate an OTA),
+    // a separate surface from ChannexAdapter's ARI-push contract. See
+    // php/channex/channel_connections.php for the two-table state model and
+    // the plan doc's reasoning for why this isn't folded into channex_mappings.
+    case 'channex_channels_available':
+    case 'channex_channel_adapter':
+    case 'channex_channel_connection_status':
+    case 'channex_channel_test_connection':
+    case 'channex_channel_start_airbnb':
+    case 'channex_channel_mapping_details':
+    case 'channex_channel_save_mapping':
+    case 'channex_channel_check_readiness':
+    case 'channex_channel_activate':
+    case 'channex_channel_deactivate':
+    case 'channex_channel_delete':
+    case 'channex_channel_pending_staff_action':
+        if (is_file(__DIR__ . '/../channex/ChannexChannelClient.php')) {
+            require_once __DIR__ . '/../channex/ChannexChannelClient.php';
+        }
+        if (is_file(__DIR__ . '/../channex/channel_connections.php')) {
+            require_once __DIR__ . '/../channex/channel_connections.php';
+        }
+        if (is_file(__DIR__ . '/../channex/content_sync.php')) {
+            require_once __DIR__ . '/../channex/content_sync.php';
+        }
+        if (!class_exists('ChannexChannelClient') || !function_exists('getChannexChannelConnection')) {
+            http_response_code(503);
+            echo json_encode(['status' => 'error', 'message' => 'Channel connection module not installed']);
+            break;
+        }
+
+        $rawInput = file_get_contents('php://input');
+        $input = json_decode($rawInput, true) ?: $_POST;
+        $targetPropertyId = !empty($input['property_id']) ? (int)$input['property_id'] : ($propertyId ?: (int)($_GET['property_id'] ?? 0));
+
+        // Every "meta"-kind channel is attached to THIS local property's own
+        // Channex property UUID - resolved from channex_mappings, which is
+        // keyed by property_id regardless of room_id (every unit of one local
+        // property shares the same channex_property_id, see content_sync.php).
+        // Self-heals the same way ChannexAdapter::pushAvailability() already
+        // does: if the property was never content-synced, sync it now rather
+        // than making the client fail with an opaque "no mapping" error.
+        $resolveChannexPropertyId = function (int $propId) use ($pdo): ?string {
+            $stmt = $pdo->prepare("SELECT channex_property_id FROM channex_mappings WHERE property_id = ? LIMIT 1");
+            $stmt->execute([$propId]);
+            $id = $stmt->fetchColumn();
+            if ($id) return $id;
+            if (class_exists('ChannexContentSyncer')) {
+                try {
+                    (new ChannexContentSyncer($pdo))->syncProperty($propId);
+                } catch (Exception $e) {
+                    return null;
+                }
+            }
+            $stmt->execute([$propId]);
+            $id = $stmt->fetchColumn();
+            return $id ?: null;
+        };
+
+        // $targetPropertyId can differ from the session's own $propertyId (e.g. Root
+        // Admin acting on a specific tenant's property) - $currentProperty is only
+        // ever resolved for the session's property, so re-fetch by name when they
+        // differ rather than mislabeling the Channex channel's display title.
+        if ($targetPropertyId === $propertyId) {
+            $targetPropertyName = $currentProperty['name'] ?? null;
+        } else {
+            $tpStmt = $pdo->prepare("SELECT name FROM properties WHERE id = ?");
+            $tpStmt->execute([$targetPropertyId]);
+            $targetPropertyName = $tpStmt->fetchColumn() ?: null;
+        }
+
+        $channelClient = new ChannexChannelClient();
+
+        switch ($action) {
+            case 'channex_channels_available':
+                $res = $channelClient->listAdapters();
+                if (!$res['success']) {
+                    http_response_code($res['http_code'] ?: 502);
+                    echo json_encode(['status' => 'error', 'message' => 'Failed to load channel list from Channex', 'error' => $res['error'] ?? null]);
+                    break 2;
+                }
+                // Annotate meta (generic dynamic-form) vs Airbnb's ota/staff-assisted path -
+                // the frontend branches step 2 on this rather than hardcoding a channel list.
+                $adapters = array_map(function ($a) {
+                    $a['is_airbnb_oauth'] = (($a['kind'] ?? '') === 'ota');
+                    return $a;
+                }, $res['data'] ?? []);
+                echo json_encode(['status' => 'success', 'data' => $adapters]);
+                break 2;
+
+            case 'channex_channel_adapter':
+                $code = trim((string)($_GET['code'] ?? $input['code'] ?? ''));
+                if ($code === '') {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'code is required']);
+                    break 2;
+                }
+                $res = $channelClient->getAdapter($code);
+                if (!$res['success']) {
+                    http_response_code($res['http_code'] ?: 502);
+                    echo json_encode(['status' => 'error', 'message' => 'Failed to load channel adapter', 'error' => $res['error'] ?? null]);
+                    break 2;
+                }
+                echo json_encode(['status' => 'success', 'data' => $res['data']]);
+                break 2;
+
+            case 'channex_channel_connection_status':
+                if ($targetPropertyId <= 0) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'property_id is required']);
+                    break 2;
+                }
+                $rows = listChannexChannelConnections($pdo, $targetPropertyId);
+                foreach ($rows as &$row) {
+                    if (!empty($row['settings'])) {
+                        $row['settings'] = json_decode($row['settings'], true);
+                    }
+                    if (!empty($row['id'])) {
+                        $row['room_mappings'] = getChannexChannelRoomMappings($pdo, (int)$row['id']);
+                    }
+                }
+                unset($row);
+
+                // Local rooms + their own Channex rate plan id, so the wizard's mapping
+                // step (Step 3) has everything in one payload rather than a second
+                // round trip. SINGLE property: one synthetic "room" (room_id NULL,
+                // named after the property itself). MULTI_KEY: each real child room.
+                $propTypeStmt = $pdo->prepare("SELECT property_type, name FROM properties WHERE id = ?");
+                $propTypeStmt->execute([$targetPropertyId]);
+                $propRow = $propTypeStmt->fetch(PDO::FETCH_ASSOC);
+                $localRooms = [];
+                if ($propRow && $propRow['property_type'] === 'MULTI_KEY') {
+                    $roomsStmt = $pdo->prepare("
+                        SELECT r.id AS local_room_id, r.name, m.channex_rate_plan_id
+                        FROM properties r
+                        LEFT JOIN channex_mappings m ON m.property_id = ? AND m.room_id = r.id
+                        WHERE r.parent_property_id = ? AND r.property_type = 'MULTI_KEY_ROOM' AND r.is_deleted = 0
+                        ORDER BY r.room_order ASC, r.name ASC
+                    ");
+                    $roomsStmt->execute([$targetPropertyId, $targetPropertyId]);
+                    $localRooms = $roomsStmt->fetchAll(PDO::FETCH_ASSOC);
+                } elseif ($propRow) {
+                    $singleStmt = $pdo->prepare("SELECT channex_rate_plan_id FROM channex_mappings WHERE property_id = ? AND room_id IS NULL LIMIT 1");
+                    $singleStmt->execute([$targetPropertyId]);
+                    $localRooms = [[
+                        'local_room_id' => null,
+                        'name' => $propRow['name'],
+                        'channex_rate_plan_id' => $singleStmt->fetchColumn() ?: null,
+                    ]];
+                }
+
+                echo json_encode(['status' => 'success', 'data' => ['connections' => $rows, 'local_rooms' => $localRooms]]);
+                break 2;
+
+            case 'channex_channel_test_connection':
+                $channelCode = trim((string)($input['channel_code'] ?? ''));
+                $settings = is_array($input['settings'] ?? null) ? $input['settings'] : [];
+                if ($targetPropertyId <= 0 || $channelCode === '') {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'property_id and channel_code are required']);
+                    break 2;
+                }
+                upsertChannexChannelConnection($pdo, $targetPropertyId, $channelCode, [
+                    'status' => 'pending_test',
+                    'settings' => $settings,
+                    'created_by_user_id' => $_SESSION['user_id'] ?? null,
+                ]);
+                $res = $channelClient->testConnection($channelCode, $settings);
+                $testSuccess = $res['success'] && !empty($res['data']['success']);
+                $testErrors = $res['data']['errors'] ?? ($res['error'] ?? null);
+                upsertChannexChannelConnection($pdo, $targetPropertyId, $channelCode, [
+                    'status' => $testSuccess ? 'mapping' : 'error',
+                    'last_error' => $testSuccess ? null : json_encode($testErrors),
+                ]);
+                echo json_encode([
+                    'status' => 'success',
+                    'data' => ['test_success' => $testSuccess, 'errors' => $testErrors],
+                ]);
+                break 2;
+
+            case 'channex_channel_start_airbnb':
+                // Airbnb has no API-level OAuth initiation (confirmed against Channex's own
+                // docs 3 Sep 2026 - connecting it is a human clicking "Connect to Airbnb" on
+                // Channex's OWN dashboard). This creates the inactive channel shell
+                // server-side and hands off to staff, who complete the OAuth click in
+                // Channex's dashboard on the client's behalf - a client never gets direct
+                // access to the shared Channex dashboard.
+                if ($targetPropertyId <= 0) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'property_id is required']);
+                    break 2;
+                }
+                $channexPropId = $resolveChannexPropertyId($targetPropertyId);
+                if (!$channexPropId) {
+                    http_response_code(422);
+                    echo json_encode(['status' => 'error', 'message' => 'Could not sync this property with Channex - check the Channex configuration and try again.']);
+                    break 2;
+                }
+                $groupId = $channelClient->resolveGroupIdForProperty($channexPropId);
+                if (!$groupId) {
+                    http_response_code(422);
+                    echo json_encode(['status' => 'error', 'message' => 'No Channex group has access to this property - contact support.']);
+                    break 2;
+                }
+                $listingNote = trim((string)($input['listing_note'] ?? ''));
+                $createRes = $channelClient->createChannel('AirBNB', $groupId, [$channexPropId], [], [], $targetPropertyName);
+                if (!$createRes['success'] || empty($createRes['data']['id'])) {
+                    upsertChannexChannelConnection($pdo, $targetPropertyId, 'AirBNB', [
+                        'status' => 'error',
+                        'last_error' => json_encode($createRes['error'] ?? 'Failed to create Airbnb channel'),
+                    ]);
+                    http_response_code($createRes['http_code'] ?: 502);
+                    echo json_encode(['status' => 'error', 'message' => 'Failed to start the Airbnb connection request', 'error' => $createRes['error'] ?? null]);
+                    break 2;
+                }
+                upsertChannexChannelConnection($pdo, $targetPropertyId, 'AirBNB', [
+                    'channex_channel_id' => $createRes['data']['id'],
+                    'channex_group_id' => $groupId,
+                    'status' => 'staff_action_required',
+                    'settings' => ['listing_note' => $listingNote],
+                    'last_error' => null,
+                    'created_by_user_id' => $_SESSION['user_id'] ?? null,
+                ]);
+                echo json_encode([
+                    'status' => 'success',
+                    'data' => ['channex_channel_id' => $createRes['data']['id'], 'connection_status' => 'staff_action_required'],
+                ]);
+                break 2;
+
+            case 'channex_channel_mapping_details':
+                $channelCode = trim((string)($input['channel_code'] ?? $_GET['channel_code'] ?? ''));
+                $conn = $targetPropertyId > 0 && $channelCode !== '' ? getChannexChannelConnection($pdo, $targetPropertyId, $channelCode) : null;
+                if (!$conn || empty($conn['settings'])) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'Test the connection before requesting mapping details']);
+                    break 2;
+                }
+                $res = $channelClient->getMappingDetails($channelCode, json_decode($conn['settings'], true) ?: []);
+                if (!$res['success']) {
+                    http_response_code($res['http_code'] ?: 502);
+                    echo json_encode(['status' => 'error', 'message' => 'Failed to load mapping details from Channex', 'error' => $res['error'] ?? null]);
+                    break 2;
+                }
+                echo json_encode(['status' => 'success', 'data' => $res['data']]);
+                break 2;
+
+            case 'channex_channel_save_mapping':
+                // $rooms: [{local_room_id, external_room_code, external_rate_code}, ...] -
+                // local_room_id omitted/null for a SINGLE property's one unit.
+                $channelCode = trim((string)($input['channel_code'] ?? ''));
+                $rooms = is_array($input['rooms'] ?? null) ? $input['rooms'] : [];
+                $conn = $targetPropertyId > 0 && $channelCode !== '' ? getChannexChannelConnection($pdo, $targetPropertyId, $channelCode) : null;
+                if (!$conn || empty($conn['settings']) || empty($rooms)) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'channel_code, a tested connection, and at least one room mapping are required']);
+                    break 2;
+                }
+                $channexPropId = $resolveChannexPropertyId($targetPropertyId);
+                if (!$channexPropId) {
+                    http_response_code(422);
+                    echo json_encode(['status' => 'error', 'message' => 'Property is not synced with Channex']);
+                    break 2;
+                }
+
+                // Resolve each room's OWN channex_rate_plan_id (channex_mappings is
+                // per-room for a MULTI_KEY property, one shared row for SINGLE) and
+                // build the rate_plans array the Channel API expects - room_type_code/
+                // rate_plan_code MUST be integers (verified gotcha: a string silently
+                // lands the mapping under "removed rates" instead of erroring).
+                $ratePlansPayload = [];
+                $localRows = [];
+                foreach ($rooms as $r) {
+                    $localRoomId = !empty($r['local_room_id']) ? (int)$r['local_room_id'] : null;
+                    $mapStmt = $pdo->prepare("SELECT channex_rate_plan_id FROM channex_mappings WHERE property_id = ? AND (room_id = ? OR (room_id IS NULL AND ? IS NULL)) LIMIT 1");
+                    $mapStmt->execute([$targetPropertyId, $localRoomId, $localRoomId]);
+                    $ratePlanId = $mapStmt->fetchColumn();
+                    if (!$ratePlanId) continue; // this room was never content-synced - skip, don't fatal the whole save
+
+                    $ratePlansPayload[] = [
+                        'rate_plan_id' => $ratePlanId,
+                        'settings' => [
+                            'room_type_code' => (int)$r['external_room_code'],
+                            'rate_plan_code' => (int)$r['external_rate_code'],
+                            'occupancy' => 2,
+                            'pricing_type' => 'OBP',
+                            'primary_occ' => true,
+                            'readonly' => false,
+                        ],
+                    ];
+                    $localRows[] = [
+                        'local_room_id' => $localRoomId,
+                        'channex_rate_plan_id' => $ratePlanId,
+                        'external_room_code' => (string)$r['external_room_code'],
+                        'external_rate_code' => (string)$r['external_rate_code'],
+                    ];
+                }
+                if (empty($ratePlansPayload)) {
+                    http_response_code(422);
+                    echo json_encode(['status' => 'error', 'message' => 'None of the submitted rooms have a Channex rate plan yet - sync property content first']);
+                    break 2;
+                }
+
+                $settings = json_decode($conn['settings'], true) ?: [];
+                if (empty($conn['channex_channel_id'])) {
+                    $groupId = $conn['channex_group_id'] ?: $channelClient->resolveGroupIdForProperty($channexPropId);
+                    if (!$groupId) {
+                        http_response_code(422);
+                        echo json_encode(['status' => 'error', 'message' => 'No Channex group has access to this property']);
+                        break 2;
+                    }
+                    $createRes = $channelClient->createChannel($channelCode, $groupId, [$channexPropId], $settings, $ratePlansPayload, $targetPropertyName);
+                    if (!$createRes['success'] || empty($createRes['data']['id'])) {
+                        upsertChannexChannelConnection($pdo, $targetPropertyId, $channelCode, ['status' => 'error', 'last_error' => json_encode($createRes['error'] ?? 'Failed to create channel')]);
+                        http_response_code($createRes['http_code'] ?: 502);
+                        echo json_encode(['status' => 'error', 'message' => 'Failed to save the channel mapping', 'error' => $createRes['error'] ?? null]);
+                        break 2;
+                    }
+                    $channelId = $createRes['data']['id'];
+                    upsertChannexChannelConnection($pdo, $targetPropertyId, $channelCode, [
+                        'channex_channel_id' => $channelId,
+                        'channex_group_id' => $groupId,
+                        'status' => 'ready_to_activate',
+                        'last_error' => null,
+                    ]);
+                } else {
+                    $channelId = $conn['channex_channel_id'];
+                    $updateRes = $channelClient->updateChannel($channelId, ['rate_plans' => $ratePlansPayload]);
+                    if (!$updateRes['success']) {
+                        http_response_code($updateRes['http_code'] ?: 502);
+                        echo json_encode(['status' => 'error', 'message' => 'Failed to update the channel mapping', 'error' => $updateRes['error'] ?? null]);
+                        break 2;
+                    }
+                    upsertChannexChannelConnection($pdo, $targetPropertyId, $channelCode, ['status' => 'ready_to_activate', 'last_error' => null]);
+                }
+
+                saveChannexChannelRoomMappings($pdo, (int)getChannexChannelConnection($pdo, $targetPropertyId, $channelCode)['id'], $localRows);
+                echo json_encode(['status' => 'success', 'data' => ['channex_channel_id' => $channelId]]);
+                break 2;
+
+            case 'channex_channel_check_readiness':
+                $channelCode = trim((string)($input['channel_code'] ?? $_GET['channel_code'] ?? ''));
+                $conn = $targetPropertyId > 0 && $channelCode !== '' ? getChannexChannelConnection($pdo, $targetPropertyId, $channelCode) : null;
+                if (!$conn || empty($conn['channex_channel_id'])) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'No Channex channel to check yet - complete mapping first']);
+                    break 2;
+                }
+                $res = $channelClient->checkReadiness($conn['channex_channel_id']);
+                echo json_encode(['status' => 'success', 'data' => $res['data'] ?? $res]);
+                break 2;
+
+            case 'channex_channel_activate':
+                $channelCode = trim((string)($input['channel_code'] ?? ''));
+                $confirmedExistingBookings = !empty($input['confirmed_existing_bookings']);
+                $conn = $targetPropertyId > 0 && $channelCode !== '' ? getChannexChannelConnection($pdo, $targetPropertyId, $channelCode) : null;
+                if (!$conn || empty($conn['channex_channel_id'])) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'No Channex channel to activate yet - complete mapping first']);
+                    break 2;
+                }
+                if (!$confirmedExistingBookings) {
+                    http_response_code(422);
+                    echo json_encode(['status' => 'error', 'message' => 'Confirm any existing bookings on this OTA are already entered in Ground Code before going live']);
+                    break 2;
+                }
+
+                // Safety gate 1: Channex's own authoritative readiness check - refuse to
+                // activate with an unmapped room/rate (a guaranteed source of problems
+                // per Channex's docs), don't rely on a hand-rolled completeness check.
+                $readiness = $channelClient->checkReadiness($conn['channex_channel_id']);
+                $problems = $readiness['data'] ?? [];
+                if (!empty($problems)) {
+                    http_response_code(422);
+                    echo json_encode(['status' => 'error', 'message' => 'Not ready to activate - resolve these first', 'data' => ['problems' => $problems]]);
+                    break 2;
+                }
+
+                // Safety gate 2: push fresh ARI before the OTA can see the listing -
+                // activating with stale/incomplete availability is how a property gets
+                // double-booked on day one. Same enqueue+immediate-drain path
+                // channex_push_ari already uses.
+                if (is_file(__DIR__ . '/../channex/ari_drain_worker.php')) {
+                    require_once __DIR__ . '/../channex/ari_drain_worker.php';
+                }
+                if (function_exists('enqueueOutboxItem') && class_exists('AriDrainWorker')) {
+                    $dFrom = date('Y-m-d');
+                    $dTo = date('Y-m-d', strtotime('+500 days'));
+                    enqueueOutboxItem($pdo, $targetPropertyId, null, 'availability', $dFrom, $dTo, ['action' => 'pre_activate_channel_push']);
+                    $preActivateAvailId = (int)$pdo->lastInsertId();
+                    enqueueOutboxItem($pdo, $targetPropertyId, null, 'rates', $dFrom, $dTo, ['action' => 'pre_activate_channel_push']);
+                    $preActivateRatesId = (int)$pdo->lastInsertId();
+                    (new AriDrainWorker($pdo))->processBatch(10, [$preActivateAvailId, $preActivateRatesId]);
+                }
+
+                $res = $channelClient->activateChannel($conn['channex_channel_id']);
+                if (!$res['success']) {
+                    http_response_code($res['http_code'] ?: 502);
+                    echo json_encode(['status' => 'error', 'message' => 'Failed to activate the channel', 'error' => $res['error'] ?? null]);
+                    break 2;
+                }
+                upsertChannexChannelConnection($pdo, $targetPropertyId, $channelCode, ['status' => 'active', 'last_error' => null]);
+                echo json_encode(['status' => 'success', 'data' => $res['data'] ?? $res]);
+                break 2;
+
+            case 'channex_channel_deactivate':
+            case 'channex_channel_delete':
+                $channelCode = trim((string)($input['channel_code'] ?? ''));
+                $conn = $targetPropertyId > 0 && $channelCode !== '' ? getChannexChannelConnection($pdo, $targetPropertyId, $channelCode) : null;
+                if (!$conn || empty($conn['channex_channel_id'])) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'No connected channel found']);
+                    break 2;
+                }
+                if ($action === 'channex_channel_deactivate') {
+                    $res = $channelClient->deactivateChannel($conn['channex_channel_id']);
+                    if ($res['success']) {
+                        upsertChannexChannelConnection($pdo, $targetPropertyId, $channelCode, ['status' => 'inactive']);
+                    }
+                } else {
+                    // Channex rejects DELETE on an active channel (422) - deactivate first.
+                    $channelClient->deactivateChannel($conn['channex_channel_id']);
+                    $res = $channelClient->deleteChannel($conn['channex_channel_id']);
+                    if ($res['success']) {
+                        $pdo->prepare("DELETE FROM channex_channel_room_mappings WHERE connection_id = ?")->execute([$conn['id']]);
+                        $pdo->prepare("DELETE FROM channex_channel_connections WHERE id = ?")->execute([$conn['id']]);
+                    }
+                }
+                if (!$res['success']) {
+                    http_response_code($res['http_code'] ?: 502);
+                    echo json_encode(['status' => 'error', 'message' => 'Failed', 'error' => $res['error'] ?? null]);
+                    break 2;
+                }
+                echo json_encode(['status' => 'success']);
+                break 2;
+
+            case 'channex_channel_pending_staff_action':
+                // Admin-side queue (ChannelManager.tsx) - Airbnb connections waiting on
+                // a human to complete the OAuth click in Channex's own dashboard.
+                $rows = listChannexChannelConnectionsByStatus($pdo, 'staff_action_required');
+                echo json_encode(['status' => 'success', 'data' => $rows]);
+                break 2;
+        }
+        break;
+
+    case 'get_channex_status':
+        $targetPropertyId = $propertyId ?: (int)($_GET['property_id'] ?? 1);
+        $channexCfgPath = __DIR__ . '/../config/channex_config.json';
+        $hasConfigFile = is_file($channexCfgPath);
+        $cfg = $hasConfigFile ? (json_decode(file_get_contents($channexCfgPath), true) ?: []) : [];
+        $hasApiKey = !empty($cfg['api_key']);
+        $hasWebhookSecret = !empty($cfg['webhook_secret']);
+        $environment = $cfg['environment'] ?? 'staging';
+
+        // Mappings
+        if (is_file(__DIR__ . '/../channex/content_sync.php')) {
+            require_once __DIR__ . '/../channex/content_sync.php';
+            ensureChannexMappingsSchema($pdo);
+        }
+        $mappingsStmt = $pdo->prepare("
+            SELECT m.id, m.property_id, m.room_id, m.channex_property_id, m.channex_room_type_id, m.channex_rate_plan_id, m.sync_status, m.last_synced_at,
+                   p.name as property_name
+            FROM channex_mappings m
+            LEFT JOIN properties p ON m.property_id = p.id
+            WHERE m.property_id = ?
+            ORDER BY m.id ASC
+        ");
+        $mappingsStmt->execute([$targetPropertyId]);
+        $mappings = $mappingsStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Outbox schema & rows
+        if (is_file(__DIR__ . '/../channex/outbox.php')) {
+            require_once __DIR__ . '/../channex/outbox.php';
+            ensureChannexOutboxSchema($pdo);
+        }
+        $outboxStmt = $pdo->prepare("
+            -- channex_outbox has no updated_at column (see ensureChannexOutboxSchema);
+            -- selecting one made this whole endpoint 500, so the screen never loaded.
+            SELECT id, property_id, room_id, kind, date_from, date_to, status, attempts, task_id, last_error, created_at
+            FROM channex_outbox
+            WHERE property_id = ?
+            ORDER BY id DESC
+            LIMIT 50
+        ");
+        $outboxStmt->execute([$targetPropertyId]);
+        $outboxRows = $outboxStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Status counts
+        $countsStmt = $pdo->prepare("
+            SELECT status, COUNT(*) as count
+            FROM channex_outbox
+            WHERE property_id = ?
+            GROUP BY status
+        ");
+        $countsStmt->execute([$targetPropertyId]);
+        $countsRaw = $countsStmt->fetchAll(PDO::FETCH_KEY_PAIR);
+        $counts = [
+            'pending' => (int)($countsRaw['pending'] ?? 0),
+            'sending' => (int)($countsRaw['sending'] ?? 0),
+            'done'    => (int)($countsRaw['done'] ?? 0),
+            'failed'  => (int)($countsRaw['failed'] ?? 0),
+            'total'   => array_sum($countsRaw),
+        ];
+
+        echo json_encode([
+            'status' => 'success',
+            'data' => [
+                'config' => [
+                    'has_config_file' => $hasConfigFile,
+                    'has_api_key' => $hasApiKey,
+                    'has_webhook_secret' => $hasWebhookSecret,
+                    'environment' => $environment,
+                ],
+                'mappings' => $mappings,
+                'outbox' => $outboxRows,
+                'counts' => $counts,
+            ]
+        ]);
+        break;
+
+    case 'channex_push_ari':
+        if (is_file(__DIR__ . '/../channex/outbox.php')) {
+            require_once __DIR__ . '/../channex/outbox.php';
+        }
+        if (is_file(__DIR__ . '/../channex/ari_drain_worker.php')) {
+            require_once __DIR__ . '/../channex/ari_drain_worker.php';
+        }
+        if (!function_exists('enqueueOutboxItem') || !class_exists('AriDrainWorker')) {
+            http_response_code(503);
+            echo json_encode(['status' => 'error', 'message' => 'Channex ARI push module not installed']);
+            break;
+        }
+        $rawInput = file_get_contents('php://input');
+        $input = json_decode($rawInput, true) ?: $_POST;
+
+        $targetPropertyId = !empty($input['property_id']) ? (int)$input['property_id'] : ($propertyId ?: 1);
+        $dateFrom = trim((string)($input['date_from'] ?? date('Y-m-d')));
+        $dateTo = trim((string)($input['date_to'] ?? date('Y-m-d', strtotime('+500 days'))));
+        $roomId = !empty($input['room_id']) ? (int)$input['room_id'] : null;
+
+        // Enqueue EXACTLY one availability and EXACTLY one rates row spanning the range
+        enqueueOutboxItem($pdo, $targetPropertyId, $roomId, 'availability', $dateFrom, $dateTo, [
+            'action' => 'manual_push_ari',
+            'date_from' => $dateFrom,
+            'date_to' => $dateTo,
+        ]);
+        $availOutboxId = (int)$pdo->lastInsertId();
+
+        enqueueOutboxItem($pdo, $targetPropertyId, $roomId, 'rates', $dateFrom, $dateTo, [
+            'action' => 'manual_push_ari',
+            'date_from' => $dateFrom,
+            'date_to' => $dateTo,
+        ]);
+        $ratesOutboxId = (int)$pdo->lastInsertId();
+
+        // Drain outbox immediately scoped strictly to the two enqueued rows (Scenario 1 guarantee)
+        $worker = new AriDrainWorker($pdo);
+        $drainRes = $worker->processBatch(10, [$availOutboxId, $ratesOutboxId]);
+
+        // Collect task IDs for the rows we just enqueued
+        $tasksStmt = $pdo->prepare("SELECT id, kind, status, task_id, last_error FROM channex_outbox WHERE id IN (?, ?)");
+        $tasksStmt->execute([$availOutboxId, $ratesOutboxId]);
+        $taskRows = $tasksStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        echo json_encode([
+            'status' => 'success',
+            'data' => [
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+                'enqueued_rows' => [$availOutboxId, $ratesOutboxId],
+                'task_rows' => $taskRows,
+                'drain_result' => $drainRes,
+            ]
+        ]);
+        break;
+
+    case 'channex_retry_outbox':
+        if (is_file(__DIR__ . '/../channex/ari_drain_worker.php')) {
+            require_once __DIR__ . '/../channex/ari_drain_worker.php';
+        }
+        if (!class_exists('AriDrainWorker')) {
+            http_response_code(503);
+            echo json_encode(['status' => 'error', 'message' => 'Channex outbox worker not installed']);
+            break;
+        }
+        $rawInput = file_get_contents('php://input');
+        $input = json_decode($rawInput, true) ?: $_POST;
+        $rowId = (int)($input['id'] ?? 0);
+        if ($rowId > 0) {
+            $pdo->prepare("UPDATE channex_outbox SET status = 'pending', attempts = 0, last_error = NULL WHERE id = ?")->execute([$rowId]);
+        }
+        $worker = new AriDrainWorker($pdo);
+        $drainRes = $worker->processBatch(10, $rowId > 0 ? [$rowId] : null);
+        echo json_encode(['status' => 'success', 'data' => $drainRes]);
+        break;
+
+    case 'channex_outbox_drain':
+        if (is_file(__DIR__ . '/../channex/ari_drain_worker.php')) {
+            require_once __DIR__ . '/../channex/ari_drain_worker.php';
+        }
+        if (!class_exists('AriDrainWorker')) {
+            http_response_code(503);
+            echo json_encode(['status' => 'error', 'message' => 'Channex outbox worker not installed']);
+            break;
+        }
+        $worker = new AriDrainWorker($pdo);
+        $res = $worker->processBatch();
+        echo json_encode(['status' => 'success', 'data' => $res]);
         break;
 
     default:

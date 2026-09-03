@@ -243,6 +243,43 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                 markSchemaVerified('nav_menu_self_heal_v7');
             }
 
+            if (!isSchemaVerified('nav_menu_self_heal_v8')) {
+                try {
+                    $pdo->exec("INSERT IGNORE INTO nav_menu_items
+                        (id, property_id, title, tab_key, unique_key, url_slug, category, icon_name, display_order, roles_json, is_visible, parent_id)
+                        VALUES
+                        ('nav-channel-manager', 1, 'Channel Manager', 'channel_manager', 'channel_manager', 'channel_manager', 'System Controls', 'Globe', 32, '[\"Super Admin\",\"Admin\"]', 1, NULL)");
+                } catch (Exception $e) {}
+                markSchemaVerified('nav_menu_self_heal_v8');
+            }
+
+            // v9 (3 Sep 2026): self-serve OTA channel-connection wizard - a sibling
+            // entry point to Channel Manager above, NOT a button bolted onto that
+            // ops-console screen. Same role list deliberately: confirmed live that a
+            // self-registered trial owner (registerTenantTrial() in
+            // configuration.php) actually gets role 'Admin', so this is genuinely
+            // reachable by the property owner already, not copied from an
+            // admin-only gate that happens to exclude them.
+            if (!isSchemaVerified('nav_menu_self_heal_v9')) {
+                try {
+                    $pdo->exec("INSERT IGNORE INTO nav_menu_items
+                        (id, property_id, title, tab_key, unique_key, url_slug, category, icon_name, display_order, roles_json, is_visible, parent_id)
+                        VALUES
+                        ('nav-connect-channels', 1, 'Connect Channels', 'connect_channels', 'connect_channels', 'connect_channels', 'System Controls', 'Share2', 33, '[\"Super Admin\",\"Admin\"]', 1, NULL)");
+                } catch (Exception $e) {}
+                markSchemaVerified('nav_menu_self_heal_v9');
+            }
+
+            if (!isSchemaVerified('nav_menu_self_heal_v10')) {
+                try {
+                    $pdo->exec("INSERT IGNORE INTO nav_menu_items
+                        (id, property_id, title, tab_key, unique_key, url_slug, category, icon_name, display_order, roles_json, is_visible, parent_id)
+                        VALUES
+                        ('nav-subscription', 1, 'Subscription', 'subscription', 'subscription', 'subscription', 'System Controls', 'CreditCard', 34, '[\"Super Admin\",\"Admin\"]', 1, NULL)");
+                } catch (Exception $e) {}
+                markSchemaVerified('nav_menu_self_heal_v10');
+            }
+
             if (!isSchemaVerified('nav_menu_self_heal_v2')) {
             try {
 

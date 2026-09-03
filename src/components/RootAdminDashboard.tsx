@@ -575,7 +575,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
             className="w-full flex items-center gap-3 p-2.5 text-xs font-semibold rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/50 transition-all cursor-pointer shadow-2xs"
           >
             <LogOut className="w-4 h-4 text-red-500" />
-            <span>{t('sign_out_terminal_button', 'Sign Out Terminal')}</span>
+            <span>{t('sign_out_terminal_button', 'Sign Out')}</span>
           </button>
         </div>
       </Sidebar>

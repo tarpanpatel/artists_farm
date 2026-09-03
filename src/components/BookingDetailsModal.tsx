@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2, Share2, LogOut, Upload, CreditCard, Globe, AlertTriangle, X, ScanLine } from './icons/FlowbiteIcons';
 import { Drawer as FlowbiteDrawer, DrawerItems, Checkbox, Modal } from 'flowbite-react';
 import { Badge } from './Badge';
@@ -16,14 +16,18 @@ import { FileInput } from './FileInput';
 import { Textarea } from './Textarea';
 import { DateRangePicker } from './DateRangePicker';
 import { CheckinVerificationModal } from './CheckinVerificationModal';
+import { MessageQrPreview } from './MessageQrPreview';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
 import { shareTextContent } from '../utils/shareText';
+import { parseDateToYMD, formatDateDDMMYYYY } from '../utils/dateUtils';
 import { t } from '../i18n/en';
 import {
   GUEST_STATUS_BOOKED,
   GUEST_STATUS_CONFIRMED_LEGACY,
   GUEST_STATUS_CHECKED_IN,
   GUEST_STATUS_ACTIVE_LEGACY,
+  GUEST_STATUS_CHECKED_OUT,
+  GUEST_STATUS_CHECKEDOUT_LEGACY,
 } from '../constants/guestStatus';
 
 interface BookingDetailsModalProps {
@@ -65,15 +69,10 @@ interface BookingDetailsModalProps {
   // ID upload flow directly, since that one's just opening a place to
   // upload - not a mutation - so there's no equivalent safety concern.
   initialFocusSection?: 'c_form' | 'checkin' | 'id_verification' | null;
+  isMultiKeyProperty?: boolean;
 }
 
-const formatDate = (dateStr: string) => {
-  if (!dateStr) return '';
-  const dateOnly = dateStr.split(' ')[0];
-  const parts = dateOnly.split('-');
-  if (parts.length !== 3) return dateStr;
-  return `${parts[2]}/${parts[1]}/${parts[0]}`;
-};
+const formatDate = formatDateDDMMYYYY;
 
 /**
  * The one booking modal every calendar/list in the app should use - opens
@@ -108,6 +107,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   onCheckedIn,
   onCheckout,
   initialFocusSection = null,
+  isMultiKeyProperty,
 }) => {
   const { staff } = useStaff();
   const { showToast } = useToast();
@@ -123,6 +123,42 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const isStaffKitchenRole = normalizedActiveRole === 'staff kitchen';
   const canActOnBooking = !isStaffKitchenRole;
   const canCheckoutBooking = !isStaffKitchenRole && normalizedActiveRole !== 'staff';
+
+  // A booking is past once it's already checked out/cancelled, or its
+  // checkout date has slipped behind today - same classification
+  // BillingCheckout's own getGuestDetailedStatus uses for the Past tab, kept
+  // in sync here so "shows under Past" and "can't be edited" never disagree.
+  // Added 1 Sep 2026 after a real booking's dates got corrupted to
+  // '0000-00-00' via Edit -> Clear -> Save with no guard: a completed stay
+  // has no legitimate reason to have its dates/room/rent rewritten after the
+  // fact, and every edit path here (the Edit toggle AND handleSave itself)
+  // needs to agree on that, not just the entry-point button.
+  const isPastBooking = (() => {
+    const statusStr = String(guest?.status || '');
+    if (statusStr === GUEST_STATUS_CHECKED_OUT || statusStr === GUEST_STATUS_CHECKEDOUT_LEGACY || statusStr === 'Cancelled') {
+      return true;
+    }
+    const checkoutRaw = guest?.expectedCheckout || (guest as any)?.checkoutDate || '';
+    const checkout = String(checkoutRaw).split(' ')[0].split('T')[0];
+    if (!checkout) return false;
+    const todayStr = new Date().toISOString().split('T')[0];
+    return checkout < todayStr;
+  })();
+
+  // Check-in is pending/due only when the guest is in Booked status AND their
+  // check-in date is today or in the past (an Upcoming booking with a future
+  // check-in date is NOT pending check-in yet).
+  const isCheckinDue = (() => {
+    const statusStr = String(guest?.status || '');
+    if (statusStr !== GUEST_STATUS_BOOKED && statusStr !== GUEST_STATUS_CONFIRMED_LEGACY) {
+      return false;
+    }
+    const checkinRaw = guest?.checkinDate || '';
+    const checkin = String(checkinRaw).split(' ')[0].split('T')[0];
+    if (!checkin) return false;
+    const todayStr = new Date().toISOString().split('T')[0];
+    return checkin <= todayStr;
+  })();
 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -203,37 +239,104 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const cFormSectionRef = useRef<HTMLDivElement>(null);
   const checkinBannerRef = useRef<HTMLDivElement>(null);
 
+  // Pulls every edit* field back from the guest's real saved data - shared
+  // by the mount/guest-change effect below AND by Cancel/Close (see there):
+  // without this second use, clearing the Booking Dates picker then hitting
+  // Cancel used to leave editCheckin/editCheckout latched onto the blanked
+  // value (setIsEditing(false) alone never touched them), which the very
+  // next Save - now with no guard on empty dates either - happily persisted
+  // as a blank checkin/checkout straight to the DB (MySQL then substitutes
+  // its own zero-date default, '0000-00-00'). Re-running this same sync is
+  // what makes "clear, then back out without picking new dates" actually
+  // restore the original booking instead of corrupting it.
+  const syncEditFieldsFromGuest = (source: typeof guest) => {
+    if (!source) return;
+    const g = source as any;
+    const noGuests = g.no_of_guests ?? g.numberOfGuests ?? 1;
+    const rent = g.base_room_rent ?? g.roomRate ?? 0;
+    const adv = g.advance_paid ?? g.advanceAmount ?? 0;
+
+    setEditName(source.guestName || '');
+    setEditPhone(source.phoneNumber || '');
+    setEditRoomId(String(g.roomId ?? g.room_id ?? ''));
+    setEditGuests(String(noGuests));
+    setEditCheckin(source.checkinDate?.split(' ')[0] || '');
+    setEditCheckout(source.expectedCheckout?.split(' ')[0] || source.checkoutDate?.split(' ')[0] || '');
+    setEditRoomRent(String(rent));
+    setEditAdvance(String(adv));
+    setEditAdvanceReceivedBy(g.advance_received_by || source.advanceReceivedBy || '');
+    setEditPendingReceivedBy(g.pending_received_by || source.pendingReceivedBy || '');
+    setEditBookingSource(source.bookingSource || 'Offline');
+    setEditNotes(source.notes || '');
+    setEditShowNotes(!!source.notes);
+    setEditIsForeignGuest(!!source.isForeignGuest);
+
+    const isFiled = !!(source.cFormFiledAt || g.c_form_filed_at || g.c_form_filed || g.cFormFiled);
+    setCFormFiledState(isFiled);
+    setCFormNumberState(g.c_form_number || g.cFormNumber || '');
+    // Section starts open if already genuinely filed (so a returning look
+    // at an already-filed guest still shows the saved number/document
+    // without an extra click) - otherwise closed until the banner/
+    // checkbox/initialFocusSection opens it.
+    setCFormSectionOpen(isFiled);
+  };
+
+  const isDirty = useMemo(() => {
+    if (!guest) return false;
+    const g = guest as any;
+    const origNoGuests = String(g.no_of_guests ?? g.numberOfGuests ?? 1);
+    const origRent = String(g.base_room_rent ?? g.roomRate ?? 0);
+    const origAdv = String(g.advance_paid ?? g.advanceAmount ?? 0);
+    const origCheckin = guest.checkinDate?.split(' ')[0] || '';
+    const origCheckout = guest.expectedCheckout?.split(' ')[0] || guest.checkoutDate?.split(' ')[0] || '';
+    const origRoomId = String(g.roomId ?? g.room_id ?? '');
+    const origAdvanceReceivedBy = g.advance_received_by || guest.advanceReceivedBy || '';
+    const origPendingReceivedBy = g.pending_received_by || guest.pendingReceivedBy || '';
+    const origSource = guest.bookingSource || 'Offline';
+    const origNotes = guest.notes || '';
+    const origForeign = !!guest.isForeignGuest;
+    const origCFormFiled = !!(guest.cFormFiledAt || g.c_form_filed_at || g.c_form_filed || g.cFormFiled);
+    const origCFormNum = g.c_form_number || g.cFormNumber || '';
+
+    return (
+      editName.trim() !== (guest.guestName || '').trim() ||
+      editPhone.trim() !== (guest.phoneNumber || '').trim() ||
+      editRoomId !== origRoomId ||
+      editGuests !== origNoGuests ||
+      editCheckin !== origCheckin ||
+      editCheckout !== origCheckout ||
+      editRoomRent !== origRent ||
+      editAdvance !== origAdv ||
+      editAdvanceReceivedBy !== origAdvanceReceivedBy ||
+      editPendingReceivedBy !== origPendingReceivedBy ||
+      editBookingSource !== origSource ||
+      editNotes.trim() !== origNotes.trim() ||
+      editIsForeignGuest !== origForeign ||
+      cFormFiledState !== origCFormFiled ||
+      cFormNumberState.trim() !== origCFormNum.trim()
+    );
+  }, [
+    guest,
+    editName,
+    editPhone,
+    editRoomId,
+    editGuests,
+    editCheckin,
+    editCheckout,
+    editRoomRent,
+    editAdvance,
+    editAdvanceReceivedBy,
+    editPendingReceivedBy,
+    editBookingSource,
+    editNotes,
+    editIsForeignGuest,
+    cFormFiledState,
+    cFormNumberState,
+  ]);
+
   useEffect(() => {
-    if (guest) {
-      const g = guest as any;
-      const noGuests = g.no_of_guests ?? g.numberOfGuests ?? 1;
-      const rent = g.base_room_rent ?? g.roomRate ?? 0;
-      const adv = g.advance_paid ?? g.advanceAmount ?? 0;
-
-      setEditName(guest.guestName || '');
-      setEditPhone(guest.phoneNumber || '');
-      setEditRoomId(String(g.roomId ?? g.room_id ?? ''));
-      setEditGuests(String(noGuests));
-      setEditCheckin(guest.checkinDate?.split(' ')[0] || '');
-      setEditCheckout(guest.expectedCheckout?.split(' ')[0] || guest.checkoutDate?.split(' ')[0] || '');
-      setEditRoomRent(String(rent));
-      setEditAdvance(String(adv));
-      setEditAdvanceReceivedBy(g.advance_received_by || guest.advanceReceivedBy || '');
-      setEditPendingReceivedBy(g.pending_received_by || guest.pendingReceivedBy || '');
-      setEditBookingSource(guest.bookingSource || 'Offline');
-      setEditNotes(guest.notes || '');
-      setEditShowNotes(!!guest.notes);
-      setEditIsForeignGuest(!!guest.isForeignGuest);
-
-      const isFiled = !!(guest.cFormFiledAt || g.c_form_filed_at || g.c_form_filed || g.cFormFiled);
-      setCFormFiledState(isFiled);
-      setCFormNumberState(g.c_form_number || g.cFormNumber || '');
-      // Section starts open if already genuinely filed (so a returning look
-      // at an already-filed guest still shows the saved number/document
-      // without an extra click) - otherwise closed until the banner/
-      // checkbox/initialFocusSection opens it.
-      setCFormSectionOpen(isFiled);
-    }
+    syncEditFieldsFromGuest(guest);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [guest]);
 
   // External "take me to X" entry point (24 Aug 2026) - see initialFocusSection's
@@ -329,30 +432,52 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const getEditBlockedDateStrings = (): string[] => {
     const blocked: string[] = [];
     const selectedRoomId = editRoomId ? parseInt(editRoomId, 10) : undefined;
+    const isMultiKey = isMultiKeyProperty ?? (rooms && rooms.length > 1);
 
-    checkedInGuests
+    // 1. External OTA (iCal-synced) blocked dates - removed 3 Sep 2026,
+    // iCal sync retired app-wide (was already gated off since 1 Sep behind
+    // ICAL_BLOCKING_ENABLED, and icalBlockedDates is now permanently empty
+    // regardless - see GuestManagement.tsx, its only source).
+
+    // 2. Existing guest bookings for the currently selected room.
+    (checkedInGuests || [])
       .filter((other) => other.id !== guest.id)
       .filter((other) => {
-        const otherRoomId = (other as any).roomId ?? (other as any).room_id;
-        if (selectedRoomId != null && otherRoomId != null) {
-          return Number(otherRoomId) === Number(selectedRoomId);
+        if ((other.status as string) === GUEST_STATUS_CHECKED_OUT || (other.status as string) === GUEST_STATUS_CHECKEDOUT_LEGACY || (other.status as string) === 'Cancelled') {
+          return false;
         }
-        // Single-property fallback (no Assigned Room dropdown rendered at
-        // all when rooms.length === 0) - match by room name instead.
-        return !!guest.roomNumber && !!other.roomNumber
-          && other.roomNumber.toLowerCase().trim() === guest.roomNumber.toLowerCase().trim();
+
+        // On a single-unit property (where isMultiKey is false), ALL active bookings block dates for this property!
+        if (!isMultiKey) return true;
+
+        const otherRoomId = (other as any).roomId ?? (other as any).room_id;
+        if (selectedRoomId != null && otherRoomId != null && Number(otherRoomId) === Number(selectedRoomId)) {
+          return true;
+        }
+
+        const selectedRoomObj = rooms.find((r) => String(r.id) === editRoomId);
+        const targetRoom = selectedRoomObj?.name || guest.roomNumber;
+        if (targetRoom && targetRoom.toLowerCase().trim() !== 'unassigned' && other.roomNumber && other.roomNumber.toLowerCase().trim() === targetRoom.toLowerCase().trim()) {
+          return true;
+        }
+
+        // If the booking's room is unassigned on a multi-key property, block dates for other bookings on default/unassigned
+        if (!selectedRoomId && (!targetRoom || targetRoom.toLowerCase().trim() === 'unassigned')) {
+          return true;
+        }
+
+        return false;
       })
       .forEach((other) => {
-        const checkinStr = (other.checkinDate || '').split(' ')[0].split('T')[0];
-        const checkoutStr = (other.expectedCheckout || other.checkoutDate || other.checkinDate || '').split(' ')[0].split('T')[0];
-        if (!checkinStr) return;
+        const startYmd = parseDateToYMD(other.checkinDate || '');
+        const endYmd = parseDateToYMD(other.expectedCheckout || other.checkoutDate || other.checkinDate || '');
+        if (!startYmd) return;
 
-        const [sy, sm, sd] = checkinStr.split('-').map(Number);
-        const [ey, em, ed] = (checkoutStr || checkinStr).split('-').map(Number);
-        if (!sy || !sm || !sd) return;
+        const [sy, sm, sd] = startYmd;
+        const [ey, em, ed] = endYmd || startYmd;
 
         const start = new Date(sy, sm - 1, sd, 12, 0, 0);
-        const end = ey && em && ed ? new Date(ey, em - 1, ed, 12, 0, 0) : new Date(start);
+        const end = new Date(ey, em - 1, ed, 12, 0, 0);
 
         const current = new Date(start);
         while (current < end) {
@@ -373,6 +498,15 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   };
 
   const handleSave = async () => {
+    // Defense in depth alongside the Save button's own disabled state above -
+    // a cleared-but-unsaved date range must never reach the backend. Without
+    // this, MySQL silently substitutes '0000-00-00' for an empty date string,
+    // which is exactly how a real booking ended up permanently showing
+    // 00/00/0000 (found live, 1 Sep 2026).
+    if (!editCheckin || !editCheckout) {
+      showToast('Pick both check-in and check-out dates before saving.', { type: 'error' });
+      return;
+    }
     const newRoom = rooms.find((r) => String(r.id) === editRoomId);
     const newRoomRent = parseFloat(editRoomRent) || 0;
     const newAdvance = parseFloat(editAdvance) || 0;
@@ -386,8 +520,12 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         ...(rooms.length > 0
           ? { roomId: editRoomId ? parseInt(editRoomId, 10) : undefined, room_id: editRoomId ? parseInt(editRoomId, 10) : undefined, roomNumber: newRoom?.name || guest.roomNumber }
           : {}),
-        checkinDate: editCheckin,
-        expectedCheckout: editCheckout,
+        // Past bookings keep their original dates no matter what editCheckin/
+        // editCheckout currently hold - the picker above is disabled for
+        // them, but this is the actual enforcement point (the same defense-
+        // in-depth reasoning as the blank-date guard just above).
+        checkinDate: isPastBooking ? guest.checkinDate : editCheckin,
+        expectedCheckout: isPastBooking ? guest.expectedCheckout : editCheckout,
         numberOfGuests: parseInt(editGuests, 10) || 1,
         no_of_guests: parseInt(editGuests, 10) || 1,
         roomRate: newRoomRent,
@@ -530,13 +668,16 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     <>
       <FlowbiteDrawer
         open={Boolean(guest)}
-        onClose={() => { onClose(); setIsEditing(false); }}
+        onClose={() => { syncEditFieldsFromGuest(guest); onClose(); setIsEditing(false); }}
         position="right"
         className="z-60 w-full sm:max-w-lg md:max-w-xl h-full bg-white dark:bg-gray-800 p-0 flex flex-col shadow-2xl transition-transform border-l border-gray-200 dark:border-gray-700"
       >
         <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 dark:border-gray-700 shrink-0 bg-white dark:bg-gray-800">
           <h2 className="booking-details-modal__title text-base sm:text-lg font-semibold text-slate-900 dark:text-white flex flex-wrap items-center gap-2 pr-2">
             <span>{isEditing ? t('edit_booking_header', 'Edit Booking') : t('today_booking_details_heading', 'Booking Details')}</span>
+            <span className="inline-flex items-center px-1.5 py-0.5 text-xs font-semibold rounded bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
+              #{guest.id}
+            </span>
             {guest.otaSource && (
               // Click-triggered Popover (24 Aug 2026) - see BillingCheckout.tsx's
               // matching room-card badge for why (was a hover-only Badge `title`,
@@ -553,11 +694,6 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 content={
                   <div className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-300 leading-relaxed max-w-xs space-y-1.5">
                     <p>{t('ota_converted_badge_tooltip', 'Converted from an OTA calendar sync - editing this only changes this app, not the original platform.')}</p>
-                    <p>
-                      <a href="#ical_sync" className="text-blue-600 dark:text-blue-400 font-semibold underline cursor-pointer">
-                        {t('manage_calendar_sync_link', 'Manage Calendar Sync Settings')}
-                      </a>
-                    </p>
                   </div>
                 }
               >
@@ -588,7 +724,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         </div>
         <DrawerItems id="printableBookingDetailsContent" className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
           {/* Action Banner 0: OTA cancellation drift */}
-          {guest.otaCancelledDetectedAt && !isEditing && (
+          {guest.otaCancelledDetectedAt && (
             <div className="w-full mb-3 px-3.5 py-2.5 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 flex items-center gap-2 shadow-2xs">
               <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
               <span className="text-xs font-semibold text-amber-900 dark:text-amber-200">
@@ -597,16 +733,8 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             </div>
           )}
 
-          {/* Action Banner 0.5: Check-in Pending (added 24 Aug 2026 - reported
-              as "Check in still pending but it's not showing the warning on
-              top". The action itself already existed as a full-width footer
-              button ("Mark Checked In"), but nothing up here where the other
-              warnings live said so - easy to miss on a guest who's still just
-              "Booked", especially scrolled past the ID/C-Form banners below
-              which show regardless of check-in status. Shares
-              handleMarkCheckedIn with that same footer button now, not a
-              second copy of the same logic. */}
-          {canActOnBooking && !isEditing && (guest.status === GUEST_STATUS_BOOKED || (guest.status as string) === GUEST_STATUS_CONFIRMED_LEGACY) && (
+          {/* Action Banner 0.5: Check-in Pending (only if due today or past) */}
+          {canActOnBooking && isCheckinDue && (
             <div
               ref={checkinBannerRef}
               className={`w-full mb-3 px-3.5 py-2.5 rounded-lg border flex items-center justify-between gap-2 shadow-2xs transition-shadow ${
@@ -631,46 +759,44 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           )}
 
           {/* Action Banner 1: Check-in ID Verification */}
-          {!isEditing && (
-            <div
-              data-tour="checkin-folio"
-              className={`booking-details-modal__id-btn w-full mb-3 px-3.5 py-2.5 rounded-lg border flex items-center justify-between gap-2 transition-colors ${
+          <div
+            data-tour="checkin-folio"
+            className={`booking-details-modal__id-btn w-full mb-3 px-3.5 py-2.5 rounded-lg border flex items-center justify-between gap-2 transition-colors ${
+              guest.idVerificationStatus === 'Complete'
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800'
+                : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800'
+            }`}
+          >
+            <span className={`flex items-center gap-2 text-xs font-semibold ${
+              guest.idVerificationStatus === 'Complete'
+                ? 'text-slate-700 dark:text-slate-100'
+                : 'text-rose-900 dark:text-rose-200'
+            }`}>
+              <IdCard className={`w-4 h-4 shrink-0 ${
                 guest.idVerificationStatus === 'Complete'
-                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800'
-                  : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800'
-              }`}
-            >
-              <span className={`flex items-center gap-2 text-xs font-semibold ${
-                guest.idVerificationStatus === 'Complete'
-                  ? 'text-slate-700 dark:text-slate-100'
-                  : 'text-rose-900 dark:text-rose-200'
-              }`}>
-                <IdCard className={`w-4 h-4 shrink-0 ${
+                  ? 'text-emerald-500'
+                  : 'text-rose-600 dark:text-rose-400'
+              }`} />
+              {t('checkin_id_verification_label', 'Check-in ID Verification')}
+            </span>
+            {canActOnBooking && (
+              <button
+                type="button"
+                onClick={handleOpenId}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs flex items-center gap-1.5 shrink-0 ${
                   guest.idVerificationStatus === 'Complete'
-                    ? 'text-emerald-500'
-                    : 'text-rose-600 dark:text-rose-400'
-                }`} />
-                {t('checkin_id_verification_label', 'Check-in ID Verification')}
-              </span>
-              {canActOnBooking && (
-                <button
-                  type="button"
-                  onClick={handleOpenId}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs flex items-center gap-1.5 shrink-0 ${
-                    guest.idVerificationStatus === 'Complete'
-                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                      : 'bg-rose-600 hover:bg-rose-700 text-white'
-                  }`}
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                  {guest.idVerificationStatus === 'Complete' ? 'View / Re-upload ID' : 'Upload Guest ID'}
-                </button>
-              )}
-            </div>
-          )}
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                    : 'bg-rose-600 hover:bg-rose-700 text-white'
+                }`}
+              >
+                <Upload className="w-3.5 h-3.5" />
+                {guest.idVerificationStatus === 'Complete' ? 'View / Re-upload ID' : 'Upload Guest ID'}
+              </button>
+            )}
+          </div>
 
           {/* Action Banner 1.5: Foreign Guest C-Form Warning */}
-          {guest.isForeignGuest && !isCFormFiled && !isEditing && canActOnBooking && (
+          {guest.isForeignGuest && !isCFormFiled && canActOnBooking && (
             <div className="w-full mb-3 px-3.5 py-2.5 rounded-lg border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 flex items-center justify-between gap-2 shadow-2xs">
               <div className="flex items-center gap-2 text-xs font-semibold text-rose-900 dark:text-rose-200">
                 <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
@@ -804,15 +930,19 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               </div>
             </div>
 
-            {/* Row 3: Booking Dates (DateRangePicker) */}
+            {/* Row 3: Booking Dates (DateRangePicker) - locked once the
+                booking is past (see isPastBooking above): a completed stay's
+                dates are historical record, not something Settle Bill/Assign
+                Receiver's post-checkout editing should ever be able to touch. */}
             <div>
               <DateRangePicker
-                label="Booking Dates *"
+                label={isPastBooking ? 'Booking Dates (locked - past booking)' : 'Booking Dates *'}
                 checkinDate={editCheckin}
                 checkoutDate={editCheckout}
                 onCheckinChange={setEditCheckin}
                 onCheckoutChange={setEditCheckout}
-                disabled={!isEditing}
+                disabled={!isEditing || isPastBooking}
+                disablePastDates
                 blockedDates={getEditBlockedDateStrings()}
               />
             </div>
@@ -1014,6 +1144,15 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                       id="c-form-file-input"
                       accept="application/pdf,image/jpeg,image/png,image/webp"
                       disabled={cFormLocked}
+                      // Compression must stay OFF here (found 3 Sep 2026, code
+                      // review): scanApplicantIdFromFile below renders/decodes
+                      // the barcode at 2x scale specifically because a phone
+                      // photo shrunk much below that can drop the bars below
+                      // what the decoder can reliably tell apart (see
+                      // cFormBarcodeScanner.ts's own comment on this) - letting
+                      // FileInput downscale the source file first would work
+                      // directly against that.
+                      autoCompressImage={false}
                       // A real file input is always clickable to pick a different file -
                       // no separate "Reupload" trigger needed once a document is attached.
                       helperText={
@@ -1112,14 +1251,21 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               )}
             </div>
           </div>
+        </DrawerItems>
 
-          {/* Modal Actions Footer: Clean Layout with Checkout on Bottom Right */}
-          {/* Modal Actions Footer: 3 Columns for Delete/Share/Edit, 2 Columns for Cancel/Save */}
-          <div id="printableBookingDetailsActionsBar" className="booking-details-modal__footer mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
+        {/* Modal Actions Footer: Sticky / Pinned at bottom of drawer.
+            pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:pb-[calc(1.25rem+...)],
+            not plain p-4 sm:p-5 (2 Sep 2026, site-wide audit) - see DESIGN.md's
+            "Bottom-Anchored Drawer Footer Safe Area" rule. This footer is a
+            shrink-0 sibling AFTER DrawerItems (this file's own comment above
+            already calls it "Pinned at bottom of drawer") - DESIGN.md's rule
+            text cites this exact footer as the non-pinned exempt case, but
+            that no longer matches the actual structure here. */}
+        <div id="printableBookingDetailsActionsBar" className="booking-details-modal__footer shrink-0 p-4 sm:p-5 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800">
             {!isEditing ? (
               <div className="space-y-3 w-full">
-                {/* Mark Checked In (Full-width action if status is Booked) */}
-                {canActOnBooking && (guest.status === GUEST_STATUS_BOOKED || (guest.status as string) === GUEST_STATUS_CONFIRMED_LEGACY) && (
+                {/* Mark Checked In (Full-width action if check-in is due today or past) */}
+                {canActOnBooking && isCheckinDue && (
                   <button
                     type="button"
                     onClick={handleMarkCheckedIn}
@@ -1145,55 +1291,60 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 )}
 
                 {/* Delete, Share with Guest, Edit - 3 columns when Delete is
-                    available, otherwise a real 2-column grid so Share/Edit
-                    split the full width evenly instead of an invisible
-                    placeholder div eating a third column (found 21 Aug 2026). */}
-                <div className={`grid gap-2.5 w-full ${
-                  onDelete && canActOnBooking ? 'grid-cols-3' : canActOnBooking ? 'grid-cols-2' : 'grid-cols-1'
-                }`}>
-                  {onDelete && canActOnBooking && (
-                    <button
-                      type="button"
-                      onClick={handleDelete}
-                      disabled={isDeleting}
-                      className="w-full h-10 px-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 dark:text-rose-300 dark:border-rose-800 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
-                      title={t('today_delete_booking_button', 'Delete Booking')}
-                    >
-                      <Trash2 className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
-                      <span className="truncate">{isDeleting ? t('deleting_button', 'Deleting...') : t('delete_button', 'Delete')}</span>
-                    </button>
-                  )}
+                    available (non-OTA bookings), otherwise a real 2-column grid. */}
+                {(() => {
+                  const isOtaBooking = Boolean(guest.otaSource || (guest as any).ota_source);
+                  const canDelete = Boolean(onDelete && canActOnBooking && !isOtaBooking);
 
-                  <button
-                    type="button"
-                    data-tour="whatsapp-invoicing"
-                    onClick={handleShareBooking}
-                    className="w-full h-10 px-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-300 dark:border-gray-600 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-                    title={t('share_with_guest_button', 'Share with guest')}
-                  >
-                    <Share2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span className="truncate">{t('share_with_guest_button', 'Share')}</span>
-                  </button>
+                  return (
+                    <div className={`grid gap-2.5 w-full ${
+                      canDelete ? 'grid-cols-3' : canActOnBooking ? 'grid-cols-2' : 'grid-cols-1'
+                    }`}>
+                      {canDelete && (
+                        <button
+                          type="button"
+                          onClick={handleDelete}
+                          disabled={isDeleting}
+                          className="w-full h-10 px-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 dark:text-rose-300 dark:border-rose-800 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                          title={t('today_delete_booking_button', 'Delete Booking')}
+                        >
+                          <Trash2 className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                          <span className="truncate">{isDeleting ? t('deleting_button', 'Deleting...') : t('delete_button', 'Delete')}</span>
+                        </button>
+                      )}
 
-                  {canActOnBooking && (
-                    <button
-                      type="button"
-                      onClick={() => startEditing()}
-                      className="w-full h-10 px-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-300 dark:border-gray-600 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-                      title={t('edit_button', 'Edit')}
-                    >
-                      <Pencil className="w-4 h-4 text-gray-600 dark:text-gray-400 shrink-0" />
-                      <span className="truncate">{t('edit_button', 'Edit')}</span>
-                    </button>
-                  )}
-                </div>
+                      <button
+                        type="button"
+                        data-tour="whatsapp-invoicing"
+                        onClick={handleShareBooking}
+                        className="w-full h-10 px-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-300 dark:border-gray-600 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                        title={t('share_with_guest_button', 'Share with guest')}
+                      >
+                        <Share2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span className="truncate">{t('share_with_guest_button', 'Share')}</span>
+                      </button>
+
+                      {canActOnBooking && (
+                        <button
+                          type="button"
+                          onClick={() => startEditing()}
+                          className="w-full h-10 px-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 dark:text-blue-300 dark:border-blue-800 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                          title={t('edit_button', 'Edit')}
+                        >
+                          <Pencil className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                          <span className="truncate">{t('edit_button', 'Edit')}</span>
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             ) : (
               /* 2 Columns: Cancel, Save */
               <div className="grid grid-cols-2 gap-2.5 w-full">
                 <button
                   type="button"
-                  onClick={() => setIsEditing(false)}
+                  onClick={() => { syncEditFieldsFromGuest(guest); setIsEditing(false); }}
                   disabled={isSaving}
                   className="w-full h-10 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 dark:border-gray-600 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                 >
@@ -1203,16 +1354,36 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 <button
                   type="button"
                   onClick={handleSave}
-                  disabled={isSaving}
-                  className="w-full h-10 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
+                  disabled={isSaving || !isDirty || !editCheckin || !editCheckout}
+                  title={
+                    !editCheckin || !editCheckout
+                      ? 'Pick both check-in and check-out dates before saving'
+                      : !isDirty
+                      ? 'No changes have been made to save'
+                      : undefined
+                  }
+                  className={`w-full h-10 px-4 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 shadow-sm ${
+                    !isDirty || !editCheckin || !editCheckout
+                      ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-600 cursor-not-allowed'
+                      : 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer'
+                  }`}
                 >
-                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin shrink-0" /> : <Save className="w-4 h-4 shrink-0" />}
-                  <span>{t('save_button', 'Save')}</span>
+                  {isSaving ? (
+                    <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                  ) : isDirty ? (
+                    <Save className="w-4 h-4 shrink-0" />
+                  ) : null}
+                  <span>
+                    {isSaving
+                      ? t('saving_button', 'Saving...')
+                      : isDirty
+                      ? t('save_changes_button', 'Save Changes')
+                      : t('no_changes_to_save_button', 'No Changes to Save')}
+                  </span>
                 </button>
               </div>
             )}
-          </div>
-        </DrawerItems>
+        </div>
       </FlowbiteDrawer>
 
       {isIdModalOpen && (
@@ -1257,9 +1428,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   <button
                     type="button"
                     onClick={handleEditSharePreview}
-                    className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+                    className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/60 cursor-pointer transition-colors"
                   >
-                    <Pencil className="w-3.5 h-3.5" />
+                    <Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                     <span>{t('edit_button', 'Edit')}</span>
                   </button>
                 ) : (
@@ -1282,7 +1453,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 />
               ) : (
                 <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-lg p-4 text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">
-                  {sharePreviewMessage}
+                  <MessageQrPreview text={sharePreviewMessage} />
                 </div>
               )}
             </div>

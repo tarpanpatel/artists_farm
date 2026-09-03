@@ -1,0 +1,140 @@
+<?php
+/**
+ * Channex Channel API Client
+ *
+ * Thin wrappers over ChannexClient for the Channel API (connecting/mapping/
+ * activating an OTA channel) - a separate surface from ChannexAdapter.php's
+ * ARI-push contract (ChannelManagerAdapter). Verified live against the
+ * sandbox 3 Sep 2026 before this was written - see
+ * scratch/channex_channel_api_access_verification.php and
+ * scratch/channex_channel_api_adapter_probe.php for the actual proof
+ * (test_connection returned HTTP 200, not 401/403 - Channel API access is
+ * NOT gated on this account).
+ */
+
+require_once __DIR__ . '/ChannexClient.php';
+
+class ChannexChannelClient {
+    private ChannexClient $client;
+
+    public function __construct(?ChannexClient $client = null) {
+        $this->client = $client ?? new ChannexClient();
+    }
+
+    /** GET /channels/list - every supported adapter, with its own params/rate_params schema. */
+    public function listAdapters(): array {
+        return $this->client->get('channels/list');
+    }
+
+    /** GET /channels/adapter?code=X - one adapter's descriptor. */
+    public function getAdapter(string $code): array {
+        return $this->client->get('channels/adapter', ['code' => $code]);
+    }
+
+    /** POST /channels/test_connection - {"success": bool, "errors": ...}. */
+    public function testConnection(string $code, array $settings): array {
+        return $this->client->post('channels/test_connection', [
+            'channel' => $code,
+            'settings' => $settings,
+        ]);
+    }
+
+    /** POST /channels/mapping_details - rooms/rates the channel exposes for this connection's settings. */
+    public function getMappingDetails(string $code, array $settings): array {
+        return $this->client->post('channels/mapping_details', [
+            'channel' => $code,
+            'settings' => $settings,
+        ]);
+    }
+
+    /**
+     * GET /groups - the groups this API key can access. Cache the result
+     * (per-request is fine; this changes only when the account's own team
+     * structure changes) rather than calling it on every channel operation.
+     */
+    public function getGroups(): array {
+        return $this->client->get('groups');
+    }
+
+    /**
+     * Resolve the group that owns a given Channex property UUID -
+     * POST /channels' group_id is required, and an inaccessible/missing one
+     * 422s with "You not have access to requested group" (confirmed in the
+     * skill doc's own gotchas list). Returns null if no group claims this
+     * property - the caller should surface a real error, not guess.
+     */
+    public function resolveGroupIdForProperty(string $channexPropertyId): ?string {
+        $res = $this->getGroups();
+        foreach ($res['data'] ?? [] as $group) {
+            $props = $group['relationships']['properties']['data'] ?? [];
+            foreach ($props as $p) {
+                if (($p['id'] ?? null) === $channexPropertyId) {
+                    return $group['id'] ?? ($group['attributes']['id'] ?? null);
+                }
+            }
+        }
+        return null;
+    }
+
+    /** GET /channels - list existing connections, optionally filtered. */
+    public function listChannels(array $filters = []): array {
+        $params = [];
+        foreach ($filters as $k => $v) {
+            $params["filter[$k]"] = $v;
+        }
+        return $this->client->get('channels', $params);
+    }
+
+    /** GET /channels/:id */
+    public function getChannel(string $channelId): array {
+        return $this->client->get("channels/{$channelId}");
+    }
+
+    /**
+     * POST /channels - created disabled by default (Channex's own behavior,
+     * not something this needs to set explicitly). $ratePlans is the
+     * room_type_code/rate_plan_code mapping array per the verified shape
+     * (channel-api reference: room_type_code/rate_plan_code must be
+     * INTEGERS, not strings - a string silently lands the mapping under
+     * "removed rates" instead of erroring, so callers must cast before
+     * calling this).
+     */
+    public function createChannel(string $code, string $groupId, array $propertyUuids, array $settings, array $ratePlans = [], ?string $title = null): array {
+        $payload = [
+            'channel' => [
+                'channel' => $code,
+                'group_id' => $groupId,
+                'properties' => $propertyUuids,
+                'settings' => $settings,
+            ],
+        ];
+        if ($title) $payload['channel']['title'] = $title;
+        if (!empty($ratePlans)) $payload['channel']['rate_plans'] = $ratePlans;
+        return $this->client->post('channels', $payload);
+    }
+
+    /** PUT /channels/:id - omitted fields retain stored values; rate_plans with settings:null removes a mapping. */
+    public function updateChannel(string $channelId, array $channelFields): array {
+        return $this->client->put("channels/{$channelId}", ['channel' => $channelFields]);
+    }
+
+    /** POST /channels/:id/check_readiness - the authoritative "is Activate safe" gate. Empty list = ready. */
+    public function checkReadiness(string $channelId): array {
+        return $this->client->post("channels/{$channelId}/check_readiness", []);
+    }
+
+    /** POST /channels/:id/activate */
+    public function activateChannel(string $channelId): array {
+        return $this->client->post("channels/{$channelId}/activate", []);
+    }
+
+    /** POST /channels/:id/deactivate */
+    public function deactivateChannel(string $channelId): array {
+        return $this->client->post("channels/{$channelId}/deactivate", []);
+    }
+
+    /** DELETE /channels/:id - Channex rejects with 422 {"channel":["is active"]} unless already deactivated. */
+    public function deleteChannel(string $channelId): array {
+        return $this->client->delete("channels/{$channelId}");
+    }
+}

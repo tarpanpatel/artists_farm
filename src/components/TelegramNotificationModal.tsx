@@ -173,6 +173,15 @@ export function restoreEmojis(text: string): string {
 // Fallback templates used only when DB fetch returns empty
 const FALLBACK_TEMPLATES: TelegramTemplateExtended[] = [
   {
+    id: 'tpl-0',
+    dbKey: 'new_guest_booking',
+    eventName: 'New Guest Booking',
+    category: 'Guest Check-in',
+    description: 'Sent to Admin group when a new guest reservation or booking is created.',
+    variables: ['{guest_name}', '{phone}', '{no_of_guests}', '{checkin_date}', '{checkout_date}', '{total_charge}', '{advance_paid}', '{pending_amount}', '{booking_id}'],
+    template: `🏨 <b>NEW GUEST BOOKING</b>\n\n👤 <b>Guest Name:</b> {guest_name}\n📱 <b>Phone:</b> {phone}\n👥 <b>No. of Guests:</b> {no_of_guests}\n\n📅 <b>Check-in:</b> {checkin_date}\n📅 <b>Check-out:</b> {checkout_date}\n\n💰 <b>Total Charge:</b> ₹{total_charge}\n✅ <b>Advance Paid:</b> ₹{advance_paid}\n⏳ <b>Pending:</b> ₹{pending_amount}\n\n🆔 <b>Booking ID:</b> {booking_id}`,
+  },
+  {
     id: 'tpl-1',
     dbKey: 'finance_drawer_adjustment',
     eventName: 'Cash Drawer Adjustment',
@@ -1120,7 +1129,15 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
           })}
         </Tabs>
 
-        <div className="bg-white dark:bg-slate-900 rounded-lg rounded-t-none border border-t-0 border-slate-200 dark:border-slate-800 shadow-xs -mt-px overflow-hidden">
+        {/* rounded-t-none -> rounded-tl-none (2 Sep 2026, user report on the
+            same pattern elsewhere: top-right corner should stay rounded like
+            the bottom two - the Category Tabs row above doesn't span this
+            panel's full width, so only the top-left corner sits under a tab;
+            border-t-0 still drops the whole top border since the Tabs' own
+            tablist border-b already spans the full width underneath it - see
+            BillingCheckout.tsx's billing-checkout__desk-body Card for the
+            fuller writeup of this pattern). */}
+        <div className="bg-white dark:bg-slate-900 rounded-lg rounded-tl-none border border-t-0 border-slate-200 dark:border-slate-800 shadow-xs -mt-px overflow-hidden">
           {/* Keyword Search */}
           <div className="p-3 sm:p-4 border-b border-slate-100 dark:border-slate-800">
             <div className="relative w-full sm:w-72">

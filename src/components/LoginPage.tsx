@@ -161,11 +161,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
     setAttemptedSubmit(true);
     setError(null);
 
-    if (mobileNumber.length > 0 && mobileNumber.length < 10 && mobileNumber !== 'admin' && mobileNumber !== 'root') {
+    const loginMobile = (mobileNumber || mobileInputRef.current?.value || '').trim();
+    const loginPasscode = (passcode || passcodeInputRef.current?.value || '').trim();
+
+    if (loginMobile.length > 0 && loginMobile.length < 10 && loginMobile !== 'admin' && loginMobile !== 'root') {
       setError(t('enter_10_digit_mobile_error'));
       return;
     }
-    if (passcode.length < 6 && passcode !== '123456' && passcode !== 'admin') {
+    if (loginPasscode.length < 6 && loginPasscode !== '123456' && loginPasscode !== 'admin') {
       setError(t('enter_6_digit_passcode_error'));
       return;
     }
@@ -176,7 +179,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mobile_number: mobileNumber, passcode }),
+        body: JSON.stringify({ mobile_number: loginMobile, passcode: loginPasscode }),
       });
       const data = await response.json();
 
@@ -490,7 +493,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
           was still on the old Lock-icon-in-a-box treatment even after the management variant
           was fixed). */}
       <a href="/" className="flex items-center mb-6 text-2xl font-semibold text-gray-900 dark:text-white">
-        <img src="/app-icons/icon-source.png" alt="" className="w-8 h-8 mr-2 rounded-lg" />
+        <img src="/app-icons/icon-source.png" alt="" className="w-8 h-8 mr-2" />
         <span>{isTerminal ? t('login_modal_brand') : 'Ground Code'}</span>
       </a>
 

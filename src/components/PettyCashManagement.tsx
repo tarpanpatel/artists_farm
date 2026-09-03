@@ -1688,11 +1688,11 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 cell: (entry: any) => (
                   <div className="flex items-center gap-2 whitespace-nowrap">
                     <Button
-                      variant="primary"
+                      variant="edit"
                       size="sm"
                       className="whitespace-nowrap shrink-0 text-xs font-medium"
                       onClick={() => setEditingEntry({ ...entry, time: entry.time || new Date().toTimeString().slice(0, 5) })}
-                      leftIcon={<Edit2 className="w-3.5 h-3.5 shrink-0" />}
+                      leftIcon={<Edit2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
                     >
                       {t('edit_button', 'Edit')}
                     </Button>
@@ -1773,7 +1773,10 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                       <div key={entry.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3.5 space-y-2.5 shadow-md">
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">
-                            <span className="font-bold text-xs text-slate-400 block">#{entry.id}</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-xs text-slate-400">#{entry.id}</span>
+                              <span className="text-2xs text-slate-400 font-normal">· {formatDateDDMMYYYY(entry.date)} {entry.time || '12:00'}</span>
+                            </div>
                             <h4 className="font-semibold text-slate-900 dark:text-white text-xs mt-0.5">{entry.description}</h4>
                             {payer && <span className="text-2xs text-slate-500 dark:text-slate-400 font-medium">Vendor/Payee: {payer}</span>}
                           </div>
@@ -1796,11 +1799,11 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                         {canManageExpense && (
                           <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-700">
                             <Button
-                              variant="primary"
+                              variant="edit"
                               size="sm"
                               className="whitespace-nowrap shrink-0 text-xs font-medium"
                               onClick={() => setEditingEntry({ ...entry, time: entry.time || new Date().toTimeString().slice(0, 5) })}
-                              leftIcon={<Edit2 className="w-3.5 h-3.5 shrink-0" />}
+                              leftIcon={<Edit2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
                             >
                               {t('edit_button', 'Edit')}
                             </Button>
@@ -2182,7 +2185,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                           <td className="px-4 py-3 text-right">
                             <div className="flex items-center justify-end gap-1.5">
                               <Button
-                                variant="secondary"
+                                variant="edit"
                                 size="xs"
                                 onClick={() => setEditingPayee(p)}
                                 leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
@@ -2397,10 +2400,10 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                           <td className="px-4 py-3 text-right">
                             <div className="flex items-center justify-end gap-1.5">
                               <Button
-                                variant="secondary"
+                                variant="edit"
                                 size="xs"
                                 onClick={() => setEditingCustomItem({ id: p.id, label: p.label, category: p.category, defaultAmount: p.default_amount.toString(), description: p.description || '' })}
-                                leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
+                                leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
                               >
                                 Edit
                               </Button>
@@ -2435,7 +2438,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
           <div className="relative max-w-sm w-full bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xl">
             <button
               onClick={() => setPayeeLightboxUrl(null)}
-              className="absolute top-2 right-2 p-1 bg-slate-100 dark:bg-slate-700 rounded-full text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-650 transition-colors"
+              className="absolute top-2 right-2 p-1 bg-slate-100 dark:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-650 transition-colors"
             >
               <X className="w-4 h-4" />
             </button>

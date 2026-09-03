@@ -13,13 +13,12 @@ import {
   Smartphone,
   Download,
   ClipboardList,
-  RefreshCw,
   ArrowRight,
   Eye,
   Check,
   Home as RoomIcon,
   X,
-  Bot,
+  HelpCircle,
   ArrowRightLeft,
 } from './icons/FlowbiteIcons';
 import { useAuth } from '../contexts/AuthContext';
@@ -31,7 +30,7 @@ import { GUEST_STATUS_CHECKEDOUT_LEGACY, GUEST_STATUS_CHECKED_OUT } from '../con
 import { t } from '../i18n';
 import { TabType } from './Navigation';
 
-import { getPropertyAndRoomSlugs, fetchIcalCalendarsFromDB, syncAllIcalCalendarsInDB, fulfillServiceRequestInDB } from '../services/api';
+import { fulfillServiceRequestInDB } from '../services/api';
 import { useToast } from './ToastContext';
 
 interface HeaderProps {
@@ -54,12 +53,15 @@ interface HeaderProps {
   showInstallIcon?: boolean;
   onInstallIconClick?: () => void;
   onNavigate?: (tab: TabType, itemKey?: string) => void;
-  // Opens the AI Assistant chat widget (restored 27 Aug 2026 - see AI.md). Replaces the
-  // WhatsApp/Telegram ContactSupportMenu that briefly lived in this slot: the AI now answers
-  // first, and only surfaces those same WhatsApp/Telegram links as an in-chat escalation once it
-  // can't help (see AIChatWidget.tsx's consecutiveUnmatched banner) - TenantDashboard.tsx keeps
-  // ContactSupportMenu as-is since it has no per-property operational context for the bot to act on.
-  onToggleAIChat?: () => void;
+  // Opens LegalDrawer.tsx straight to its FAQ tab (2 Sep 2026, explicit request -
+  // replaces the AI Assistant chat trigger that lived in this slot, restored 27 Aug
+  // 2026, see AI.md/git history). FAQ already has its own search field and a
+  // Support tab one click away (WhatsApp/Telegram) for anything not answered there,
+  // so this keeps the same "answer first, escalate if needed" shape without a
+  // second, separate chat surface. TenantDashboard.tsx keeps its own
+  // ContactSupportMenu/DashboardFooter FAQ entry as-is - this only affects the
+  // per-property operational Header.
+  onOpenFaq?: () => void;
   // Opens StaffPropertyPicker.tsx as a mid-session overlay (28 Aug 2026) - only rendered
   // when canSwitchProperties below is true, so this can stay optional/no-op for every
   // other session.
@@ -88,11 +90,11 @@ export const Header: React.FC<HeaderProps> = ({
   showInstallIcon = false,
   onInstallIconClick,
   onNavigate,
-  onToggleAIChat,
+  onOpenFaq,
   onSwitchProperty,
   canSwitchProperties,
 }) => {
-  const { currentUser, activeRole, setActiveRole, isAuthenticated, authChecked } = useAuth();
+  const { currentUser, activeRole, setActiveRole } = useAuth();
   // "View site as" (Root Admin only) - a pure frontend preview: it only
   // changes what activeRole-gated UI shows/hides, never the real backend
   // session, so nothing about actual permissions is gained or lost. Gated
@@ -178,31 +180,10 @@ export const Header: React.FC<HeaderProps> = ({
     };
   }, [showNotificationDropdown]);
 
-  // Calendar Sync quick-action - only shown once at least one iCal feed
-  // exists (any room for a MultiKey property, or the property itself for a
-  // single property). Uses the PARENT property slug, not the current room's
-  // own slug, so this still reflects "does this property have calendars set
-  // up anywhere" even while browsing an individual room page - see
-  // fetchIcalCalendarsFromDB's own comment for why that distinction matters.
-  const [icalCalendars, setIcalCalendars] = useState<{ id: number; service_name: string }[]>([]);
-  const [isSyncingIcal, setIsSyncingIcal] = useState(false);
-  const { propertySlug: icalPropertySlug } = getPropertyAndRoomSlugs();
-
-  useEffect(() => {
-    if (!authChecked || !isAuthenticated) return;
-    fetchIcalCalendarsFromDB(icalPropertySlug).then(setIcalCalendars);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, authChecked, icalPropertySlug]);
-
-  const handleSyncAllCalendars = async () => {
-    if (icalCalendars.length === 0 || isSyncingIcal) return;
-    setIsSyncingIcal(true);
-    const { successCount, total } = await syncAllIcalCalendarsInDB(icalPropertySlug, icalCalendars.map((c) => c.id));
-    setIsSyncingIcal(false);
-    showToast(`Calendar sync complete: ${successCount}/${total} channels synchronized`, {
-      type: successCount === total ? 'success' : 'warning',
-    });
-  };
+  // Calendar Sync quick-action removed (ARCHIVED 3 Sep 2026) along with the rest of the
+  // ICalSyncManager UI - see _unwanted/ical/README.md. fetchIcalCalendarsFromDB/
+  // syncAllIcalCalendarsInDB stay in services/api.ts, unused for now, in case this is ever
+  // revisited per-tenant.
 
   // Date strings for today and tomorrow
   const today = new Date();
@@ -401,14 +382,15 @@ export const Header: React.FC<HeaderProps> = ({
           )}
 
           {/* Switch Property icon (28 Aug 2026, explicit request) - takes this exact header
-              slot INSTEAD OF the calendar-sync icon below, for any session that can actually
-              use it: a staff account with access_all_properties, the tenant owner (both via
-              currentUser.canSwitchProperties - see check_session/login_user in router.php),
-              or Root Admin previewing "View site as Super Admin" above (App.tsx computes the
-              final canSwitchProperties prop, folding in that preview case too - a real Super
-              Admin always has this). Everyone else keeps the calendar-sync icon in this slot,
-              unchanged. */}
-          {canSwitchProperties ? (
+              slot for any session that can actually use it: a staff account with
+              access_all_properties, the tenant owner (both via currentUser.canSwitchProperties -
+              see check_session/login_user in router.php), or Root Admin previewing "View site as
+              Super Admin" above (App.tsx computes the final canSwitchProperties prop, folding in
+              that preview case too - a real Super Admin always has this). Everyone else gets
+              nothing in this slot now - it used to fall back to a calendar-sync quick action,
+              archived 3 Sep 2026 along with the rest of ICalSyncManager - see
+              _unwanted/ical/README.md. */}
+          {canSwitchProperties && (
             <Popover
               trigger="hover"
               placement="bottom"
@@ -426,39 +408,30 @@ export const Header: React.FC<HeaderProps> = ({
                 <ArrowRightLeft className="w-5 h-5" />
               </button>
             </Popover>
-          ) : icalCalendars.length > 0 && (
-            <Popover
-              trigger="hover"
-              placement="bottom"
-              content={
-                <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
-                  {isSyncingIcal ? 'Syncing calendars...' : `Sync ${icalCalendars.length} calendar${icalCalendars.length !== 1 ? 's' : ''}`}
-                </div>
-              }
-            >
-              <button
-                onClick={handleSyncAllCalendars}
-                disabled={isSyncingIcal}
-                aria-label="Sync calendars"
-                className="header__sync-calendars relative p-2 text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <RefreshCw className={`w-5 h-5 ${isSyncingIcal ? 'animate-spin' : ''}`} />
-              </button>
-            </Popover>
           )}
 
-          {/* AI Assistant chat trigger (restored 27 Aug 2026 - see AI.md). Opens the offline-first
-              chat widget mounted in App.tsx; WhatsApp/Telegram live inside it now as the
-              escalation path, not as a separate header entry (see HeaderProps.onToggleAIChat). */}
-          <button
-            type="button"
-            onClick={() => onToggleAIChat?.()}
-            title={t('help_tooltip', 'Help & AI Assistant')}
-            aria-label={t('help_aria', 'Help & AI Assistant')}
-            className="header__ai-chat-toggle p-2 rounded-lg text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+          {/* Help/FAQ trigger (2 Sep 2026, replaces the AI Assistant chat trigger -
+              see HeaderProps.onOpenFaq). Opens LegalDrawer.tsx straight to its FAQ
+              tab, same "click icon, panel opens" pattern as the notification bell
+              next to it. */}
+          <Popover
+            trigger="hover"
+            placement="bottom"
+            content={
+              <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                {t('help_tooltip', 'Help & FAQ')}
+              </div>
+            }
           >
-            <Bot className="w-5 h-5" />
-          </button>
+            <button
+              type="button"
+              onClick={() => onOpenFaq?.()}
+              aria-label={t('help_aria', 'Help & FAQ')}
+              className="header__faq-toggle p-2 rounded-lg text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+            >
+              <HelpCircle className="w-5 h-5" />
+            </button>
+          </Popover>
 
           {/* Notification Bell Button */}
           <div className="header__notification relative" ref={notificationWrapperRef}>
@@ -500,14 +473,25 @@ export const Header: React.FC<HeaderProps> = ({
                 Escape dismiss (see the effect above) as a real fix for that
                 second part, not just a side effect of this position fix. */}
             {showNotificationDropdown && (
-              <div className="header__dropdown notifications-popover-dropdown fixed left-2 right-2 top-[calc(4rem+env(safe-area-inset-top,0px))] max-sm:w-auto sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-96 bg-white dark:bg-slate-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 py-2 z-50 animate-in fade-in slide-in-from-top-2">
-                <div className="header__dropdown-header px-4 py-2.5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between gap-2">
+              /* bg-blue-100 dark:bg-blue-900/60 (2 Sep 2026, explicit request) -
+                 the exact same "active" classes the bell button itself uses
+                 (see btn-notification-bell above), so the open dropdown
+                 visually reads as an extension of that active bell state.
+                 pt-2 on the header row, not py-2.5 (explicit request: top
+                 padding should match left/right) - this outer container's
+                 own py-2 already contributes 8px top+bottom that the
+                 horizontal sides never get (no px- here, only the header
+                 row's own px-4 provides that), so the header row's own top
+                 padding needs to be 8px less than its bottom/sides to make
+                 the TOTAL top gap (outer + header) equal the total side gap. */
+              <div className="header__dropdown notifications-popover-dropdown fixed left-2 right-2 top-[calc(4rem+env(safe-area-inset-top,0px))] max-sm:w-auto sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-96 bg-blue-100 dark:bg-blue-900/60 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 py-2 z-50 animate-in fade-in slide-in-from-top-2">
+                <div className="header__dropdown-header px-4 pt-2 pb-2.5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between gap-2">
                   <span className="header__dropdown-title text-[10px] font-semibold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
                     <Bell className="w-3.5 h-3.5 text-blue-600" />
                     {t('notifications_label', 'Notifications')}
                   </span>
                   <span className="flex items-center gap-2 shrink-0">
-                    <span className="header__dropdown-count text-[10px] bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 font-semibold px-2 py-0.5 rounded-full">
+                    <span className="header__dropdown-count text-[10px] bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-semibold px-2 py-0.5 rounded-full">
                       {totalCount} updates
                     </span>
                     <button
@@ -531,7 +515,7 @@ export const Header: React.FC<HeaderProps> = ({
                           {isShowingServed ? t('recently_served_orders_label', 'Recently Served Orders') : t('live_kitchen_tickets_label', 'Live Kitchen Tickets')}
                         </span>
                         <span className="flex items-center gap-1.5">
-                          <span className={`header__section-badge text-[9px] font-semibold px-1.5 py-0.5 rounded ${isShowingServed ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'}`}>
+                          <span className={`header__section-badge text-[9px] font-semibold px-1.5 py-0.5 rounded border ${isShowingServed ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800'}`}>
                             {isShowingServed ? t('kitchen_served_badge', 'Served') : t('kitchen_active_badge', 'Active')}
                           </span>
                           <button
@@ -584,7 +568,7 @@ export const Header: React.FC<HeaderProps> = ({
                           {t('property_bookings_label', 'Property Bookings')}
                         </span>
                         <span className="flex items-center gap-1.5">
-                          <span className="header__section-badge text-[9px] font-semibold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
+                          <span className="header__section-badge text-[9px] font-semibold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                             {t('today_tomorrow_badge', 'Today & Tomorrow')}
                           </span>
                           <button
@@ -602,13 +586,13 @@ export const Header: React.FC<HeaderProps> = ({
                           const checkin = guest.checkinDate?.split(' ')[0] || guest.checkinDate?.split('T')[0] || '';
                           const checkout = guest.expectedCheckout?.split(' ')[0] || guest.expectedCheckout?.split('T')[0] || '';
                           let badgeText = t('checked_in_badge', 'Active Stay');
-                          let badgeStyle = 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300';
+                          let badgeStyle = 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800';
                           if (checkin === todayStr) {
                             badgeText = t('checkin_today_badge', 'Check-in Today');
-                            badgeStyle = 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300';
+                            badgeStyle = 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 border border-teal-200 dark:border-teal-800';
                           } else if (checkout === todayStr) {
                             badgeText = t('checkout_today_badge', 'Checkout Today');
-                            badgeStyle = 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300';
+                            badgeStyle = 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300 border border-orange-200 dark:border-orange-800';
                           }
 
                           return (
@@ -649,7 +633,7 @@ export const Header: React.FC<HeaderProps> = ({
                                 {t('upcoming_tomorrow_label', 'Upcoming tomorrow')}
                               </p>
                             </div>
-                            <span className="header__guest-badge header__guest-badge--tomorrow text-[9px] font-semibold px-2 py-0.5 rounded-full shrink-0 bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300">
+                            <span className="header__guest-badge header__guest-badge--tomorrow text-[9px] font-semibold px-2 py-0.5 rounded-full shrink-0 bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
                               {t('checking_in_tomorrow_badge', 'Checking in Tomorrow')}
                             </span>
                           </div>
@@ -658,11 +642,7 @@ export const Header: React.FC<HeaderProps> = ({
                     </div>
                   )}
 
-                  {/* Service Requests (12 Aug 2026) - last 5 pending, most
-                      recent first (get_service_requests already orders by
-                      created_at DESC server-side). Shared ServiceRequestContext
-                      so marking one fulfilled on the Service Requests page
-                      drops it from here immediately. */}
+                  {/* Service Requests (12 Aug 2026) */}
                   {recentServiceRequests.length > 0 && (
                     <div className="header__section header__section--service-requests p-3 space-y-2">
                       <div className="header__section-header flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-400">
@@ -670,7 +650,7 @@ export const Header: React.FC<HeaderProps> = ({
                           <ClipboardList className="w-3.5 h-3.5 text-indigo-600" />
                           {t('recent_service_requests_label', 'Guest Service Requests')}
                         </span>
-                        <span className="header__section-badge text-[9px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                        <span className="header__section-badge text-[9px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                           {t('pending_status_badge', 'Pending')}
                         </span>
                       </div>
@@ -721,9 +701,13 @@ export const Header: React.FC<HeaderProps> = ({
                             Staff requested material requisitions for kitchen/inventory
                           </p>
                         </div>
+                        {/* Text-link style, matching every other section's View
+                            button (2 Sep 2026, explicit request: "make all view
+                            buttons same") - this and Low Stock's below were the
+                            only two still using the old solid-color-pill style. */}
                         <button
                           onClick={() => handleNavigateAndClose('kitchen', 'stock_requests')}
-                          className="text-[9px] font-bold px-2 py-1 rounded bg-amber-600 hover:bg-amber-700 text-white cursor-pointer transition-colors shrink-0 inline-flex items-center gap-1"
+                          className="text-[9px] font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer shrink-0 inline-flex items-center gap-0.5"
                         >
                           <span>{t('view_button', 'View')}</span>
                           <ArrowRight className="w-2.5 h-2.5" />
@@ -749,7 +733,7 @@ export const Header: React.FC<HeaderProps> = ({
                         </div>
                         <button
                           onClick={() => handleNavigateAndClose('inventory', 'stock_requests')}
-                          className="text-[9px] font-bold px-2 py-1 rounded bg-red-600 hover:bg-red-700 text-white cursor-pointer transition-colors shrink-0 inline-flex items-center gap-1"
+                          className="text-[9px] font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer shrink-0 inline-flex items-center gap-0.5"
                         >
                           <span>{t('view_button', 'View')}</span>
                           <ArrowRight className="w-2.5 h-2.5" />

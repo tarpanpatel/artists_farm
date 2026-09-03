@@ -1,0 +1,6 @@
+2026-08-28 23:58:28 - Daily operations digest worker started
+2026-08-28 23:58:28 - SENT: property 1 (Artists Farm Jaipur) -> admin (1 arrivals, 1 departures)
+2026-08-28 23:58:28 - SENT: property 1 (Artists Farm Jaipur) -> kitchen (1 arrivals, 1 departures)
+2026-08-28 23:58:28 - SKIPPED: property 290230 (Luxe Stays) -> admin - No group configured for 'daily_operations_digest'
+2026-08-28 23:58:28 - SKIPPED: property 290230 (Luxe Stays) -> kitchen - No group configured for 'daily_operations_digest'
+2026-08-28 23:58:28 - Digest worker completed (2 property/ies sent, 5 skipped - nothing tomorrow)

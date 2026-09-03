@@ -71,8 +71,40 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
   const [newDescription, setNewDescription] = useState('');
   const [newChargeAmount, setNewChargeAmount] = useState('');
   const [saving, setSaving] = useState(false);
+  const getInitialServiceRequestsTab = (): 'pending' | 'fulfilled' => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash.replace('#', '').trim().toLowerCase();
+      if (hash.includes('fulfilled')) return 'fulfilled';
+      if (hash.includes('pending')) return 'pending';
+      const stored = sessionStorage.getItem('artists_farm_service_requests_tab');
+      if (stored === 'pending' || stored === 'fulfilled') return stored;
+    }
+    return 'pending';
+  };
+
   const [fulfillingId, setFulfillingId] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<'pending' | 'fulfilled'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'fulfilled'>(getInitialServiceRequestsTab);
+
+  const handleTabSelect = (tab: 'pending' | 'fulfilled') => {
+    setActiveTab(tab);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('artists_farm_service_requests_tab', tab);
+      const newHash = tab === 'fulfilled' ? '#service_requests/fulfilled' : '#service_requests';
+      if (window.location.hash !== newHash) {
+        window.history.replaceState(null, '', newHash);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleHash = () => {
+      const hash = window.location.hash.replace('#', '').trim().toLowerCase();
+      if (hash.includes('fulfilled')) setActiveTab('fulfilled');
+      else if (hash === 'service_requests') setActiveTab('pending');
+    };
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
   const [fulfilledPage, setFulfilledPage] = useState(0);
   const FULFILLED_PAGE_SIZE = 10;
 
@@ -498,7 +530,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
             clearTheme={attachedTabsClearTheme}
             onActiveTabChange={(tabIndex: number) => {
               const tabs: ('pending' | 'fulfilled')[] = ['pending', 'fulfilled'];
-              if (tabs[tabIndex]) setActiveTab(tabs[tabIndex]);
+              if (tabs[tabIndex]) handleTabSelect(tabs[tabIndex]);
             }}
           >
             <TabItem
@@ -507,7 +539,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                 <span className="inline-flex items-center gap-1.5">
                   <span>Pending</span>
                   {pending.length > 0 && (
-                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300">
+                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                       {pending.length}
                     </span>
                   )}
@@ -520,7 +552,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                 <span className="inline-flex items-center gap-1.5">
                   <span>Fulfilled</span>
                   {fulfilled.length > 0 && (
-                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
+                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                       {fulfilled.length}
                     </span>
                   )}
@@ -530,7 +562,13 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
           </Tabs>
         </div>
 
-        <Card className="shadow-md space-y-4 rounded-t-none border-t-0 -mt-px service-requests-management__desk-body">
+        {/* rounded-tl-none, not rounded-t-none, + sm:rounded-tl-none
+            sm:border-t-0 - see BillingCheckout.tsx's billing-checkout__desk-body
+            Card for the full explanation (top-right has no tab above it so it
+            should stay rounded like the bottom two corners; border-t-0 still
+            drops the whole top border since the Tabs' own tablist border-b
+            already spans the full width underneath it). */}
+        <Card className="shadow-md space-y-4 rounded-tl-none border-t-0 sm:rounded-tl-none sm:border-t-0 -mt-px service-requests-management__desk-body">
           {loading ? (
             <div className="text-center py-6 text-slate-500 dark:text-slate-400 text-sm service-requests-management__loading">{t('loading_spinner_default_message', 'Loading...')}</div>
           ) : requests.length === 0 ? (
@@ -931,7 +969,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                           <span className="text-2xs text-slate-400 block mt-0.5">{rt.category}</span>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
-                          <Button variant="primary" size="sm" onClick={() => handleStartEditType(rt)} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                          <Button variant="edit" size="sm" onClick={() => handleStartEditType(rt)} leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}>
                             Edit
                           </Button>
                           <Popover

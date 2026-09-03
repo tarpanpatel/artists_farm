@@ -40,16 +40,6 @@ function getCronJobDefinitions(): array {
             'daily_at_time' => '08:00:00',
         ],
         [
-            'job_key' => 'check_unconverted_ota_bookings',
-            'name' => 'Unconverted OTA Booking Alerts',
-            'description' => 'Alerts admins about synced OTA holds (Airbnb/Booking.com/etc) that already began but were never converted to a real booking.',
-            'script_path' => 'check_unconverted_ota_bookings.php',
-            'log_file' => 'ota_unconverted_check.log',
-            'schedule_type' => 'interval_minutes',
-            'interval_minutes' => 360,
-            'daily_at_time' => null,
-        ],
-        [
             'job_key' => 'cleanup_orphaned_images',
             'name' => 'Orphaned Image Cleanup',
             'description' => 'Deletes uploaded QR/menu/catalog photos no longer referenced by any property once they are 24h+ old.',
@@ -58,16 +48,6 @@ function getCronJobDefinitions(): array {
             'schedule_type' => 'daily_at',
             'interval_minutes' => null,
             'daily_at_time' => '04:00:00',
-        ],
-        [
-            'job_key' => 'sync_all_icals',
-            'name' => 'iCal Sync Worker',
-            'description' => 'Refreshes every enabled OTA calendar sync (Airbnb/Booking.com/Google/etc) across all tenants.',
-            'script_path' => 'sync_all_icals.php',
-            'log_file' => 'ical_sync.log',
-            'schedule_type' => 'interval_minutes',
-            'interval_minutes' => 15,
-            'daily_at_time' => null,
         ],
         [
             'job_key' => 'checkin_verification_reminders',
@@ -100,6 +80,33 @@ function getCronJobDefinitions(): array {
             'daily_at_time' => '22:00:00',
         ],
         [
+            // SAFETY NET (2 Sep 2026, found in review): the app already
+            // triggers php/channex/worker_runner.php after every booking
+            // write via triggerAsyncBackgroundWorker() (sender.php) - a
+            // detached CLI popen(), or a loopback curl if popen is disabled.
+            // Both are best-effort and can fail silently (popen disabled by
+            // hosting, a scheme-mismatch loopback, a proxy eating the
+            // request) - until this was registered there was NOTHING that
+            // would ever drain a stuck outbox again on its own; queued
+            // Telegram messages and Channex ARI updates would just sit
+            // forever unless some unrelated later request happened to
+            // trigger a successful fire. Reuses worker_runner.php directly
+            // (script_path resolves to php/channex/worker_runner.php,
+            // outside this directory) rather than duplicating its drain
+            // logic in a second copy - it already behaves correctly under
+            // CLI (skips the HTTP-response block, defaults its own delay to
+            // 5s with no $argv[1], same as this job's own run cadence makes
+            // reasonable).
+            'job_key' => 'drain_worker_outbox',
+            'name' => 'Channex/Telegram Outbox Safety-Net Drain',
+            'description' => 'Fallback drain for the Telegram + Channex ARI background worker, in case the app\'s own real-time trigger (popen or a loopback HTTP call) silently failed after a booking edit.',
+            'script_path' => '../channex/worker_runner.php',
+            'log_file' => null,
+            'schedule_type' => 'interval_minutes',
+            'interval_minutes' => 5,
+            'daily_at_time' => null,
+        ],
+        [
             'job_key' => 'trial_lifecycle_cadence',
             'name' => '30-Day Trial Lifecycle & Renewal Cadence',
             'description' => 'Automated Day 1/3/7/14/21/23(7-day notice)/28/30 follow-up nudges, trial expiry notices, and subscription status transitions.',
@@ -113,7 +120,14 @@ function getCronJobDefinitions(): array {
 }
 
 function ensureCronJobsSchema(PDO $pdo): void {
-    if (!isSchemaVerified('schema_cron_jobs_v4')) {
+    // Bumped to v5 (2 Sep 2026) to seed the new drain_worker_outbox job below
+    // onto an already-provisioned cron_jobs table - the seed loop right below
+    // only ever runs while its own version marker is unset, so simply adding
+    // a new entry to getCronJobDefinitions() above does nothing on staging/
+    // production without also bumping this (INSERT IGNORE means existing
+    // jobs' live-edited settings are untouched either way - only a genuinely
+    // new job_key actually inserts).
+    if (!isSchemaVerified('schema_cron_jobs_v5')) {
         $pdo->exec("CREATE TABLE IF NOT EXISTS cron_jobs (
             job_key VARCHAR(64) PRIMARY KEY,
             name VARCHAR(150) NOT NULL,
@@ -137,7 +151,7 @@ function ensureCronJobsSchema(PDO $pdo): void {
                 $job['schedule_type'], $job['interval_minutes'], $job['daily_at_time'],
             ]);
         }
-        markSchemaVerified('schema_cron_jobs_v4');
+        markSchemaVerified('schema_cron_jobs_v5');
     }
 }
 
@@ -285,16 +299,65 @@ function runCronJobNow(PDO $pdo, string $jobKey, array $def): array {
         $message = 'Script file not found: ' . $def['script_path'];
     } else {
         $phpBinary = defined('PHP_BINARY') && PHP_BINARY ? PHP_BINARY : 'php';
-        $cmd = escapeshellarg($phpBinary) . ' ' . escapeshellarg($scriptPath) . ' 2>&1';
-        $output = @shell_exec($cmd);
-        $message = trim((string)$output);
-        if ($message === '') {
-            $message = '(no output - check the job\'s own log file for details)';
+        $cmd = escapeshellarg($phpBinary) . ' ' . escapeshellarg($scriptPath);
+        // Hard wall-clock cap via proc_open, not a bare shell_exec (found 3
+        // Sep 2026, code review). shell_exec has no timeout of its own, so
+        // one wedged job (a curl call hung on a dead TCP connection, a DB
+        // lock wait) used to block this call indefinitely - and since
+        // dispatcher.php (the only caller that matters in production) holds
+        // its own file lock for its ENTIRE run, a single stuck job silently
+        // disabled every OTHER scheduled job on the account until someone
+        // noticed. Time blocked in a syscall doesn't count against PHP's own
+        // max_execution_time either, so that never rescued it. proc_open (not
+        // an external `timeout` binary) so this still works on a local
+        // Windows dev box, not just Linux/cPanel.
+        $maxRuntimeSeconds = 300;
+        $process = @proc_open($cmd, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+        if (!is_resource($process)) {
+            $status = 'error';
+            $message = 'Failed to start job process';
+        } else {
+            stream_set_blocking($pipes[1], false);
+            stream_set_blocking($pipes[2], false);
+            $output = '';
+            $timedOut = false;
+            while (true) {
+                $output .= stream_get_contents($pipes[1]);
+                $output .= stream_get_contents($pipes[2]);
+                $procStatus = proc_get_status($process);
+                if (!$procStatus['running']) {
+                    break;
+                }
+                if ((microtime(true) - $start) > $maxRuntimeSeconds) {
+                    $timedOut = true;
+                    proc_terminate($process, 9);
+                    break;
+                }
+                usleep(150000); // 150ms poll - fine-grained enough without busy-looping
+            }
+            // Final drain - the process may have written more between the
+            // last read above and it actually exiting/being killed.
+            $output .= stream_get_contents($pipes[1]);
+            $output .= stream_get_contents($pipes[2]);
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+            proc_close($process);
+
+            $message = trim($output);
+            if ($timedOut) {
+                $status = 'error';
+                $message = "Timed out after {$maxRuntimeSeconds}s and was killed. Output before kill: "
+                    . ($message !== '' ? $message : '(none)');
+            } else {
+                $status = 'success';
+                if ($message === '') {
+                    $message = '(no output - check the job\'s own log file for details)';
+                }
+            }
+            if (strlen($message) > 2000) {
+                $message = substr($message, 0, 2000) . '... (truncated)';
+            }
         }
-        if (strlen($message) > 2000) {
-            $message = substr($message, 0, 2000) . '... (truncated)';
-        }
-        $status = 'success';
     }
 
     $durationMs = (int) round((microtime(true) - $start) * 1000);

@@ -80,16 +80,48 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const { currentUser, isAuthenticated } = useAuth();
+  const getInitialStaffSubTab = (): 'control_center' | 'calendar' | 'roster' => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash.replace('#', '').trim().toLowerCase();
+      if (hash === 'attendance_calendar' || hash === 'attendance_salaries' || hash.includes('calendar')) return 'calendar';
+      if (hash === 'staff_directory_salaries' || hash.includes('roster')) return 'roster';
+      if (hash === 'staff_permissions' || hash === 'staff_payees_control' || hash.includes('control_center') || hash.includes('permissions')) return 'control_center';
+      const stored = sessionStorage.getItem('artists_farm_staff_tab');
+      if (stored === 'control_center' || stored === 'calendar' || stored === 'roster') return stored;
+    }
+    if (activeMenuItemKey === 'attendance_calendar' || activeMenuItemKey === 'attendance_salaries') return 'calendar';
+    if (activeMenuItemKey === 'staff_directory_salaries') return 'roster';
+    if (activeMenuItemKey === 'staff_permissions' || activeMenuItemKey === 'staff_payees_control') return 'control_center';
+    return 'control_center';
+  };
+
   const { staff, staffLoading, attendance, addStaff, updateStaff, recordAttendance, refreshStaff } = useStaff();
-  const [activeSubTab, setActiveSubTab] = useState<'control_center' | 'calendar' | 'roster'>('control_center');
+  const [activeSubTab, setActiveSubTab] = useState<'control_center' | 'calendar' | 'roster'>(getInitialStaffSubTab);
   const isAttendancePage = activeMenuItemKey === 'attendance_calendar' || activeMenuItemKey === 'attendance_salaries';
 
   useEffect(() => {
-    if (activeMenuItemKey === 'attendance_calendar' || activeMenuItemKey === 'attendance_salaries') setActiveSubTab('calendar');
-    else if (activeMenuItemKey === 'staff_directory_salaries') setActiveSubTab('roster');
-    else if (activeMenuItemKey === 'staff_permissions' || activeMenuItemKey === 'staff_payees_control') setActiveSubTab('control_center');
-    else setActiveSubTab('calendar');
+    if (activeMenuItemKey === 'attendance_calendar' || activeMenuItemKey === 'attendance_salaries') {
+      setActiveSubTab('calendar');
+      if (typeof window !== 'undefined') sessionStorage.setItem('artists_farm_staff_tab', 'calendar');
+    } else if (activeMenuItemKey === 'staff_directory_salaries') {
+      setActiveSubTab('roster');
+      if (typeof window !== 'undefined') sessionStorage.setItem('artists_farm_staff_tab', 'roster');
+    } else if (activeMenuItemKey === 'staff_permissions' || activeMenuItemKey === 'staff_payees_control') {
+      setActiveSubTab('control_center');
+      if (typeof window !== 'undefined') sessionStorage.setItem('artists_farm_staff_tab', 'control_center');
+    }
   }, [activeMenuItemKey]);
+
+  useEffect(() => {
+    const handleHash = () => {
+      const hash = window.location.hash.replace('#', '').trim().toLowerCase();
+      if (hash === 'attendance_calendar' || hash === 'attendance_salaries' || hash.includes('calendar')) setActiveSubTab('calendar');
+      else if (hash === 'staff_directory_salaries' || hash.includes('roster')) setActiveSubTab('roster');
+      else if (hash === 'staff_permissions' || hash === 'staff_payees_control' || hash.includes('control_center')) setActiveSubTab('control_center');
+    };
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
 
   // Property Payroll & Payee State
   const [users, setUsers] = useState<UserAccount[]>([]);
@@ -994,7 +1026,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                           ) : (
                             <>
                               {canEdit && (
-                                <Button variant="secondary" size="sm" onClick={() => handleEditUser(row)} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                                <Button variant="edit" size="sm" onClick={() => handleEditUser(row)} leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}>
                                   <span className="whitespace-nowrap">Edit</span>
                                 </Button>
                               )}
@@ -1111,7 +1143,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                           {!isCurrentUser && (
                             <>
                               {canEdit && (
-                                <Button onClick={() => handleEditUser(row)} variant="secondary" size="xs" leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />} className="cursor-pointer px-2 shrink-0">{t('edit_button', 'Edit')}</Button>
+                                <Button onClick={() => handleEditUser(row)} variant="edit" size="xs" leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />} className="cursor-pointer px-2 shrink-0">{t('edit_button', 'Edit')}</Button>
                               )}
                               {canDelete && (
                                 <Button onClick={() => handleDeleteUser(row.id)} variant="danger" size="xs" className="font-semibold cursor-pointer px-2 shrink-0">{t('delete_button', 'Delete')}</Button>
@@ -1383,7 +1415,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                             <h4 className="font-semibold text-slate-900 dark:text-white text-xs">{member.name}</h4>
                             <p className="text-[11px] text-slate-500">{member.role} • ₹{dailyRate}/day</p>
                           </div>
-                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
                             {member.status}
                           </span>
                         </div>
@@ -1815,7 +1847,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         </Button>
                       </div>
                     ) : (
-                      <Button variant="secondary" size="sm" onClick={() => { setEditingStaffId(row.id); setEditStaffRole(row.role); setEditStaffPhone(row.phone); setEditStaffSalary(row.monthlySalary); setEditStaffStatus(row.status); }} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                      <Button variant="edit" size="sm" onClick={() => { setEditingStaffId(row.id); setEditStaffRole(row.role); setEditStaffPhone(row.phone); setEditStaffSalary(row.monthlySalary); setEditStaffStatus(row.status); }} leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}>
                         {t('edit_button', 'Edit')}
                       </Button>
                     ),

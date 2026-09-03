@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import FlowbiteDateRangePicker from 'flowbite-datepicker/DateRangePicker';
 import { AlertTriangle } from './icons/FlowbiteIcons';
 
@@ -60,11 +60,76 @@ function fromIsoDate(value: string): Date | undefined {
 // dd/mm/yyyy `format` option incorrectly, so Date objects are the only safe
 // choice here - see fromIsoDate above, already used elsewhere in this file
 // for the exact same reason).
-function toDisabledDates(blockedDates: string[] | undefined): Date[] {
+function toDisabledDates(blockedDates: string[] | undefined): Array<Date | number | string> {
   if (!blockedDates || blockedDates.length === 0) return [];
-  return blockedDates
-    .map((d) => fromIsoDate(d))
-    .filter((d): d is Date => d !== undefined);
+  const list: Array<Date | number | string> = [];
+  for (const raw of blockedDates) {
+    const d = fromIsoDate(raw);
+    if (!d) continue;
+    list.push(d);
+    list.push(d.getTime());
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    list.push(`${day}/${month}/${year}`);
+  }
+  return list;
+}
+
+// The earliest blocked date a checkout-style stay [start, end) would cover, or
+// null when the range is clean/incomplete. The checkout day itself is free
+// (turnover), so a block ON endIso is fine; a block on the check-in day or any
+// night in between is not. flowbite-datepicker's `datesDisabled` only stops a
+// blocked day being *clicked* - it still lets a range be drawn straight across
+// one (pick the 8th, then the 12th, over a booked 11th), so the range has to be
+// validated after the fact here.
+function firstBlockedInRange(
+  startIso: string,
+  endIso: string,
+  blockedDates: string[] | undefined,
+): string | null {
+  if (!startIso || !endIso || !blockedDates || blockedDates.length === 0) return null;
+  let earliest: string | null = null;
+  for (const raw of blockedDates) {
+    const d = raw.slice(0, 10);
+    if (d >= startIso && d < endIso && (earliest === null || d < earliest)) {
+      earliest = d;
+    }
+  }
+  return earliest;
+}
+
+// The earliest blocked date on/after a chosen start, or null when nothing
+// ahead is blocked. Used to cap the *end*-side calendar so a night that
+// crosses a blocked date can't be clicked at all, rather than being pickable
+// and then rejected afterwards (see firstBlockedInRange's own note above -
+// datesDisabled alone doesn't stop a range being drawn across a blocked day).
+function earliestBlockedOnOrAfter(
+  startIso: string,
+  blockedDates: string[] | undefined,
+): string | null {
+  if (!startIso || !blockedDates || blockedDates.length === 0) return null;
+  let earliest: string | null = null;
+  for (const raw of blockedDates) {
+    const d = raw.slice(0, 10);
+    if (d >= startIso && (earliest === null || d < earliest)) {
+      earliest = d;
+    }
+  }
+  return earliest;
+}
+
+// Effectively "no cap" - flowbite-datepicker's setOptions treats `undefined`
+// as "leave whatever was there before" rather than "clear it" (confirmed
+// against vanillajs-datepicker, which it wraps), so clearing a previously
+// set maxDate needs an explicit far-future stand-in instead.
+const NO_END_CEILING = new Date(2099, 0, 1);
+
+function formatIsoNice(iso: string): string {
+  const d = fromIsoDate(iso);
+  return d
+    ? `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+    : iso;
 }
 
 /**
@@ -112,9 +177,115 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   const rangepickerRef = useRef<InstanceType<typeof FlowbiteDateRangePicker> | null>(null);
   const callbacksRef = useRef({ onCheckinChange, onCheckoutChange });
   callbacksRef.current = { onCheckinChange, onCheckoutChange };
+  // The mount effect below binds the changeDate handler once, so it needs a
+  // live ref to the latest blockedDates rather than the value it closed over.
+  const blockedDatesRef = useRef(blockedDates);
+  blockedDatesRef.current = blockedDates;
+  const suppressRangeValidationRef = useRef(false);
+  const syncEndCeilingRef = useRef<(startIso: string) => void>(() => {});
+  // Re-picking checkin bug (1 Sep 2026): this picker always routes calendar
+  // clicks through datepickers[0] (see the "one continuous popover" note
+  // below), so the library has no way to know whether a given click is
+  // "pick a fresh checkin" or "pick the checkout" - it just compares the
+  // clicked value against whatever the OTHER side currently holds and
+  // swaps/mirrors accordingly. That's exactly how a genuinely blocked
+  // trailing-month padding cell (e.g. clicking "3" in the row that's
+  // actually showing November while October is in view) can silently
+  // become the new checkout via that swap, demoting the OLD checkout into
+  // the checkin slot - a single misclick quietly rewrites both ends of an
+  // existing range. These four refs implement "picking a new checkin must
+  // always require an explicit, separate checkout pick" on top of that
+  // swap machinery rather than fighting it:
+  //  - scheduledRef/userClickPendingRef: the library's own onChangeDate
+  //    normalization (DateRangePicker.js) can synchronously re-dispatch
+  //    'changeDate' on both inputs multiple times for a single click (each
+  //    setDate call during a swap fires its own event) - queueMicrotask
+  //    coalesces those into one settle pass per click, and
+  //    userClickPendingRef (armed by a real day-cell click, consumed on
+  //    settle) distinguishes an actual click from the props-sync effect's
+  //    own programmatic setDates call below, which dispatches the same
+  //    event.
+  //  - prevStartIsoRef: lets the settle pass detect "checkin actually
+  //    changed since we last settled" without caring which DOM input the
+  //    event nominally targeted (meaningless here, always datepickers[0]).
+  //  - skipNextPropsSyncRef: the correction below re-mirrors
+  //    datepickers[1] to the checkin (the only stable state this library's
+  //    allowOneSidedRange:false config permits - clearing just one side
+  //    makes the library auto-clear the OTHER side too, verified against
+  //    DateRangePicker.js's onChangeDate), then blanks the END input's
+  //    display only, WITHOUT that flowing back through the props-sync
+  //    effect's own rangepicker.setDates call - that call's clear:true
+  //    would trigger the exact same "prevent one-sided range" normalization
+  //    and wipe the checkin right back out too.
+  const scheduledRef = useRef(false);
+  const userClickPendingRef = useRef(false);
+  const prevStartIsoRef = useRef('');
+  const skipNextPropsSyncRef = useRef(false);
+  // True whenever the checkin shown is "pending" - settled, but its
+  // checkout was just force-blanked and hasn't had an explicit follow-up
+  // pick yet (1 Sep 2026, second pass). Needed because the ORIGINAL fix
+  // only checked "did checkin change from last settle" - which only catches
+  // a re-pick landing on top of an already-COMPLETE range. While pending,
+  // the internal end is still mirrored to checkin (kept for the swap math's
+  // own sake - see the correction below), which means the library's normal
+  // start<=end swap has no way to tell "user is completing checkout for the
+  // pending checkin" apart from "user wants an entirely different checkin"
+  // - it just compares the click to that hidden mirror. A click AFTER the
+  // pending checkin silently became a checkout completion while checkin
+  // stayed put (invisible, since checkout wasn't shown either way); a click
+  // BEFORE it did something equally wrong on the other side (found live, 1
+  // Sep 2026: reported as "first click always reselects the old checkin,
+  // only the second click does what I want" - each first click was quietly
+  // being reinterpreted as a checkout pick or a lopsided swap instead of
+  // the fresh checkin it looked like on screen). While this is true, every
+  // click gets explicitly routed by comparing it to prevStartIsoRef instead
+  // of trusting whatever the library's own swap decided.
+  const awaitingCheckoutPickRef = useRef(false);
+  // Last settled checkout, mirroring prevStartIsoRef (fourth pass, 1 Sep
+  // 2026) - needed alongside it to correctly identify which of the two raw
+  // post-click values is the NEW one a click actually introduced. Re-
+  // picking checkin on an already-COMPLETE (non-pending) range hit the
+  // exact same swap trap awaitingCheckoutPickRef's branch already guards
+  // against, just not yet caught there too: clicking a date later than the
+  // OLD checkout swaps the OLD checkout into the start slot (not the OLD
+  // checkin), so comparing the raw start value only against prevStartIsoRef
+  // silently accepted that stale checkout as the "new checkin" instead of
+  // whatever the user actually clicked (found live, 1 Sep 2026: clicking
+  // day 5 on a checkin=31/checkout=2 range settled as checkin=2, not 5).
+  const prevEndIsoRef = useRef('');
+  // Snapshot of prevStartIsoRef/prevEndIsoRef taken the moment the calendar
+  // opens (see the 'show' listener below) - not on Clear. The X button
+  // (top-right, replacing the old footer Close button - 1 Sep 2026, second
+  // pass) always reverts to this on click, unconditionally, regardless of
+  // what happened during this opening (cleared, partially re-picked, or a
+  // whole new complete range) - X now means "cancel this popover session",
+  // full stop, rather than the old Close's "restore only if nothing was
+  // picked since Clear". The only way to actually commit a change is Save.
+  const openedStartIsoRef = useRef('');
+  const openedEndIsoRef = useRef('');
+  // Every injected Save button across both sub-pickers' own footers (one
+  // visible at a time, per the "one continuous popover" note below) - kept
+  // in sync so both reflect the same enabled/disabled state, updated
+  // wherever prevStartIsoRef/prevEndIsoRef themselves are (processSettledRange,
+  // plus the initial seed right below the mount block).
+  const saveBtnsRef = useRef<HTMLButtonElement[]>([]);
+  // The view month/year at the instant Clear is pressed (captured on
+  // mousedown, before anything reacts to the click) - a ref, not a local
+  // variable scoped to the Clear button's own listener, so the LATER props-
+  // sync effect can restore to this exact original value too, rather than
+  // re-reading "whatever the view currently is" at that later point (which,
+  // by then, may already have been reset by an earlier, untraced pass -
+  // found live, 1 Sep 2026: the button's own immediate restore worked, but
+  // the props round-trip it triggers - Clear reporting the new empty range
+  // up to the parent, which comes back down as checkinDate/checkoutDate
+  // both '' - hits the props-sync effect's own setDates call, which
+  // independently re-triggers the library's "no date left -> jump to
+  // today" reset a beat later, undoing the fix again).
+  const preClearViewDateRef = useRef<number | null>(null);
 
-  const hasError = Boolean(error);
-  const errorMessage = typeof error === 'string' ? error : undefined;
+  const [rangeError, setRangeError] = useState<string | undefined>(undefined);
+  const hasError = Boolean(error) || Boolean(rangeError);
+  const errorMessage = rangeError ?? (typeof error === 'string' ? error : undefined);
   const currentFieldClass = hasError ? errorFieldClass : fieldClass;
   const lastBlockedDatesKeyRef = useRef<string>('');
 
@@ -132,37 +303,495 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       todayHighlight: true,
       language: 'en',
       ...(disablePastDates ? { minDate: new Date(new Date().setHours(0, 0, 0, 0)) } : {}),
-      datesDisabled: toDisabledDates(blockedDates),
+      // No datesDisabled here (31 Aug 2026) - applied dynamically per current
+      // start selection just below instead (syncDisabledAndCeiling), not as
+      // a static construction option. A blocked NIGHT shouldn't forbid
+      // checking OUT on that same date, and - this picker runs as one
+      // continuous popover (autohide:false), not two independently-clicked
+      // ones - a static list applied here blocks that regardless of which
+      // sub-picker instance it's nominally attached to.
     });
     rangepickerRef.current = rangepicker;
     lastBlockedDatesKeyRef.current = (blockedDates ?? []).join(',');
 
     rangepicker.datepickers.forEach((dp) => {
+      // Arms userClickPendingRef so the settle pass below can tell a real
+      // day-cell click apart from a programmatic setDates call (both fire
+      // the same 'changeDate' event) - registered unconditionally, ahead of
+      // the footerControls early-return just below, since it doesn't depend
+      // on the Close-button injection succeeding. Capture phase (1 Sep
+      // 2026) - matches Picker.js's own onClickPicker listener on this same
+      // element, which it registers with {capture:true}. A bubble-phase
+      // listener here measurably fired AFTER this same click's own settle
+      // pass had already run (verified with an in-page execution-order
+      // probe) even though dispatchEvent is synchronous and nothing here
+      // calls stopPropagation - capture runs before the library's bubble-
+      // phase day-cell handler (main's onClickView) even starts, so it
+      // can't lose that race.
+      dp.pickerElement?.addEventListener('click', (ev) => {
+        const target = ev.target;
+        const matched = target instanceof Element && target.closest('.datepicker-cell.day:not(.disabled)');
+        if (matched) {
+          userClickPendingRef.current = true;
+        }
+      }, true);
+
+      // Top-right X (1 Sep 2026, second pass - replaces the old footer Close
+      // button entirely): unconditional cancel for this popover session,
+      // positioned like a standard dialog dismiss rather than sitting among
+      // the confirm/clear actions in the footer, so its meaning ("never
+      // mind, forget what I did in here") reads as distinct from Save's
+      // ("commit this"). Needs the picker element to be a positioning
+      // context for the button's absolute placement - flowbite's own CSS
+      // already makes it one in practice (it's a popover), but that's
+      // forced explicitly here rather than assumed.
+      const pickerEl = dp.pickerElement;
+      if (pickerEl && !pickerEl.querySelector('.datepicker-cancel-btn')) {
+        if (getComputedStyle(pickerEl).position === 'static') {
+          pickerEl.style.position = 'relative';
+        }
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.setAttribute('aria-label', 'Cancel');
+        cancelBtn.title = 'Cancel';
+        // BUG (2 Sep 2026, found writing a Playwright test that clicks the
+        // real Next-month arrow): top-2/right-2 put this button's hit area
+        // ~19x11px inside the header's own .next-btn hit area (measured
+        // live: cancel y:[430.6,458.6] x:[990,1018] vs next-btn
+        // y:[447.6,487.6] x:[973,1009]) - a real user clicking the top
+        // portion of Next, not just this test, could silently hit Cancel
+        // instead. Floats fully above the picker's own top border now
+        // (like a standard modal-corner close button) instead of
+        // overlapping its header row at all.
+        cancelBtn.className = 'datepicker-cancel-btn absolute -top-6 -right-2 z-10 flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-neutral-tertiary-medium dark:text-slate-500 dark:hover:text-slate-200 transition-colors cursor-pointer';
+        cancelBtn.innerHTML = '<svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 17.94 6M18 18 6.06 6"/></svg>';
+        cancelBtn.addEventListener('click', () => {
+          callbacksRef.current.onCheckinChange(openedStartIsoRef.current);
+          callbacksRef.current.onCheckoutChange(openedEndIsoRef.current);
+          dp.hide();
+        });
+        pickerEl.appendChild(cancelBtn);
+      }
+
       const footerControls = dp.pickerElement?.querySelector('.datepicker-footer .datepicker-controls');
-      if (!footerControls || footerControls.querySelector('.datepicker-close-btn')) return;
+      if (!footerControls || footerControls.querySelector('.datepicker-save-btn')) return;
       footerControls.querySelectorAll('.clear-btn').forEach((btn) => {
         btn.classList.remove('w-1/2');
         btn.classList.add('flex-1');
       });
-      const closeBtn = document.createElement('button');
-      closeBtn.type = 'button';
-      closeBtn.textContent = 'Close';
-      closeBtn.className = 'datepicker-close-btn flex-1 text-body bg-neutral-secondary-medium border border-default-medium hover:bg-neutral-tertiary-medium focus:ring-4 focus:ring-neutral-tertiary font-medium rounded-base text-sm px-5 py-2 text-center';
-      closeBtn.addEventListener('click', () => dp.hide());
-      footerControls.appendChild(closeBtn);
+      // Clear jumps the visible month back to "today" (31 Aug 2026) - the
+      // library's own click handler (bound during construction, so it runs
+      // before any listener added here) clears the selection via setDate,
+      // whose internal view-reset falls back to config.defaultViewDate
+      // (captured as `today()` once, at construction time) whenever there's
+      // no date left to base the view on - it has no notion of "the month
+      // you were already looking at". mousedown fires before click
+      // regardless of listener registration order, so it reliably captures
+      // the pre-clear view; the click listener registered right after it
+      // then fires after the library's own (same event, later registration)
+      // and restores that captured month immediately.
+      footerControls.querySelectorAll('.clear-btn').forEach((btn) => {
+        btn.addEventListener('mousedown', () => {
+          preClearViewDateRef.current = dp.picker.viewDate;
+        });
+        btn.addEventListener('click', () => {
+          // Restores BOTH sub-pickers' views, not just this button's own dp
+          // (second pass, 1 Sep 2026) - each side gets its own Clear button
+          // in its own footer, but only ONE popover is ever visible at a
+          // time, and processSettledRange's own view-affecting call
+          // (syncDisabledAndCeiling) touches datepickers[0] specifically.
+          //
+          // .render() after changeFocus() is not optional (third pass, 1 Sep
+          // 2026 - the actual bug behind both earlier "fixes" doing nothing
+          // visible): changeFocus() ONLY updates the internal viewDate
+          // property and queues a render method flag - every other call site
+          // in the library's own source chains .render() onto it immediately
+          // (Datepicker.esm.js: `picker.changeFocus(newViewDate).render()`,
+          // three separate places). Without it here, the correct viewDate
+          // was being set every time (confirmed by direct inspection) but
+          // never actually painted - whatever the NEXT real render() call
+          // happened to run with (syncDisabledAndCeiling's, moments later,
+          // still holding the library's own pre-restore reset) is what
+          // stayed on screen, making the fix look like it silently did
+          // nothing at all.
+          if (preClearViewDateRef.current !== null) {
+            rangepicker.datepickers[0].picker.changeFocus(preClearViewDateRef.current);
+            (rangepicker.datepickers[0].picker as any).render();
+            rangepicker.datepickers[1].picker.changeFocus(preClearViewDateRef.current);
+            (rangepicker.datepickers[1].picker as any).render();
+          }
+        });
+      });
+      // Save (1 Sep 2026, second pass): the only action that actually
+      // commits anything now - disabled until a genuinely complete range
+      // exists (updateSaveButtonState below, called from processSettledRange
+      // on every pick and once right after construction), so a half-picked
+      // or cleared range simply can't be "saved". The live onCheckinChange/
+      // onCheckoutChange calls already happen on every settle same as
+      // before (Save doesn't need to push anything itself) - clicking it is
+      // purely "I'm satisfied, close the calendar".
+      const saveBtn = document.createElement('button');
+      saveBtn.type = 'button';
+      saveBtn.textContent = 'Save';
+      saveBtn.className = 'datepicker-save-btn flex-1 text-body bg-brand hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50 text-white font-medium rounded-base text-sm px-5 py-2 text-center transition-opacity';
+      saveBtn.disabled = true;
+      saveBtn.addEventListener('click', () => {
+        if (saveBtn.disabled) return;
+        dp.hide();
+      });
+      footerControls.appendChild(saveBtn);
+      saveBtnsRef.current.push(saveBtn);
     });
 
-    const reportCurrentRange = () => {
+    // Keeps every injected Save button (one per sub-picker footer) in sync
+    // with whether prevStartIsoRef/prevEndIsoRef currently describe a real,
+    // complete, distinct range - called from processSettledRange after every
+    // pick/clear, and once more right after construction below so a booking
+    // that already had valid dates when the calendar first mounts doesn't
+    // require a throwaway click just to enable Save.
+    const updateSaveButtonState = () => {
+      const complete = Boolean(
+        prevStartIsoRef.current && prevEndIsoRef.current && prevStartIsoRef.current !== prevEndIsoRef.current,
+      );
+      saveBtnsRef.current.forEach((btn) => { btn.disabled = !complete; });
+    };
+
+    // Recomputes disabled dates for BOTH sub-pickers together, not split
+    // one-per-side (31 Aug 2026, second pass). This picker runs with
+    // autohide:false as one continuous calendar - clicking a start date
+    // does NOT switch the visible popover over to the *other* Datepicker
+    // instance, it's still datepickers[0]'s own popover for the very next
+    // click too (confirmed by inspecting the live DOM: after picking day 27
+    // as start, day 28 still carried a literal `disabled` class - not from
+    // maxDate, from datesDisabled, which an earlier version of this fix had
+    // only relaxed on datepickers[1], the side that was never actually the
+    // one rendering that click). So both instances get the SAME dynamic
+    // datesDisabled: the full blocked list while no start is picked yet (so
+    // the very first click can't land on an occupied night), and - once a
+    // start exists - that same list with just the immediate boundary date
+    // (the earliest blocked night on/after start) excluded, since checking
+    // out ON that date is fine.
+    //
+    // No maxDate ceiling here (1 Sep 2026, third pass - removed, was here
+    // briefly) - it was meant to stop a checkout being picked past the next
+    // blocked night, but goToPrevOrNext (events/functions.js) clamps ANY
+    // month navigation into [minDate,maxDate] via limitToRange, and since
+    // both instances always share whatever the nearer of start/end
+    // currently is (see the "always datepickers[0]" note above), a close
+    // maxDate silently breaks Next/Prev entirely - clicking either one
+    // clamps right back into the same month, looking like the buttons do
+    // nothing (found live, 1 Sep 2026: editing a booking with a real block
+    // just a few days out made the calendar impossible to navigate at all,
+    // only "Clear" un-stuck it). Crossing into a blocked night by drawing a
+    // range past one is still caught - firstBlockedInRange below rejects it
+    // with an error message once the range is drawn, same as it always has
+    // for a range that skips over a blocked day entirely (its own
+    // longstanding job, independent of this ceiling).
+    const syncDisabledAndCeiling = (startIso: string) => {
+      const cap = earliestBlockedOnOrAfter(startIso, blockedDatesRef.current);
+      const baseBlocked = blockedDatesRef.current ?? [];
+      const effectiveBlocked = startIso && cap
+        ? baseBlocked.filter((d) => d.slice(0, 10) !== cap)
+        : baseBlocked;
+      const options = {
+        datesDisabled: toDisabledDates(effectiveBlocked),
+        maxDate: NO_END_CEILING,
+      };
+      rangepicker.datepickers[0].setOptions(options);
+      rangepicker.datepickers[1].setOptions(options);
+      try {
+        (rangepicker.datepickers[0] as any).picker?.render();
+        (rangepicker.datepickers[1] as any).picker?.render();
+      } catch (e) {}
+    };
+    syncEndCeilingRef.current = syncDisabledAndCeiling;
+    syncDisabledAndCeiling(toIsoDate(rangepicker.dates[0]));
+    // Seed prevStartIsoRef/prevEndIsoRef from the picker's actual
+    // constructed state (not the checkinDate/checkoutDate props) - see
+    // processSettledRange's own comment on why this can't wait for a
+    // settle pass.
+    prevStartIsoRef.current = toIsoDate(rangepicker.dates[0]);
+    prevEndIsoRef.current = toIsoDate(rangepicker.dates[1]);
+    updateSaveButtonState();
+
+    const processSettledRange = () => {
+      if (suppressRangeValidationRef.current) return;
+
+      const wasUserClick = userClickPendingRef.current;
+      userClickPendingRef.current = false;
+
       const [start, end] = rangepicker.dates;
-      callbacksRef.current.onCheckinChange(toIsoDate(start));
-      callbacksRef.current.onCheckoutChange(toIsoDate(end));
+      const rawStartIso = toIsoDate(start);
+      const rawEndIso = toIsoDate(end);
+      let startIso = rawStartIso;
+      let endIso = rawEndIso;
+
+      // Re-picking checkin bug fix (1 Sep 2026, fourth pass) - see
+      // awaitingCheckoutPickRef's and prevEndIsoRef's own comments above for
+      // the full mechanics. prevStartIsoRef/prevEndIsoRef are seeded once
+      // right after construction (below), from whatever range the picker
+      // loaded with - NOT from a settle pass, since the library's
+      // constructor reads an existing input value directly into
+      // datepicker.dates without going through setDate, so no 'changeDate'
+      // event - and therefore no settle - ever fires for it.
+      let forcedEmptyCheckout = false;
+      if (wasUserClick && prevStartIsoRef.current) {
+        const pendingCheckin = prevStartIsoRef.current;
+        const pendingCheckout = prevEndIsoRef.current;
+        // Whichever raw value ISN'T one of the two values true immediately
+        // before this click is what the click actually introduced -
+        // regardless of which side the library's own swap math filed it
+        // under. This matters even outside the pending-checkout state: re-
+        // picking checkin on an already-COMPLETE range hits the identical
+        // trap (clicking a date later than the OLD checkout swaps that OLD
+        // checkout into the start slot, not the old checkin - naively
+        // trusting "start" as the new checkin silently kept the stale
+        // checkout instead of the date actually clicked).
+        const newValue = (rawStartIso && rawStartIso !== pendingCheckin && rawStartIso !== pendingCheckout) ? rawStartIso
+          : (rawEndIso && rawEndIso !== pendingCheckin && rawEndIso !== pendingCheckout) ? rawEndIso
+          : null;
+
+        if (newValue && awaitingCheckoutPickRef.current && newValue > pendingCheckin) {
+          // Checkin is pending (checkout force-blanked by an earlier pass)
+          // and this click is later than it - a genuine checkout pick. Pin
+          // checkin back to exactly what it was (the swap ordinarily
+          // already puts it there correctly on its own; this only corrects
+          // it if it didn't) and accept newValue as checkout.
+          startIso = pendingCheckin;
+          endIso = newValue;
+          if (rawStartIso !== startIso || rawEndIso !== endIso) {
+            suppressRangeValidationRef.current = true;
+            try {
+              rangepicker.setDates(
+                fromIsoDate(startIso) ?? { clear: true },
+                fromIsoDate(endIso) ?? { clear: true },
+              );
+            } finally {
+              suppressRangeValidationRef.current = false;
+            }
+          }
+          awaitingCheckoutPickRef.current = false;
+        } else if (newValue) {
+          // Every other case reads as "the user picked a new checkin":
+          // not currently pending at all (re-picking on a complete range),
+          // or pending but this click landed on/before the pending checkin
+          // (not a valid checkout, so - the user's changed their mind about
+          // checkin itself). Whatever the library's own swap/mirror math
+          // landed the checkout on must be discarded either way; the user
+          // always gets an explicit second pick for it.
+          //
+          // Reject outright if newValue is itself a blocked night (1 Sep
+          // 2026, found live: booking #708 could be re-picked straight onto
+          // #710's own checkin night with no warning at all - a genuine
+          // double-booking on a single-unit property). syncDisabledAndCeiling
+          // below deliberately un-disables the immediate next blocked night
+          // so the ORIGINAL checkin can still check OUT on it (turnover) -
+          // but that makes the same calendar cell freely clickable as a
+          // fresh CHECKIN too, and a checkin-only pick never reaches
+          // firstBlockedInRange further down (that only runs once a
+          // complete range exists to validate). This is the one place a
+          // brand new checkin is ever accepted, so it's the one place that
+          // needs its own direct check against the raw blocked list, not
+          // datesDisabled's deliberately-relaxed version of it.
+          const newCheckinBlocked = (blockedDatesRef.current ?? []).some(
+            (d) => d.slice(0, 10) === newValue,
+          );
+          if (newCheckinBlocked) {
+            const revertStartIso = prevStartIsoRef.current;
+            const revertEndIso = prevEndIsoRef.current;
+            const revertStartDate = revertStartIso ? fromIsoDate(revertStartIso) : undefined;
+            const revertEndDate = revertEndIso ? fromIsoDate(revertEndIso) : revertStartDate;
+            suppressRangeValidationRef.current = true;
+            (rangepicker as unknown as { _updating?: boolean })._updating = true;
+            try {
+              rangepicker.datepickers[0].setDate(revertStartDate ?? { clear: true }, { render: false });
+              rangepicker.datepickers[1].setDate(revertEndDate ?? { clear: true }, { render: false });
+            } finally {
+              delete (rangepicker as unknown as { _updating?: boolean })._updating;
+              suppressRangeValidationRef.current = false;
+            }
+            // Only force the checkout field blank when reverting to a
+            // pending (mirrored, not a real range) prior state - a real
+            // prior checkout's own text should stand as-is, same
+            // distinction the mirroring convention elsewhere in this file
+            // already relies on.
+            if (!revertEndIso) {
+              endEl.value = '';
+            }
+            awaitingCheckoutPickRef.current = !!revertStartIso && !revertEndIso;
+            skipNextPropsSyncRef.current = true;
+            syncDisabledAndCeiling(revertStartIso);
+            setRangeError(`${formatIsoNice(newValue)} isn't available - pick a range that doesn't cover it.`);
+            callbacksRef.current.onCheckinChange(revertStartIso);
+            callbacksRef.current.onCheckoutChange(revertEndIso);
+            updateSaveButtonState();
+            return;
+          }
+          startIso = newValue;
+          forcedEmptyCheckout = true;
+        }
+      }
+
+      if (forcedEmptyCheckout) {
+        // Mirror BOTH sides to the (possibly just-reassigned) checkin
+        // internally (the only stable state allowOneSidedRange:false
+        // permits - see awaitingCheckoutPickRef's comment above) so the
+        // NEXT click's swap comparison runs against the current checkin,
+        // not a stale value from whatever the checkout used to be.
+        //
+        // BOTH sides, not just datepickers[1] (fifth pass, 1 Sep 2026) -
+        // startIso only equals rawStartIso (what datepickers[0] already
+        // holds) when newValue itself came from rawStartIso. When newValue
+        // came from rawEndIso instead - the library's own swap filed the
+        // user's actual click under the END slot, with some OLDER value
+        // (the previous checkout, or a misclick like a trailing-month
+        // padding cell) left sitting in datepickers[0] - startIso and
+        // rawStartIso genuinely differ, and datepickers[0] needs correcting
+        // too, or it - and the START field's own displayed text, which
+        // setDate's own refreshUI re-stamps from datepickers[0].dates -
+        // stay on that stale value while the app's own state silently holds
+        // the right one (found live, 1 Sep 2026: reported startIso matched
+        // what got typed into React state, but the visible start FIELD kept
+        // showing the old value). rangepicker._updating (the same private
+        // flag the library's own setDates() method uses for exactly this)
+        // stops the two setDate calls below from triggering a nested swap
+        // against each other while they're set one at a time.
+        const startDate = fromIsoDate(startIso);
+        if (startDate) {
+          suppressRangeValidationRef.current = true;
+          (rangepicker as unknown as { _updating?: boolean })._updating = true;
+          try {
+            rangepicker.datepickers[0].setDate(startDate, { render: false });
+            rangepicker.datepickers[1].setDate(startDate, { render: false });
+          } finally {
+            delete (rangepicker as unknown as { _updating?: boolean })._updating;
+            suppressRangeValidationRef.current = false;
+          }
+        }
+        endIso = '';
+        skipNextPropsSyncRef.current = true;
+        awaitingCheckoutPickRef.current = true;
+      }
+
+      prevStartIsoRef.current = startIso;
+      prevEndIsoRef.current = endIso;
+      if (startIso && endIso) {
+        // Equal, not just both-truthy (fifth pass, 1 Sep 2026 - found live:
+        // broke the ordinary FRESH-form flow, first click mirroring
+        // start=end=X via the library's own "no one-sided range" branch,
+        // not forcedEmptyCheckout - since that path never touches
+        // awaitingCheckoutPickRef at all, it stayed permanently false, so
+        // the very next click's genuine-checkout math never engaged and a
+        // later date just became a brand new checkin instead). Equal means
+        // a solo pick still awaiting its real completion, whichever branch
+        // produced it; genuinely different means a complete range that's
+        // done needing one.
+        awaitingCheckoutPickRef.current = startIso === endIso;
+      }
+
+      syncDisabledAndCeiling(startIso);
+      // Blanking the END field's displayed text has to happen AFTER
+      // syncDisabledAndCeiling, not before (1 Sep 2026, second pass) -
+      // that call's own setOptions() does an unconditional full refreshUI
+      // on datepickers[1], which restamps its input value from the
+      // internal (deliberately re-mirrored, non-blank) date and clobbers an
+      // earlier write here. The internal state stays mirrored to checkin
+      // either way - only the on-screen text is forced blank, and only
+      // here, once nothing else downstream will touch this input again.
+      if (forcedEmptyCheckout) {
+        endEl.value = '';
+      }
+
+      // Fallback safety net - syncDisabledAndCeiling above should already
+      // make an invalid end date unclickable, so this should rarely fire in
+      // practice, but stays in place in case a range is set programmatically
+      // (setDates, or a prop sync) rather than through a calendar click.
+      if (startIso && endIso) {
+        const clash = firstBlockedInRange(startIso, endIso, blockedDatesRef.current);
+        if (clash) {
+          const startItselfBlocked = (blockedDatesRef.current ?? []).some(
+            (d) => d.slice(0, 10) === startIso,
+          );
+          const keepStartIso = startItselfBlocked ? '' : startIso;
+
+          // Same _updating-guarded per-instance setDate pattern as the
+          // forcedEmptyCheckout correction above, not a bare
+          // rangepicker.setDates(realDate, {clear:true}) call (fifth pass,
+          // 1 Sep 2026 - found live: rejecting a range that crossed a real
+          // booking wiped checkin too, not just the invalid checkout, even
+          // though keepStartIso was correctly non-empty and reported to
+          // React state - the library's own "prevent one-sided range"
+          // normalization doesn't care that ONE side came from a
+          // deliberate rollback rather than a genuine clear, it reacts to
+          // the SAME shape (one real date, one cleared) either way).
+          const keepDate = keepStartIso ? fromIsoDate(keepStartIso) : undefined;
+          suppressRangeValidationRef.current = true;
+          (rangepicker as unknown as { _updating?: boolean })._updating = true;
+          try {
+            if (keepDate) {
+              rangepicker.datepickers[0].setDate(keepDate, { render: false });
+              rangepicker.datepickers[1].setDate(keepDate, { render: false });
+            } else {
+              rangepicker.datepickers[0].setDate({ clear: true }, { render: false });
+              rangepicker.datepickers[1].setDate({ clear: true }, { render: false });
+            }
+          } finally {
+            delete (rangepicker as unknown as { _updating?: boolean })._updating;
+            suppressRangeValidationRef.current = false;
+          }
+          endEl.value = '';
+          prevStartIsoRef.current = keepStartIso;
+          prevEndIsoRef.current = '';
+          awaitingCheckoutPickRef.current = !!keepStartIso;
+          skipNextPropsSyncRef.current = true;
+
+          setRangeError(`${formatIsoNice(clash)} isn't available - pick a range that doesn't cover it.`);
+          callbacksRef.current.onCheckinChange(keepStartIso);
+          callbacksRef.current.onCheckoutChange('');
+          updateSaveButtonState();
+          return;
+        }
+      }
+
+      setRangeError(undefined);
+      callbacksRef.current.onCheckinChange(startIso);
+      callbacksRef.current.onCheckoutChange(endIso);
+      updateSaveButtonState();
+    };
+
+    // Coalesces however many 'changeDate' events a single click produced
+    // (the library's own swap normalization re-dispatches on both inputs
+    // synchronously, see the refs' comment above) into one settle pass that
+    // runs after that whole synchronous cascade has finished.
+    const reportCurrentRange = () => {
+      if (suppressRangeValidationRef.current) return;
+      if (scheduledRef.current) return;
+      scheduledRef.current = true;
+      queueMicrotask(() => {
+        scheduledRef.current = false;
+        processSettledRange();
+      });
     };
     startEl.addEventListener('changeDate', reportCurrentRange);
     endEl.addEventListener('changeDate', reportCurrentRange);
 
+    // Snapshots the committed range at the moment the popover opens (fired
+    // by the library itself, see Datepicker.js's triggerDatepickerEvent) -
+    // this is what the top-right X reverts to on click, unconditionally.
+    // Listening on both inputs since either sub-picker can be the one that's
+    // actually opened; both read the same already-mirrored state either way.
+    const captureOpenedRange = () => {
+      openedStartIsoRef.current = prevStartIsoRef.current;
+      openedEndIsoRef.current = prevEndIsoRef.current;
+    };
+    startEl.addEventListener('show', captureOpenedRange);
+    endEl.addEventListener('show', captureOpenedRange);
+
     return () => {
       startEl.removeEventListener('changeDate', reportCurrentRange);
       endEl.removeEventListener('changeDate', reportCurrentRange);
+      startEl.removeEventListener('show', captureOpenedRange);
+      endEl.removeEventListener('show', captureOpenedRange);
       rangepicker.destroy();
       rangepickerRef.current = null;
     };
@@ -172,14 +801,86 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   useEffect(() => {
     const rangepicker = rangepickerRef.current;
     if (!rangepicker) return;
+    // The re-picking-checkin correction (processSettledRange, mount effect
+    // above) already put the picker in the exact state this checkinDate/
+    // checkoutDate pair describes - checkin set, checkout internally
+    // mirrored to it but blanked on-screen. Following through here with a
+    // real rangepicker.setDates(checkin, {clear:true}) would hit the
+    // library's own "prevent one-sided range" normalization and clear
+    // checkin right back out too (allowOneSidedRange is false), undoing the
+    // fix - see that effect's own comment for why.
+    if (skipNextPropsSyncRef.current) {
+      skipNextPropsSyncRef.current = false;
+      return;
+    }
     const [currentStart, currentEnd] = rangepicker.dates;
     if (toIsoDate(currentStart) === checkinDate && toIsoDate(currentEnd) === checkoutDate) return;
+
+    if (disablePastDates) {
+      // disablePastDates sets minDate to today - correct for stopping a NEW
+      // pick from landing in the past, but a booking being loaded here can
+      // already legitimately have a checkin (or checkout) before today: any
+      // guest who has actually checked in, or whose stay dates simply
+      // elapsed while the record sat unedited. datepicker.setDate() silently
+      // drops a date outside [minDate,maxDate] - it doesn't clamp or error,
+      // the side just stays empty - and the library's own "no one-sided
+      // range" normalization (DateRangePicker.js's onChangeDate) then
+      // copies the OTHER, successfully-set side onto it. Net effect,
+      // reproduced live (1 Sep 2026): loading a guest checked in yesterday
+      // showed checkin AND checkout both as today's date, not the guest's
+      // real checkin. Relaxing minDate down to whichever of today/checkin/
+      // checkout is earliest - only when a load is about to set an
+      // out-of-range value - keeps "can't pick a NEW past date" intact
+      // while letting an already-past value actually load and display.
+      const todayMidnight = new Date(new Date().setHours(0, 0, 0, 0));
+      const loadedDates = [fromIsoDate(checkinDate), fromIsoDate(checkoutDate)]
+        .filter((d): d is Date => d !== undefined);
+      const effectiveMinDate = loadedDates.reduce(
+        (min, d) => (d < min ? d : min),
+        todayMidnight,
+      );
+      rangepicker.datepickers[0].setOptions({ minDate: effectiveMinDate });
+      rangepicker.datepickers[1].setOptions({ minDate: effectiveMinDate });
+    }
+
+    // A Clear round-trips through here too (found live, 1 Sep 2026): the
+    // Clear BUTTON's own click handler restores the pre-clear view
+    // immediately (see preClearViewDate above), but that same click's
+    // settle pass also reports the now-empty range up to the parent, which
+    // comes back down as checkinDate/checkoutDate both '' - landing right
+    // here, moments later, as a SEPARATE setDates({clear:true},{clear:true})
+    // call. That second, indirect clear re-triggers the library's own
+    // "no date left to base the view on -> jump to defaultViewDate" reset
+    // (same mechanism the Clear button note above describes), silently
+    // undoing the button's own fix a beat later - reported as "blocked
+    // dates only visible after clicking Clear", which was really just
+    // Clear accidentally jumping the view to today's month, which happened
+    // to have real bookings to show as blocked while whatever month was
+    // being viewed before often didn't. Only guarded for the genuine
+    // clear case (both sides empty) - a real load (a different guest, or
+    // Cancel restoring real dates) should still jump to show its own
+    // month, same as it always has.
+    const isClearRoundTrip = !checkinDate && !checkoutDate;
 
     rangepicker.setDates(
       fromIsoDate(checkinDate) ?? { clear: true },
       fromIsoDate(checkoutDate) ?? { clear: true }
     );
-  }, [checkinDate, checkoutDate]);
+
+    // Restores from the ORIGINAL pre-clear snapshot (see preClearViewDateRef
+    // above), not from "whatever the view is right now" - by this point an
+    // earlier pass may already have reset it, and re-reading a possibly-
+    // already-wrong current value would just re-commit that same wrong
+    // month instead of correcting it.
+    if (isClearRoundTrip && preClearViewDateRef.current !== null) {
+      // .render() required - see the Clear button's own listener above for
+      // why changeFocus() alone never paints anything.
+      rangepicker.datepickers[0].picker.changeFocus(preClearViewDateRef.current);
+      (rangepicker.datepickers[0].picker as any).render();
+      rangepicker.datepickers[1].picker.changeFocus(preClearViewDateRef.current);
+      (rangepicker.datepickers[1].picker as any).render();
+    }
+  }, [checkinDate, checkoutDate, disablePastDates]);
 
   useEffect(() => {
     const rangepicker = rangepickerRef.current;
@@ -187,7 +888,10 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     const key = (blockedDates ?? []).join(',');
     if (key === lastBlockedDatesKeyRef.current) return;
     lastBlockedDatesKeyRef.current = key;
-    rangepicker.setOptions({ datesDisabled: toDisabledDates(blockedDates) });
+    // Blocked dates can change while the form is still open (another save
+    // elsewhere drains into this same list) - recompute against whatever
+    // start is currently picked, not just against clicks.
+    syncEndCeilingRef.current(toIsoDate(rangepicker.dates[0]));
   }, [blockedDates]);
 
   return (

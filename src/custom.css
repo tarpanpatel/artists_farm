@@ -26,6 +26,19 @@ body {
   background-color: rgb(17, 24, 39);
 }
 
+/* Custom Z-Index Utilities for Drawers & Modals (Ensures drawers out-rank Flowbite backdrops) */
+.z-58,
+.z-60,
+div[class*="z-58"],
+div[class*="z-60"],
+div[class*="z-[58]"],
+div[class*="z-[60]"] {
+  z-index: 60 !important;
+}
+.z-70, div[class*="z-70"], div[class*="z-[70]"] { z-index: 70 !important; }
+.z-80, div[class*="z-80"], div[class*="z-[80]"] { z-index: 80 !important; }
+.z-90, div[class*="z-90"], div[class*="z-[90]"] { z-index: 90 !important; }
+
 /* Root font-size deliberately left at the browser default (16px, so
    1rem = 16px) - this used to be forced to 14px, which shrank every
    rem-based Tailwind/Flowbite utility (padding, gaps, border-radius, text)
@@ -305,6 +318,41 @@ div[datepicker-popover],
 .datepicker-cell.range-end {
   background-color: var(--color-brand, #1d4ed8) !important;
   color: white !important;
+}
+
+/* A second, separate flowbite-datepicker v2.0.0 bug in the SAME two
+   branches above (found 1 Sep 2026, live: a lone selected day - checkin
+   just re-picked, checkout not chosen yet - rendered as a lopsided "half
+   capsule", rounded on one side only, described as "facing the wrong
+   direction"). DaysView.js's render() (its full rebuild path, distinct
+   from the lighter refresh() it normally uses) runs the range-start check
+   before the range-end check; when a cell is BOTH (rangeStart === rangeEnd
+   === this cell, i.e. no real range yet, just one day picked), range-
+   start's branch adds rounded-s-base, then range-end's branch runs next
+   and explicitly REMOVES rounded-s-base on its way to adding rounded-e-
+   base - so only the end-side rounding survives, on a cell that's visually
+   supposed to read as an ordinary solo selection, not the tail of some
+   range extending off to its left. --radius-base matches flowbite's own
+   token (flowbite/src/themes/default.css) so this exactly matches the
+   corner radius every other unselected cell already uses. */
+.datepicker-cell.range-start.range-end {
+  border-radius: var(--radius-base, 12px) !important;
+}
+
+/* Today's own marker (1 Sep 2026, live request: "should have different
+   styling... may be just give font accent color") - DaysView.js paints
+   today as a filled bg-gray-100/dark:bg-gray-600 chip, which visually
+   competed with the actual selection/range/disabled states instead of
+   reading as a lightweight "you are here" reference point. Neutralizes
+   that fill and marks today with brand-colored bold text instead - only
+   when today ISN'T also part of the current selection, since selected/
+   range-start/range-end already paint a solid brand background with white
+   text for contrast (self-contained !important rules above/in DaysView.js)
+   that this must not fight over the same cell. */
+.datepicker-cell.today:not(.selected):not(.range-start):not(.range-end) {
+  background-color: transparent !important;
+  color: var(--color-brand, #1d4ed8) !important;
+  font-weight: 700;
 }
 
 /* Booked/unavailable calendar dates (added 22 Aug 2026 - "Booking Dates"
@@ -1828,4 +1876,244 @@ samp,
 pre,
 [class*="font-mono"] {
   font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+/* ==========================================================================
+   SITE-WIDE MOBILE FULL-BLEED CARDS (2 Sept 2026)
+   On mobile viewports (max-width: 639.98px), cards span 100% full width edge-to-edge
+   with 0 border-radius, no left/right borders, straight top/bottom borders,
+   and bottom box shadow.
+   ========================================================================== */
+@media (max-width: 639.98px) {
+  /* Eliminate horizontal padding from main view container on phones.
+     .app-shell__main specifically (not the old bare main.flex-1), since
+     RootAdminDashboard.tsx's own separate <main> also happens to carry a
+     flex-1 class for unrelated flex-sizing reasons - matching on that alone
+     would silently rope its page into a full-bleed treatment it never
+     opted into. */
+  .app-shell__main {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  /* Keep page headers, breadcrumbs, search filters, and toolbars padded on mobile */
+  .gen_page_head,
+  .page-header,
+  .tab-buttons-container,
+  .today-overview__header,
+  .billing-checkout__header,
+  .kitchen-management__desk > .flex {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  /* Full-bleed card standard on mobile screens */
+  [data-testid="flowbite-card"],
+  .flowbite-card,
+  .kpi-card,
+  .kds-ticket-card,
+  .mobile-booking-card,
+  .mobile-booking-card-stack__search,
+  .cash-drawer__form-card,
+  .operational-dashboard__col-alerts,
+  .operational-dashboard__room-info,
+  .today-overview__calendar,
+  .stat-card-elevated,
+  .billing-checkout__desk-body,
+  .service-requests-management__desk-body,
+  .edit-property-page__rooms-card,
+  .edit-property-page__form-card,
+  .data-export-center__control-card,
+  .account-settings__section,
+  .telegram-health-panel,
+  .whatsapp-template-settings,
+  .add-expenses-container,
+  .app-card,
+  /* Wildcard matches scoped to .app-shell__main descendants only (2 Sep 2026,
+     user report: TenantDashboard.tsx/RootAdminDashboard.tsx cards were losing
+     their rounded corners/side borders via this selector while sitting
+     inside their own, still-padded page containers - a broken half-bled
+     hybrid, since those pages render their own separate <main> and were
+     never part of the full-bleed initiative or its padding removal above).
+     Everything else in this list is already scoped by a specific component
+     class name, so it's unaffected either way. */
+  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute),
+  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute),
+  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute) {
+    border-radius: 0 !important;
+    border-left-width: 0 !important;
+    border-right-width: 0 !important;
+    border-left-style: none !important;
+    border-right-style: none !important;
+    border-top-width: 1px !important;
+    border-bottom-width: 1px !important;
+    border-top-style: solid !important;
+    border-bottom-style: solid !important;
+    box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.04) !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Dark mode card borders and bottom shadow */
+  html.dark [data-testid="flowbite-card"],
+  html.dark .flowbite-card,
+  html.dark .kpi-card,
+  html.dark .kds-ticket-card,
+  html.dark .mobile-booking-card,
+  html.dark .mobile-booking-card-stack__search,
+  html.dark .cash-drawer__form-card,
+  html.dark .operational-dashboard__col-alerts,
+  html.dark .operational-dashboard__room-info,
+  html.dark .today-overview__calendar,
+  html.dark .stat-card-elevated,
+  html.dark .billing-checkout__desk-body,
+  html.dark .service-requests-management__desk-body,
+  html.dark .edit-property-page__rooms-card,
+  html.dark .edit-property-page__form-card,
+  html.dark .data-export-center__control-card,
+  html.dark .account-settings__section,
+  html.dark .telegram-health-panel,
+  html.dark .whatsapp-template-settings,
+  html.dark .add-expenses-container,
+  html.dark .app-card,
+  html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute),
+  html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute),
+  html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute) {
+    border-top-color: #334155 !important;
+    border-bottom-color: #334155 !important;
+    box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.35), 0 1px 2px -1px rgba(0, 0, 0, 0.25) !important;
+  }
+
+  /* Seamless "attached flush under a tab bar" panels (BillingCheckout's
+     desk-body, ServiceRequestsManagement's desk-body, InventoryManagement's
+     Categories panel, TelegramNotificationModal's template list, etc.) mark
+     themselves with border-t-0/rounded-t-none in their own className - that's
+     the signal this full-bleed block above must not fight. It still matches
+     them (border-t-0/rounded-t-none coexist with rounded-lg/border/shadow/
+     bg-white in the same className, so the wildcard selectors above still
+     apply) and had been forcing a 1px top border back on unconditionally
+     since found 2 Sep 2026 (user report: seam reappearing under the tabs on
+     mobile). Placed after that block so it wins the cascade at equal
+     specificity; only touches the top edge, leaving the full-bleed radius/
+     side-border/shadow treatment above untouched for these panels. */
+  [class*="border-t-0"] {
+    border-top-width: 0 !important;
+  }
+
+  /* In Kitchen, remove outer wrapper box styling on mobile so child tickets shine edge-to-edge */
+  .kds-orders-container {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  /* Bookings desk: everything below search field spans full width with no extra padding */
+  .billing-checkout__list-content {
+    margin-left: -1rem !important;
+    margin-right: -1rem !important;
+    padding-top: 0.75rem !important;
+  }
+
+  .billing-checkout__grid {
+    gap: 0.75rem !important;
+  }
+
+  .billing-checkout__room-card {
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-left-width: 0 !important;
+    border-right-width: 0 !important;
+    border-top: 1px solid #e2e8f0 !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    box-shadow: none !important;
+    width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  html.dark .billing-checkout__room-card {
+    border-top-color: #334155 !important;
+    border-bottom-color: #334155 !important;
+  }
+
+  .billing-checkout__room-card-header {
+    border-left: none !important;
+    border-right: none !important;
+    border-radius: 0 !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  .billing-checkout__room-card-body {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  .billing-checkout__guest-card + .billing-checkout__guest-card {
+    border-top: 1px solid #e2e8f0;
+    padding-top: 1rem;
+  }
+
+  html.dark .billing-checkout__guest-card + .billing-checkout__guest-card {
+    border-top-color: #334155;
+  }
+
+  /* Take Food Order: only the dishes rows should span edge-to-edge with no left/right margins */
+  .pos-menu-list {
+    margin-left: -0.875rem !important;
+    margin-right: -0.875rem !important;
+  }
+
+  .pos-menu-list .pos-food-row {
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-left-width: 0 !important;
+    border-right-width: 0 !important;
+    border-top: 1px solid #f3f4f6 !important;
+    border-bottom: 1px solid #e5e7eb !important;
+    margin-top: -1px !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    width: 100% !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    box-shadow: none !important;
+  }
+
+  html.dark .pos-menu-list .pos-food-row {
+    border-top-color: #1f2937 !important;
+    border-bottom-color: #374151 !important;
+  }
+
+  /* Kitchen: auto-sync bar sits flush under tabs with clean border-b, no floating island styling */
+  .kds-status-filter-bar {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-bottom: 0.75rem !important;
+    width: 100% !important;
+  }
+
+  .kds-status-filter-bar > div {
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-top: none !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    width: 100% !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    background-color: #ffffff !important;
+    box-shadow: none !important;
+  }
+
+  html.dark .kds-status-filter-bar > div {
+    background-color: #1e293b !important;
+    border-bottom-color: #334155 !important;
+  }
 }

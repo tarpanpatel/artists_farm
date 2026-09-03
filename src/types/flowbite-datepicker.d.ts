@@ -21,6 +21,19 @@ declare module 'flowbite-datepicker/DateRangePicker' {
   export interface DatepickerInstance {
     readonly pickerElement: HTMLElement | undefined;
     hide(): void;
+    // minDate: relaxing the disablePastDates floor so an already-past
+    // checkin/checkout can still load (1 Sep 2026) - see DateRangePicker.tsx's
+    // props-sync effect.
+    setOptions(options: { datesDisabled?: Array<Date | string | number>; maxDate?: Date | string | number; minDate?: Date | string | number }): void;
+    // Re-mirroring the end side to the checkin internally after a re-pick
+    // (31 Aug/1 Sep 2026) - see DateRangePicker.tsx's processSettledRange.
+    setDate(date: Date | number | { clear: true }, options?: { render?: boolean }): void;
+    // picker.viewDate/changeFocus: restoring the displayed month after Clear
+    // (31 Aug 2026) - see DateRangePicker.tsx's clear-btn interceptor.
+    readonly picker: {
+      readonly viewDate: number;
+      changeFocus(newViewDate: number | Date): unknown;
+    };
   }
 
   export default class DateRangePicker {

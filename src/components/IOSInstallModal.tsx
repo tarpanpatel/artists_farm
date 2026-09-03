@@ -23,7 +23,7 @@ export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({ isOpen, onClos
       <ModalBody className="space-y-5 ios-install-modal__steps">
         {/* Step 1: Tap Share */}
         <div className="flex gap-3">
-          <div className="shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-semibold flex items-center justify-center mt-0.5">1</div>
+          <div className="shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-semibold flex items-center justify-center mt-0.5 border border-blue-500">1</div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2">
               Tap <strong>Share</strong> {isIPad ? 'at the top of the screen' : 'in the bar at the bottom of your screen'}
@@ -43,7 +43,7 @@ export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({ isOpen, onClos
 
         {/* Step 2: Add to Home Screen */}
         <div className="flex gap-3">
-          <div className="shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-semibold flex items-center justify-center mt-0.5">2</div>
+          <div className="shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-semibold flex items-center justify-center mt-0.5 border border-blue-500">2</div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2">
               Scroll the share sheet down and tap <strong>"Add to Home Screen"</strong>
@@ -78,7 +78,7 @@ export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({ isOpen, onClos
 
         {/* Step 3: Tap Add */}
         <div className="flex gap-3">
-          <div className="shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-semibold flex items-center justify-center mt-0.5">3</div>
+          <div className="shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-semibold flex items-center justify-center mt-0.5 border border-blue-500">3</div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2">
               Tap <strong>"Add"</strong> in the top-right corner

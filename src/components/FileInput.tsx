@@ -1,6 +1,7 @@
 import React, { forwardRef } from 'react';
 import { AlertTriangle } from './icons/FlowbiteIcons';
 import { FileInput as FlowbiteFileInput, Label as FlowbiteLabel } from 'flowbite-react';
+import { compressImageFile } from '../utils/imageCompressor';
 
 /**
  * Site-wide file upload input (added 26 Aug 2026, explicit request: "Only use flowbite elements
@@ -21,6 +22,8 @@ export interface FileInputProps extends Omit<React.InputHTMLAttributes<HTMLInput
   fullWidth?: boolean;
   /** Flowbite's own size scale for the file-choose button (default 'md'). */
   sizing?: 'sm' | 'md' | 'lg';
+  /** Automatically downscale large camera photos on the client before passing to onChange (default true) */
+  autoCompressImage?: boolean;
 }
 
 // Same blue focus color Input.tsx/Textarea.tsx already use for their "gray" variant, in place of
@@ -33,10 +36,32 @@ const fileInputTheme = {
 };
 
 export const FileInput = forwardRef<HTMLInputElement, FileInputProps>(
-  ({ label, error, helperText, fullWidth = true, className = '', disabled, id, color, ...props }, ref) => {
+  ({ label, error, helperText, fullWidth = true, className = '', disabled, id, color, autoCompressImage = true, onChange, ...props }, ref) => {
     const inputId = id || (label ? `file-input-${label.toLowerCase().replace(/[^a-z0-9]/g, '-')}` : undefined);
     const hasError = Boolean(error);
     const errorMessage = typeof error === 'string' ? error : undefined;
+
+    const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (autoCompressImage && e.target.files && e.target.files.length > 0) {
+        const files = Array.from(e.target.files);
+        const hasLargeImage = files.some(f => f.type.startsWith('image/') && f.size > 350 * 1024);
+        if (hasLargeImage) {
+          try {
+            const compressedFiles = await Promise.all(
+              files.map(f => compressImageFile(f))
+            );
+            if (typeof DataTransfer !== 'undefined') {
+              const dt = new DataTransfer();
+              compressedFiles.forEach(f => dt.items.add(f));
+              e.target.files = dt.files;
+            }
+          } catch (err) {
+            console.warn('[FileInput] Auto image compression failed, proceeding with original:', err);
+          }
+        }
+      }
+      onChange?.(e);
+    };
 
     return (
       <div className={`app-file-input-wrapper ${fullWidth ? 'w-full min-w-0' : 'inline-block'} file-input`}>
@@ -57,6 +82,7 @@ export const FileInput = forwardRef<HTMLInputElement, FileInputProps>(
           theme={fileInputTheme as any}
           color={hasError ? 'failure' : (color as any)}
           className={`w-full ${className} file-input__field`}
+          onChange={handleChange}
           {...(props as any)}
         />
         {errorMessage ? (

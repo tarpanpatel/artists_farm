@@ -805,6 +805,18 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                             'description' => 'Advance collected at guest registration',
                         ], $propertyId);
                     }
+
+                    // Channel Manager Outbox (30 Aug 2026): Enqueue within transaction
+                    if (is_file(__DIR__ . '/../channex/outbox.php')) {
+                        require_once __DIR__ . '/../channex/outbox.php';
+                    }
+                    if (function_exists('enqueueOutboxItem')) {
+                        enqueueOutboxItem($pdo, (int)$propertyId, $roomId, 'availability', $newCheckin, $newCheckout, [
+                            'action' => 'add_guest',
+                            'guest_id' => $newId,
+                        ]);
+                    }
+
                     $pdo->commit();
 
                     // Send Telegram notification for new guest booking
@@ -817,16 +829,31 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     $noOfGuests = intval($input['no_of_guests'] ?? 1);
                     $phone = $input['phone_number'] ?? $input['contact'] ?? 'N/A';
 
-                    $telegramMessage = "🏨 <b>NEW GUEST BOOKING</b>\n\n";
-                    $telegramMessage .= "👤 <b>Guest Name:</b> {$guestName}\n";
-                    $telegramMessage .= "📱 <b>Phone:</b> {$phone}\n";
-                    $telegramMessage .= "👥 <b>No. of Guests:</b> {$noOfGuests}\n\n";
-                    $telegramMessage .= "📅 <b>Check-in:</b> {$checkinDate}\n";
-                    $telegramMessage .= "📅 <b>Check-out:</b> {$checkoutDate}\n\n";
-                    $telegramMessage .= "💰 <b>Total Charge:</b> ₹{$totalCharge}\n";
-                    $telegramMessage .= "✅ <b>Advance Paid:</b> ₹{$advancePaid}\n";
-                    $telegramMessage .= "⏳ <b>Pending:</b> ₹{$pendingAmount}\n\n";
-                    $telegramMessage .= "🆔 <b>Booking ID:</b> {$newId}";
+                    require_once __DIR__ . '/../telegram/templates.php';
+                    if (class_exists('TelegramTemplates') && method_exists('TelegramTemplates', 'render')) {
+                        $telegramMessage = TelegramTemplates::render($pdo, 'new_guest_booking', [
+                            'guest_name' => $guestName,
+                            'phone' => $phone,
+                            'no_of_guests' => $noOfGuests,
+                            'checkin_date' => $checkinDate,
+                            'checkout_date' => $checkoutDate,
+                            'total_charge' => $totalCharge,
+                            'advance_paid' => $advancePaid,
+                            'pending_amount' => $pendingAmount,
+                            'booking_id' => $newId,
+                        ]);
+                    } else {
+                        $telegramMessage = "🏨 <b>NEW GUEST BOOKING</b>\n\n";
+                        $telegramMessage .= "👤 <b>Guest Name:</b> {$guestName}\n";
+                        $telegramMessage .= "📱 <b>Phone:</b> {$phone}\n";
+                        $telegramMessage .= "👥 <b>No. of Guests:</b> {$noOfGuests}\n\n";
+                        $telegramMessage .= "📅 <b>Check-in:</b> {$checkinDate}\n";
+                        $telegramMessage .= "📅 <b>Check-out:</b> {$checkoutDate}\n\n";
+                        $telegramMessage .= "💰 <b>Total Charge:</b> ₹{$totalCharge}\n";
+                        $telegramMessage .= "✅ <b>Advance Paid:</b> ₹{$advancePaid}\n";
+                        $telegramMessage .= "⏳ <b>Pending:</b> ₹{$pendingAmount}\n\n";
+                        $telegramMessage .= "🆔 <b>Booking ID:</b> {$newId}";
+                    }
 
                     // "Mark Checked-In" only makes sense for a fresh reservation - a
                     // booking created as already Checked In (walk-in, OTA conversion)
@@ -836,11 +863,10 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                             ['text' => '🛎️ Mark Checked-In', 'callback_data' => "checkin_guest_{$newId}"]
                         ]]]
                         : null;
-                    $bookingSendResult = sendPropertyTelegramMessage($pdo, $propertyId, 'admin', $telegramMessage, $bookingReplyMarkup);
-                    $bookingDecoded = is_string($bookingSendResult) ? json_decode($bookingSendResult, true) : null;
-                    if (!empty($bookingDecoded['ok']) && !empty($bookingDecoded['result'])) {
-                        $pdo->prepare("UPDATE guests SET telegram_booking_chat_id = ?, telegram_booking_message_id = ? WHERE id = ?")
-                            ->execute([$bookingDecoded['result']['chat']['id'], $bookingDecoded['result']['message_id'], $newId]);
+                    if (function_exists('enqueueTelegramMessage')) {
+                        enqueueTelegramMessage($pdo, (int)$propertyId, 'admin', $telegramMessage, $bookingReplyMarkup, 'new_guest_booking', (string)$newId, 'booking');
+                    } else {
+                        sendPropertyTelegramMessage($pdo, $propertyId, 'admin', $telegramMessage, $bookingReplyMarkup);
                     }
 
                     // WhatsApp booking confirmation direct to the guest (staff-facing
@@ -859,6 +885,20 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         $response['overlap_warning'] = $overlapWarning;
                     }
                     echo json_encode($response);
+
+                    // Channel Manager Outbox (31 Aug 2026): a booking here enqueued an
+                    // availability change above, but nothing ever drained it - it just
+                    // sat 'pending' until someone happened to click "Drain Outbox" or a
+                    // rate-rule save elsewhere drained the whole queue as a side effect.
+                    // Certification Test 9 requires this to fire automatically from a
+                    // real booking with no manual step. See outbox.php for why this
+                    // waits a few seconds before draining instead of draining instantly.
+                    if (is_file(__DIR__ . '/../channex/outbox.php')) {
+                        require_once __DIR__ . '/../channex/outbox.php';
+                        if (function_exists('triggerEventDrivenChannexDrain')) {
+                            triggerEventDrivenChannexDrain($pdo);
+                        }
+                    }
                 } catch (PDOException $e) {
                     if ($pdo->inTransaction()) {
                         $pdo->rollBack();
@@ -894,6 +934,29 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     $prevStmt->execute([$guestId, $propertyId]);
                     $previousGuest = $prevStmt->fetch(PDO::FETCH_ASSOC) ?: [];
                     $previousNoOfGuests = intval($previousGuest['no_of_guests'] ?? 0);
+
+                    // PAST BOOKING DATE LOCK (1 Sep 2026): the frontend already disables
+                    // the Booking Dates picker once a booking is past (BookingDetailsModal's
+                    // isPastBooking), but that's UX only - this is the actual enforcement.
+                    // A completed stay's dates are historical record; the only reason a
+                    // past booking reaches update_guest at all is the Settle Bill/Assign
+                    // Receiver flow (payment fields only), so date changes are rejected
+                    // here regardless of what the client sends, without blocking those.
+                    $prevStatus = (string)($previousGuest['status'] ?? '');
+                    $prevCheckoutRaw = (string)($previousGuest['expected_checkout'] ?? '');
+                    $prevCheckoutDatePart = $prevCheckoutRaw !== '' ? explode(' ', trim($prevCheckoutRaw))[0] : '';
+                    $wasAlreadyPast = in_array($prevStatus, [GUEST_STATUS_CHECKED_OUT, GUEST_STATUS_CHECKEDOUT_LEGACY, 'Cancelled'], true)
+                        || ($prevCheckoutDatePart !== '' && $prevCheckoutDatePart < date('Y-m-d'));
+                    if ($wasAlreadyPast && !empty($previousGuest)) {
+                        $prevCheckinDatePart = explode(' ', trim((string)($previousGuest['checkin_date'] ?? '')))[0];
+                        $newCheckinDatePart = explode(' ', trim((string)$newCheckin))[0];
+                        $newCheckoutDatePart = explode(' ', trim((string)$newCheckout))[0];
+                        if ($newCheckinDatePart !== $prevCheckinDatePart || $newCheckoutDatePart !== $prevCheckoutDatePart) {
+                            http_response_code(403);
+                            echo json_encode(['status' => 'error', 'message' => 'This booking is already past - its dates can no longer be changed.']);
+                            break;
+                        }
+                    }
 
                     // CONCURRENCY (30 Aug 2026): same fix as add_guest's - see the long
                     // comment there for why a plain SELECT could not enforce this. Two
@@ -940,21 +1003,49 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         }
                     }
 
-                    if ($roomId !== null) {
-                        $pdo->prepare("SELECT id FROM properties WHERE id = ? FOR UPDATE")->execute([$roomId]);
+                    // Whole-property (SINGLE) bookings carry no room_id at all, so the
+                    // room-scoped branch below never ran for them - meaning moving an
+                    // existing booking's dates on a whole villa/homestay had NO overlap
+                    // protection whatsoever (found 1 Sep 2026: booking #708 could be
+                    // re-picked onto #710's own occupied night on staging, with nothing
+                    // here to stop the save even though the frontend calendar should
+                    // already have refused the pick). add_guest got this exact fix on 30
+                    // Aug 2026 (see its own copy of this comment) - update_guest was
+                    // simply missed. Deliberately scoped to genuinely room-less
+                    // properties: a MULTI_KEY property can also hold legacy room_id-NULL
+                    // rows ("Other / Unassigned Rooms"), and those must NOT block each
+                    // other, since they're not a single shared physical unit.
+                    $isWholePropertyBooking = false;
+                    if ($roomId === null) {
+                        $typeStmt = $pdo->prepare("SELECT property_type FROM properties WHERE id = ? LIMIT 1");
+                        $typeStmt->execute([$propertyId]);
+                        $isWholePropertyBooking = ($typeStmt->fetchColumn() === 'SINGLE');
+                    }
+
+                    if ($roomId !== null || $isWholePropertyBooking) {
+                        $lockTargetId = $roomId !== null ? $roomId : $propertyId;
+                        $pdo->prepare("SELECT id FROM properties WHERE id = ? FOR UPDATE")->execute([$lockTargetId]);
+
                         // Was missing GUEST_STATUS_BOOKED - a future reservation is the
                         // most common thing this check needs to catch (moving a stay
                         // into a room that's already reserved later on), and it was
                         // silently excluded (found + fixed alongside add_guest's
                         // missing check, 20 Aug 2026).
-                        $conflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id = ? AND status IN (?, ?, ?) AND id != ? AND property_id = ? AND checkin_date < ? AND expected_checkout > ? LIMIT 1 FOR UPDATE");
-                        $conflictStmt->execute([$roomId, GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_IN, GUEST_STATUS_BOOKED, $guestId, $propertyId, $newCheckout, $newCheckin]);
+                        if ($roomId !== null) {
+                            $conflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id = ? AND status IN (?, ?, ?) AND id != ? AND property_id = ? AND checkin_date < ? AND expected_checkout > ? LIMIT 1 FOR UPDATE");
+                            $conflictStmt->execute([$roomId, GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_IN, GUEST_STATUS_BOOKED, $guestId, $propertyId, $newCheckout, $newCheckin]);
+                        } else {
+                            $conflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id IS NULL AND status IN (?, ?, ?) AND id != ? AND property_id = ? AND checkin_date < ? AND expected_checkout > ? LIMIT 1 FOR UPDATE");
+                            $conflictStmt->execute([GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_IN, GUEST_STATUS_BOOKED, $guestId, $propertyId, $newCheckout, $newCheckin]);
+                        }
                         if ($conflictStmt->fetch()) {
                             if ($pdo->inTransaction()) {
                                 $pdo->rollBack();
                             }
                             http_response_code(409);
-                            echo json_encode(['status' => 'error', 'message' => 'Selected room already has an active booking for these dates']);
+                            echo json_encode(['status' => 'error', 'message' => $roomId !== null
+                                ? 'Selected room already has an active booking for these dates'
+                                : 'This property already has an active booking for these dates']);
                             break;
                         }
                     }
@@ -1014,6 +1105,24 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         ]);
                     }
 
+                    // Channel Manager Outbox (30 Aug 2026): Enqueue both old and new date ranges
+                    if (is_file(__DIR__ . '/../channex/outbox.php')) {
+                        require_once __DIR__ . '/../channex/outbox.php';
+                    }
+                    if (function_exists('enqueueOutboxItem')) {
+                        if (!empty($previousGuest['checkin_date']) && !empty($previousGuest['expected_checkout'])) {
+                            $oldRoomId = !empty($previousGuest['room_id']) ? (int)$previousGuest['room_id'] : null;
+                            enqueueOutboxItem($pdo, (int)$propertyId, $oldRoomId, 'availability', $previousGuest['checkin_date'], $previousGuest['expected_checkout'], [
+                                'action' => 'update_guest_old_dates',
+                                'guest_id' => $guestId,
+                            ]);
+                        }
+                        enqueueOutboxItem($pdo, (int)$propertyId, $roomId, 'availability', $newCheckin, $newCheckout, [
+                            'action' => 'update_guest_new_dates',
+                            'guest_id' => $guestId,
+                        ]);
+                    }
+
                     // Commit before responding/notifying: the room lock taken above must
                     // be released as soon as the write is durable, not held across the
                     // Telegram sends below (a slow/hanging API call would otherwise block
@@ -1023,6 +1132,12 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     }
 
                     echo json_encode(['status' => 'success', 'message' => 'Booking updated successfully']);
+
+                    // Channel Manager Outbox (31 Aug 2026): see add_guest's own comment
+                    // above - nothing was draining these enqueued rows automatically.
+                    if (function_exists('triggerEventDrivenChannexDrain')) {
+                        triggerEventDrivenChannexDrain($pdo);
+                    }
 
                     // Ping Admin with exactly what changed, not just "booking updated" -
                     // a diff against the pre-update row, one line per field that actually
@@ -1123,7 +1238,11 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                                 'booking_id'   => $guestId,
                                 'changes_list' => implode("\n", $changedLines),
                             ]);
-                            sendPropertyTelegramMessage($pdo, $propertyId, 'admin', $editMsg);
+                            if (function_exists('enqueueTelegramMessage')) {
+                                enqueueTelegramMessage($pdo, (int)$propertyId, 'admin', $editMsg, null, 'booking_updated');
+                            } else {
+                                sendPropertyTelegramMessage($pdo, $propertyId, 'admin', $editMsg);
+                            }
                         }
                     } catch (Exception $e) {}
 
@@ -1148,7 +1267,11 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                                 $msg .= "🚪 <b>Room:</b> {$guestInfo['room_name']}\n";
                                 $msg .= "🔢 <b>Guests:</b> {$previousNoOfGuests} → {$newNoOfGuests}\n";
                                 $msg .= "📋 <b>ID Documents:</b> {$uploadedCount}/{$newNoOfGuests} uploaded";
-                                sendPropertyTelegramMessage($pdo, $propertyId, 'admin', $msg);
+                                if (function_exists('enqueueTelegramMessage')) {
+                                    enqueueTelegramMessage($pdo, (int)$propertyId, 'admin', $msg);
+                                } else {
+                                    sendPropertyTelegramMessage($pdo, $propertyId, 'admin', $msg);
+                                }
                             }
                         } catch (Exception $e) {
                             error_log("Failed to send guest-count-updated Telegram notification: " . $e->getMessage());
@@ -1173,10 +1296,48 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                 $guestId = validateGuestIdOrRespond($input['id'] ?? null);
                 if ($guestId === null) break;
                 try {
+                    $lookupStmt = $pdo->prepare("SELECT room_id, checkin_date, expected_checkout, ota_source, booking_source FROM guests WHERE id = ? AND property_id = ?");
+                    $lookupStmt->execute([$guestId, $propertyId]);
+                    $guestRow = $lookupStmt->fetch(PDO::FETCH_ASSOC);
+
+                    if (!$guestRow) {
+                        http_response_code(404);
+                        echo json_encode(['status' => 'error', 'message' => 'Booking not found']);
+                        break;
+                    }
+
+                    if (!empty($guestRow['ota_source'])) {
+                        http_response_code(400);
+                        echo json_encode([
+                            'status' => 'error',
+                            'message' => 'OTA reservations (from ' . htmlspecialchars($guestRow['ota_source']) . ') cannot be deleted directly from the app. Please cancel the reservation on the channel portal.'
+                        ]);
+                        break;
+                    }
+
                     $stmt = $pdo->prepare("DELETE FROM guests WHERE id = ? AND property_id = ?");
                     $stmt->execute([$guestId, $propertyId]);
                     if ($stmt->rowCount() > 0) {
+                        if ($guestRow && !empty($guestRow['checkin_date']) && !empty($guestRow['expected_checkout'])) {
+                            if (is_file(__DIR__ . '/../channex/outbox.php')) {
+                                require_once __DIR__ . '/../channex/outbox.php';
+                            }
+                            if (function_exists('enqueueOutboxItem')) {
+                                $roomId = !empty($guestRow['room_id']) ? (int)$guestRow['room_id'] : null;
+                                enqueueOutboxItem($pdo, (int)$propertyId, $roomId, 'availability', $guestRow['checkin_date'], $guestRow['expected_checkout'], [
+                                    'action' => 'delete_guest',
+                                    'guest_id' => $guestId,
+                                ]);
+                            }
+                        }
                         echo json_encode(['status' => 'success', 'message' => 'Booking deleted successfully']);
+
+                        // Channel Manager Outbox (31 Aug 2026): see add_guest's own
+                        // comment above - nothing was draining these enqueued rows
+                        // automatically.
+                        if (function_exists('triggerEventDrivenChannexDrain')) {
+                            triggerEventDrivenChannexDrain($pdo);
+                        }
                     } else {
                         http_response_code(404);
                         echo json_encode(['status' => 'error', 'message' => 'Booking not found']);

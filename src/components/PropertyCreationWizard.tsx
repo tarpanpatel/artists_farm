@@ -638,7 +638,13 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
         )}
       </div>
 
-      <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2 bg-gray-50 dark:bg-gray-850 shrink-0">
+      {/* pb-[calc(1rem+env(safe-area-inset-bottom,0px))], not plain p-4 (2 Sep
+          2026, site-wide audit) - see DESIGN.md's "Bottom-Anchored Drawer
+          Footer Safe Area" rule. This footer is a shrink-0 flex child pinned
+          to the physical bottom edge, same as SelfOnboardingWizard.tsx's and
+          PropertySetupWizard.tsx's own footers (already fixed) - this sibling
+          wizard was missed at the time. */}
+      <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] border-t border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2 bg-gray-50 dark:bg-gray-850 shrink-0">
         <div className="flex items-center gap-2">
           {stepIndex > 0 && !finished && (
             <Button type="button" variant="secondary" size="sm" onClick={handleBack} disabled={saving}>

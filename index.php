@@ -57,6 +57,10 @@ if (file_exists($dist_index)) {
     $html = str_replace('src="dist/', 'src="/dist/', $html);
     $html = str_replace('href="dist/', 'href="/dist/', $html);
     $html = str_replace('="/assets/', '="/dist/assets/', $html);
+    $html = str_replace('href="./favicon.ico"', 'href="/favicon.ico"', $html);
+    $html = str_replace('href="./app-icons/', 'href="/app-icons/', $html);
+    $html = str_replace('href="favicon.ico"', 'href="/favicon.ico"', $html);
+    $html = str_replace('href="app-icons/', 'href="/app-icons/', $html);
 
     // Same fix for the PWA icon + favicon links. dist/index.html emits these
     // relative (./app-icons/..., ./favicon.ico) because vite's base is './',

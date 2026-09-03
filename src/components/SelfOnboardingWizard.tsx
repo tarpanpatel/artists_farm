@@ -8,6 +8,7 @@ import {
 import { Button } from './Button';
 import { Input } from './Input';
 import { useToast } from './ToastContext';
+import { formatDateDDMMYYYY } from '../utils/dateUtils';
 
 interface SelfOnboardingWizardProps {
   isOpen: boolean;
@@ -53,7 +54,7 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
   const expiryDate = new Date(todayDate);
   expiryDate.setDate(expiryDate.getDate() + 30);
 
-  const formatDate = (d: Date) => d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  const formatDate = (d: Date) => formatDateDDMMYYYY(d.toISOString());
 
   const isStep1Valid = !!fullName.trim() && !!email.trim() && phone.replace(/\D/g, '').length === 10 && passcode.length === 6;
   const isStep3Valid = !!propertyName.trim() && hasKitchen !== null;
@@ -259,7 +260,7 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
                   <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                   <span className="text-sm font-bold text-emerald-900 dark:text-emerald-200">30-Day Trial License</span>
                 </div>
-                <span className="px-2.5 py-0.5 text-2xs font-bold uppercase rounded-full bg-emerald-600 text-white">
+                <span className="px-2.5 py-0.5 text-2xs font-bold uppercase rounded-full bg-emerald-600 text-white border border-emerald-500 shadow-xs">
                   ₹0 Free Trial
                 </span>
               </div>

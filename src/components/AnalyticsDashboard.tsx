@@ -68,10 +68,55 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 }) => {
   const { orders } = useKitchenContext();
   const { pettyCash } = useFinance();
-  const { isAuthenticated, authChecked } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'pace' | 'kitchen' | 'expenses' | 'profit_loss' | 'fluctuations'>(() => {
+  const getInitialAnalyticsTab = (): 'overview' | 'bookings' | 'pace' | 'kitchen' | 'expenses' | 'profit_loss' | 'fluctuations' => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash.replace('#', '').trim().toLowerCase();
+      if (hash.includes('/')) {
+        const sub = hash.split('/')[1];
+        if (['overview', 'bookings', 'pace', 'kitchen', 'expenses', 'profit_loss', 'fluctuations'].includes(sub)) {
+          return sub as any;
+        }
+      }
+      const stored = sessionStorage.getItem('artists_farm_analytics_tab');
+      if (stored && ['overview', 'bookings', 'pace', 'kitchen', 'expenses', 'profit_loss', 'fluctuations'].includes(stored)) {
+        return stored as any;
+      }
+    }
     return activeMenuItemKey === 'purchase_analytics' ? 'expenses' : 'overview';
-  });
+  };
+
+  const { isAuthenticated, authChecked } = useAuth();
+  const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'pace' | 'kitchen' | 'expenses' | 'profit_loss' | 'fluctuations'>(getInitialAnalyticsTab);
+
+  const handleTabSelect = (tab: 'overview' | 'bookings' | 'pace' | 'kitchen' | 'expenses' | 'profit_loss' | 'fluctuations') => {
+    setActiveTab(tab);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('artists_farm_analytics_tab', tab);
+      const currentRaw = window.location.hash.replace('#', '').trim();
+      const basePart = currentRaw.split('?')[0].split('/')[0];
+      const validBase = basePart && ['analytics', 'admin_control_overview', 'dashboard_analytics', 'purchase_analytics'].includes(basePart)
+        ? basePart
+        : 'analytics';
+      const newHash = `#${validBase}/${tab}`;
+      if (window.location.hash !== newHash) {
+        window.history.replaceState(null, '', newHash);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleHash = () => {
+      const hash = window.location.hash.replace('#', '').trim().toLowerCase();
+      if (hash.includes('/')) {
+        const sub = hash.split('/')[1];
+        if (['overview', 'bookings', 'pace', 'kitchen', 'expenses', 'profit_loss', 'fluctuations'].includes(sub)) {
+          setActiveTab(sub as any);
+        }
+      }
+    };
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
 
   // Properties with no food service have nothing to show on the Food POS /
   // Kitchen sub-tabs (kitchen orders + kitchen purchases are both blocked at
@@ -80,7 +125,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   // disabled while one of those tabs is active.
   useEffect(() => {
     if (!kitchenModuleEnabled && activeTab === 'kitchen') {
-      setActiveTab('overview');
+      handleTabSelect('overview');
     }
   }, [kitchenModuleEnabled, activeTab]);
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
@@ -1202,7 +1247,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
           const tabs: ('overview' | 'bookings' | 'pace' | 'kitchen' | 'expenses' | 'profit_loss' | 'fluctuations')[] = kitchenModuleEnabled
             ? ['overview', 'bookings', 'pace', 'kitchen', 'expenses', 'profit_loss', 'fluctuations']
             : ['overview', 'bookings', 'pace', 'expenses', 'profit_loss', 'fluctuations'];
-          if (tabs[tabIndex]) setActiveTab(tabs[tabIndex]);
+          if (tabs[tabIndex]) handleTabSelect(tabs[tabIndex]);
         }}
       >
       {/* TAB 1: OVERVIEW */}
@@ -1361,7 +1406,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
               <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <IndianRupee className="w-4 h-4 text-amber-600" /> {t('additional_charges_breakdown_heading', 'Additional Charges Breakdown')}
               </h3>
-              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                 ₹{extraChargesTotal.toLocaleString('en-IN')} {t('total_label', 'total')}
               </span>
             </div>
@@ -1741,7 +1786,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
                           <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">{s.name}</span>
-                          {i < 5 && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300 shrink-0">{t('volatile_badge', 'Volatile')}</span>}
+                          {i < 5 && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300 border border-red-200 dark:border-red-800 shrink-0">{t('volatile_badge', 'Volatile')}</span>}
                         </div>
                         <p className="text-[9px] text-slate-400 mt-0.5">
                           ±{s.fluctuationPct.toFixed(0)}% {t('fluctuation_label', 'fluctuation')} · {t('every_label', 'every')} ~{s.avgFrequencyDays.toFixed(1)}d · {s.count}x

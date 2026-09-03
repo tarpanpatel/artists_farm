@@ -8,6 +8,8 @@ import {
   Plus,
   CalendarPlus,
   ChefHat,
+  Receipt,
+  Bell,
   X
 } from './icons/FlowbiteIcons';
 import { TabType } from './Navigation';
@@ -25,6 +27,7 @@ interface MobileBottomNavPermissions {
   kitchen: boolean;
   finances: boolean;
   addExpense: boolean;
+  addServiceRequest: boolean;
   addBooking: boolean;
   addFoodOrder: boolean;
   viewLiveKitchenOrder: boolean;
@@ -36,6 +39,7 @@ const DEFAULT_PERMISSIONS: MobileBottomNavPermissions = {
   kitchen: true,
   finances: true,
   addExpense: true,
+  addServiceRequest: true,
   addBooking: true,
   addFoodOrder: true,
   viewLiveKitchenOrder: true,
@@ -48,6 +52,8 @@ interface MobileBottomNavProps {
   isSidebarOpen: boolean;
   kitchenModuleEnabled?: boolean;
   onOpenAddBooking?: () => void;
+  onOpenAddExpense?: () => void;
+  onOpenAddServiceRequest?: () => void;
   permissions?: MobileBottomNavPermissions;
 }
 
@@ -58,6 +64,8 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   isSidebarOpen,
   kitchenModuleEnabled = true,
   onOpenAddBooking,
+  onOpenAddExpense,
+  onOpenAddServiceRequest,
   permissions = DEFAULT_PERMISSIONS,
 }) => {
   const [isQuickActionOpen, setIsQuickActionOpen] = useState(false);
@@ -71,7 +79,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   // of the four Quick Actions it opens - a button that opens an empty sheet
   // fails the same "not accessible => not visible" rule as the sheet's own
   // buttons.
-  const hasAnyQuickAction = permissions.addBooking || permissions.viewLiveKitchenOrder;
+  const hasAnyQuickAction = permissions.addExpense || permissions.addServiceRequest || permissions.addBooking || permissions.viewLiveKitchenOrder;
 
   return (
     <>
@@ -128,7 +136,56 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          {/* 1. Add Booking */}
+          {/* Add Expense (was here originally, removed in 9f8827d7's "UI
+              cleanup", restored 31 Aug 2026 on explicit request) */}
+          {permissions.addExpense && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsQuickActionOpen(false);
+                if (onOpenAddExpense) {
+                  onOpenAddExpense();
+                } else {
+                  handleNavClick('petty_cash', 'expenses');
+                }
+              }}
+              className="flex items-center gap-3 p-3.5 rounded-xl bg-emerald-50 hover:bg-emerald-100/80 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 font-semibold text-xs text-left transition-all active:scale-95 cursor-pointer shadow-xs"
+            >
+              <div className="w-10 h-10 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <Receipt className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <span className="block font-bold text-slate-900 dark:text-white truncate">Add Expense</span>
+              </div>
+            </button>
+          )}
+
+          {/* Add Service Request - no onOpen handler opens the drawer
+              directly (it only mounts with the Service Requests tab active),
+              so this navigates there where the "New Request" button lives. */}
+          {permissions.addServiceRequest && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsQuickActionOpen(false);
+                if (onOpenAddServiceRequest) {
+                  onOpenAddServiceRequest();
+                } else {
+                  handleNavClick('service_requests', 'service_requests');
+                }
+              }}
+              className="flex items-center gap-3 p-3.5 rounded-xl bg-rose-50 hover:bg-rose-100/80 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300 font-semibold text-xs text-left transition-all active:scale-95 cursor-pointer shadow-xs"
+            >
+              <div className="w-10 h-10 rounded-lg bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <Bell className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <span className="block font-bold text-slate-900 dark:text-white truncate">Add Service Request</span>
+              </div>
+            </button>
+          )}
+
+          {/* Add Booking */}
           {permissions.addBooking && (
             <button
               type="button"

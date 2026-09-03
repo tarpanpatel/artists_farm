@@ -3,12 +3,12 @@ import { Button, Badge, Checkbox } from 'flowbite-react';
 import {
   Trash2,
   Plus,
+  Loader2,
 } from './icons/FlowbiteIcons';
 import { Guest, BillingReceipt, MiscChargeTemplate, MenuItem } from '../types';
 import { Popover } from './Popover';
 import { useToast } from './ToastContext';
 import { useStaff } from '../contexts/StaffContext';
-import { useAuth } from '../contexts/AuthContext';
 import { useConfigurationData } from '../contexts/ConfigurationDataContext';
 import {
   GUEST_STATUS_CHECKED_IN,
@@ -17,7 +17,7 @@ import {
   GUEST_STATUS_ACTIVE_LEGACY,
   GUEST_STATUS_CHECKEDOUT_LEGACY,
 } from '../constants/guestStatus';
-import { getPropertySlug } from '../services/api';
+import { parseDateToYMD } from '../utils/dateUtils';
 import { DateRangePicker } from './DateRangePicker';
 import { StyledSelect } from './StyledSelect';
 import { Input } from './Input';
@@ -77,9 +77,8 @@ interface GuestManagementProps {
   propertyInstructions?: string;
   propertyCheckinTime?: string;
   propertyCheckoutTime?: string;
+  isLoading?: boolean;
 }
-
-
 
 export interface IncidentalsItem {
   id: string;
@@ -105,11 +104,12 @@ export interface PaymentSplitRow {
 export const GuestManagement: React.FC<GuestManagementProps> = ({
   guests,
   receipts,
+  isLoading = false,
   menu: _menu,
   onAddGuest,
   onCheckoutGuest,
   onUpdateGuest,
-  onDeleteGuest: _onDeleteGuest,
+  onDeleteGuest,
   activeMenuItemKey,
   onDispatchTelegram: _onDispatchTelegram,
   isMultiKeyProperty = false,
@@ -142,12 +142,24 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 }) => {
   const { showToast } = useToast();
   const { staff } = useStaff();
-  const { isAuthenticated, authChecked } = useAuth();
   const { miscCharges } = useConfigurationData();
 
   // Form Checkin State
   const [guestName, setGuestName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  // Suppresses the live duplicate check (below) while a submission is in
+  // flight (31 Aug 2026). App.tsx's handleAddGuest adds the new guest to
+  // `guests` optimistically, synchronously, before the network call even
+  // starts - so for the whole round trip the live check saw the
+  // just-submitted booking as an existing one with the same phone+check-in
+  // date as the still-populated form, and flagged it as a duplicate of
+  // itself. Harmless once the round trip was near-instant, but very visible
+  // during the 13-21s the response used to take before the LiteSpeed
+  // Content-Length fix (see router.php's ob_start() and outbox.php's
+  // triggerEventDrivenChannexDrain()) - and still a real, if brief, false
+  // positive without this guard. The actual submit-time duplicate guard
+  // further below is unaffected: it runs before the optimistic add happens.
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [roomNumber, setRoomNumber] = useState('');
   const [guestNameTouched, setGuestNameTouched] = useState(false);
   const [phoneNumberTouched, setPhoneNumberTouched] = useState(false);
@@ -156,11 +168,14 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const [bookingSourceLocal, setBookingSourceLocal] = useState('Offline');
   const [advanceReceivedBy, setAdvanceReceivedBy] = useState('');
   const [pendingReceivedBy, setPendingReceivedBy] = useState('');
-  const [checkinDate, setCheckinDate] = useState(new Date().toISOString().split('T')[0]);
+  // Left blank deliberately (31 Aug 2026) - defaulting these to today/today+2
+  // meant an operator could hit Save without ever having chosen dates, and
+  // "today" is exactly the date range most likely to already be occupied or
+  // carry an active rate-rule restriction, so a silent default there is the
+  // worst place for one. Force an explicit pick every time instead.
+  const [checkinDate, setCheckinDate] = useState('');
   const [checkinTime, setCheckinTime] = useState('14:00');
-  const [expectedCheckout, setExpectedCheckout] = useState(
-    new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0]
-  );
+  const [expectedCheckout, setExpectedCheckout] = useState('');
   const [checkoutTime, setCheckoutTime] = useState('11:00');
   const [notes, setNotes] = useState('');
   const [showGuestNotes, setShowGuestNotes] = useState(false);
@@ -175,7 +190,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   // Phone Number field as you type instead of only after clicking Save. Only
   // judges once a full 10-digit number is entered - a partial number isn't
   // "wrong", it's just unfinished, so it stays quiet until then.
-  const duplicateBookingLive = phoneNumber.length === 10 && guests.some((g) => {
+  const duplicateBookingLive = !isSubmitting && phoneNumber.length === 10 && guests.some((g) => {
     if (g.status === 'CheckedOut' || (g.status as string) === GUEST_STATUS_CHECKED_OUT || (g.status as string) === 'Cancelled') return false;
     const gPhone = (g.phoneNumber || '').trim();
     const gCheckin = (g.checkinDate || '').split(' ')[0];
@@ -311,96 +326,50 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     const totalExtra = calcTotalBookingExtraCharges(updated, showBookingExtraCharges);
     setBookingPending(bookingRoomTariff + totalExtra - bookingAdvance);
   };
-  const [blockedDates, setBlockedDates] = useState<Array<{
-    event_start: string;
-    event_end: string;
-    event_title: string;
-    reservation_url?: string;
-    source?: string;
-    source_label?: string;
-    room_id?: number;
-  }>>([]);
-
   useEffect(() => {
     setMiscChargesList(miscCharges as MiscChargeTemplate[]);
   }, [miscCharges]);
-
-  // Fetch blocked dates from iCal, once authenticated (27 Aug 2026, app-wide
-  // sweep - see KitchenManagement.tsx's identical fix for the full writeup).
-  useEffect(() => {
-    if (!authChecked || !isAuthenticated) return;
-    const fetchBlockedDates = async () => {
-      try {
-        const propertySlug = getPropertySlug();
-        const response = await fetch('/php/api/ical_sync.php?action=get_blocked_dates', {
-          headers: { 'X-Property-Slug': propertySlug },
-          credentials: 'include',
-        });
-        const data = await response.json();
-        if (data.status === 'success' && data.data) {
-          setBlockedDates(data.data);
-        }
-      } catch (error) {
-        console.error('Failed to fetch blocked dates:', error);
-      }
-    };
-    fetchBlockedDates();
-  }, [isAuthenticated, authChecked]);
 
   // Get all blocked date strings for DatePicker
   const getBlockedDateStrings = (): string[] => {
     const blocked: string[] = [];
 
-    // Resolved once, used by both sections below - iCal blocks need this too
-    // (see 1.), not just existing guest bookings (2.).
+    // Resolved once, used below for existing-guest-booking overlap checks.
     const selectedRoomObj = rooms.find((r) => r.name === roomNumber || r.slug === roomNumber);
     const selectedRoomId = selectedRoomObj?.id;
 
-    // 1. iCal blocked dates - only the currently selected room's own blocks.
-    // For a multi-key property, ical_sync.php's get_blocked_dates returns every
-    // room's synced events in one call (room_id per row) so the calendar view
-    // can show all of them - but here, picking a date for Room 101 must not
-    // also disable dates that are only actually blocked on Room 102's feed.
-    // isMultiKeyProperty ? undefined room_id rows (shouldn't happen once every
-    // sync is tied to a room) fall through and are ignored, not blocked -
-    // safer to under-block than to falsely block an available room.
-    blockedDates
-      .filter((bd) => !isMultiKeyProperty || (selectedRoomId != null && Number(bd.room_id) === Number(selectedRoomId)))
-      .forEach((bd) => {
-        const start = new Date(bd.event_start.split(' ')[0]);
-        const end = new Date(bd.event_end.split(' ')[0]);
-        let current = new Date(start);
-        while (current < end) {
-          const year = current.getFullYear();
-          const month = String(current.getMonth() + 1).padStart(2, '0');
-          const day = String(current.getDate()).padStart(2, '0');
-          blocked.push(`${year}-${month}-${day}`);
-          current = new Date(current.getTime() + 86400000);
-        }
-      });
+    // iCal blocked dates (previously section 1 here) removed 3 Sep 2026 -
+    // iCal sync retired app-wide, superseded by the Channex channel manager
+    // (see _unwanted/ical/README.md). Was already gated off since 1 Sep
+    // behind ICAL_BLOCKING_ENABLED.
 
-    // 2. Existing guest bookings for the currently selected room
+    // 2. Existing guest bookings for the currently selected room. Mirrors the
+    // iCal filter's !isMultiKeyProperty short-circuit above (31 Aug 2026) -
+    // without it, a single-unit property (no room selector, so roomNumber/
+    // selectedRoomId never get set to anything) matched nothing here at all:
+    // both branches require a non-empty roomNumber/selectedRoomId on both
+    // sides, so every existing booking silently failed to block its own
+    // dates on the one property type that actually needs this the most.
 
     guests
       .filter((g) => g.status === GUEST_STATUS_CHECKED_IN || (g.status as string) === GUEST_STATUS_ACTIVE_LEGACY || g.status === GUEST_STATUS_BOOKED)
       .filter((g) => {
+        if (!isMultiKeyProperty) return true;
         const gRoomId = (g as any).roomId || (g as any).room_id;
         if (selectedRoomId && gRoomId && Number(gRoomId) === Number(selectedRoomId)) return true;
         if (g.roomNumber && roomNumber && g.roomNumber.toLowerCase().trim() === roomNumber.toLowerCase().trim()) return true;
         return false;
       })
       .forEach((g) => {
-        const checkinStr = (g.checkinDate || '').split(' ')[0].split('T')[0];
-        const checkoutStr = (g.expectedCheckout || g.checkoutDate || g.checkinDate || '').split(' ')[0].split('T')[0];
-        if (!checkinStr) return;
+        const startYmd = parseDateToYMD(g.checkinDate || '');
+        const endYmd = parseDateToYMD(g.expectedCheckout || g.checkoutDate || g.checkinDate || '');
+        if (!startYmd) return;
 
-        const [sy, sm, sd] = checkinStr.split('-').map(Number);
-        const [ey, em, ed] = (checkoutStr || checkinStr).split('-').map(Number);
-
-        if (!sy || !sm || !sd) return;
+        const [sy, sm, sd] = startYmd;
+        const [ey, em, ed] = endYmd || startYmd;
 
         const start = new Date(sy, sm - 1, sd, 12, 0, 0);
-        const end = ey && em && ed ? new Date(ey, em - 1, ed, 12, 0, 0) : new Date(start);
+        const end = new Date(ey, em - 1, ed, 12, 0, 0);
 
         const current = new Date(start);
         while (current < end) {
@@ -460,9 +429,9 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     setBookingSourceLocal('Offline');
     setAdvanceReceivedBy('');
     setPendingReceivedBy('');
-    setCheckinDate(new Date().toISOString().split('T')[0]);
+    setCheckinDate('');
     setCheckinTime('14:00');
-    setExpectedCheckout(new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0]);
+    setExpectedCheckout('');
     setCheckoutTime('11:00');
     setNotes('');
     setShowGuestNotes(false);
@@ -536,7 +505,14 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               if ((g.status as string) === GUEST_STATUS_CHECKED_OUT || (g.status as string) === GUEST_STATUS_CHECKEDOUT_LEGACY || (g.status as string) === 'Cancelled') return false;
               const gRoomId = (g as any).roomId || (g as any).room_id;
 
-              const isSameRoom = (selectedRoomId && gRoomId && Number(gRoomId) === Number(selectedRoomId)) ||
+              // Same fix as getBlockedDateStrings() above (31 Aug 2026): on a
+              // single-unit property there's no room selector, so roomNumber/
+              // selectedRoomId are permanently empty and this check matched
+              // nothing - a real overlap only got caught by the backend's own
+              // validation, as a generic toast instead of this one's specific
+              // room-named rejection.
+              const isSameRoom = !isMultiKeyProperty ||
+                (selectedRoomId && gRoomId && Number(gRoomId) === Number(selectedRoomId)) ||
                 (g.roomNumber && roomNumber && g.roomNumber.toLowerCase().trim() === roomNumber.toLowerCase().trim());
 
               if (!isSameRoom) return false;
@@ -603,13 +579,25 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               extraCharges,
             };
 
+            setIsSubmitting(true);
             try {
               await onAddGuest(guestObj);
               resetBookingForm();
               showToast('Guest booked successfully!', { type: 'success' });
+              // Closes right here, not inside App.tsx's onAddGuest wrapper
+              // (31 Aug 2026, second pass at this) - closing there ran BEFORE
+              // this line, since it sits earlier in the same awaited call,
+              // making the drawer disappear before this toast had even been
+              // created. onClose is only wired for the drawer-hosted render
+              // (guarded, since the inline/non-drawer usages of this
+              // component pass none) - closing after the toast, same tick,
+              // no artificial delay in either place.
+              onClose?.();
             } catch (err) {
               const message = err instanceof Error && err.message ? err.message : 'Failed to save booking. Please try again.';
               showToast(message, { type: 'error' });
+            } finally {
+              setIsSubmitting(false);
             }
           }}>
             {/* Row 0: Guest Name (Full width) */}
@@ -751,11 +739,9 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 checkoutDate={expectedCheckout}
                 onCheckinChange={(d) => {
                   setCheckinDate(d);
-                  setDatesTouched(true);
                 }}
                 onCheckoutChange={(d) => {
                   setExpectedCheckout(d);
-                  setDatesTouched(true);
                 }}
                 blockedDates={getBlockedDateStrings()}
                 disablePastDates
@@ -991,8 +977,20 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               </div>
             )}
 
-            <Button type="submit" color="blue" className="w-full mt-4 font-semibold">
-              {t('save_guest_booking_button', 'Save Guest Booking')}
+            <Button
+              type="submit"
+              color="blue"
+              disabled={isSubmitting}
+              className="w-full mt-4 font-semibold flex items-center justify-center gap-2"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                  <span>{t('saving_booking_button', 'Saving Booking...')}</span>
+                </>
+              ) : (
+                <span>{t('save_guest_booking_button', 'Save Guest Booking')}</span>
+              )}
             </Button>
           </form>
         </div>
@@ -1003,8 +1001,10 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     <BillingCheckout
       guests={guests}
       receipts={receipts}
+      isLoading={isLoading}
       onCheckoutGuest={onCheckoutGuest}
       onUpdateGuest={onUpdateGuest}
+      onDeleteGuest={onDeleteGuest}
       onAddGuest={onAddGuest}
       isMultiKeyProperty={isMultiKeyProperty}
       rooms={rooms}

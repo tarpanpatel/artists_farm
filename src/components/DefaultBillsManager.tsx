@@ -294,13 +294,13 @@ export const DefaultBillsManager: React.FC<DefaultBillsManagerProps> = ({ onLogo
                     )}
                     <div className="flex gap-1">
                       <Button
-                        variant="secondary"
+                        variant="edit"
                         size="xs"
                         onClick={() => {
                           setEditingItem(item);
                           setEditForm({ label: item.label, description: item.description || '' });
                         }}
-                        leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
+                        leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
                         className="flex-1 justify-center"
                       >
                         Edit

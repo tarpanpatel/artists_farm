@@ -46,7 +46,15 @@
 
 param(
     [switch]$SkipPhpSync,
-    [switch]$DryRun
+    [switch]$DryRun,
+    # Which branch staging runs. Defaults to multi-tenant, the normal case.
+    # Added 30 Aug 2026: the branch was hardcoded in two places (the push and
+    # the server-side reset) while dist/ was always built from the local working
+    # tree. Deploying from any other branch therefore produced a hybrid -
+    # staging's PHP from multi-tenant, its frontend bundle from whatever was
+    # checked out locally - so a screen could ship calling endpoints its own
+    # backend did not have.
+    [string]$Branch = 'multi-tenant'
 )
 
 $ErrorActionPreference = 'Continue'
@@ -82,7 +90,7 @@ function Invoke-Ssh([string]$Command) {
     # process with no attached terminal, so any prompt just blocks forever
     # with nobody able to answer it). BatchMode=yes makes ssh/scp fail fast
     # with a real error instead of ever prompting for anything.
-    & ssh -p $SshPort -i $SshKey -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=20 "$SshUser@$SshHost" $Command
+    & ssh -n -p $SshPort -i $SshKey -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=20 "$SshUser@$SshHost" $Command
     if ($LASTEXITCODE -ne 0) {
         throw "SSH command failed (exit $LASTEXITCODE): $Command"
     }
@@ -104,16 +112,22 @@ try {
     }
 
     # 1. Push commits
-    Write-Step "Pushing commits to GitHub (multi-tenant)"
-    $ahead = git log origin/multi-tenant..HEAD --oneline 2>$null
+    Write-Step "Pushing commits to GitHub ($Branch)"
+    # The bundle is built from the local working tree, so deploying a branch
+    # other than the one checked out here would ship a mismatched frontend.
+    $currentBranch = (git rev-parse --abbrev-ref HEAD).Trim()
+    if ($currentBranch -ne $Branch) {
+        throw "Refusing to deploy: local checkout is on '$currentBranch' but -Branch is '$Branch'. dist/ is built from the working tree, so these must match."
+    }
+    $ahead = git log "origin/$Branch..HEAD" --oneline 2>$null
     if (-not $ahead) {
-        git fetch origin multi-tenant | Out-Null
-        $ahead = git log origin/multi-tenant..HEAD --oneline 2>$null
+        git fetch origin $Branch | Out-Null
+        $ahead = git log "origin/$Branch..HEAD" --oneline 2>$null
     }
     if ($ahead) {
         Write-Host $ahead
         if (-not $DryRun) {
-            git push origin multi-tenant
+            git push origin $Branch
             if ($LASTEXITCODE -ne 0) { throw "git push failed" }
             Write-Ok "Pushed."
         }
@@ -126,8 +140,12 @@ try {
     #    independent checkout of the same branch. See .ONE-TIME SERVER SETUP REQUIRED above -
     #    this step fails loudly (not silently) if that hasn't been done yet.
     if (-not $SkipPhpSync -and -not $DryRun) {
-        Write-Step "Syncing PHP backend on staging (git pull)"
-        Invoke-Ssh "cd $RemoteDir && git fetch origin && git reset --hard origin/multi-tenant"
+        Write-Step "Syncing PHP backend on staging (git pull, branch $Branch)"
+        # checkout -f -B actually moves the server onto $Branch. A plain
+        # `reset --hard origin/$Branch` would leave the checkout on whatever
+        # branch it was already on and just drag that branch's pointer to a
+        # different branch's commit, silently diverging it from its own remote.
+        Invoke-Ssh "cd $RemoteDir && git fetch origin && git checkout -f -B $Branch origin/$Branch"
         Write-Ok "Staging PHP backend is in sync."
     }
 

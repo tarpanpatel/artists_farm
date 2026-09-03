@@ -6,7 +6,6 @@ import { KpiCard } from './KpiCard';
 import { OperationalDashboard } from './OperationalDashboard';
 import { GuestManagement } from './GuestManagement';
 import { PropertyEditForm } from './PropertyEditForm';
-import { ICalSyncManager } from './ICalSyncManager';
 import { useAuth } from '../contexts/AuthContext';
 
 interface Room {
@@ -68,6 +67,14 @@ interface MultiKeyPropertyOverviewProps {
   activeTab?: string;
   setActiveTab?: (tab: string) => void;
   guests?: any[];
+  // Whether `guests` above is still loading (2 Sep 2026, found in review) -
+  // App.tsx's own GuestManagement render already gets this from its
+  // guestsLoading state; this component's own embedded GuestManagement
+  // (line ~319, the per-room Bookings tab) never received any such prop, so
+  // it defaulted to isLoading=false and flashed "No upcoming bookings."
+  // before real data arrived - reproducing, for every multi-key property,
+  // the exact "premature empty-state flash" c2a4c3c9 otherwise fixed.
+  guestsLoading?: boolean;
   menu?: any[];
   receipts?: any[];
   onAddGuest?: (guest: any) => Promise<void>;
@@ -111,6 +118,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
   activeTab,
   setActiveTab,
   guests = [],
+  guestsLoading = false,
   menu = [],
   receipts = [],
   onAddGuest,
@@ -318,6 +326,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
               {activeTab === 'guests' && (
                 <GuestManagement
                   guests={roomGuests}
+                  isLoading={guestsLoading}
                   receipts={roomReceipts}
                   onAddGuest={onAddGuest}
                   onCheckoutGuest={onCheckoutGuest}
@@ -388,9 +397,9 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                     </div>
                   </div>
 
-                  <div data-tour="ota-sync" className="edit-room-page__ical-card bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 sm:p-6">
-                    <ICalSyncManager propertyId={selectedRoom.id} propertySlug={selectedRoom.slug} parentPropertySlug={propertySlug} embedded />
-                  </div>
+                  {/* iCal Sync card (ARCHIVED 3 Sep 2026) - see _unwanted/ical/README.md and the
+                      matching removal in EditPropertyPage.tsx. The 'ota-sync' onboarding tour
+                      step that targeted this div is removed too (DemoOnboardingTour.tsx). */}
                 </div>
               )}
             </>

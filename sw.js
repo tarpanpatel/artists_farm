@@ -15,11 +15,16 @@
 // for this immediate fix.
 // v23 (31 Aug 2026): the PWA icon/manifest fix shipping in this same deploy
 // edits index.html's <head> (relative ./app-icons/ + ./favicon.ico links ->
-// root-absolute) and php/manifest.php. Installed PWAs only pick those up once
-// the cached HTML shell is replaced, which the stale-while-revalidate handler
-// below does lazily over a couple of launches. Bumping this forces the
-// `activate` cache wipe so they get the corrected shell immediately.
-const CACHE_NAME = 'farm-pos-v23';
+// root-absolute) and php/manifest.php, AND 805a19d3 fixed the React
+// <LoadingScreen> (inlined logo, render gated on authChecked) the same day -
+// installed/cached browsers keep serving a pre-fix HTML shell without a bump.
+// v24 (2 Sep 2026): mobile card layout overhaul and auto-sync toolbar styling
+// v25 (2 Sep 2026): logo un-rounding and interactive operational manual accordion
+// v26 (2 Sep 2026): permanent drawer footer WhatsApp button and header title cleanup
+// v27 (2 Sep 2026): standardize help drawer font sizes with rest of site
+// v29 (2 Sep 2026): fix missing browser tab favicon across all tenant/property routes
+// v30 (3 Sep 2026): performance bundle splitting and client-side image downscaler
+const CACHE_NAME = 'farm-pos-v30';
 
 // Hashed asset pattern — Vite content-hashed files (e.g. index-CrXjaekR.js)
 // These must NEVER be cached by the SW; the browser cache handles them natively

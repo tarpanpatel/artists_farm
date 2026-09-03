@@ -111,7 +111,39 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
   const { staff } = useStaff();
   const { currentUser, activeRole } = useAuth();
   const { showToast } = useToast();
-  const [activeSubTab, setActiveSubTab] = useState<'food_menu' | 'nav_menu'>('food_menu');
+  const getInitialMenuSubTab = (): 'food_menu' | 'nav_menu' => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash.replace('#', '').trim().toLowerCase();
+      if (hash === 'edit_main_menu' || hash.includes('nav_menu') || hash.includes('edit_main_menu')) return 'nav_menu';
+      if (hash === 'edit_food_menu' || hash.includes('food_menu')) return 'food_menu';
+      const stored = sessionStorage.getItem('artists_farm_menu_manager_subtab');
+      if (stored === 'food_menu' || stored === 'nav_menu') return stored;
+    }
+    return activeMenuItemKey === 'edit_main_menu' ? 'nav_menu' : 'food_menu';
+  };
+
+  const [activeSubTab, setActiveSubTab] = useState<'food_menu' | 'nav_menu'>(getInitialMenuSubTab);
+
+  const handleSubTabSelect = (tab: 'food_menu' | 'nav_menu') => {
+    setActiveSubTab(tab);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('artists_farm_menu_manager_subtab', tab);
+      const newHash = tab === 'nav_menu' ? '#edit_main_menu' : '#edit_food_menu';
+      if (window.location.hash !== newHash) {
+        window.history.replaceState(null, '', newHash);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleHash = () => {
+      const hash = window.location.hash.replace('#', '').trim().toLowerCase();
+      if (hash === 'edit_main_menu' || hash.includes('nav_menu')) setActiveSubTab('nav_menu');
+      else if (hash === 'edit_food_menu' || hash.includes('food_menu')) setActiveSubTab('food_menu');
+    };
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
 
   const handleShareFoodMenu = () => {
     if (!propertySlug) {
@@ -476,11 +508,11 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
       cell: (item: MenuItem) => (
         <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
           <Button
-            variant="secondary"
+            variant="edit"
             size="sm"
             onClick={() => requirePasscode(() => handleOpenEditFood(item))}
             className="whitespace-nowrap shrink-0"
-            leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
+            leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
           >
             {t('edit_button', 'Edit')}
           </Button>
@@ -511,7 +543,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
             <Button
               variant={activeSubTab === 'nav_menu' ? 'primary' : 'ghost'}
               size="sm"
-              onClick={() => setActiveSubTab('nav_menu')}
+              onClick={() => handleSubTabSelect('nav_menu')}
               leftIcon={<NavIcon className="w-4 h-4" />}
             >
               <span>{t('edit_main_menu_tab_label', 'Edit Main Menu')} ({navItems.length})</span>
@@ -519,7 +551,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
             <Button
               variant={activeSubTab === 'food_menu' ? 'primary' : 'ghost'}
               size="sm"
-              onClick={() => setActiveSubTab('food_menu')}
+              onClick={() => handleSubTabSelect('food_menu')}
               leftIcon={<Utensils className="w-4 h-4" />}
             >
               <span>{t('food_catalog_tab_label', 'Food Catalog')} ({foodMenu.length})</span>
@@ -786,7 +818,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                         <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between mt-1 text-xs">
                           <span className="font-mono text-2xs text-slate-400 dark:text-slate-500">#{item.id}</span>
                           <div className="flex items-center gap-1">
-                            <Button variant="secondary" size="sm" onClick={() => requirePasscode(() => handleOpenEditFood(item))} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                            <Button variant="edit" size="sm" onClick={() => requirePasscode(() => handleOpenEditFood(item))} leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}>
                               {t('edit_item_tooltip', 'Edit Item')}
                             </Button>
                             <button
@@ -885,7 +917,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                             ₹{item.price}
                           </span>
                           <div className="flex items-center gap-1.5">
-                            <Button variant="secondary" size="sm" onClick={() => requirePasscode(() => handleOpenEditFood(item))} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                            <Button variant="edit" size="sm" onClick={() => requirePasscode(() => handleOpenEditFood(item))} leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}>
                               {t('edit_item_tooltip', 'Edit Item')}
                             </Button>
                             <button

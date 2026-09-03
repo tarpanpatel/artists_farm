@@ -1415,7 +1415,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               <span className="inline-flex items-center gap-1.5">
                 <span>{t('live_active_orders_label', 'Live Tickets')}</span>
                 {pendingOrdersCount > 0 && (
-                  <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300">
+                  <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                     {pendingOrdersCount}
                   </span>
                 )}
@@ -1432,11 +1432,24 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         {activeTab === 'kds' && (() => {
               const activeOrders = orders.filter((o) => o.status === 'Pending' || o.status === 'Preparing');
 
+              /* rounded-tl-none, not rounded-t-none, + sm:rounded-tl-none
+                 sm:border-t-0 alongside the bare versions (2 Sep 2026, user
+                 report: top-right corner should stay rounded like the bottom
+                 two - the tab row doesn't span this container's full width,
+                 so only the top-left corner sits under a tab; border-t-0
+                 still drops the whole top border since the Tabs' own tablist
+                 border-b already spans the full width underneath it). Also,
+                 separately: border-0 sm:border/rounded-none sm:rounded-lg
+                 just above only get cancelled by a flush override in the
+                 SAME variant scope; the bare-only rounded-tl-none/border-t-0
+                 never touched the sm: side of that same conflict. See
+                 BillingCheckout.tsx's billing-checkout__desk-body Card for
+                 the fuller writeup of this pattern. */
               return (
-        <div className={`kds-orders-container space-y-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-3.5 sm:p-4 ${isRestrictedStaffKitchenView ? '' : 'rounded-t-none -mt-px border-t-0'}`}>
-          <div className="kds-status-filter-bar flex flex-col sm:flex-row items-start sm:items-center justify-end text-xs gap-3">
+        <div className={`kds-orders-container space-y-3 sm:space-y-4 bg-transparent sm:bg-white dark:sm:bg-slate-800 rounded-none sm:rounded-lg border-0 sm:border border-slate-200 dark:border-slate-700 p-0 sm:p-4 ${isRestrictedStaffKitchenView ? '' : 'rounded-tl-none border-t-0 sm:rounded-tl-none sm:border-t-0 -mt-px'}`}>
+          <div className="kds-status-filter-bar flex flex-col sm:flex-row items-start sm:items-center justify-end text-xs">
             {/* Smart Polling / Live Sync Bar */}
-            <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg w-full sm:w-auto justify-between sm:justify-start">
+            <div className="flex items-center gap-2.5 bg-white sm:bg-slate-50 dark:bg-slate-800 dark:sm:bg-slate-900 border-b sm:border border-slate-200 dark:border-slate-700 px-4 sm:px-3 py-2 sm:py-1.5 rounded-none sm:rounded-lg w-full sm:w-auto justify-between sm:justify-start">
               <div className="flex items-center gap-2">
                 {/* Always-on live indicator, not a toggle - see the state
                     declaration above for why this can't be paused. */}
@@ -1454,7 +1467,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 <button
                   onClick={triggerManualSync}
                   disabled={isSyncing}
-                  className="px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 active:scale-98 text-xs font-semibold rounded-lg shadow-md transition-colors cursor-pointer flex items-center justify-center gap-1.5 shrink-0 disabled:opacity-50"
+                  className="px-3 py-1.5 bg-slate-50 sm:bg-white dark:bg-slate-700 dark:sm:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 active:scale-98 text-xs font-semibold rounded-lg shadow-xs sm:shadow-md transition-colors cursor-pointer flex items-center justify-center gap-1.5 shrink-0 disabled:opacity-50"
                   title={t('check_for_updates_tooltip')}
                 >
                   <RefreshCw className={`w-3.5 h-3.5 shrink-0 ${isSyncing ? 'animate-spin text-blue-600' : ''}`} />
@@ -1537,21 +1550,21 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       </p>
                     </div>
                     {completionPhase === 'processing' ? (
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 flex items-center gap-1">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 flex items-center gap-1">
                         <Loader2 className="w-3 h-3 animate-spin" /> {t('processing_label', 'Processing...')}
                       </span>
                     ) : completionPhase === 'completed' ? (
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                         {t('completed_label', 'Completed')}
                       </span>
                     ) : (
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
                           ord.status === 'Fulfilled'
-                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
                             : ord.status === 'Preparing'
-                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
-                            : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                            : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-600'
                         }`}>
                           {ord.status === 'Pending'
                             ? t('status_in_queue', 'In Queue')
@@ -1898,7 +1911,13 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           return (
             <div
               key={item.id}
-              className="pos-food-row bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-2.5 flex items-center justify-between gap-3 hover:border-blue-500 transition-all shadow-xs"
+              // first:mt-0 (2 Sep 2026, review finding: -mt-px was meant to
+              // collapse the border between two ADJACENT rows, but with no
+              // first-child exception it also pulled the very first row of
+              // every category 1px up into whatever precedes it). :first-child
+              // adds real specificity over the bare -mt-px, so this wins
+              // deterministically regardless of Tailwind's generated class order.
+              className="pos-food-row bg-white dark:bg-gray-800 rounded-none sm:rounded-lg border-x-0 sm:border border-y sm:border-y border-gray-200 dark:border-gray-700 px-4 py-2.5 sm:p-2.5 flex items-center justify-between gap-3 hover:border-blue-500 transition-all shadow-none sm:shadow-xs -mt-px first:mt-0 sm:mt-0"
             >
               <div className="flex items-center gap-2.5 min-w-0 flex-1">
                 <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 overflow-hidden flex items-center justify-center shrink-0">
@@ -2289,7 +2308,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                             {items.map((item) => renderFoodCard(item))}
                           </div>
                         ) : (
-                          <div className="pos-menu-list space-y-1.5">
+                          <div className="pos-menu-list -mx-3.5 sm:mx-0 space-y-0 sm:space-y-1.5">
                             {items.map((item) => renderFoodRow(item))}
                           </div>
                         )}
@@ -2303,7 +2322,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       {filteredPosMenuItems.map((item) => renderFoodCard(item))}
                     </div>
                   ) : (
-                    <div className="pos-menu-list space-y-1.5">
+                    <div className="pos-menu-list -mx-3.5 sm:mx-0 space-y-0 sm:space-y-1.5">
                       {filteredPosMenuItems.map((item) => renderFoodRow(item))}
                     </div>
                   )

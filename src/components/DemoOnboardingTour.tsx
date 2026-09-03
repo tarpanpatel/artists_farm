@@ -50,8 +50,8 @@ interface TourCategory {
 // driver.js's skipMissingElement cascades through every remaining step trying to find a match -
 // when none of the 14 match, it reaches its own "no more steps" teardown path and silently marks
 // the tour finished, which is why the trigger button used to vanish after one click with nothing
-// ever visibly highlighted. Fix: drill into the first child room the exact same way the ota-sync
-// step already correctly does, for every step whose anchor lives inside OperationalDashboard.
+// ever visibly highlighted. Fix: drill into the first child room first, for every step whose
+// anchor lives inside OperationalDashboard.
 function goToFirstRoomDashboard(nav: TourNavContext): void {
   const roomSlug = nav.getFirstChildRoomSlug();
   if (roomSlug) {
@@ -193,17 +193,11 @@ const TOUR_CATEGORIES: TourCategory[] = [
         side: 'top',
         beforeShow: (nav) => nav.handleNavigateTab('service_requests', 'service_requests'),
       },
-      {
-        id: 'ota-sync',
-        selector: '[data-tour="ota-sync"]',
-        title: '🔄 2-Way OTA Calendar Sync (iCal)',
-        description: 'Sync bookings automatically with Airbnb, Booking.com, Agoda, and MakeMyTrip to prevent double-bookings across channels.',
-        side: 'bottom',
-        beforeShow: (nav) => {
-          const roomSlug = nav.getFirstChildRoomSlug();
-          if (roomSlug) nav.onNavigateToRoom(roomSlug, 'edit_property');
-        },
-      },
+      // 'ota-sync' step removed (3 Sep 2026) along with the ICalSyncManager UI it targeted -
+      // see _unwanted/ical/README.md. With skipMissingElement: false below, leaving this step
+      // in place would silently truncate the whole tour the moment driver.js can't find
+      // [data-tour="ota-sync"] anymore (see goToFirstRoomDashboard's comment above for the exact
+      // failure mode this same setting causes when a step's anchor doesn't mount).
       {
         id: 'mobile-bottom-nav',
         selector: '[data-tour="mobile-bottom-nav"]',
@@ -514,7 +508,7 @@ export const DemoOnboardingTour: React.FC<DemoOnboardingTourProps> = ({
       <button
         type="button"
         onClick={startTour}
-        className="flex items-center gap-2 px-4 py-2.5 bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold rounded-full shadow-2xl transition-all hover:scale-105 cursor-pointer ring-4 ring-blue-600/20 active:scale-95"
+        className="flex items-center gap-2 px-4 py-2.5 bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold rounded-lg shadow-xl transition-all hover:scale-102 cursor-pointer ring-4 ring-blue-600/20 active:scale-98"
       >
         <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
         <span>

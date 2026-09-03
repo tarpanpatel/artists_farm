@@ -3,15 +3,14 @@ import { ChevronLeft, ChevronRight, Plus, Calendar, LogOut, Bell, User, Globe, S
 import { Popover } from './Popover';
 import { Guest } from '../types';
 import { BookingDetailsModal } from './BookingDetailsModal';
-import { ConvertOtaBookingModal } from './ConvertOtaBookingModal';
 import { RateRuleModal } from './RateRuleModal';
 import { KpiCard } from './KpiCard';
 import { getPropertySlug, fetchRateRulesDB, RateRule } from '../services/api';
 import { useToast } from './ToastContext';
-import { useAuth } from '../contexts/AuthContext';
 import { shareTextContent } from '../utils/shareText';
 import { isCFormGenuinelyFiled } from '../utils/cFormStatus';
 import { getFirstName } from '../utils/nameUtils';
+import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import { t } from '../i18n/en';
 
 interface TodayOverviewProps {
@@ -55,7 +54,10 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   onNavigateToRoom: _onNavigateToRoom,
   onNavigate: _onNavigate,
   onAddBooking,
-  onAddGuest,
+  // Only ever called from the OTA-conversion modal, removed 3 Sep 2026 (iCal
+  // sync retired) - kept in the props interface so App.tsx's call site
+  // doesn't need editing (same convention as _onNavigateToRoom above).
+  onAddGuest: _onAddGuest,
   onUpdateGuest,
   onDeleteGuest,
   onCheckout,
@@ -73,7 +75,6 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   serviceRequestsAccessAllowed = true,
 }) => {
   const { showToast } = useToast();
-  const { isAuthenticated, authChecked } = useAuth();
 
   const today = useMemo(() => {
     const d = new Date();
@@ -109,7 +110,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   // a MULTI_KEY parent to include all its rooms, but the room-level
   // `room_id` on each returned event is what actually scopes a block to one
   // room's own row below.
-  const [blockedDates, setBlockedDates] = useState<Array<{
+  const [blockedDates] = useState<Array<{
     event_start: string;
     event_end: string;
     event_title: string;
@@ -119,7 +120,9 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     source?: string;
     source_label?: string;
   }>>([]);
-  const [otaConversionTarget, setOtaConversionTarget] = useState<{ block: (typeof blockedDates)[number]; roomName: string; blockedDateStrings: string[] } | null>(null);
+  // Write-only now (3 Sep 2026, iCal sync retired) - same reasoning as
+  // OperationalDashboard.tsx's identical comment on its own copy of this.
+  const [, setOtaConversionTarget] = useState<{ block: (typeof blockedDates)[number]; roomName: string; blockedDateStrings: string[] } | null>(null);
   const [showRateRuleModal, setShowRateRuleModal] = useState(false);
   const [rateRules, setRateRules] = useState<RateRule[]>([]);
   const [pricingMode, setPricingMode] = useState<'flat' | 'variable'>('flat');
@@ -136,26 +139,13 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     loadRateRules();
   }, []);
 
-  const fetchBlockedDates = async () => {
-    try {
-      const propertySlug = getPropertySlug();
-      const response = await fetch('/php/api/ical_sync.php?action=get_blocked_dates', {
-        headers: { 'X-Property-Slug': propertySlug },
-        credentials: 'include',
-      });
-      const data = await response.json();
-      if (data.status === 'success' && data.data) {
-        setBlockedDates(data.data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch blocked dates:', error);
-    }
-  };
-  useEffect(() => {
-    if (!authChecked || !isAuthenticated) return;
-    fetchBlockedDates();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, authChecked]);
+  // iCal sync retired app-wide (3 Sep 2026, superseded by the Channex channel
+  // manager - see _unwanted/ical/README.md). This used to fetch
+  // php/api/ical_sync.php?action=get_blocked_dates on mount, now archived;
+  // blockedDates stays permanently empty (its initial state), which makes
+  // every OTA-block consumer below produce nothing to render - left in
+  // place rather than excised, same reasoning as OperationalDashboard.tsx's
+  // identical copy of this comment.
 
   // Rolling window instead of a fixed calendar month (14 Aug 2026 fix): this
   // used to be locked to whichever single calendar month currentMonth/
@@ -803,7 +793,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                                 <div className="flex items-center justify-between text-2xs">
                                   <span className="text-gray-500 dark:text-gray-400">Dates:</span>
                                   <span className="font-medium text-gray-700 dark:text-gray-200">
-                                    {(guest.checkinDate || '').split(' ')[0].split('T')[0]} — {(guest.expectedCheckout || (guest as any).checkoutDate || '').split(' ')[0].split('T')[0]}
+                                    {formatDateDDMMYYYY(guest.checkinDate)} — {formatDateDDMMYYYY(guest.expectedCheckout || (guest as any).checkoutDate)}
                                   </span>
                                 </div>
                                 {hasPending && (
@@ -906,24 +896,9 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
         />
       )}
 
-      {otaConversionTarget && (
-        <ConvertOtaBookingModal
-          otaBlock={otaConversionTarget.block}
-          roomNumber={otaConversionTarget.roomName}
-          blockedDates={otaConversionTarget.blockedDateStrings}
-          onClose={() => setOtaConversionTarget(null)}
-          onConvert={(guest) => {
-            onAddGuest?.(guest);
-            setOtaConversionTarget(null);
-            // Optimistic removal, not a refetch - see the matching fix +
-            // comment in OperationalDashboard.tsx's own onConvert (22 Aug
-            // 2026, same race condition, same bug report: "converted a
-            // booking, now there are 2 capsules").
-            const convertedId = otaConversionTarget.block.external_event_id;
-            setBlockedDates((prev) => prev.filter((bd) => bd.external_event_id !== convertedId));
-          }}
-        />
-      )}
+      {/* Convert OTA Block to Booking - removed 3 Sep 2026, iCal sync retired
+          (ConvertOtaBookingModal.tsx archived to _unwanted/ical/). otaConversionTarget
+          can never actually be set any more (see the blockedDates comment above). */}
 
       {showRateRuleModal && (
         <RateRuleModal

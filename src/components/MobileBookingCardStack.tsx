@@ -4,6 +4,7 @@ import { Guest } from '../types';
 import { Badge } from './Badge';
 import { Button } from './Button';
 import { isCFormGenuinelyFiled } from '../utils/cFormStatus';
+import { formatDateDDMMYYYY } from '../utils/dateUtils';
 
 interface MobileBookingCardStackProps {
   guests: Guest[];
@@ -65,11 +66,13 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
           : true;
 
       const q = searchQuery.toLowerCase().trim();
+      const numOnly = q.replace(/^#/, '');
       const matchesSearch =
         !q ||
         (g.guestName || '').toLowerCase().includes(q) ||
         (g.roomNumber || '').toLowerCase().includes(q) ||
-        (g.phoneNumber || '').toLowerCase().includes(q);
+        (g.phoneNumber || '').toLowerCase().includes(q) ||
+        (numOnly.length > 0 && String(g.id || '').includes(numOnly));
 
       return matchesFilter && matchesSearch;
     });
@@ -97,6 +100,16 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
       return (
         <Badge variant="info" dot size="sm">
           Upcoming
+        </Badge>
+      );
+    }
+    // Distinct from the generic "past/other" fallback below - a cancelled
+    // booking must not look like any ordinary finished one (mirrors
+    // BillingCheckout's getGuestStayStatus).
+    if (s === 'cancelled') {
+      return (
+        <Badge variant="danger" dot size="sm">
+          Cancelled
         </Badge>
       );
     }
@@ -130,10 +143,10 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
             <button
               type="button"
               onClick={() => setFilterStatus('all')}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
                 filterStatus === 'all'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                  ? 'bg-blue-600 text-white shadow-xs border border-blue-600'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600'
               }`}
             >
               All ({counts.all})
@@ -141,10 +154,10 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
             <button
               type="button"
               onClick={() => setFilterStatus('checked_in')}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
                 filterStatus === 'checked_in'
-                  ? 'bg-emerald-600 text-white shadow-md'
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                  ? 'bg-emerald-600 text-white shadow-xs border border-emerald-600'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600'
               }`}
             >
               Checked-In ({counts.checked_in})
@@ -152,10 +165,10 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
             <button
               type="button"
               onClick={() => setFilterStatus('upcoming')}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
                 filterStatus === 'upcoming'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                  ? 'bg-blue-600 text-white shadow-xs border border-blue-600'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600'
               }`}
             >
               Upcoming ({counts.upcoming})
@@ -163,10 +176,10 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
             <button
               type="button"
               onClick={() => setFilterStatus('checked_out')}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
                 filterStatus === 'checked_out'
-                  ? 'bg-slate-700 text-white shadow-md'
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                  ? 'bg-slate-700 text-white shadow-xs border border-slate-700'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600'
               }`}
             >
               Checked-Out ({counts.checked_out})
@@ -214,6 +227,9 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <h4 className="font-bold text-slate-900 dark:text-white text-sm">{guest.guestName}</h4>
+                      <span className="inline-flex items-center px-1.5 py-0.5 text-2xs font-semibold rounded bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
+                        #{guest.id}
+                      </span>
                       {guest.roomNumber && (
                         <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 text-xs font-semibold border border-blue-200 dark:border-blue-800">
                           {guest.roomNumber}
@@ -244,7 +260,7 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                     <div className="min-w-0">
                       <div className="text-[9px] text-slate-400 font-semibold uppercase">Check-In</div>
                       <div className="font-semibold text-slate-800 dark:text-slate-200 truncate">
-                        {guest.checkinDate ? guest.checkinDate.split(' ')[0] : 'N/A'}
+                        {guest.checkinDate ? formatDateDDMMYYYY(guest.checkinDate) : 'N/A'}
                       </div>
                     </div>
                   </div>
@@ -254,7 +270,7 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                     <div className="min-w-0">
                       <div className="text-[9px] text-slate-400 font-semibold uppercase">Check-Out</div>
                       <div className="font-semibold text-slate-800 dark:text-slate-200 truncate">
-                        {guest.checkoutDate || guest.expectedCheckout ? (guest.checkoutDate || guest.expectedCheckout).split(' ')[0] : 'N/A'}
+                        {guest.checkoutDate || guest.expectedCheckout ? formatDateDDMMYYYY(guest.checkoutDate || guest.expectedCheckout) : 'N/A'}
                       </div>
                     </div>
                   </div>
@@ -269,7 +285,7 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                     {isCFormGenuinelyFiled(guest) ? (
                       <span className="text-emerald-600 dark:text-emerald-400 font-semibold text-[11px] inline-flex items-center gap-1">
                         <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                        <span>Filed ({guest.cFormFiledAt})</span>
+                        <span>Filed ({formatDateDDMMYYYY(guest.cFormFiledAt)})</span>
                       </span>
                     ) : (
                       <span className="text-amber-600 dark:text-amber-400 font-semibold text-[11px] inline-flex items-center gap-1">

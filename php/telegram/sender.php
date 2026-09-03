@@ -148,46 +148,52 @@ if (!function_exists('appendAppUrlToMessage')) {
                 $stmt->execute([$propertyId]);
                 $row = $stmt->fetch(PDO::FETCH_ASSOC);
                 if ($row) {
-                    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-                    $host = $_SERVER['HTTP_HOST'] ?? 'localhost:3000';
-                    // Telegram's own link-entity parser silently refuses to
-                    // linkify any URL whose host is literally "localhost" (a
-                    // literal IP like 127.0.0.1 or a real domain both work
-                    // fine, confirmed by direct testing 28 Aug 2026) - the <a>
-                    // tag gets dropped entirely, and Telegram's independent
-                    // hashtag auto-detector then picks up the leftover
-                    // "#dashboard" text on its own, which is what produced the
-                    // half-blue, half-plain, wrong-tap-target link reported live
-                    // that day. Production/staging never hit this (real
-                    // domains aren't affected) - this substitution only changes
-                    // local XAMPP dev's own links.
-                    $host = preg_replace('/^localhost(?=:|$)/i', '127.0.0.1', $host);
-                    $hash = 'dashboard';
-                    if ($category === 'kitchen' || strpos($message, 'KITCHEN') !== false) {
-                        $hash = 'kitchen';
-                    } else if ($category === 'finance' || strpos($message, 'FINANCIAL') !== false || strpos($message, 'EXPENSE') !== false) {
-                        $hash = 'finance';
-                    } else if (strpos($message, 'MATERIAL') !== false || strpos($message, 'REQUISITION') !== false) {
-                        $hash = 'stock_requests';
-                    } else if (strpos($message, 'SERVICE') !== false) {
-                        $hash = 'service_requests';
-                    } else if (strpos($message, 'GUEST') !== false || strpos($message, 'BOOKING') !== false || strpos($message, 'CHECK-IN') !== false) {
-                        $hash = 'guests';
+                    global $server_name;
+                    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443) ? 'https' : 'http';
+                    $host = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? $server_name ?? 'staging.ground-code.com';
+                    if (strpos($host, 'ground-code.com') !== false) {
+                        $scheme = 'https';
                     }
-                    $appUrl = "{$scheme}://{$host}/{$row['tenant_slug']}/{$row['prop_slug']}/#{$hash}";
+                    $host = preg_replace('/^localhost(?=:|$)/i', '127.0.0.1', $host);
+                    
+                    $hash = 'dashboard';
+                    $queryParams = [];
+                    $cleanMsg = strip_tags($message);
+
+                    if ($category === 'kitchen' || stripos($cleanMsg, 'KITCHEN') !== false) {
+                        $hash = 'kitchen';
+                    } else if ($category === 'finance' || stripos($cleanMsg, 'FINANCIAL') !== false || stripos($cleanMsg, 'EXPENSE') !== false) {
+                        $hash = 'finance';
+                    } else if (stripos($cleanMsg, 'MATERIAL') !== false || stripos($cleanMsg, 'REQUISITION') !== false) {
+                        $hash = 'stock_requests';
+                    } else if ($category === 'service' || stripos($cleanMsg, 'SERVICE') !== false) {
+                        $hash = 'service_requests';
+                        if (preg_match('/(?:Service\s*Request|Request)\s*#?(\d+)/i', $cleanMsg, $m)) {
+                            $queryParams['request_id'] = $m[1];
+                        }
+                    } else if ($category === 'admin' || stripos($cleanMsg, 'GUEST') !== false || stripos($cleanMsg, 'BOOKING') !== false || stripos($cleanMsg, 'CHECK-IN') !== false) {
+                        $hash = 'bookings';
+                        // Extract booking id e.g. "Booking ID: 708" or "Booking ID: #708" or "ID: 708".
+                        // BUG (2 Sep 2026, found in review): the ":"/"#" separator after "ID" was
+                        // optional and the capture accepted any word chars, so unrelated "ID" text
+                        // with no real id after it - "ID Documents: 3/4 uploaded" (guests.php's Guest
+                        // Count Updated message), "ID Document(s): 2" (checkin_verification_complete's
+                        // photo caption) - matched too, capturing "Documents"/"Document" as the
+                        // booking_id and producing a deep link to a guest that doesn't exist. A real id
+                        // is always immediately followed by ':' or '#' (no word text in between) and is
+                        // always numeric (guests.id is an auto-increment int), so both are now required.
+                        if (preg_match('/(?:Booking|Guest)?\s*ID\s*[:#]\s*#?(\d+)/i', $cleanMsg, $m)) {
+                            $queryParams['booking_id'] = $m[1];
+                        }
+                    }
+
+                    $queryPart = !empty($queryParams) ? '?' . http_build_query($queryParams) : '';
+                    $appUrl = "{$scheme}://{$host}/{$row['tenant_slug']}/{$row['prop_slug']}/{$queryPart}#{$hash}";
                 }
             }
         } catch (Exception $e) {}
 
         if ($appUrl) {
-            // Link text must NOT be the raw URL - it contains a #hash fragment
-            // (e.g. #dashboard), which Telegram's own entity parser detects as
-            // a hashtag INSIDE the <a> tag's text and renders as a separate,
-            // overlapping "hashtag" entity. That splits the link visually (only
-            // the #fragment portion shows as tappable blue) and, worse, tapping
-            // it does a Telegram hashtag search instead of opening the URL -
-            // reported live 28 Aug 2026 via a real Admin Farm Group screenshot.
-            // A plain, non-URL anchor text sidesteps the collision entirely.
             $message .= "\n\n🔗 <a href=\"{$appUrl}\">Open in App</a>";
         }
         return $message;
@@ -682,5 +688,251 @@ if (!function_exists('answerTelegramCallbackQuery')) {
             "Telegram Sender [Response: {$http_code}]",
             ['callback_query_id' => $callback_query_id, 'text' => $text, 'http_code' => $http_code, 'error' => $error]
         );
+    }
+}
+
+if (!function_exists('ensureTelegramOutboxSchema')) {
+    function ensureTelegramOutboxSchema(PDO $pdo): void {
+        if ($pdo->inTransaction()) {
+            return;
+        }
+        if (function_exists('isSchemaVerified') && isSchemaVerified('schema_telegram_outbox')) {
+            return;
+        }
+        try {
+            $pdo->exec("
+                CREATE TABLE IF NOT EXISTS `telegram_outbox` (
+                    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    `property_id` INT NOT NULL,
+                    `category` VARCHAR(64) NOT NULL DEFAULT 'admin',
+                    `message` MEDIUMTEXT NOT NULL,
+                    `reply_markup` TEXT NULL,
+                    `template_key` VARCHAR(64) NULL,
+                    `guest_id` VARCHAR(64) NULL,
+                    `guest_field` VARCHAR(32) NULL,
+                    `status` ENUM('pending', 'sending', 'sent', 'failed') NOT NULL DEFAULT 'pending',
+                    `attempts` INT NOT NULL DEFAULT 0,
+                    `next_attempt_at` DATETIME NULL,
+                    `last_error` TEXT NULL,
+                    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX `idx_tg_outbox_claim` (`status`, `next_attempt_at`),
+                    INDEX `idx_tg_outbox_prop` (`property_id`, `status`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            ");
+            if (function_exists('markSchemaVerified')) {
+                markSchemaVerified('schema_telegram_outbox');
+            }
+        } catch (PDOException $e) {}
+    }
+}
+
+if (!function_exists('enqueueTelegramMessage')) {
+    /**
+     * Queues a Telegram notification to be sent asynchronously by the background worker.
+     * Never blocks the user HTTP request.
+     */
+    function enqueueTelegramMessage(
+        PDO $pdo,
+        int $propertyId,
+        string $category,
+        string $message,
+        $replyMarkup = null,
+        ?string $templateKey = null,
+        ?string $guestId = null,
+        ?string $guestField = null
+    ): bool {
+        ensureTelegramOutboxSchema($pdo);
+        if ($propertyId <= 0 || empty($message)) {
+            return false;
+        }
+        try {
+            $markupJson = $replyMarkup !== null ? (is_array($replyMarkup) ? json_encode($replyMarkup, JSON_UNESCAPED_SLASHES) : $replyMarkup) : null;
+            $stmt = $pdo->prepare("
+                INSERT INTO telegram_outbox (property_id, category, message, reply_markup, template_key, guest_id, guest_field, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
+            ");
+            $stmt->execute([$propertyId, $category, $message, $markupJson, $templateKey, $guestId, $guestField]);
+            
+            // Fire non-blocking trigger so worker drains in background
+            triggerAsyncBackgroundWorker(5);
+            return true;
+        } catch (Exception $e) {
+            error_log("Failed to enqueue Telegram message: " . $e->getMessage());
+            return false;
+        }
+    }
+}
+
+if (!function_exists('drainTelegramOutbox')) {
+    /**
+     * Drains pending Telegram outbox rows and dispatches them to Telegram API.
+     */
+    function drainTelegramOutbox(PDO $pdo, int $limit = 25): array {
+        ensureTelegramOutboxSchema($pdo);
+        try {
+            $stmt = $pdo->prepare("
+                SELECT id, property_id, category, message, reply_markup, template_key, guest_id, guest_field
+                FROM telegram_outbox
+                WHERE status = 'pending'
+                   OR (status = 'failed' AND next_attempt_at IS NOT NULL AND next_attempt_at <= NOW())
+                ORDER BY id ASC
+                LIMIT ?
+            ");
+            $stmt->bindValue(1, $limit, PDO::PARAM_INT);
+            $stmt->execute();
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            if (empty($rows)) {
+                return ['processed' => 0];
+            }
+
+            $processed = 0;
+            foreach ($rows as $row) {
+                $outboxId = (int)$row['id'];
+                $propId = (int)$row['property_id'];
+                $cat = $row['category'];
+                $msg = $row['message'];
+                $markup = !empty($row['reply_markup']) ? json_decode($row['reply_markup'], true) : null;
+                $tKey = $row['template_key'] ?? null;
+                $guestId = $row['guest_id'] ?? null;
+                $guestField = $row['guest_field'] ?? null;
+
+                try {
+                    $res = sendPropertyTelegramMessage($pdo, $propId, $cat, $msg, $markup, $tKey);
+
+                    // BUG (2 Sep 2026, found in review): sendRawTelegramMessage() never
+                    // throws - it catches curl failures internally and returns false, or
+                    // returns Telegram's own response body verbatim, which can itself carry
+                    // "ok":false (blocked bot, stale chat_id, rate limit, ...). This try/catch
+                    // never saw those failures, so every send fell straight through to the
+                    // unconditional "mark sent" below regardless of whether Telegram actually
+                    // accepted it - silently defeating the attempts/next_attempt_at retry this
+                    // outbox table exists for. Determine real success explicitly first.
+                    $parsed = is_string($res) ? json_decode($res, true) : null;
+                    $sendSucceeded = false;
+                    if (is_array($res) && !empty($res['skipped'])) {
+                        // Not configured / no group routed for this category - there's
+                        // nothing to retry, this delivery genuinely can't happen.
+                        $sendSucceeded = true;
+                    } elseif (is_array($res)) {
+                        // 'all' category: array of raw per-chat-id responses.
+                        $sendSucceeded = true;
+                        foreach ($res as $chatResponse) {
+                            $p = is_string($chatResponse) ? json_decode($chatResponse, true) : null;
+                            if (empty($p['ok'])) {
+                                $sendSucceeded = false;
+                                break;
+                            }
+                        }
+                    } elseif ($parsed !== null) {
+                        $sendSucceeded = !empty($parsed['ok']);
+                    }
+                    if (!$sendSucceeded) {
+                        $errMsg = is_string($res) ? $res : 'Telegram send failed (no response - curl error)';
+                        throw new Exception(substr($errMsg, 0, 500));
+                    }
+
+                    // If sent successfully, update guest table message references if needed
+                    if (!empty($res) && is_string($res)) {
+                        if (!empty($parsed['ok']) && !empty($parsed['result']['message_id']) && !empty($guestId) && !empty($guestField)) {
+                            $chatId = $parsed['result']['chat']['id'] ?? null;
+                            $msgId = (int)$parsed['result']['message_id'];
+                            if ($chatId && $msgId) {
+                                if ($guestField === 'booking') {
+                                    $upStmt = $pdo->prepare("UPDATE guests SET telegram_booking_chat_id = ?, telegram_booking_message_id = ? WHERE id = ?");
+                                    $upStmt->execute([$chatId, $msgId, $guestId]);
+                                } elseif ($guestField === 'checkout') {
+                                    $upStmt = $pdo->prepare("UPDATE guests SET telegram_checkout_chat_id = ?, telegram_checkout_message_id = ? WHERE id = ?");
+                                    $upStmt->execute([$chatId, $msgId, $guestId]);
+                                }
+                            }
+                        }
+                    }
+
+                    $up = $pdo->prepare("UPDATE telegram_outbox SET status = 'sent', last_error = NULL WHERE id = ?");
+                    $up->execute([$outboxId]);
+                    $processed++;
+                } catch (Exception $e) {
+                    $err = $e->getMessage();
+                    $up = $pdo->prepare("
+                        UPDATE telegram_outbox 
+                        SET status = 'failed', attempts = attempts + 1, next_attempt_at = DATE_ADD(NOW(), INTERVAL 30 SECOND), last_error = ?
+                        WHERE id = ?
+                    ");
+                    $up->execute([$err, $outboxId]);
+                }
+            }
+
+            return ['processed' => $processed];
+        } catch (Exception $e) {
+            error_log("Error draining Telegram outbox: " . $e->getMessage());
+            return ['processed' => 0, 'error' => $e->getMessage()];
+        }
+    }
+}
+
+if (!function_exists('triggerAsyncBackgroundWorker')) {
+    /**
+     * Triggers the background worker asynchronously without blocking the caller.
+     */
+    function triggerAsyncBackgroundWorker(int $delaySeconds = 5): void {
+        static $triggered = false;
+        if ($triggered) return; // Only trigger once per request
+        $triggered = true;
+
+        $workerPath = dirname(__DIR__) . '/channex/worker_runner.php';
+        if (!is_file($workerPath)) return;
+
+        // 1. Try local detached CLI command if popen is enabled
+        if (function_exists('popen') && function_exists('pclose') && !in_array('popen', explode(',', (string)ini_get('disable_functions')))) {
+            // BUG (2 Sep 2026, found in review): this used Unix-only redirection/
+            // backgrounding syntax (/dev/null, trailing &) even on the Windows branch -
+            // cmd.exe has no /dev/null (only NUL) and start /B already returns
+            // immediately without needing a trailing &. popen() still returns a
+            // truthy handle even when the inner command errors, so the broken
+            // command silently masked itself and the code never fell through to the
+            // working curl fallback below - the background worker (Channex ARI
+            // drain + Telegram outbox drain) never actually ran on Windows/XAMPP,
+            // this repo's own local dev environment.
+            $cmd = PHP_OS_FAMILY === 'Windows'
+                ? 'start "" /B php ' . escapeshellarg($workerPath) . ' ' . $delaySeconds . ' > NUL 2>&1'
+                : 'php ' . escapeshellarg($workerPath) . ' ' . $delaySeconds . ' > /dev/null 2>&1 &';
+            $handle = @popen($cmd, 'r');
+            if ($handle) {
+                @pclose($handle);
+                return;
+            }
+        }
+
+        // 2. Fallback: Fast non-blocking loopback HTTP curl (150ms timeout)
+        //
+        // BUG (2 Sep 2026, found in review): scheme detection only checked
+        // $_SERVER['HTTPS'] === 'on', which some proxy/LiteSpeed setups don't
+        // reliably set - a wrong-scheme loopback can be refused/redirected
+        // (no CURLOPT_FOLLOWLOCATION here, so a redirect just burns the
+        // 150ms timeout on nothing) and, since this whole call is
+        // @-suppressed, that failure is invisible - the trigger silently
+        // does nothing. Matches the more robust check appendAppUrlToMessage()
+        // above already uses (HTTPS header OR port 443 OR a ground-code.com
+        // host, which is always HTTPS) instead of the single narrow check.
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443)
+            ? 'https' : 'http';
+        if (strpos($host, 'ground-code.com') !== false) {
+            $scheme = 'https';
+        }
+        $scriptPath = dirname($_SERVER['SCRIPT_NAME'] ?? '') . '/../channex/worker_runner.php?delay=' . $delaySeconds;
+        $url = $scheme . '://' . $host . $scriptPath;
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_TIMEOUT_MS, 150);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, 100);
+        curl_setopt($ch, CURLOPT_NOSIGNAL, 1);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        @curl_exec($ch);
+        @curl_close($ch);
     }
 }

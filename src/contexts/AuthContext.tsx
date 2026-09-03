@@ -163,7 +163,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setIsAuthenticated(false);
           setCurrentUser(null);
           setAuthChecked(true);
-          setSessionMismatchNotice('You are signed in, but your account does not have access to this property. Please sign in with an authorized account or switch to your property.');
+          setSessionMismatchNotice(null);
           return;
         }
 

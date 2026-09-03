@@ -16,7 +16,7 @@ import { Input } from './Input';
 import { Checkbox } from 'flowbite-react';
 import { t } from '../i18n/en';
 import { useToast } from './ToastContext';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuthOptional } from '../contexts/AuthContext';
 
 interface NavMenuEditorProps {
   navItems: NavMenuItem[];
@@ -131,7 +131,18 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
   });
 
   const { showToast } = useToast();
-  const { isAuthenticated, authChecked } = useAuth();
+  // NavMenuEditor renders on BOTH sides of the AuthProvider boundary: inside it
+  // on the property path (via MenuManager), and OUTSIDE it in the Root Admin
+  // dashboard (RootAdminDashboard renders this directly, with no property-scoped
+  // provider). On the property path, wait for the real check_session result
+  // before the config fetch below fires (avoids 401s). In the Root Admin case
+  // there is no provider, but reaching that screen already means an
+  // authenticated platform admin whose session cookie apiFetch carries - so
+  // treat it as authenticated and let the fetch run (it falls back to sane
+  // defaults on any error anyway).
+  const auth = useAuthOptional();
+  const isAuthenticated = auth ? auth.isAuthenticated : true;
+  const authChecked = auth ? auth.authChecked : true;
 
   const sortableInstances = useRef<Sortable[]>([]);
   const sortableContainerRef = useRef<HTMLDivElement>(null);
@@ -757,7 +768,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
           <div className="nav-menu-editor__title-block flex flex-wrap items-center gap-2">
             <Layers className="w-5 h-5 text-blue-600" />
             <h3 className="nav-menu-editor__heading font-semibold text-slate-900 text-sm">{t('nav_menu_structure_title', 'Menu Structure')}</h3>
-            <span className="nav-menu-editor__count-badge text-[10px] font-semibold bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full">{visibleItems.length} items</span>
+            <span className="nav-menu-editor__count-badge text-[10px] font-semibold bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600 px-2 py-0.5 rounded-full">{visibleItems.length} items</span>
             {hiddenItems.length > 0 && (
               <span className="nav-menu-editor__hidden-hint text-[10px] font-medium text-slate-400" title={t('nav_kitchen_hidden_tooltip', "Kitchen items are hidden here because this property's kitchen module is off — they're untouched and will still be saved as-is.")}>
                 ({hiddenItems.length} kitchen item{hiddenItems.length === 1 ? '' : 's'} hidden)

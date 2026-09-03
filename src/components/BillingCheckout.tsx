@@ -42,12 +42,14 @@ interface BillingCheckoutProps {
   receipts: BillingReceipt[];
   onCheckoutGuest: (receipt: BillingReceipt) => void;
   onUpdateGuest?: (updatedGuest: Guest) => void;
+  onDeleteGuest?: (guestId: string) => Promise<void>;
   onAddGuest?: (guest: Guest) => Promise<void>;
   isMultiKeyProperty?: boolean;
   rooms?: Array<{ id: number; name: string; slug: string }>;
   onCheckoutClick?: (guestId: string) => void;
   onNavigateToGuestRegistration?: () => void;
   kitchenModuleEnabled?: boolean;
+  isLoading?: boolean;
   propertyGstin?: string;
   propertyName?: string;
   propertyPhone?: string;
@@ -79,12 +81,14 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   receipts,
   onCheckoutGuest,
   onUpdateGuest,
+  onDeleteGuest,
   onAddGuest,
   isMultiKeyProperty = false,
   rooms = [],
   onCheckoutClick: _onCheckoutClick,
   onNavigateToGuestRegistration,
   kitchenModuleEnabled = true,
+  isLoading = false,
   propertyGstin = '',
   propertyName = '',
   propertyPhone = '',
@@ -111,8 +115,49 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   const isStaffKitchenRole = normalizedActiveRole === 'staff kitchen';
   const canActOnBooking = !isStaffKitchenRole;
   const canCheckoutBookingRole = !isStaffKitchenRole && normalizedActiveRole !== 'staff';
+  const getInitialBookingsTab = (): 'today' | 'upcoming' | 'past_bookings' => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash.replace('#', '').trim().toLowerCase();
+      if (hash.includes('upcoming')) return 'upcoming';
+      if (hash.includes('past')) return 'past_bookings';
+      if (hash.includes('today')) return 'today';
+      const stored = sessionStorage.getItem('artists_farm_bookings_tab');
+      if (stored === 'upcoming' || stored === 'past_bookings' || stored === 'today') {
+        return stored;
+      }
+    }
+    return 'today';
+  };
+
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState<'today' | 'upcoming' | 'past_bookings'>('today');
+  const [activeTab, setActiveTab] = useState<'today' | 'upcoming' | 'past_bookings'>(getInitialBookingsTab);
+
+  const handleTabSelect = (tab: 'today' | 'upcoming' | 'past_bookings') => {
+    setActiveTab(tab);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('artists_farm_bookings_tab', tab);
+      const currentRaw = window.location.hash.replace('#', '').trim();
+      const basePart = currentRaw.split('?')[0].split('/')[0];
+      const validBase = basePart && ['bookings', 'all_bookings', 'guests', 'guest_registration', 'billing_checkout'].includes(basePart)
+        ? basePart
+        : 'bookings';
+      const newHash = tab === 'today' ? `#${validBase}` : `#${validBase}/${tab === 'past_bookings' ? 'past' : tab}`;
+      if (window.location.hash !== newHash) {
+        window.history.replaceState(null, '', newHash);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleHash = () => {
+      const hash = window.location.hash.replace('#', '').trim().toLowerCase();
+      if (hash.includes('upcoming')) setActiveTab('upcoming');
+      else if (hash.includes('past')) setActiveTab('past_bookings');
+      else if (hash.includes('today')) setActiveTab('today');
+    };
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
   const [pastBookingsDesktopPage, setPastBookingsDesktopPage] = useState(1);
   const PAST_BOOKINGS_PAGE_SIZE = 15;
   const [isProcessing] = useState(false);
@@ -183,24 +228,69 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     return detailed;
   };
 
-  // Jump to whichever tab actually has the requested booking, and filter the
-  // When focusGuestId is passed (e.g. from clicking Checkout & Settle Bill on
-  // Dashboard), switch to the guest's tab and open their Checkout modal directly
-  // over the Bookings page while keeping all tab bookings visible in the background.
+  // When focusGuestId is passed (e.g. from Telegram "Open in App" or deep-link),
+  // switch to the guest's tab and open their Booking Details drawer directly.
   useEffect(() => {
-    if (!focusGuestId) return;
-    const target = guests.find((g) => String(g.id) === String(focusGuestId));
+    if (!focusGuestId || !guests || guests.length === 0) return;
+    const cleanId = String(focusGuestId).trim().replace(/^#/, '');
+    const target = guests.find((g) =>
+      String(g.id) === cleanId ||
+      String((g as any).bookingId) === cleanId ||
+      String((g as any).booking_id) === cleanId
+    );
     if (!target) return;
-    setActiveTab(getGuestTabCategory(target));
-    setGuestForReceipt(target);
-    setModalMode('edit-and-checkout');
-    setReceiptModalOpen(true);
+    const category = getGuestTabCategory(target);
+    if (category === 'today' || category === 'upcoming' || category === 'past_bookings') {
+      setActiveTab(category);
+    }
+    setSelectedGuestForDetails(target);
     setSearchTerm('');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusGuestId]);
+  }, [focusGuestId, guests]);
+
+  // Deep-link to a specific booking from URL (e.g. #guests?booking_id=708 or ?guest_id=708)
+  useEffect(() => {
+    const checkDeepLink = () => {
+      if (!guests || guests.length === 0) return;
+      if (typeof window === 'undefined') return;
+
+      const rawHash = window.location.hash.replace('#', '').trim();
+      const hashQuery = rawHash.includes('?') ? rawHash.split('?')[1] : '';
+      const searchParams = new URLSearchParams(hashQuery || window.location.search);
+      const targetBookingId = searchParams.get('booking_id') || searchParams.get('guest_id') || searchParams.get('id');
+
+      if (targetBookingId) {
+        const cleanTargetId = targetBookingId.trim();
+        const matched = guests.find((g) =>
+          String(g.id) === cleanTargetId ||
+          String((g as any).bookingId) === cleanTargetId ||
+          String((g as any).booking_id) === cleanTargetId
+        );
+        if (matched) {
+          setSelectedGuestForDetails(matched);
+          const category = getGuestTabCategory(matched);
+          if (category === 'today' || category === 'upcoming' || category === 'past_bookings') {
+            setActiveTab(category);
+          }
+        }
+      }
+    };
+
+    checkDeepLink();
+    window.addEventListener('hashchange', checkDeepLink);
+    return () => window.removeEventListener('hashchange', checkDeepLink);
+  }, [guests]);
+
 
   // Helper for badge labels on cards
   const getGuestStayStatus = (guest: Guest) => {
+    // A cancelled booking is otherwise indistinguishable from a genuinely
+    // finished one - getGuestDetailedStatus() folds 'Cancelled' into
+    // 'past_bookings' regardless of dates, so a booking cancelled today with a
+    // future check-in would read as "Past Booking". Surface it explicitly.
+    if (String(guest.status || '') === 'Cancelled') {
+      return { key: 'cancelled', label: t('cancelled_badge', 'Cancelled'), variant: 'danger' as const };
+    }
     const cat = getGuestDetailedStatus(guest);
     if (cat === 'checkin_today') {
       return { key: 'staying', label: t('checked_in_today_badge', 'Checked In Today'), variant: 'success' as const };
@@ -265,14 +355,20 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   }, [guests, activeTab, todayStr]);
 
   // Search applied once, up front, so every view built from it (room-grid,
-  // date-grouped) reflects the same filtered set.
+  // date-grouped, table) reflects the same filtered set.
   const searchedGuests = useMemo(
-    () =>
-      targetGuests.filter((g) =>
-        g.guestName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        g.phoneNumber.includes(searchTerm) ||
-        g.roomNumber.toLowerCase().includes(searchTerm.toLowerCase())
-      ),
+    () => {
+      const q = searchTerm.toLowerCase().trim();
+      const numOnly = q.replace(/^#/, '');
+      return targetGuests.filter((g) => {
+        if (!q) return true;
+        const nameMatch = (g.guestName || '').toLowerCase().includes(q);
+        const phoneMatch = (g.phoneNumber || '').includes(q);
+        const roomMatch = (g.roomNumber || '').toLowerCase().includes(q);
+        const idMatch = numOnly.length > 0 && String(g.id || '').includes(numOnly);
+        return nameMatch || phoneMatch || roomMatch || idMatch;
+      });
+    },
     [targetGuests, searchTerm]
   );
 
@@ -402,7 +498,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   // the main Today/Past view and each date-section under Upcoming, so the
   // room card itself (guest list, financials, actions) only exists once.
   const renderRoomGroupsGrid = (groups: GroupedRoomBooking[]) => (
-    <div className="billing-checkout__grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+    <div className="billing-checkout__grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 items-start">
       {groups.map((group) => {
         return (
           <Card
@@ -417,18 +513,25 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
             // root.children directly (the documented way to reach it) is
             // what actually removes it.
             theme={{ root: { children: 'flex h-full flex-col gap-0 p-0' } }}
-            className="billing-checkout__room-card shadow-md overflow-hidden flex flex-col justify-between !p-0"
+            className="billing-checkout__room-card rounded-none sm:rounded-lg border-x-0 sm:border border-y sm:border-y shadow-none sm:shadow-md overflow-hidden flex flex-col justify-between !p-0"
           >
-            {/* Room Header */}
-            <div className="billing-checkout__room-card-header bg-gray-50 dark:bg-gray-700 px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-              <h3 className="billing-checkout__room-card-title text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5 truncate">
-                <Building className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
-                {group.roomName}
-              </h3>
-            </div>
+            {/* Room Header - only meaningful when there's more than one room/
+                unit to tell apart (multi-key properties). A single-property
+                account only ever has the one synthetic "Main Property / Villa"
+                group from buildRoomGroups' rooms.length===0 fallback above, so
+                this header just repeated the property's own name/context for
+                no reason (found 2 Sep 2026, user report). */}
+            {rooms.length > 0 && (
+              <div className="billing-checkout__room-card-header bg-gray-50 dark:bg-gray-700 px-4 py-2.5 sm:py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                <h3 className="billing-checkout__room-card-title text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5 truncate">
+                  <Building className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
+                  {group.roomName}
+                </h3>
+              </div>
+            )}
 
             {/* Guest Card(s) stacked inside Room Column */}
-            <div className="billing-checkout__room-card-body p-4 space-y-4">
+            <div className="billing-checkout__room-card-body px-4 py-3 sm:p-4 space-y-4">
               {group.guests.map((guest) => {
                 const amountDue = calculateGuestTotal(guest);
                 const nights = calculateNights(guest.checkinDate, guest.expectedCheckout);
@@ -449,7 +552,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                     // booking maximum"), so this is virtually always a single
                     // item - space-y-4 on the parent is enough separation
                     // for the rare case of more than one.
-                    className="billing-checkout__guest-card flex flex-col justify-between space-y-3"
+                    className="billing-checkout__guest-card flex flex-col justify-between space-y-3 first:pt-0 pt-4 border-t border-slate-200 dark:border-slate-700 first:border-t-0"
                   >
                     {/* Top Header: Guest Name & Status Badge */}
                     <div>
@@ -459,6 +562,9 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                             <h4 className="text-sm font-semibold text-slate-900 dark:text-white m-0">
                               {guest.guestName}
                             </h4>
+                            <span className="inline-flex items-center px-1.5 py-0.5 text-2xs font-semibold rounded bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
+                              #{guest.id}
+                            </span>
                             <span className="text-xs text-slate-500 dark:text-slate-400 font-normal shrink-0">
                               ({guest.numberOfGuests || 1} {(guest.numberOfGuests || 1) === 1 ? 'guest' : 'guests'})
                             </span>
@@ -490,11 +596,6 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                                 content={
                                   <div className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-300 leading-relaxed max-w-xs space-y-1.5">
                                     <p>{t('ota_converted_badge_tooltip', 'Converted from an OTA calendar sync - editing this only changes this app, not the original platform.')}</p>
-                                    <p>
-                                      <a href="#ical_sync" className="text-blue-600 dark:text-blue-400 font-semibold underline cursor-pointer">
-                                        {t('manage_calendar_sync_link', 'Manage Calendar Sync Settings')}
-                                      </a>
-                                    </p>
                                   </div>
                                 }
                               >
@@ -651,7 +752,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                       </div>
                     ) : canCheckout && canCheckoutBookingRole ? (
                       <div className="billing-checkout__guest-card-actions grid grid-cols-2 gap-2 pt-0.5">
-                        <Button variant="primary" size="sm" onClick={() => handleEditGuest(guest)} leftIcon={<Edit2 className="w-3.5 h-3.5 shrink-0" />}>
+                        <Button variant="edit" size="sm" onClick={() => handleEditGuest(guest)} leftIcon={<Edit2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}>
                           {t('edit_button', 'Edit')}
                         </Button>
                         <Button
@@ -667,12 +768,12 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                     ) : (
                       <div className="billing-checkout__guest-card-actions pt-0.5">
                         <Button
-                          variant="primary"
+                          variant="edit"
                           size="sm"
                           block
                           disabled={isProcessing}
                           onClick={() => handleEditGuest(guest)}
-                          leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
+                          leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
                         >
                           {t('edit_booking_button', 'Edit Booking')}
                         </Button>
@@ -700,6 +801,14 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
 
 
   const pastBookingsColumns = [
+    {
+      name: t('booking_id_column', 'Booking ID'),
+      cell: (row: Guest) => (
+        <span className="text-xs font-semibold text-gray-900 dark:text-white whitespace-nowrap">
+          #{row.id}
+        </span>
+      ),
+    },
     {
       name: t('guest_details_column', 'Guest Details'),
       cell: (row: Guest) => (
@@ -837,10 +946,10 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
         <div className="whitespace-nowrap flex items-center gap-2">
           {canActOnBooking ? (
             <Button
-              variant="primary"
+              variant="edit"
               size="sm"
               onClick={() => handleEditGuest(row)}
-              leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
+              leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
             >
               {t('edit_booking_button', 'Edit Booking')}
             </Button>
@@ -902,7 +1011,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
             clearTheme={attachedTabsClearTheme}
             onActiveTabChange={(tabIndex: number) => {
               const tabs: ('today' | 'upcoming' | 'past_bookings')[] = ['today', 'upcoming', 'past_bookings'];
-              if (tabs[tabIndex]) setActiveTab(tabs[tabIndex]);
+              if (tabs[tabIndex]) handleTabSelect(tabs[tabIndex]);
             }}
           >
             <TabItem
@@ -911,7 +1020,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                 <span className="inline-flex items-center gap-1.5">
                   <span>{t('today_tab', 'Today')}</span>
                   {tabCounts.today > 0 && (
-                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
+                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                       {tabCounts.today}
                     </span>
                   )}
@@ -924,7 +1033,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                 <span className="inline-flex items-center gap-1.5">
                   <span>{t('upcoming_tab', 'Upcoming')}</span>
                   {tabCounts.upcoming > 0 && (
-                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
+                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                       {tabCounts.upcoming}
                     </span>
                   )}
@@ -937,7 +1046,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                 <span className="inline-flex items-center gap-1.5">
                   <span>{t('past_bookings_tab', 'Past')}</span>
                   {tabCounts.past_bookings > 0 && (
-                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-full bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
+                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-full bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
                       {tabCounts.past_bookings}
                     </span>
                   )}
@@ -953,7 +1062,21 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
               redundant second surface for the same signal. */}
         </div>
 
-        <Card className="billing-checkout__desk-body shadow-md space-y-4 rounded-t-none border-t-0 -mt-px">
+        {/* rounded-tl-none, not rounded-t-none (2 Sep 2026, user report: top-
+            right corner should stay rounded like the bottom two, only
+            top-left needs to be flush). The Tabs row above only clusters on
+            the left (Today/Upcoming/Past), not the card's full width, so only
+            the top-left corner actually sits under a tab - the top-right
+            corner has empty space above it and looks broken/half-finished
+            squared off to match nothing. sm:rounded-tl-none/sm:border-t-0
+            alongside the bare versions for the same reason as before: the
+            global Card theme (main.tsx) added border-y sm:border, and bare
+            vs sm:-prefixed utilities live in different Tailwind variant
+            scopes so they don't cancel each other out on their own - the
+            sm: rule from the theme kept winning at >=640px. border-t-0 still
+            drops the WHOLE top border (not just the left corner's) since the
+            seam under the tabs runs the full width, not just under Today. */}
+        <Card className="billing-checkout__desk-body shadow-md space-y-4 rounded-tl-none border-t-0 sm:rounded-tl-none sm:border-t-0 -mt-px">
 
           {/* Search Bar - covers room too (guest name, phone, OR room number) */}
           <div className="billing-checkout__search flex flex-col items-center gap-3 sm:flex-row">
@@ -962,7 +1085,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                 id="bookings-search"
                 type="text"
                 icon={Search}
-                placeholder={t('search_guest_placeholder', 'Search by guest, phone, or room...')}
+                placeholder={t('search_guest_placeholder', 'Search by booking ID, guest, phone, or room...')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -979,7 +1102,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
               empty-state message had their own redundant outer Card removed
               since they fill this whole area rather than sitting alongside
               other items in it. */}
-          <div className="billing-checkout__list-content border-t border-gray-200 pt-4 dark:border-gray-700">
+          <div className="billing-checkout__list-content border-t border-gray-200 pt-3 dark:border-gray-700 -mx-4 sm:mx-0">
           {/* Upcoming & Past Bookings: Mobile Card Stack on phone viewports (md:hidden), Desktop Flowbite Table on md+ */}
           {(activeTab === 'upcoming' || activeTab === 'past_bookings') ? (
             <>
@@ -1007,14 +1130,23 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
               <div className="hidden md:block billing-checkout__past-table overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
                 {searchedGuests.length === 0 ? (
                   <div className="p-12 text-center">
-                    <Search className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-                    <h3 className="billing-checkout__subtitle text-lg font-semibold text-gray-800 dark:text-gray-200">
-                      {activeTab === 'upcoming'
-                        ? t('no_upcoming_bookings', 'No upcoming bookings.')
-                        : activeTab === 'past_bookings'
-                        ? t('no_past_bookings', 'No past bookings.')
-                        : t('no_bookings_today', 'No bookings today.')}
-                    </h3>
+                    {isLoading ? (
+                      <div className="flex flex-col items-center justify-center">
+                        <Loader2 className="w-8 h-8 text-blue-600 dark:text-blue-400 animate-spin mx-auto mb-3" />
+                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Loading bookings...</p>
+                      </div>
+                    ) : (
+                      <>
+                        <Search className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                        <h3 className="billing-checkout__subtitle text-lg font-semibold text-gray-800 dark:text-gray-200">
+                          {activeTab === 'upcoming'
+                            ? t('no_upcoming_bookings', 'No upcoming bookings.')
+                            : activeTab === 'past_bookings'
+                            ? t('no_past_bookings', 'No past bookings.')
+                            : t('no_bookings_today', 'No bookings today.')}
+                        </h3>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <>
@@ -1055,10 +1187,25 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
               Bookings table has its own noDataComponent above. */}
           {activeTab === 'today' && filteredGroups.length === 0 && (
             <div className="billing-checkout__empty-state p-12 text-center">
-              <Search className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-              <h3 className="billing-checkout__subtitle text-lg font-semibold text-gray-800 dark:text-gray-200">
-                {t('no_bookings_today', 'No bookings today.')}
-              </h3>
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center">
+                  {/* CLAUDE.md hard rule (One Loading Spinner Identity, App-Wide): never a
+                      Loader2/icon spinner - it silently falls back to a different glyph
+                      (refresh icon) if the icon set has no real spinner shape, which is
+                      exactly how this regressed before. Plain CSS border-ring only, same
+                      size/style/speed as App.tsx's TabContentFallback (found in review,
+                      2 Sep 2026 - this was a Loader2 icon). */}
+                  <div className="w-8 h-8 mx-auto mb-3 rounded-full border-[3px] border-blue-100 border-t-blue-500 dark:border-slate-800 dark:border-t-blue-400 loading-screen-spinner-spin" />
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Loading bookings...</p>
+                </div>
+              ) : (
+                <>
+                  <Search className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                  <h3 className="billing-checkout__subtitle text-lg font-semibold text-gray-800 dark:text-gray-200">
+                    {t('no_bookings_today', 'No bookings today.')}
+                  </h3>
+                </>
+              )}
             </div>
           )}
           </div>
@@ -1099,12 +1246,14 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
           guest={selectedGuestForDetails}
           initialFocusSection={detailsModalFocusSection}
           onClose={() => { setSelectedGuestForDetails(null); setDetailsModalFocusSection(null); }}
+          onDelete={onDeleteGuest}
           onSave={async (updatedGuest) => {
             onUpdateGuest?.(updatedGuest);
             setSelectedGuestForDetails(null);
             showToast(`Booking changes saved successfully!`, { type: 'success' });
           }}
           rooms={rooms}
+          isMultiKeyProperty={isMultiKeyProperty}
           checkedInGuests={guests}
           propertyName={propertyName}
           propertyPhone={propertyPhone}
@@ -1130,7 +1279,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
           open={showAddBookingModal}
           onClose={() => setShowAddBookingModal(false)}
           position="right"
-          className="z-58 w-full sm:max-w-4xl lg:max-w-5xl p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+          className="z-58 w-full sm:max-w-lg md:max-w-xl p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
         >
           <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
             <div className="flex items-center gap-2.5">
@@ -1156,12 +1305,17 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
               menu={[]}
               rooms={rooms}
               onAddGuest={async (guest) => {
-                // await + only close on success (23 Aug 2026, ROADMAP.md verification pass) -
-                // onAddGuest now throws on a real backend rejection (see App.tsx's
-                // handleAddGuest); closing the modal unconditionally here would hide that error
-                // from the user instead of leaving the form open to see and correct it.
+                // Does NOT close here (31 Aug 2026) - a second, parallel copy
+                // of the same bug already fixed in App.tsx's own Add Booking
+                // drawer wrapper. Closing inside this wrapper ran BEFORE it
+                // resolved, which is BEFORE the nested GuestManagement's own
+                // onSubmit reached its resetBookingForm()/showToast('Guest
+                // booked successfully!') right after awaiting this same call
+                // - close-then-toast, backwards. onClose is already wired
+                // below and GuestManagement's onSubmit calls it itself, right
+                // after showToast fires - this wrapper just needs to await
+                // and let errors propagate, same as before.
                 await onAddGuest?.(guest);
-                setShowAddBookingModal(false);
               }}
               onCheckoutGuest={onCheckoutGuest}
               activeMenuItemKey="guest_registration"

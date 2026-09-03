@@ -5,7 +5,6 @@ import { Navigation, TabType } from './components/Navigation';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { OperationalDashboard } from './components/OperationalDashboard';
-import { PropertySetupWizard } from './components/PropertySetupWizard';
 import { TodayOverview } from './components/TodayOverview';
 import { GuestManagement } from './components/GuestManagement';
 import { GlobalModal } from './components/GlobalModal';
@@ -22,6 +21,7 @@ import { recordTelescopeLog } from './utils/telescopeLogger';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 import { formatDateDDMMYYYY } from './utils/dateUtils';
 import { detectClientInfo } from './utils/clientInfo';
+import { normalizeNavItems } from './utils/navItems';
 import { isKitchenModuleNavItem } from './data/appConfig';
 import { fetchThemeSettings, applyThemeSettings, getDefaultTheme } from './services/themeService';
 import { fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fetchNavMenuFromDB, sendTelegramAlertDB, fetchGuestsFromDB, fetchAuditLogsFromDB, addAuditLogDB, saveReceiptToDB, addGuestToDB, updateGuestInDB, checkoutGuestInDB, deleteGuestFromDB, resolveTelegramTemplate, dedupMenuDB, fetchReceiptsFromDB, getPropertySlug, fetchServiceRequestsFromDB, ServiceRequest, createServiceRequestInDB, apiFetch } from './services/api';
@@ -31,14 +31,6 @@ import { DataLoader, PreloadedData } from './components/DataLoader';
 import { Smartphone, Download, X as CloseIcon, Share, PlusSquare, MoreVertical, Receipt } from './components/icons/FlowbiteIcons';
 import { LoadingScreen } from './components/LoadingScreen';
 import { LoginPage } from './components/LoginPage';
-import { MultiKeyPropertyOverview } from './components/MultiKeyPropertyOverview';
-import { AIChatWidget } from './components/AIChatWidget';
-// Lazy-loaded (28 Aug 2026, explicit request: "make sure driver.js only loads on demo property")
-// via the same lazyWithRetry() pattern every tab component below already uses - this keeps
-// driver.js (and its CSS) out of the main bundle entirely for the common case (a real tenant's
-// property, where the render below never mounts it), fetched only the moment a public-demo
-// property actually renders it.
-import { SelfOnboardingWizard } from './components/SelfOnboardingWizard';
 import { getPropertyAndRoomSlugs } from './services/api';
 
 // Code-split: everything below is either a secondary/admin tab that most
@@ -67,11 +59,18 @@ const MenuManager = lazyWithRetry(() => import('./components/MenuManager').then(
 const MiscChargesManagement = lazyWithRetry(() => import('./components/MiscChargesManagement').then(m => ({ default: m.MiscChargesManagement })), 'MiscChargesManagement');
 const ServiceRequestsManagement = lazyWithRetry(() => import('./components/ServiceRequestsManagement').then(m => ({ default: m.ServiceRequestsManagement })), 'ServiceRequestsManagement');
 const LicenseManagement = lazyWithRetry(() => import('./components/LicenseManagement').then(m => ({ default: m.LicenseManagement })), 'LicenseManagement');
+const ChannelManager = lazyWithRetry(() => import('./components/ChannelManager').then(m => ({ default: m.ChannelManager })), 'ChannelManager');
+const ChannelConnectionsPage = lazyWithRetry(() => import('./components/ChannelConnectionsPage').then(m => ({ default: m.ChannelConnectionsPage })), 'ChannelConnectionsPage');
+const SubscriptionPanel = lazyWithRetry(() => import('./components/SubscriptionPanel').then(m => ({ default: m.SubscriptionPanel })), 'SubscriptionPanel');
 const TelegramNotificationModal = lazyWithRetry(() => import('./components/TelegramNotificationModal').then(m => ({ default: m.TelegramNotificationModal })), 'TelegramNotificationModal');
 const EditPropertyPage = lazyWithRetry(() => import('./components/EditPropertyPage').then(m => ({ default: m.EditPropertyPage })), 'EditPropertyPage');
 const PlatformPropertyManagement = lazyWithRetry(() => import('./components/PlatformPropertyManagement').then(m => ({ default: m.PlatformPropertyManagement })), 'PlatformPropertyManagement');
 const TenantDashboard = lazyWithRetry(() => import('./components/TenantDashboard').then(m => ({ default: m.TenantDashboard })), 'TenantDashboard');
 const RootAdminDashboard = lazyWithRetry(() => import('./components/RootAdminDashboard').then(m => ({ default: m.RootAdminDashboard })), 'RootAdminDashboard');
+const MultiKeyPropertyOverview = lazyWithRetry(() => import('./components/MultiKeyPropertyOverview').then(m => ({ default: m.MultiKeyPropertyOverview })), 'MultiKeyPropertyOverview');
+const LegalDrawer = lazyWithRetry(() => import('./components/LegalDrawer').then(m => ({ default: m.LegalDrawer })), 'LegalDrawer');
+const SelfOnboardingWizard = lazyWithRetry(() => import('./components/SelfOnboardingWizard').then(m => ({ default: m.SelfOnboardingWizard })), 'SelfOnboardingWizard');
+const PropertySetupWizard = lazyWithRetry(() => import('./components/PropertySetupWizard').then(m => ({ default: m.PropertySetupWizard })), 'PropertySetupWizard');
 
 // Small inline fallback for tab-content Suspense boundaries - deliberately
 // NOT LoadingScreen (that's a fixed-inset-0 full-page overlay meant for app
@@ -156,7 +155,8 @@ function AppBody({ preloadedData }: AppBodyProps) {
 
   const getInitialActiveState = (): { tab: TabType; key: string } => {
     if (typeof window !== 'undefined') {
-      const hash = window.location.hash.replace('#', '').trim();
+      const rawHash = window.location.hash.replace('#', '').trim();
+      const hash = rawHash.split('?')[0].split('/')[0];
       const routeMap: Record<string, { tab: TabType; key: string }> = {
         dashboard: { tab: 'dashboard', key: 'dashboard' },
         guest_registration: { tab: 'guests', key: 'all_bookings' },
@@ -252,18 +252,23 @@ function AppBody({ preloadedData }: AppBodyProps) {
         ical_sync: { tab: 'edit_property', key: 'edit_property' },
         service_requests: { tab: 'service_requests', key: 'service_requests' },
         license_management: { tab: 'licenses', key: 'license_management' },
+        channel_manager: { tab: 'channel_manager', key: 'channel_manager' },
+        connect_channels: { tab: 'connect_channels', key: 'connect_channels' },
+        subscription: { tab: 'subscription', key: 'subscription' },
       };
 
-      if (hash && routeMap[hash]) {
-        return routeMap[hash];
+      const baseHash = hash.split('?')[0].split('/')[0].trim();
+
+      if (baseHash && routeMap[baseHash]) {
+        return routeMap[baseHash];
       }
 
       // A nav item renamed via NavMenuEditor gets a fresh urlSlug that won't be
       // in the static routeMap above - resolve those from the live nav item
       // list. uniqueKey (not urlSlug) is the actual routing key everything else
       // in the app keys off of; urlSlug is only what the browser bar shows.
-      if (hash && preloadedData.navItems) {
-        const matched = preloadedData.navItems.find((item) => item.urlSlug === hash || item.uniqueKey === hash);
+      if (baseHash && preloadedData.navItems) {
+        const matched = preloadedData.navItems.find((item) => item.urlSlug === baseHash || item.uniqueKey === baseHash);
         if (matched) {
           let key = matched.uniqueKey || matched.tabKey;
           let tab = routeMap[key]?.tab || (matched.tabKey as TabType) || 'dashboard';
@@ -312,12 +317,18 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // initialXxx props; the screen pre-fills its form and opens it, but a human always still
   // clicks the real "Save"/"Log Request" button themselves - see AIChatWidget.tsx's callback wiring below.
   const [initialExpenseData, setInitialExpenseData] = useState<{ amount?: number; description?: string } | null>(null);
-  const [initialStaffMealName, setInitialStaffMealName] = useState<string | null>(null);
-  const [initialEditStaffName, setInitialEditStaffName] = useState<string | null>(null);
-  const [initialReqData, setInitialReqData] = useState<{ itemName?: string; qty?: number; unit?: string } | null>(null);
+  // Setters below are unused now that AIChatWidget (the only thing that ever called
+  // them) is disconnected (2 Sep 2026, see the import comment above) - the getters
+  // stay, still threaded through to each screen's own initialXxx prop, they just
+  // never receive a non-null value anymore. Dropped rather than renamed/suppressed
+  // so a real "declared but never used" regression elsewhere doesn't get lost in
+  // the noise if this whole block is ever fully removed later.
+  const [initialStaffMealName] = useState<string | null>(null);
+  const [initialEditStaffName] = useState<string | null>(null);
+  const [initialReqData] = useState<{ itemName?: string; qty?: number; unit?: string } | null>(null);
   const [initialServiceRequestData, setInitialServiceRequestData] = useState<{ roomNumber?: string; item?: string } | null>(null);
-  const [initialAddStaffData, setInitialAddStaffData] = useState<{ name?: string; phone?: string; role?: string; salary?: number } | null>(null);
-  const [initialNewMenuItemData, setInitialNewMenuItemData] = useState<{ name?: string; price?: number; category?: string } | null>(null);
+  const [initialAddStaffData] = useState<{ name?: string; phone?: string; role?: string; salary?: number } | null>(null);
+  const [initialNewMenuItemData] = useState<{ name?: string; price?: number; category?: string } | null>(null);
   const [propertyName] = useState<string>(
     preloadedData.currentProperty?.name || getPropertySlug().charAt(0).toUpperCase() + getPropertySlug().slice(1).replace(/-/g, ' ') || 'Property'
   );
@@ -516,6 +527,9 @@ function AppBody({ preloadedData }: AppBodyProps) {
       service_requests: 'service_requests',
       edit_property: 'edit_property',
       licenses: 'license_management',
+      channel_manager: 'channel_manager',
+      connect_channels: 'connect_channels',
+      subscription: 'subscription',
     };
     const targetKey = menuItemKey || defaults[tab] || tab;
     setActiveMenuItemKey(targetKey);
@@ -627,7 +641,39 @@ function AppBody({ preloadedData }: AppBodyProps) {
     if (preloadedData.navItems && preloadedData.navItems.length > 0) {
       setNavItems(preloadedData.navItems);
     }
-  }, [preloadedData.navItems]);
+    if (preloadedData.initialGuests && preloadedData.initialGuests.length > 0) {
+      setGuests(preloadedData.initialGuests);
+    }
+    setGuestsLoading(!!preloadedData.guestsFetchPending);
+  }, [preloadedData.navItems, preloadedData.initialGuests, preloadedData.guestsFetchPending]);
+
+  // Handle Telegram deep link / URL parameters (booking_id / request_id / focusGuestId)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const parseDeepLink = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const rawHash = window.location.hash.replace('#', '').trim();
+      const hashParts = rawHash.split('?');
+      const hashQuery = hashParts[1] ? new URLSearchParams(hashParts[1]) : null;
+
+      const bookingId = urlParams.get('booking_id') || urlParams.get('guest_id') || hashQuery?.get('booking_id') || hashQuery?.get('guest_id');
+      if (bookingId) {
+        setFocusGuestId(bookingId);
+        setActiveTab('guests');
+        setActiveMenuItemKey('all_bookings');
+      }
+
+      const reqId = urlParams.get('request_id') || hashQuery?.get('request_id');
+      if (reqId) {
+        setActiveTab('service_requests');
+        setActiveMenuItemKey('service_requests');
+      }
+    };
+
+    parseDeepLink();
+    window.addEventListener('hashchange', parseDeepLink);
+    return () => window.removeEventListener('hashchange', parseDeepLink);
+  }, []);
 
   // Re-validates the CURRENT page against the CURRENT role whenever either
   // changes, and bounces to Dashboard if it's no longer allowed - hiding a
@@ -706,9 +752,17 @@ function AppBody({ preloadedData }: AppBodyProps) {
   const [isIconOnly, setIsIconOnly] = useState(false);
   const [isAddBookingModalOpen, setIsAddBookingModalOpen] = useState(false);
   const [isAddExpenseModalOpen, setIsAddExpenseModalOpen] = useState(false);
-  const [isAIChatOpen, setIsAIChatOpen] = useState(false);
+  // FAQ (2 Sep 2026): Header.tsx's Help button opens LegalDrawer straight to its
+  // 'faq' tab - replaces the old isAIChatOpen toggle for this same header slot.
+  const [legalDrawerActiveTab, setLegalDrawerActiveTab] = useState<'faq' | null>(null);
 
   const [guests, setGuests] = useState<Guest[]>(() => preloadedData.initialGuests || []);
+  // Whether the initial guests fetch itself is still in flight (DataLoader's
+  // background retry after a failed/timed-out first attempt) - NOT whether
+  // `guests` is empty. A property with genuinely zero bookings must show its
+  // real empty state immediately, not spin forever just because the array
+  // happens to be empty (see GuestManagement's isLoading prop below).
+  const [guestsLoading, setGuestsLoading] = useState<boolean>(() => !!preloadedData.guestsFetchPending);
   const [receipts, setReceipts] = useState<BillingReceipt[]>(() => preloadedData.initialReceipts || []);
   const [menu, setMenu] = useState<MenuItem[]>(() => preloadedData.initialMenu || []);
   const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>([]);
@@ -729,7 +783,9 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // client-side, so that case must still hit the network).
   const preloadedPropertyIdRef = useRef<number | undefined>(preloadedData.currentProperty?.id);
   const { showToast } = useToast();
-  const { staff, refreshStaff, refreshAttendance } = useStaff();
+  // staff itself dropped from this destructure (2 Sep 2026) - it was only ever
+  // passed to AIChatWidget, now disconnected (see the import comment above).
+  const { refreshStaff, refreshAttendance } = useStaff();
 
   const { inventory, updateStock, addInventoryItem, updateInventoryItemImage, addRequisition } = useInventoryContext();
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
@@ -904,6 +960,24 @@ function AppBody({ preloadedData }: AppBodyProps) {
     }
   }, [isAuthenticated, authChecked, preloadedData.currentProperty?.id, (preloadedData.currentProperty as any)?.tenant_subscription_status, (preloadedData.currentProperty as any)?.tenant_subscription_expires_at]);
 
+  // Ensure favicon is always active and dynamically update document title with property name
+  useEffect(() => {
+    let favicon = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+    if (!favicon) {
+      favicon = document.createElement('link');
+      favicon.rel = 'icon';
+      document.head.appendChild(favicon);
+    }
+    favicon.href = '/favicon.ico';
+  }, []);
+
+  useEffect(() => {
+    const propName = preloadedData.currentProperty?.name;
+    if (propName) {
+      document.title = `${propName} — Ground Code`;
+    }
+  }, [preloadedData.currentProperty?.name]);
+
 
 
   // Hydrate nav menu from DB on startup.
@@ -922,33 +996,16 @@ function AppBody({ preloadedData }: AppBodyProps) {
     refreshStaff();
     let cancelled = false;
     const applyNavItems = (data: any[]) => {
-      // Filter out removed nav items (Audit Logs, Staff Activity Trail, Error Logs)
-      const removedKeys = new Set(['audit_logs_main', 'staff_activity_trail', 'errors']);
-      const filtered = data.filter((dbItem: any) => !removedKeys.has(dbItem.uniqueKey));
-
-      // Use the DB as source of truth wholesale, including order - filtered
-      // is already sorted by display_order ASC (see fetchNavMenuFromDB's
-      // query), so idx reflects the DB's actual current order. This used to
-      // instead reuse prev.indexOf(initial) - the position the item
-      // happened to have in whatever loaded first - which meant a reorder
-      // in Root Admin's editor would show correctly there but a tab that
-      // had already loaded before the reorder stayed stuck on the old order
-      // for the rest of its session.
-      setNavItems(filtered.map((dbItem: any, idx: number) => ({
-        id: dbItem.id,
-        title: dbItem.title,
-        tabKey: dbItem.tabKey,
-        uniqueKey: dbItem.uniqueKey,
-        urlSlug: dbItem.urlSlug,
-        category: dbItem.category,
-        iconName: dbItem.iconName,
-        order: idx + 1,
-        roles: dbItem.roles || ['Super Admin'],
-        isVisible: dbItem.isVisible,
-        parentId: dbItem.parentId ?? null,
-        customUrl: dbItem.customUrl || undefined,
-        openInNewTab: dbItem.openInNewTab || false,
-      })));
+      // Use the DB as source of truth wholesale, including order -
+      // normalizeNavItems' own mapping assigns order from array index, and
+      // `data` is already sorted by display_order ASC (see
+      // fetchNavMenuFromDB's query), so that reflects the DB's actual
+      // current order. This used to instead reuse prev.indexOf(initial) -
+      // the position the item happened to have in whatever loaded first -
+      // which meant a reorder in Root Admin's editor would show correctly
+      // there but a tab that had already loaded before the reorder stayed
+      // stuck on the old order for the rest of its session.
+      setNavItems(normalizeNavItems(data));
     };
 
     const loadWithRetry = async (attemptsLeft: number) => {
@@ -1185,6 +1242,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
     kitchen: canSeeNavKey('take_food_order'),
     finances: canSeeNavKey('finances'),
     addExpense: canSeeNavKey('expenses'),
+    addServiceRequest: canSeeNavKey('service_requests'),
     addBooking: canSeeNavKey('all_bookings'),
     addFoodOrder: canSeeNavKey('take_food_order'),
     viewLiveKitchenOrder: canSeeNavKey('take_food_order'),
@@ -1238,7 +1296,8 @@ function AppBody({ preloadedData }: AppBodyProps) {
       if (typeof window === 'undefined') return;
       if (!authChecked || !isAuthenticated) return;
 
-      const hash = window.location.hash.replace('#', '').trim();
+      const rawHash = window.location.hash.replace('#', '').trim();
+      const hash = rawHash.split('?')[0].split('/')[0];
       if (!hash) return;
 
       // If hash is a menu item (not a room), clear room override.
@@ -1257,7 +1316,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         // room's own feeds), so visiting either from within a room should
         // stay in that room too, not kick out to the parent property.
         'edit_food_menu', 'beta_recipe_builder', 'misc_charges', 'edit_items_group',
-        'service_requests', 'license_management'
+        'service_requests', 'license_management', 'channel_manager', 'connect_channels', 'subscription'
       ]);
 
       // 'edit_property' is deliberately NOT in `reserved` above - clicking it
@@ -1355,17 +1414,22 @@ function AppBody({ preloadedData }: AppBodyProps) {
         service_requests: { tab: 'service_requests', key: 'service_requests' },
         edit_property: { tab: 'edit_property', key: 'edit_property' },
         license_management: { tab: 'licenses', key: 'license_management' },
+        channel_manager: { tab: 'channel_manager', key: 'channel_manager' },
+        connect_channels: { tab: 'connect_channels', key: 'connect_channels' },
+        subscription: { tab: 'subscription', key: 'subscription' },
       };
 
+      const baseHash = hash.split('?')[0].split('/')[0].trim();
+
       // 404 or Invalid Route -> Try dynamic nav items from DB, then check if it's a room slug (with optional /subtab)
-      if (!routeMap[hash]) {
+      if (!routeMap[baseHash]) {
         const [roomPart, tabPart] = hash.split('/');
         // urlSlug first - that's what a renamed item's link actually points at now;
         // uniqueKey/tabKey stay as fallbacks for items that were never renamed.
-        const dynamicItem = visibleNavItems.find((n) => n.urlSlug === hash || n.uniqueKey === hash || n.tabKey === hash);
+        const dynamicItem = visibleNavItems.find((n) => n.urlSlug === baseHash || n.uniqueKey === baseHash || n.tabKey === baseHash);
         if (dynamicItem && dynamicItem.isVisible) {
           setActiveTab(dynamicItem.tabKey as any || 'dashboard');
-          setActiveMenuItemKey(dynamicItem.uniqueKey || hash);
+          setActiveMenuItemKey(dynamicItem.uniqueKey || baseHash);
         } else {
           // Check if hash is a room slug from multi-key property (supports #room-101/edit_property)
           const targetRoomSlug = roomPart || hash;
@@ -1389,7 +1453,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         return;
       }
 
-      const targetRoute = routeMap[hash];
+      const targetRoute = routeMap[baseHash];
       // Still viewing a room only if we didn't just decide to clear it above
       // - selectedRoomSlugOverrideRef.current itself is stale here (it's
       // synced from state via its own effect, which hasn't run yet this
@@ -1991,7 +2055,7 @@ ${itemsStr}
           // (fixed z-50, no literal inset-0 so the app-wide z-50->58 bump rule
           // in custom.css never applies to it either) which would otherwise
           // poke through this overlay's background.
-          <div className="fixed inset-0 z-[60]">
+          <div className="fixed inset-0 z-[60] overflow-y-auto">
             <StaffPropertyPicker
               tenantId={effectiveSwitchTenantId}
               tenantSlug={effectiveSwitchTenantSlug}
@@ -2004,7 +2068,7 @@ ${itemsStr}
 
         {!isAuthenticated && !propertySelection && (
           <LoginPage
-            variant="terminal"
+            variant="management"
             onLoginSuccess={handleLoginSuccess}
             onLoginFailed={handleLoginFailed}
             onNeedsPropertySelection={setPropertySelection}
@@ -2028,7 +2092,7 @@ ${itemsStr}
             showInstallIcon={canShowInstallIcon}
             onInstallIconClick={handleHeaderInstallClick}
             onNavigate={(tab, itemKey) => handleNavigateTab(tab, itemKey)}
-            onToggleAIChat={() => setIsAIChatOpen((prev) => !prev)}
+            onOpenFaq={() => setLegalDrawerActiveTab('faq')}
             onSwitchProperty={() => setIsSwitchingProperty(true)}
             canSwitchProperties={effectiveCanSwitchProperties}
           />
@@ -2070,6 +2134,8 @@ ${itemsStr}
             isSidebarOpen={isSidebarOpen}
             kitchenModuleEnabled={kitchenEnabled}
             onOpenAddBooking={() => setIsAddBookingModalOpen(true)}
+            onOpenAddExpense={() => { setInitialExpenseData(null); setIsAddExpenseModalOpen(true); }}
+            onOpenAddServiceRequest={() => { setInitialServiceRequestData(null); handleNavigateTab('service_requests', 'service_requests'); }}
             permissions={mobileNavPermissions}
           />
         )}
@@ -2120,34 +2186,48 @@ ${itemsStr}
               !preloadedData.currentProperty?.tenant_is_demo &&
               !preloadedData.currentProperty?.is_public_demo && (
               <ErrorBoundary section="Property Setup Wizard">
-                <PropertySetupWizard
-                  propertyId={preloadedData.currentProperty.id}
-                  propertyType={preloadedData.currentProperty?.property_type}
-                  name={preloadedData.currentProperty?.name || ''}
-                  address={preloadedData.currentProperty?.address || ''}
-                  googleMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
-                  email={preloadedData.currentProperty?.email || ''}
-                  phone={preloadedData.currentProperty?.phone || ''}
-                  gstin={preloadedData.currentProperty?.gstin || ''}
-                  upiId={preloadedData.currentProperty?.upi_id || ''}
-                  upiQrCodeUrl={preloadedData.currentProperty?.upi_qr_code_url || ''}
-                  checkinTime={preloadedData.currentProperty?.checkin_time || ''}
-                  checkoutTime={preloadedData.currentProperty?.checkout_time || ''}
-                  defaultTariff={preloadedData.currentProperty?.default_tariff}
-                  walkInTableCount={preloadedData.currentProperty?.walk_in_table_count}
-                  instructions={preloadedData.currentProperty?.instructions || ''}
-                  onSaved={() => window.location.reload()}
-                />
+                <Suspense fallback={null}>
+                  <PropertySetupWizard
+                    propertyId={preloadedData.currentProperty.id}
+                    propertyType={preloadedData.currentProperty?.property_type}
+                    name={preloadedData.currentProperty?.name || ''}
+                    address={preloadedData.currentProperty?.address || ''}
+                    googleMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
+                    email={preloadedData.currentProperty?.email || ''}
+                    phone={preloadedData.currentProperty?.phone || ''}
+                    gstin={preloadedData.currentProperty?.gstin || ''}
+                    upiId={preloadedData.currentProperty?.upi_id || ''}
+                    upiQrCodeUrl={preloadedData.currentProperty?.upi_qr_code_url || ''}
+                    checkinTime={preloadedData.currentProperty?.checkin_time || ''}
+                    checkoutTime={preloadedData.currentProperty?.checkout_time || ''}
+                    defaultTariff={preloadedData.currentProperty?.default_tariff}
+                    walkInTableCount={preloadedData.currentProperty?.walk_in_table_count}
+                    instructions={preloadedData.currentProperty?.instructions || ''}
+                    onSaved={() => window.location.reload()}
+                  />
+                </Suspense>
               </ErrorBoundary>
             )}
-            {/* px-4 (27 Aug 2026, full-app padding sweep - user report: pages/cards show
-                inconsistent left/right insets against each other). Was px-1 (4px) on mobile -
-                every tab sharing this <main> (Dashboard/Bookings/Team/Kitchen/Edit Property)
-                sat nearly flush against the screen edge, while other pages built independently
-                of this shared shell (TenantDashboard.tsx, EditPropertyPage's Card) used their
-                own unrelated padding decisions - see CLAUDE.md's "Page & Card Padding
-                Standard" for the full scale this now matches. */}
-            <main className="flex-1 px-4 py-1 sm:px-6 sm:py-3 lg:px-8 lg:py-4 w-full space-y-2 sm:space-y-4 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] md:pb-4">
+            {/* px-0 on mobile, not px-4 (superseded 31 Aug/1 Sep 2026 by the mobile
+                full-bleed card initiative - see custom.css's "Full-bleed card standard
+                on mobile screens"). Cards inside this <main> now span edge-to-edge on
+                phones with custom.css stripping their own side borders/radius/margin;
+                if this container kept its own px-4 gutter too, every card would be
+                inset from the screen edge AGAIN while ALSO having lost its rounded
+                corners/side borders - the exact "flat card floating in a padded box"
+                bug this class must avoid causing. Non-card content (headers,
+                breadcrumbs, toolbars) that still needs a gutter gets it back via
+                custom.css's own curated selector list, not from this container.
+                sm:px-6 lg:px-8 (tablet/desktop) is unaffected - the full-bleed
+                treatment is mobile-only. app-shell__main tags this specific <main>
+                so custom.css's full-bleed selectors can be scoped to descendants of
+                it - TenantDashboard.tsx/RootAdminDashboard.tsx render their own
+                separate <main> outside this shell with their own unreduced padding,
+                and must NOT have the same card treatment applied without the
+                matching padding compensation (found 2 Sep 2026: their cards were
+                losing rounded corners/side borders via the old ungated selector
+                while sitting in still-padded containers, a broken half-bled hybrid). */}
+            <main className="app-shell__main flex-1 px-0 py-1 sm:px-6 sm:py-3 lg:px-8 lg:py-4 w-full space-y-2 sm:space-y-4 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] md:pb-4">
               <Suspense fallback={<TabContentFallback />}>
 
               {/* MultiKey room view - takes priority over everything */}
@@ -2162,6 +2242,7 @@ ${itemsStr}
                   activeTab={activeTab}
                   setActiveTab={handleNavigateTab}
                   guests={guests}
+                  guestsLoading={guestsLoading}
                   menu={menu}
                   receipts={receipts}
                   onAddGuest={handleAddGuest}
@@ -2315,6 +2396,7 @@ ${itemsStr}
                   <GuestManagement
                     guests={guests}
                     receipts={receipts}
+                    isLoading={guestsLoading}
                     onAddGuest={handleAddGuest}
                     onCheckoutGuest={handleCheckoutGuest}
                     onUpdateGuest={handleUpdateGuest}
@@ -2556,6 +2638,30 @@ ${itemsStr}
                 </ErrorBoundary>
               )}
 
+              {!selectedRoomSlugOverride && activeTab === 'channel_manager' && (
+                <ErrorBoundary section="Channel Manager">
+                  <ChannelManager onLogAudit={logAudit} />
+                </ErrorBoundary>
+              )}
+
+              {/* Self-serve OTA channel-connection wizard (3 Sep 2026) - a sibling
+                  entry point to Channel Manager above, not a button bolted onto that
+                  ops-console screen. Per-property, same as channel_manager. */}
+              {!selectedRoomSlugOverride && activeTab === 'connect_channels' && (
+                <ErrorBoundary section="Connect Channels">
+                  <ChannelConnectionsPage propertyId={preloadedData.currentProperty?.id || 0} onLogAudit={logAudit} />
+                </ErrorBoundary>
+              )}
+
+              {/* Tenant-facing subscription status + cancel/close request panel
+                  (3 Sep 2026) - gated ["Super Admin","Admin"] same as Channel
+                  Manager/Connect Channels above, see nav_menu_self_heal_v10. */}
+              {!selectedRoomSlugOverride && activeTab === 'subscription' && (
+                <ErrorBoundary section="Subscription">
+                  <SubscriptionPanel propertyId={preloadedData.currentProperty?.id || 0} onNavigate={(tab) => handleNavigateTab(tab)} />
+                </ErrorBoundary>
+              )}
+
               {!selectedRoomSlugOverride && activeTab === 'edit_property' && (
                 <ErrorBoundary section="Edit Property">
                   <EditPropertyPage property={preloadedData.currentProperty} onNavigateToRoom={handleNavigateToRoom} />
@@ -2599,7 +2705,17 @@ ${itemsStr}
               rooms={preloadedData.currentProperty?.rooms || []}
               onAddGuest={async (guest) => {
                 await handleAddGuest(guest);
-                setIsAddBookingModalOpen(false);
+                // Does NOT close here (31 Aug 2026, second pass). Closing
+                // inside this wrapper runs BEFORE it resolves - which is
+                // BEFORE GuestManagement.tsx's onSubmit gets to its own
+                // resetBookingForm()/showToast('Guest booked successfully!')
+                // right after awaiting this same call. That's close-then-
+                // toast, the exact wrong order, even with no artificial delay
+                // in between - removing the earlier 1s setTimeout fixed the
+                // latency but silently un-fixed the ordering it was also
+                // covering for. onSubmit now calls onClose() itself, right
+                // after showToast fires, so the sequence is always toast-
+                // triggered-then-close, both immediate, no delay either way.
               }}
               onCheckoutGuest={handleCheckoutGuest}
               onDispatchTelegram={dispatchTelegramAlert}
@@ -2703,32 +2819,32 @@ ${itemsStr}
                 {isIOSDevice ? (
                   <ol className="mt-2 space-y-1.5">
                     <li className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
-                      <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-semibold flex items-center justify-center">1</span>
+                      <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-semibold flex items-center justify-center border border-blue-500">1</span>
                       <span>
                         Tap <Share className="w-3.5 h-3.5 inline mx-0.5 text-blue-600 dark:text-blue-400 -mt-0.5" /><strong>Share</strong> {isIPadDevice ? 'at the top of Safari' : 'in Safari\'s bottom bar'}
                       </span>
                     </li>
                     <li className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
-                      <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-semibold flex items-center justify-center">2</span>
+                      <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-semibold flex items-center justify-center border border-blue-500">2</span>
                       <span>Scroll down & tap <strong>"Add to Home Screen"</strong> <PlusSquare className="w-3.5 h-3.5 inline mx-0.5 text-blue-600 dark:text-blue-400 -mt-0.5" /></span>
                     </li>
                     <li className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
-                      <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-semibold flex items-center justify-center">3</span>
+                      <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-semibold flex items-center justify-center border border-blue-500">3</span>
                       <span>Tap <strong>"Add"</strong> in the top-right corner</span>
                     </li>
                   </ol>
                 ) : (
                   <ol className="mt-2 space-y-1.5">
                     <li className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
-                      <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-semibold flex items-center justify-center">1</span>
+                      <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-semibold flex items-center justify-center border border-blue-500">1</span>
                       <span>Tap <MoreVertical className="w-3.5 h-3.5 inline mx-0.5 text-blue-600 dark:text-blue-400 -mt-0.5" /><strong>3 Dots Menu</strong> in browser top-right</span>
                     </li>
                     <li className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
-                      <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-semibold flex items-center justify-center">2</span>
+                      <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-semibold flex items-center justify-center border border-blue-500">2</span>
                       <span>Tap <strong>"Install App"</strong> or <strong>"Add to Home screen"</strong></span>
                     </li>
                     <li className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
-                      <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-semibold flex items-center justify-center">3</span>
+                      <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-semibold flex items-center justify-center border border-blue-500">3</span>
                       <span>Tap <strong>"Install"</strong> to confirm</span>
                     </li>
                   </ol>
@@ -2745,58 +2861,33 @@ ${itemsStr}
         )}
 
         <GlobalModal />
-        <AIChatWidget
-          isOpen={isAIChatOpen}
-          onClose={() => setIsAIChatOpen(false)}
-          userRole={activeRole}
-          propertyName={preloadedData.currentProperty?.name}
-          guests={guests}
-          staff={staff}
-          onNavigate={(tab, itemKey, extraData) => {
-            setIsAIChatOpen(false);
-            setActiveTab(tab as any);
-            if (itemKey) setActiveMenuItemKey(itemKey);
-            if (extraData?.staffName) {
-              if (itemKey === 'staff_directory_salaries') {
-                setInitialEditStaffName(extraData.staffName);
-              } else {
-                setInitialStaffMealName(extraData.staffName);
-              }
-            }
-            if (extraData?.reqItemName || extraData?.reqQty) {
-              setInitialReqData({ itemName: extraData.reqItemName, qty: extraData.reqQty, unit: extraData.reqUnit });
-            }
-            if (extraData?.addStaffName || extraData?.addStaffPhone || extraData?.addStaffRole || extraData?.addStaffSalary) {
-              setInitialAddStaffData({ name: extraData.addStaffName, phone: extraData.addStaffPhone, role: extraData.addStaffRole, salary: extraData.addStaffSalary });
-            }
-            if (extraData?.newMenuItemName || extraData?.newMenuItemPrice || extraData?.newMenuItemCategory) {
-              setInitialNewMenuItemData({ name: extraData.newMenuItemName, price: extraData.newMenuItemPrice, category: extraData.newMenuItemCategory });
-            }
-          }}
-          onOpenAddBooking={() => {
-            setIsAIChatOpen(false);
-            setIsAddBookingModalOpen(true);
-          }}
-          onOpenAddExpense={(data) => {
-            setInitialExpenseData(data || null);
-            setIsAIChatOpen(false);
-            setIsAddExpenseModalOpen(true);
-          }}
-          onOpenTelegramModal={() => {
-            setIsAIChatOpen(false);
-            setIsTelegramModalOpen(true);
-          }}
-          onOpenAddServiceRequest={(data) => {
-            // Unlike Add Booking/Expense (globally-mounted modals), the New Service Request
-            // drawer lives inside ServiceRequestsManagement itself, only mounted when that tab
-            // is active - so this has to switch tabs too, same as the staff_meals/edit_staff
-            // navigate flow, not just set data and expect a hidden component to react to it.
-            setInitialServiceRequestData(data || null);
-            setIsAIChatOpen(false);
-            setActiveTab('service_requests' as any);
-            setActiveMenuItemKey('service_requests');
-          }}
-        />
+        {/* Help/FAQ (2 Sep 2026) - replaces the old AIChatWidget mount in this exact
+            slot (see the import comment above for the full why). tenantSlug/
+            defaultPropertySlug are what let LegalDrawer's FAQ turn page-name
+            mentions into real clickable links (see its own prop doc comment) -
+            both already computed above for the Switch Property flow, reused as-is. */}
+        {/* ErrorBoundary added around each of these three (3 Sep 2026, code
+            review) - lazyWithRetry() reloads the page once per chunk per
+            session on a stale-chunk failure, then rethrows; with no boundary
+            above them (this whole branch sits outside AuthProvider/
+            DataLoader, and main.tsx mounts <App/> with no top-level boundary
+            either), that rethrow used to unmount the entire app to a white
+            screen instead of degrading to just this one drawer/modal failing
+            - exactly the class of failure a user hits on a stale tab right
+            after a deploy. Every other lazyWithRetry() site in this file
+            already has one; these three didn't. */}
+        {legalDrawerActiveTab && (
+          <ErrorBoundary section="Help & FAQ">
+            <Suspense fallback={null}>
+              <LegalDrawer
+                activeTab={legalDrawerActiveTab}
+                onClose={() => setLegalDrawerActiveTab(null)}
+                tenantSlug={effectiveSwitchTenantSlug}
+                defaultPropertySlug={getPropertySlug()}
+              />
+            </Suspense>
+          </ErrorBoundary>
+        )}
         {/* Gated on is_public_demo / demo tenant properties - the public marketing /
             demo walkthrough, mounted on demo properties so visitors and testers can experience the tour. */}
         {Boolean(
@@ -2805,23 +2896,31 @@ ${itemsStr}
           (preloadedData.currentProperty as any)?.is_demo ||
           preloadedData.currentProperty?.slug === 'demo'
         ) && (
-          <Suspense fallback={null}>
-            <DemoOnboardingTour
-              onStartTrialRequested={() => setIsSelfOnboardingOpen(true)}
-              handleNavigateTab={handleNavigateTab}
-              onNavigateToRoom={handleNavigateToRoom}
-              firstChildRoomSlug={preloadedData.currentProperty?.rooms?.[0]?.slug ?? null}
-            />
-          </Suspense>
+          <ErrorBoundary section="Demo Onboarding Tour">
+            <Suspense fallback={null}>
+              <DemoOnboardingTour
+                onStartTrialRequested={() => setIsSelfOnboardingOpen(true)}
+                handleNavigateTab={handleNavigateTab}
+                onNavigateToRoom={handleNavigateToRoom}
+                firstChildRoomSlug={preloadedData.currentProperty?.rooms?.[0]?.slug ?? null}
+              />
+            </Suspense>
+          </ErrorBoundary>
         )}
-        <SelfOnboardingWizard
-          isOpen={isSelfOnboardingOpen}
-          onClose={() => setIsSelfOnboardingOpen(false)}
-          onSuccess={(redirectUrl) => {
-            setIsSelfOnboardingOpen(false);
-            window.location.href = redirectUrl;
-          }}
-        />
+        {isSelfOnboardingOpen && (
+          <ErrorBoundary section="Start Trial">
+            <Suspense fallback={null}>
+              <SelfOnboardingWizard
+                isOpen={isSelfOnboardingOpen}
+                onClose={() => setIsSelfOnboardingOpen(false)}
+                onSuccess={(redirectUrl) => {
+                  setIsSelfOnboardingOpen(false);
+                  window.location.href = redirectUrl;
+                }}
+              />
+            </Suspense>
+          </ErrorBoundary>
+        )}
     </div>
   );
 }
@@ -3001,9 +3100,10 @@ export function App() {
       // TermsAcceptanceModal (rendered inside TenantDashboard) calls useToast() for its
       // "scroll first"/"check the box" prompts - this branch is rendered directly by App(),
       // never through AppWithProviders, so it needs its own ToastProvider the same way the
-      // Root Admin dashboard branch below already does, or that throws "useToast must be used
-      // within ToastProvider", blanking the entire page. On 30 Aug 2026 the same gap recurred
-      // with useAuth, so a missing provider now degrades to a visible error rather than a blank page.
+      // Root Admin dashboard branch below does. Without it that throws "useToast must be
+      // used within ToastProvider". The ErrorBoundary is the second half of that lesson:
+      // the same gap recurred with useAuth, so a missing provider now degrades to a visible
+      // error rather than a blank page.
       <ErrorBoundary section="Tenant Dashboard">
         <ToastProvider>
           <Suspense fallback={<LoadingScreen message="Loading tenant dashboard..." />}>
@@ -3124,14 +3224,18 @@ export function App() {
       <ErrorBoundary section="Management Login">
         <ToastProvider>
           <LoginPage variant="management" onLoginSuccess={handleLoginSuccess} onStartTrial={() => setIsSelfOnboardingOpen(true)} />
-          <SelfOnboardingWizard
-            isOpen={isSelfOnboardingOpen}
-            onClose={() => setIsSelfOnboardingOpen(false)}
-            onSuccess={(redirectUrl) => {
-              setIsSelfOnboardingOpen(false);
-              window.location.href = redirectUrl;
-            }}
-          />
+          {isSelfOnboardingOpen && (
+            <Suspense fallback={null}>
+              <SelfOnboardingWizard
+                isOpen={isSelfOnboardingOpen}
+                onClose={() => setIsSelfOnboardingOpen(false)}
+                onSuccess={(redirectUrl) => {
+                  setIsSelfOnboardingOpen(false);
+                  window.location.href = redirectUrl;
+                }}
+              />
+            </Suspense>
+          )}
         </ToastProvider>
       </ErrorBoundary>
     );
@@ -3144,14 +3248,18 @@ export function App() {
         <ErrorBoundary section="Root Login">
           <ToastProvider>
             <LoginPage variant="management" onLoginSuccess={handleLoginSuccess} onStartTrial={() => setIsSelfOnboardingOpen(true)} />
-            <SelfOnboardingWizard
-              isOpen={isSelfOnboardingOpen}
-              onClose={() => setIsSelfOnboardingOpen(false)}
-              onSuccess={(redirectUrl) => {
-                setIsSelfOnboardingOpen(false);
-                window.location.href = redirectUrl;
-              }}
-            />
+            {isSelfOnboardingOpen && (
+              <Suspense fallback={null}>
+                <SelfOnboardingWizard
+                  isOpen={isSelfOnboardingOpen}
+                  onClose={() => setIsSelfOnboardingOpen(false)}
+                  onSuccess={(redirectUrl) => {
+                    setIsSelfOnboardingOpen(false);
+                    window.location.href = redirectUrl;
+                  }}
+                />
+              </Suspense>
+            )}
           </ToastProvider>
         </ErrorBoundary>
       );

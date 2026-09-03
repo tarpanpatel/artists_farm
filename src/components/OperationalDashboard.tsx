@@ -23,8 +23,6 @@ import { RateRuleModal } from './RateRuleModal';
 import { Guest } from '../types';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
-import { useAuth } from '../contexts/AuthContext';
-import { ConvertOtaBookingModal } from './ConvertOtaBookingModal';
 import {
   GUEST_STATUS_CHECKED_IN,
   GUEST_STATUS_CHECKED_OUT,
@@ -36,7 +34,6 @@ import { getPropertySlug, fetchRateRulesDB, RateRule } from '../services/api';
 import { GuestManagement } from './GuestManagement';
 import { CheckinVerificationModal } from './CheckinVerificationModal';
 import { BookingDetailsModal } from './BookingDetailsModal';
-import { useToast } from './ToastContext';
 import { PageHeader, PageHeaderButton } from './PageHeader';
 import { KpiCard } from './KpiCard';
 import { Input } from './Input';
@@ -146,8 +143,6 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   onCheckout,
   minimalMode = false,
 }) => {
-  const { showToast } = useToast();
-  const { isAuthenticated, authChecked } = useAuth();
   const { orders } = useKitchenContext();
   const pendingOrders = orders.filter((o) => o.status === 'Pending' || o.status === 'Preparing');
   const recentOrders = orders.slice(0, 5);
@@ -195,7 +190,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   // Same controlled-popover pattern, for the OTA-blocked chip (22 Aug 2026) -
   // see the otaPopoverKey comment at its Popover usage below.
   const [openOtaPopoverId, setOpenOtaPopoverId] = useState<string | null>(null);
-  const [blockedDates, setBlockedDates] = useState<Array<{
+  const [blockedDates] = useState<Array<{
     event_start: string;
     event_end: string;
     event_title: string;
@@ -205,10 +200,60 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
     source_label?: string;
     room_id?: number | string;
   }>>([]);
-  const [otaConversionTarget, setOtaConversionTarget] = useState<{ block: (typeof blockedDates)[number]; blockedDateStrings: string[] } | null>(null);
+  // Write-only now (3 Sep 2026, iCal sync retired - see the blockedDates
+  // comment further down): handleConvertOtaBlock/the calendar-grid OTA
+  // segment that calls it still set this, but blockedDates can never
+  // actually contain anything for them to set it FROM any more, and the
+  // modal that used to read it back was removed - so only the setter
+  // survives here.
+  const [, setOtaConversionTarget] = useState<{ block: (typeof blockedDates)[number]; blockedDateStrings: string[] } | null>(null);
+
+  // Deep-link to a specific booking from URL (e.g. #dashboard?booking_id=708)
+  useEffect(() => {
+    const checkDeepLink = () => {
+      if (!guests || guests.length === 0) return;
+      if (typeof window === 'undefined') return;
+
+      const rawHash = window.location.hash.replace('#', '').trim();
+      const hashQuery = rawHash.includes('?') ? rawHash.split('?')[1] : '';
+      const searchParams = new URLSearchParams(hashQuery || window.location.search);
+      const targetBookingId = searchParams.get('booking_id') || searchParams.get('guest_id') || searchParams.get('id');
+
+      if (targetBookingId) {
+        const cleanTargetId = targetBookingId.trim();
+        const matched = guests.find((g) =>
+          String(g.id) === cleanTargetId ||
+          String((g as any).bookingId) === cleanTargetId ||
+          String((g as any).booking_id) === cleanTargetId
+        );
+        if (matched) {
+          setSelectedBookingFocusSection(null);
+          setSelectedBooking(matched);
+        }
+      }
+    };
+
+    checkDeepLink();
+    window.addEventListener('hashchange', checkDeepLink);
+    return () => window.removeEventListener('hashchange', checkDeepLink);
+  }, [guests]);
+
 
   // Dynamic Date-Range Pricing & Rates State
-  const [calendarViewMode, setCalendarViewMode] = useState<'bookings' | 'pricing'>('bookings');
+  const [calendarViewMode, setCalendarViewModeState] = useState<'bookings' | 'pricing'>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = sessionStorage.getItem('artists_farm_calendar_view_mode');
+      if (stored === 'pricing' || stored === 'bookings') return stored;
+    }
+    return 'bookings';
+  });
+
+  const setCalendarViewMode = (mode: 'bookings' | 'pricing') => {
+    setCalendarViewModeState(mode);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('artists_farm_calendar_view_mode', mode);
+    }
+  };
   const [rateRules, setRateRules] = useState<RateRule[]>([]);
   const [pricingMode, setPricingMode] = useState<'flat' | 'variable'>('flat');
   const [propertyDefaultTariff, setPropertyDefaultTariff] = useState<number | null>(null);
@@ -283,35 +328,16 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
     });
   };
 
-  // Fetch blocked dates from iCal sync. Also re-run after a successful
-  // "Convert to Booking" (see otaConversionTarget below) - the backend's
-  // getBlockedDates() excludes any block a guest row now claims, so
-  // refetching is what makes the capsule disappear immediately instead of
-  // waiting for the next mount/reload.
-  const fetchBlockedDates = async () => {
-    try {
-      const propertySlug = getPropertySlug();
-      const response = await fetch('/php/api/ical_sync.php?action=get_blocked_dates', {
-        headers: { 'X-Property-Slug': propertySlug },
-        credentials: 'include',
-      });
-      const data = await response.json();
-      if (data.status === 'success' && data.data) {
-        setBlockedDates(data.data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch blocked dates:', error);
-    }
-  };
-  // isAuthenticated guard added 27 Aug 2026 (app-wide sweep, same root cause as
-  // KitchenManagement.tsx's identical fix) - this data-fetch only, no change to
-  // the booking-calendar rendering/coloring/OTA-conversion logic below, which
-  // stays untouched per the protected-component rule.
-  useEffect(() => {
-    if (!authChecked || !isAuthenticated) return;
-    fetchBlockedDates();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, authChecked]);
+  // iCal sync retired app-wide (3 Sep 2026, superseded by the Channex channel
+  // manager - see _unwanted/ical/README.md). This used to fetch
+  // php/api/ical_sync.php?action=get_blocked_dates on mount, which is now
+  // archived; blockedDates therefore just stays permanently empty (its
+  // initial state), which naturally makes every OTA-block consumer below
+  // (otaAlerts/conflictAlerts computation, the calendar's OTA capsule
+  // segment, the alerts-panel "Convert to Booking" rows) produce nothing to
+  // render - left in place rather than excised since none of it can execute
+  // any more and the calendar-grid rendering it touches is a protected
+  // component (see CLAUDE.md) not worth risking for dead-code cleanup.
   // Pending stock requests raised by staff (awaiting fulfilment)
   const pendingStockRequests = stockRequests.filter((r) => (r.status || '').toUpperCase() === 'PENDING');
 
@@ -365,11 +391,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
     d.setHours(0, 0, 0, 0);
     return d;
   };
-  const formatAlertDate = (dateStr?: string) => {
-    const dateOnly = (dateStr || '').split(' ')[0];
-    const parts = dateOnly.split('-');
-    return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : dateOnly;
-  };
+  const formatAlertDate = (dateStr?: string) => formatDateDDMMYYYY(dateStr || '');
 
   // True only while today actually falls inside [checkin, checkout) - some
   // seed/demo data marks bookings Active immediately regardless of date, so
@@ -785,10 +807,10 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                         setIsEditingRoomName(true);
                         setEditingRoomName(roomName || '');
                       }}
-                      className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition text-slate-600 hover:text-slate-900"
+                      className="p-1.5 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded-lg transition cursor-pointer"
                       title={t('edit_room_name_tooltip', 'Edit room name')}
                     >
-                      <Pencil className="w-4 h-4" />
+                      <Pencil className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
                     </button>
                   </div>
                   <div className="flex items-center gap-4 mt-1">
@@ -820,11 +842,11 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 {t('alerts_heading', 'Booking Alerts')}
               </h3>
               {totalAlerts > 0 ? (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-300">
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-300 border border-red-300 dark:border-red-700">
                   {totalAlerts}
                 </span>
               ) : (
-                <span className="bg-emerald-100 text-emerald-800 text-[10px] font-semibold px-2 py-0.5 rounded border border-emerald-200">
+                <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-700">
                   All Clear
                 </span>
               )}
@@ -957,7 +979,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                   <Utensils className="w-4 h-4 text-blue-600" />
                   {t('live_kitchen_tickets_heading', 'Live Kitchen Orders')}
                 </h3>
-                <span className="bg-amber-100 text-amber-800 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-amber-300">
+                <span className="bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-amber-300 dark:border-amber-700">
                   {pendingOrders.length}
                 </span>
               </div>
@@ -979,10 +1001,10 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                       <span
                         className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
                           ord.status === 'Pending'
-                            ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700'
                             : ord.status === 'Preparing'
-                            ? 'bg-blue-100 text-blue-800 border border-blue-300'
-                            : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 border border-blue-300 dark:border-blue-700'
+                            : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
                         }`}
                       >
                         {ord.status}
@@ -1371,7 +1393,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                         >
                           <div className="flex items-center justify-between">
                             {isToday ? (
-                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold shadow-xs">
+                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold shadow-xs border border-blue-500">
                                 {d}
                               </span>
                             ) : (
@@ -1516,7 +1538,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                                       <div className="flex items-center justify-between text-2xs">
                                         <span className="text-gray-500 dark:text-gray-400">Dates:</span>
                                         <span className="font-medium text-gray-700 dark:text-gray-200">
-                                          {(dayBooking.checkinDate || '').split(' ')[0].split('T')[0]} → {(dayBooking.expectedCheckout || (dayBooking as any).checkoutDate || '').split(' ')[0].split('T')[0]}
+                                          {formatDateDDMMYYYY(dayBooking.checkinDate)} → {formatDateDDMMYYYY(dayBooking.expectedCheckout || (dayBooking as any).checkoutDate)}
                                         </span>
                                       </div>
                                       {hasDayPending && (
@@ -1682,6 +1704,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           }}
           onDelete={onDeleteBooking ? async (id) => { await onDeleteBooking(id); setSelectedBooking(null); setSelectedBookingFocusSection(null); } : undefined}
           rooms={rooms}
+          isMultiKeyProperty={isMultiKeyProperty}
           checkedInGuests={guests}
           propertyName={propertyName}
           propertyMapsLink={propertyMapsLink || propertyGoogleMapsLink}
@@ -1699,41 +1722,10 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
         />
       )}
 
-      {/* Convert OTA Block to Booking */}
-      {otaConversionTarget && (
-        <ConvertOtaBookingModal
-          otaBlock={otaConversionTarget.block}
-          roomNumber={roomName}
-          blockedDates={otaConversionTarget.blockedDateStrings}
-          onClose={() => setOtaConversionTarget(null)}
-          onConvert={(guest) => {
-            // .catch, not await (23 Aug 2026) - onAddGuest now throws on a real backend
-            // rejection (see App.tsx's handleAddGuest), but this call site deliberately stays
-            // fire-and-forget (see the comment below on why an await-then-refetch would race);
-            // .catch just makes sure a genuine failure still reaches the user as a toast instead
-            // of vanishing silently, without blocking the optimistic local-state update.
-            onAddGuest?.(guest)?.catch((err) => {
-              showToast(err instanceof Error ? err.message : 'Failed to save the converted booking.', { type: 'error' });
-            });
-            setOtaConversionTarget(null);
-            // Optimistic removal of exactly the block just claimed, matched by
-            // its stable external_event_id - NOT a fetchBlockedDates() refetch
-            // (found 22 Aug 2026, reported as "converted a booking, now there
-            // are 2 capsules"). onAddGuest fires the add_guest write but isn't
-            // awaited (same fire-and-forget optimistic pattern this whole flow
-            // already uses - see ConvertOtaBookingModal's own comment), so a
-            // refetch here routinely raced ahead of that write actually landing:
-            // the server's getBlockedDates() only excludes a block once a guest
-            // row with a matching ical_external_event_id exists, so refetching
-            // too early got back the STILL-unclaimed block and overwrote local
-            // state with it - stuck showing next to the brand-new booking until
-            // a full reload. Removing it from local state directly can't race
-            // anything.
-            const convertedId = otaConversionTarget.block.external_event_id;
-            setBlockedDates((prev) => prev.filter((bd) => bd.external_event_id !== convertedId));
-          }}
-        />
-      )}
+      {/* Convert OTA Block to Booking - removed 3 Sep 2026, iCal sync retired
+          (ConvertOtaBookingModal.tsx archived to _unwanted/ical/). otaConversionTarget
+          can never actually be set any more (see the blockedDates comment above), so
+          there was never anything left for this modal to render for. */}
 
       {/* Check-in ID Verification Modal */}
       {showCheckinVerification && (
@@ -1762,7 +1754,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
         open={showAddGuestModal}
         onClose={() => setShowAddGuestModal(false)}
         position="right"
-        className="z-58 w-full sm:max-w-4xl lg:max-w-5xl p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+        className="z-58 w-full sm:max-w-lg md:max-w-xl p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
       >
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
           <div className="flex items-center gap-2.5">

@@ -5,7 +5,7 @@ export const formatDateDDMMYYYY = (dateStr: string | null): string => {
 
   // Accept YYYY-MM-DD (ISO) or MM/DD/YYYY or DD/MM/YYYY formats
   // and always output DD/MM/YYYY
-  const ymd = cleaned.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const ymd = cleaned.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (ymd) return `${ymd[3]}/${ymd[2]}/${ymd[1]}`;
 
   const dmy = cleaned.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
@@ -22,6 +22,29 @@ export const formatDateDDMMYYYY = (dateStr: string | null): string => {
   }
 
   return cleaned;
+};
+
+export const parseDateToYMD = (dateStr?: string | null): [number, number, number] | null => {
+  if (!dateStr) return null;
+  const cleaned = String(dateStr).trim();
+  if (!cleaned) return null;
+  const raw = cleaned.split(' ')[0].split('T')[0].trim();
+  if (!raw) return null;
+
+  const parts = raw.split(/[\/\-]/).map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) return null;
+
+  let y: number, m: number, d: number;
+  if (parts[0] > 1000) {
+    [y, m, d] = parts;
+  } else if (parts[2] > 1000) {
+    [d, m, y] = parts;
+  } else {
+    return null;
+  }
+
+  if (y < 2000 || m < 1 || m > 12 || d < 1 || d > 31) return null;
+  return [y, m, d];
 };
 
 export const formatDateDDMMYY = formatDateDDMMYYYY;

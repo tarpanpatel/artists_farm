@@ -14,6 +14,8 @@ import {
   getRoomSlugFromHash,
 } from '../services/api';
 import { t } from '../i18n/en';
+import { useAuthOptional } from '../contexts/AuthContext';
+import { normalizeNavItems } from '../utils/navItems';
 
 export interface PreloadedData {
   currentProperty: any;
@@ -26,6 +28,14 @@ export interface PreloadedData {
   initialGuests?: any[];
   initialReceipts?: any[];
   initialMenu?: any[];
+  // True only while the initial guests fetch itself failed/timed out and the
+  // background retry below (see anyRealDataFetchFailed) hasn't landed yet -
+  // NOT "guests array is empty". A property with zero real guests still
+  // gets false here (the fetch succeeded, it just legitimately returned []),
+  // so consumers can tell "still loading" apart from "genuinely no bookings"
+  // instead of guessing from array length (which can never tell the two
+  // apart and would show a loading spinner forever on an empty property).
+  guestsFetchPending?: boolean;
 }
 
 interface DataLoaderProps {
@@ -37,6 +47,8 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [, setCurrentRoomSlug] = useState<string | null>(null);
+  const authCtx = useAuthOptional();
+  const authChecked = authCtx ? authCtx.authChecked : true;
 
   const [invalidProperty, setInvalidProperty] = useState<string | null>(null);
 
@@ -108,38 +120,16 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
           setTimeout(() => resolve(null), 6000);
         });
 
-        // First, fetch the basic property data
-        let property = await fetchCurrentProperty().catch(err => {
-          console.error('Failed to fetch current property:', err);
-          return null;
-        });
+        // First, fetch the basic property data and session check in parallel for fastest load
+        const [rawProperty, isAuthenticated] = await Promise.all([
+          fetchCurrentProperty().catch(err => {
+            console.error('Failed to fetch current property:', err);
+            return null;
+          }),
+          sessionCheckPromise,
+        ]);
+        let property = rawProperty;
 
-        // Resolved here (rather than only later, right before the 5 nav/telegram/guests/
-        // receipts/menu fetches) so it can ALSO gate the two authenticated-only fetches
-        // right below (27 Aug 2026 - found via a wall of 401s in a logged-out console: this
-        // component already skips the 5 fetches below for a logged-out visitor per the 18
-        // Aug 2026 fix, but get_multikey_property/get_property_modules were still firing
-        // unconditionally, guaranteed to 401 every time with no session - same class of bug,
-        // just missed here).
-        const isAuthenticated = await sessionCheckPromise;
-
-        // BUG (found 15 Aug 2026, still reproducing live after the 13 Aug fixes below):
-        // this rooms fetch had its own try/catch that silently swallowed failures with
-        // NO retry at all - unlike the realDataPromise fetches further down, it isn't even
-        // inside the timeout race, so the existing "timed out -> retry in background" fix
-        // never covered it. A cold PHP-FPM worker / cold DB connection on the first couple
-        // of requests in a fresh browser session can make this genuinely ERROR (not just
-        // run slow) within the time budget - Promise timing there was never the issue, a
-        // plain fetch failure was. When it failed, `property` silently kept whatever
-        // get_current_property returned (no `.rooms` at all), so roomCount fell back to 0
-        // for the rest of that page load: sidebar nav truncated, "Finish Setting Up"
-        // wrongly showing "Create your first unit" as not done, calendar reading "No rooms
-        // available" - self-correcting only on a real refresh, which lands on warm
-        // connections. Same root issue as the nav/guests/receipts/menu fetches below
-        // (transient failure silently caught into an empty default, no retry), just not
-        // caught by that fix since this call sits outside the race entirely. Fixed the same
-        // way: on failure, keep going with what we have so first paint isn't blocked, but
-        // retry in the background and patch the real rooms in once they arrive.
         const fetchMultiKeyRooms = (propertyId: number) =>
           apiFetch(`/php/api/router.php?action=get_multikey_property&property_id=${propertyId}`)
             .then(response => response.json())
@@ -158,20 +148,6 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
               roomsFetchFailed = true;
             }
           } else {
-            // BUG (found 28 Aug 2026, live: multi-key dashboard's TodayOverview
-            // calendar showing "No rooms available" despite the property genuinely
-            // having 5 seeded demo rooms). isAuthenticated here is THIS component's
-            // own early check_session call - completely separate from AuthContext's,
-            // which is where the public-demo auto-login sequence (3 sequential round
-            // trips: check_session -> get_demo_login_credentials -> login_user)
-            // actually lives. On a fresh demo visit this check fires and resolves
-            // false almost every time, well before that sequence has any real chance
-            // to finish. The old code just skipped the fetch outright when that
-            // happened - roomsFetchFailed stayed false, so the retry further down
-            // (gated on roomsFetchFailed) never ran either, leaving
-            // currentProperty.rooms permanently missing for the rest of the page's
-            // life. A MULTI_KEY property's rooms are never optional, so a skip here
-            // needs the exact same recovery path as a genuine fetch failure.
             roomsFetchFailed = true;
           }
         }
@@ -191,32 +167,6 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
           (m.is_enabled === 1 || m.is_enabled === true || m.is_enabled === '1')
         );
 
-        // Fetch all other data in parallel with a timeout fallback for a snappy
-        // first paint - but keep a reference to the real fetch (realDataPromise)
-        // separate from the race, and don't let it just evaporate if the
-        // timeout wins.
-        //
-        // BUG (found 13 Aug 2026): when the real fetch took longer than the
-        // 3s timeout - routine right after a fresh login, with cold caches
-        // and several sequential+parallel requests still in flight - this
-        // used to permanently discard whatever it eventually returned. The
-        // sidebar nav (plus guests/receipts/menu/telegram config) got stuck
-        // showing the timeout's empty defaults for the rest of that page
-        // load, with no retry, only recoverable by a manual refresh (a
-        // refresh's fetches land on already-warm caches/connections and
-        // reliably beat the timeout). Reported as: full nav menu + correct
-        // "Finish Setting Up" state only appearing after a refresh, never on
-        // the first load post-login.
-        //
-        // BUG (found 15 Aug 2026): that fix only retried when the TIMER won the
-        // race (timedOut). It missed the equally-routine case where an individual
-        // fetch below genuinely errors (same cold-start causes as above) but still
-        // resolves - via its own .catch() - well inside the 6s budget: Promise.all
-        // still "succeeds" on schedule with an empty value baked in for that one
-        // entry, timedOut stays false, and the retry block never ran. Indistinguishable
-        // from a real empty result once caught, so nothing downstream could tell the
-        // difference either. Each fetch below now reports whether IT failed
-        // (safeFetch), so a failure can trigger the same retry path as a timeout.
         const safeFetch = async <T,>(fn: () => Promise<T>, fallback: T, label: string): Promise<{ value: T; failed: boolean }> => {
           try {
             return { value: await fn(), failed: false };
@@ -226,33 +176,13 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
           }
         };
 
-        // BUG (found 22 Aug 2026, still reproducing live after the 13/15 Aug
-        // fixes above): fetchNavMenuFromDB() (services/api.ts) swallows any
-        // non-'success' backend response into an empty [] WITHOUT ever
-        // throwing - that's deliberate there, so other callers can just
-        // treat "no nav items" as "show nothing". But it means safeFetch()
-        // below can only ever detect a failure that surfaces as a thrown JS
-        // exception (network unreachable, bad JSON) - a backend that
-        // responds 200 with `{status:'error', ...}`, or any other
-        // non-success shape, looks IDENTICAL to "genuinely zero nav items"
-        // from here, so anyRealDataFetchFailed stays false and the
-        // retry-and-patch-in block further down never runs. Confirmed live:
-        // nav_menu_items has a full, healthy, platform-wide-shared row set
-        // (unscoped by property_id - see get_nav_menu in php/kitchen/
-        // menu.php) - so an empty result reaching this component is NEVER
-        // legitimately correct, unlike guests/receipts/menu below, which
-        // genuinely can be empty for a quiet/new property and must NOT be
-        // treated as a failure just for being []. This inline wrapper (nav
-        // items only) treats an empty result the same as a thrown failure,
-        // so the existing retry machinery actually gets a chance to run for
-        // the one fetch where "empty" is an unambiguous failure signal.
         const safeFetchNavItems = async (): Promise<{ value: any[]; failed: boolean }> => {
           try {
             const value = await fetchNavMenuFromDB();
             if (!Array.isArray(value) || value.length === 0) {
               return { value: [], failed: true };
             }
-            return { value, failed: false };
+            return { value: normalizeNavItems(value), failed: false };
           } catch (err) {
             console.error('Failed to fetch nav items:', err);
             return { value: [], failed: true };
@@ -331,6 +261,7 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
           initialGuests: Array.isArray(initialGuests) ? initialGuests : [],
           initialReceipts: Array.isArray(initialReceipts) ? initialReceipts : [],
           initialMenu: Array.isArray(initialMenu) ? initialMenu : [],
+          guestsFetchPending: initialGuestsR.failed,
         });
 
         // Rooms fetch failed OR was skipped above (see BUG note near fetchMultiKeyRooms) -
@@ -403,6 +334,11 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
               initialGuests: !realGuests.failed && Array.isArray(realGuests.value) ? realGuests.value : prev.initialGuests,
               initialReceipts: !realReceipts.failed && Array.isArray(realReceipts.value) ? realReceipts.value : prev.initialReceipts,
               initialMenu: !realMenu.failed && Array.isArray(realMenu.value) ? realMenu.value : prev.initialMenu,
+              // Retry has now settled either way (succeeded or exhausted) -
+              // stop signalling "still loading" regardless of outcome, or a
+              // guests fetch that keeps failing would leave consumers
+              // spinning forever instead of falling back to real (empty) data.
+              guestsFetchPending: false,
             } : prev);
           });
         }
@@ -430,7 +366,7 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
     return <InvalidPropertyPage propertySlug={invalidProperty} />;
   }
 
-  if (isLoading) {
+  if (isLoading || !authChecked) {
     return <LoadingScreen message={t('loading_screen_default_message')} />;
   }
 

@@ -452,7 +452,7 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
                     <span />
                   )}
                   <div className="flex items-center gap-1.5">
-                    <Button variant="secondary" size="sm" onClick={() => openEditModal(license)} leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}>
+                    <Button variant="edit" size="sm" onClick={() => openEditModal(license)} leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}>
                       {t('edit_button', 'Edit')}
                     </Button>
                     <button
@@ -460,7 +460,7 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
                       onClick={() => handleDelete(license)}
                       disabled={deletingId === license.id}
                       title={t('delete_button', 'Delete')}
-                      className="p-1.5 rounded-full text-red-500 hover:text-red-700 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="p-1.5 rounded-lg text-red-500 hover:text-red-700 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {deletingId === license.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                     </button>
@@ -586,7 +586,7 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
                     type="button"
                     onClick={() => setForm((prev) => ({ ...prev, document_url: null }))}
                     title={t('remove_document_label', 'Remove')}
-                    className="p-1 rounded-full text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors cursor-pointer shrink-0"
+                    className="p-1 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors cursor-pointer shrink-0"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -596,6 +596,14 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
                   accept="application/pdf,image/jpeg,image/png,image/webp"
                   onChange={handleDocumentSelected}
                   helperText={t('upload_document_button', 'PDF, JPG, or PNG')}
+                  // upload_document.php deliberately does NOT resize/recompress
+                  // (unlike upload_image.php's thumbnailing pipeline) - this is
+                  // compliance paperwork (FSSAI/homestay licence certificates)
+                  // someone may need to show an inspector at full resolution,
+                  // not a thumbnail. Compressing on the client before it even
+                  // reaches that endpoint would defeat the point (found 3 Sep
+                  // 2026, code review).
+                  autoCompressImage={false}
                 />
               )}
             </div>

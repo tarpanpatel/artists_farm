@@ -137,59 +137,6 @@ export function getPropertyAndRoomSlugs(): { propertySlug: string; roomSlug: str
 }
 
 /**
- * Fetch every configured iCal calendar for a property, scoped by the given
- * property slug. Talks to ical_sync.php directly (like ICalSyncManager.tsx
- * already does), not through router.php's API_BASE dispatcher. The backend
- * (ICalSyncManager::getICalSyncs in php/api/ical_sync.php) automatically
- * expands scope to every MULTI_KEY_ROOM child of this property, so passing
- * the PARENT property's slug here (getPropertyAndRoomSlugs().propertySlug,
- * not getPropertySlug()/the current room's own slug) is what makes this
- * correctly reflect "any room in this property has a calendar configured"
- * regardless of which specific room page is currently open.
- */
-export async function fetchIcalCalendarsFromDB(propertySlug: string): Promise<{ id: number; service_name: string }[]> {
-  try {
-    const res = await fetch('/php/api/ical_sync.php?action=get_ical_syncs', {
-      credentials: 'include',
-      headers: { 'X-Property-Slug': propertySlug },
-    });
-    const json = await res.json();
-    if (json.status === 'success' && Array.isArray(json.data)) {
-      return json.data;
-    }
-  } catch (err) {
-    console.error('Failed to fetch iCal calendars from DB:', err);
-  }
-  return [];
-}
-
-/**
- * Sync every given calendar id, same one-at-a-time loop as ICalSyncManager's
- * own "Sync All" button. Returns how many succeeded so the caller can report
- * a summary toast.
- */
-export async function syncAllIcalCalendarsInDB(propertySlug: string, calendarIds: number[]): Promise<{ successCount: number; total: number }> {
-  let successCount = 0;
-  for (const id of calendarIds) {
-    try {
-      const formData = new FormData();
-      formData.append('id', String(id));
-      const res = await fetch('/php/api/ical_sync.php?action=sync_ical_events', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'X-Property-Slug': propertySlug },
-        body: formData,
-      });
-      const json = await res.json();
-      if (json.status === 'success') successCount++;
-    } catch (err) {
-      console.error('Failed to sync iCal calendar:', id, err);
-    }
-  }
-  return { successCount, total: calendarIds.length };
-}
-
-/**
  * Get the selected room slug from URL hash (e.g., #room-101)
  * Used for hash-based routing within MultiKey property pages
  * Only returns room slugs, NOT tab names (dashboard, guests, etc.)

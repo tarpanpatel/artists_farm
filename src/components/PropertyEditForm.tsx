@@ -9,6 +9,7 @@ import { PROPERTY_CURRENCY_OPTIONS } from '../utils/currencies';
 import { WhatsAppEditor } from './WhatsAppEditor';
 import { UpiPaymentBlock, isValidUpiIdSyntax } from '../utils/upiQrCode';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
+import { MessageQrPreview } from './MessageQrPreview';
 
 /**
  * Shared "Edit Property" form - property details only (name, contact,
@@ -435,8 +436,12 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
             </div>
           </div>
           <div className="bg-[#e5ddd5] dark:bg-[#111b21] p-3 rounded-lg max-w-md mx-auto shadow-inner border border-slate-300/40 dark:border-slate-800">
-            <div className="bg-white dark:bg-[#202c33] p-3 rounded-lg shadow-md text-xs text-slate-800 dark:text-slate-100 whitespace-pre-wrap leading-relaxed border-l-4 border-emerald-500">
-              {getPreviewText()}
+            <div className="bg-white dark:bg-[#202c33] p-3.5 rounded-lg shadow-md text-xs text-slate-800 dark:text-slate-100 whitespace-pre-wrap leading-relaxed border-l-4 border-emerald-500">
+              <MessageQrPreview
+                text={getPreviewText()}
+                cardClassName="my-2.5 p-2 bg-slate-50 dark:bg-[#111b21] rounded-lg border border-slate-200 dark:border-slate-700 flex flex-col items-start gap-1.5 shadow-2xs"
+                captionClassName="text-[11px] font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5"
+              />
             </div>
           </div>
         </div>

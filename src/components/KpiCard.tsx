@@ -24,7 +24,7 @@ export const KpiCard: React.FC<KpiCardProps> = ({
 }) => {
   return (
     <div
-      className={`kpi-card flex items-center justify-between gap-3 p-3 sm:p-3.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-2xs hover:shadow-xs transition-shadow ${className}`}
+      className={`kpi-card flex items-center justify-between gap-3 px-4 py-3 sm:p-3.5 bg-white dark:bg-gray-800 border-y sm:border border-gray-200 dark:border-gray-700 rounded-none sm:rounded-lg shadow-xs sm:shadow-2xs hover:shadow-xs transition-shadow ${className}`}
     >
       <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
         {Icon && (

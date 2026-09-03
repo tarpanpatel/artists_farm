@@ -11,6 +11,7 @@ import { API_ROOT_BASE } from '../services/api';
 import { t } from '../i18n/en';
 import { useConfirm } from './ConfirmDialogContext';
 import { useToast } from './ToastContext';
+import { formatDateDDMMYYYY } from '../utils/dateUtils';
 
 interface Tenant {
   id: number;
@@ -57,6 +58,21 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
   const { confirm } = useConfirm();
   const { showToast } = useToast();
   const [tenants, setTenants] = useState<Tenant[]>([]);
+  // Tenant-initiated cancel/close requests (3 Sep 2026, see
+  // php/subscription/tenant_closure_requests.php) - loaded independently of
+  // loadData()/tenants below so a failure here can never block the main
+  // tenant list from rendering.
+  const [closureRequests, setClosureRequests] = useState<Array<{
+    id: number;
+    tenant_id: number;
+    tenant_name: string;
+    request_type: 'cancel' | 'delete';
+    status: 'pending' | 'acknowledged' | 'completed' | 'declined';
+    reason: string | null;
+    requested_by_name: string | null;
+    created_at: string;
+  }>>([]);
+  const [closureRequestActionLoadingId, setClosureRequestActionLoadingId] = useState<number | null>(null);
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -141,7 +157,45 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
 
   useEffect(() => {
     loadData();
+    loadClosureRequests();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const loadClosureRequests = async () => {
+    try {
+      const res = await fetch('/php/api/router.php?action=get_tenant_closure_requests', { credentials: 'include' });
+      const json = await res.json();
+      if (json?.status === 'success') {
+        setClosureRequests(json.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to load tenant closure requests:', err);
+    }
+  };
+
+  const handleResolveClosureRequest = async (id: number, action: 'acknowledge' | 'decline') => {
+    setClosureRequestActionLoadingId(id);
+    try {
+      const res = await fetch('/php/api/router.php?action=resolve_tenant_closure_request', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, action }),
+      });
+      const json = await res.json();
+      if (json?.status === 'success') {
+        showToast(action === 'decline' ? 'Request declined' : 'Request acknowledged', { type: 'success' });
+        loadClosureRequests();
+      } else {
+        showToast(json?.message || 'Failed to update request', { type: 'error' });
+      }
+    } catch (err) {
+      console.error('Failed to resolve closure request:', err);
+      showToast('Failed to update request', { type: 'error' });
+    } finally {
+      setClosureRequestActionLoadingId(null);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -901,6 +955,63 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
           </div>
         )}
 
+        {/* Pending tenant cancel/close requests (3 Sep 2026) - a tenant's own
+            SubscriptionPanel.tsx can only ever REQUEST one of these, never
+            mutate subscription_status or delete anything itself. "Acknowledge"
+            just marks it seen; "Act" for a cancel means manually setting
+            subscription_status below and letting it lapse at expiry, for a
+            delete means using the existing Delete Tenant flow further down
+            after whatever grace period this admin chooses - nothing here
+            calls delete_tenant automatically. Only shown when there's
+            something pending, so this doesn't add permanent clutter to an
+            already-long page for the common case of zero open requests. */}
+        {closureRequests.filter((r) => r.status === 'pending').length > 0 && (
+          <div className="bg-white dark:bg-slate-800 border border-amber-200 dark:border-amber-800 rounded-lg overflow-hidden">
+            <div className="px-4 py-3 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <h3 className="text-sm font-bold text-amber-900 dark:text-amber-200">
+                Pending Tenant Requests ({closureRequests.filter((r) => r.status === 'pending').length})
+              </h3>
+            </div>
+            <div className="divide-y divide-slate-100 dark:divide-slate-700">
+              {closureRequests.filter((r) => r.status === 'pending').map((req) => (
+                <div key={req.id} className="p-4 flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-semibold text-slate-900 dark:text-white">{req.tenant_name}</span>
+                      <span className={`text-2xs font-bold px-2 py-0.5 rounded-full ${req.request_type === 'delete' ? 'bg-red-100 text-red-700 dark:bg-red-900/60 dark:text-red-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300'}`}>
+                        {req.request_type === 'delete' ? 'Close Account' : 'Cancel Subscription'}
+                      </span>
+                    </div>
+                    <p className="text-2xs text-slate-500 dark:text-slate-400 mt-1">
+                      Requested by {req.requested_by_name || 'Unknown'} on {formatDateDDMMYYYY(req.created_at)}
+                    </p>
+                    {req.reason && <p className="text-2xs text-slate-600 dark:text-slate-300 mt-1 italic">"{req.reason}"</p>}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      variant="secondary"
+                      size="xs"
+                      disabled={closureRequestActionLoadingId === req.id}
+                      onClick={() => handleResolveClosureRequest(req.id, 'acknowledge')}
+                    >
+                      Acknowledge
+                    </Button>
+                    <Button
+                      variant="danger"
+                      size="xs"
+                      disabled={closureRequestActionLoadingId === req.id}
+                      onClick={() => handleResolveClosureRequest(req.id, 'decline')}
+                    >
+                      Decline
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white dark:bg-slate-800 p-6 rounded-lg border border-slate-200 dark:border-slate-700">
@@ -1000,7 +1111,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                               </div>
                               <div className="text-2xs text-slate-400 dark:text-slate-500 font-mono">
                                 /{tenant.slug} · ID: {tenant.id}
-                                {tenant.subscription_expires_at && ` · Renews: ${tenant.subscription_expires_at}`}
+                                {tenant.subscription_expires_at && ` · Renews: ${formatDateDDMMYYYY(tenant.subscription_expires_at)}`}
                               </div>
                             </div>
                           </div>
@@ -1039,10 +1150,10 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                               {t('visit_tenant_dashboard_tooltip', 'Open Business')}
                             </Button>
                             <Button
-                              variant="secondary"
+                              variant="edit"
                               size="sm"
                               onClick={() => handleManageTenant(tenant)}
-                              leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
+                              leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
                             >
                               Edit
                             </Button>
@@ -1121,10 +1232,10 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                           {t('visit_tenant_dashboard_tooltip', 'Open Business')}
                         </Button>
                         <Button
-                          variant="secondary"
+                          variant="edit"
                           size="sm"
                           onClick={() => handleManageTenant(tenant)}
-                          leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
+                          leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
                         >
                           Edit
                         </Button>
@@ -1343,14 +1454,14 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                               : h.new_plan_type}
                           </span>
                           <span className="text-slate-400 dark:text-slate-500 shrink-0">
-                            {new Date(h.recorded_at).toLocaleDateString('en-GB')}
+                            {formatDateDDMMYYYY(h.recorded_at)}
                           </span>
                         </div>
                         {h.new_expires_at && (
                           <p className="text-slate-500 dark:text-slate-400 mt-0.5">
-                            Renews: {new Date(h.new_expires_at).toLocaleDateString('en-GB')}
+                            Renews: {formatDateDDMMYYYY(h.new_expires_at)}
                             {h.old_expires_at && h.old_expires_at !== h.new_expires_at
-                              ? ` (was ${new Date(h.old_expires_at).toLocaleDateString('en-GB')})`
+                              ? ` (was ${formatDateDDMMYYYY(h.old_expires_at)})`
                               : ''}
                           </p>
                         )}
@@ -2087,7 +2198,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
         position="right"
         open={!!viewPropertiesTenant}
         onClose={() => setViewPropertiesTenant(null)}
-        className="w-full max-w-xl md:max-w-2xl z-58 p-0 bg-white dark:bg-slate-900 shadow-2xl flex flex-col justify-between"
+        className="w-full max-w-xl md:max-w-2xl z-[60] z-60 p-0 bg-white dark:bg-slate-900 shadow-2xl flex flex-col justify-between"
       >
         {viewPropertiesTenant && (() => {
           const tenantProperties = properties.filter((p) => {
@@ -2212,7 +2323,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                                 setIsEditingBotToken(false);
                                 setShowPropertyModal('edit');
                               }}
-                              variant="secondary"
+                              variant="edit"
                               size="sm"
                               title={t('edit_property_tooltip', 'Edit Property')}
                               leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}

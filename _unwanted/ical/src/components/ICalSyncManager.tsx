@@ -684,10 +684,10 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
                     <td className="ical-sync-manager__cell p-4 text-right">
                       <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
                         <Button
-                          variant="secondary"
+                          variant="edit"
                           size="sm"
                           onClick={() => openEditModal(cal)}
-                          leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
+                          leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
                           title={t('edit_import_feed_tooltip', "Edit this import feed's URL")}
                         />
 
@@ -788,10 +788,10 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
 
                   <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100 dark:border-slate-700/60">
                     <Button
-                      variant="secondary"
+                      variant="edit"
                       size="sm"
                       onClick={() => openEditModal(cal)}
-                      leftIcon={<Pencil className="w-3.5 h-3.5 shrink-0" />}
+                      leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
                       title={t('edit_import_feed_tooltip', "Edit this import feed's URL")}
                     />
 
