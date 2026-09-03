@@ -342,18 +342,37 @@ function populateDefaultExpenses($pdo, $propertyId, $forceRefresh = false) {
     global $DEFAULT_EXPENSE_CATEGORIES;
 
     try {
-        // Ensure table exists with is_system_default column
-        $pdo->exec("CREATE TABLE IF NOT EXISTS `miscellaneous_catalog` (
-            `id` INT AUTO_INCREMENT PRIMARY KEY,
-            `property_id` INT NOT NULL,
-            `label` VARCHAR(255) NOT NULL,
-            `default_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-            `category` VARCHAR(100) NOT NULL,
-            `description` TEXT,
-            `is_system_default` BOOLEAN DEFAULT FALSE,
-            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE KEY `unique_item_per_property` (property_id, label)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+        // Ensure table exists with is_system_default column. Guarded with the
+        // same isSchemaVerified()/markSchemaVerified() hourly-TTL cache every
+        // other schema self-heal in this codebase uses (schema_cache.php) -
+        // added 3 Sep 2026 after a real live failure: this CREATE TABLE ran
+        // completely unconditionally on every single call, and CREATE/ALTER
+        // TABLE implicitly commits any open transaction in MySQL - calling
+        // this (via createMultiKeyPropertyCore(), during the new-tenant
+        // onboarding audit's fix) from inside registerTenantTrial()'s own
+        // beginTransaction()/commit() wrapper silently ended that transaction
+        // partway through, so the function's own later commit() failed with
+        // "There is no active transaction" and the whole signup 500'd - a
+        // real, live regression, not a hypothetical. Skipping the DDL once
+        // the table is known to exist fixes it for every caller, not just
+        // this new one.
+        if (!function_exists('isSchemaVerified')) {
+            require_once __DIR__ . '/../config/schema_cache.php';
+        }
+        if (!isSchemaVerified('schema_miscellaneous_catalog')) {
+            $pdo->exec("CREATE TABLE IF NOT EXISTS `miscellaneous_catalog` (
+                `id` INT AUTO_INCREMENT PRIMARY KEY,
+                `property_id` INT NOT NULL,
+                `label` VARCHAR(255) NOT NULL,
+                `default_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                `category` VARCHAR(100) NOT NULL,
+                `description` TEXT,
+                `is_system_default` BOOLEAN DEFAULT FALSE,
+                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY `unique_item_per_property` (property_id, label)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+            markSchemaVerified('schema_miscellaneous_catalog');
+        }
 
         // Check if defaults already exist for this property
         $stmt = $pdo->prepare("SELECT COUNT(*) as cnt FROM miscellaneous_catalog WHERE property_id = ? AND is_system_default = TRUE");
