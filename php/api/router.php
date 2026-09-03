@@ -4550,8 +4550,24 @@ switch ($action) {
                         echo json_encode(['status' => 'error', 'message' => 'Airbnb authorization has not completed yet']);
                         break 2;
                     }
+                    // Index what's already saved locally (by local_room_id) so an
+                    // unchanged room isn't re-POSTed to Channex on every "Save
+                    // Mapping" click - re-submitting the exact same
+                    // {rate_plan_id, listing_id} pair Channex already has mapped
+                    // is exactly what a re-visit to an already-"ready_to_activate"
+                    // connection does (the mapping step re-fetches the same
+                    // listings and the owner just clicks Save again), and Channex
+                    // rejects that as a duplicate mapping - which used to abort
+                    // the ENTIRE batch and discard every other room's real
+                    // progress too (found live 3 Sep 2026: a connection that was
+                    // already fully, correctly mapped failed to "save" again).
+                    $existingRows = getChannexChannelRoomMappings($pdo, (int)$conn['id']);
+                    $existingByRoom = [];
+                    foreach ($existingRows as $er) {
+                        $existingByRoom[$er['local_room_id'] === null ? 'null' : (string)$er['local_room_id']] = $er;
+                    }
                     $localRows = [];
-                    $mappingError = null;
+                    $failures = [];
                     foreach ($rooms as $r) {
                         $localRoomId = !empty($r['local_room_id']) ? (int)$r['local_room_id'] : null;
                         $listingId = trim((string)($r['external_room_code'] ?? ''));
@@ -4560,10 +4576,43 @@ switch ($action) {
                         $mapStmt->execute([$targetPropertyId, $localRoomId, $localRoomId]);
                         $ratePlanId = $mapStmt->fetchColumn();
                         if (!$ratePlanId) continue; // never content-synced - skip, don't fatal the whole save
+
+                        $existing = $existingByRoom[$localRoomId === null ? 'null' : (string)$localRoomId] ?? null;
+                        $unchanged = $existing
+                            && (string)($existing['channex_rate_plan_id'] ?? '') === (string)$ratePlanId
+                            && (string)($existing['external_room_code'] ?? '') === $listingId;
+                        if ($unchanged) {
+                            $localRows[] = [
+                                'local_room_id' => $localRoomId,
+                                'channex_rate_plan_id' => $ratePlanId,
+                                'external_room_code' => $listingId,
+                                'external_rate_code' => $listingId,
+                            ];
+                            continue;
+                        }
+
                         $mapRes = $channelClient->createChannelMapping($conn['channex_channel_id'], $ratePlanId, ['listing_id' => $listingId]);
                         if (!$mapRes['success']) {
-                            $mappingError = $mapRes;
-                            break;
+                            // Don't abort the whole batch on one room's failure - keep
+                            // going so every OTHER room's real, successful mapping
+                            // still gets recorded below instead of silently lost.
+                            $roomLabel = $localRoomId !== null ? "room #{$localRoomId}" : 'this property';
+                            $errDetail = is_array($mapRes['error'] ?? null)
+                                ? ($mapRes['error']['message'] ?? json_encode($mapRes['error']))
+                                : (string)($mapRes['error'] ?? 'unknown error');
+                            $failures[] = "{$roomLabel}: {$errDetail}";
+                            // If it already exists on Channex's side (a stale local
+                            // row from a prior partial save), keep the prior known
+                            // mapping rather than dropping it entirely.
+                            if ($existing) {
+                                $localRows[] = [
+                                    'local_room_id' => $localRoomId,
+                                    'channex_rate_plan_id' => $existing['channex_rate_plan_id'],
+                                    'external_room_code' => $existing['external_room_code'],
+                                    'external_rate_code' => $existing['external_rate_code'],
+                                ];
+                            }
+                            continue;
                         }
                         $localRows[] = [
                             'local_room_id' => $localRoomId,
@@ -4572,18 +4621,21 @@ switch ($action) {
                             'external_rate_code' => $listingId,
                         ];
                     }
-                    if ($mappingError) {
-                        http_response_code($mappingError['http_code'] ?: 502);
-                        echo json_encode(['status' => 'error', 'message' => 'Failed to map a room to its Airbnb listing', 'error' => $mappingError['error'] ?? null]);
-                        break 2;
-                    }
-                    if (empty($localRows)) {
+                    if (empty($localRows) && empty($failures)) {
                         http_response_code(422);
                         echo json_encode(['status' => 'error', 'message' => 'None of the submitted rooms have a Channex rate plan yet - sync property content first']);
                         break 2;
                     }
-                    upsertChannexChannelConnection($pdo, $targetPropertyId, $channelCode, ['status' => 'ready_to_activate', 'last_error' => null]);
+                    // Persist whatever succeeded (or was already correct) even if
+                    // some rooms failed - a partial save beats losing everything.
                     saveChannexChannelRoomMappings($pdo, (int)$conn['id'], $localRows);
+                    if (!empty($failures)) {
+                        upsertChannexChannelConnection($pdo, $targetPropertyId, $channelCode, ['last_error' => implode('; ', $failures)]);
+                        http_response_code(502);
+                        echo json_encode(['status' => 'error', 'message' => 'Failed to map: ' . implode('; ', $failures), 'data' => ['saved_count' => count($localRows)]]);
+                        break 2;
+                    }
+                    upsertChannexChannelConnection($pdo, $targetPropertyId, $channelCode, ['status' => 'ready_to_activate', 'last_error' => null]);
                     echo json_encode(['status' => 'success', 'data' => ['channex_channel_id' => $conn['channex_channel_id']]]);
                     break 2;
                 }

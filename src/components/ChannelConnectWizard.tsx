@@ -453,7 +453,11 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
       });
       const json = await res.json();
       if (json?.status !== 'success') {
-        showToast(json?.message || 'Failed to save room mapping', { type: 'error' });
+        const savedCount = json?.data?.saved_count;
+        const suffix = typeof savedCount === 'number' && savedCount > 0
+          ? ` (${savedCount} of ${rooms.length} room${rooms.length === 1 ? '' : 's'} saved - fix the room(s) above and try again)`
+          : '';
+        showToast((json?.message || 'Failed to save room mapping') + suffix, { type: 'error' });
         return;
       }
       showToast('Room mapping saved. Ready for final activation.', { type: 'success' });
