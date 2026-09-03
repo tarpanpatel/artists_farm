@@ -71,6 +71,7 @@ const MultiKeyPropertyOverview = lazyWithRetry(() => import('./components/MultiK
 const LegalDrawer = lazyWithRetry(() => import('./components/LegalDrawer').then(m => ({ default: m.LegalDrawer })), 'LegalDrawer');
 const SelfOnboardingWizard = lazyWithRetry(() => import('./components/SelfOnboardingWizard').then(m => ({ default: m.SelfOnboardingWizard })), 'SelfOnboardingWizard');
 const PropertySetupWizard = lazyWithRetry(() => import('./components/PropertySetupWizard').then(m => ({ default: m.PropertySetupWizard })), 'PropertySetupWizard');
+const PublicBookingEngine = lazyWithRetry(() => import('./components/PublicBookingEngine').then(m => ({ default: m.PublicBookingEngine })), 'PublicBookingEngine');
 
 // Small inline fallback for tab-content Suspense boundaries - deliberately
 // NOT LoadingScreen (that's a fixed-inset-0 full-page overlay meant for app
@@ -3086,6 +3087,23 @@ export function App() {
       }
     }
   };
+
+  const isPublicBookingPage = typeof window !== 'undefined' && (
+    window.location.hash === '#book' ||
+    window.location.hash.startsWith('#book') ||
+    window.location.pathname.endsWith('/book') ||
+    window.location.pathname.endsWith('/book/')
+  );
+
+  if (isPublicBookingPage) {
+    return (
+      <ErrorBoundary section="Public Booking Engine">
+        <Suspense fallback={<LoadingScreen message="Loading live availability..." />}>
+          <PublicBookingEngine propertySlug={propertySlug} />
+        </Suspense>
+      </ErrorBoundary>
+    );
+  }
 
   if (isCheckingTenant) {
     return <LoadingScreen message="Resolving route..." />;

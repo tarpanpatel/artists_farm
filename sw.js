@@ -46,7 +46,8 @@
 // v51 (4 Sep 2026): Fix room base tariff reactive state update in RateRuleModal
 // v52 (4 Sep 2026): Add Sync All Rates & Availability button directly on Connect Channels page
 // v53 (4 Sep 2026): Add individual listing sync buttons on Connect Channels page & Pricing Modal
-const CACHE_NAME = 'farm-pos-v53';
+// v54 (4 Sep 2026): Direct Booking Engine with multi-room calendar & offline payment support
+const CACHE_NAME = 'farm-pos-v54';
 
 // Hashed asset pattern — Vite content-hashed files (e.g. index-CrXjaekR.js)
 // These must NEVER be cached by the SW; the browser cache handles them natively

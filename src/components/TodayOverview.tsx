@@ -4,6 +4,7 @@ import { Popover } from './Popover';
 import { Guest } from '../types';
 import { BookingDetailsModal } from './BookingDetailsModal';
 import { RateRuleModal } from './RateRuleModal';
+import { BookingEngineShareModal } from './BookingEngineShareModal';
 import { KpiCard } from './KpiCard';
 import { getPropertySlug, fetchRateRulesDB, RateRule } from '../services/api';
 import { useToast } from './ToastContext';
@@ -181,6 +182,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   // OperationalDashboard.tsx's identical comment on its own copy of this.
   const [, setOtaConversionTarget] = useState<{ block: (typeof blockedDates)[number]; roomName: string; blockedDateStrings: string[] } | null>(null);
   const [showRateRuleModal, setShowRateRuleModal] = useState(false);
+  const [showBookingShareModal, setShowBookingShareModal] = useState(false);
   const [rateRules, setRateRules] = useState<RateRule[]>([]);
   const [pricingMode, setPricingMode] = useState<'flat' | 'variable'>('flat');
   const [defaultTariff, setDefaultTariff] = useState<number | null>(null);
@@ -455,6 +457,13 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           </h1>
         </div>
         <div className="today-overview__header-actions flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => setShowBookingShareModal(true)}
+            className="text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 focus:ring-4 focus:ring-slate-200 dark:focus:ring-slate-600 font-semibold rounded-lg text-xs px-3.5 py-2 flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap"
+          >
+            <Globe className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span>Direct Booking Link</span>
+          </button>
           {kitchenModuleEnabled && (
             <button
               onClick={handleShareFoodMenu}
@@ -986,6 +995,14 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           pricingMode={pricingMode}
           defaultTariff={defaultTariff}
           onRulesUpdated={loadRateRules}
+        />
+      )}
+
+      {showBookingShareModal && (
+        <BookingEngineShareModal
+          isOpen={showBookingShareModal}
+          onClose={() => setShowBookingShareModal(false)}
+          propertyName={propertyName}
         />
       )}
     </div>
