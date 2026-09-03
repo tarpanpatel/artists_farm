@@ -551,7 +551,13 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
 
             <div className="min-w-0">
               <h1 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate flex items-center gap-2">
-                <span>{tenantInfo?.name ?? t('tenant_dashboard_heading', 'Tenant Dashboard')}</span>
+                <span>
+                  {activeTab === 'dashboard' && (tenantInfo?.name ?? 'Dashboard')}
+                  {activeTab === 'analytics' && 'Analytics'}
+                  {activeTab === 'properties' && 'Properties'}
+                  {activeTab === 'account' && 'Account Settings'}
+                  {activeTab === 'billing' && 'Subscription & Billing'}
+                </span>
                 {tenantInfo?.subscription_plan && (
                   <span className={`hidden sm:inline-flex text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full capitalize ${planColor[tenantInfo.subscription_plan] ?? planColor.trial}`}>
                     {tenantInfo.subscription_plan}

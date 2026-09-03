@@ -751,6 +751,11 @@ function AppBody({ preloadedData }: AppBodyProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isIconOnly, setIsIconOnly] = useState(false);
   const [isAddBookingModalOpen, setIsAddBookingModalOpen] = useState(false);
+  // Calendar click-to-select-a-range prefill (added 3 Sep 2026) - only
+  // TodayOverview's multi-room calendar routes through this global drawer;
+  // OperationalDashboard's own month-grid calendar has its own local drawer
+  // and prefill state, wired directly there instead.
+  const [addBookingPrefill, setAddBookingPrefill] = useState<{ roomName: string; checkin: string; checkout: string } | null>(null);
   const [isAddExpenseModalOpen, setIsAddExpenseModalOpen] = useState(false);
   // FAQ (2 Sep 2026): Header.tsx's Help button opens LegalDrawer straight to its
   // 'faq' tab - replaces the old isAIChatOpen toggle for this same header slot.
@@ -2285,7 +2290,7 @@ ${itemsStr}
                         })()}
                         onNavigateToRoom={handleNavigateToRoom}
                         onNavigate={(tab) => handleNavigateTab(tab)}
-                        onAddBooking={() => setIsAddBookingModalOpen(true)}
+                        onAddBooking={(prefill) => { setAddBookingPrefill(prefill || null); setIsAddBookingModalOpen(true); }}
                         onAddGuest={handleAddGuest}
                         onUpdateGuest={handleUpdateGuest}
                         onDeleteGuest={handleDeleteGuest}
@@ -2682,17 +2687,17 @@ ${itemsStr}
             WalkInTabBillModal.tsx already use rather than a one-off). */}
         <FlowbiteDrawer
           open={isAddBookingModalOpen}
-          onClose={() => setIsAddBookingModalOpen(false)}
+          onClose={() => { setIsAddBookingModalOpen(false); setAddBookingPrefill(null); }}
           position="right"
           className="z-60 w-full sm:max-w-lg md:max-w-xl h-full bg-white dark:bg-gray-800 p-0 flex flex-col shadow-2xl transition-transform border-l border-gray-200 dark:border-gray-700"
         >
           <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 dark:border-gray-700 shrink-0 bg-white dark:bg-gray-800">
             <h2 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">
-              Add Guest Booking
+              Add Booking
             </h2>
             <button
               type="button"
-              onClick={() => setIsAddBookingModalOpen(false)}
+              onClick={() => { setIsAddBookingModalOpen(false); setAddBookingPrefill(null); }}
               className="text-gray-400 bg-transparent hover:bg-gray-100 hover:text-gray-900 rounded-lg text-sm w-8 h-8 inline-flex items-center justify-center dark:hover:bg-gray-700 dark:hover:text-white cursor-pointer transition-colors shrink-0"
               aria-label="Close drawer"
             >
@@ -2724,7 +2729,10 @@ ${itemsStr}
               activeMenuItemKey="guest_registration"
               isMultiKeyProperty={preloadedData.isMultiKeyProperty}
               selectedRoomSlug={preloadedData.currentRoomSlug}
-              onClose={() => setIsAddBookingModalOpen(false)}
+              onClose={() => {
+                setIsAddBookingModalOpen(false);
+                setAddBookingPrefill(null);
+              }}
               propertyName={preloadedData.currentProperty?.name || ''}
               propertyMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
               propertyPhone={preloadedData.currentProperty?.phone || ''}
