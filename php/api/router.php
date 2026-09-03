@@ -4139,7 +4139,23 @@ switch ($action) {
                     echo json_encode(['status' => 'error', 'message' => 'Failed to load channel adapter', 'error' => $res['error'] ?? null]);
                     break 2;
                 }
-                echo json_encode(['status' => 'success', 'data' => $res['data']]);
+                // Same annotation channex_channels_available adds (line ~4123) -
+                // this endpoint was missing it entirely, so selectedAdapter.is_airbnb_oauth
+                // was always undefined in the wizard (it fetches the adapter via THIS
+                // action, not the list one) and step 2 always rendered the generic
+                // settings+Test Connection form instead of the real "Request Airbnb
+                // Connection" screen - meaning channex_channel_start_airbnb (the only
+                // call that actually creates the Channex-side channel) was never
+                // reachable for Airbnb at all. Confirmed live 3 Sep 2026: Test
+                // Connection "succeeded" and jumped straight to room mapping, which
+                // then 400'd since no real Channex channel had ever been created.
+                $adapterData = $res['data'];
+                if (isset($adapterData['attributes'])) {
+                    $adapterData['attributes']['is_airbnb_oauth'] = (($adapterData['attributes']['kind'] ?? '') === 'ota');
+                } else {
+                    $adapterData['is_airbnb_oauth'] = (($adapterData['kind'] ?? '') === 'ota');
+                }
+                echo json_encode(['status' => 'success', 'data' => $adapterData]);
                 break 2;
 
             case 'channex_channel_connection_status':
