@@ -4037,21 +4037,22 @@ switch ($action) {
         $storedToken = (string)($storedSettings['oauth_token'] ?? '');
         $tokenOk = $conn && $storedToken !== '' && hash_equals($storedToken, $landingToken);
 
-        if ($landingSuccess && $tokenOk && $landingChannelId !== '') {
+        $isSuccess = ($landingSuccess && $tokenOk && $landingChannelId !== '');
+        if ($isSuccess) {
             upsertChannexChannelConnection($pdo, $landingPropertyId, 'AirBNB', [
                 'channex_channel_id' => $landingChannelId,
                 'status' => 'mapping',
                 'last_error' => null,
             ]);
-            $heading = 'Airbnb connected';
-            $body = "Your Airbnb account is now linked. You can close this tab and go back to Ground Code to finish mapping your rooms.";
+            $heading = 'Airbnb Connected Successfully';
+            $body = "Your Airbnb account is now linked. You can close this window and return to Ground Code to complete your room mapping.";
         } elseif (!$tokenOk && $conn) {
             upsertChannexChannelConnection($pdo, $landingPropertyId, 'AirBNB', [
                 'status' => 'error',
                 'last_error' => 'Authorization link token mismatch - possibly a stale or reused link.',
             ]);
             $heading = 'Something went wrong';
-            $body = "We couldn't verify this authorization attempt. Close this tab, go back to Ground Code, and click \"Authorize with Airbnb\" again for a fresh link.";
+            $body = "We couldn't verify this authorization attempt. Close this window, return to Ground Code, and click \"Authorize with Airbnb\" again for a fresh link.";
         } else {
             if ($conn) {
                 upsertChannexChannelConnection($pdo, $landingPropertyId, 'AirBNB', [
@@ -4060,15 +4061,57 @@ switch ($action) {
                 ]);
             }
             $heading = 'Authorization not completed';
-            $body = "Airbnb authorization wasn't completed. Close this tab, go back to Ground Code, and try \"Authorize with Airbnb\" again.";
+            $body = "Airbnb authorization wasn't completed. Close this window, return to Ground Code, and try \"Authorize with Airbnb\" again.";
         }
 
-        echo '<!doctype html><html><head><meta charset="utf-8"><title>' . htmlspecialchars($heading) . '</title>'
+        echo '<!doctype html>'
+            . '<html lang="en">'
+            . '<head>'
+            . '<meta charset="utf-8">'
+            . '<title>' . htmlspecialchars($heading) . '</title>'
             . '<meta name="viewport" content="width=device-width, initial-scale=1">'
-            . '<style>body{font-family:-apple-system,system-ui,sans-serif;background:#f8fafc;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0;padding:24px;box-sizing:border-box}'
-            . '.card{max-width:420px;background:#fff;border-radius:16px;padding:32px;box-shadow:0 1px 3px rgba(0,0,0,.1);text-align:center}'
-            . 'h1{font-size:18px;margin:0 0 12px;color:#0f172a}p{font-size:14px;color:#475569;line-height:1.5;margin:0}</style></head>'
-            . '<body><div class="card"><h1>' . htmlspecialchars($heading) . '</h1><p>' . htmlspecialchars($body) . '</p></div></body></html>';
+            . '<link rel="preconnect" href="https://fonts.googleapis.com">'
+            . '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+            . '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">'
+            . '<style>'
+            . '* { box-sizing: border-box; margin: 0; padding: 0; font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }'
+            . 'body { min-height: 100vh; display: flex; align-items: center; justify-content: center; background-color: #6b7280; padding: 1rem; }'
+            . '@media (prefers-color-scheme: dark) { body { background-color: #111827; } }'
+            . '.flowbite-modal { position: relative; width: 100%; max-width: 28rem; background: #ffffff; border-radius: 0.5rem; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); padding: 1.5rem; text-align: center; }'
+            . '@media (prefers-color-scheme: dark) { .flowbite-modal { background: #1f2937; color: #ffffff; } }'
+            . '.close-btn { position: absolute; top: 0.75rem; right: 0.75rem; color: #9ca3af; background: transparent; border: none; border-radius: 0.5rem; padding: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s; }'
+            . '.close-btn:hover { background: #f3f4f6; color: #111827; }'
+            . '@media (prefers-color-scheme: dark) { .close-btn:hover { background: #374151; color: #ffffff; } }'
+            . '.icon-container { width: 3rem; height: 3rem; border-radius: 9999px; padding: 0.5rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.875rem; }'
+            . '.icon-success { background: #def7ec; color: #0e9f6e; }'
+            . '@media (prefers-color-scheme: dark) { .icon-success { background: #03543f; color: #31c48d; } }'
+            . '.icon-error { background: #fde8e8; color: #e02424; }'
+            . '@media (prefers-color-scheme: dark) { .icon-error { background: #9b1c1c; color: #f98080; } }'
+            . '.modal-title { font-size: 1.125rem; font-weight: 600; color: #111827; margin-bottom: 0.75rem; line-height: 1.5; }'
+            . '@media (prefers-color-scheme: dark) { .modal-title { color: #ffffff; } }'
+            . '.modal-body { font-size: 0.875rem; color: #6b7280; line-height: 1.5; margin-bottom: 1.5rem; }'
+            . '@media (prefers-color-scheme: dark) { .modal-body { color: #9ca3af; } }'
+            . '.btn-continue { display: inline-flex; align-items: center; justify-content: center; padding: 0.625rem 1.25rem; font-size: 0.875rem; font-weight: 500; text-align: center; color: #ffffff; background: #1a56db; border: none; border-radius: 0.5rem; cursor: pointer; transition: background-color 0.2s; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05); }'
+            . '.btn-continue:hover { background: #1e429f; }'
+            . '.btn-continue:focus { outline: none; box-shadow: 0 0 0 4px rgba(225,239,254,1); }'
+            . '@media (prefers-color-scheme: dark) { .btn-continue { background: #1a56db; } .btn-continue:hover { background: #1e429f; } }'
+            . '</style>'
+            . '</head>'
+            . '<body>'
+            . '<div class="flowbite-modal">'
+            . '<button type="button" class="close-btn" onclick="window.close()" aria-label="Close">'
+            . '<svg style="width: 1.25rem; height: 1.25rem;" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>'
+            . '</button>'
+            . ($isSuccess
+                ? '<div class="icon-container icon-success"><svg style="width: 2rem; height: 2rem;" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg></div>'
+                : '<div class="icon-container icon-error"><svg style="width: 2rem; height: 2rem;" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg></div>'
+            )
+            . '<p class="modal-title">' . htmlspecialchars($heading) . '</p>'
+            . '<p class="modal-body">' . htmlspecialchars($body) . '</p>'
+            . '<button type="button" onclick="window.close()" class="btn-continue">Continue</button>'
+            . '</div>'
+            . '</body>'
+            . '</html>';
         break;
 
     case 'channex_content_sync':
@@ -4422,7 +4465,38 @@ switch ($action) {
             case 'channex_channel_mapping_details':
                 $channelCode = trim((string)($input['channel_code'] ?? $_GET['channel_code'] ?? ''));
                 $conn = $targetPropertyId > 0 && $channelCode !== '' ? getChannexChannelConnection($pdo, $targetPropertyId, $channelCode) : null;
-                if (!$conn || empty($conn['settings'])) {
+                if (!$conn) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'Test the connection before requesting mapping details']);
+                    break 2;
+                }
+                // Airbnb has NO mapping_details endpoint at all (confirmed against
+                // Channex's own docs 3 Sep 2026) - it's an OAuth/meta channel, so
+                // its real settings (tokens) live on Channex's side already, not in
+                // our own bookkeeping `settings` blob (oauth_token/timestamp, which
+                // is all we ever store locally for it). Listings are discovered via
+                // GET /channels/:id/action/listings once the real channel exists
+                // (created automatically when connection_link's authorization
+                // completes - see channex_channel_airbnb_connection_link).
+                if ($channelCode === 'AirBNB') {
+                    if (empty($conn['channex_channel_id'])) {
+                        http_response_code(400);
+                        echo json_encode(['status' => 'error', 'message' => 'Airbnb authorization has not completed yet']);
+                        break 2;
+                    }
+                    $res = $channelClient->getChannelListings($conn['channex_channel_id']);
+                    if (!$res['success']) {
+                        http_response_code($res['http_code'] ?: 502);
+                        echo json_encode(['status' => 'error', 'message' => 'Failed to load your Airbnb listings', 'error' => $res['error'] ?? null]);
+                        break 2;
+                    }
+                    // Real shape confirmed live: {data: {listing_id_dictionary: {values: [{id, title, ...}]}}}
+                    $rawListings = $res['data']['listing_id_dictionary']['values'] ?? [];
+                    $listings = array_map(fn($l) => ['id' => (string)($l['id'] ?? ''), 'title' => (string)($l['title'] ?? ('Listing ' . ($l['id'] ?? '')))], $rawListings);
+                    echo json_encode(['status' => 'success', 'data' => ['rooms' => $listings, 'is_airbnb_listing_mode' => true]]);
+                    break 2;
+                }
+                if (empty($conn['settings'])) {
                     http_response_code(400);
                     echo json_encode(['status' => 'error', 'message' => 'Test the connection before requesting mapping details']);
                     break 2;
@@ -4439,10 +4513,68 @@ switch ($action) {
             case 'channex_channel_save_mapping':
                 // $rooms: [{local_room_id, external_room_code, external_rate_code}, ...] -
                 // local_room_id omitted/null for a SINGLE property's one unit.
+                // For Airbnb, external_room_code carries the selected listing id
+                // (external_rate_code is unused - see the Airbnb branch below).
                 $channelCode = trim((string)($input['channel_code'] ?? ''));
                 $rooms = is_array($input['rooms'] ?? null) ? $input['rooms'] : [];
                 $conn = $targetPropertyId > 0 && $channelCode !== '' ? getChannexChannelConnection($pdo, $targetPropertyId, $channelCode) : null;
-                if (!$conn || empty($conn['settings']) || empty($rooms)) {
+                if (!$conn || empty($rooms)) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'channel_code and at least one room mapping are required']);
+                    break 2;
+                }
+
+                // Airbnb: no bulk rate_plans array / createChannel|updateChannel call
+                // (that's the credentials-based-channel path below) - one
+                // POST /channels/:id/mappings per room instead, keyed by
+                // {rate_plan_id, settings.listing_id}, confirmed against Channex's
+                // own docs 3 Sep 2026. The channel already exists (created during
+                // OAuth), so there's no "create vs update" branch to worry about.
+                if ($channelCode === 'AirBNB') {
+                    if (empty($conn['channex_channel_id'])) {
+                        http_response_code(422);
+                        echo json_encode(['status' => 'error', 'message' => 'Airbnb authorization has not completed yet']);
+                        break 2;
+                    }
+                    $localRows = [];
+                    $mappingError = null;
+                    foreach ($rooms as $r) {
+                        $localRoomId = !empty($r['local_room_id']) ? (int)$r['local_room_id'] : null;
+                        $listingId = trim((string)($r['external_room_code'] ?? ''));
+                        if ($listingId === '') continue;
+                        $mapStmt = $pdo->prepare("SELECT channex_rate_plan_id FROM channex_mappings WHERE property_id = ? AND (room_id = ? OR (room_id IS NULL AND ? IS NULL)) LIMIT 1");
+                        $mapStmt->execute([$targetPropertyId, $localRoomId, $localRoomId]);
+                        $ratePlanId = $mapStmt->fetchColumn();
+                        if (!$ratePlanId) continue; // never content-synced - skip, don't fatal the whole save
+                        $mapRes = $channelClient->createChannelMapping($conn['channex_channel_id'], $ratePlanId, ['listing_id' => $listingId]);
+                        if (!$mapRes['success']) {
+                            $mappingError = $mapRes;
+                            break;
+                        }
+                        $localRows[] = [
+                            'local_room_id' => $localRoomId,
+                            'channex_rate_plan_id' => $ratePlanId,
+                            'external_room_code' => $listingId,
+                            'external_rate_code' => $listingId,
+                        ];
+                    }
+                    if ($mappingError) {
+                        http_response_code($mappingError['http_code'] ?: 502);
+                        echo json_encode(['status' => 'error', 'message' => 'Failed to map a room to its Airbnb listing', 'error' => $mappingError['error'] ?? null]);
+                        break 2;
+                    }
+                    if (empty($localRows)) {
+                        http_response_code(422);
+                        echo json_encode(['status' => 'error', 'message' => 'None of the submitted rooms have a Channex rate plan yet - sync property content first']);
+                        break 2;
+                    }
+                    upsertChannexChannelConnection($pdo, $targetPropertyId, $channelCode, ['status' => 'ready_to_activate', 'last_error' => null]);
+                    saveChannexChannelRoomMappings($pdo, (int)$conn['id'], $localRows);
+                    echo json_encode(['status' => 'success', 'data' => ['channex_channel_id' => $conn['channex_channel_id']]]);
+                    break 2;
+                }
+
+                if (empty($conn['settings'])) {
                     http_response_code(400);
                     echo json_encode(['status' => 'error', 'message' => 'channel_code, a tested connection, and at least one room mapping are required']);
                     break 2;

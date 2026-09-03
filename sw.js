@@ -28,7 +28,8 @@
 // v33 (3 Sep 2026): Airbnb switch software troubleshooting guide in wizard & help manual
 // v34 (3 Sep 2026): retry and re-open Airbnb OAuth actions in connect wizard
 // v35 (3 Sep 2026): Tenant Dashboard header cleanup, subtitle rename, and sticky bottom footer
-const CACHE_NAME = 'farm-pos-v35';
+// v36 (3 Sep 2026): Flowbite CRUD success modal for Airbnb OAuth landing page
+const CACHE_NAME = 'farm-pos-v36';
 
 // Hashed asset pattern — Vite content-hashed files (e.g. index-CrXjaekR.js)
 // These must NEVER be cached by the SW; the browser cache handles them natively
