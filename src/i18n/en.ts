@@ -49,7 +49,7 @@ export const strings: Record<string, string> = {
   paid_by: "Paid By",
 
   // Guest Registration form
-  add_guest_booking_header: "Add Guest Booking",
+  add_guest_booking_header: "Add Booking",
   guest_name_label: "Guest Name *",
   contact_phone_label: "Contact Phone Number *",
   assigned_room_label: "Assigned Room / Villa *",

@@ -1814,7 +1814,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       {/* Add Guest Drawer */}
       <Drawer
         open={showAddGuestModal}
-        onClose={() => setShowAddGuestModal(false)}
+        onClose={() => { setShowAddGuestModal(false); setAddBookingPrefillDates(null); }}
         position="right"
         className="z-58 w-full sm:max-w-lg md:max-w-xl p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
       >
@@ -1829,7 +1829,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           </div>
           <button
             type="button"
-            onClick={() => setShowAddGuestModal(false)}
+            onClick={() => { setShowAddGuestModal(false); setAddBookingPrefillDates(null); }}
             className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
           >
             <X className="w-5 h-5" />

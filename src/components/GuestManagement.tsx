@@ -63,6 +63,15 @@ interface GuestManagementProps {
   onSetActiveMenuItemKey?: (key: string) => void;
   selectedRoomSlug?: string | null;
   preSelectRoom?: string;
+  // Pre-fill dates (added 3 Sep 2026, calendar click-to-select-a-range) -
+  // 'YYYY-MM-DD'. Deliberately separate from preSelectRoom's own effect
+  // below rather than reusing it: this is an explicit choice the user just
+  // made by clicking two calendar cells, not the "lazy default" the
+  // checkinDate/expectedCheckout state's own blank-by-default comment warns
+  // against - that concern is about auto-filling with no real user intent
+  // behind it, which doesn't apply here.
+  preSelectCheckinDate?: string;
+  preSelectCheckoutDate?: string;
   onClose?: () => void;
   focusGuestId?: string | null;
   onClearFocusGuest?: () => void;
@@ -119,6 +128,8 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   onSetActiveMenuItemKey: _onSetActiveMenuItemKey,
   selectedRoomSlug,
   preSelectRoom,
+  preSelectCheckinDate,
+  preSelectCheckoutDate,
   onClose,
   focusGuestId = null,
   onClearFocusGuest,
@@ -239,6 +250,14 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       }
     }
   }, [isMultiKeyProperty, rooms.length, selectedRoomSlug, preSelectRoom]);
+
+  // Pre-fill dates from a calendar click-to-select-a-range (see the prop's
+  // own comment above) - single-property signup has no preSelectRoom to key
+  // off of, so this is its own effect rather than folded into the one above.
+  useEffect(() => {
+    if (preSelectCheckinDate) setCheckinDate(preSelectCheckinDate);
+    if (preSelectCheckoutDate) setExpectedCheckout(preSelectCheckoutDate);
+  }, [preSelectCheckinDate, preSelectCheckoutDate]);
 
   // Registration Form State
   const [bookingRoomTariff, setBookingRoomTariff] = useState<number>(0);
@@ -460,7 +479,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
           {!onClose && (
             <div className="border-b border-gray-200 dark:border-gray-700 pb-3 flex items-center justify-between">
               <h3 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                <span>{t('add_guest_booking_header', 'Add Guest Booking')}</span>
+                <span>{t('add_guest_booking_header', 'Add Booking')}</span>
                 {isMultiKeyProperty && roomNumber && (
                   <Badge color="blue" size="sm">
                     {roomNumber}

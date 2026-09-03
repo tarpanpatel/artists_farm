@@ -2710,6 +2710,9 @@ ${itemsStr}
               receipts={receipts}
               menu={menu}
               rooms={preloadedData.currentProperty?.rooms || []}
+              preSelectRoom={addBookingPrefill?.roomName}
+              preSelectCheckinDate={addBookingPrefill?.checkin}
+              preSelectCheckoutDate={addBookingPrefill?.checkout}
               onAddGuest={async (guest) => {
                 await handleAddGuest(guest);
                 // Does NOT close here (31 Aug 2026, second pass). Closing

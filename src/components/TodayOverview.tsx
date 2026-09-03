@@ -20,7 +20,10 @@ interface TodayOverviewProps {
   kitchenModuleEnabled?: boolean;
   onNavigateToRoom?: (roomSlug: string) => void;
   onNavigate?: (tab: any, menuItemKey?: string) => void;
-  onAddBooking?: () => void;
+  // Optional prefill (added 3 Sep 2026, click-to-select-a-range on the
+  // calendar) - the header "+ Add Booking" button still calls this with no
+  // argument, opening the form blank exactly as before.
+  onAddBooking?: (prefill?: { roomName: string; checkin: string; checkout: string }) => void;
   onAddGuest?: (guest: Guest) => void;
   onUpdateGuest?: (guest: Guest) => void | Promise<void>;
   onDeleteGuest?: (guestId: string) => void | Promise<void>;
@@ -83,6 +86,59 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   }, []);
 
   const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
+
+  // Click-to-select-a-date-range (added 3 Sep 2026, explicit request): click
+  // an available cell to start a range, click a later available cell in the
+  // SAME room to open Add Booking pre-filled with that room + range. A
+  // second click on a DIFFERENT room restarts the pending selection there
+  // instead of erroring - the first click is just treated as abandoned.
+  const [pendingSelection, setPendingSelection] = useState<{ roomId: number; roomName: string; dateStr: string } | null>(null);
+
+  const formatDateStr = (d: Date): string =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+  const handleRangeCellClick = (
+    roomId: number,
+    roomName: string,
+    dateStr: string,
+    isUnavailable: boolean,
+    roomOccupiedDateStrings: string[],
+  ) => {
+    if (isUnavailable) return; // never a valid start or end point
+
+    if (!pendingSelection || pendingSelection.roomId !== roomId || dateStr <= pendingSelection.dateStr) {
+      // No pending selection, a different room (restart here instead of
+      // erroring - see comment above), or this date isn't strictly after the
+      // pending start (also treated as "start over here", so clicking the
+      // same cell twice cancels the pending selection rather than needing a
+      // separate cancel action).
+      if (pendingSelection && pendingSelection.roomId === roomId && dateStr === pendingSelection.dateStr) {
+        setPendingSelection(null); // clicking the same cell again cancels
+        return;
+      }
+      setPendingSelection({ roomId, roomName, dateStr });
+      return;
+    }
+
+    // Valid candidate: pendingSelection.dateStr = check-in, dateStr = check-out.
+    // Verify every night in between is actually free before opening the form.
+    const cur = new Date(pendingSelection.dateStr + 'T00:00:00');
+    const end = new Date(dateStr + 'T00:00:00');
+    let hasConflict = false;
+    while (cur < end) {
+      if (roomOccupiedDateStrings.includes(formatDateStr(cur))) { hasConflict = true; break; }
+      cur.setDate(cur.getDate() + 1);
+    }
+
+    if (hasConflict) {
+      showToast('That range overlaps an existing booking or block - pick again.', { type: 'error' });
+      setPendingSelection(null);
+      return;
+    }
+
+    onAddBooking?.({ roomName, checkin: pendingSelection.dateStr, checkout: dateStr });
+    setPendingSelection(null);
+  };
 
   // Public "Share Menu" link (food_menu.php via the /food_menu/{slug}/
   // rewrite in .htaccess) - lives on the dashboard rather than buried in
@@ -409,7 +465,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           )}
           {onAddBooking && (
             <button
-              onClick={onAddBooking}
+              onClick={() => onAddBooking()}
               className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-semibold rounded-lg text-xs px-3.5 py-2 flex items-center gap-2 shadow-md transition-all cursor-pointer whitespace-nowrap"
             >
               <Plus className="w-4 h-4" />
@@ -453,7 +509,23 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
 
       <div data-tour="booking-grid" className="today-overview__calendar bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-3">
-          <h2 className="today-overview__title text-base font-semibold text-slate-900 dark:text-white">{visibleMonthLabel}</h2>
+          <div className="flex items-center gap-2 shrink-0">
+            <h2 className="today-overview__title text-base font-semibold text-slate-900 dark:text-white">{visibleMonthLabel}</h2>
+            <button
+              type="button"
+              onClick={() => {
+                const newStart = new Date(today);
+                newStart.setDate(newStart.getDate() - PAST_BUFFER_DAYS);
+                setWindowStart(newStart);
+                setTimeout(() => {
+                  scrollTargetRef.current?.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+                }, 50);
+              }}
+              className="px-2.5 py-1 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800/80 rounded-lg transition-colors cursor-pointer shrink-0"
+            >
+              {t('today_button', 'Today')}
+            </button>
+          </div>
           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap">
             <button
               type="button"
@@ -475,20 +547,6 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             >
               <Share2 className="w-3.5 h-3.5" />
               <span>Share Availability</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const newStart = new Date(today);
-                newStart.setDate(newStart.getDate() - PAST_BUFFER_DAYS);
-                setWindowStart(newStart);
-                setTimeout(() => {
-                  scrollTargetRef.current?.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
-                }, 50);
-              }}
-              className="px-2.5 py-1 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800/80 rounded-lg transition-colors cursor-pointer shrink-0"
-            >
-              {t('today_button', 'Today')}
             </button>
             <div className="flex items-center gap-1 ms-auto sm:ms-0">
               <button
@@ -705,14 +763,25 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                   <div className="flex relative flex-1 overflow-hidden" style={{ width: `${daysArray.length * columnWidth}px`, minWidth: `${daysArray.length * columnWidth}px` }}>
                     {daysArray.map((day) => {
                       const isToday = isSameDate(day, today);
+                      const dateStr = formatDateStr(day);
+                      const isPast = day < today;
+                      const isOccupied = roomOccupiedDateStrings.includes(dateStr);
+                      const isUnavailable = isPast || isOccupied;
+                      const isPendingStart = pendingSelection?.roomId === room.id && pendingSelection?.dateStr === dateStr;
                       return (
                         <div
                           key={`bg-${day.toISOString()}`}
+                          onClick={() => handleRangeCellClick(room.id, room.name, dateStr, isUnavailable, roomOccupiedDateStrings)}
+                          title={isUnavailable ? undefined : (pendingSelection ? 'Click to set check-out' : 'Click to start a new booking')}
                           className={`w-16 min-w-16 shrink-0 border-r transition ${
-                            isToday
+                            isUnavailable ? '' : 'cursor-pointer'
+                          } ${
+                            isPendingStart
+                              ? 'bg-blue-200 dark:bg-blue-800/60 border-blue-400 dark:border-blue-600 ring-2 ring-inset ring-blue-500'
+                              : isToday
                               ? 'bg-blue-50/70 dark:bg-blue-950/30 border-blue-200/60 dark:border-blue-900/40'
                               : 'border-slate-100 dark:border-slate-700/50 bg-white dark:bg-slate-800/30'
-                          }`}
+                          } ${!isUnavailable && !isPendingStart ? 'hover:bg-blue-50/60 dark:hover:bg-blue-900/20' : ''}`}
                         />
                       );
                     })}
@@ -809,7 +878,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                           >
                             <div
                               data-tour="checkin-open-booking-bar"
-                              className={`px-2.5 rounded-md font-semibold cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all absolute ${
+                              className={`px-2.5 rounded-md font-semibold cursor-pointer hover:shadow-md transition-all absolute ${
                                 isOtaBooking && !isCheckedOut
                                   ? 'bg-amber-600 dark:bg-amber-700 hover:bg-amber-700 text-white border border-amber-700/30'
                                   : getGuestColor(guest.id, guest.status)
