@@ -90,10 +90,18 @@ function Invoke-Ssh([string]$Command) {
     # process with no attached terminal, so any prompt just blocks forever
     # with nobody able to answer it). BatchMode=yes makes ssh/scp fail fast
     # with a real error instead of ever prompting for anything.
-    & ssh -n -p $SshPort -i $SshKey -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=20 "$SshUser@$SshHost" $Command
-    if ($LASTEXITCODE -ne 0) {
-        throw "SSH command failed (exit $LASTEXITCODE): $Command"
+    $maxAttempts = 3
+    for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+        & ssh -n -p $SshPort -i $SshKey -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=30 "$SshUser@$SshHost" $Command
+        if ($LASTEXITCODE -eq 0) {
+            return
+        }
+        if ($attempt -lt $maxAttempts) {
+            Write-Warn "SSH attempt $attempt failed, retrying in 3 seconds..."
+            Start-Sleep -Seconds 3
+        }
     }
+    throw "SSH command failed after $maxAttempts attempts (exit $LASTEXITCODE): $Command"
 }
 
 Set-Location $ProjectRoot
