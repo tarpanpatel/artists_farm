@@ -18,6 +18,7 @@ import { useConfirm } from './ConfirmDialogContext';
 import { PageHeader } from './PageHeader';
 import { Button } from './Button';
 import { Badge } from './Badge';
+import { TablePagination } from './TablePagination';
 import { DateRangePicker } from './DateRangePicker';
 import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../utils/dateUtils';
 import { t } from '../i18n/en';
@@ -279,6 +280,13 @@ export const ChannelManager: React.FC<ChannelManagerProps> = ({ onLogAudit }) =>
     }
   };
 
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
+
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, searchQuery]);
+
   const filteredOutbox = useMemo(() => {
     if (!data?.outbox) return [];
     return data.outbox.filter((row) => {
@@ -295,6 +303,11 @@ export const ChannelManager: React.FC<ChannelManagerProps> = ({ onLogAudit }) =>
       return true;
     });
   }, [data?.outbox, statusFilter, searchQuery]);
+
+  const paginatedOutbox = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filteredOutbox.slice(start, start + PAGE_SIZE);
+  }, [filteredOutbox, page]);
 
   if (loading) {
     return (
@@ -736,7 +749,7 @@ export const ChannelManager: React.FC<ChannelManagerProps> = ({ onLogAudit }) =>
                   </td>
                 </tr>
               ) : (
-                filteredOutbox.map((row) => {
+                paginatedOutbox.map((row) => {
                   const isDone = row.status === 'done';
                   const isFailed = row.status === 'failed';
                   const isSending = row.status === 'sending';
@@ -824,7 +837,7 @@ export const ChannelManager: React.FC<ChannelManagerProps> = ({ onLogAudit }) =>
 
         {/* Mobile View */}
         <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-700">
-          {filteredOutbox.map((row) => (
+          {paginatedOutbox.map((row) => (
             <div key={row.id} className="p-4 space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -866,6 +879,15 @@ export const ChannelManager: React.FC<ChannelManagerProps> = ({ onLogAudit }) =>
             </div>
           ))}
         </div>
+
+        {/* Table Pagination */}
+        <TablePagination
+          page={page}
+          totalItems={filteredOutbox.length}
+          pageSize={PAGE_SIZE}
+          onPageChange={setPage}
+          itemLabel="tasks"
+        />
       </div>
     </div>
   );

@@ -20,6 +20,7 @@ import {
   Share2,
 } from './icons/FlowbiteIcons';
 import { RateRuleModal } from './RateRuleModal';
+import { useToast } from './ToastContext';
 import { Guest } from '../types';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
@@ -143,6 +144,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   onCheckout,
   minimalMode = false,
 }) => {
+  const { showToast } = useToast();
   const { orders } = useKitchenContext();
   const pendingOrders = orders.filter((o) => o.status === 'Pending' || o.status === 'Preparing');
   const recentOrders = orders.slice(0, 5);
@@ -158,6 +160,13 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   const [isEditingRoomName, setIsEditingRoomName] = useState(false);
   const [editingRoomName, setEditingRoomName] = useState(roomName || '');
   const [showAddGuestModal, setShowAddGuestModal] = useState(false);
+  // Click-to-select-a-date-range on the month calendar (added 3 Sep 2026,
+  // same feature/behavior as TodayOverview.tsx's multi-room calendar - see
+  // that file's own pendingSelection comment for the full rationale). This
+  // view is already scoped to one room (roomName), so there's no room
+  // dimension to track here, just the pending check-in date.
+  const [pendingRangeDateStr, setPendingRangeDateStr] = useState<string | null>(null);
+  const [addBookingPrefillDates, setAddBookingPrefillDates] = useState<{ checkin: string; checkout: string } | null>(null);
   const [showCleared, setShowCleared] = useState(false);
   const [showAllAlertsModal, setShowAllAlertsModal] = useState(false);
   // Which day cell's "+N more" popover is open, keyed by dateStr - Popover
@@ -381,6 +390,49 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   // must keep meaning the actual current day even while browsing a
   // different month's grid.
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+  // Click-to-select-a-date-range (added 3 Sep 2026) - same feature/behavior
+  // as TodayOverview.tsx's multi-room calendar, adapted to this single-room
+  // month grid (no room dimension to track, just the pending check-in date).
+  // Reuses the exact same "is this day already taken" expression the day
+  // cells themselves already use for dayBookingsForDate (see the daysInfo
+  // computation below) rather than a fresh, possibly-diverging re-derivation.
+  const isDateOccupiedForRange = (dateStr: string): boolean =>
+    guests.some((g) => dateStr >= g.checkinDate && dateStr < (g.checkoutDate || (g.expectedCheckout || '').split(' ')[0].split('T')[0]));
+
+  const handleRangeCellClick = (dateStr: string, isUnavailable: boolean) => {
+    if (isUnavailable) return;
+
+    if (!pendingRangeDateStr || dateStr <= pendingRangeDateStr) {
+      if (pendingRangeDateStr && dateStr === pendingRangeDateStr) {
+        setPendingRangeDateStr(null); // clicking the same cell again cancels
+        return;
+      }
+      setPendingRangeDateStr(dateStr); // start a fresh selection here
+      return;
+    }
+
+    // Valid candidate: pendingRangeDateStr = check-in, dateStr = check-out -
+    // verify every night in between is actually free first.
+    let hasConflict = false;
+    const cur = new Date(pendingRangeDateStr + 'T00:00:00');
+    const end = new Date(dateStr + 'T00:00:00');
+    while (cur < end) {
+      const curStr = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`;
+      if (isDateOccupiedForRange(curStr)) { hasConflict = true; break; }
+      cur.setDate(cur.getDate() + 1);
+    }
+
+    if (hasConflict) {
+      showToast('That range overlaps an existing booking - pick again.', { type: 'error' });
+      setPendingRangeDateStr(null);
+      return;
+    }
+
+    setAddBookingPrefillDates({ checkin: pendingRangeDateStr, checkout: dateStr });
+    setShowAddGuestModal(true);
+    setPendingRangeDateStr(null);
+  };
 
   // --- Front-desk alerts: bookings needing attention, with no time cutoff so
   // stale/forgotten bookings from any point in the past still surface. ---
@@ -1320,7 +1372,10 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               return s === 'checkedout' || s === 'checked out';
             })();
             const isOtaBooking = !!(dayBooking as any)?.otaSource;
-            return { d, dateStr, dayBookingsForDate, dayBooking, dayBookingOverflowCount, otaBlock, isToday, nightlyRate, isDayBookingCheckedOut, isOtaBooking };
+            // Click-to-select-a-range: a day is a valid start/end point only
+            // when it's not already taken and not in the past.
+            const isRangeUnavailable = !!dayBooking || !!otaBlock || dateStr < todayStr;
+            return { d, dateStr, dayBookingsForDate, dayBooking, dayBookingOverflowCount, otaBlock, isToday, nightlyRate, isDayBookingCheckedOut, isOtaBooking, isRangeUnavailable };
           });
 
           type DayInfo = (typeof daysInfo)[number];
@@ -1381,12 +1436,19 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                       if (!slot) {
                         return <div key={`blank-${col}`} className="min-h-[96px] sm:min-h-[110px] p-2 bg-gray-50/50 dark:bg-gray-800/40" />;
                       }
-                      const { d, dateStr, dayBookingsForDate, dayBookingOverflowCount, isToday } = slot;
+                      const { d, dateStr, dayBookingsForDate, dayBookingOverflowCount, isToday, isRangeUnavailable } = slot;
+                      const isPendingRangeStart = calendarViewMode !== 'pricing' && pendingRangeDateStr === dateStr;
                       return (
                         <div
                           key={`day-${d}`}
+                          onClick={calendarViewMode !== 'pricing' ? () => handleRangeCellClick(dateStr, isRangeUnavailable) : undefined}
+                          title={calendarViewMode !== 'pricing' && !isRangeUnavailable ? (pendingRangeDateStr ? 'Click to set check-out' : 'Click to start a new booking') : undefined}
                           className={`min-h-[96px] sm:min-h-[110px] p-1.5 sm:p-2 flex flex-col justify-between transition-colors ${
-                            isToday
+                            calendarViewMode !== 'pricing' && !isRangeUnavailable ? 'cursor-pointer' : ''
+                          } ${
+                            isPendingRangeStart
+                              ? 'bg-blue-100 dark:bg-blue-900/40 ring-2 ring-inset ring-blue-500'
+                              : isToday
                               ? 'bg-blue-50/40 dark:bg-blue-900/10'
                               : 'bg-white dark:bg-gray-800 hover:bg-gray-50/60 dark:hover:bg-gray-700/30'
                           }`}
@@ -1792,7 +1854,12 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             isMultiKeyProperty={!!roomName}
             selectedRoomSlug={roomName}
             preSelectRoom={roomName}
-            onClose={() => setShowAddGuestModal(false)}
+            preSelectCheckinDate={addBookingPrefillDates?.checkin}
+            preSelectCheckoutDate={addBookingPrefillDates?.checkout}
+            onClose={() => {
+              setShowAddGuestModal(false);
+              setAddBookingPrefillDates(null);
+            }}
             propertyName={propertyName}
             propertyMapsLink={propertyMapsLink}
             propertyPhone={propertyPhone}
