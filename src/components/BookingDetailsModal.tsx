@@ -404,6 +404,12 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const noOfGuests = g.no_of_guests ?? g.numberOfGuests ?? 1;
   const roomRent = g.base_room_rent ?? g.roomRate ?? 0;
   const advancePaid = g.advance_paid ?? g.advanceAmount ?? 0;
+  // OTA (Airbnb/Booking.com/etc via Channex) bookings arrive pre-paid by the
+  // channel itself - front desk never actually collects or hands off the
+  // advance/pending amount, so tracking "who received it" doesn't apply and
+  // the unassigned-receiver warning would just be a false alarm on every
+  // OTA booking. Same otaSource check already used above to hide Delete.
+  const isOtaBooking = Boolean(guest.otaSource || g.ota_source);
   
   const storedPending = g.pending_amount ?? g.pendingAmount;
   const extrasBaked = typeof storedPending === 'number'
@@ -819,8 +825,10 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             const pendingReceiver = g.pending_received_by || guest.pendingReceivedBy || '';
             const isCheckedOut = ((guest.status as string) === 'Checked Out' || (g.status as string) === 'Checked Out');
             
-            const isAdvanceUnassigned = advancePaid > 0 && !advanceReceiver;
-            const isPendingUnassigned = isCheckedOut && pendingDisplay === 0 && !pendingReceiver && (roomRent - advancePaid) > 0;
+            // OTA bookings never need a receiver assigned (see isOtaBooking above) -
+            // only the actual-money-owed check still applies to them.
+            const isAdvanceUnassigned = !isOtaBooking && advancePaid > 0 && !advanceReceiver;
+            const isPendingUnassigned = !isOtaBooking && isCheckedOut && pendingDisplay === 0 && !pendingReceiver && (roomRent - advancePaid) > 0;
             const isCheckedOutUnsettled = isCheckedOut && pendingDisplay > 0;
             
             const showBanner = !isEditing && (isAdvanceUnassigned || isPendingUnassigned || isCheckedOutUnsettled);
@@ -970,8 +978,10 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               </div>
             </div>
 
-            {/* Row 5: Advance Paid + Advance Received By */}
-            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            {/* Row 5: Advance Paid (+ Advance Received By, non-OTA only - OTA
+                bookings are pre-paid by the channel, front desk never
+                receives it so there's no one to attribute it to). */}
+            <div className={`grid gap-3 sm:gap-4 ${isOtaBooking ? 'grid-cols-1' : 'grid-cols-2'}`}>
               <div>
                 <Input
                   label={t('today_advance_paid_label', 'Advance Paid (₹)')}
@@ -982,21 +992,23 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   disabled={!isEditing}
                 />
               </div>
-              <div>
-                <StyledSelect
-                  label={t('advance_received_by', 'Advance Received By')}
-                  value={editAdvanceReceivedBy}
-                  onChange={setEditAdvanceReceivedBy}
-                  placeholder="-- Select Staff/User --"
-                  disabled={!isEditing}
-                  options={availableHandlers}
-                  className={highlightReceiverFields && !editAdvanceReceivedBy ? 'ring-2 ring-red-400 rounded-lg' : ''}
-                />
-              </div>
+              {!isOtaBooking && (
+                <div>
+                  <StyledSelect
+                    label={t('advance_received_by', 'Advance Received By')}
+                    value={editAdvanceReceivedBy}
+                    onChange={setEditAdvanceReceivedBy}
+                    placeholder="-- Select Staff/User --"
+                    disabled={!isEditing}
+                    options={availableHandlers}
+                    className={highlightReceiverFields && !editAdvanceReceivedBy ? 'ring-2 ring-red-400 rounded-lg' : ''}
+                  />
+                </div>
+              )}
             </div>
 
-            {/* Row 6: Pending + Pending Received By */}
-            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            {/* Row 6: Pending (+ Pending Received By, non-OTA only) */}
+            <div className={`grid gap-3 sm:gap-4 ${isOtaBooking ? 'grid-cols-1' : 'grid-cols-2'}`}>
               <div>
                 <Input
                   label={t('today_pending_label', 'Pending (₹)')}
@@ -1005,6 +1017,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   disabled={true}
                 />
               </div>
+              {!isOtaBooking && (
               <div>
                 <StyledSelect
                   label={t('pending_received_by_label', 'Pending Received By')}
@@ -1294,7 +1307,6 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 {/* Delete, Share with Guest, Edit - 3 columns when Delete is
                     available (non-OTA bookings), otherwise a real 2-column grid. */}
                 {(() => {
-                  const isOtaBooking = Boolean(guest.otaSource || (guest as any).ota_source);
                   const canDelete = Boolean(onDelete && canActOnBooking && !isOtaBooking);
 
                   return (
