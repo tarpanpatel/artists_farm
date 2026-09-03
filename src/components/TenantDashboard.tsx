@@ -4,13 +4,15 @@ import {
   Pencil, Trash2, ExternalLink, CheckCircle, Layers,
   Home, TrendingUp, ChevronRight, Zap, User, UserRound,
   Calendar, Bell, ArrowRight, HelpCircle, LayoutDashboard,
-  CreditCard, Menu, X, ShieldCheck
+  CreditCard, Menu, X, ShieldCheck, KeyRound, Eye, EyeOff, Save, Loader2, Lock
 } from './icons/FlowbiteIcons';
 import { Popover } from './Popover';
 import { StyledSelect } from './StyledSelect';
 import { LoadingScreen } from './LoadingScreen';
 import { API_ROOT_BASE, apiFetch } from '../services/api';
 import { Button } from './Button';
+import { Input } from './Input';
+import { useToast } from './ToastContext';
 import { Alert as FlowbiteAlert, Modal } from 'flowbite-react';
 import { KpiCard } from './KpiCard';
 import { ToggleSwitch } from './ToggleSwitch';
@@ -128,20 +130,72 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
     setIsSidebarOpen(false);
   };
 
+  const { showToast } = useToast();
+  const [currentPasscode, setCurrentPasscode] = useState('');
+  const [newPasscode, setNewPasscode] = useState('');
+  const [confirmPasscode, setConfirmPasscode] = useState('');
+  const [showPasscodes, setShowPasscodes] = useState(false);
+  const [isSavingPasscode, setIsSavingPasscode] = useState(false);
+
+  const handleUpdatePasscode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentPasscode) {
+      showToast('Please enter your current passcode', { type: 'warning' });
+      return;
+    }
+    if (!/^\d{6}$/.test(newPasscode)) {
+      showToast('New passcode must be exactly 6 digits', { type: 'warning' });
+      return;
+    }
+    if (newPasscode !== confirmPasscode) {
+      showToast('New passcodes do not match', { type: 'warning' });
+      return;
+    }
+
+    setIsSavingPasscode(true);
+    try {
+      const res = await apiFetch('/php/api/router.php?action=change_super_admin_passcode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          current_passcode: currentPasscode,
+          new_passcode: newPasscode,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(json.message || 'Passcode updated successfully!', { type: 'success' });
+        setCurrentPasscode('');
+        setNewPasscode('');
+        setConfirmPasscode('');
+      } else {
+        showToast(json.message || 'Failed to update passcode', { type: 'error' });
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Error updating passcode', { type: 'error' });
+    } finally {
+      setIsSavingPasscode(false);
+    }
+  };
+
   const showSuccess = (msg: string) => {
     setSuccessMsg(msg);
     setTimeout(() => setSuccessMsg(null), 3500);
   };
 
+  const safeProperties = useMemo(() => (Array.isArray(properties) ? properties : []), [properties]);
+  const safeGuests = useMemo(() => (Array.isArray(guests) ? guests : []), [guests]);
+  const safeServiceRequests = useMemo(() => (Array.isArray(serviceRequests) ? serviceRequests : []), [serviceRequests]);
+
   const filteredGuestsForAnalytics = useMemo(() => {
-    if (selectedAnalyticsPropId === 'all') return guests;
-    return guests.filter((g) => String(g.property_id || g.propertyId) === String(selectedAnalyticsPropId));
-  }, [guests, selectedAnalyticsPropId]);
+    if (selectedAnalyticsPropId === 'all') return safeGuests;
+    return safeGuests.filter((g) => String(g.property_id || g.propertyId) === String(selectedAnalyticsPropId));
+  }, [safeGuests, selectedAnalyticsPropId]);
 
   const filteredServiceRequestsForAnalytics = useMemo(() => {
-    if (selectedAnalyticsPropId === 'all') return serviceRequests;
-    return serviceRequests.filter((r) => String(r.property_id || r.propertyId) === String(selectedAnalyticsPropId));
-  }, [serviceRequests, selectedAnalyticsPropId]);
+    if (selectedAnalyticsPropId === 'all') return safeServiceRequests;
+    return safeServiceRequests.filter((r) => String(r.property_id || r.propertyId) === String(selectedAnalyticsPropId));
+  }, [safeServiceRequests, selectedAnalyticsPropId]);
 
   const todaysArrivalsCount = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
@@ -176,13 +230,13 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
 
   const avgOccupancyAnalytics = useMemo(() => {
     const targetProps = selectedAnalyticsPropId === 'all'
-      ? properties
-      : properties.filter(p => String(p.id) === selectedAnalyticsPropId);
+      ? safeProperties
+      : safeProperties.filter(p => String(p.id) === selectedAnalyticsPropId);
 
     const totalRooms = targetProps.reduce((sum, p) => sum + (p.property_type === 'MULTI_KEY' ? (p.room_count ?? 1) : 1), 0);
     if (totalRooms === 0) return 0;
     return Math.min(100, Math.round((inHouseCount / totalRooms) * 100));
-  }, [properties, selectedAnalyticsPropId, inHouseCount]);
+  }, [safeProperties, selectedAnalyticsPropId, inHouseCount]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -199,6 +253,10 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
       // rename from elsewhere that silently 404'd this whole dashboard's data
       // load, caught here while merging channel-manager into multi-tenant and
       // running tsc/build per the go-live checklist's own verification step).
+      // channel-manager's own copy of this function still had the broken
+      // list_properties/unparsed-Response version as of 3 Sep 2026 (this fix
+      // only ever landed here on multi-tenant) - re-applying it on every
+      // merge until channel-manager's own source is corrected upstream.
       const [propsRes, slotRes] = await Promise.all([
         apiFetch(`/php/api/router.php?action=get_tenant_properties&tenant_id=${tenantId}`, { headers: adminHeaders }),
         apiFetch(`/php/api/router.php?action=get_tenant_slot_usage&tenant_id=${tenantId}`, { headers: adminHeaders }),
@@ -213,7 +271,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
 
       if (propsList.length > 0) {
         const fetchPromises = propsList.flatMap((p) => [
-          apiFetch(`/php/api/router.php?action=get_guests&property_id=${p.id}`).then((r) => r.json()).catch(() => ({ data: [] })),
+          apiFetch(`/php/api/router.php?action=get_guests&property_id=${p.id}&is_multi_key=${p.property_type === 'MULTI_KEY' ? 1 : 0}`).then((r) => r.json()).catch(() => ({ data: [] })),
           apiFetch(`/php/api/router.php?action=get_service_requests&property_id=${p.id}`).then((r) => r.json()).catch(() => ({ data: [] })),
         ]);
         const results = await Promise.all(fetchPromises);
@@ -221,18 +279,25 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
         const allReqList: any[] = [];
 
         for (let i = 0; i < results.length; i += 2) {
-          const guestsJson = results[i];
-          const reqJson = results[i + 1];
-          const guestsList = (guestsJson.data || guestsJson) as any[];
-          const reqList = (reqJson.data || reqJson) as any[];
-          if (Array.isArray(guestsList)) allGuestsList.push(...guestsList);
-          if (Array.isArray(reqList)) allReqList.push(...reqList);
+          const guestsRes = results[i];
+          const reqRes = results[i + 1];
+          try {
+            const guestsJson = await guestsRes.json();
+            const reqJson = await reqRes.json();
+            const gList = (guestsJson.data || guestsJson) as any[];
+            const rList = (reqJson.data || reqJson) as any[];
+            if (Array.isArray(gList)) allGuestsList.push(...gList);
+            if (Array.isArray(rList)) allReqList.push(...rList);
+          } catch (e) {
+            console.error('Failed to parse guests or requests json', e);
+          }
         }
 
         setGuests(allGuestsList);
         setServiceRequests(allReqList);
       }
     } catch (err) {
+      console.error('Failed to load dashboard data', err);
       setError('Failed to load dashboard data. Please refresh.');
     } finally {
       setLoading(false);
@@ -333,7 +398,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
       label: 'Properties',
       icon: Building2,
       tab: 'properties' as TenantTab,
-      badge: properties.length > 0 ? `${properties.length}` : null,
+      badge: safeProperties.length > 0 ? `${safeProperties.length}` : null,
     },
     {
       id: 'account',
@@ -367,105 +432,104 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
-        {/* Sidebar Brand Header */}
-        <div>
-          <div className="h-16 px-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-linear-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-xs shrink-0">
-                <Building2 className="w-4.5 h-4.5" />
-              </div>
-              <div className="min-w-0">
-                <h2 className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                  {tenantInfo?.name ?? 'Super Admin'}
-                </h2>
-                <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">
-                  Property Control Panel
-                </p>
-              </div>
+        {/* Sidebar Brand Header with Safe Area Top Clearance */}
+        <div className="shrink-0 h-[calc(4rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)] px-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-white dark:bg-gray-800">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-linear-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-xs shrink-0">
+              <Building2 className="w-4.5 h-4.5" />
             </div>
-            <button
-              type="button"
-              onClick={() => setIsSidebarOpen(false)}
-              className="md:hidden p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <div className="min-w-0">
+              <h2 className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                {tenantInfo?.name ?? 'Super Admin'}
+              </h2>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">
+                Property Control Panel
+              </p>
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={() => setIsSidebarOpen(false)}
+            aria-label="Close sidebar menu"
+            className="md:hidden p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
-          {/* Nav Menu Items List */}
-          <div className="p-3 space-y-1">
-            <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-              Menu
+        {/* Nav Menu Items List (Scrollable) */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-1">
+          <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+            Menu
+          </div>
+          <ul className="space-y-1 font-medium text-xs">
+            {navMenuItems.map((item) => {
+              const ItemIcon = item.icon;
+              const isActive = activeTab === item.tab;
+              return (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    onClick={() => handleTabChange(item.tab)}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors cursor-pointer ${
+                      isActive
+                        ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 font-semibold border border-blue-200/80 dark:border-blue-800/80 shadow-2xs'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <ItemIcon className={`w-4.5 h-4.5 shrink-0 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`} />
+                      <span className="truncate">{item.label}</span>
+                    </div>
+                    {item.badge && (
+                      <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+
+          {/* Quick Support & Legal Links */}
+          <div className="pt-3 mt-3 border-t border-gray-200 dark:border-gray-700 space-y-1">
+            <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+              Support & Legal
             </div>
             <ul className="space-y-1 font-medium text-xs">
-              {navMenuItems.map((item) => {
-                const ItemIcon = item.icon;
-                const isActive = activeTab === item.tab;
-                return (
-                  <li key={item.id}>
-                    <button
-                      type="button"
-                      onClick={() => handleTabChange(item.tab)}
-                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors cursor-pointer ${
-                        isActive
-                          ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 font-semibold border border-blue-200/80 dark:border-blue-800/80 shadow-2xs'
-                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <ItemIcon className={`w-4.5 h-4.5 shrink-0 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`} />
-                        <span className="truncate">{item.label}</span>
-                      </div>
-                      {item.badge && (
-                        <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
-                          {item.badge}
-                        </span>
-                      )}
-                    </button>
-                  </li>
-                );
-              })}
+              <li>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLegalDrawerTab('faq');
+                    setIsSidebarOpen(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors cursor-pointer"
+                >
+                  <HelpCircle className="w-4 h-4 text-gray-400" />
+                  <span>Help & FAQ</span>
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLegalDrawerTab('terms');
+                    setIsSidebarOpen(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors cursor-pointer"
+                >
+                  <ShieldCheck className="w-4 h-4 text-gray-400" />
+                  <span>Terms & Privacy</span>
+                </button>
+              </li>
             </ul>
-
-            {/* Quick Support & Legal Links */}
-            <div className="pt-3 mt-3 border-t border-gray-200 dark:border-gray-700 space-y-1">
-              <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                Support & Legal
-              </div>
-              <ul className="space-y-1 font-medium text-xs">
-                <li>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLegalDrawerTab('faq');
-                      setIsSidebarOpen(false);
-                    }}
-                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors cursor-pointer"
-                  >
-                    <HelpCircle className="w-4 h-4 text-gray-400" />
-                    <span>Help & FAQ</span>
-                  </button>
-                </li>
-                <li>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLegalDrawerTab('terms');
-                      setIsSidebarOpen(false);
-                    }}
-                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors cursor-pointer"
-                  >
-                    <ShieldCheck className="w-4 h-4 text-gray-400" />
-                    <span>Terms & Privacy</span>
-                  </button>
-                </li>
-              </ul>
-            </div>
           </div>
         </div>
 
-        {/* Sidebar Footer User Profile & Sign Out */}
-        <div className="p-3 border-t border-gray-200 dark:border-gray-700 space-y-2 bg-gray-50/50 dark:bg-gray-850/40">
+        {/* Sidebar Footer User Profile & Sign Out with Safe Area Bottom Clearance */}
+        <div className="shrink-0 p-3 border-t border-gray-200 dark:border-gray-700 space-y-2 bg-gray-50/50 dark:bg-gray-850/40 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] md:pb-3">
           <div
             role="button"
             tabIndex={0}
@@ -492,7 +556,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           <button
             type="button"
             onClick={handleLogout}
-            className="flex items-center justify-center w-full p-2 text-xs font-semibold rounded-lg text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/50 transition-all cursor-pointer shadow-2xs gap-2"
+            className="flex items-center justify-center w-full p-2.5 text-xs font-semibold rounded-lg text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/50 transition-all cursor-pointer shadow-2xs gap-2"
           >
             <LogOut className="w-4 h-4 text-red-500" />
             <span>{t('sign_out_terminal_button', 'Sign Out')}</span>
@@ -697,7 +761,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
               <section className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-5 shadow-2xs space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-base font-bold text-slate-900 dark:text-white">Active Properties ({properties.length})</h3>
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white">Active Properties ({safeProperties.length})</h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400">Launch and configure direct property PMS dashboards</p>
                   </div>
                   <Button
@@ -711,7 +775,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {properties.map((property) => {
+                  {safeProperties.map((property) => {
                     const isMultiKey = property.property_type === 'MULTI_KEY';
                     const tenantSlug = tenantInfo?.slug ?? '';
                     const dashboardUrl = tenantSlug
@@ -776,14 +840,14 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                   <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('combined_analytics_heading', 'Combined Analytics')}</h2>
                   <p className="text-xs text-slate-500 dark:text-slate-400">{t('across_all_properties_subtext', 'Across all your managed properties')}</p>
                 </div>
-                {properties.length > 1 && (
+                {safeProperties.length > 1 && (
                   <div className="w-full sm:w-56">
                     <StyledSelect
                       value={selectedAnalyticsPropId}
                       onChange={(value) => setSelectedAnalyticsPropId(value)}
                       options={[
                         { value: 'all', label: t('all_properties_option', 'All Properties') },
-                        ...properties.map(p => ({ value: String(p.id), label: p.name })),
+                        ...safeProperties.map(p => ({ value: String(p.id), label: p.name })),
                       ]}
                       placeholder={t('all_properties_option', 'All Properties')}
                       className="w-full"
@@ -872,7 +936,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 )}
               </div>
 
-              {properties.length === 0 ? (
+              {safeProperties.length === 0 ? (
                 <div className="bg-white dark:bg-slate-900 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 p-12 text-center">
                   <Building2 className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
                   <p className="text-slate-600 dark:text-slate-300 font-semibold">{t('tenant_no_properties_yet_message', 'No properties yet')}</p>
@@ -894,7 +958,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                          {properties.map((property) => {
+                          {safeProperties.map((property) => {
                             const isMultiKey = property.property_type === 'MULTI_KEY';
                             const roomCount = property.room_count ?? 0;
                             const tenantSlug = tenantInfo?.slug ?? '';
@@ -992,7 +1056,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
 
                   {/* Mobile Responsive Cards */}
                   <div className="block md:hidden space-y-3">
-                    {properties.map((property) => {
+                    {safeProperties.map((property) => {
                       const isMultiKey = property.property_type === 'MULTI_KEY';
                       const roomCount = property.room_count ?? 0;
                       const tenantSlug = tenantInfo?.slug ?? '';
@@ -1130,52 +1194,96 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                     </div>
                     <div className="flex justify-between py-1">
                       <span className="text-slate-500 dark:text-slate-400 font-medium">Managed Properties</span>
-                      <span className="font-semibold text-slate-900 dark:text-white">{properties.length} Active / {totalSlots} Allocated Slots</span>
+                      <span className="font-semibold text-slate-900 dark:text-white">{safeProperties.length} Active / {totalSlots} Allocated Slots</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Security & Support Actions Card */}
-                <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-6 shadow-2xs space-y-4 flex flex-col justify-between">
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                      <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                      Security & Compliance
-                    </h4>
-                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Your Super Admin account has elevated administrative permissions across all child properties. Ensure session tokens are safeguarded and sign out after administrative work on shared terminals.
-                    </p>
-
-                    <div className="space-y-2 pt-2">
-                      <button
-                        type="button"
-                        onClick={() => setLegalDrawerTab('terms')}
-                        className="w-full flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-xs text-left cursor-pointer"
-                      >
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">Terms of Service & License</span>
-                        <ChevronRight className="w-4 h-4 text-slate-400" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setLegalDrawerTab('privacy')}
-                        className="w-full flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-xs text-left cursor-pointer"
-                      >
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">Privacy & Data Governance Policy</span>
-                        <ChevronRight className="w-4 h-4 text-slate-400" />
-                      </button>
+                {/* Change Passcode Card */}
+                <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-6 shadow-2xs space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 flex items-center justify-center">
+                        <KeyRound className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                          Change Passcode
+                        </h4>
+                        <p className="text-2xs text-slate-500 dark:text-slate-400">
+                          Update your 6-digit numeric login PIN
+                        </p>
+                      </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowPasscodes(!showPasscodes)}
+                      className="text-2xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      {showPasscodes ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      {showPasscodes ? 'Hide' : 'Show'}
+                    </button>
                   </div>
 
-                  <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end">
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      onClick={handleLogout}
-                      leftIcon={<LogOut className="w-3.5 h-3.5" />}
-                    >
-                      Sign Out
-                    </Button>
-                  </div>
+                  <form onSubmit={handleUpdatePasscode} className="space-y-3.5">
+                    <Input
+                      label="Current Passcode"
+                      type={showPasscodes ? 'text' : 'password'}
+                      inputMode="numeric"
+                      maxLength={6}
+                      value={currentPasscode}
+                      onChange={(e) => setCurrentPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      placeholder="Current 6-digit passcode"
+                      leftIcon={<Lock className="w-4 h-4 text-slate-400" />}
+                      required
+                    />
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Input
+                        label="New Passcode"
+                        type={showPasscodes ? 'text' : 'password'}
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={newPasscode}
+                        onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="New 6-digit passcode"
+                        leftIcon={<KeyRound className="w-4 h-4 text-slate-400" />}
+                        error={newPasscode.length > 0 && newPasscode.length < 6 ? 'Must be 6 digits' : undefined}
+                        required
+                      />
+
+                      <Input
+                        label="Confirm New Passcode"
+                        type={showPasscodes ? 'text' : 'password'}
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={confirmPasscode}
+                        onChange={(e) => setConfirmPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="Re-enter new passcode"
+                        leftIcon={<KeyRound className="w-4 h-4 text-slate-400" />}
+                        error={confirmPasscode.length > 0 && newPasscode !== confirmPasscode ? 'Passcodes do not match' : undefined}
+                        success={confirmPasscode.length === 6 && newPasscode === confirmPasscode ? 'Passcodes match' : undefined}
+                        required
+                      />
+                    </div>
+
+                    <div className="pt-2 flex justify-end">
+                      <Button
+                        type="submit"
+                        variant="primary"
+                        size="sm"
+                        disabled={
+                          isSavingPasscode ||
+                          !currentPasscode ||
+                          newPasscode.length !== 6 ||
+                          newPasscode !== confirmPasscode
+                        }
+                        leftIcon={isSavingPasscode ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                      >
+                        {isSavingPasscode ? 'Updating...' : 'Update Passcode'}
+                      </Button>
+                    </div>
+                  </form>
                 </div>
               </div>
             </section>
@@ -1194,7 +1302,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 embedded
                 tenantId={tenantId}
                 onNavigate={(tab) => {
-                  const targetProperty = properties.find((p) => p.status !== 'draft') || properties[0];
+                  const targetProperty = safeProperties.find((p) => p.status !== 'draft') || safeProperties[0];
                   if (!targetProperty) return;
                   const tenantSlug = tenantInfo?.slug ?? '';
                   const url = tenantSlug
@@ -1498,7 +1606,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
         activeTab={legalDrawerTab}
         onClose={() => setLegalDrawerTab(null)}
         tenantSlug={tenantInfo?.slug ?? propTenantInfo?.slug ?? ''}
-        defaultPropertySlug={properties[0]?.slug ?? ''}
+        defaultPropertySlug={safeProperties[0]?.slug ?? ''}
       />
     </div>
   );

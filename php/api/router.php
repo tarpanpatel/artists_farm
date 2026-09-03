@@ -2046,6 +2046,93 @@ switch ($action) {
         }
         exit;
 
+    // Tenant Super Admin or Root Admin changes their own login passcode
+    case 'change_super_admin_passcode':
+    case 'change_my_passcode':
+        $userId = $_SESSION['user_id'] ?? 0;
+        $sessionUsername = $_SESSION['username'] ?? '';
+        $tenantId = $_SESSION['default_tenant_id'] ?? $_SESSION['tenant_id'] ?? null;
+
+        if (!$userId && !$sessionUsername && !$tenantId) {
+            http_response_code(401);
+            echo json_encode(['success' => false, 'message' => 'Authentication required']);
+            exit;
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        $currentPasscode = trim($input['current_passcode'] ?? '');
+        $newPasscode = trim($input['new_passcode'] ?? '');
+
+        if (!$currentPasscode) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Current passcode is required']);
+            exit;
+        }
+
+        if (!$newPasscode || !preg_match('/^\d{6}$/', $newPasscode)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'New passcode must be exactly 6 digits']);
+            exit;
+        }
+
+        try {
+            $user = null;
+            if ($userId) {
+                $stmt = $pdo->prepare("SELECT id, username, passcode, password, default_tenant_id FROM users WHERE id = ? LIMIT 1");
+                $stmt->execute([$userId]);
+                $user = $stmt->fetch();
+            }
+            if (!$user && $sessionUsername) {
+                $stmt = $pdo->prepare("SELECT id, username, passcode, password, default_tenant_id FROM users WHERE username = ? OR phone_number = ? LIMIT 1");
+                $stmt->execute([$sessionUsername, $sessionUsername]);
+                $user = $stmt->fetch();
+            }
+            if (!$user && $tenantId) {
+                $stmt = $pdo->prepare("SELECT id, username, passcode, password, default_tenant_id FROM users WHERE default_tenant_id = ? AND (is_platform_admin = 0 OR is_platform_admin IS NULL) LIMIT 1");
+                $stmt->execute([$tenantId]);
+                $user = $stmt->fetch();
+            }
+
+            if (!$user) {
+                http_response_code(404);
+                echo json_encode(['success' => false, 'message' => 'User account not found']);
+                exit;
+            }
+
+            $storedPasscode = $user['passcode'] ?? '';
+            $storedPassword = $user['password'] ?? '';
+            $currentValid = ($storedPasscode && $storedPasscode === $currentPasscode)
+                || ($storedPassword && password_verify($currentPasscode, $storedPassword))
+                || ($storedPassword && $storedPassword === $currentPasscode);
+
+            if (!$currentValid) {
+                http_response_code(401);
+                echo json_encode(['success' => false, 'message' => 'Current passcode is incorrect']);
+                exit;
+            }
+
+            $pdo->prepare("UPDATE users SET passcode = ?, must_change_passcode = 0 WHERE id = ?")
+                ->execute([$newPasscode, $user['id']]);
+
+            $targetTenantId = $user['default_tenant_id'] ?? $tenantId;
+            if (!empty($targetTenantId) && function_exists('syncTenantSuperAdminAcrossProperties')) {
+                syncTenantSuperAdminAcrossProperties($pdo, $targetTenantId);
+            }
+
+            try {
+                $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+                $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+                $stmt = $pdo->prepare("INSERT INTO audit_logs (property_id, action, timestamp, user, ip_address, user_agent, status, module) VALUES (?, 'change_passcode', NOW(), ?, ?, ?, 'success', 'account')");
+                $stmt->execute([$propertyId ?: 0, $user['username'] ?? 'super_admin', $ip, $ua]);
+            } catch (Exception $ea) {}
+
+            echo json_encode(['success' => true, 'message' => 'Passcode changed successfully']);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+
     case 'get_all_properties':
         // Every property across every tenant (addresses, phones, GSTINs, contacts)
         // is root-admin-only - the tenant views only their own via get_tenant_properties.
