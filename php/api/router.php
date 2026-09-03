@@ -4037,7 +4037,19 @@ switch ($action) {
         $storedToken = (string)($storedSettings['oauth_token'] ?? '');
         $tokenOk = $conn && $storedToken !== '' && hash_equals($storedToken, $landingToken);
 
+        // Channex only ever sends a token on a genuine SUCCESS redirect - a
+        // failure redirect (outcome=failure, user declined/didn't finish on
+        // Airbnb's own side) carries no token at all, by design, not because
+        // anything was tampered with. Treating "no token" as a security
+        // mismatch on a failure redirect produced a misleading "Something
+        // went wrong / possibly a stale or reused link" message for what was
+        // actually just an ordinary incomplete/declined authorization
+        // (confirmed live 3 Sep 2026 - Channex's own outcome=failure hit had
+        // no token param at all, exactly as expected). Only outcome=success
+        // with a token that doesn't match is a real mismatch worth flagging
+        // as suspicious.
         $isSuccess = ($landingSuccess && $tokenOk && $landingChannelId !== '');
+        $outcomeWasFailure = ($ownParams['outcome'] ?? '') === 'failure';
         if ($isSuccess) {
             upsertChannexChannelConnection($pdo, $landingPropertyId, 'AirBNB', [
                 'channex_channel_id' => $landingChannelId,
@@ -4046,7 +4058,7 @@ switch ($action) {
             ]);
             $heading = 'Airbnb Connected Successfully';
             $body = "Your Airbnb account is now linked. You can close this window and return to Ground Code to complete your room mapping.";
-        } elseif (!$tokenOk && $conn) {
+        } elseif ($landingSuccess && !$tokenOk && $conn) {
             upsertChannexChannelConnection($pdo, $landingPropertyId, 'AirBNB', [
                 'status' => 'error',
                 'last_error' => 'Authorization link token mismatch - possibly a stale or reused link.',
@@ -4061,7 +4073,9 @@ switch ($action) {
                 ]);
             }
             $heading = 'Authorization not completed';
-            $body = "Airbnb authorization wasn't completed. Close this window, return to Ground Code, and try \"Authorize with Airbnb\" again.";
+            $body = $outcomeWasFailure
+                ? "Airbnb reported this authorization wasn't completed (you may have closed the tab or declined access). Close this window, return to Ground Code, and try \"Authorize with Airbnb\" again - make sure to sign in and click \"Allow\" on Airbnb's own page."
+                : "Airbnb authorization wasn't completed. Close this window, return to Ground Code, and try \"Authorize with Airbnb\" again.";
         }
 
         echo '<!doctype html>'
