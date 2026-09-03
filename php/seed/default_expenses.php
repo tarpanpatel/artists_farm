@@ -359,7 +359,23 @@ function populateDefaultExpenses($pdo, $propertyId, $forceRefresh = false) {
         if (!function_exists('isSchemaVerified')) {
             require_once __DIR__ . '/../config/schema_cache.php';
         }
-        if (!isSchemaVerified('schema_miscellaneous_catalog')) {
+        // Only the DDL itself needs to be skipped while inside an open
+        // transaction (same two-part guard as ensureChannexOutboxSchema() in
+        // php/channex/outbox.php - CREATE/ALTER TABLE implicitly commits any
+        // open transaction in MySQL) - the actual INSERT IGNORE population
+        // below is a normal DML statement and does NOT commit anything, so it
+        // must still run either way. An earlier version of this fix wrongly
+        // returned early for the whole function inside a transaction, which
+        // silently skipped populating any expense categories at all for a
+        // transactional caller - caught live 3 Sep 2026 by actually testing
+        // the endpoint rather than trusting the fix on inspection alone.
+        // isSchemaVerified() alone isn't enough either: the very first-ever
+        // call under a brand-new cache key has nothing cached yet, so it
+        // still runs the DDL and still breaks the transaction on that exact
+        // call - the table already existing in every real deployment (every
+        // property created before today went through this function outside
+        // any transaction) is what makes skipping it safe inside one.
+        if (!$pdo->inTransaction() && !isSchemaVerified('schema_miscellaneous_catalog')) {
             $pdo->exec("CREATE TABLE IF NOT EXISTS `miscellaneous_catalog` (
                 `id` INT AUTO_INCREMENT PRIMARY KEY,
                 `property_id` INT NOT NULL,
