@@ -4,6 +4,7 @@ import { Button } from './Button';
 import { RateRule, saveRateRuleDB, deleteRateRuleDB, updatePricingModeDB } from '../services/api';
 import { Trash2, Plus, DollarSign, X, Loader2 } from './icons/FlowbiteIcons';
 import { useToast } from './ToastContext';
+import { useConfirm } from './ConfirmDialogContext';
 
 interface RateRuleModalProps {
   isOpen: boolean;
@@ -31,6 +32,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
   initialEndDate,
 }) => {
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const [currentPricingMode, setCurrentPricingMode] = useState<'flat' | 'variable'>(pricingMode);
   const [startDate, setStartDate] = useState(initialStartDate || new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(initialEndDate || new Date().toISOString().split('T')[0]);
@@ -57,6 +59,25 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
   }, [initialStartDate, initialEndDate]);
 
   const handleTogglePricingMode = async (newMode: 'flat' | 'variable') => {
+    if (newMode === currentPricingMode) return;
+
+    // Both directions now immediately re-push live availability/rates to
+    // Airbnb/Booking.com (4 Sep 2026 - the toggle used to only affect this
+    // property's own internal calendar display; every saved rate rule
+    // stayed live on OTAs regardless of which mode was selected, which is
+    // exactly the kind of silent drift CLAUDE.md's Channex protocol asks to
+    // gate behind an explicit confirmation). Same reasoning ChannelManager.tsx's
+    // handlePushAri confirm dialog already uses for a manual ARI push.
+    const confirmed = await confirm({
+      title: newMode === 'flat' ? 'Switch to Flat Base Rate?' : 'Switch to Dynamic Rules?',
+      message: newMode === 'flat'
+        ? `This immediately suspends every saved rate rule for this ${rooms.length > 1 ? 'room/property' : 'property'} everywhere - your own calendar, Airbnb, Booking.com, and your public availability page all switch to the flat base rate with no restrictions right away. Any dates a rule had Stop Sell-blocked will reopen. Rules stay saved and can be reactivated by switching back.`
+        : `This immediately activates every saved rate rule for this ${rooms.length > 1 ? 'room/property' : 'property'} everywhere - your own calendar, Airbnb, Booking.com, and your public availability page will start showing rule rates and enforcing any Stop Sell/stay restrictions right away.`,
+      confirmText: newMode === 'flat' ? 'Switch to Flat Rate' : 'Switch to Dynamic Rules',
+      variant: 'warning',
+    });
+    if (!confirmed) return;
+
     try {
       const res = await updatePricingModeDB(newMode);
       if (res.success) {

@@ -366,7 +366,44 @@ function updatePricingMode($pdo, $propertyId) {
         $stmt = $pdo->prepare("UPDATE properties SET pricing_mode = ? WHERE id = ?");
         $stmt->execute([$mode, $propertyId]);
 
+        // Make the switch take effect on Airbnb/Booking.com and the public
+        // page immediately, not just the next time an unrelated rule is
+        // edited - AriDrainWorker::isDynamicPricingMode() now gates every
+        // rate-rule push on this exact flag (added 4 Sep 2026), but that
+        // gate is only checked when something drains the outbox for a given
+        // date. Flipping the switch here doesn't touch any dates by itself,
+        // so without this, whatever was last pushed (a rule's rate, a Stop
+        // Sell block) stays live on the channel/public page until some other
+        // edit happens to touch those same dates. Re-enqueue the full span
+        // of every rule saved for this exact scope (same property_id/room_id
+        // shape saveRateRule()/deleteRateRule() above already enqueue with -
+        // room_id NULL, property_id = this request's own resolved property,
+        // which for a MULTI_KEY_ROOM context is that room's own id, not its
+        // parent's), both kinds so it covers Stop Sell (kind=availability)
+        // and rate/other restrictions (kind=rates) - see
+        // AriDrainWorker::processBatch()'s kind switch.
+        if (is_file(__DIR__ . '/../channex/outbox.php')) {
+            require_once __DIR__ . '/../channex/outbox.php';
+            if (function_exists('enqueueOutboxItem')) {
+                $rangeStmt = $pdo->prepare("
+                    SELECT MIN(start_date) AS min_date, MAX(end_date) AS max_date
+                    FROM room_rate_rules
+                    WHERE property_id = ? OR room_id = ?
+                ");
+                $rangeStmt->execute([$propertyId, $propertyId]);
+                $range = $rangeStmt->fetch();
+                if (!empty($range['min_date']) && !empty($range['max_date'])) {
+                    $payload = ['action' => 'pricing_mode_changed', 'pricing_mode' => $mode];
+                    enqueueOutboxItem($pdo, (int)$propertyId, null, 'availability', $range['min_date'], $range['max_date'], $payload);
+                    enqueueOutboxItem($pdo, (int)$propertyId, null, 'rates', $range['min_date'], $range['max_date'], $payload);
+                }
+            }
+        }
+
         echo json_encode(['status' => 'success', 'message' => "Pricing mode updated to {$mode}.", 'pricing_mode' => $mode]);
+        if (function_exists('triggerEventDrivenChannexDrain')) {
+            triggerEventDrivenChannexDrain($pdo);
+        }
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);

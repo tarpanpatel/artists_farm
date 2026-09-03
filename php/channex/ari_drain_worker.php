@@ -172,6 +172,22 @@ class AriDrainWorker {
     }
 
     /**
+     * Whether $scopeId (a room's own `properties` row when it's a
+     * MULTI_KEY_ROOM, otherwise the property itself) has Dynamic Rules
+     * pricing mode active. "Flat Base Rate" suspends every saved rate rule
+     * for that scope - not just its displayed rate, but what actually gets
+     * pushed to Airbnb/Booking.com too (added 4 Sep 2026 - the toggle used
+     * to only affect the owner's own internal calendar display, so a rule
+     * saved while "flat" was selected was silently still live on every OTA
+     * and the public availability page; same fix in availability.php).
+     */
+    private function isDynamicPricingMode(int $scopeId): bool {
+        $stmt = $this->pdo->prepare("SELECT pricing_mode FROM properties WHERE id = ?");
+        $stmt->execute([$scopeId]);
+        return $stmt->fetchColumn() === 'variable';
+    }
+
+    /**
      * Compute compressed availability ranges for a date span.
      */
     public function computeCompressedAvailability(int $propertyId, ?int $roomId, string $startDate, string $endDate): array {
@@ -197,21 +213,24 @@ class AriDrainWorker {
             }
         }
 
-        // Fetch stop_sell rules
-        $ruleStmt = $this->pdo->prepare("
-            SELECT start_date, end_date, stop_sell
-            FROM room_rate_rules
-            WHERE (room_id = ? OR (room_id IS NULL AND property_id = ?))
-              AND stop_sell = 1
-              AND start_date <= ? AND end_date >= ?
-        ");
-        $ruleStmt->execute([$scopeId, $scopeId, $endDate, $startDate]);
-        foreach ($ruleStmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
-            $cur = strtotime($r['start_date']);
-            $end = strtotime($r['end_date']);
-            while ($cur <= $end) {
-                $bookedDays[date('Y-m-d', $cur)] = true;
-                $cur = strtotime('+1 day', $cur);
+        // Fetch stop_sell rules - only while this scope is actually in
+        // Dynamic Rules mode (see isDynamicPricingMode() above).
+        if ($this->isDynamicPricingMode($scopeId)) {
+            $ruleStmt = $this->pdo->prepare("
+                SELECT start_date, end_date, stop_sell
+                FROM room_rate_rules
+                WHERE (room_id = ? OR (room_id IS NULL AND property_id = ?))
+                  AND stop_sell = 1
+                  AND start_date <= ? AND end_date >= ?
+            ");
+            $ruleStmt->execute([$scopeId, $scopeId, $endDate, $startDate]);
+            foreach ($ruleStmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+                $cur = strtotime($r['start_date']);
+                $end = strtotime($r['end_date']);
+                while ($cur <= $end) {
+                    $bookedDays[date('Y-m-d', $cur)] = true;
+                    $cur = strtotime('+1 day', $cur);
+                }
             }
         }
 
@@ -280,16 +299,21 @@ class AriDrainWorker {
             $baseTariff = (float)($propStmt->fetchColumn() ?: 3500);
         }
 
-        // Fetch rules
-        $stmt = $this->pdo->prepare("
-            SELECT *
-            FROM room_rate_rules
-            WHERE (room_id = ? OR (room_id IS NULL AND property_id = ?))
-              AND start_date <= ? AND end_date >= ?
-            ORDER BY room_id DESC, created_at DESC
-        ");
-        $stmt->execute([$scopeId, $scopeId, $endDate, $startDate]);
-        $rules = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        // Fetch rules - only while this scope is actually in Dynamic Rules
+        // mode. "Flat Base Rate" means every day below falls through to the
+        // base tariff with no restrictions, same as if no rule existed.
+        $rules = [];
+        if ($this->isDynamicPricingMode($scopeId)) {
+            $stmt = $this->pdo->prepare("
+                SELECT *
+                FROM room_rate_rules
+                WHERE (room_id = ? OR (room_id IS NULL AND property_id = ?))
+                  AND start_date <= ? AND end_date >= ?
+                ORDER BY room_id DESC, created_at DESC
+            ");
+            $stmt->execute([$scopeId, $scopeId, $endDate, $startDate]);
+            $rules = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
 
         $rulesByDate = [];
         foreach ($rules as $r) {

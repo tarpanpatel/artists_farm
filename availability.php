@@ -62,13 +62,19 @@ $todayStr = date('Y-m-d');
 // 1. Fetch Rooms if MULTI_KEY
 $rooms = [];
 $scopeIds = [$propertyId];
+// Pricing mode is a per-scope toggle (RateRuleModal opens on whichever room
+// you're drilled into - each MULTI_KEY_ROOM is its own `properties` row with
+// its own pricing_mode, exactly like it has its own default_tariff/rules) -
+// keyed by scope id, seeded with the top-level property/parent's own mode.
+$pricingModePerRoom = [$propertyId => $pricingMode];
 if ($propertyId > 0 && $propertyType === 'MULTI_KEY') {
     try {
-        $rStmt = $pdo->prepare("SELECT id, name, default_tariff FROM properties WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM' AND is_active = 1 ORDER BY room_order ASC, name ASC");
+        $rStmt = $pdo->prepare("SELECT id, name, default_tariff, pricing_mode FROM properties WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM' AND is_active = 1 ORDER BY room_order ASC, name ASC");
         $rStmt->execute([$propertyId]);
         $rooms = $rStmt->fetchAll();
         foreach ($rooms as $r) {
             $scopeIds[] = (int)$r['id'];
+            $pricingModePerRoom[(int)$r['id']] = $r['pricing_mode'] ?? 'flat';
         }
     } catch (Exception $e) {
         $rooms = [];
@@ -185,12 +191,18 @@ if ($propertyId > 0 && !empty($scopeIds)) {
                         'closed_to_departure' => !empty($rr['closed_to_departure']),
                     ];
                 }
+                // Stop Sell only actually blocks a room while THAT room is in
+                // Dynamic Rules mode - "Flat Base Rate" suspends every saved
+                // rule (rate + restrictions) for that room/property, same as
+                // getDailyRate()/getDailyRestrictions() below.
                 if ($isStopSell) {
                     if ($rId === 0) {
                         foreach ($scopeIds as $sId) {
-                            $bookedDaysPerRoom[$sId][$dStr] = true;
+                            if (($pricingModePerRoom[$sId] ?? 'flat') === 'variable') {
+                                $bookedDaysPerRoom[$sId][$dStr] = true;
+                            }
                         }
-                    } else {
+                    } elseif (($pricingModePerRoom[$rId] ?? 'flat') === 'variable') {
                         $bookedDaysPerRoom[$rId][$dStr] = true;
                     }
                 }
@@ -200,7 +212,10 @@ if ($propertyId > 0 && !empty($scopeIds)) {
     } catch (Exception $e) {}
 }
 
-// Helper to compute live rate for a room on a given day
+// Helper to compute live rate for a room on a given day. $pricingMode here
+// is that ROOM's own mode (via $pricingModePerRoom[$roomId] at the call
+// site) - not the top-level property's - so each multi-key room's toggle is
+// independent, same as its own rules/default_tariff already are.
 if (!function_exists('getDailyRate')) {
     function getDailyRate($roomId, $dateStr, $defaultTariff, $pricingMode, $rateRulesPerRoom, $baseTariff) {
         if ($pricingMode === 'variable') {
@@ -215,9 +230,20 @@ if (!function_exists('getDailyRate')) {
     }
 }
 
-// Helper to get active stay restrictions for a room on a given day
+// Helper to get active stay restrictions for a room on a given day - same
+// per-room pricing_mode gate as getDailyRate(): "Flat Base Rate" suspends
+// restrictions for that room too, not just its rate.
 if (!function_exists('getDailyRestrictions')) {
-    function getDailyRestrictions($roomId, $dateStr, $restrictionsPerRoom) {
+    function getDailyRestrictions($roomId, $dateStr, $restrictionsPerRoom, $pricingMode) {
+        if ($pricingMode !== 'variable') {
+            return [
+                'min_stay_arrival' => null,
+                'min_stay_through' => null,
+                'max_stay' => null,
+                'closed_to_arrival' => false,
+                'closed_to_departure' => false,
+            ];
+        }
         if (isset($restrictionsPerRoom[$roomId][$dateStr])) {
             return $restrictionsPerRoom[$roomId][$dateStr];
         }
@@ -509,8 +535,9 @@ $slugParam = isset($_GET['property_slug']) ? '&property_slug=' . urlencode($_GET
                                         $dStr = sprintf('%04d-%02d-%02d', $selectedYear, $selectedMonth, $d);
                                         $isPast = $dStr < $todayStr;
                                         $isBooked = !empty($bookedDaysPerRoom[$rId][$dStr]);
-                                        $rate = getDailyRate($rId, $dStr, $rTariff, $pricingMode, $rateRulesPerRoom, $baseTariff);
-                                        $restrictions = getDailyRestrictions($rId, $dStr, $restrictionsPerRoom);
+                                        $roomPricingMode = $pricingModePerRoom[$rId] ?? 'flat';
+                                        $rate = getDailyRate($rId, $dStr, $rTariff, $roomPricingMode, $rateRulesPerRoom, $baseTariff);
+                                        $restrictions = getDailyRestrictions($rId, $dStr, $restrictionsPerRoom, $roomPricingMode);
                                         $cellClass = $isPast ? 'past' : ($isBooked ? 'booked' : 'available');
                                         ?>
                                         <td class="multical-cell <?= $cellClass ?>">
@@ -563,8 +590,9 @@ $slugParam = isset($_GET['property_slug']) ? '&property_slug=' . urlencode($_GET
                             $dStr = sprintf('%04d-%02d-%02d', $selectedYear, $selectedMonth, $d);
                             $isPast = $dStr < $todayStr;
                             $isBooked = !empty($bookedDaysPerRoom[$rId][$dStr]);
-                            $rate = getDailyRate($rId, $dStr, $rTariff, $pricingMode, $rateRulesPerRoom, $baseTariff);
-                            $restrictions = getDailyRestrictions($rId, $dStr, $restrictionsPerRoom);
+                            $roomPricingMode = $pricingModePerRoom[$rId] ?? 'flat';
+                            $rate = getDailyRate($rId, $dStr, $rTariff, $roomPricingMode, $rateRulesPerRoom, $baseTariff);
+                            $restrictions = getDailyRestrictions($rId, $dStr, $restrictionsPerRoom, $roomPricingMode);
                             ?>
                             <div class="day-cell">
                                 <span class="day-num" style="<?= $dStr === $todayStr ? 'color: var(--primary); font-weight: 800;' : '' ?>"><?= $d ?></span>
