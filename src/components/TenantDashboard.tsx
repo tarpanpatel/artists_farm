@@ -13,7 +13,7 @@ import { API_ROOT_BASE, apiFetch } from '../services/api';
 import { Button } from './Button';
 import { Input } from './Input';
 import { useToast } from './ToastContext';
-import { Alert as FlowbiteAlert, Modal } from 'flowbite-react';
+import { Alert as FlowbiteAlert, Modal, Toast as FlowbiteToast, ToastToggle } from 'flowbite-react';
 import { KpiCard } from './KpiCard';
 import { ToggleSwitch } from './ToggleSwitch';
 import { PropertyCreationWizard } from './PropertyCreationWizard';
@@ -598,9 +598,15 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           <div className="space-y-6 flex-1">
           {/* Success Toast Notification */}
           {successMsg && (
-            <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-9999 bg-emerald-600 text-white px-5 py-3 rounded-lg shadow-2xl text-sm font-medium flex items-center gap-2 animate-pulse">
-              <CheckCircle className="w-4 h-4" />
-              {successMsg}
+            <div className="fixed top-5 right-5 z-9999 animate-toast-in">
+              <FlowbiteToast className="border border-gray-200 dark:border-gray-700 shadow-xl bg-white dark:bg-gray-800">
+                <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-100 text-green-500 dark:bg-green-800 dark:text-green-200">
+                  <CheckCircle className="h-5 w-5" />
+                  <span className="sr-only">Check icon</span>
+                </div>
+                <div className="ms-3 text-sm font-normal text-gray-900 dark:text-white">{successMsg}</div>
+                <ToastToggle xIcon={X} onDismiss={() => setSuccessMsg(null)} />
+              </FlowbiteToast>
             </div>
           )}
 
