@@ -6,6 +6,25 @@ import { Trash2, Plus, DollarSign, X, Loader2, Pencil } from './icons/FlowbiteIc
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 
+// Channex's own 2-letter day codes (used verbatim in the API's `days`
+// param) - single source of truth for the picker below and for reading a
+// saved rule's days_of_week back for display.
+const ALL_DAY_CODES = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'] as const;
+const DAY_LABELS: Record<string, string> = { mo: 'Mon', tu: 'Tue', we: 'Wed', th: 'Thu', fr: 'Fri', sa: 'Sat', su: 'Sun' };
+const WEEKDAY_CODES = ['mo', 'tu', 'we', 'th', 'fr'];
+const WEEKEND_CODES = ['sa', 'su'];
+
+// Short human label for a rule's days_of_week ('' or all 7 = every day).
+function formatDaysOfWeek(daysOfWeek?: string | null): string {
+  if (!daysOfWeek) return 'Every day';
+  const days = daysOfWeek.split(',').filter(Boolean);
+  if (days.length === 0 || days.length === 7) return 'Every day';
+  const sorted = [...days].sort((a, b) => ALL_DAY_CODES.indexOf(a as any) - ALL_DAY_CODES.indexOf(b as any));
+  if (sorted.length === 5 && WEEKDAY_CODES.every((d) => sorted.includes(d))) return 'Weekdays';
+  if (sorted.length === 2 && WEEKEND_CODES.every((d) => sorted.includes(d))) return 'Weekends';
+  return sorted.map((d) => DAY_LABELS[d] || d).join(', ');
+}
+
 interface RateRuleModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -48,8 +67,14 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
   const [stopSell, setStopSell] = useState<boolean>(false);
   const [closedToArrival, setClosedToArrival] = useState<boolean>(false);
   const [closedToDeparture, setClosedToDeparture] = useState<boolean>(false);
+  // Day-of-week scoping (4 Sep 2026, "Monday to Friday 3000, Saturday and
+  // Sunday 4000") - all 7 selected = applies every day (unchanged default
+  // behavior), matching what saveRateRule() on the backend normalizes an
+  // "every day" selection to (NULL, not a literal 7-item list).
+  const [selectedDays, setSelectedDays] = useState<string[]>([...ALL_DAY_CODES]);
 
   // Flat Base Rate inline room tariff editing
+  const [localRooms, setLocalRooms] = useState<Array<{ id: number; name: string; default_tariff?: number }>>(rooms);
   const [roomTariffs, setRoomTariffs] = useState<Record<number, string>>({});
   const [editingRoomId, setEditingRoomId] = useState<number | null>(null);
   const [isSavingTariff, setIsSavingTariff] = useState(false);
@@ -57,6 +82,12 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
   useEffect(() => {
     setCurrentPricingMode(pricingMode);
   }, [pricingMode]);
+
+  useEffect(() => {
+    if (rooms && rooms.length > 0) {
+      setLocalRooms(rooms);
+    }
+  }, [rooms]);
 
   useEffect(() => {
     if (initialStartDate) setStartDate(initialStartDate);
@@ -70,8 +101,8 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
       const confirmed = await confirm({
         title: newMode === 'flat' ? 'Switch to Flat Base Rate?' : 'Switch to Dynamic Rules?',
         message: newMode === 'flat'
-          ? `This immediately suspends every saved rate rule for this ${rooms.length > 1 ? 'room/property' : 'property'} everywhere - your own calendar, Airbnb, Booking.com, and your public availability page all switch to the flat base rate with no restrictions right away. Any dates a rule had Stop Sell-blocked will reopen. Rules stay saved and can be reactivated by switching back.`
-          : `This immediately activates every saved rate rule for this ${rooms.length > 1 ? 'room/property' : 'property'} everywhere - your own calendar, Airbnb, Booking.com, and your public availability page will start showing rule rates and enforcing any Stop Sell/stay restrictions right away.`,
+          ? `This immediately suspends every saved rate rule for this ${localRooms.length > 1 ? 'room/property' : 'property'} everywhere - your own calendar, Airbnb, Booking.com, and your public availability page all switch to the flat base rate with no restrictions right away. Any dates a rule had Stop Sell-blocked will reopen. Rules stay saved and can be reactivated by switching back.`
+          : `This immediately activates every saved rate rule for this ${localRooms.length > 1 ? 'room/property' : 'property'} everywhere - your own calendar, Airbnb, Booking.com, and your public availability page will start showing rule rates and enforcing any Stop Sell/stay restrictions right away.`,
         confirmText: newMode === 'flat' ? 'Switch to Flat Rate' : 'Switch to Dynamic Rules',
         variant: 'warning',
       });
@@ -94,16 +125,25 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
 
   const handleSaveRoomTariff = async (roomId: number, tariffStr: string) => {
     setIsSavingTariff(true);
+    const numTariff = tariffStr.trim() !== '' ? parseFloat(tariffStr) : undefined;
     try {
       const res = await apiFetch('/php/api/router.php?action=update_room_tariff', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ room_id: roomId, default_tariff: tariffStr }),
+        body: JSON.stringify({ room_id: roomId, default_tariff: tariffStr.trim() !== '' ? tariffStr.trim() : null }),
       });
       const data = await res.json();
       if (data.success) {
+        setLocalRooms((prev) =>
+          prev.map((r) => (r.id === roomId ? { ...r, default_tariff: numTariff } : r))
+        );
         setEditingRoomId(null);
-        showToast('Room base tariff updated successfully.', { type: 'success' });
+        showToast(
+          numTariff != null
+            ? `Room base tariff updated to ₹${Math.round(numTariff)}/night.`
+            : 'Room base tariff cleared.',
+          { type: 'success' }
+        );
         onRulesUpdated();
       } else {
         showToast(data.message || 'Failed to update base tariff', { type: 'error' });
@@ -162,6 +202,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
         stop_sell: stopSell ? 1 : 0,
         closed_to_arrival: closedToArrival ? 1 : 0,
         closed_to_departure: closedToDeparture ? 1 : 0,
+        days_of_week: selectedDays,
       };
 
       const res = await saveRateRuleDB(payload);
@@ -174,6 +215,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
         setStopSell(false);
         setClosedToArrival(false);
         setClosedToDeparture(false);
+        setSelectedDays([...ALL_DAY_CODES]);
         setSelectedRoomIds([]);
         onRulesUpdated();
       } else {
@@ -199,6 +241,10 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
     } catch {
       showToast('Network error deleting rate rule', { type: 'error' });
     }
+  };
+
+  const toggleDay = (code: string) => {
+    setSelectedDays((prev) => (prev.includes(code) ? prev.filter((d) => d !== code) : [...prev, code]));
   };
 
   const toggleRoomSelection = (roomId: number) => {
@@ -305,7 +351,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                    Default Base Tariffs ({rooms.length > 0 ? `${rooms.length} Rooms` : 'Standard Rate'})
+                    Default Base Tariffs ({localRooms.length > 0 ? `${localRooms.length} Rooms` : 'Standard Rate'})
                   </h4>
                   <p className="text-2xs text-gray-500 dark:text-gray-400 mt-0.5">
                     Configure the constant nightly tariff charged per room across all standard dates.
@@ -313,9 +359,9 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                 </div>
               </div>
 
-              {rooms.length > 0 ? (
+              {localRooms.length > 0 ? (
                 <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                  {rooms.map((room) => {
+                  {localRooms.map((room) => {
                     const isEditing = editingRoomId === room.id;
                     const currentVal = roomTariffs[room.id] !== undefined ? roomTariffs[room.id] : (room.default_tariff != null ? String(room.default_tariff) : '');
 
@@ -477,6 +523,64 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                     className="w-full h-10 px-3 text-xs bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
                   />
                 </div>
+              </div>
+
+              {/* Day-of-Week Scoping (4 Sep 2026, "Monday to Friday 3000,
+                  Saturday and Sunday 4000") - all 7 selected (the default)
+                  means every day, identical to before this existed. Two
+                  quick presets for the two most common patterns, plus the
+                  individual day toggles for anything else. */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300">
+                    Applies On <span className="font-normal text-gray-400">(default: every day)</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDays([...WEEKDAY_CODES])}
+                      className="text-2xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 cursor-pointer"
+                    >
+                      Weekdays
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDays([...WEEKEND_CODES])}
+                      className="text-2xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 cursor-pointer"
+                    >
+                      Weekends
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDays([...ALL_DAY_CODES])}
+                      className="text-2xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 cursor-pointer"
+                    >
+                      Every Day
+                    </button>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {ALL_DAY_CODES.map((code) => {
+                    const isChecked = selectedDays.includes(code);
+                    return (
+                      <button
+                        key={code}
+                        type="button"
+                        onClick={() => toggleDay(code)}
+                        className={`w-11 h-8 rounded-md text-xs font-semibold border transition-colors cursor-pointer ${
+                          isChecked
+                            ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300'
+                            : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-50'
+                        }`}
+                      >
+                        {DAY_LABELS[code]}
+                      </button>
+                    );
+                  })}
+                </div>
+                {selectedDays.length === 0 && (
+                  <p className="text-2xs text-red-600 dark:text-red-400 mt-1">Select at least one day, or this rule will never apply.</p>
+                )}
               </div>
 
               {/* Nightly Rate & Label */}
@@ -686,7 +790,14 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                       {rateRules.map((rule) => (
                         <tr key={rule.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/50">
                           <td className="px-3 py-2 font-semibold text-gray-900 dark:text-white whitespace-nowrap">
-                            {rule.start_date} <span className="font-normal text-gray-400">→</span> {rule.end_date}
+                            <div>
+                              {rule.start_date} <span className="font-normal text-gray-400">→</span> {rule.end_date}
+                            </div>
+                            {rule.days_of_week && (
+                              <div className="text-2xs font-normal text-blue-600 dark:text-blue-400">
+                                {formatDaysOfWeek(rule.days_of_week)}
+                              </div>
+                            )}
                           </td>
                           <td className="px-3 py-2 text-gray-600 dark:text-gray-300">
                             {rule.room_name || 'All Rooms / Property'}

@@ -43,7 +43,8 @@
 // v48 (4 Sep 2026): Remove interior field icons in Passcode form as per DESIGN.md
 // v49 (4 Sep 2026): Strict Booking.com brand matching in getOtaIcon (do not match other channels containing 'booking')
 // v50 (4 Sep 2026): Clear distinction & separate dedicated UIs for Flat Base Rate vs Dynamic Rules in RateRuleModal
-const CACHE_NAME = 'farm-pos-v50';
+// v51 (4 Sep 2026): Fix room base tariff reactive state update in RateRuleModal
+const CACHE_NAME = 'farm-pos-v51';
 
 // Hashed asset pattern — Vite content-hashed files (e.g. index-CrXjaekR.js)
 // These must NEVER be cached by the SW; the browser cache handles them natively
