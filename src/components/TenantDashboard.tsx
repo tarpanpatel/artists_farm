@@ -401,7 +401,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white">
       {/* Mobile Dimming Overlay */}
       {isSidebarOpen && (
         <div
@@ -420,15 +420,15 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
       >
         {/* Sidebar Brand Header with Safe Area Top Clearance */}
         <div className="shrink-0 h-[calc(4rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)] px-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-white dark:bg-gray-800">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-linear-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-xs shrink-0">
-              <Building2 className="w-4.5 h-4.5" />
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-xs shrink-0">
+              <Building2 className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-xs font-bold text-slate-900 dark:text-white truncate">
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white truncate">
                 {tenantInfo?.name ?? 'Super Admin'}
               </h2>
-              <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                 Property Control Panel
               </p>
             </div>
@@ -444,11 +444,11 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
         </div>
 
         {/* Nav Menu Items List (Scrollable) */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-1">
-          <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+        <div className="flex-1 overflow-y-auto px-3 py-4 space-y-2 bg-white dark:bg-gray-800">
+          <div className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
             Menu
           </div>
-          <ul className="space-y-1 font-medium text-xs">
+          <ul className="space-y-1 font-medium">
             {navMenuItems.map((item) => {
               const ItemIcon = item.icon;
               const isActive = activeTab === item.tab;
@@ -457,18 +457,22 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                   <button
                     type="button"
                     onClick={() => handleTabChange(item.tab)}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors cursor-pointer ${
+                    className={`flex items-center w-full p-2 text-sm font-medium rounded-lg group transition duration-75 cursor-pointer ${
                       isActive
-                        ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 font-semibold border border-blue-200/80 dark:border-blue-800/80 shadow-2xs'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60'
+                        ? 'bg-gray-100 text-blue-600 dark:bg-gray-700 dark:text-blue-400 font-semibold'
+                        : 'text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700'
                     }`}
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <ItemIcon className={`w-4.5 h-4.5 shrink-0 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`} />
-                      <span className="truncate">{item.label}</span>
-                    </div>
+                    <ItemIcon
+                      className={`w-5 h-5 transition duration-75 shrink-0 ${
+                        isActive
+                          ? 'text-blue-600 dark:text-blue-400'
+                          : 'text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white'
+                      }`}
+                    />
+                    <span className="ms-3 flex-1 text-left whitespace-nowrap truncate">{item.label}</span>
                     {item.badge && (
-                      <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
+                      <span className="inline-flex items-center justify-center px-2 py-0.5 ms-3 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                         {item.badge}
                       </span>
                     )}
@@ -480,7 +484,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
 
           {/* Quick Legal Link */}
           <div className="pt-3 mt-3 border-t border-gray-200 dark:border-gray-700 space-y-1">
-            <ul className="space-y-1 font-medium text-xs">
+            <ul className="space-y-1 font-medium">
               <li>
                 <button
                   type="button"
@@ -488,10 +492,10 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                     setLegalDrawerTab('terms');
                     setIsSidebarOpen(false);
                   }}
-                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors cursor-pointer"
+                  className="flex items-center w-full p-2 text-sm font-medium rounded-lg group transition duration-75 cursor-pointer text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700"
                 >
-                  <ShieldCheck className="w-4 h-4 text-gray-400" />
-                  <span>Terms & Privacy</span>
+                  <ShieldCheck className="w-5 h-5 shrink-0 text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white" />
+                  <span className="ms-3 flex-1 text-left whitespace-nowrap truncate">Terms & Privacy</span>
                 </button>
               </li>
             </ul>
@@ -499,7 +503,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
         </div>
 
         {/* Sidebar Footer User Profile & Sign Out with Safe Area Bottom Clearance */}
-        <div className="shrink-0 p-3 border-t border-gray-200 dark:border-gray-700 space-y-2 bg-gray-50/50 dark:bg-gray-850/40 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] md:pb-3">
+        <div className="shrink-0 p-3 border-t border-gray-200 dark:border-gray-700 space-y-2 bg-white dark:bg-gray-800 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] md:pb-3">
           <div
             role="button"
             tabIndex={0}
@@ -507,17 +511,17 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') handleTabChange('account');
             }}
-            className="flex items-center gap-2.5 p-2 rounded-lg bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 transition-colors cursor-pointer shadow-2xs group"
+            className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 hover:bg-blue-50 dark:bg-gray-700/50 dark:hover:bg-blue-950/40 border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 transition-all cursor-pointer shadow-2xs group"
           >
-            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 ring-2 ring-blue-500/20 shrink-0">
-              <UserRound className="w-4 h-4" />
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 ring-2 ring-blue-500/30 shrink-0">
+              <UserRound className="w-4 h-4 text-gray-600 dark:text-gray-300" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-semibold text-gray-900 dark:text-white truncate flex items-center justify-between">
+              <div className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate flex items-center justify-between">
                 <span>{username}</span>
-                <ChevronRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-blue-500 transition-colors shrink-0" />
+                <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors shrink-0" />
               </div>
-              <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate capitalize font-medium">
+              <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate capitalize">
                 {isPlatformAdmin ? t('root_admin_label', 'Root Admin') : t('tenant_manager_label', 'Super Admin')}
               </div>
             </div>
@@ -526,16 +530,17 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           <button
             type="button"
             onClick={handleLogout}
-            className="flex items-center justify-center w-full p-2.5 text-xs font-semibold rounded-lg text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/50 transition-all cursor-pointer shadow-2xs gap-2"
+            className="flex items-center w-full p-2 text-sm font-semibold rounded-lg text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/50 transition-all cursor-pointer shadow-2xs"
+            style={{ color: '#ff5252' }}
           >
             <LogOut className="w-4 h-4 text-red-500" />
-            <span>{t('sign_out_terminal_button', 'Sign Out')}</span>
+            <span className="ms-3">{t('sign_out_terminal_button', 'Sign Out')}</span>
           </button>
         </div>
       </aside>
 
       {/* ──────────────── Top Header Bar ──────────────── */}
-      <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 md:pl-64 h-[calc(4rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)] flex items-center">
+      <header className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40 md:pl-64 h-[calc(4rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)] flex items-center">
         <div className="w-full px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             {/* Mobile Hamburger Toggle */}
@@ -544,13 +549,13 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               title={t('toggle_sidebar_tooltip', 'Toggle Sidebar Menu')}
               aria-label={t('toggle_sidebar_aria', 'Toggle Sidebar Navigation')}
-              className="md:hidden p-2 -ml-1 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+              className="md:hidden p-2 -ml-1 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer shrink-0"
             >
               <Menu className="w-5 h-5" />
             </button>
 
             <div className="min-w-0">
-              <h1 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate flex items-center gap-2">
+              <h1 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white truncate flex items-center gap-2">
                 <span>
                   {activeTab === 'dashboard' && (tenantInfo?.name ?? 'Dashboard')}
                   {activeTab === 'analytics' && 'Analytics'}
@@ -564,7 +569,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                   </span>
                 )}
               </h1>
-              <p className="text-2xs text-slate-500 dark:text-slate-400 truncate">
+              <p className="text-2xs text-gray-500 dark:text-gray-400 truncate">
                 {activeTab === 'dashboard' && 'Dashboard Overview & Live Operations'}
                 {activeTab === 'analytics' && 'Combined Portfolio Analytics & Performance'}
                 {activeTab === 'properties' && 'Create, edit, toggle active status, and access direct management portals'}
@@ -580,7 +585,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
               trigger="hover"
               placement="bottom"
               content={
-                <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                <div className="px-2.5 py-1.5 text-xs font-semibold text-gray-700 dark:text-gray-200 whitespace-nowrap">
                   {t('help_tooltip', 'Help & FAQ')}
                 </div>
               }
@@ -589,7 +594,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 type="button"
                 onClick={() => setLegalDrawerTab('faq')}
                 aria-label={t('help_aria', 'Help & FAQ')}
-                className="p-2 rounded-lg text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
               >
                 <HelpCircle className="w-5 h-5" />
               </button>
@@ -658,19 +663,19 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
               </div>
 
               {/* Slot Usage Widget */}
-              <section className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4 shadow-2xs">
+              <section className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-2xs">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center">
                       <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">{usedSlots}/{totalSlots}</span>
                     </div>
                     <div>
-                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">Subscription Property Slots</p>
-                      <p className="text-2xs text-slate-400 dark:text-slate-500">{remaining > 0 ? `${remaining} slot${remaining !== 1 ? 's' : ''} available` : 'All allocated slots in use'}</p>
+                      <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">Subscription Property Slots</p>
+                      <p className="text-2xs text-gray-400 dark:text-gray-500">{remaining > 0 ? `${remaining} slot${remaining !== 1 ? 's' : ''} available` : 'All allocated slots in use'}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="w-28 h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden hidden sm:block">
+                    <div className="w-28 h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden hidden sm:block">
                       <div
                         className={`h-full rounded-full transition-all duration-500 ${
                           slotPercent >= 100 ? 'bg-red-500' : slotPercent >= 80 ? 'bg-amber-500' : 'bg-indigo-500'
@@ -703,29 +708,29 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
 
               {/* Quick Summary Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-white dark:bg-slate-900 rounded-lg p-5 border border-slate-200 dark:border-slate-800 text-center shadow-2xs">
+                <div className="bg-white dark:bg-gray-800 rounded-lg p-5 border border-gray-200 dark:border-gray-700 text-center shadow-2xs">
                   <TrendingUp className="w-5 h-5 text-indigo-500 mx-auto mb-1.5" />
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('total_bookings_label', 'Total Bookings')}</p>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5">{totalBookingsAnalytics}</p>
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('total_bookings_label', 'Total Bookings')}</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white mt-0.5">{totalBookingsAnalytics}</p>
                 </div>
-                <div className="bg-white dark:bg-slate-900 rounded-lg p-5 border border-slate-200 dark:border-slate-800 text-center shadow-2xs">
+                <div className="bg-white dark:bg-gray-800 rounded-lg p-5 border border-gray-200 dark:border-gray-700 text-center shadow-2xs">
                   <Building2 className="w-5 h-5 text-emerald-500 mx-auto mb-1.5" />
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('combined_revenue_label', 'Combined Revenue')}</p>
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('combined_revenue_label', 'Combined Revenue')}</p>
                   <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">₹{combinedRevenueAnalytics.toLocaleString('en-IN')}</p>
                 </div>
-                <div className="bg-white dark:bg-slate-900 rounded-lg p-5 border border-slate-200 dark:border-slate-800 text-center shadow-2xs">
+                <div className="bg-white dark:bg-gray-800 rounded-lg p-5 border border-gray-200 dark:border-gray-700 text-center shadow-2xs">
                   <Layers className="w-5 h-5 text-blue-500 mx-auto mb-1.5" />
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('avg_occupancy_label', 'Avg. Occupancy')}</p>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5">{avgOccupancyAnalytics}%</p>
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('avg_occupancy_label', 'Avg. Occupancy')}</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white mt-0.5">{avgOccupancyAnalytics}%</p>
                 </div>
               </div>
 
               {/* Properties Overview Grid */}
-              <section className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-5 shadow-2xs space-y-4">
+              <section className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-5 shadow-2xs space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-base font-bold text-slate-900 dark:text-white">Active Properties ({safeProperties.length})</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Launch and configure direct property PMS dashboards</p>
+                    <h3 className="text-base font-bold text-gray-900 dark:text-white">Active Properties ({safeProperties.length})</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Launch and configure direct property PMS dashboards</p>
                   </div>
                   <Button
                     variant="secondary"
@@ -749,7 +754,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                     return (
                       <div
                         key={property.id}
-                        className="flex items-center justify-between p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850/40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                        className="flex items-center justify-between p-3.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/40 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
@@ -762,8 +767,8 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                             {isMultiKey ? <Layers className="w-4.5 h-4.5" /> : <Home className="w-4.5 h-4.5" />}
                           </div>
                           <div className="min-w-0">
-                            <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">{property.name}</h4>
-                            <p className="text-2xs text-slate-400 dark:text-slate-500 font-mono truncate">/{property.slug}</p>
+                            <h4 className="text-xs font-bold text-gray-900 dark:text-white truncate">{property.name}</h4>
+                            <p className="text-2xs text-gray-400 dark:text-gray-500 font-mono truncate">/{property.slug}</p>
                           </div>
                         </div>
 
@@ -797,11 +802,11 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
 
           {/* ═══════════ TAB 2: ANALYTICS ═══════════ */}
           {activeTab === 'analytics' && (
-            <section className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-6 shadow-2xs space-y-6">
+            <section className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 shadow-2xs space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('combined_analytics_heading', 'Combined Analytics')}</h2>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{t('across_all_properties_subtext', 'Across all your managed properties')}</p>
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-white">{t('combined_analytics_heading', 'Combined Analytics')}</h2>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{t('across_all_properties_subtext', 'Across all your managed properties')}</p>
                 </div>
                 {safeProperties.length > 1 && (
                   <div className="w-full sm:w-56">
@@ -853,20 +858,20 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
 
               {/* Analytics Summary */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-slate-50 dark:bg-slate-850/60 rounded-lg p-5 text-center border border-slate-200/80 dark:border-slate-800">
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-5 text-center border border-gray-200 dark:border-gray-700">
                   <TrendingUp className="w-6 h-6 text-indigo-500 mx-auto mb-2" />
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t('total_bookings_label', 'Total Bookings')}</p>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white">{totalBookingsAnalytics}</p>
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{t('total_bookings_label', 'Total Bookings')}</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalBookingsAnalytics}</p>
                 </div>
-                <div className="bg-slate-50 dark:bg-slate-850/60 rounded-lg p-5 text-center border border-slate-200/80 dark:border-slate-800">
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-5 text-center border border-gray-200 dark:border-gray-700">
                   <Building2 className="w-6 h-6 text-emerald-500 mx-auto mb-2" />
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t('combined_revenue_label', 'Combined Revenue')}</p>
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{t('combined_revenue_label', 'Combined Revenue')}</p>
                   <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">₹{combinedRevenueAnalytics.toLocaleString('en-IN')}</p>
                 </div>
-                <div className="bg-slate-50 dark:bg-slate-850/60 rounded-lg p-5 text-center border border-slate-200/80 dark:border-slate-800">
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-5 text-center border border-gray-200 dark:border-gray-700">
                   <Layers className="w-6 h-6 text-blue-500 mx-auto mb-2" />
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t('avg_occupancy_label', 'Avg. Occupancy')}</p>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white">{avgOccupancyAnalytics}%</p>
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{t('avg_occupancy_label', 'Avg. Occupancy')}</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{avgOccupancyAnalytics}%</p>
                 </div>
               </div>
             </section>
@@ -896,18 +901,18 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
               </div>
 
               {safeProperties.length === 0 ? (
-                <div className="bg-white dark:bg-slate-900 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 p-12 text-center">
-                  <Building2 className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-                  <p className="text-slate-600 dark:text-slate-300 font-semibold">{t('tenant_no_properties_yet_message', 'No properties yet')}</p>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{t('add_first_property_help_text', 'Add your first property to get started')}</p>
+                <div className="bg-white dark:bg-gray-800 rounded-lg border border-dashed border-gray-300 dark:border-gray-700 p-12 text-center">
+                  <Building2 className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                  <p className="text-gray-600 dark:text-gray-300 font-semibold">{t('tenant_no_properties_yet_message', 'No properties yet')}</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{t('add_first_property_help_text', 'Add your first property to get started')}</p>
                 </div>
               ) : (
                 <>
                   {/* Desktop DataTable */}
-                  <div className="hidden md:block bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden">
+                  <div className="hidden md:block bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-2xs overflow-hidden">
                     <div className="overflow-x-auto">
-                      <table className="w-full text-xs text-left text-slate-600 dark:text-slate-300">
-                        <thead className="text-2xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700">
+                      <table className="w-full text-xs text-left text-gray-600 dark:text-gray-300">
+                        <thead className="text-2xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/60 border-b border-gray-200 dark:border-gray-700">
                           <tr>
                             <th scope="col" className="px-4 py-3 whitespace-nowrap">Property Name</th>
                             <th scope="col" className="px-4 py-3 whitespace-nowrap">Type</th>
@@ -916,7 +921,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                             <th scope="col" className="px-4 py-3 whitespace-nowrap text-right">Actions</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                           {safeProperties.map((property) => {
                             const isMultiKey = property.property_type === 'MULTI_KEY';
                             const roomCount = property.room_count ?? 0;
@@ -927,7 +932,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                             const isDraft = property.status === 'draft';
 
                             return (
-                              <tr key={property.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                              <tr key={property.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
                                 <td className="px-4 py-3">
                                   <div className="flex items-center gap-3">
                                     <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 shadow-2xs ${
@@ -944,8 +949,8 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                                       )}
                                     </div>
                                     <div>
-                                      <div className="font-semibold text-slate-900 dark:text-white text-xs">{property.name || 'Untitled property'}</div>
-                                      <div className="text-2xs text-slate-400 dark:text-slate-500 font-mono">/{property.slug}</div>
+                                      <div className="font-semibold text-gray-900 dark:text-white text-xs">{property.name || 'Untitled property'}</div>
+                                      <div className="text-2xs text-gray-400 dark:text-gray-500 font-mono">/{property.slug}</div>
                                     </div>
                                   </div>
                                 </td>
@@ -1090,7 +1095,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                             </div>
                           </div>
 
-                          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                          <div className="pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
                             <Button variant="primary" size="sm" onClick={() => window.open(dashboardUrl, '_blank', 'noopener,noreferrer')} leftIcon={<ExternalLink className="w-3.5 h-3.5 shrink-0" />}>
                               {t('open_dashboard_link', 'Open Property')}
                             </Button>
@@ -1116,20 +1121,20 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           {activeTab === 'account' && (
             <section className="space-y-6">
               <div>
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white">Account Details</h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Manage your tenant profile, authentication security, and platform settings</p>
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white">Account Details</h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Manage your tenant profile, authentication security, and platform settings</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {/* Profile Card */}
-                <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-6 shadow-2xs space-y-4">
+                <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6 shadow-2xs space-y-4">
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-full bg-blue-100 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-xs">
                       <UserRound className="w-7 h-7" />
                     </div>
                     <div>
-                      <h3 className="text-base font-bold text-slate-900 dark:text-white">{username}</h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                      <h3 className="text-base font-bold text-gray-900 dark:text-white">{username}</h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
                         {isPlatformAdmin ? 'Root Platform Administrator' : 'Tenant Super Administrator'}
                       </p>
                       <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
@@ -1138,38 +1143,38 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                     </div>
                   </div>
 
-                  <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2.5 text-xs">
-                    <div className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
-                      <span className="text-slate-500 dark:text-slate-400 font-medium">Tenant Organization</span>
-                      <span className="font-semibold text-slate-900 dark:text-white">{tenantInfo?.name || 'Default Organization'}</span>
+                  <div className="pt-4 border-t border-gray-100 dark:border-gray-800 space-y-2.5 text-xs">
+                    <div className="flex justify-between py-1 border-b border-gray-100 dark:border-gray-800/60">
+                      <span className="text-gray-500 dark:text-gray-400 font-medium">Tenant Organization</span>
+                      <span className="font-semibold text-gray-900 dark:text-white">{tenantInfo?.name || 'Default Organization'}</span>
                     </div>
-                    <div className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
-                      <span className="text-slate-500 dark:text-slate-400 font-medium">Tenant ID</span>
-                      <span className="font-mono text-slate-900 dark:text-white">{tenantId}</span>
+                    <div className="flex justify-between py-1 border-b border-gray-100 dark:border-gray-800/60">
+                      <span className="text-gray-500 dark:text-gray-400 font-medium">Tenant ID</span>
+                      <span className="font-mono text-gray-900 dark:text-white">{tenantId}</span>
                     </div>
-                    <div className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
-                      <span className="text-slate-500 dark:text-slate-400 font-medium">Subscription Tier</span>
+                    <div className="flex justify-between py-1 border-b border-gray-100 dark:border-gray-800/60">
+                      <span className="text-gray-500 dark:text-gray-400 font-medium">Subscription Tier</span>
                       <span className="font-semibold capitalize text-indigo-600 dark:text-indigo-400">{tenantInfo?.subscription_plan || 'Active Plan'}</span>
                     </div>
                     <div className="flex justify-between py-1">
-                      <span className="text-slate-500 dark:text-slate-400 font-medium">Managed Properties</span>
-                      <span className="font-semibold text-slate-900 dark:text-white">{safeProperties.length} Active / {totalSlots} Allocated Slots</span>
+                      <span className="text-gray-500 dark:text-gray-400 font-medium">Managed Properties</span>
+                      <span className="font-semibold text-gray-900 dark:text-white">{safeProperties.length} Active / {totalSlots} Allocated Slots</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Change Passcode Card */}
-                <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-6 shadow-2xs space-y-4">
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6 shadow-2xs space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800">
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 flex items-center justify-center">
                         <KeyRound className="w-4 h-4" />
                       </div>
                       <div>
-                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                        <h4 className="text-sm font-bold text-gray-900 dark:text-white">
                           Change Passcode
                         </h4>
-                        <p className="text-2xs text-slate-500 dark:text-slate-400">
+                        <p className="text-2xs text-gray-500 dark:text-gray-400">
                           Update your 6-digit numeric login PIN
                         </p>
                       </div>
@@ -1193,7 +1198,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                       value={currentPasscode}
                       onChange={(e) => setCurrentPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                       placeholder="Current 6-digit passcode"
-                      leftIcon={<Lock className="w-4 h-4 text-slate-400" />}
+                      leftIcon={<Lock className="w-4 h-4 text-gray-400" />}
                       required
                     />
 
@@ -1206,7 +1211,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                         value={newPasscode}
                         onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                         placeholder="New 6-digit passcode"
-                        leftIcon={<KeyRound className="w-4 h-4 text-slate-400" />}
+                        leftIcon={<KeyRound className="w-4 h-4 text-gray-400" />}
                         error={newPasscode.length > 0 && newPasscode.length < 6 ? 'Must be 6 digits' : undefined}
                         required
                       />
@@ -1219,7 +1224,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                         value={confirmPasscode}
                         onChange={(e) => setConfirmPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                         placeholder="Re-enter new passcode"
-                        leftIcon={<KeyRound className="w-4 h-4 text-slate-400" />}
+                        leftIcon={<KeyRound className="w-4 h-4 text-gray-400" />}
                         error={confirmPasscode.length > 0 && newPasscode !== confirmPasscode ? 'Passcodes do not match' : undefined}
                         success={confirmPasscode.length === 6 && newPasscode === confirmPasscode ? 'Passcodes match' : undefined}
                         required
@@ -1253,8 +1258,8 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
             <section className="space-y-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('subscription_heading', 'Subscription & Billing')}</h2>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">View license status, slot entitlements, plan renewals, and data backup options</p>
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-white">{t('subscription_heading', 'Subscription & Billing')}</h2>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">View license status, slot entitlements, plan renewals, and data backup options</p>
                 </div>
               </div>
               <SubscriptionPanel
@@ -1284,13 +1289,13 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
       <nav
         id="superAdminMobileBottomNav"
         aria-label="Super Admin Bottom Navigation"
-        className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 h-[calc(4rem+env(safe-area-inset-bottom,0px))] pb-[env(safe-area-inset-bottom,0px)] flex items-center justify-around px-2 shadow-lg"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 h-[calc(4rem+env(safe-area-inset-bottom,0px))] pb-[env(safe-area-inset-bottom,0px)] flex items-center justify-around px-2 shadow-lg"
       >
         <button
           type="button"
           onClick={() => handleTabChange('dashboard')}
           className={`flex flex-col items-center justify-center flex-1 h-full py-1 text-center transition-colors cursor-pointer ${
-            activeTab === 'dashboard' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-500 dark:text-slate-400'
+            activeTab === 'dashboard' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-gray-500 dark:text-gray-400'
           }`}
         >
           <LayoutDashboard className="w-5 h-5 mb-0.5" />
@@ -1301,7 +1306,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           type="button"
           onClick={() => handleTabChange('analytics')}
           className={`flex flex-col items-center justify-center flex-1 h-full py-1 text-center transition-colors cursor-pointer ${
-            activeTab === 'analytics' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-500 dark:text-slate-400'
+            activeTab === 'analytics' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-gray-500 dark:text-gray-400'
           }`}
         >
           <TrendingUp className="w-5 h-5 mb-0.5" />
@@ -1312,7 +1317,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           type="button"
           onClick={() => handleTabChange('properties')}
           className={`flex flex-col items-center justify-center flex-1 h-full py-1 text-center transition-colors cursor-pointer ${
-            activeTab === 'properties' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-500 dark:text-slate-400'
+            activeTab === 'properties' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-gray-500 dark:text-gray-400'
           }`}
         >
           <Building2 className="w-5 h-5 mb-0.5" />
@@ -1323,7 +1328,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           type="button"
           onClick={() => handleTabChange('billing')}
           className={`flex flex-col items-center justify-center flex-1 h-full py-1 text-center transition-colors cursor-pointer ${
-            activeTab === 'billing' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-500 dark:text-slate-400'
+            activeTab === 'billing' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-gray-500 dark:text-gray-400'
           }`}
         >
           <CreditCard className="w-5 h-5 mb-0.5" />
