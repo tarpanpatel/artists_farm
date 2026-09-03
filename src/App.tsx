@@ -556,6 +556,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
       canSwitchProperties: !!rawUser.can_switch_properties,
       tenantId: rawUser.tenant_id ?? null,
       tenantSlug: rawUser.tenant_slug ?? null,
+      isPlatformAdmin: !!rawUser.is_platform_admin,
     };
     login(staffMember);
     logAudit(`Staff User ${staffMember.name} logged into POS portal`, { status: 'Success', module: 'login', user: staffMember.name });
@@ -2645,10 +2646,24 @@ ${itemsStr}
                 </ErrorBoundary>
               )}
 
+              {/* Channel Manager is the internal ops console (manual ARI push,
+                  outbox drain, mapping UUIDs) - platform admins only, matching
+                  the nav gate in Navigation.tsx and the router.php action gate.
+                  A non-platform-admin only reaches here via a stale #channel_manager
+                  hash; send them to Connect Channels, the owner-facing surface. */}
               {!selectedRoomSlugOverride && activeTab === 'channel_manager' && (
-                <ErrorBoundary section="Channel Manager">
-                  <ChannelManager onLogAudit={logAudit} />
-                </ErrorBoundary>
+                currentUser?.isPlatformAdmin ? (
+                  <ErrorBoundary section="Channel Manager">
+                    <ChannelManager onLogAudit={logAudit} />
+                  </ErrorBoundary>
+                ) : (
+                  <div className="p-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                    <p className="font-semibold text-gray-700 dark:text-gray-300">Channel Manager is a platform-admin tool.</p>
+                    <p className="mt-1">To connect an OTA to this property, use{' '}
+                      <button type="button" onClick={() => handleNavigateTab('connect_channels')} className="text-blue-600 dark:text-blue-400 font-medium underline">Connect Channels</button>.
+                    </p>
+                  </div>
+                )
               )}
 
               {/* Self-serve OTA channel-connection wizard (3 Sep 2026) - a sibling

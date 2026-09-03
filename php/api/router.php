@@ -999,6 +999,21 @@ if (!in_array($action, $public_actions, true)) {
     }
 }
 
+// SECURITY (4 Sep 2026): the Channel Manager ops console (manual full-range ARI
+// push, outbox drain/retry, content re-sync, webhook registration, raw sync
+// status) is an integrator/debug surface, not a tenant feature - a mistaken ARI
+// push there overwrites live OTA pricing and reopens blocked dates across every
+// connected channel. The nav item is hidden from non-platform-admins client-side
+// (menu.php nav_menu_self_heal), but that is cosmetic: gate the actions here too.
+// The client-facing channex_channel_* wizard actions (Connect Channels) are
+// deliberately NOT in this list - those are meant for the property owner.
+$channex_ops_actions = ['channex_content_sync', 'channex_register_webhook', 'get_channex_status', 'channex_push_ari', 'channex_retry_outbox', 'channex_outbox_drain'];
+if (in_array($action, $channex_ops_actions, true) && !($_SESSION['is_platform_admin'] ?? false)) {
+    http_response_code(403);
+    echo json_encode(['status' => 'error', 'message' => 'Channel Manager operations are restricted to platform administrators.']);
+    exit;
+}
+
 // PHP's default file-based session handler holds an exclusive lock on the
 // session file for the entire request. With multiple tabs/windows open on
 // the same login, every concurrent request serializes behind whichever one
@@ -1109,6 +1124,11 @@ switch ($action) {
                     'name' => $_SESSION['full_name'] ?? null,
                     'role' => $_SESSION['role'] ?? 'Staff',
                     'property_id' => $_SESSION['property_id'] ?? null,
+                    // performUnifiedLogin() returns this on login_user, but check_session
+                    // never echoed it back - so a page reload (which rebuilds currentUser
+                    // purely from check_session) lost the platform-admin flag. The
+                    // Channel Manager ops console keys its visibility off this.
+                    'is_platform_admin' => !empty($_SESSION['is_platform_admin']),
                     'can_switch_properties' => $canSwitchProperties && $switcherTenantId && $switcherTenantSlug ? true : false,
                     'tenant_id' => $canSwitchProperties ? $switcherTenantId : null,
                     'tenant_slug' => $canSwitchProperties ? $switcherTenantSlug : null,

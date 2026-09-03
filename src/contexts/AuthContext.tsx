@@ -143,6 +143,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             canSwitchProperties: !!data.user.can_switch_properties,
             tenantId: data.user.tenant_id ?? null,
             tenantSlug: data.user.tenant_slug ?? null,
+            isPlatformAdmin: !!data.user.is_platform_admin,
           };
           localStorage.setItem(userKey(), JSON.stringify(user));
           setIsAuthenticated(true);
@@ -196,6 +197,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               canSwitchProperties: !!loginData.user.can_switch_properties,
               tenantId: loginData.user.tenant_id ?? null,
               tenantSlug: loginData.user.tenant_slug ?? null,
+              isPlatformAdmin: !!loginData.user.is_platform_admin,
             };
             localStorage.setItem(userKey(), JSON.stringify(user));
             setIsAuthenticated(true);

@@ -294,6 +294,10 @@ export interface StaffMember {
   canSwitchProperties?: boolean;
   tenantId?: number | null;
   tenantSlug?: string | null;
+  // True only for the platform (root) admin - performUnifiedLogin() / check_session
+  // in router.php. Gates the internal Channel Manager ops console; a tenant's own
+  // Super Admin is NOT a platform admin.
+  isPlatformAdmin?: boolean;
 }
 
 export interface AttendanceRecord {
