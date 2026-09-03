@@ -4,13 +4,15 @@ import {
   Pencil, Trash2, ExternalLink, CheckCircle, Layers,
   Home, TrendingUp, ChevronRight, Lock, Zap, User, UserRound,
   Calendar, Bell, ArrowRight, HelpCircle, LayoutDashboard,
-  CreditCard, Menu, X, ShieldCheck
+  CreditCard, Menu, X, ShieldCheck, KeyRound, Eye, EyeOff, Save, Loader2
 } from './icons/FlowbiteIcons';
 import { Popover } from './Popover';
 import { StyledSelect } from './StyledSelect';
 import { LoadingScreen } from './LoadingScreen';
 import { API_ROOT_BASE, apiFetch } from '../services/api';
 import { Button } from './Button';
+import { Input } from './Input';
+import { useToast } from './ToastContext';
 import { Alert as FlowbiteAlert, Modal } from 'flowbite-react';
 import { KpiCard } from './KpiCard';
 import { ToggleSwitch } from './ToggleSwitch';
@@ -126,6 +128,54 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
       window.location.hash = tab;
     }
     setIsSidebarOpen(false);
+  };
+
+  const { showToast } = useToast();
+  const [currentPasscode, setCurrentPasscode] = useState('');
+  const [newPasscode, setNewPasscode] = useState('');
+  const [confirmPasscode, setConfirmPasscode] = useState('');
+  const [showPasscodes, setShowPasscodes] = useState(false);
+  const [isSavingPasscode, setIsSavingPasscode] = useState(false);
+
+  const handleUpdatePasscode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentPasscode) {
+      showToast('Please enter your current passcode', { type: 'warning' });
+      return;
+    }
+    if (!/^\d{6}$/.test(newPasscode)) {
+      showToast('New passcode must be exactly 6 digits', { type: 'warning' });
+      return;
+    }
+    if (newPasscode !== confirmPasscode) {
+      showToast('New passcodes do not match', { type: 'warning' });
+      return;
+    }
+
+    setIsSavingPasscode(true);
+    try {
+      const res = await apiFetch('/php/api/router.php?action=change_super_admin_passcode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          current_passcode: currentPasscode,
+          new_passcode: newPasscode,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(json.message || 'Passcode updated successfully!', { type: 'success' });
+        setCurrentPasscode('');
+        setNewPasscode('');
+        setConfirmPasscode('');
+      } else {
+        showToast(json.message || 'Failed to update passcode', { type: 'error' });
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Error updating passcode', { type: 'error' });
+    } finally {
+      setIsSavingPasscode(false);
+    }
   };
 
   const showSuccess = (msg: string) => {
@@ -368,105 +418,104 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
-        {/* Sidebar Brand Header */}
-        <div>
-          <div className="h-16 px-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-linear-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-xs shrink-0">
-                <Building2 className="w-4.5 h-4.5" />
-              </div>
-              <div className="min-w-0">
-                <h2 className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                  {tenantInfo?.name ?? 'Super Admin'}
-                </h2>
-                <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">
-                  Property Control Panel
-                </p>
-              </div>
+        {/* Sidebar Brand Header with Safe Area Top Clearance */}
+        <div className="shrink-0 h-[calc(4rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)] px-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-white dark:bg-gray-800">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-linear-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-xs shrink-0">
+              <Building2 className="w-4.5 h-4.5" />
             </div>
-            <button
-              type="button"
-              onClick={() => setIsSidebarOpen(false)}
-              className="md:hidden p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <div className="min-w-0">
+              <h2 className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                {tenantInfo?.name ?? 'Super Admin'}
+              </h2>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">
+                Property Control Panel
+              </p>
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={() => setIsSidebarOpen(false)}
+            aria-label="Close sidebar menu"
+            className="md:hidden p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
-          {/* Nav Menu Items List */}
-          <div className="p-3 space-y-1">
-            <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-              Menu
+        {/* Nav Menu Items List (Scrollable) */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-1">
+          <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+            Menu
+          </div>
+          <ul className="space-y-1 font-medium text-xs">
+            {navMenuItems.map((item) => {
+              const ItemIcon = item.icon;
+              const isActive = activeTab === item.tab;
+              return (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    onClick={() => handleTabChange(item.tab)}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors cursor-pointer ${
+                      isActive
+                        ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 font-semibold border border-blue-200/80 dark:border-blue-800/80 shadow-2xs'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <ItemIcon className={`w-4.5 h-4.5 shrink-0 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`} />
+                      <span className="truncate">{item.label}</span>
+                    </div>
+                    {item.badge && (
+                      <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+
+          {/* Quick Support & Legal Links */}
+          <div className="pt-3 mt-3 border-t border-gray-200 dark:border-gray-700 space-y-1">
+            <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+              Support & Legal
             </div>
             <ul className="space-y-1 font-medium text-xs">
-              {navMenuItems.map((item) => {
-                const ItemIcon = item.icon;
-                const isActive = activeTab === item.tab;
-                return (
-                  <li key={item.id}>
-                    <button
-                      type="button"
-                      onClick={() => handleTabChange(item.tab)}
-                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors cursor-pointer ${
-                        isActive
-                          ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 font-semibold border border-blue-200/80 dark:border-blue-800/80 shadow-2xs'
-                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <ItemIcon className={`w-4.5 h-4.5 shrink-0 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`} />
-                        <span className="truncate">{item.label}</span>
-                      </div>
-                      {item.badge && (
-                        <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
-                          {item.badge}
-                        </span>
-                      )}
-                    </button>
-                  </li>
-                );
-              })}
+              <li>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLegalDrawerTab('faq');
+                    setIsSidebarOpen(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors cursor-pointer"
+                >
+                  <HelpCircle className="w-4 h-4 text-gray-400" />
+                  <span>Help & FAQ</span>
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLegalDrawerTab('terms');
+                    setIsSidebarOpen(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors cursor-pointer"
+                >
+                  <ShieldCheck className="w-4 h-4 text-gray-400" />
+                  <span>Terms & Privacy</span>
+                </button>
+              </li>
             </ul>
-
-            {/* Quick Support & Legal Links */}
-            <div className="pt-3 mt-3 border-t border-gray-200 dark:border-gray-700 space-y-1">
-              <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                Support & Legal
-              </div>
-              <ul className="space-y-1 font-medium text-xs">
-                <li>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLegalDrawerTab('faq');
-                      setIsSidebarOpen(false);
-                    }}
-                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors cursor-pointer"
-                  >
-                    <HelpCircle className="w-4 h-4 text-gray-400" />
-                    <span>Help & FAQ</span>
-                  </button>
-                </li>
-                <li>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLegalDrawerTab('terms');
-                      setIsSidebarOpen(false);
-                    }}
-                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors cursor-pointer"
-                  >
-                    <ShieldCheck className="w-4 h-4 text-gray-400" />
-                    <span>Terms & Privacy</span>
-                  </button>
-                </li>
-              </ul>
-            </div>
           </div>
         </div>
 
-        {/* Sidebar Footer User Profile & Sign Out */}
-        <div className="p-3 border-t border-gray-200 dark:border-gray-700 space-y-2 bg-gray-50/50 dark:bg-gray-850/40">
+        {/* Sidebar Footer User Profile & Sign Out with Safe Area Bottom Clearance */}
+        <div className="shrink-0 p-3 border-t border-gray-200 dark:border-gray-700 space-y-2 bg-gray-50/50 dark:bg-gray-850/40 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] md:pb-3">
           <div
             role="button"
             tabIndex={0}
@@ -493,7 +542,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           <button
             type="button"
             onClick={handleLogout}
-            className="flex items-center justify-center w-full p-2 text-xs font-semibold rounded-lg text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/50 transition-all cursor-pointer shadow-2xs gap-2"
+            className="flex items-center justify-center w-full p-2.5 text-xs font-semibold rounded-lg text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/50 transition-all cursor-pointer shadow-2xs gap-2"
           >
             <LogOut className="w-4 h-4 text-red-500" />
             <span>{t('sign_out_terminal_button', 'Sign Out')}</span>
@@ -1137,47 +1186,91 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                   </div>
                 </div>
 
-                {/* Security & Support Actions Card */}
-                <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-6 shadow-2xs space-y-4 flex flex-col justify-between">
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                      <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                      Security & Compliance
-                    </h4>
-                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Your Super Admin account has elevated administrative permissions across all child properties. Ensure session tokens are safeguarded and sign out after administrative work on shared terminals.
-                    </p>
-
-                    <div className="space-y-2 pt-2">
-                      <button
-                        type="button"
-                        onClick={() => setLegalDrawerTab('terms')}
-                        className="w-full flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-xs text-left cursor-pointer"
-                      >
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">Terms of Service & License</span>
-                        <ChevronRight className="w-4 h-4 text-slate-400" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setLegalDrawerTab('privacy')}
-                        className="w-full flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-xs text-left cursor-pointer"
-                      >
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">Privacy & Data Governance Policy</span>
-                        <ChevronRight className="w-4 h-4 text-slate-400" />
-                      </button>
+                {/* Change Passcode Card */}
+                <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-6 shadow-2xs space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 flex items-center justify-center">
+                        <KeyRound className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                          Change Passcode
+                        </h4>
+                        <p className="text-2xs text-slate-500 dark:text-slate-400">
+                          Update your 6-digit numeric login PIN
+                        </p>
+                      </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowPasscodes(!showPasscodes)}
+                      className="text-2xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      {showPasscodes ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      {showPasscodes ? 'Hide' : 'Show'}
+                    </button>
                   </div>
 
-                  <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end">
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      onClick={handleLogout}
-                      leftIcon={<LogOut className="w-3.5 h-3.5" />}
-                    >
-                      Sign Out
-                    </Button>
-                  </div>
+                  <form onSubmit={handleUpdatePasscode} className="space-y-3.5">
+                    <Input
+                      label="Current Passcode"
+                      type={showPasscodes ? 'text' : 'password'}
+                      inputMode="numeric"
+                      maxLength={6}
+                      value={currentPasscode}
+                      onChange={(e) => setCurrentPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      placeholder="Current 6-digit passcode"
+                      leftIcon={<Lock className="w-4 h-4 text-slate-400" />}
+                      required
+                    />
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Input
+                        label="New Passcode"
+                        type={showPasscodes ? 'text' : 'password'}
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={newPasscode}
+                        onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="New 6-digit passcode"
+                        leftIcon={<KeyRound className="w-4 h-4 text-slate-400" />}
+                        error={newPasscode.length > 0 && newPasscode.length < 6 ? 'Must be 6 digits' : undefined}
+                        required
+                      />
+
+                      <Input
+                        label="Confirm New Passcode"
+                        type={showPasscodes ? 'text' : 'password'}
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={confirmPasscode}
+                        onChange={(e) => setConfirmPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="Re-enter new passcode"
+                        leftIcon={<KeyRound className="w-4 h-4 text-slate-400" />}
+                        error={confirmPasscode.length > 0 && newPasscode !== confirmPasscode ? 'Passcodes do not match' : undefined}
+                        success={confirmPasscode.length === 6 && newPasscode === confirmPasscode ? 'Passcodes match' : undefined}
+                        required
+                      />
+                    </div>
+
+                    <div className="pt-2 flex justify-end">
+                      <Button
+                        type="submit"
+                        variant="primary"
+                        size="sm"
+                        disabled={
+                          isSavingPasscode ||
+                          !currentPasscode ||
+                          newPasscode.length !== 6 ||
+                          newPasscode !== confirmPasscode
+                        }
+                        leftIcon={isSavingPasscode ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                      >
+                        {isSavingPasscode ? 'Updating...' : 'Update Passcode'}
+                      </Button>
+                    </div>
+                  </form>
                 </div>
               </div>
             </section>
