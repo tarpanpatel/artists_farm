@@ -1291,6 +1291,31 @@ div:has(> [role="tablist"]) {
   z-index: 58;
 }
 
+/* CONFIRMED VIOLATION #3 FOUND + FIXED 3 Sep 2026 (reported as "modal is
+   behind header" on RateRuleModal's Pricing Mode dialog): flowbite-react's
+   OWN <Modal> component (not the custom-built ones the rule above already
+   catches) never actually carries a literal `inset-0` class - its shipped
+   theme.js base is `fixed inset-x-0 top-0 z-50 h-screen ... md:inset-0
+   md:h-full` (see node_modules/flowbite-react/dist/components/Modal/
+   theme.js - never edited, per this repo's "never touch node_modules"
+   rule). `inset-x-0`+`top-0` and the responsive `md:inset-0` are different
+   class tokens than a plain `inset-0`, so the selector above silently never
+   matches ANY flowbite-react <Modal> - every single one of them (Rate Rule,
+   Global confirm/alert, Telegram settings, Tenant edit/delete/upgrade, the
+   Receipt QR popup, etc.) was left sitting at the raw z-50 Tailwind class
+   below the header (z-[57]), while individual components independently
+   discovered and patched around it with their own mismatched one-off
+   overrides (z-58/z-70/z-[9999]/a hand-copied theme override - see
+   CheckinVerificationModal.tsx, BookingDetailsModal.tsx's share-preview
+   Modal, KitchenManagement.tsx, IOSInstallModal.tsx, TermsAcceptanceModal.
+   tsx). Fixed generally, the same way the rule above fixes every custom
+   modal at once, so no flowbite-react <Modal> needs its own manual z-index
+   className going forward - those existing higher overrides are untouched
+   and simply keep their already-correct, already-higher tier. */
+.fixed.inset-x-0.top-0.z-50 {
+  z-index: 58;
+}
+
 /* Drawer backdrop is the plain, attribute-less <div> flowbite-react renders as
    the very next sibling right after its own `[data-testid="flowbite-drawer"]`
    panel (see node_modules/flowbite-react/dist/components/Drawer/Drawer.js -

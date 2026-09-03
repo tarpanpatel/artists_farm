@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Building2, LogOut, Plus, AlertCircle,
   Pencil, Trash2, ExternalLink, CheckCircle, Layers,
-  Home, TrendingUp, ChevronRight, Lock, Zap, User, UserRound,
+  Home, TrendingUp, ChevronRight, Zap, User, UserRound,
   Calendar, Bell, ArrowRight, HelpCircle, LayoutDashboard,
   CreditCard, Menu, X, KeyRound, Eye, EyeOff, Save, Loader2
 } from './icons/FlowbiteIcons';
@@ -634,7 +634,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                   layout="stacked"
                 />
                 <KpiCard
-                  label="Guests In-House"
+                  label="Checked-In Guests"
                   icon={User}
                   badge={{ text: 'Active', color: 'success' }}
                   value={inHouseCount}
@@ -827,7 +827,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                   layout="stacked"
                 />
                 <KpiCard
-                  label="Guests In-House"
+                  label="Checked-In Guests"
                   icon={User}
                   badge={{ text: 'Active', color: 'success' }}
                   value={inHouseCount}
@@ -1165,7 +1165,6 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                       value={currentPasscode}
                       onChange={(e) => setCurrentPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                       placeholder="Current 6-digit passcode"
-                      leftIcon={<Lock className="w-4 h-4 text-gray-400" />}
                       required
                     />
 
@@ -1178,7 +1177,6 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                         value={newPasscode}
                         onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                         placeholder="New 6-digit passcode"
-                        leftIcon={<KeyRound className="w-4 h-4 text-gray-400" />}
                         error={newPasscode.length > 0 && newPasscode.length < 6 ? 'Must be 6 digits' : undefined}
                         required
                       />
@@ -1191,7 +1189,6 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                         value={confirmPasscode}
                         onChange={(e) => setConfirmPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                         placeholder="Re-enter new passcode"
-                        leftIcon={<KeyRound className="w-4 h-4 text-gray-400" />}
                         error={confirmPasscode.length > 0 && newPasscode !== confirmPasscode ? 'Passcodes do not match' : undefined}
                         success={confirmPasscode.length === 6 && newPasscode === confirmPasscode ? 'Passcodes match' : undefined}
                         required

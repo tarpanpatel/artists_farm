@@ -42,6 +42,7 @@ import { t } from '../i18n/en';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import { isCFormGenuinelyFiled } from '../utils/cFormStatus';
 import { getFirstName } from '../utils/nameUtils';
+import { getOtaIcon } from '../utils/otaIcons';
 
 interface OperationalDashboardProps {
   guests: Guest[];
@@ -799,7 +800,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
         />
         {isMultiKeyProperty && (
           <KpiCard
-            label="Guests In-House"
+            label="Checked-In Guests"
             icon={User}
             badge={{ text: 'Active', color: 'success' }}
             value={inHouseCount}
@@ -1638,7 +1639,14 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                                   {hasDayPending && (
                                     <span className="flex w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/50" />
                                   )}
-                                  {isOtaBooking && <Globe className="w-2.5 h-2.5 shrink-0" />}
+                                  {isOtaBooking && (() => {
+                                    const OtaIcon = getOtaIcon((dayBooking as any).otaSourceLabel || (dayBooking as any).otaSource);
+                                    return OtaIcon ? (
+                                      <OtaIcon className="w-3 h-3 shrink-0 rounded-[2px]" />
+                                    ) : (
+                                      <Globe className="w-2.5 h-2.5 shrink-0" />
+                                    );
+                                  })()}
                                   <span className="truncate font-semibold min-w-0">
                                     {getFirstName(dayBooking.guestName)}
                                     {isOtaBooking && ((dayBooking as any).otaSourceLabel || (dayBooking as any).otaSource)
@@ -1972,7 +1980,6 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           rateRules={rateRules}
           pricingMode={pricingMode}
           defaultTariff={propertyDefaultTariff}
-          propertySlug={getPropertySlug() || undefined}
           onRulesUpdated={loadRateRules}
           initialStartDate={selectedRateRuleStartDate}
           initialEndDate={selectedRateRuleEndDate}

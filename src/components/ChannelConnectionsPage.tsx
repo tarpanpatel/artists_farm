@@ -8,6 +8,7 @@ import { ChannelConnectWizard } from './ChannelConnectWizard';
 import { useConfirm } from './ConfirmDialogContext';
 import { useToast } from './ToastContext';
 import { t } from '../i18n/en';
+import { getOtaIcon } from '../utils/otaIcons';
 
 interface ChannelConnectionsPageProps {
   propertyId: number;
@@ -169,10 +170,12 @@ export const ChannelConnectionsPage: React.FC<ChannelConnectionsPageProps> = ({ 
           {connections.map((c) => {
             const badge = STATUS_BADGE[c.status] || STATUS_BADGE.draft;
             const resumable = c.status !== 'active' && c.status !== 'staff_action_required';
+            const ChannelIcon = getOtaIcon(c.channel_code);
             return (
               <div key={c.id} className="flex items-center justify-between gap-3 p-4">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
+                    {ChannelIcon && <ChannelIcon className="w-5 h-5 shrink-0 rounded-md" />}
                     <span className="text-sm font-semibold text-slate-900 dark:text-white truncate">{c.channel_code}</span>
                     <Badge variant={badge.variant}>{badge.label}</Badge>
                   </div>

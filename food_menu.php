@@ -22,6 +22,7 @@
  */
 
 require_once __DIR__ . '/php/config/database.php';
+require_once __DIR__ . '/php/modules/module_manager.php';
 
 // database.php sets Content-Type: application/json (it's shared by every
 // JSON API endpoint) - this page renders HTML, so override before any output.
@@ -34,8 +35,23 @@ $pageTitle = 'Our Menu';
 $restaurantName = $currentProperty['name'] ?? 'Our Restaurant';
 $tagline = 'Authentic flavors crafted with care';
 
+// SECURITY/CORRECTNESS FIX (3 Sep 2026, live report: a property with no
+// on-site kitchen - Kitchen module off in property_modules - still had a
+// real public menu at /food_menu/{slug}/, because this page never checked
+// the module at all, only "does menu_items have rows for this property_id".
+// Every MULTI_KEY parent gets a default menu auto-seeded at creation
+// (createMultiKeyPropertyCore -> the same default-catalog seed every
+// property gets, see multikey_properties.php) regardless of whether Kitchen
+// is ever turned on for it, so those template rows were sitting there,
+// unpublished-but-fully-public, on every such property. Gated the query
+// itself (not just a UI label) behind isModuleEnabledForProperty() so a
+// disabled-Kitchen property renders the exact same "Menu Coming Soon" empty
+// state as a genuinely-empty menu - no separate page state to keep in sync,
+// and nothing property-specific (module_manager.php's own SaaS-wide gate).
+$kitchenEnabled = $propertyId > 0 && isModuleEnabledForProperty($pdo, $propertyId, 'kitchen');
+
 $categories = [];
-if ($propertyId > 0) {
+if ($propertyId > 0 && $kitchenEnabled) {
     try {
         $stmt = $pdo->prepare("
             SELECT m.id, m.name, m.price, m.is_hidden, c.name AS category_name, c.sort_order

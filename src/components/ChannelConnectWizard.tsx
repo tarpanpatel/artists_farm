@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Drawer } from 'flowbite-react';
 import {
   CheckCircle2, ArrowRight, ArrowLeft, Loader2, X, AlertCircle, AlertTriangle,
-  LinkBreak, ExternalLink, ShieldCheck, RefreshCw, ChevronDown,
+  LinkBreak, ExternalLink, RefreshCw, ChevronDown,
 } from './icons/FlowbiteIcons';
 import { Button } from './Button';
 import { Input } from './Input';
@@ -10,6 +10,8 @@ import { ToggleSwitch } from './ToggleSwitch';
 import { apiFetch, API_ROOT_BASE } from '../services/api';
 import { useToast } from './ToastContext';
 import { t } from '../i18n/en';
+import { AirbnbIcon } from './icons/AirbnbIcon';
+import { getOtaIcon } from '../utils/otaIcons';
 import type { ChannexChannelConnection, ChannexLocalRoom } from './ChannelConnectionsPage';
 
 interface AdapterField {
@@ -567,21 +569,27 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
               <div className="space-y-2">
                 {adapters
                   .filter((a) => !existingConnections.some((c) => c.channel_code === a.code && c.status === 'active'))
-                  .map((a) => (
+                  .map((a) => {
+                    const AdapterIcon = getOtaIcon(a.title) || getOtaIcon(a.code);
+                    return (
                     <button
                       key={a.code}
                       onClick={() => handleSelectChannel(a.code)}
                       className="w-full flex items-center justify-between p-3.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-blue-500 hover:bg-blue-50/40 dark:hover:bg-blue-950/20 text-left transition-all cursor-pointer"
                     >
-                      <div>
-                        <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">{a.title}</div>
-                        {a.is_airbnb_oauth && (
-                          <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">1-Click Direct OAuth Authorization</div>
-                        )}
+                      <div className="flex items-center gap-2.5">
+                        {AdapterIcon && <AdapterIcon className="w-6 h-6 shrink-0 rounded-md" />}
+                        <div>
+                          <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">{a.title}</div>
+                          {a.is_airbnb_oauth && (
+                            <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">1-Click Direct OAuth Authorization</div>
+                          )}
+                        </div>
                       </div>
                       <ArrowRight className="w-4 h-4 text-slate-300 shrink-0" />
                     </button>
-                  ))}
+                    );
+                  })}
               </div>
             )}
           </div>
@@ -597,7 +605,7 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
           <div className="space-y-4">
             <div className="p-4 bg-rose-50/60 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800/60 rounded-xl space-y-3">
               <div className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+                <AirbnbIcon className="w-5 h-5 shrink-0" />
                 <h3 className="text-base font-bold text-slate-900 dark:text-white">
                   {t('airbnb_oauth_title', 'Connect Airbnb Account')}
                 </h3>

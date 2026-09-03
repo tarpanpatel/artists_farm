@@ -10,6 +10,7 @@ import { useToast } from './ToastContext';
 import { shareTextContent } from '../utils/shareText';
 import { isCFormGenuinelyFiled } from '../utils/cFormStatus';
 import { getFirstName } from '../utils/nameUtils';
+import { getOtaIcon } from '../utils/otaIcons';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import { t } from '../i18n/en';
 
@@ -491,7 +492,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
         />
         {isMultiKeyProperty && (
           <KpiCard
-            label="Guests In-House"
+            label="Checked-In Guests"
             icon={User}
             badge={{ text: 'Active', color: 'success' }}
             value={inHouseCount}
@@ -837,6 +838,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
 
                         const guest = info.item.guest;
                         const isOtaBooking = !!(guest as any).otaSource;
+                        const OtaIcon = isOtaBooking ? getOtaIcon(guest.otaSourceLabel || guest.otaSource) : null;
                         const isCheckedOut = isCheckedOutStatus(guest.status);
                         const pendingReasons = getGuestPendingReasons(guest);
                         const hasPending = pendingReasons.length > 0;
@@ -892,7 +894,11 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                                     className="flex w-2.5 h-2.5 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/50"
                                   />
                                 )}
-                                {isOtaBooking && <Globe className="w-2.5 h-2.5 shrink-0" />}
+                                {isOtaBooking && (OtaIcon ? (
+                                  <OtaIcon className="w-3 h-3 shrink-0 rounded-[2px]" />
+                                ) : (
+                                  <Globe className="w-2.5 h-2.5 shrink-0" />
+                                ))}
                                 <span className="truncate">
                                   {getFirstName(guest.guestName)}
                                   {isOtaBooking && (guest.otaSourceLabel || guest.otaSource) ? ` (${guest.otaSourceLabel || guest.otaSource})` : ''}
@@ -979,7 +985,6 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           rateRules={rateRules}
           pricingMode={pricingMode}
           defaultTariff={defaultTariff}
-          propertySlug={getPropertySlug() || undefined}
           onRulesUpdated={loadRateRules}
         />
       )}

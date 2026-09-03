@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal } from 'flowbite-react';
 import { Button } from './Button';
 import { RateRule, saveRateRuleDB, deleteRateRuleDB, updatePricingModeDB } from '../services/api';
-import { Trash2, Plus, DollarSign, Share2, Check, X, Loader2 } from './icons/FlowbiteIcons';
+import { Trash2, Plus, DollarSign, X, Loader2 } from './icons/FlowbiteIcons';
 import { useToast } from './ToastContext';
 
 interface RateRuleModalProps {
@@ -13,7 +13,6 @@ interface RateRuleModalProps {
   rateRules: RateRule[];
   pricingMode: 'flat' | 'variable';
   defaultTariff?: number | null;
-  propertySlug?: string;
   onRulesUpdated: () => void;
   initialStartDate?: string;
   initialEndDate?: string;
@@ -27,7 +26,6 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
   rateRules,
   pricingMode,
   defaultTariff,
-  propertySlug,
   onRulesUpdated,
   initialStartDate,
   initialEndDate,
@@ -40,7 +38,6 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
   const [ruleName, setRuleName] = useState<string>('');
   const [selectedRoomIds, setSelectedRoomIds] = useState<number[]>([]);
   const [isSaving, setIsSaving] = useState(false);
-  const [copiedLink, setCopiedLink] = useState(false);
 
   // Restriction state fields
   const [minStay, setMinStay] = useState<string>('');
@@ -158,15 +155,6 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
     } catch {
       showToast('Network error deleting rate rule', { type: 'error' });
     }
-  };
-
-  const handleCopyPublicLink = () => {
-    const slug = propertySlug || '';
-    const url = `${window.location.origin}/availability.php${slug ? `?property_slug=${encodeURIComponent(slug)}` : ''}`;
-    navigator.clipboard.writeText(url);
-    setCopiedLink(true);
-    showToast('Public availability link copied to clipboard!', { type: 'success' });
-    setTimeout(() => setCopiedLink(false), 2500);
   };
 
   const toggleRoomSelection = (roomId: number) => {
@@ -559,24 +547,6 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
               </table>
             </div>
           )}
-        </div>
-
-        {/* Shareable Availability Webpage Footer Bar */}
-        <div className="p-3 bg-blue-50 dark:bg-blue-950/40 rounded-xl border border-blue-200 dark:border-blue-800/60 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Share2 className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
-            <span className="text-xs font-semibold text-blue-900 dark:text-blue-300">
-              Live Public Availability Page (No Login Required)
-            </span>
-          </div>
-          <Button
-            variant="secondary"
-            size="xs"
-            onClick={handleCopyPublicLink}
-            leftIcon={copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Share2 className="w-3.5 h-3.5" />}
-          >
-            {copiedLink ? 'Copied Link' : 'Copy Share Link'}
-          </Button>
         </div>
       </div>
     </Modal>

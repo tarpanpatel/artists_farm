@@ -762,24 +762,34 @@ export const Navigation: React.FC<NavigationProps> = ({
                   is admin-configured URLs from the DB, this is a hardcoded
                   JS action (opens the native share sheet / copies a link),
                   a different kind of item entirely. Room to add more real
-                  quick actions here later without another new section. */}
-              <div className="pb-2 border-b border-gray-200 dark:border-gray-700 space-y-1">
-                <div className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                  {t('quick_actions_label', 'Quick Actions')}
+                  quick actions here later without another new section.
+                  Section heading text removed 3 Sep 2026 (explicit request) -
+                  a single un-labeled action reads fine on its own, same as
+                  Custom Links below only labels itself when it has entries.
+                  Gated on kitchenModuleEnabled 3 Sep 2026 (live bug report:
+                  "Share Menu" showed - and worked - for a property with the
+                  Kitchen module OFF, because this button never checked it at
+                  all, unlike every real Kitchen nav item which already does
+                  via isKitchenModuleNavItem() above. Same fix on the actual
+                  public page itself - see food_menu.php's isModuleEnabledForProperty
+                  gate - this is the "don't even offer the broken action"
+                  half of it. */}
+              {kitchenModuleEnabled && (
+                <div className="pb-2 border-b border-gray-200 dark:border-gray-700 space-y-1">
+                  <ul className="space-y-1">
+                    <li>
+                      <button
+                        type="button"
+                        onClick={handleShareFoodMenu}
+                        className="w-full flex items-center p-2 text-sm font-medium rounded-lg transition duration-75 cursor-pointer text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                      >
+                        <Share2 className="w-5 h-5 shrink-0 text-gray-500 dark:text-gray-400" />
+                        <span className="ms-3 flex-1 text-left truncate">{t('share_food_menu_button', 'Share Menu')}</span>
+                      </button>
+                    </li>
+                  </ul>
                 </div>
-                <ul className="space-y-1">
-                  <li>
-                    <button
-                      type="button"
-                      onClick={handleShareFoodMenu}
-                      className="w-full flex items-center p-2 text-sm font-medium rounded-lg transition duration-75 cursor-pointer text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      <Share2 className="w-5 h-5 shrink-0 text-gray-500 dark:text-gray-400" />
-                      <span className="ms-3 flex-1 text-left truncate">{t('share_food_menu_button', 'Share Menu')}</span>
-                    </button>
-                  </li>
-                </ul>
-              </div>
+              )}
 
               <ul className="space-y-1 font-medium">
                 {/* filteredNavItems.length, not tree.length (2 Sep 2026, user

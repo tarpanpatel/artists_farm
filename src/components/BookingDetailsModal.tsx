@@ -21,6 +21,7 @@ import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from
 import { shareTextContent } from '../utils/shareText';
 import { parseDateToYMD, formatDateDDMMYYYY } from '../utils/dateUtils';
 import { normalizePhoneNumber } from '../utils/phoneUtils';
+import { getOtaIcon } from '../utils/otaIcons';
 import { t } from '../i18n/en';
 import {
   GUEST_STATUS_BOOKED,
@@ -410,6 +411,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   // the unassigned-receiver warning would just be a false alarm on every
   // OTA booking. Same otaSource check already used above to hide Delete.
   const isOtaBooking = Boolean(guest.otaSource || g.ota_source);
+  const OtaBadgeIcon = getOtaIcon(guest.otaSourceLabel || guest.otaSource);
   
   const storedPending = g.pending_amount ?? g.pendingAmount;
   const extrasBaked = typeof storedPending === 'number'
@@ -711,7 +713,11 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                     className="booking-details-modal__ota-badge whitespace-nowrap shrink-0"
                   >
                     <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                      <Globe className="w-3 h-3 shrink-0" />
+                      {OtaBadgeIcon ? (
+                        <OtaBadgeIcon className="w-3.5 h-3.5 shrink-0 rounded-[2px]" />
+                      ) : (
+                        <Globe className="w-3 h-3 shrink-0" />
+                      )}
                       <span>{guest.otaSourceLabel || guest.otaSource}</span>
                     </span>
                   </Badge>
