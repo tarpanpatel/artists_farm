@@ -470,9 +470,6 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
       >
         <div className="h-full px-3 py-4 overflow-y-auto bg-white dark:bg-gray-800 flex flex-col justify-between">
           <div className="space-y-2">
-            <div className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-              Menu
-            </div>
             <ul className="space-y-1 font-medium">
               {navMenuItems.map((item) => {
                 const ItemIcon = item.icon;

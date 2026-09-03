@@ -39,7 +39,8 @@
 // v44 (3 Sep 2026): Complete UI, typography, sidebar and token alignment of TenantDashboard with Property page
 // v45 (3 Sep 2026): Remove Terms & Privacy from TenantDashboard left sidebar
 // v46 (3 Sep 2026): Full layout, header, sidebar, page titles, and card parity of TenantDashboard with Property pages
-const CACHE_NAME = 'farm-pos-v46';
+// v47 (3 Sep 2026): Remove Menu label from TenantDashboard sidebar nav
+const CACHE_NAME = 'farm-pos-v47';
 
 // Hashed asset pattern — Vite content-hashed files (e.g. index-CrXjaekR.js)
 // These must NEVER be cached by the SW; the browser cache handles them natively
