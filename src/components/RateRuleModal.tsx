@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from 'flowbite-react';
 import { Button } from './Button';
-import { RateRule, saveRateRuleDB, deleteRateRuleDB, updatePricingModeDB } from '../services/api';
-import { Trash2, Plus, DollarSign, X, Loader2 } from './icons/FlowbiteIcons';
+import { RateRule, saveRateRuleDB, deleteRateRuleDB, updatePricingModeDB, apiFetch } from '../services/api';
+import { Trash2, Plus, DollarSign, X, Loader2, Pencil } from './icons/FlowbiteIcons';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 
@@ -49,6 +49,11 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
   const [closedToArrival, setClosedToArrival] = useState<boolean>(false);
   const [closedToDeparture, setClosedToDeparture] = useState<boolean>(false);
 
+  // Flat Base Rate inline room tariff editing
+  const [roomTariffs, setRoomTariffs] = useState<Record<number, string>>({});
+  const [editingRoomId, setEditingRoomId] = useState<number | null>(null);
+  const [isSavingTariff, setIsSavingTariff] = useState(false);
+
   useEffect(() => {
     setCurrentPricingMode(pricingMode);
   }, [pricingMode]);
@@ -61,22 +66,6 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
   const handleTogglePricingMode = async (newMode: 'flat' | 'variable') => {
     if (newMode === currentPricingMode) return;
 
-    // Both directions now immediately re-push live availability/rates to
-    // Airbnb/Booking.com (4 Sep 2026 - the toggle used to only affect this
-    // property's own internal calendar display; every saved rate rule
-    // stayed live on OTAs regardless of which mode was selected, which is
-    // exactly the kind of silent drift CLAUDE.md's Channex protocol asks to
-    // gate behind an explicit confirmation). Same reasoning ChannelManager.tsx's
-    // handlePushAri confirm dialog already uses for a manual ARI push.
-    //
-    // Skipped entirely when there are no saved rules at all (5 Sep 2026,
-    // live feedback: switching tabs to just compare them interrupted every
-    // single click with a warning dialog + toast) - with zero rules there is
-    // nothing to suspend or activate, so the switch is genuinely a no-op
-    // everywhere and the warning would be pure noise. updatePricingMode()'s
-    // own outbox re-push already no-ops the same way (its date-range query
-    // over room_rate_rules comes back empty), so this mirrors the real
-    // backend effect instead of just hiding the dialog cosmetically.
     if (rateRules.length > 0) {
       const confirmed = await confirm({
         title: newMode === 'flat' ? 'Switch to Flat Base Rate?' : 'Switch to Dynamic Rules?',
@@ -100,6 +89,29 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
       }
     } catch {
       showToast('Network error updating pricing mode', { type: 'error' });
+    }
+  };
+
+  const handleSaveRoomTariff = async (roomId: number, tariffStr: string) => {
+    setIsSavingTariff(true);
+    try {
+      const res = await apiFetch('/php/api/router.php?action=update_room_tariff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ room_id: roomId, default_tariff: tariffStr }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setEditingRoomId(null);
+        showToast('Room base tariff updated successfully.', { type: 'success' });
+        onRulesUpdated();
+      } else {
+        showToast(data.message || 'Failed to update base tariff', { type: 'error' });
+      }
+    } catch {
+      showToast('Network error updating base tariff', { type: 'error' });
+    } finally {
+      setIsSavingTariff(false);
     }
   };
 
@@ -231,27 +243,27 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
 
       <div className="p-6 overflow-y-auto max-h-[82vh] space-y-6">
         {/* Pricing Mode Toggle Card */}
-        <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="bg-gray-50 dark:bg-gray-800/80 p-4 rounded-xl border border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+            <h4 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
               <DollarSign className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               Active Pricing Mode
             </h4>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
               {currentPricingMode === 'variable'
                 ? 'Dynamic rules override standard base rates for matching date ranges.'
                 : `Using flat base rate (₹${defaultTariff ? Math.round(defaultTariff) : '0'}/night) for all dates.`}
             </p>
           </div>
 
-          <div className="flex items-center gap-1 bg-white dark:bg-slate-900 p-1 rounded-lg border border-slate-200 dark:border-slate-700 shrink-0">
+          <div className="flex items-center gap-1 bg-white dark:bg-gray-900 p-1 rounded-lg border border-gray-200 dark:border-gray-700 shrink-0">
             <button
               type="button"
               onClick={() => handleTogglePricingMode('flat')}
               className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
                 currentPricingMode === 'flat'
                   ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
               Flat Base Rate
@@ -262,7 +274,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
               className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
                 currentPricingMode === 'variable'
                   ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
               Dynamic Rules
@@ -270,316 +282,477 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
           </div>
         </div>
 
-        {/* Create / Bulk-Apply Rate & Restriction Rule Form */}
-        <form onSubmit={handleSaveRule} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-4">
-          <div className="flex items-center justify-between">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
-              <Plus className="w-3.5 h-3.5 text-blue-600" />
-              Set Date-Range Rates & Restrictions
-            </h4>
-            <span className="text-2xs text-slate-400">OTA & Direct channel synced</span>
-          </div>
-
-          {/* Date range row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-2xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Start Date *
-              </label>
-              <input
-                type="date"
-                required
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full h-10 px-3 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-2xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                End Date (Inclusive) *
-              </label>
-              <input
-                type="date"
-                required
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-full h-10 px-3 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
-              />
-            </div>
-          </div>
-
-          {/* Nightly Rate & Label */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-2xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Nightly Rate (₹) <span className="font-normal text-slate-400">(Optional if restrictions set)</span>
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="1"
-                placeholder="e.g. 4500 (or leave empty for base rate)"
-                value={ratePerNight}
-                onChange={(e) => setRatePerNight(e.target.value)}
-                className="w-full h-10 px-3 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white font-semibold"
-              />
-            </div>
-            <div>
-              <label className="block text-2xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Rule Label (Optional)
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. Weekend Peak, Diwali 3N Min, Stop Sell"
-                value={ruleName}
-                onChange={(e) => setRuleName(e.target.value)}
-                className="w-full h-10 px-3 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
-              />
-            </div>
-          </div>
-
-          {/* Minimum & Maximum Stay Restrictions */}
-          <div className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700 space-y-3">
-            <span className="text-2xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 block">
-              Stay Duration Restrictions
-            </span>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* ═══════════ 1. FLAT BASE RATE VIEW ═══════════ */}
+        {currentPricingMode === 'flat' && (
+          <div className="space-y-5">
+            {/* Mode Info Banner */}
+            <div className="p-4 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50/60 dark:bg-blue-950/30 flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 mt-0.5">
+                <DollarSign className="w-4 h-4" />
+              </div>
               <div>
-                <label className="block text-2xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Min Stay Nights
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  placeholder="e.g. 2, 3, 5"
-                  value={minStay}
-                  onChange={(e) => setMinStay(e.target.value)}
-                  className="w-full h-9 px-2.5 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-2xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Min Stay Type
-                </label>
-                <select
-                  value={minStayType}
-                  onChange={(e) => setMinStayType(e.target.value as 'arrival' | 'through')}
-                  className="w-full h-9 px-2 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
-                >
-                  <option value="arrival">Arrival Day Only (Standard)</option>
-                  <option value="through">Through (Any stay spanning date)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-2xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Max Stay Nights (Optional)
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  placeholder="e.g. 14, 30"
-                  value={maxStay}
-                  onChange={(e) => setMaxStay(e.target.value)}
-                  className="w-full h-9 px-2.5 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
-                />
+                <h5 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+                  Standard Flat Pricing Active
+                </h5>
+                <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 leading-relaxed">
+                  Your property operates on standard flat base rates across all calendar dates. Every booking, your public direct booking link, and connected OTA channels (Airbnb, Booking.com) use the default room tariffs below without seasonal surges or date-range overrides.
+                </p>
               </div>
             </div>
-          </div>
 
-          {/* Availability & Check-in/out Block Controls (Stop Sell / CTA / CTD) */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
-            <label className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-colors ${
-              stopSell
-                ? 'bg-red-50 dark:bg-red-950/60 border-red-300 dark:border-red-800 text-red-900 dark:text-red-300'
-                : 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
-            }`}>
-              <input
-                type="checkbox"
-                checked={stopSell}
-                onChange={(e) => setStopSell(e.target.checked)}
-                className="rounded border-slate-300 text-red-600 focus:ring-red-500"
-              />
-              <span className="text-xs font-semibold">Stop Sell (Close Dates)</span>
-            </label>
-
-            <label className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-colors ${
-              closedToArrival
-                ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-300'
-                : 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
-            }`}>
-              <input
-                type="checkbox"
-                checked={closedToArrival}
-                onChange={(e) => setClosedToArrival(e.target.checked)}
-                className="rounded border-slate-300 text-amber-600 focus:ring-amber-500"
-              />
-              <span className="text-xs font-semibold">Closed to Arrival (CTA)</span>
-            </label>
-
-            <label className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-colors ${
-              closedToDeparture
-                ? 'bg-purple-50 dark:bg-purple-950/60 border-purple-300 dark:border-purple-800 text-purple-900 dark:text-purple-300'
-                : 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
-            }`}>
-              <input
-                type="checkbox"
-                checked={closedToDeparture}
-                onChange={(e) => setClosedToDeparture(e.target.checked)}
-                className="rounded border-slate-300 text-purple-600 focus:ring-purple-500"
-              />
-              <span className="text-xs font-semibold">Closed to Departure (CTD)</span>
-            </label>
-          </div>
-
-          {/* Multi-Room Bulk Checkboxes (if multiple rooms available) */}
-          {rooms.length > 1 && (
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-700">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-2xs font-semibold text-slate-700 dark:text-slate-300">
-                  Apply To Specific Rooms (leave unselected for property-wide rule):
-                </span>
-                <button
-                  type="button"
-                  onClick={toggleAllRooms}
-                  className="text-2xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 cursor-pointer"
-                >
-                  {selectedRoomIds.length === rooms.length ? 'Clear All' : 'Select All Rooms'}
-                </button>
+            {/* Room / Unit Base Tariffs Management */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                    Default Base Tariffs ({rooms.length > 0 ? `${rooms.length} Rooms` : 'Standard Rate'})
+                  </h4>
+                  <p className="text-2xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    Configure the constant nightly tariff charged per room across all standard dates.
+                  </p>
+                </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {rooms.map((room) => {
-                  const isChecked = selectedRoomIds.includes(room.id);
-                  return (
-                    <label
-                      key={room.id}
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer border transition-colors ${
-                        isChecked
-                          ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 font-semibold'
-                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => toggleRoomSelection(room.id)}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      <span>{room.name}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-          )}
 
-          <div className="flex justify-end pt-2">
-            <Button
-              type="submit"
-              variant="primary"
-              size="sm"
-              disabled={isSaving}
-              leftIcon={isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-            >
-              Save Rate & Restrictions Rule
-            </Button>
-          </div>
-        </form>
+              {rooms.length > 0 ? (
+                <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                  {rooms.map((room) => {
+                    const isEditing = editingRoomId === room.id;
+                    const currentVal = roomTariffs[room.id] !== undefined ? roomTariffs[room.id] : (room.default_tariff != null ? String(room.default_tariff) : '');
 
-        {/* Existing Rate Rules Table */}
-        <div className="space-y-2">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-            Active Date-Range Rules ({rateRules.length})
-          </h4>
+                    return (
+                      <div key={room.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 first:pt-0 last:pb-0">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 text-xs font-bold shrink-0">
+                            {room.name.slice(0, 2).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{room.name}</p>
+                            <p className="text-2xs text-gray-500 dark:text-gray-400">
+                              Base Tariff: <span className="font-semibold text-emerald-600 dark:text-emerald-400">{room.default_tariff != null ? `₹${Math.round(room.default_tariff)}/night` : 'Not set'}</span>
+                            </p>
+                          </div>
+                        </div>
 
-          {rateRules.length === 0 ? (
-            <div className="text-center py-6 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700 text-xs text-slate-400">
-              No custom rate rules set. All dates use standard base tariffs and restrictions.
-            </div>
-          ) : (
-            <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
-              <table className="w-full text-xs text-left">
-                <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase text-2xs border-b border-slate-200 dark:border-slate-700">
-                  <tr>
-                    <th className="px-3 py-2.5">Date Range</th>
-                    <th className="px-3 py-2.5">Scope / Room</th>
-                    <th className="px-3 py-2.5">Label</th>
-                    <th className="px-3 py-2.5">Nightly Rate</th>
-                    <th className="px-3 py-2.5">Restrictions</th>
-                    <th className="px-3 py-2.5 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-800">
-                  {rateRules.map((rule) => (
-                    <tr key={rule.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/50">
-                      <td className="px-3 py-2 font-semibold text-slate-900 dark:text-white whitespace-nowrap">
-                        {rule.start_date} <span className="font-normal text-slate-400">→</span> {rule.end_date}
-                      </td>
-                      <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
-                        {rule.room_name || 'All Rooms / Property'}
-                      </td>
-                      <td className="px-3 py-2 text-slate-500 dark:text-slate-400">
-                        {rule.rule_name || '-'}
-                      </td>
-                      <td className="px-3 py-2 font-bold text-emerald-700 dark:text-emerald-400">
-                        {rule.rate_per_night != null ? `₹${Math.round(rule.rate_per_night)}` : <span className="text-slate-400 font-normal">Base Rate</span>}
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="flex flex-wrap gap-1">
-                          {!!rule.stop_sell && (
-                            <span className="px-1.5 py-0.5 text-2xs font-bold rounded-md bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 border border-red-300 dark:border-red-800">
-                              Stop Sell
-                            </span>
-                          )}
-                          {rule.min_stay_arrival != null && (
-                            <span className="px-1.5 py-0.5 text-2xs font-semibold rounded-md bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
-                              Min {rule.min_stay_arrival}N (Arr)
-                            </span>
-                          )}
-                          {rule.min_stay_through != null && (
-                            <span className="px-1.5 py-0.5 text-2xs font-semibold rounded-md bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
-                              Min {rule.min_stay_through}N (Thr)
-                            </span>
-                          )}
-                          {rule.max_stay != null && (
-                            <span className="px-1.5 py-0.5 text-2xs font-semibold rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
-                              Max {rule.max_stay}N
-                            </span>
-                          )}
-                          {!!rule.closed_to_arrival && (
-                            <span className="px-1.5 py-0.5 text-2xs font-semibold rounded-md bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-800">
-                              CTA
-                            </span>
-                          )}
-                          {!!rule.closed_to_departure && (
-                            <span className="px-1.5 py-0.5 text-2xs font-semibold rounded-md bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-800">
-                              CTD
-                            </span>
-                          )}
-                          {!rule.stop_sell && rule.min_stay_arrival == null && rule.min_stay_through == null && rule.max_stay == null && !rule.closed_to_arrival && !rule.closed_to_departure && (
-                            <span className="text-slate-400 text-2xs italic">None</span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {isEditing ? (
+                            <div className="flex items-center gap-2">
+                              <div className="relative">
+                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">₹</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="1"
+                                  placeholder="Rate / night"
+                                  value={currentVal}
+                                  onChange={(e) => setRoomTariffs({ ...roomTariffs, [room.id]: e.target.value })}
+                                  className="w-28 h-8 pl-6 pr-2 text-xs bg-white dark:bg-gray-900 border border-blue-400 dark:border-blue-500 rounded-lg text-gray-900 dark:text-white font-semibold"
+                                  autoFocus
+                                />
+                              </div>
+                              <Button
+                                variant="primary"
+                                size="xs"
+                                disabled={isSavingTariff}
+                                onClick={() => handleSaveRoomTariff(room.id, currentVal)}
+                              >
+                                {isSavingTariff ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Save'}
+                              </Button>
+                              <Button
+                                variant="secondary"
+                                size="xs"
+                                disabled={isSavingTariff}
+                                onClick={() => setEditingRoomId(null)}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button
+                              variant="edit"
+                              size="xs"
+                              onClick={() => {
+                                setEditingRoomId(room.id);
+                                setRoomTariffs({ ...roomTariffs, [room.id]: room.default_tariff != null ? String(room.default_tariff) : '' });
+                              }}
+                              leftIcon={<Pencil className="w-3 h-3 text-blue-600 dark:text-blue-400" />}
+                            >
+                              Edit Rate
+                            </Button>
                           )}
                         </div>
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        <Button
-                          variant="danger"
-                          size="xs"
-                          onClick={() => handleDeleteRule(rule.id)}
-                          leftIcon={<Trash2 className="w-3.5 h-3.5" />}
-                        >
-                          Delete
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-700">
+                  <div>
+                    <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">Property Base Tariff</p>
+                    <p className="text-2xs text-gray-500 dark:text-gray-400">Applies to all direct bookings and connected channels</p>
+                  </div>
+                  <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                    {defaultTariff ? `₹${Math.round(defaultTariff)}/night` : 'Not set'}
+                  </span>
+                </div>
+              )}
             </div>
-          )}
-        </div>
+
+            {/* Saved Standby Dynamic Rules Card (if any exist in database) */}
+            {rateRules.length > 0 && (
+              <div className="bg-amber-50/70 dark:bg-amber-950/30 rounded-xl border border-amber-200 dark:border-amber-800 p-4 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                  <div>
+                    <h5 className="text-xs font-bold text-amber-900 dark:text-amber-200 uppercase tracking-wider">
+                      {rateRules.length} Custom Dynamic Rule{rateRules.length === 1 ? '' : 's'} on Standby
+                    </h5>
+                    <p className="text-xs text-amber-800/90 dark:text-amber-300 mt-0.5">
+                      You have {rateRules.length} date-range pricing rule{rateRules.length === 1 ? '' : 's'} saved in your database (e.g. weekend peaks, minimum stays). They are currently suspended while Flat Base Rate is active.
+                    </p>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    size="xs"
+                    onClick={() => handleTogglePricingMode('variable')}
+                    className="shrink-0 bg-white dark:bg-gray-800 hover:bg-amber-100 dark:hover:bg-amber-900/60"
+                  >
+                    Activate Dynamic Rules
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ═══════════ 2. DYNAMIC RULES VIEW ═══════════ */}
+        {currentPricingMode === 'variable' && (
+          <div className="space-y-6">
+            {/* Dynamic Notice Banner */}
+            <div className="p-4 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-950/30 flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                <DollarSign className="w-4 h-4" />
+              </div>
+              <div>
+                <h5 className="text-xs font-bold text-emerald-900 dark:text-emerald-200 uppercase tracking-wider">
+                  Dynamic Date-Range Pricing Active
+                </h5>
+                <p className="text-xs text-emerald-800/90 dark:text-emerald-300 mt-1 leading-relaxed">
+                  Custom date-range rules override standard base rates for matching dates on your direct calendar and connected OTAs (Airbnb, Booking.com). Dates without rules automatically use your standard base rates.
+                </p>
+              </div>
+            </div>
+
+            {/* Create / Bulk-Apply Rate & Restriction Rule Form */}
+            <form onSubmit={handleSaveRule} className="bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                  <Plus className="w-3.5 h-3.5 text-blue-600" />
+                  Set Date-Range Rates & Restrictions
+                </h4>
+                <span className="text-2xs text-gray-400">OTA & Direct channel synced</span>
+              </div>
+
+              {/* Date range row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                    Start Date *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full h-10 px-3 text-xs bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                    End Date (Inclusive) *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full h-10 px-3 text-xs bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              {/* Nightly Rate & Label */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                    Nightly Rate (₹) <span className="font-normal text-gray-400">(Optional if restrictions set)</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="e.g. 4500 (or leave empty for base rate)"
+                    value={ratePerNight}
+                    onChange={(e) => setRatePerNight(e.target.value)}
+                    className="w-full h-10 px-3 text-xs bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                    Rule Label (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Weekend Peak, Diwali 3N Min, Stop Sell"
+                    value={ruleName}
+                    onChange={(e) => setRuleName(e.target.value)}
+                    className="w-full h-10 px-3 text-xs bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              {/* Minimum & Maximum Stay Restrictions */}
+              <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3">
+                <span className="text-2xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400 block">
+                  Stay Duration Restrictions
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                      Min Stay Nights
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      placeholder="e.g. 2, 3, 5"
+                      value={minStay}
+                      onChange={(e) => setMinStay(e.target.value)}
+                      className="w-full h-9 px-2.5 text-xs bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                      Min Stay Type
+                    </label>
+                    <select
+                      value={minStayType}
+                      onChange={(e) => setMinStayType(e.target.value as 'arrival' | 'through')}
+                      className="w-full h-9 px-2 text-xs bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                    >
+                      <option value="arrival">Arrival Day Only (Standard)</option>
+                      <option value="through">Through (Any stay spanning date)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                      Max Stay Nights (Optional)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      placeholder="e.g. 14, 30"
+                      value={maxStay}
+                      onChange={(e) => setMaxStay(e.target.value)}
+                      className="w-full h-9 px-2.5 text-xs bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Availability & Check-in/out Block Controls (Stop Sell / CTA / CTD) */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                <label className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-colors ${
+                  stopSell
+                    ? 'bg-red-50 dark:bg-red-950/60 border-red-300 dark:border-red-800 text-red-900 dark:text-red-300'
+                    : 'bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={stopSell}
+                    onChange={(e) => setStopSell(e.target.checked)}
+                    className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                  />
+                  <span className="text-xs font-semibold">Stop Sell (Close Dates)</span>
+                </label>
+
+                <label className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-colors ${
+                  closedToArrival
+                    ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-300'
+                    : 'bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={closedToArrival}
+                    onChange={(e) => setClosedToArrival(e.target.checked)}
+                    className="rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                  />
+                  <span className="text-xs font-semibold">Closed to Arrival (CTA)</span>
+                </label>
+
+                <label className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-colors ${
+                  closedToDeparture
+                    ? 'bg-purple-50 dark:bg-purple-950/60 border-purple-300 dark:border-purple-800 text-purple-900 dark:text-purple-300'
+                    : 'bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={closedToDeparture}
+                    onChange={(e) => setClosedToDeparture(e.target.checked)}
+                    className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                  />
+                  <span className="text-xs font-semibold">Closed to Departure (CTD)</span>
+                </label>
+              </div>
+
+              {/* Multi-Room Bulk Checkboxes (if multiple rooms available) */}
+              {rooms.length > 1 && (
+                <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-2xs font-semibold text-gray-700 dark:text-gray-300">
+                      Apply To Specific Rooms (leave unselected for property-wide rule):
+                    </span>
+                    <button
+                      type="button"
+                      onClick={toggleAllRooms}
+                      className="text-2xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 cursor-pointer"
+                    >
+                      {selectedRoomIds.length === rooms.length ? 'Clear All' : 'Select All Rooms'}
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {rooms.map((room) => {
+                      const isChecked = selectedRoomIds.includes(room.id);
+                      return (
+                        <label
+                          key={room.id}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer border transition-colors ${
+                            isChecked
+                              ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 font-semibold'
+                              : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => toggleRoomSelection(room.id)}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span>{room.name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-2">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  disabled={isSaving}
+                  leftIcon={isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                >
+                  Save Rate & Restrictions Rule
+                </Button>
+              </div>
+            </form>
+
+            {/* Existing Rate Rules Table */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                Active Date-Range Rules ({rateRules.length})
+              </h4>
+
+              {rateRules.length === 0 ? (
+                <div className="text-center py-6 bg-gray-50 dark:bg-gray-800/40 rounded-xl border border-gray-200 dark:border-gray-700 text-xs text-gray-400">
+                  No custom rate rules set. All dates use standard base tariffs and restrictions.
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 font-semibold uppercase text-2xs border-b border-gray-200 dark:border-gray-700">
+                      <tr>
+                        <th className="px-3 py-2.5">Date Range</th>
+                        <th className="px-3 py-2.5">Scope / Room</th>
+                        <th className="px-3 py-2.5">Label</th>
+                        <th className="px-3 py-2.5">Nightly Rate</th>
+                        <th className="px-3 py-2.5">Restrictions</th>
+                        <th className="px-3 py-2.5 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-800">
+                      {rateRules.map((rule) => (
+                        <tr key={rule.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/50">
+                          <td className="px-3 py-2 font-semibold text-gray-900 dark:text-white whitespace-nowrap">
+                            {rule.start_date} <span className="font-normal text-gray-400">→</span> {rule.end_date}
+                          </td>
+                          <td className="px-3 py-2 text-gray-600 dark:text-gray-300">
+                            {rule.room_name || 'All Rooms / Property'}
+                          </td>
+                          <td className="px-3 py-2 text-gray-500 dark:text-gray-400">
+                            {rule.rule_name || '-'}
+                          </td>
+                          <td className="px-3 py-2 font-bold text-emerald-700 dark:text-emerald-400">
+                            {rule.rate_per_night != null ? `₹${Math.round(rule.rate_per_night)}` : <span className="text-gray-400 font-normal">Base Rate</span>}
+                          </td>
+                          <td className="px-3 py-2">
+                            <div className="flex flex-wrap gap-1">
+                              {!!rule.stop_sell && (
+                                <span className="px-1.5 py-0.5 text-2xs font-bold rounded-md bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 border border-red-300 dark:border-red-800">
+                                  Stop Sell
+                                </span>
+                              )}
+                              {rule.min_stay_arrival != null && (
+                                <span className="px-1.5 py-0.5 text-2xs font-semibold rounded-md bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                                  Min {rule.min_stay_arrival}N (Arr)
+                                </span>
+                              )}
+                              {rule.min_stay_through != null && (
+                                <span className="px-1.5 py-0.5 text-2xs font-semibold rounded-md bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                                  Min {rule.min_stay_through}N (Thr)
+                                </span>
+                              )}
+                              {rule.max_stay != null && (
+                                <span className="px-1.5 py-0.5 text-2xs font-semibold rounded-md bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700">
+                                  Max {rule.max_stay}N
+                                </span>
+                              )}
+                              {!!rule.closed_to_arrival && (
+                                <span className="px-1.5 py-0.5 text-2xs font-semibold rounded-md bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-800">
+                                  CTA
+                                </span>
+                              )}
+                              {!!rule.closed_to_departure && (
+                                <span className="px-1.5 py-0.5 text-2xs font-semibold rounded-md bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-800">
+                                  CTD
+                                </span>
+                              )}
+                              {!rule.stop_sell && rule.min_stay_arrival == null && rule.min_stay_through == null && rule.max_stay == null && !rule.closed_to_arrival && !rule.closed_to_departure && (
+                                <span className="text-gray-400 text-2xs italic">None</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            <Button
+                              variant="danger"
+                              size="xs"
+                              onClick={() => handleDeleteRule(rule.id)}
+                              leftIcon={<Trash2 className="w-3.5 h-3.5" />}
+                            >
+                              Delete
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </Modal>
   );
