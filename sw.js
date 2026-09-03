@@ -33,7 +33,8 @@
 // v38 (3 Sep 2026): Site-wide Flowbite Toast compliance audit & ad-hoc toast elimination
 // v39 (3 Sep 2026): Pull property check-in/out times on OTA import and fix stay night conflict validator
 // v40 (3 Sep 2026): Smart phone number normalization, one-tap WhatsApp integration, and copy-paste sanitization
-const CACHE_NAME = 'farm-pos-v40';
+// v41 (3 Sep 2026): Fix mobile horizontal overflow and make calendar action toolbar wrap responsively
+const CACHE_NAME = 'farm-pos-v41';
 
 // Hashed asset pattern — Vite content-hashed files (e.g. index-CrXjaekR.js)
 // These must NEVER be cached by the SW; the browser cache handles them natively
