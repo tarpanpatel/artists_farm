@@ -4775,11 +4775,20 @@ switch ($action) {
                 if (function_exists('enqueueOutboxItem') && class_exists('AriDrainWorker')) {
                     $dFrom = date('Y-m-d');
                     $dTo = date('Y-m-d', strtotime('+500 days'));
-                    enqueueOutboxItem($pdo, $targetPropertyId, null, 'availability', $dFrom, $dTo, ['action' => 'pre_activate_channel_push']);
-                    $preActivateAvailId = (int)$pdo->lastInsertId();
-                    enqueueOutboxItem($pdo, $targetPropertyId, null, 'rates', $dFrom, $dTo, ['action' => 'pre_activate_channel_push']);
-                    $preActivateRatesId = (int)$pdo->lastInsertId();
-                    (new AriDrainWorker($pdo))->processBatch(10, [$preActivateAvailId, $preActivateRatesId]);
+                    // MULTI_KEY properties have no room_id=NULL channex_mappings row
+                    // (mapped per child room) - push each room individually, or
+                    // [null] for a single-unit property, same as before.
+                    $pushRoomIds = function_exists('getChannexPushRoomIds')
+                        ? getChannexPushRoomIds($pdo, $targetPropertyId)
+                        : [null];
+                    $preActivateIds = [];
+                    foreach ($pushRoomIds as $pushRoomId) {
+                        enqueueOutboxItem($pdo, $targetPropertyId, $pushRoomId, 'availability', $dFrom, $dTo, ['action' => 'pre_activate_channel_push']);
+                        $preActivateIds[] = (int)$pdo->lastInsertId();
+                        enqueueOutboxItem($pdo, $targetPropertyId, $pushRoomId, 'rates', $dFrom, $dTo, ['action' => 'pre_activate_channel_push']);
+                        $preActivateIds[] = (int)$pdo->lastInsertId();
+                    }
+                    (new AriDrainWorker($pdo))->processBatch(max(10, count($preActivateIds)), $preActivateIds);
                 }
 
                 $res = $channelClient->activateChannel($conn['channex_channel_id']);
@@ -4946,30 +4955,43 @@ switch ($action) {
         $targetPropertyId = !empty($input['property_id']) ? (int)$input['property_id'] : ($propertyId ?: 1);
         $dateFrom = trim((string)($input['date_from'] ?? date('Y-m-d')));
         $dateTo = trim((string)($input['date_to'] ?? date('Y-m-d', strtotime('+500 days'))));
-        $roomId = !empty($input['room_id']) ? (int)$input['room_id'] : null;
+        $explicitRoomId = !empty($input['room_id']) ? (int)$input['room_id'] : null;
 
-        // Enqueue EXACTLY one availability and EXACTLY one rates row spanning the range
-        enqueueOutboxItem($pdo, $targetPropertyId, $roomId, 'availability', $dateFrom, $dateTo, [
-            'action' => 'manual_push_ari',
-            'date_from' => $dateFrom,
-            'date_to' => $dateTo,
-        ]);
-        $availOutboxId = (int)$pdo->lastInsertId();
+        // A caller that names a specific room (or a single-unit property)
+        // pushes just that one, same as before. Otherwise - a "push for the
+        // whole property" call with no room_id - a MULTI_KEY property has no
+        // room_id=NULL channex_mappings row to target (mapped per child
+        // room), so push each real room individually instead of silently
+        // no-oping for all of them (see getChannexPushRoomIds()'s comment).
+        $pushRoomIds = $explicitRoomId !== null
+            ? [$explicitRoomId]
+            : (function_exists('getChannexPushRoomIds') ? getChannexPushRoomIds($pdo, $targetPropertyId) : [null]);
 
-        enqueueOutboxItem($pdo, $targetPropertyId, $roomId, 'rates', $dateFrom, $dateTo, [
-            'action' => 'manual_push_ari',
-            'date_from' => $dateFrom,
-            'date_to' => $dateTo,
-        ]);
-        $ratesOutboxId = (int)$pdo->lastInsertId();
+        $enqueuedIds = [];
+        foreach ($pushRoomIds as $pushRoomId) {
+            enqueueOutboxItem($pdo, $targetPropertyId, $pushRoomId, 'availability', $dateFrom, $dateTo, [
+                'action' => 'manual_push_ari',
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+            ]);
+            $enqueuedIds[] = (int)$pdo->lastInsertId();
 
-        // Drain outbox immediately scoped strictly to the two enqueued rows (Scenario 1 guarantee)
+            enqueueOutboxItem($pdo, $targetPropertyId, $pushRoomId, 'rates', $dateFrom, $dateTo, [
+                'action' => 'manual_push_ari',
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+            ]);
+            $enqueuedIds[] = (int)$pdo->lastInsertId();
+        }
+
+        // Drain outbox immediately, scoped strictly to the rows just enqueued
         $worker = new AriDrainWorker($pdo);
-        $drainRes = $worker->processBatch(10, [$availOutboxId, $ratesOutboxId]);
+        $drainRes = $worker->processBatch(max(10, count($enqueuedIds)), $enqueuedIds);
 
         // Collect task IDs for the rows we just enqueued
-        $tasksStmt = $pdo->prepare("SELECT id, kind, status, task_id, last_error FROM channex_outbox WHERE id IN (?, ?)");
-        $tasksStmt->execute([$availOutboxId, $ratesOutboxId]);
+        $idPlaceholders = implode(',', array_fill(0, count($enqueuedIds), '?'));
+        $tasksStmt = $pdo->prepare("SELECT id, kind, status, task_id, last_error FROM channex_outbox WHERE id IN ($idPlaceholders)");
+        $tasksStmt->execute($enqueuedIds);
         $taskRows = $tasksStmt->fetchAll(PDO::FETCH_ASSOC);
 
         echo json_encode([

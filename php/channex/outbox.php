@@ -119,6 +119,39 @@ function enqueueOutboxItem(
     }
 }
 
+if (!function_exists('getChannexPushRoomIds')) {
+    /**
+     * Which room_id(s) a "whole property" ARI push actually needs to target.
+     *
+     * channex_mappings is per-room for a MULTI_KEY property (see
+     * ChannexContentSyncer::syncProperty()) - there is no room_id IS NULL row
+     * at all once a property has real MULTI_KEY_ROOM children.
+     * ChannexAdapter::getMapping(propertyId, null) then finds nothing, and
+     * pushAvailability()/pushRestrictions() return success:false silently -
+     * AriDrainWorker::processBatch() just marks the outbox row failed and
+     * moves on, so a caller that doesn't check the result (like
+     * channex_channel_activate's pre-activation push) sees no error at all
+     * while NONE of the property's real rooms ever actually get pushed.
+     *
+     * Found live 3 Sep 2026: Patel Colony (7 rooms) went live on Airbnb via
+     * this exact path, and its Airbnb calendar showed most dates BLOCKED
+     * afterward - not because anything pushed "closed", but because nothing
+     * was ever pushed at all, so every room sat at Airbnb's own default
+     * (closed until explicitly told otherwise) instead of getting the
+     * intended "these dates are open" push.
+     *
+     * Returns the child MULTI_KEY_ROOM ids to push individually when the
+     * property has any, otherwise [null] (the existing single-unit
+     * behaviour, unchanged).
+     */
+    function getChannexPushRoomIds(PDO $pdo, int $propertyId): array {
+        $stmt = $pdo->prepare("SELECT id FROM properties WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM' AND is_deleted = 0");
+        $stmt->execute([$propertyId]);
+        $childIds = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+        return !empty($childIds) ? $childIds : [null];
+    }
+}
+
 if (!function_exists('computeChannexFieldDiff')) {
     /**
      * Diffs a rate-rule's old vs new field values and returns the field
