@@ -962,6 +962,26 @@ function updateRoomTariff($pdo, $propertyId = 0, $currentProperty = []) {
         $stmt = $pdo->prepare("UPDATE properties SET default_tariff = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
         $stmt->execute([$new_tariff, $room_id]);
 
+        // Channel Manager Outbox: Push the updated base rate to Channex & OTAs
+        if (is_file(__DIR__ . '/../channex/outbox.php')) {
+            require_once __DIR__ . '/../channex/outbox.php';
+            if (function_exists('enqueueOutboxItem')) {
+                $today = date('Y-m-d');
+                $future = date('Y-m-d', strtotime('+500 days'));
+                $targetPropId = !empty($currentProperty['id']) ? (int)$currentProperty['id'] : (int)$propertyId;
+                $payload = [
+                    'action' => 'update_room_tariff',
+                    'default_tariff' => $new_tariff,
+                    'rate_per_night' => $new_tariff,
+                    'changed_fields' => ['rate_per_night'],
+                ];
+                enqueueOutboxItem($pdo, $targetPropId, (int)$room_id, 'rates', $today, $future, $payload);
+            }
+            if (function_exists('triggerEventDrivenChannexDrain')) {
+                triggerEventDrivenChannexDrain($pdo);
+            }
+        }
+
         echo json_encode([
             'success' => true,
             'message' => 'Room tariff updated successfully',
