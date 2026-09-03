@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plug, Loader2, RefreshCw, Plus, Trash2 } from './icons/FlowbiteIcons';
+import { Plug, Loader2, RefreshCw, Plus, Trash2, Send } from './icons/FlowbiteIcons';
 import { apiFetch, API_ROOT_BASE } from '../services/api';
 import { PageHeader } from './PageHeader';
 import { Button } from './Button';
@@ -49,6 +49,7 @@ export const ChannelConnectionsPage: React.FC<ChannelConnectionsPageProps> = ({ 
   const [localRooms, setLocalRooms] = useState<ChannexLocalRoom[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [isSyncingAri, setIsSyncingAri] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [resumeChannelCode, setResumeChannelCode] = useState<string | null>(null);
   const [removingCode, setRemovingCode] = useState<string | null>(null);
@@ -80,6 +81,42 @@ export const ChannelConnectionsPage: React.FC<ChannelConnectionsPageProps> = ({ 
     if (propertyId) fetchConnections();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [propertyId]);
+
+  const handleSyncAllAri = async () => {
+    const confirmed = await confirm({
+      title: 'Sync All Rates & Availability to OTAs?',
+      message: 'This immediately transmits your current PMS room base rates and availability for the next 500 days to Airbnb, Booking.com, and Channex.',
+      confirmText: 'Sync Now',
+      variant: 'warning',
+    });
+    if (!confirmed) return;
+
+    setIsSyncingAri(true);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const future = new Date();
+      future.setDate(future.getDate() + 500);
+      const dateTo = future.toISOString().split('T')[0];
+
+      const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=channex_push_ari`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date_from: today, date_to: dateTo }),
+      });
+      const json = await res.json();
+      if (json && json.status === 'success') {
+        showToast('Rates & availability successfully pushed to Airbnb & connected channels!', { type: 'success' });
+        onLogAudit?.('Manual ARI full sync pushed to connected channels', { module: 'ChannelConnectionsPage', status: 'SUCCESS' });
+        fetchConnections(true);
+      } else {
+        showToast(json?.message || 'Failed to sync with channels', { type: 'error' });
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Failed to sync with channels', { type: 'error' });
+    } finally {
+      setIsSyncingAri(false);
+    }
+  };
 
   const handleOpenWizard = (resumeCode?: string) => {
     setResumeChannelCode(resumeCode || null);
@@ -142,6 +179,22 @@ export const ChannelConnectionsPage: React.FC<ChannelConnectionsPageProps> = ({ 
         subtitle={t('connect_channels_subheading', 'Connect your Airbnb, Booking.com, and other OTA listings directly to this property.')}
       >
         <div className="flex flex-wrap items-center gap-2">
+          {connections.length > 0 && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleSyncAllAri}
+              disabled={isSyncingAri}
+              className="h-10 text-xs font-medium text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700"
+            >
+              {isSyncingAri ? (
+                <Loader2 className="w-4 h-4 me-1.5 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4 me-1.5" />
+              )}
+              Sync All ARI
+            </Button>
+          )}
           <Button variant="secondary" size="sm" onClick={() => fetchConnections(true)} disabled={refreshing} className="h-10 text-xs font-medium">
             <RefreshCw className={`w-4 h-4 me-1.5 ${refreshing ? 'animate-spin' : ''}`} />
             {t('refresh_label', 'Refresh')}

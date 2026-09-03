@@ -44,7 +44,8 @@
 // v49 (4 Sep 2026): Strict Booking.com brand matching in getOtaIcon (do not match other channels containing 'booking')
 // v50 (4 Sep 2026): Clear distinction & separate dedicated UIs for Flat Base Rate vs Dynamic Rules in RateRuleModal
 // v51 (4 Sep 2026): Fix room base tariff reactive state update in RateRuleModal
-const CACHE_NAME = 'farm-pos-v51';
+// v52 (4 Sep 2026): Add Sync All Rates & Availability button directly on Connect Channels page
+const CACHE_NAME = 'farm-pos-v52';
 
 // Hashed asset pattern — Vite content-hashed files (e.g. index-CrXjaekR.js)
 // These must NEVER be cached by the SW; the browser cache handles them natively
