@@ -197,8 +197,9 @@ export const ChannelManager: React.FC<ChannelManagerProps> = ({ onLogAudit }) =>
 
     const ok = await confirm({
       title: t('channex_push_ari_title', 'Push Availability, Rates & Restrictions'),
-      message: `Push ${dayDiff} days of compressed availability and rate rules from ${dateFrom} to ${dateTo} to Channex? (Scenario 1 Initial Bulk Push executes in exactly 2 API calls).`,
+      message: `Push ${dayDiff} days of compressed availability and rate rules from ${dateFrom} to ${dateTo} to every connected channel?\n\nAny date in this range with no explicit rate entered in Pricing & Rates will push at this property's default rate - if different pricing is already set directly on an OTA for those dates, this will overwrite it. Any date with no conflicting Ground Code booking will push as open, which will also reopen a date you've manually blocked directly on an OTA.\n\nOnly proceed if you're sure neither applies to this date range.`,
       confirmText: t('channex_push_now', 'Push to Channex'),
+      variant: 'warning',
     });
     if (!ok) return;
 

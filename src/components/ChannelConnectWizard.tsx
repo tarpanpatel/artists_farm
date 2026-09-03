@@ -164,6 +164,14 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
   const [readinessProblems, setReadinessProblems] = useState<any[] | null>(null);
   const [checkingReadiness, setCheckingReadiness] = useState(false);
   const [confirmedExistingBookings, setConfirmedExistingBookings] = useState(false);
+  // Separate from the bookings checkbox above (different risk, different
+  // failure mode) - added 3 Sep 2026 after a real incident: any date with no
+  // explicit rate entered in Ground Code's Pricing & Rates falls back to the
+  // property's flat default rate when pushed, which can silently overwrite
+  // different pricing already set directly on the OTA. Ground Code has no
+  // way to detect that case on its own, so the owner has to consciously
+  // accept the risk before it happens, not find out after.
+  const [confirmedRateFallback, setConfirmedRateFallback] = useState(false);
   const [activating, setActivating] = useState(false);
 
   const [airbnbAuthOpened, setAirbnbAuthOpened] = useState(false);
@@ -491,7 +499,7 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, selectedCode]);
 
-  const canActivate = readinessProblems !== null && readinessProblems.length === 0 && confirmedExistingBookings;
+  const canActivate = readinessProblems !== null && readinessProblems.length === 0 && confirmedExistingBookings && confirmedRateFallback;
 
   const handleActivate = async () => {
     if (!selectedCode || !canActivate) return;
@@ -500,7 +508,7 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
       const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=channex_channel_activate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ property_id: propertyId, channel_code: selectedCode, confirmed_existing_bookings: confirmedExistingBookings }),
+        body: JSON.stringify({ property_id: propertyId, channel_code: selectedCode, confirmed_existing_bookings: confirmedExistingBookings, confirmed_rate_fallback: confirmedRateFallback }),
       });
       const json = await res.json();
       if (json?.status !== 'success') {
@@ -885,7 +893,19 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
                 className="mt-0.5"
               />
               <span className="text-sm font-semibold text-amber-900 dark:text-amber-300">
-                I confirm any bookings that already exist on {selectedAdapter?.title} for this listing are already entered in Ground Code. Activating without this can double-book a room.
+                I confirm any bookings that already exist on {selectedAdapter?.title} for this listing are already entered in Ground Code, and any dates manually blocked directly on {selectedAdapter?.title} (maintenance, personal use, etc. - not tied to a guest booking) are set as a block in Ground Code's Pricing &amp; Rates too. Activating without this can double-book a room or reopen a date you meant to keep closed.
+              </span>
+            </label>
+
+            <label className="flex items-start gap-2.5 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg cursor-pointer">
+              <input
+                type="checkbox"
+                checked={confirmedRateFallback}
+                onChange={(e) => setConfirmedRateFallback(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span className="text-sm font-semibold text-amber-900 dark:text-amber-300">
+                I understand any date with no specific price set in Ground Code's Pricing &amp; Rates will be pushed to {selectedAdapter?.title} at this property's default rate - if different pricing is already set directly on {selectedAdapter?.title} for those dates, this will overwrite it.
               </span>
             </label>
           </div>

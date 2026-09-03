@@ -4742,6 +4742,14 @@ switch ($action) {
             case 'channex_channel_activate':
                 $channelCode = trim((string)($input['channel_code'] ?? ''));
                 $confirmedExistingBookings = !empty($input['confirmed_existing_bookings']);
+                // Same class of guard as the bookings checkbox above, same
+                // reason it must be re-checked server-side rather than
+                // trusted from the client: a client-only gate on this exact
+                // action was found live 3 Sep 2026 to be silently unenforced
+                // (the checkbox existed in the UI but its value was never
+                // sent in the request body at all) - never repeat that for a
+                // new confirmation without also wiring the backend check.
+                $confirmedRateFallback = !empty($input['confirmed_rate_fallback']);
                 $conn = $targetPropertyId > 0 && $channelCode !== '' ? getChannexChannelConnection($pdo, $targetPropertyId, $channelCode) : null;
                 if (!$conn || empty($conn['channex_channel_id'])) {
                     http_response_code(400);
@@ -4751,6 +4759,11 @@ switch ($action) {
                 if (!$confirmedExistingBookings) {
                     http_response_code(422);
                     echo json_encode(['status' => 'error', 'message' => 'Confirm any existing bookings on this OTA are already entered in Ground Code before going live']);
+                    break 2;
+                }
+                if (!$confirmedRateFallback) {
+                    http_response_code(422);
+                    echo json_encode(['status' => 'error', 'message' => 'Confirm you understand dates with no explicit rate will push at this property\'s default rate before going live']);
                     break 2;
                 }
 
