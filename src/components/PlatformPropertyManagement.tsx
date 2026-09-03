@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Building2, Plus, Loader2, AlertCircle, AlertTriangle, BarChart3, Pencil, CheckCircle2, Share2, Copy, XCircle, ExternalLink, X, TelegramIcon, Trash2, KeyRound, Mail, RotateCcw, Eye, EyeOff } from './icons/FlowbiteIcons';
-import { Drawer, Alert, Modal } from 'flowbite-react';
+import { Drawer, Alert, Modal, Toast as FlowbiteToast, ToastToggle } from 'flowbite-react';
 import { ToggleSwitch } from './ToggleSwitch';
 import { StyledSelect } from './StyledSelect';
 import { Button } from './Button';
@@ -941,8 +941,15 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
     <div className="platform-property-management">
       {/* Success Toast */}
       {successMessage && (
-        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] bg-emerald-600 text-white px-6 py-3 rounded-lg shadow-2xl animate-pulse flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4" /> {successMessage}
+        <div className="fixed top-5 right-5 z-[9999] animate-toast-in">
+          <FlowbiteToast className="border border-gray-200 dark:border-gray-700 shadow-xl bg-white dark:bg-gray-800">
+            <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-100 text-green-500 dark:bg-green-800 dark:text-green-200">
+              <CheckCircle2 className="w-5 h-5" />
+              <span className="sr-only">Check icon</span>
+            </div>
+            <div className="ms-3 text-sm font-normal text-gray-900 dark:text-white">{successMessage}</div>
+            <ToastToggle xIcon={X} onDismiss={() => setSuccessMessage('')} />
+          </FlowbiteToast>
         </div>
       )}
 

@@ -30,7 +30,8 @@
 // v35 (3 Sep 2026): Tenant Dashboard header cleanup, subtitle rename, and sticky bottom footer
 // v36 (3 Sep 2026): Flowbite CRUD success modal for Airbnb OAuth landing page
 // v37 (3 Sep 2026): Enforce official Flowbite Toast component styling across all screens
-const CACHE_NAME = 'farm-pos-v37';
+// v38 (3 Sep 2026): Site-wide Flowbite Toast compliance audit & ad-hoc toast elimination
+const CACHE_NAME = 'farm-pos-v38';
 
 // Hashed asset pattern — Vite content-hashed files (e.g. index-CrXjaekR.js)
 // These must NEVER be cached by the SW; the browser cache handles them natively

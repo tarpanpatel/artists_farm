@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Card, Alert } from 'flowbite-react';
+import { Card, Alert, Toast, ToastToggle } from 'flowbite-react';
 import { Paintbrush, Save, Copy, Check, Trash2, Download, Upload, Eye, Code, Search, ChevronDown, ChevronUp, Palette, X, Lock, FLOWBITE_ICONS } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';
 import { Input } from './Input';
@@ -583,8 +583,15 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
 
       {/* Toast */}
       {toast && (
-        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-lg shadow-2xl animate-toast-in custom-css-override__toast">
-          {toast}
+        <div className="fixed top-5 right-5 z-[9999] animate-toast-in custom-css-override__toast">
+          <Toast className="border border-gray-200 dark:border-gray-700 shadow-xl bg-white dark:bg-gray-800">
+            <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-100 text-green-500 dark:bg-green-800 dark:text-green-200">
+              <Check className="w-5 h-5" />
+              <span className="sr-only">Check icon</span>
+            </div>
+            <div className="ms-3 text-sm font-normal text-gray-900 dark:text-white">{toast}</div>
+            <ToastToggle xIcon={X} onDismiss={() => setToast(null)} />
+          </Toast>
         </div>
       )}
     </div>

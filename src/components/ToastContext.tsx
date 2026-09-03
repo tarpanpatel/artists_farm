@@ -68,7 +68,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ showToast, removeToast }}>
       {children}
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] flex flex-col items-center gap-2.5 pointer-events-none toast-context__container w-full max-w-sm px-4">
+      <div className="fixed top-5 right-5 z-[9999] flex flex-col gap-2.5 pointer-events-none toast-context__container w-full max-w-sm px-4 sm:px-0">
         {toasts.map(toast => (
           <ToastItem key={toast.id} toast={toast} onDismiss={removeToast} />
         ))}
@@ -79,46 +79,42 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
 const ICONS: Record<ToastType, React.ReactNode> = {
   success: (
-    <CheckCircle2 className="w-4 h-4 shrink-0" />
+    <CheckCircle2 className="w-5 h-5 shrink-0" />
   ),
   error: (
-    <XCircle className="w-4 h-4 shrink-0" />
+    <XCircle className="w-5 h-5 shrink-0" />
   ),
   warning: (
-    <AlertTriangle className="w-4 h-4 shrink-0" />
+    <AlertTriangle className="w-5 h-5 shrink-0" />
   ),
   info: (
-    <Info className="w-4 h-4 shrink-0" />
+    <Info className="w-5 h-5 shrink-0" />
   ),
 };
 
-// Flowbite Toast contextual styling (flowbite.com/docs/components/toast):
-// Distinct colored icon chips, left accent borders, and prominent elevation shadows
-const TOAST_CLASSES: Record<ToastType, { chip: string; border: string }> = {
+// Official Flowbite Toast contextual styling (https://flowbite.com/docs/components/toast/):
+// Colored icon chips (w-8 h-8 rounded-lg), light/dark tokens, and crisp borders
+const TOAST_CLASSES: Record<ToastType, { chip: string }> = {
   success: {
-    chip: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-950/80 dark:text-emerald-400',
-    border: 'border-l-4 border-l-emerald-500 border-r border-t border-b border-slate-200 dark:border-slate-700/80',
+    chip: 'text-green-500 bg-green-100 dark:bg-green-800 dark:text-green-200',
   },
   error: {
-    chip: 'text-rose-600 bg-rose-100 dark:bg-rose-950/80 dark:text-rose-400',
-    border: 'border-l-4 border-l-rose-500 border-r border-t border-b border-slate-200 dark:border-slate-700/80',
+    chip: 'text-red-500 bg-red-100 dark:bg-red-800 dark:text-red-200',
   },
   warning: {
-    chip: 'text-amber-600 bg-amber-100 dark:bg-amber-950/80 dark:text-amber-400',
-    border: 'border-l-4 border-l-amber-500 border-r border-t border-b border-slate-200 dark:border-slate-700/80',
+    chip: 'text-orange-500 bg-orange-100 dark:bg-orange-700 dark:text-orange-200',
   },
   info: {
-    chip: 'text-blue-600 bg-blue-100 dark:bg-blue-950/80 dark:text-blue-400',
-    border: 'border-l-4 border-l-blue-500 border-r border-t border-b border-slate-200 dark:border-slate-700/80',
+    chip: 'text-blue-500 bg-blue-100 dark:bg-blue-800 dark:text-blue-200',
   },
 };
 
 const toastTheme = {
   root: {
-    base: 'flex w-full max-w-sm items-center rounded-lg bg-white dark:bg-slate-800 p-3.5 text-slate-800 dark:text-slate-100 shadow-2xl shadow-slate-900/25 dark:shadow-black/70 animate-toast-in',
+    base: 'flex w-full max-w-sm items-center rounded-lg bg-white dark:bg-gray-800 p-4 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 shadow-lg animate-toast-in',
   },
   toggle: {
-    base: 'ms-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-700 dark:hover:text-white focus:outline-none transition-colors',
+    base: 'ms-auto -mx-1.5 -my-1.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-gray-400 hover:bg-gray-100 hover:text-gray-900 dark:bg-gray-800 dark:text-gray-500 dark:hover:bg-gray-700 dark:hover:text-white focus:ring-2 focus:ring-gray-300 focus:outline-none transition-colors p-1.5',
     icon: 'h-3.5 w-3.5',
   },
 };
@@ -126,11 +122,11 @@ const toastTheme = {
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string) => void }) {
   const styles = TOAST_CLASSES[toast.type] || TOAST_CLASSES.info;
   return (
-    <FlowbiteToast theme={toastTheme} className={`pointer-events-auto ${styles.border}`}>
+    <FlowbiteToast theme={toastTheme} className="pointer-events-auto">
       <div className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${styles.chip}`}>
         {ICONS[toast.type]}
       </div>
-      <div className="ms-3 text-xs font-semibold break-words text-slate-800 dark:text-slate-100">{toast.message}</div>
+      <div className="ms-3 text-sm font-normal break-words text-gray-900 dark:text-white">{toast.message}</div>
       <ToastToggle xIcon={X} onDismiss={() => onDismiss(toast.id)} />
     </FlowbiteToast>
   );

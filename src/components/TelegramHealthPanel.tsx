@@ -61,7 +61,6 @@ export const TelegramHealthPanel: React.FC = () => {
   const [savedFallbackPath, setSavedFallbackPath] = useState('');
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
 
   const [health, setHealth] = useState<TelegramHealthData | null>(null);
   const [checking, setChecking] = useState(false);
@@ -141,9 +140,7 @@ export const TelegramHealthPanel: React.FC = () => {
       if (data.status === 'success') {
         setSavedFallbackPath(fallbackPath.trim());
         const msg = t('telegram_fallback_path_saved', 'Fallback path saved successfully.');
-        setToast(msg);
         showToast(msg, { type: 'success' });
-        setTimeout(() => setToast(null), 3000);
         runHealthCheck();
       } else {
         showToast(data.message || 'Failed to save fallback path.', { type: 'error' });
@@ -340,12 +337,6 @@ export const TelegramHealthPanel: React.FC = () => {
           </div>
         )}
       </div>
-
-      {toast && (
-        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-9999 bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-lg shadow-2xl animate-toast-in">
-          {toast}
-        </div>
-      )}
     </Card>
   );
 };
