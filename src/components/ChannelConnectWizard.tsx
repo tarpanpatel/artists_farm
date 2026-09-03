@@ -143,11 +143,23 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
       const adapter: AdapterDescriptor = json.data;
       setSelectedAdapter(adapter);
       if (existing?.settings) setFormValues(existing.settings);
-      if (existing && ['mapping', 'ready_to_activate', 'active'].includes(existing.status)) {
+      // A status of 'mapping'/'ready_to_activate'/'active' only means something
+      // real exists on Channex's side if channex_channel_id was actually set -
+      // that field is written exactly once, by a successful
+      // channex_channel_start_airbnb (or equivalent) call. Trusting status
+      // alone let a connection whose staff-handoff status got advanced without
+      // the real Channex channel ever being created (confirmed live 3 Sep
+      // 2026: Patel Colony's AirBNB row read status='mapping' while Channex's
+      // own `GET channels` for that property returned zero results) jump
+      // straight to room-mapping every time the wizard reopened, with no way
+      // back to the "Request Airbnb Connection" step that actually creates it.
+      const reallyConnected = Boolean(existing?.channex_channel_id)
+        && !!existing && existing.status !== 'draft' && existing.status !== 'pending_test' && existing.status !== 'error';
+      if (reallyConnected) {
         setPrereqConfirmed(true);
         setTestResult({ success: true, errors: null });
       }
-      setStep(existing && existing.status !== 'draft' && existing.status !== 'pending_test' && existing.status !== 'error' ? 3 : 2);
+      setStep(reallyConnected ? 3 : 2);
     } finally {
       setLoadingAdapterDetail(false);
     }

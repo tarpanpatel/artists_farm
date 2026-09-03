@@ -4444,9 +4444,30 @@ switch ($action) {
             case 'channex_channel_delete':
                 $channelCode = trim((string)($input['channel_code'] ?? ''));
                 $conn = $targetPropertyId > 0 && $channelCode !== '' ? getChannexChannelConnection($pdo, $targetPropertyId, $channelCode) : null;
-                if (!$conn || empty($conn['channex_channel_id'])) {
+                if (!$conn) {
                     http_response_code(400);
                     echo json_encode(['status' => 'error', 'message' => 'No connected channel found']);
+                    break 2;
+                }
+                // A connection whose channex_channel_id never got set (the
+                // request/test step failed, or a status got advanced without
+                // the real Channex channel ever being created - confirmed live
+                // 3 Sep 2026 on a stuck Airbnb connection) has nothing to
+                // deactivate/delete on Channex's side at all. Deactivate is
+                // meaningless here (nothing was ever activated); delete just
+                // drops the local row so the property can start over cleanly -
+                // this was previously impossible, since the guard above used
+                // to require channex_channel_id and refused with a 400 for
+                // exactly the rows that most needed removing.
+                if (empty($conn['channex_channel_id'])) {
+                    if ($action === 'channex_channel_deactivate') {
+                        http_response_code(400);
+                        echo json_encode(['status' => 'error', 'message' => 'This connection was never activated on Channex.']);
+                        break 2;
+                    }
+                    $pdo->prepare("DELETE FROM channex_channel_room_mappings WHERE connection_id = ?")->execute([$conn['id']]);
+                    $pdo->prepare("DELETE FROM channex_channel_connections WHERE id = ?")->execute([$conn['id']]);
+                    echo json_encode(['status' => 'success']);
                     break 2;
                 }
                 if ($action === 'channex_channel_deactivate') {
