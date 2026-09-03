@@ -119,6 +119,32 @@ class ChannexChannelClient {
     }
 
     /**
+     * GET /channels/:id/action/listings - the real Airbnb listings on the
+     * now-authorized account (confirmed against Channex's own docs 3 Sep
+     * 2026: Airbnb has NO mapping_details endpoint at all - listings are
+     * discovered this way instead, once the channel/tokens exist).
+     */
+    public function getChannelListings(string $channelId): array {
+        return $this->client->get("channels/{$channelId}/action/listings");
+    }
+
+    /**
+     * POST /channels/:id/mappings - map ONE local room's rate plan to ONE
+     * external listing/room. This is Airbnb's actual mapping call (one
+     * request per room, no bulk rate_plans array like updateChannel()) -
+     * $settings carries whatever the channel needs to identify the match
+     * (Airbnb: {"listing_id": "..."}).
+     */
+    public function createChannelMapping(string $channelId, string $ratePlanId, array $settings): array {
+        return $this->client->post("channels/{$channelId}/mappings", [
+            'mapping' => [
+                'rate_plan_id' => $ratePlanId,
+                'settings' => $settings,
+            ],
+        ]);
+    }
+
+    /**
      * POST /meta/airbnb/connection_link - the real way to connect Airbnb.
      * Per Channex's own docs (confirmed 3 Sep 2026): NOT a hand-built Airbnb
      * OAuth URL - Channex generates and tracks a real, 2-hour-valid link

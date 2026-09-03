@@ -155,7 +155,7 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; errors: any } | null>(null);
 
-  const [mappingDetails, setMappingDetails] = useState<{ rooms: any[] } | null>(null);
+  const [mappingDetails, setMappingDetails] = useState<{ rooms: any[]; is_airbnb_listing_mode?: boolean } | null>(null);
   const [loadingMapping, setLoadingMapping] = useState(false);
   const [mappingError, setMappingError] = useState(false);
   const [roomMapping, setRoomMapping] = useState<Record<string, { external_room_code: string; external_rate_code: string }>>({});
@@ -426,10 +426,14 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
 
   const isMappingComplete = useMemo(() => {
     if (localRooms.length === 0 || !mappingDetails?.rooms || mappingDetails.rooms.length === 0) return false;
+    // Airbnb maps one listing straight to a room's own (already-known)
+    // rate plan - there's no separate rate to pick, unlike Booking.com's
+    // room+rate two-level model.
+    const isAirbnbMode = !!mappingDetails?.is_airbnb_listing_mode;
     return localRooms.every((r) => {
       const key = String(r.local_room_id ?? 'null');
       const m = roomMapping[key];
-      return m && m.external_room_code && m.external_rate_code;
+      return m && m.external_room_code && (isAirbnbMode || m.external_rate_code);
     });
   }, [localRooms, roomMapping, mappingDetails]);
 
@@ -788,38 +792,52 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
               </div>
             ) : (
               <div className="space-y-3">
-                {localRooms.map((room) => {
-                  const key = String(room.local_room_id ?? 'null');
-                  const current = roomMapping[key] || { external_room_code: '', external_rate_code: '' };
-                  const selectedOtaRoom = (mappingDetails?.rooms || []).find((r: any) => String(r.id) === current.external_room_code);
-                  return (
-                    <div key={key} className="p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2">
-                      <div className="text-xs font-semibold text-slate-800 dark:text-slate-100">{room.name}</div>
-                      {!room.channex_rate_plan_id && (
-                        <div className="text-2xs text-red-600 dark:text-red-400">Not yet synced to Channex - sync property content first.</div>
-                      )}
-                      <div className="grid grid-cols-2 gap-2">
-                        <select
-                          value={current.external_room_code}
-                          onChange={(e) => setRoomMapping((prev) => ({ ...prev, [key]: { external_room_code: e.target.value, external_rate_code: '' } }))}
-                          className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white px-2.5 py-2"
-                        >
-                          <option value="">Select {selectedAdapter?.title} room...</option>
-                          {(mappingDetails?.rooms || []).map((r: any) => <option key={r.id} value={r.id}>{r.title}</option>)}
-                        </select>
-                        <select
-                          value={current.external_rate_code}
-                          onChange={(e) => setRoomMapping((prev) => ({ ...prev, [key]: { ...current, external_rate_code: e.target.value } }))}
-                          disabled={!selectedOtaRoom}
-                          className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white px-2.5 py-2 disabled:opacity-50"
-                        >
-                          <option value="">Select rate...</option>
-                          {(selectedOtaRoom?.rates || []).map((rate: any) => <option key={rate.id} value={rate.id}>{rate.title}</option>)}
-                        </select>
+                {(() => {
+                  const isAirbnbMode = !!mappingDetails?.is_airbnb_listing_mode;
+                  return localRooms.map((room) => {
+                    const key = String(room.local_room_id ?? 'null');
+                    const current = roomMapping[key] || { external_room_code: '', external_rate_code: '' };
+                    const selectedOtaRoom = (mappingDetails?.rooms || []).find((r: any) => String(r.id) === current.external_room_code);
+                    return (
+                      <div key={key} className="p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2">
+                        <div className="text-xs font-semibold text-slate-800 dark:text-slate-100">{room.name}</div>
+                        {!room.channex_rate_plan_id && (
+                          <div className="text-2xs text-red-600 dark:text-red-400">Not yet synced to Channex - sync property content first.</div>
+                        )}
+                        {isAirbnbMode ? (
+                          <select
+                            value={current.external_room_code}
+                            onChange={(e) => setRoomMapping((prev) => ({ ...prev, [key]: { external_room_code: e.target.value, external_rate_code: e.target.value } }))}
+                            className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white px-2.5 py-2"
+                          >
+                            <option value="">Select Airbnb listing...</option>
+                            {(mappingDetails?.rooms || []).map((r: any) => <option key={r.id} value={r.id}>{r.title}</option>)}
+                          </select>
+                        ) : (
+                          <div className="grid grid-cols-2 gap-2">
+                            <select
+                              value={current.external_room_code}
+                              onChange={(e) => setRoomMapping((prev) => ({ ...prev, [key]: { external_room_code: e.target.value, external_rate_code: '' } }))}
+                              className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white px-2.5 py-2"
+                            >
+                              <option value="">Select {selectedAdapter?.title} room...</option>
+                              {(mappingDetails?.rooms || []).map((r: any) => <option key={r.id} value={r.id}>{r.title}</option>)}
+                            </select>
+                            <select
+                              value={current.external_rate_code}
+                              onChange={(e) => setRoomMapping((prev) => ({ ...prev, [key]: { ...current, external_rate_code: e.target.value } }))}
+                              disabled={!selectedOtaRoom}
+                              className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white px-2.5 py-2 disabled:opacity-50"
+                            >
+                              <option value="">Select rate...</option>
+                              {(selectedOtaRoom?.rates || []).map((rate: any) => <option key={rate.id} value={rate.id}>{rate.title}</option>)}
+                            </select>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  });
+                })()}
               </div>
             )}
           </div>
