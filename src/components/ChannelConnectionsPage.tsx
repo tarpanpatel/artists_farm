@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Plug, Loader2, RefreshCw, Plus } from './icons/FlowbiteIcons';
+import { Plug, Loader2, RefreshCw, Plus, Trash2 } from './icons/FlowbiteIcons';
 import { apiFetch, API_ROOT_BASE } from '../services/api';
 import { PageHeader } from './PageHeader';
 import { Button } from './Button';
 import { Badge } from './Badge';
 import { ChannelConnectWizard } from './ChannelConnectWizard';
+import { useConfirm } from './ConfirmDialogContext';
+import { useToast } from './ToastContext';
 import { t } from '../i18n/en';
 
 interface ChannelConnectionsPageProps {
@@ -48,6 +50,9 @@ export const ChannelConnectionsPage: React.FC<ChannelConnectionsPageProps> = ({ 
   const [refreshing, setRefreshing] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [resumeChannelCode, setResumeChannelCode] = useState<string | null>(null);
+  const [removingCode, setRemovingCode] = useState<string | null>(null);
+  const { confirm } = useConfirm();
+  const { showToast } = useToast();
 
   const fetchConnections = async (isManualRefresh = false) => {
     if (isManualRefresh) setRefreshing(true);
@@ -85,6 +90,38 @@ export const ChannelConnectionsPage: React.FC<ChannelConnectionsPageProps> = ({ 
     setResumeChannelCode(null);
     if (didConnect) {
       fetchConnections();
+    }
+  };
+
+  const handleRemoveConnection = async (c: ChannexChannelConnection) => {
+    const isLive = c.status === 'active';
+    const confirmed = await confirm({
+      title: isLive ? 'Remove Live Channel' : 'Remove Connection',
+      message: isLive
+        ? `${c.channel_code} is currently live and syncing bookings. Removing it disconnects it from Channex - existing bookings already received are not affected, but this channel will stop syncing.`
+        : `Remove this ${c.channel_code} connection? Any setup progress (settings, room mapping) will be lost and you'll start over if you reconnect.`,
+      confirmText: 'Remove',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+    setRemovingCode(c.channel_code);
+    try {
+      const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=channex_channel_delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ property_id: propertyId, channel_code: c.channel_code }),
+      });
+      const json = await res.json();
+      if (json?.status !== 'success') {
+        showToast(json?.message || 'Failed to remove the connection', { type: 'error' });
+        return;
+      }
+      onLogAudit?.(`Removed ${c.channel_code} channel connection`, { module: 'ChannelConnectWizard', status: 'SUCCESS' });
+      fetchConnections();
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to remove the connection', { type: 'error' });
+    } finally {
+      setRemovingCode(null);
     }
   };
 
@@ -148,11 +185,23 @@ export const ChannelConnectionsPage: React.FC<ChannelConnectionsPageProps> = ({ 
                     </p>
                   )}
                 </div>
-                {resumable && (
-                  <Button variant="secondary" size="sm" onClick={() => handleOpenWizard(c.channel_code)} className="shrink-0 h-9 text-xs">
-                    {t('continue_setup_button', 'Continue Setup')}
+                <div className="flex items-center gap-2 shrink-0">
+                  {resumable && (
+                    <Button variant="secondary" size="sm" onClick={() => handleOpenWizard(c.channel_code)} className="h-9 text-xs">
+                      {t('continue_setup_button', 'Continue Setup')}
+                    </Button>
+                  )}
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => handleRemoveConnection(c)}
+                    disabled={removingCode === c.channel_code}
+                    className="h-9 text-xs text-red-600 hover:text-red-700 dark:text-red-400"
+                    title={t('remove_connection_button', 'Remove connection')}
+                  >
+                    {removingCode === c.channel_code ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                   </Button>
-                )}
+                </div>
               </div>
             );
           })}
