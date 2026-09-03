@@ -15,6 +15,7 @@ import { X } from './icons/FlowbiteIcons';
 import { KpiCard } from './KpiCard';
 import { ToggleSwitch } from './ToggleSwitch';
 import { PropertyCreationWizard } from './PropertyCreationWizard';
+import { SubscriptionPanel } from './SubscriptionPanel';
 import { TermsAcceptanceModal } from './TermsAcceptanceModal';
 import { DashboardFooter } from './DashboardFooter';
 import { LegalDrawer, LegalTabType } from './LegalDrawer';
@@ -419,6 +420,40 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
               />
             </div>
           </div>
+        </section>
+
+        {/* Subscription Section (added 3 Sep 2026, user report: the Subscription
+            screen only lived behind a per-property nav item, so a multi-property
+            tenant had to open one specific property just to see tenant-wide
+            billing/renewal info - it belongs here instead, alongside Slot Usage,
+            since both are tenant-level, not property-level). Reuses the same
+            SubscriptionPanel the per-property "Subscription" nav item renders
+            (see php/kitchen/menu.php's nav_menu_self_heal_v10, still kept for
+            direct property-staff logins that never see this page at all) -
+            `embedded` suppresses its own PageHeader/page padding since this
+            section supplies both. */}
+        <section className="tenant-dashboard__subscription-section">
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-5 tenant-dashboard__subscription-title">
+            {t('subscription_heading', 'Subscription')}
+          </h2>
+          <SubscriptionPanel
+            embedded
+            tenantId={tenantId}
+            onNavigate={(tab) => {
+              // No single "current property" exists at this level (that's the
+              // whole reason this section exists) - the Export-your-data link
+              // inside the request drawer opens the first non-draft property's
+              // own tab in a new one, same dashboardUrl convention as every
+              // "Open Property" button below.
+              const targetProperty = properties.find((p) => p.status !== 'draft') || properties[0];
+              if (!targetProperty) return;
+              const tenantSlug = tenantInfo?.slug ?? '';
+              const url = tenantSlug
+                ? `${API_ROOT_BASE}/${tenantSlug}/${targetProperty.slug}/#${tab}`
+                : `${API_ROOT_BASE}/${targetProperty.slug}/#${tab}`;
+              window.open(url, '_blank', 'noopener,noreferrer');
+            }}
+          />
         </section>
 
         {/* Properties Section */}

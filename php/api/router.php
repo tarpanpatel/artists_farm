@@ -963,7 +963,14 @@ $currentProperty = getCurrentProperty($pdo, $propertyId); // Get the full proper
 // param, so it skips this gate) always worked fine. Confirmed via the Apache
 // access log: every POST save_nav_menu request returned 403, going back to
 // the gate's original commit - this was never a frontend bug.
-$tenant_scope_actions = ['get_tenant_properties', 'get_tenant_slot_usage', 'create_property_for_tenant', 'save_nav_menu', 'export_database_dump'];
+// get_subscription_summary/request_subscription_action added 3 Sep 2026: the
+// Tenant Dashboard (/tenant_dashboard/, a `users`-table owner login) reaches
+// these with an explicit tenant_id and no property_slug at all, same gap as
+// save_nav_menu above - they re-run their own equivalent-or-stronger checks
+// inline (isPropertyAccessAllowed() for the existing per-property path,
+// isTenantAccessAllowed() for the tenant_id path) rather than relying on this
+// gate, see the case block itself.
+$tenant_scope_actions = ['get_tenant_properties', 'get_tenant_slot_usage', 'create_property_for_tenant', 'save_nav_menu', 'export_database_dump', 'get_subscription_summary', 'request_subscription_action'];
 
 // SECURITY (10 Aug 2026): universal property-scope gate. Everything above only ever gated
 // *write* actions (POST/PUT/DELETE) - GET reads (guest lists, financial ledger, receipts,
@@ -3598,15 +3605,52 @@ switch ($action) {
             break;
         }
 
-        // Tenant-facing side, below: strictly scoped to the SESSION's own
-        // property's tenant_id - never a tenant_id from the request, same
-        // discipline as every other owner-facing action in this file.
-        if (empty($currentProperty['tenant_id'])) {
-            http_response_code(404);
-            echo json_encode(['status' => 'error', 'message' => 'No tenant associated with this property']);
-            break;
+        // Tenant-facing side, below. Two entry points share this action:
+        //   1. The per-property nav item (Subscription, gated Super
+        //      Admin/Admin via nav_menu_self_heal_v10) - reached from inside
+        //      one resolved property, no tenant_id in the request. Scoped
+        //      strictly to the SESSION's own property's tenant_id - never a
+        //      tenant_id from the request for this path.
+        //   2. The Tenant Dashboard (/tenant_dashboard/, added 3 Sep 2026) -
+        //      a `users`-table owner login with no single property resolved
+        //      at all, so it sends tenant_id explicitly instead.
+        // Both actions are in $tenant_scope_actions (see above), which skips
+        // the universal isPropertyAccessAllowed($propertyId) gate entirely -
+        // that gate would otherwise 403 path 2 before ever reaching here,
+        // since getCurrentPropertyId() falls back to an unrelated property
+        // when no property_slug is in the request (same issue save_nav_menu
+        // hit). Each path below re-establishes its own equivalent check
+        // instead of inheriting that skipped gate.
+        $tenantActionInput = $request_method !== 'GET' ? (json_decode(file_get_contents('php://input'), true) ?: []) : [];
+        $requestedTenantId = $_GET['tenant_id'] ?? ($tenantActionInput['tenant_id'] ?? '');
+
+        if ($requestedTenantId) {
+            // Path 2 (Tenant Dashboard). Validated purely against the
+            // session's own tenant association (isTenantAccessAllowed with
+            // $currentPropertyId=0) - NOT against $propertyId, which would be
+            // circular here: property_slug and tenant_id can both be
+            // attacker-chosen in the same request, so that function's own
+            // "requested tenant owns $currentPropertyId" fallback must not be
+            // trusted as the check for this path.
+            if (!isTenantAccessAllowed($pdo, $requestedTenantId, 0)) {
+                http_response_code(403);
+                echo json_encode(['status' => 'error', 'message' => 'Access denied']);
+                break;
+            }
+            $subTenantId = (int)$requestedTenantId;
+        } else {
+            // Path 1 (per-property nav). This action's own gate-exemption
+            // above means the usual isPropertyAccessAllowed() check never ran
+            // for it - re-run it explicitly so a staff session with no access
+            // to $propertyId can't reach its tenant's billing data just
+            // because this action is now gate-exempt.
+            if (!$propertyId || !isPropertyAccessAllowed($pdo, $propertyId) || empty($currentProperty['tenant_id'])) {
+                http_response_code(403);
+                echo json_encode(['status' => 'error', 'message' => 'Access denied']);
+                break;
+            }
+            $subTenantId = (int)$currentProperty['tenant_id'];
         }
-        $subTenantId = (int)$currentProperty['tenant_id'];
 
         if ($action === 'get_subscription_summary') {
             try {
@@ -3651,8 +3695,9 @@ switch ($action) {
             break;
         }
 
-        // request_subscription_action
-        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        // request_subscription_action - reuse $tenantActionInput parsed above
+        // rather than re-reading php://input a second time.
+        $input = $tenantActionInput;
         $requestType = $input['request_type'] ?? '';
         if (!in_array($requestType, ['cancel', 'delete'], true)) {
             http_response_code(400);

@@ -11,8 +11,20 @@ import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import { t } from '../i18n/en';
 
 interface SubscriptionPanelProps {
-  propertyId: number;
+  // Per-property nav usage (existing): the backend derives tenant_id from the
+  // session's own resolved property. Tenant Dashboard usage (added 3 Sep
+  // 2026): no single property is ever resolved there, so tenantId is passed
+  // explicitly instead - see router.php's get_subscription_summary/
+  // request_subscription_action for the two paths this maps to. At least one
+  // of the two must be a real id for this component to fetch anything.
+  propertyId?: number;
+  tenantId?: number;
   onNavigate?: (tab: any, menuItemKey?: string) => void;
+  // Tenant Dashboard embeds this inline as one more section on its own page
+  // (own header, own max-w-6xl/padding already set by the caller) rather than
+  // as a standalone routed screen - suppresses this component's own
+  // PageHeader and outer page-padding/max-width wrapper when true.
+  embedded?: boolean;
 }
 
 type SubscriptionStatus = 'trial' | 'active' | 'suspended' | 'cancelled';
@@ -74,7 +86,7 @@ const msPerDay = 1000 * 60 * 60 * 24;
  * are both just REQUESTS a human acts on, never anything that mutates
  * subscription state or deletes data itself.
  */
-export const SubscriptionPanel: React.FC<SubscriptionPanelProps> = ({ propertyId, onNavigate }) => {
+export const SubscriptionPanel: React.FC<SubscriptionPanelProps> = ({ propertyId, tenantId, onNavigate, embedded = false }) => {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<SubscriptionSummary | null>(null);
@@ -85,10 +97,17 @@ export const SubscriptionPanel: React.FC<SubscriptionPanelProps> = ({ propertyId
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // Tenant Dashboard has no property_slug in the request at all (see
+  // router.php's comment on this action) - passes tenant_id explicitly
+  // instead. Harmless to include when a real propertyId is also available;
+  // the backend prefers the session's own resolved property in that case and
+  // only falls back to this param when it has none.
+  const tenantIdQuery = tenantId ? `&tenant_id=${tenantId}` : '';
+
   const fetchAll = async () => {
     try {
       const [summaryRes, configRes] = await Promise.all([
-        apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=get_subscription_summary`, { credentials: 'include' }),
+        apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=get_subscription_summary${tenantIdQuery}`, { credentials: 'include' }),
         apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=get_saas_platform_config`, { credentials: 'include' }),
       ]);
       const summaryJson = await summaryRes.json();
@@ -109,9 +128,9 @@ export const SubscriptionPanel: React.FC<SubscriptionPanelProps> = ({ propertyId
   };
 
   useEffect(() => {
-    if (propertyId) fetchAll();
+    if (propertyId || tenantId) fetchAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [propertyId]);
+  }, [propertyId, tenantId]);
 
   if (loading) {
     return (
@@ -124,7 +143,7 @@ export const SubscriptionPanel: React.FC<SubscriptionPanelProps> = ({ propertyId
 
   if (!summary) {
     return (
-      <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-3xl mx-auto text-center text-sm text-slate-500 dark:text-slate-400">
+      <div className={`${embedded ? '' : 'px-4 sm:px-6 lg:px-8 py-6 max-w-3xl mx-auto'} text-center text-sm text-slate-500 dark:text-slate-400`}>
         Couldn't load your subscription details. Please try again shortly.
       </div>
     );
@@ -171,7 +190,7 @@ export const SubscriptionPanel: React.FC<SubscriptionPanelProps> = ({ propertyId
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ request_type: activeRequestType, reason }),
+        body: JSON.stringify({ request_type: activeRequestType, reason, ...(tenantId ? { tenant_id: tenantId } : {}) }),
       });
       const json = await res.json();
       if (json?.status === 'success') {
@@ -194,8 +213,10 @@ export const SubscriptionPanel: React.FC<SubscriptionPanelProps> = ({ propertyId
   };
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6 max-w-3xl mx-auto">
-      <PageHeader title={t('subscription_heading', 'Subscription')} subtitle={t('subscription_subheading', 'Your plan, renewal date, and account options.')} />
+    <div className={embedded ? 'space-y-6' : 'px-4 sm:px-6 lg:px-8 py-6 space-y-6 max-w-3xl mx-auto'}>
+      {!embedded && (
+        <PageHeader title={t('subscription_heading', 'Subscription')} subtitle={t('subscription_subheading', 'Your plan, renewal date, and account options.')} />
+      )}
 
       {/* Status card */}
       <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-5 space-y-4">
