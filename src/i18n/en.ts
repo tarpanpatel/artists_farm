@@ -1190,7 +1190,7 @@ export const strings: Record<string, string> = {
   share_food_menu_button: "Share Menu",
   add_expense_quick_action: "Add Expense",
   add_service_request_quick_action: "Add Service Request",
-  sign_out_terminal_button: "Sign Out Terminal",
+  sign_out_terminal_button: "Sign Out",
   toggle_sidebar_tooltip: "Toggle Sidebar Menu",
   toggle_sidebar_aria: "Toggle Sidebar Navigation",
   root_default_expenses_heading_label: "Default Expenses (MultiKey)",

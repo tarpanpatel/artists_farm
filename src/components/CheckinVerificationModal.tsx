@@ -14,6 +14,7 @@ import {
 } from '../services/api';
 import { t } from '../i18n/en';
 import { FileInput } from './FileInput';
+import { formatDateDDMMYYYY } from '../utils/dateUtils';
 
 // upload_image.php saves a small thumbnail alongside every id_documents
 // upload, at <same folder>/thumbs/<same filename> - derived here rather than
@@ -27,11 +28,7 @@ interface CheckinVerificationModalProps {
   onVerificationComplete: (guestId: string) => void;
 }
 
-const formatUploadedAt = (dateStr: string) => {
-  const dateOnly = dateStr.split(' ')[0];
-  const parts = dateOnly.split('-');
-  return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : dateStr;
-};
+const formatUploadedAt = formatDateDDMMYYYY;
 
 export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> = ({
   guest,

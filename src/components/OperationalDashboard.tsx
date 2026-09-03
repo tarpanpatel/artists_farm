@@ -391,11 +391,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
     d.setHours(0, 0, 0, 0);
     return d;
   };
-  const formatAlertDate = (dateStr?: string) => {
-    const dateOnly = (dateStr || '').split(' ')[0];
-    const parts = dateOnly.split('-');
-    return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : dateOnly;
-  };
+  const formatAlertDate = (dateStr?: string) => formatDateDDMMYYYY(dateStr || '');
 
   // True only while today actually falls inside [checkin, checkout) - some
   // seed/demo data marks bookings Active immediately regardless of date, so

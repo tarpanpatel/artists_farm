@@ -19,7 +19,7 @@ import { CheckinVerificationModal } from './CheckinVerificationModal';
 import { MessageQrPreview } from './MessageQrPreview';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
 import { shareTextContent } from '../utils/shareText';
-import { parseDateToYMD } from '../utils/dateUtils';
+import { parseDateToYMD, formatDateDDMMYYYY } from '../utils/dateUtils';
 import { t } from '../i18n/en';
 import {
   GUEST_STATUS_BOOKED,
@@ -72,13 +72,7 @@ interface BookingDetailsModalProps {
   isMultiKeyProperty?: boolean;
 }
 
-const formatDate = (dateStr: string) => {
-  if (!dateStr) return '';
-  const dateOnly = dateStr.split(' ')[0];
-  const parts = dateOnly.split('-');
-  if (parts.length !== 3) return dateStr;
-  return `${parts[2]}/${parts[1]}/${parts[0]}`;
-};
+const formatDate = formatDateDDMMYYYY;
 
 /**
  * The one booking modal every calendar/list in the app should use - opens

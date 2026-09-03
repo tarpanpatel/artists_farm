@@ -4,6 +4,7 @@ import { Guest } from '../types';
 import { Badge } from './Badge';
 import { Button } from './Button';
 import { isCFormGenuinelyFiled } from '../utils/cFormStatus';
+import { formatDateDDMMYYYY } from '../utils/dateUtils';
 
 interface MobileBookingCardStackProps {
   guests: Guest[];
@@ -259,7 +260,7 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                     <div className="min-w-0">
                       <div className="text-[9px] text-slate-400 font-semibold uppercase">Check-In</div>
                       <div className="font-semibold text-slate-800 dark:text-slate-200 truncate">
-                        {guest.checkinDate ? guest.checkinDate.split(' ')[0] : 'N/A'}
+                        {guest.checkinDate ? formatDateDDMMYYYY(guest.checkinDate) : 'N/A'}
                       </div>
                     </div>
                   </div>
@@ -269,7 +270,7 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                     <div className="min-w-0">
                       <div className="text-[9px] text-slate-400 font-semibold uppercase">Check-Out</div>
                       <div className="font-semibold text-slate-800 dark:text-slate-200 truncate">
-                        {guest.checkoutDate || guest.expectedCheckout ? (guest.checkoutDate || guest.expectedCheckout).split(' ')[0] : 'N/A'}
+                        {guest.checkoutDate || guest.expectedCheckout ? formatDateDDMMYYYY(guest.checkoutDate || guest.expectedCheckout) : 'N/A'}
                       </div>
                     </div>
                   </div>
@@ -284,7 +285,7 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                     {isCFormGenuinelyFiled(guest) ? (
                       <span className="text-emerald-600 dark:text-emerald-400 font-semibold text-[11px] inline-flex items-center gap-1">
                         <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                        <span>Filed ({guest.cFormFiledAt})</span>
+                        <span>Filed ({formatDateDDMMYYYY(guest.cFormFiledAt)})</span>
                       </span>
                     ) : (
                       <span className="text-amber-600 dark:text-amber-400 font-semibold text-[11px] inline-flex items-center gap-1">

@@ -10,6 +10,7 @@ import { useToast } from './ToastContext';
 import { shareTextContent } from '../utils/shareText';
 import { isCFormGenuinelyFiled } from '../utils/cFormStatus';
 import { getFirstName } from '../utils/nameUtils';
+import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import { t } from '../i18n/en';
 
 interface TodayOverviewProps {
@@ -792,7 +793,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                                 <div className="flex items-center justify-between text-2xs">
                                   <span className="text-gray-500 dark:text-gray-400">Dates:</span>
                                   <span className="font-medium text-gray-700 dark:text-gray-200">
-                                    {(guest.checkinDate || '').split(' ')[0].split('T')[0]} — {(guest.expectedCheckout || (guest as any).checkoutDate || '').split(' ')[0].split('T')[0]}
+                                    {formatDateDDMMYYYY(guest.checkinDate)} — {formatDateDDMMYYYY(guest.expectedCheckout || (guest as any).checkoutDate)}
                                   </span>
                                 </div>
                                 {hasPending && (
