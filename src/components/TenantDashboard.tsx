@@ -4,7 +4,7 @@ import {
   Pencil, Trash2, ExternalLink, CheckCircle, Layers,
   Home, TrendingUp, ChevronRight, Lock, Zap, User, UserRound,
   Calendar, Bell, ArrowRight, HelpCircle, LayoutDashboard,
-  CreditCard, Menu, X, ShieldCheck, KeyRound, Eye, EyeOff, Save, Loader2
+  CreditCard, Menu, X, KeyRound, Eye, EyeOff, Save, Loader2
 } from './icons/FlowbiteIcons';
 import { Popover } from './Popover';
 import { StyledSelect } from './StyledSelect';
@@ -481,25 +481,6 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
               );
             })}
           </ul>
-
-          {/* Quick Legal Link */}
-          <div className="pt-3 mt-3 border-t border-gray-200 dark:border-gray-700 space-y-1">
-            <ul className="space-y-1 font-medium">
-              <li>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLegalDrawerTab('terms');
-                    setIsSidebarOpen(false);
-                  }}
-                  className="flex items-center w-full p-2 text-sm font-medium rounded-lg group transition duration-75 cursor-pointer text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700"
-                >
-                  <ShieldCheck className="w-5 h-5 shrink-0 text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white" />
-                  <span className="ms-3 flex-1 text-left whitespace-nowrap truncate">Terms & Privacy</span>
-                </button>
-              </li>
-            </ul>
-          </div>
         </div>
 
         {/* Sidebar Footer User Profile & Sign Out with Safe Area Bottom Clearance */}

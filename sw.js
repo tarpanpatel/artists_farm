@@ -37,7 +37,8 @@
 // v42 (3 Sep 2026): Add TablePagination to ChannelManager Sync Activity & Outbox Queue table
 // v43 (3 Sep 2026): Dynamic page header title per active tab in TenantDashboard
 // v44 (3 Sep 2026): Complete UI, typography, sidebar and token alignment of TenantDashboard with Property page
-const CACHE_NAME = 'farm-pos-v44';
+// v45 (3 Sep 2026): Remove Terms & Privacy from TenantDashboard left sidebar
+const CACHE_NAME = 'farm-pos-v45';
 
 // Hashed asset pattern — Vite content-hashed files (e.g. index-CrXjaekR.js)
 // These must NEVER be cached by the SW; the browser cache handles them natively
