@@ -534,7 +534,21 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
                 <p className="text-xs font-medium text-blue-900 dark:text-blue-200">
                   {t('airbnb_auth_window_opened', "Sign in to your Airbnb host account in the new tab and click 'Allow'. Once authorized, click Continue below.")}
                 </p>
-                <div className="flex justify-center gap-2 pt-2">
+                <div className="flex flex-col sm:flex-row justify-center gap-2 pt-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      if (airbnbAuthUrl) {
+                        window.open(airbnbAuthUrl, '_blank', 'width=800,height=700');
+                      } else {
+                        window.open('https://www.airbnb.com', '_blank');
+                      }
+                    }}
+                    leftIcon={<ExternalLink className="w-4 h-4" />}
+                  >
+                    <span>Re-open Airbnb Login</span>
+                  </Button>
                   <Button
                     variant="primary"
                     size="sm"
@@ -544,8 +558,17 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
                     }}
                     leftIcon={<ArrowRight className="w-4 h-4" />}
                   >
-                    <span>{t('continue_to_mapping_button', "I've Authorized - Continue to Room Mapping")}</span>
+                    <span>{t('continue_to_mapping_button', "Continue to Room Mapping")}</span>
                   </Button>
+                </div>
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setAirbnbAuthOpened(false)}
+                    className="text-2xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 underline cursor-pointer"
+                  >
+                    Restart Airbnb Authorization
+                  </button>
                 </div>
               </div>
             ) : (
@@ -817,17 +840,30 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
           </Button>
         )}
         {step === 2 && isAirbnb && airbnbAuthOpened && (
-          <Button
-            variant="primary"
-            onClick={() => {
-              setStep(3);
-              fetchMappingDetails();
-            }}
-            className="w-full justify-center sm:w-auto"
-          >
-            {t('continue_to_mapping_button', "I've Authorized - Continue")}
-            <ArrowRight className="w-4 h-4 ml-1" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                if (airbnbAuthUrl) window.open(airbnbAuthUrl, '_blank', 'width=800,height=700');
+                else window.open('https://www.airbnb.com', '_blank');
+              }}
+              className="text-xs"
+            >
+              <ExternalLink className="w-3.5 h-3.5 mr-1" /> Re-open Login
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => {
+                setStep(3);
+                fetchMappingDetails();
+              }}
+              className="w-full justify-center sm:w-auto text-xs"
+            >
+              {t('continue_to_mapping_button', "Continue")}
+              <ArrowRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
         )}
         {step === 2 && !isAirbnb && selectedAdapter && (
           <Button

@@ -26,7 +26,8 @@
 // v31 (3 Sep 2026): Tally Prime XML export and GSTR-1 government tax CSV suite
 // v32 (3 Sep 2026): direct Airbnb OAuth authorization and resilient room mapping
 // v33 (3 Sep 2026): Airbnb switch software troubleshooting guide in wizard & help manual
-const CACHE_NAME = 'farm-pos-v33';
+// v34 (3 Sep 2026): retry and re-open Airbnb OAuth actions in connect wizard
+const CACHE_NAME = 'farm-pos-v34';
 
 // Hashed asset pattern — Vite content-hashed files (e.g. index-CrXjaekR.js)
 // These must NEVER be cached by the SW; the browser cache handles them natively
