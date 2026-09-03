@@ -186,6 +186,7 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
     setAirbnbAuthOpened(false);
     setAirbnbNote('');
     setAirbnbSubmitted(false);
+    setCachedAirbnbAuthUrl(null);
   };
 
   // Load the adapter list once per open, and resume an in-progress connection
@@ -255,12 +256,23 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
   // https://docs.channex.io/channel-api-examples/airbnb.md) is
   // POST /meta/airbnb/connection_link - Channex generates and tracks a
   // real, 2-hour-valid link server-side, then creates the channel
-  // connection itself once the owner authorizes. Called fresh on every
-  // click (including "Re-open"/"Retry") rather than caching one URL, since
-  // each call gets its own valid link - reusing a stale one is exactly what
-  // produced "invalid_state" before.
+  // connection itself once the owner authorizes.
+  //
+  // The generated link/state is CACHED, not re-fetched on every click - each
+  // call to connection_link supersedes the account's previous pending link,
+  // so a second "Re-open" click while the owner is still mid-flow in the
+  // first tab silently invalidates that tab's state, producing exactly the
+  // "invalid_state" error this whole fix exists to prevent (confirmed live
+  // 3 Sep 2026). "Re-open" reuses the same cached URL; only an explicit
+  // "Restart Authorization" clears it and forces a genuinely fresh link.
   const [airbnbLinkLoading, setAirbnbLinkLoading] = useState(false);
-  const fetchAndOpenAirbnbLink = async () => {
+  const [cachedAirbnbAuthUrl, setCachedAirbnbAuthUrl] = useState<string | null>(null);
+  const openAirbnbAuth = async () => {
+    if (cachedAirbnbAuthUrl) {
+      window.open(cachedAirbnbAuthUrl, '_blank', 'width=800,height=700');
+      setAirbnbAuthOpened(true);
+      return;
+    }
     setAirbnbLinkLoading(true);
     try {
       const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=channex_channel_airbnb_connection_link`, {
@@ -273,6 +285,7 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
         showToast(json?.message || 'Failed to generate the Airbnb authorization link', { type: 'error' });
         return;
       }
+      setCachedAirbnbAuthUrl(json.data.url);
       window.open(json.data.url, '_blank', 'width=800,height=700');
       setAirbnbAuthOpened(true);
     } catch (err: any) {
@@ -283,7 +296,7 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
   };
 
   // After the owner finishes on Airbnb, Channex creates the channel
-  // connection itself (see fetchAndOpenAirbnbLink's comment) and our own
+  // connection itself (see openAirbnbAuth's comment) and our own
   // channex_airbnb_oauth_landing redirect target records it. Re-check that
   // before jumping to room mapping, rather than trusting the click alone -
   // the owner may have closed the tab early, been declined, or not
@@ -588,7 +601,7 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
                   <Button
                     variant="secondary"
                     size="sm"
-                    onClick={fetchAndOpenAirbnbLink}
+                    onClick={openAirbnbAuth}
                     disabled={airbnbLinkLoading}
                     leftIcon={airbnbLinkLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
                   >
@@ -607,7 +620,10 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
                 <div className="pt-1">
                   <button
                     type="button"
-                    onClick={() => setAirbnbAuthOpened(false)}
+                    onClick={() => {
+                      setAirbnbAuthOpened(false);
+                      setCachedAirbnbAuthUrl(null);
+                    }}
                     className="text-2xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 underline cursor-pointer"
                   >
                     Restart Airbnb Authorization
@@ -622,7 +638,7 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
                 <Button
                   variant="primary"
                   size="md"
-                  onClick={fetchAndOpenAirbnbLink}
+                  onClick={openAirbnbAuth}
                   disabled={airbnbLinkLoading}
                   leftIcon={airbnbLinkLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
                   className="w-full justify-center bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2.5"
@@ -749,7 +765,7 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
                     <Button
                       variant="primary"
                       size="sm"
-                      onClick={fetchAndOpenAirbnbLink}
+                      onClick={openAirbnbAuth}
                       disabled={airbnbLinkLoading}
                       leftIcon={airbnbLinkLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
                       className="bg-rose-600 hover:bg-rose-700 text-white"
@@ -860,40 +876,13 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
           </Button>
         ) : <div />}
 
-        {step === 2 && isAirbnb && !airbnbAuthOpened && (
-          <Button
-            variant="primary"
-            onClick={fetchAndOpenAirbnbLink}
-            disabled={airbnbLinkLoading}
-            className="w-full justify-center sm:w-auto bg-rose-600 hover:bg-rose-700 text-white"
-          >
-            {airbnbLinkLoading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <ExternalLink className="w-4 h-4 mr-1" />}
-            {t('authorize_with_airbnb_button', 'Authorize with Airbnb')}
-          </Button>
-        )}
-        {step === 2 && isAirbnb && airbnbAuthOpened && (
-          <div className="flex items-center gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={fetchAndOpenAirbnbLink}
-              disabled={airbnbLinkLoading}
-              className="text-xs"
-            >
-              {airbnbLinkLoading ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <ExternalLink className="w-3.5 h-3.5 mr-1" />}
-              Re-open Login
-            </Button>
-            <Button
-              variant="primary"
-              onClick={continueAfterAirbnbAuth}
-              disabled={verifyingAirbnb}
-              className="w-full justify-center sm:w-auto text-xs"
-            >
-              {t('continue_to_mapping_button', "Continue")}
-              {verifyingAirbnb ? <Loader2 className="w-4 h-4 ml-1 animate-spin" /> : <ArrowRight className="w-4 h-4 ml-1" />}
-            </Button>
-          </div>
-        )}
+        {/* Airbnb's own Authorize/Re-open/Continue controls live in the step
+            body above (not here) - this footer used to duplicate all three,
+            which is exactly what made step 2 read as cluttered/repetitive
+            (reported live 3 Sep 2026) and, worse, meant two independent
+            "generate a fresh link" entry points existed for the same step -
+            precisely the kind of double-click that invalidates an
+            in-progress authorization (see openAirbnbAuth's caching comment). */}
         {step === 2 && !isAirbnb && selectedAdapter && (
           <Button
             variant="primary"
