@@ -466,5 +466,24 @@ export const HELP_MANUAL_ITEMS: HelpManualItem[] = [
       'Tap the green "Chat on WhatsApp" button to open a direct support conversation with our hospitality engineering team.',
       'Alternatively, reach us at support@ground-code.com or call our hotline.'
     ]
+  },
+  {
+    id: 'airbnb-switch-software',
+    category: 'general',
+    categoryLabel: 'General & Support',
+    question: 'How do I switch to Ground Code from another PMS or Channel Manager on Airbnb?',
+    keywords: [
+      'airbnb switch software', 'you may only authorise one property management app',
+      'airbnb disconnect', 'remove access airbnb', 'connected apps airbnb',
+      'airbnb channel manager', 'switch to new software airbnb', 'sync settings disconnect'
+    ],
+    summary: 'To switch to Ground Code, disconnect your listings from your former software on Airbnb and remove access in your Airbnb Account Settings.',
+    steps: [
+      'Log in to your Airbnb account on a desktop or mobile web browser (this feature is not available in the Airbnb mobile app).',
+      'Go to Listings (airbnb.com/hosting/listings), check the box next to each listing, click "Edit selected", choose "Sync settings", select "Disconnect", and click Save.',
+      'Go to Account Settings → Privacy & Sharing (airbnb.com/account-settings/privacy-and-sharing).',
+      'Under "Connected Apps", click "Remove Access" for your former software provider.',
+      'Return to Ground Code and click "Authorize with Airbnb" to connect Ground Code and map your rooms!'
+    ]
   }
 ];

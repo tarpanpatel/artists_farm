@@ -25,7 +25,8 @@
 // v30 (3 Sep 2026): performance bundle splitting and client-side image downscaler
 // v31 (3 Sep 2026): Tally Prime XML export and GSTR-1 government tax CSV suite
 // v32 (3 Sep 2026): direct Airbnb OAuth authorization and resilient room mapping
-const CACHE_NAME = 'farm-pos-v32';
+// v33 (3 Sep 2026): Airbnb switch software troubleshooting guide in wizard & help manual
+const CACHE_NAME = 'farm-pos-v33';
 
 // Hashed asset pattern — Vite content-hashed files (e.g. index-CrXjaekR.js)
 // These must NEVER be cached by the SW; the browser cache handles them natively

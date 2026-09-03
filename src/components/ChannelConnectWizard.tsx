@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Drawer } from 'flowbite-react';
 import {
   CheckCircle2, ArrowRight, ArrowLeft, Loader2, X, AlertCircle, AlertTriangle,
-  Plug, ExternalLink, ShieldCheck, RefreshCw,
+  Plug, ExternalLink, ShieldCheck, RefreshCw, ChevronDown,
 } from './icons/FlowbiteIcons';
 import { Button } from './Button';
 import { Input } from './Input';
@@ -58,6 +58,82 @@ const CHANNEL_PREREQUISITES: Record<string, { title: string; steps: string[] }> 
       'Check the box to agree to the terms, then click "Yes, I accept" to accept the XML Service Agreement',
     ],
   },
+};
+
+const AirbnbSwitchSoftwareGuide: React.FC = () => {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="p-3.5 bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 rounded-xl space-y-2.5 text-left transition-all">
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className="w-full flex items-center justify-between text-amber-900 dark:text-amber-200 font-bold text-xs cursor-pointer gap-2"
+      >
+        <div className="flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+          <span>Switching software / &quot;You may only authorise one app&quot;?</span>
+        </div>
+        <ChevronDown className={`w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="space-y-2.5 pt-1 text-2xs text-slate-700 dark:text-slate-300 border-t border-amber-200/80 dark:border-amber-800/60">
+          <p className="text-amber-900 dark:text-amber-200 font-medium">
+            Airbnb allows only <strong>1 Property Management App</strong> at a time. If your Airbnb account was previously connected to another software provider, follow these 3 quick steps in your browser:
+          </p>
+          <ol className="list-decimal pl-4 space-y-2">
+            <li>
+              <strong className="text-slate-900 dark:text-white">Disconnect your listings:</strong>
+              <div className="text-slate-600 dark:text-slate-300 mt-0.5">
+                Go to{' '}
+                <a
+                  href="https://www.airbnb.com/hosting/listings"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 dark:text-blue-400 font-semibold underline inline-flex items-center gap-0.5"
+                >
+                  Airbnb Listings <ExternalLink className="w-3 h-3 inline" />
+                </a>{' '}
+                (on desktop/mobile web browser). Check the box next to your listings ➔ click <strong>Edit selected</strong> ➔ under <strong>Listing details</strong>, choose <strong>Sync settings</strong> ➔ select <strong>Disconnect</strong> and click <strong>Save</strong>.
+              </div>
+            </li>
+            <li>
+              <strong className="text-slate-900 dark:text-white">Remove access for your former software:</strong>
+              <div className="text-slate-600 dark:text-slate-300 mt-0.5">
+                Go to{' '}
+                <a
+                  href="https://www.airbnb.com/account-settings/privacy-and-sharing"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 dark:text-blue-400 font-semibold underline inline-flex items-center gap-0.5"
+                >
+                  Account Settings → Privacy &amp; Sharing <ExternalLink className="w-3 h-3 inline" />
+                </a>
+                . Under <strong>Connected Apps</strong>, click <strong>Remove Access</strong> for your former software provider.
+              </div>
+            </li>
+            <li>
+              <strong className="text-slate-900 dark:text-white">Connect Ground Code:</strong>
+              <div className="text-slate-600 dark:text-slate-300 mt-0.5">
+                Return here and click <strong>Authorize with Airbnb</strong>. Airbnb will now display the permission screen to connect Ground Code!
+              </div>
+            </li>
+          </ol>
+          <div className="pt-1 text-3xs text-slate-500 dark:text-slate-400">
+            Official Guide:{' '}
+            <a
+              href="https://www.airbnb.co.in/help/article/2683"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 dark:text-blue-400 underline"
+            >
+              How to switch software providers on Airbnb
+            </a>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
@@ -496,6 +572,9 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
               </div>
             )}
 
+            {/* Switching Software & Troubleshooting Callout */}
+            <AirbnbSwitchSoftwareGuide />
+
             {/* Optional note or assistance toggle */}
             <div className="pt-2">
               <details className="text-2xs text-slate-500 dark:text-slate-400 cursor-pointer">
@@ -624,6 +703,12 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
                     <span>Retry</span>
                   </Button>
                 </div>
+
+                {isAirbnb && (
+                  <div className="pt-2">
+                    <AirbnbSwitchSoftwareGuide />
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-3">
