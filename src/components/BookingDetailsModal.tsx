@@ -1018,17 +1018,18 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 />
               </div>
               {!isOtaBooking && (
-              <div>
-                <StyledSelect
-                  label={t('pending_received_by_label', 'Pending Received By')}
-                  value={editPendingReceivedBy}
-                  onChange={handleEditPendingReceivedByChange}
-                  placeholder="-- Select Staff/User --"
-                  disabled={!isEditing}
-                  options={availableHandlers}
-                  className={highlightReceiverFields && !editPendingReceivedBy && ((guest.status as string) === 'Checked Out' || (g.status as string) === 'Checked Out') ? 'ring-2 ring-red-400 rounded-lg' : ''}
-                />
-              </div>
+                <div>
+                  <StyledSelect
+                    label={t('pending_received_by_label', 'Pending Received By')}
+                    value={editPendingReceivedBy}
+                    onChange={handleEditPendingReceivedByChange}
+                    placeholder="-- Select Staff/User --"
+                    disabled={!isEditing}
+                    options={availableHandlers}
+                    className={highlightReceiverFields && !editPendingReceivedBy && ((guest.status as string) === 'Checked Out' || (g.status as string) === 'Checked Out') ? 'ring-2 ring-red-400 rounded-lg' : ''}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Checkboxes Row (Flowbite Standard) */}

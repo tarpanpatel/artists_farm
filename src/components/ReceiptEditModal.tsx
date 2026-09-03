@@ -305,6 +305,12 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
   if (!isOpen || !guest) return null;
 
+  // OTA (Airbnb/Booking.com/etc via Channex) bookings are pre-paid by the
+  // channel itself - front desk never actually collects or hands off the
+  // advance/pending amount, so "who received it" doesn't apply. Same check
+  // BookingDetailsModal.tsx uses.
+  const isOtaBooking = Boolean(guest.otaSource || (guest as any).ota_source);
+
   // Food / Incidentals Subtotal
   const foodTotal = kitchenModuleEnabled ? incidentals.reduce((sum, i) => sum + i.price * i.quantity, 0) : 0;
 
@@ -689,15 +695,17 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                       />
                     </div>
                   </div>
-                  <div>
-                    <StyledSelect
-                      label={t('received_by_booking_label', 'Received By (Booking)')}
-                      value={advanceReceivedBy}
-                      onChange={setAdvanceReceivedBy}
-                      placeholder={t('choose_cash_handler_placeholder', '-- Choose cash handler --')}
-                      options={cashHandlers.map((s) => ({ value: s.name, label: s.name }))}
-                    />
-                  </div>
+                  {!isOtaBooking && (
+                    <div>
+                      <StyledSelect
+                        label={t('received_by_booking_label', 'Received By (Booking)')}
+                        value={advanceReceivedBy}
+                        onChange={setAdvanceReceivedBy}
+                        placeholder={t('choose_cash_handler_placeholder', '-- Choose cash handler --')}
+                        options={cashHandlers.map((s) => ({ value: s.name, label: s.name }))}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="bg-amber-50 dark:bg-amber-950/40 rounded-lg p-3 space-y-2 text-xs border border-amber-200 dark:border-amber-800">
@@ -705,15 +713,17 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                     <span className="text-slate-700 dark:text-slate-300">{t('pending_lodging_due_label', 'Pending Accommodation Due:')}</span>
                     <span className="summary-line summary-line--pending-lodging-due text-amber-700 dark:text-amber-400 text-sm font-semibold">₹{lodgingPendingDue.toFixed(2)}</span>
                   </div>
-                  <div>
-                    <StyledSelect
-                      label={t('pending_received_by_label', 'Pending Received By')}
-                      value={pendingReceivedBy}
-                      onChange={handlePendingReceivedByChange}
-                      placeholder={t('choose_cash_handler_placeholder', '-- Choose cash handler --')}
-                      options={cashHandlers.map((s) => ({ value: s.name, label: s.name }))}
-                    />
-                  </div>
+                  {!isOtaBooking && (
+                    <div>
+                      <StyledSelect
+                        label={t('pending_received_by_label', 'Pending Received By')}
+                        value={pendingReceivedBy}
+                        onChange={handlePendingReceivedByChange}
+                        placeholder={t('choose_cash_handler_placeholder', '-- Choose cash handler --')}
+                        options={cashHandlers.map((s) => ({ value: s.name, label: s.name }))}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 
