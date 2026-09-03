@@ -243,7 +243,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
     setError(null);
     try {
       const [propsRes, slotRes] = await Promise.all([
-        apiFetch(`/php/api/router.php?action=list_properties&tenant_id=${tenantId}`),
+        apiFetch(`/php/api/router.php?action=get_tenant_properties&tenant_id=${tenantId}`),
         apiFetch(`/php/api/router.php?action=get_tenant_slot_usage&tenant_id=${tenantId}`),
       ]);
       const propsJson = await propsRes.json();
