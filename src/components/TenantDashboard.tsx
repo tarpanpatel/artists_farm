@@ -133,15 +133,19 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
     setTimeout(() => setSuccessMsg(null), 3500);
   };
 
+  const safeProperties = useMemo(() => (Array.isArray(properties) ? properties : []), [properties]);
+  const safeGuests = useMemo(() => (Array.isArray(guests) ? guests : []), [guests]);
+  const safeServiceRequests = useMemo(() => (Array.isArray(serviceRequests) ? serviceRequests : []), [serviceRequests]);
+
   const filteredGuestsForAnalytics = useMemo(() => {
-    if (selectedAnalyticsPropId === 'all') return guests;
-    return guests.filter((g) => String(g.property_id || g.propertyId) === String(selectedAnalyticsPropId));
-  }, [guests, selectedAnalyticsPropId]);
+    if (selectedAnalyticsPropId === 'all') return safeGuests;
+    return safeGuests.filter((g) => String(g.property_id || g.propertyId) === String(selectedAnalyticsPropId));
+  }, [safeGuests, selectedAnalyticsPropId]);
 
   const filteredServiceRequestsForAnalytics = useMemo(() => {
-    if (selectedAnalyticsPropId === 'all') return serviceRequests;
-    return serviceRequests.filter((r) => String(r.property_id || r.propertyId) === String(selectedAnalyticsPropId));
-  }, [serviceRequests, selectedAnalyticsPropId]);
+    if (selectedAnalyticsPropId === 'all') return safeServiceRequests;
+    return safeServiceRequests.filter((r) => String(r.property_id || r.propertyId) === String(selectedAnalyticsPropId));
+  }, [safeServiceRequests, selectedAnalyticsPropId]);
 
   const todaysArrivalsCount = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
@@ -176,47 +180,60 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
 
   const avgOccupancyAnalytics = useMemo(() => {
     const targetProps = selectedAnalyticsPropId === 'all'
-      ? properties
-      : properties.filter(p => String(p.id) === selectedAnalyticsPropId);
+      ? safeProperties
+      : safeProperties.filter(p => String(p.id) === selectedAnalyticsPropId);
 
     const totalRooms = targetProps.reduce((sum, p) => sum + (p.property_type === 'MULTI_KEY' ? (p.room_count ?? 1) : 1), 0);
     if (totalRooms === 0) return 0;
     return Math.min(100, Math.round((inHouseCount / totalRooms) * 100));
-  }, [properties, selectedAnalyticsPropId, inHouseCount]);
+  }, [safeProperties, selectedAnalyticsPropId, inHouseCount]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [propsData, slotData] = await Promise.all([
-        apiFetch<Property[]>(`/php/api/router.php?action=list_properties&tenant_id=${tenantId}`),
-        apiFetch<SlotUsage>(`/php/api/router.php?action=get_tenant_slot_usage&tenant_id=${tenantId}`),
+      const [propsRes, slotRes] = await Promise.all([
+        apiFetch(`/php/api/router.php?action=list_properties&tenant_id=${tenantId}`),
+        apiFetch(`/php/api/router.php?action=get_tenant_slot_usage&tenant_id=${tenantId}`),
       ]);
-      setProperties(propsData);
+      const propsJson = await propsRes.json();
+      const slotJson = await slotRes.json();
+      const rawProps = propsJson.data || propsJson;
+      const propsList = Array.isArray(rawProps) ? (rawProps as Property[]) : [];
+      const slotData = (slotJson.data || slotJson) as SlotUsage;
+
+      setProperties(propsList);
       setSlotUsage(slotData);
 
-      if (propsData && propsData.length > 0) {
-        const fetchPromises = propsData.flatMap((p) => [
-          apiFetch<any[]>(`/php/api/router.php?action=get_guests&property_id=${p.id}&is_multi_key=${p.property_type === 'MULTI_KEY' ? 1 : 0}`),
-          apiFetch<any[]>(`/php/api/router.php?action=get_service_requests&property_id=${p.id}`),
+      if (propsList.length > 0) {
+        const fetchPromises = propsList.flatMap((p) => [
+          apiFetch(`/php/api/router.php?action=get_guests&property_id=${p.id}&is_multi_key=${p.property_type === 'MULTI_KEY' ? 1 : 0}`),
+          apiFetch(`/php/api/router.php?action=get_service_requests&property_id=${p.id}`),
         ]);
         const results = await Promise.all(fetchPromises);
         const allGuestsList: any[] = [];
         const allReqList: any[] = [];
 
         for (let i = 0; i < results.length; i += 2) {
-          const guestsJson = results[i];
-          const reqJson = results[i + 1];
-          const guestsList = (guestsJson.data || guestsJson) as any[];
-          const reqList = (reqJson.data || reqJson) as any[];
-          if (Array.isArray(guestsList)) allGuestsList.push(...guestsList);
-          if (Array.isArray(reqList)) allReqList.push(...reqList);
+          const guestsRes = results[i];
+          const reqRes = results[i + 1];
+          try {
+            const guestsJson = await guestsRes.json();
+            const reqJson = await reqRes.json();
+            const gList = (guestsJson.data || guestsJson) as any[];
+            const rList = (reqJson.data || reqJson) as any[];
+            if (Array.isArray(gList)) allGuestsList.push(...gList);
+            if (Array.isArray(rList)) allReqList.push(...rList);
+          } catch (e) {
+            console.error('Failed to parse guests or requests json', e);
+          }
         }
 
         setGuests(allGuestsList);
         setServiceRequests(allReqList);
       }
     } catch (err) {
+      console.error('Failed to load dashboard data', err);
       setError('Failed to load dashboard data. Please refresh.');
     } finally {
       setLoading(false);
@@ -317,7 +334,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
       label: 'Properties',
       icon: Building2,
       tab: 'properties' as TenantTab,
-      badge: properties.length > 0 ? `${properties.length}` : null,
+      badge: safeProperties.length > 0 ? `${safeProperties.length}` : null,
     },
     {
       id: 'account',
@@ -681,7 +698,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
               <section className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-5 shadow-2xs space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-base font-bold text-slate-900 dark:text-white">Active Properties ({properties.length})</h3>
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white">Active Properties ({safeProperties.length})</h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400">Launch and configure direct property PMS dashboards</p>
                   </div>
                   <Button
@@ -695,7 +712,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {properties.map((property) => {
+                  {safeProperties.map((property) => {
                     const isMultiKey = property.property_type === 'MULTI_KEY';
                     const roomCount = property.room_count ?? 0;
                     const tenantSlug = tenantInfo?.slug ?? '';
@@ -761,14 +778,14 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                   <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('combined_analytics_heading', 'Combined Analytics')}</h2>
                   <p className="text-xs text-slate-500 dark:text-slate-400">{t('across_all_properties_subtext', 'Across all your managed properties')}</p>
                 </div>
-                {properties.length > 1 && (
+                {safeProperties.length > 1 && (
                   <div className="w-full sm:w-56">
                     <StyledSelect
                       value={selectedAnalyticsPropId}
                       onChange={(value) => setSelectedAnalyticsPropId(value)}
                       options={[
                         { value: 'all', label: t('all_properties_option', 'All Properties') },
-                        ...properties.map(p => ({ value: String(p.id), label: p.name })),
+                        ...safeProperties.map(p => ({ value: String(p.id), label: p.name })),
                       ]}
                       placeholder={t('all_properties_option', 'All Properties')}
                       className="w-full"
@@ -857,7 +874,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 )}
               </div>
 
-              {properties.length === 0 ? (
+              {safeProperties.length === 0 ? (
                 <div className="bg-white dark:bg-slate-900 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 p-12 text-center">
                   <Building2 className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
                   <p className="text-slate-600 dark:text-slate-300 font-semibold">{t('tenant_no_properties_yet_message', 'No properties yet')}</p>
@@ -879,7 +896,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                          {properties.map((property) => {
+                          {safeProperties.map((property) => {
                             const isMultiKey = property.property_type === 'MULTI_KEY';
                             const roomCount = property.room_count ?? 0;
                             const tenantSlug = tenantInfo?.slug ?? '';
@@ -977,7 +994,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
 
                   {/* Mobile Responsive Cards */}
                   <div className="block md:hidden space-y-3">
-                    {properties.map((property) => {
+                    {safeProperties.map((property) => {
                       const isMultiKey = property.property_type === 'MULTI_KEY';
                       const roomCount = property.room_count ?? 0;
                       const tenantSlug = tenantInfo?.slug ?? '';
@@ -1115,7 +1132,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                     </div>
                     <div className="flex justify-between py-1">
                       <span className="text-slate-500 dark:text-slate-400 font-medium">Managed Properties</span>
-                      <span className="font-semibold text-slate-900 dark:text-white">{properties.length} Active / {totalSlots} Allocated Slots</span>
+                      <span className="font-semibold text-slate-900 dark:text-white">{safeProperties.length} Active / {totalSlots} Allocated Slots</span>
                     </div>
                   </div>
                 </div>
@@ -1179,7 +1196,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 embedded
                 tenantId={tenantId}
                 onNavigate={(tab) => {
-                  const targetProperty = properties.find((p) => p.status !== 'draft') || properties[0];
+                  const targetProperty = safeProperties.find((p) => p.status !== 'draft') || safeProperties[0];
                   if (!targetProperty) return;
                   const tenantSlug = tenantInfo?.slug ?? '';
                   const url = tenantSlug
@@ -1483,7 +1500,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
         activeTab={legalDrawerTab}
         onClose={() => setLegalDrawerTab(null)}
         tenantSlug={tenantInfo?.slug ?? propTenantInfo?.slug ?? ''}
-        defaultPropertySlug={properties[0]?.slug ?? ''}
+        defaultPropertySlug={safeProperties[0]?.slug ?? ''}
       />
     </div>
   );
