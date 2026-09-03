@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Building2, LogOut, Plus, AlertCircle,
   Pencil, Trash2, ExternalLink, CheckCircle, Layers,
-  Home, TrendingUp, ChevronRight, Lock, Zap, User,
-  Calendar, Bell, ArrowRight, HelpCircle,
+  Home, TrendingUp, ChevronRight, Lock, Zap, User, UserRound,
+  Calendar, Bell, ArrowRight, HelpCircle, LayoutDashboard,
+  CreditCard, Menu, X, ShieldCheck
 } from './icons/FlowbiteIcons';
 import { Popover } from './Popover';
 import { StyledSelect } from './StyledSelect';
@@ -11,7 +12,6 @@ import { LoadingScreen } from './LoadingScreen';
 import { API_ROOT_BASE, apiFetch } from '../services/api';
 import { Button } from './Button';
 import { Alert as FlowbiteAlert, Modal } from 'flowbite-react';
-import { X } from './icons/FlowbiteIcons';
 import { KpiCard } from './KpiCard';
 import { ToggleSwitch } from './ToggleSwitch';
 import { PropertyCreationWizard } from './PropertyCreationWizard';
@@ -79,10 +79,10 @@ interface TenantDashboardProps {
   isPlatformAdmin?: boolean;
 }
 
+type TenantTab = 'dashboard' | 'analytics' | 'properties' | 'account' | 'billing';
+
 type ModalState =
   | { type: 'none' }
-  // Property Setup Wizard (26 Aug 2026) - replaces the old single-screen 'add' modal. `property`
-  // present means resuming an existing draft; absent means a brand-new property.
   | { type: 'wizard'; property?: Property }
   | { type: 'edit'; property: Property }
   | { type: 'delete'; property: Property }
@@ -106,14 +106,33 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
   const [guests, setGuests] = useState<any[]>([]);
   const [serviceRequests, setServiceRequests] = useState<any[]>([]);
   const [selectedAnalyticsPropId, setSelectedAnalyticsPropId] = useState<string>('all');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Computed Combined Analytics - the property dropdown above (`selectedAnalyticsPropId`)
-  // filters ALL of these, not just the bottom row (26 Aug 2026, reported live: "dropdown
-  // of property should filter data below also" - the top KPI row (Arrivals/Departures/
-  // Guests In-House/Service Requests) used to be plain useState counts computed ONCE from
-  // every property's data inside loadData(), so changing the dropdown never touched them;
-  // only the bottom row (Total Bookings/Revenue/Occupancy) was ever actually wired to the
-  // filter. Both rows now derive from the same filtered lists below.
+  const [activeTab, setActiveTab] = useState<TenantTab>(() => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash.replace('#', '').trim();
+      if (['dashboard', 'analytics', 'properties', 'account', 'billing'].includes(hash)) {
+        return hash as TenantTab;
+      }
+      if (hash === 'overview') return 'dashboard';
+      if (hash === 'subscription') return 'billing';
+    }
+    return 'dashboard';
+  });
+
+  const handleTabChange = (tab: TenantTab) => {
+    setActiveTab(tab);
+    if (typeof window !== 'undefined') {
+      window.location.hash = tab;
+    }
+    setIsSidebarOpen(false);
+  };
+
+  const showSuccess = (msg: string) => {
+    setSuccessMsg(msg);
+    setTimeout(() => setSuccessMsg(null), 3500);
+  };
+
   const filteredGuestsForAnalytics = useMemo(() => {
     if (selectedAnalyticsPropId === 'all') return guests;
     return guests.filter((g) => String(g.property_id || g.propertyId) === String(selectedAnalyticsPropId));
@@ -158,45 +177,28 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
   const avgOccupancyAnalytics = useMemo(() => {
     const targetProps = selectedAnalyticsPropId === 'all'
       ? properties
-      : properties.filter(p => String(p.id) === String(selectedAnalyticsPropId));
+      : properties.filter(p => String(p.id) === selectedAnalyticsPropId);
 
-    const totalSlotsOrRooms = targetProps.reduce((sum, p) => sum + (Number((p as any).room_count || (p as any).rooms) || 1), 0);
-
-    if (totalSlotsOrRooms <= 0) return 0;
-    return Math.min(100, Math.round((inHouseCount / totalSlotsOrRooms) * 100));
+    const totalRooms = targetProps.reduce((sum, p) => sum + (p.property_type === 'MULTI_KEY' ? (p.room_count ?? 1) : 1), 0);
+    if (totalRooms === 0) return 0;
+    return Math.min(100, Math.round((inHouseCount / totalRooms) * 100));
   }, [properties, selectedAnalyticsPropId, inHouseCount]);
-
-
-
-  const showSuccess = (msg: string) => {
-    setSuccessMsg(msg);
-    setTimeout(() => setSuccessMsg(null), 3500);
-  };
 
   const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const adminHeaders: Record<string, string> = {};
-      if (isPlatformAdmin && username) {
-        adminHeaders['X-Admin-Username'] = username;
-      }
-      const [propsRes, slotsRes] = await Promise.all([
-        fetch(`/php/api/router.php?action=get_tenant_properties&tenant_id=${tenantId}`, { credentials: 'include', headers: adminHeaders }),
-        fetch(`/php/api/router.php?action=get_tenant_slot_usage&tenant_id=${tenantId}`, { credentials: 'include', headers: adminHeaders }),
+      const [propsData, slotData] = await Promise.all([
+        apiFetch<Property[]>(`/php/api/router.php?action=list_properties&tenant_id=${tenantId}`),
+        apiFetch<SlotUsage>(`/php/api/router.php?action=get_tenant_slot_usage&tenant_id=${tenantId}`),
       ]);
-      const [propsData, slotsData] = await Promise.all([propsRes.json(), slotsRes.json()]);
+      setProperties(propsData);
+      setSlotUsage(slotData);
 
-      if (propsData.success) setProperties(propsData.data || []);
-      else setError(propsData.message || 'Failed to load properties');
-
-      if (slotsData.success) setSlotUsage(slotsData.data);
-
-      const props = propsData.success ? (propsData.data || []) : [];
-      if (props.length > 0) {
-        const fetchPromises = props.flatMap((p: Property) => [
-          apiFetch(`/php/api/router.php?action=get_guests&property_id=${p.id}`).then(r => r.json()).catch(() => ({ data: [] })),
-          apiFetch(`/php/api/router.php?action=get_service_requests&property_id=${p.id}`).then(r => r.json()).catch(() => ({ data: [] })),
+      if (propsData && propsData.length > 0) {
+        const fetchPromises = propsData.flatMap((p) => [
+          apiFetch<any[]>(`/php/api/router.php?action=get_guests&property_id=${p.id}&is_multi_key=${p.property_type === 'MULTI_KEY' ? 1 : 0}`),
+          apiFetch<any[]>(`/php/api/router.php?action=get_service_requests&property_id=${p.id}`),
         ]);
         const results = await Promise.all(fetchPromises);
         const allGuestsList: any[] = [];
@@ -219,7 +221,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [tenantId, isPlatformAdmin, username]);
+  }, [tenantId]);
 
   useEffect(() => {
     loadData();
@@ -231,14 +233,6 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
     window.location.href = '/login/';
   };
 
-  // Optimistic local update (26 Aug 2026, reported live: "activate toggle
-  // loads the page") - this used to call the full loadData() on success,
-  // which sets the page-level `loading` state back to true and unmounts the
-  // ENTIRE dashboard behind the branded splash screen (see the `if (loading)`
-  // early return below) just to reflect one row's toggle flipping. Patching
-  // `properties` in place gives the same instant visual feedback without the
-  // full-page flash, and reverts that one row (with an error toast) if the
-  // save itself fails - no reload needed either way.
   const handleToggleActive = async (property: Property) => {
     const nextActive = property.is_active ? 0 : 1;
     setProperties((prev) => prev.map((p) => (p.id === property.id ? { ...p, is_active: nextActive } : p)));
@@ -269,10 +263,6 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
   const handleDeleteProperty = async (property: Property) => {
     setError(null);
     try {
-      // BUG (fixed): this sent { id: property.id } - router.php's
-      // delete_property reads $input['property_id'], not 'id', so every
-      // tenant-side delete has always 400'd "property_id required" and
-      // been swallowed by the empty catch below with no feedback at all.
       const res = await fetch('/php/api/router.php?action=delete_property', {
         method: 'POST',
         credentials: 'include',
@@ -298,55 +288,238 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
   const slotPercent = totalSlots > 0 ? Math.round((usedSlots / totalSlots) * 100) : 0;
 
   const planColor: Record<string, string> = {
-    trial: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
-    basic: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-    pro: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
-    enterprise: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
+    trial: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300 dark:border-amber-700',
+    basic: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-300 dark:border-blue-700',
+    pro: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-300 dark:border-purple-700',
+    enterprise: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700',
   };
 
   if (loading) {
-    // Shared branded splash (25 Aug 2026), replacing a one-off spinner+text
-    // block - see the same fix/comment in PlatformPropertyManagement.tsx.
     return <LoadingScreen message={t('loading_tenant_dashboard_message', 'Loading tenant dashboard…')} />;
   }
 
+  // Sidebar navigation menu items: dashboard, analytics, properties, account, billing
+  const navMenuItems = [
+    {
+      id: 'dashboard',
+      label: 'Dashboard',
+      icon: LayoutDashboard,
+      tab: 'dashboard' as TenantTab,
+    },
+    {
+      id: 'analytics',
+      label: 'Analytics',
+      icon: TrendingUp,
+      tab: 'analytics' as TenantTab,
+    },
+    {
+      id: 'properties',
+      label: 'Properties',
+      icon: Building2,
+      tab: 'properties' as TenantTab,
+      badge: properties.length > 0 ? `${properties.length}` : null,
+    },
+    {
+      id: 'account',
+      label: 'Account',
+      icon: UserRound,
+      tab: 'account' as TenantTab,
+    },
+    {
+      id: 'billing',
+      label: 'Billing',
+      icon: CreditCard,
+      tab: 'billing' as TenantTab,
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 dark:from-slate-950 dark:to-indigo-950 tenant-dashboard__container">
-      {/* â"ۉ"€ Header â"ۉ"€ */}
-      {/* pt-[env(safe-area-inset-top)] (27 Aug 2026, user report + screenshot: header content
-          overlapped by the phone's status bar/notch) - every other top-level dashboard header
-          (RootAdminDashboard.tsx's topbar, Header.tsx) already grows its own box by the safe-
-          area inset instead of sitting flush at the viewport's true top edge; this sticky
-          header had never gotten that same treatment. Added as extra top padding on top of the
-          existing py-4 (inner div below) rather than switching to a fixed h-[calc(...)] scheme
-          like those two - this header's height is already just "however tall its content is",
-          no restructuring needed, just more room above it. */}
-      <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/70 dark:border-slate-700/70 sticky top-0 z-40 pt-[env(safe-area-inset-top,0px)] tenant-dashboard__header">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between tenant-dashboard__header-inner">
-          <div className="flex items-center gap-3 tenant-dashboard__header-left">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md tenant-dashboard__header-icon-container">
-              <Building2 className="w-5 h-5 text-white tenant-dashboard__header-icon" />
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+      {/* Mobile Dimming Overlay */}
+      {isSidebarOpen && (
+        <div
+          onClick={() => setIsSidebarOpen(false)}
+          className="fixed inset-0 z-55 bg-gray-900/50 dark:bg-gray-900/80 backdrop-blur-xs transition-opacity md:hidden"
+        />
+      )}
+
+      {/* ──────────────── Sidebar Navigation ──────────────── */}
+      <aside
+        id="superAdminSidebar"
+        aria-label="Super Admin Sidebar Navigation"
+        className={`fixed top-0 left-0 bottom-0 z-56 w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-transform duration-200 flex flex-col justify-between ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        }`}
+      >
+        {/* Sidebar Brand Header */}
+        <div>
+          <div className="h-16 px-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-lg bg-linear-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-xs shrink-0">
+                <Building2 className="w-4.5 h-4.5" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                  {tenantInfo?.name ?? 'Super Admin'}
+                </h2>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">
+                  Property Control Panel
+                </p>
+              </div>
             </div>
-            <div className="tenant-dashboard__header-title-container">
-              <h1 className="text-base font-semibold text-slate-900 dark:text-white leading-tight tenant-dashboard__header-title">
-                {tenantInfo?.name ?? t('tenant_dashboard_heading', 'Tenant Dashboard')}
-              </h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400 tenant-dashboard__header-subtitle">{t('property_control_panel_label', 'Property Control Panel')}</p>
-            </div>
-            {tenantInfo?.subscription_plan && (
-              <span className={`hidden sm:inline-flex text-xs font-semibold px-2.5 py-0.5 rounded-full capitalize ${planColor[tenantInfo.subscription_plan] ?? planColor.trial} tenant-dashboard__plan-badge`}>
-                {tenantInfo.subscription_plan}
-              </span>
-            )}
+            <button
+              type="button"
+              onClick={() => setIsSidebarOpen(false)}
+              className="md:hidden p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
-          <div className="flex items-center gap-2 sm:gap-4 tenant-dashboard__header-right">
-            <div className="text-right hidden sm:block tenant-dashboard__user-info">
-              <p className="text-sm font-medium text-slate-800 dark:text-slate-200 tenant-dashboard__username">{username}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 tenant-dashboard__user-role">
-                {isPlatformAdmin ? t('root_admin_label', 'Root Admin') : t('tenant_manager_label', 'Property Owner')}
+
+          {/* Nav Menu Items List */}
+          <div className="p-3 space-y-1">
+            <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+              Menu
+            </div>
+            <ul className="space-y-1 font-medium text-xs">
+              {navMenuItems.map((item) => {
+                const ItemIcon = item.icon;
+                const isActive = activeTab === item.tab;
+                return (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      onClick={() => handleTabChange(item.tab)}
+                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors cursor-pointer ${
+                        isActive
+                          ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 font-semibold border border-blue-200/80 dark:border-blue-800/80 shadow-2xs'
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <ItemIcon className={`w-4.5 h-4.5 shrink-0 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`} />
+                        <span className="truncate">{item.label}</span>
+                      </div>
+                      {item.badge && (
+                        <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+
+            {/* Quick Support & Legal Links */}
+            <div className="pt-3 mt-3 border-t border-gray-200 dark:border-gray-700 space-y-1">
+              <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                Support & Legal
+              </div>
+              <ul className="space-y-1 font-medium text-xs">
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLegalDrawerTab('faq');
+                      setIsSidebarOpen(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors cursor-pointer"
+                  >
+                    <HelpCircle className="w-4 h-4 text-gray-400" />
+                    <span>Help & FAQ</span>
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLegalDrawerTab('terms');
+                      setIsSidebarOpen(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors cursor-pointer"
+                  >
+                    <ShieldCheck className="w-4 h-4 text-gray-400" />
+                    <span>Terms & Privacy</span>
+                  </button>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Sidebar Footer User Profile & Sign Out */}
+        <div className="p-3 border-t border-gray-200 dark:border-gray-700 space-y-2 bg-gray-50/50 dark:bg-gray-850/40">
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => handleTabChange('account')}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') handleTabChange('account');
+            }}
+            className="flex items-center gap-2.5 p-2 rounded-lg bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 transition-colors cursor-pointer shadow-2xs group"
+          >
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 ring-2 ring-blue-500/20 shrink-0">
+              <UserRound className="w-4 h-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-semibold text-gray-900 dark:text-white truncate flex items-center justify-between">
+                <span>{username}</span>
+                <ChevronRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-blue-500 transition-colors shrink-0" />
+              </div>
+              <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate capitalize font-medium">
+                {isPlatformAdmin ? t('root_admin_label', 'Root Admin') : t('tenant_manager_label', 'Super Admin')}
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="flex items-center justify-center w-full p-2 text-xs font-semibold rounded-lg text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/50 transition-all cursor-pointer shadow-2xs gap-2"
+          >
+            <LogOut className="w-4 h-4 text-red-500" />
+            <span>{t('sign_out_terminal_button', 'Sign Out')}</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* ──────────────── Top Header Bar ──────────────── */}
+      <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 md:pl-64 h-[calc(4rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)] flex items-center">
+        <div className="w-full px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            {/* Mobile Hamburger Toggle */}
+            <button
+              type="button"
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              title={t('toggle_sidebar_tooltip', 'Toggle Sidebar Menu')}
+              aria-label={t('toggle_sidebar_aria', 'Toggle Sidebar Navigation')}
+              className="md:hidden p-2 -ml-1 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
+            <div className="min-w-0">
+              <h1 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate flex items-center gap-2">
+                <span>{tenantInfo?.name ?? t('tenant_dashboard_heading', 'Tenant Dashboard')}</span>
+                {tenantInfo?.subscription_plan && (
+                  <span className={`hidden sm:inline-flex text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full capitalize ${planColor[tenantInfo.subscription_plan] ?? planColor.trial}`}>
+                    {tenantInfo.subscription_plan}
+                  </span>
+                )}
+              </h1>
+              <p className="text-2xs text-slate-500 dark:text-slate-400 truncate">
+                {activeTab === 'dashboard' && 'Dashboard Overview & Live Operations'}
+                {activeTab === 'analytics' && 'Combined Portfolio Analytics & Performance'}
+                {activeTab === 'properties' && 'Properties & Units Configuration'}
+                {activeTab === 'account' && 'Super Admin Account Details & Security'}
+                {activeTab === 'billing' && 'Subscription Plan, Slots & Invoices'}
               </p>
             </div>
-            {/* Help/FAQ trigger (replaces ContactSupportMenu chat button - matches Header.tsx on property page) */}
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Help/FAQ trigger */}
             <Popover
               trigger="hover"
               placement="bottom"
@@ -360,397 +533,57 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 type="button"
                 onClick={() => setLegalDrawerTab('faq')}
                 aria-label={t('help_aria', 'Help & FAQ')}
-                className="tenant-dashboard__faq-toggle p-2 rounded-lg text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                className="p-2 rounded-lg text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 <HelpCircle className="w-5 h-5" />
               </button>
             </Popover>
-            <button
-              onClick={handleLogout}
-              className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors tenant-dashboard__logout-button"
-              title={t('logout_tooltip', 'Logout')}
+
+            {/* Quick Header Sign Out */}
+            <Popover
+              trigger="hover"
+              placement="bottom"
+              content={
+                <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                  {t('sign_out_terminal_button', 'Sign Out')}
+                </div>
+              }
             >
-              <LogOut className="w-5 h-5 text-red-600 dark:text-red-400" />
-            </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                aria-label={t('sign_out_terminal_button', 'Sign Out')}
+                className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 transition-colors cursor-pointer"
+              >
+                <LogOut className="w-5 h-5 text-red-500" />
+              </button>
+            </Popover>
           </div>
         </div>
       </header>
 
-      {/* px-4 sm:px-6 lg:px-8 (27 Aug 2026, full-app padding sweep) - was a flat px-6 at
-          every width, independent of App.tsx's shared <main> (px-4 sm:px-6 lg:px-8) used by
-          every tab inside a property - aligned to the same scale so this page (the tenant-
-          level "Property Control Panel", not one of those tabs) doesn't drift from it. */}
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 tenant-dashboard__main">
-        {/* Success Toast */}
-        {successMsg && (
-          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] bg-emerald-600 text-white px-5 py-3 rounded-lg shadow-2xl text-sm font-medium flex items-center gap-2 animate-pulse tenant-dashboard__success-toast">
-            <CheckCircle className="w-4 h-4 tenant-dashboard__success-toast-icon" />
-            {successMsg}
-          </div>
-        )}
-
-        {error && (
-          <FlowbiteAlert color="failure" icon={AlertCircle} className="tenant-dashboard__error-toast">
-            {error}
-          </FlowbiteAlert>
-        )}
-
-        {/* Slot Usage Widget */}
-        <section className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-4 shadow-sm tenant-dashboard__slot-widget">
-          <div className="flex items-center justify-between tenant-dashboard__slot-widget-inner">
-            <div className="flex items-center gap-3 tenant-dashboard__slot-widget-left">
-              <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/30 flex items-center justify-center tenant-dashboard__slot-widget-icon-container">
-                <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 tenant-dashboard__slot-widget-count">{usedSlots}/{totalSlots}</span>
-              </div>
-              <div className="tenant-dashboard__slot-widget-text">
-                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 tenant-dashboard__slot-widget-label">Slots</p>
-                <p className="text-2xs text-slate-400 dark:text-slate-500 tenant-dashboard__slot-widget-remaining">{remaining > 0 ? `${remaining} remaining` : 'No slots left'}</p>
-              </div>
+      {/* ──────────────── Main Content Area ──────────────── */}
+      <main className="md:pl-64 min-h-[calc(100vh-4rem)] pb-[calc(5rem+env(safe-area-inset-bottom,0px))] md:pb-12">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+          {/* Success Toast Notification */}
+          {successMsg && (
+            <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-9999 bg-emerald-600 text-white px-5 py-3 rounded-lg shadow-2xl text-sm font-medium flex items-center gap-2 animate-pulse">
+              <CheckCircle className="w-4 h-4" />
+              {successMsg}
             </div>
-            <div className="w-24 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden tenant-dashboard__slot-widget-bar-bg">
-              <div
-                className={`h-full rounded-full transition-all duration-500 tenant-dashboard__slot-widget-bar-fill ${
-                  slotPercent >= 100
-                    ? 'bg-red-500'
-                    : slotPercent >= 80
-                    ? 'bg-amber-500'
-                    : 'bg-indigo-500'
-                }`}
-                style={{ width: `${Math.min(slotPercent, 100)}%` }}
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* Subscription Section (added 3 Sep 2026, user report: the Subscription
-            screen only lived behind a per-property nav item, so a multi-property
-            tenant had to open one specific property just to see tenant-wide
-            billing/renewal info - it belongs here instead, alongside Slot Usage,
-            since both are tenant-level, not property-level). Reuses the same
-            SubscriptionPanel the per-property "Subscription" nav item renders
-            (see php/kitchen/menu.php's nav_menu_self_heal_v10, still kept for
-            direct property-staff logins that never see this page at all) -
-            `embedded` suppresses its own PageHeader/page padding since this
-            section supplies both. */}
-        <section className="tenant-dashboard__subscription-section">
-          <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-5 tenant-dashboard__subscription-title">
-            {t('subscription_heading', 'Subscription')}
-          </h2>
-          <SubscriptionPanel
-            embedded
-            tenantId={tenantId}
-            onNavigate={(tab) => {
-              // No single "current property" exists at this level (that's the
-              // whole reason this section exists) - the Export-your-data link
-              // inside the request drawer opens the first non-draft property's
-              // own tab in a new one, same dashboardUrl convention as every
-              // "Open Property" button below.
-              const targetProperty = properties.find((p) => p.status !== 'draft') || properties[0];
-              if (!targetProperty) return;
-              const tenantSlug = tenantInfo?.slug ?? '';
-              const url = tenantSlug
-                ? `${API_ROOT_BASE}/${tenantSlug}/${targetProperty.slug}/#${tab}`
-                : `${API_ROOT_BASE}/${targetProperty.slug}/#${tab}`;
-              window.open(url, '_blank', 'noopener,noreferrer');
-            }}
-          />
-        </section>
-
-        {/* Properties Section */}
-        <section className="tenant-dashboard__properties-section">
-          <div className="flex items-center justify-between mb-5 tenant-dashboard__properties-header">
-            <h2 className="text-xl font-semibold text-slate-900 dark:text-white tenant-dashboard__properties-title">{t('your_properties_heading', 'Your Properties')}</h2>
-            {remaining > 0 ? (
-              <Button
-                id="tenant-add-property-btn"
-                leftIcon={<Plus className="w-4 h-4" />}
-                variant="primary"
-                size="sm"
-                onClick={() => setModal({ type: 'wizard' })}
-                className="tenant-dashboard__properties-add-btn"
-              >
-                {t('add_property_button', 'Add Property')}
-              </Button>
-            ) : (
-              <div className="flex flex-col items-end gap-1 tenant-dashboard__properties-no-slots">
-                <Button variant="dark" size="sm" disabled leftIcon={<Lock className="w-4 h-4" />} className="tenant-dashboard__properties-add-btn--disabled">
-                  {t('add_property_button', 'Add Property')}
-                </Button>
-                <p className="text-xs text-slate-500 dark:text-slate-400 tenant-dashboard__properties-no-slots-text">{t('no_more_slots_available_message', 'No more slots available')}</p>
-                <Button variant="secondary" size="xs" leftIcon={<Zap className="w-3.5 h-3.5" />} onClick={() => setModal({ type: 'upgrade' })} className="tenant-dashboard__properties-upgrade-btn">
-                  {t('upgrade_package_button', 'Upgrade Package')}
-                </Button>
-              </div>
-            )}
-          </div>
-
-          {properties.length === 0 ? (
-            <div className="bg-white dark:bg-slate-900 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 p-12 text-center tenant-dashboard__properties-empty">
-              <Building2 className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3 tenant-dashboard__properties-empty-icon" />
-              <p className="text-slate-500 dark:text-slate-400 font-medium tenant-dashboard__properties-empty-text">{t('tenant_no_properties_yet_message', 'No properties yet')}</p>
-              <p className="text-sm text-slate-400 dark:text-slate-500 mt-1 tenant-dashboard__properties-empty-subtext">{t('add_first_property_help_text', 'Add your first property to get started')}</p>
-            </div>
-          ) : (
-            <>
-              {/* Desktop View: Flowbite Standard DataTable */}
-              <div className="hidden md:block bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-left text-slate-600 dark:text-slate-300">
-                    <thead className="text-2xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700">
-                      <tr>
-                        <th scope="col" className="px-4 py-3 whitespace-nowrap">Property Name</th>
-                        <th scope="col" className="px-4 py-3 whitespace-nowrap">Type</th>
-                        <th scope="col" className="px-4 py-3 whitespace-nowrap">Rooms & Slots</th>
-                        <th scope="col" className="px-4 py-3 whitespace-nowrap">Status</th>
-                        <th scope="col" className="px-4 py-3 whitespace-nowrap text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                      {properties.map((property) => {
-                        const isMultiKey = property.property_type === 'MULTI_KEY';
-                        const roomCount = property.room_count ?? 0;
-                        const tenantSlug = tenantInfo?.slug ?? '';
-                        const dashboardUrl = tenantSlug
-                          ? `${API_ROOT_BASE}/${tenantSlug}/${property.slug}/#dashboard`
-                          : `${API_ROOT_BASE}/${property.slug}/#dashboard`;
-                        const isDraft = property.status === 'draft';
-
-                        return (
-                          <tr key={property.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-3">
-                                <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 shadow-2xs ${
-                                  isDraft
-                                    ? 'bg-amber-100 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-800'
-                                    : isMultiKey
-                                    ? 'bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800'
-                                    : 'bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800'
-                                }`}>
-                                  {isMultiKey ? (
-                                    <Layers className={`w-4.5 h-4.5 ${isDraft ? 'text-amber-600 dark:text-amber-400' : 'text-indigo-600 dark:text-indigo-400'}`} />
-                                  ) : (
-                                    <Home className={`w-4.5 h-4.5 ${isDraft ? 'text-amber-600 dark:text-amber-400' : 'text-teal-600 dark:text-teal-400'}`} />
-                                  )}
-                                </div>
-                                <div>
-                                  <div className="font-semibold text-slate-900 dark:text-white text-xs">{property.name || 'Untitled property'}</div>
-                                  <div className="text-2xs text-slate-400 dark:text-slate-500 font-mono">/{property.slug}</div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <span className={`text-2xs font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
-                                isMultiKey
-                                  ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/40'
-                                  : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
-                              }`}>
-                                {isMultiKey ? 'Multi-Key Property' : 'Single Property'}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              {isMultiKey ? (
-                                <span className="text-xs text-slate-600 dark:text-slate-300">
-                                  {roomCount > 0 ? `${roomCount} room${roomCount !== 1 ? 's' : ''} · ${roomCount} slot${roomCount !== 1 ? 's' : ''}` : '0 rooms'}
-                                </span>
-                              ) : (
-                                <span className="text-xs text-slate-400 dark:text-slate-500">1 Slot</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              {isDraft ? (
-                                <span className="text-2xs font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300/60 dark:border-amber-800/40">
-                                  Draft
-                                </span>
-                              ) : (
-                                <ToggleSwitch
-                                  enabled={!!property.is_active}
-                                  onChange={() => handleToggleActive(property)}
-                                />
-                              )}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-right">
-                              <div className="flex items-center justify-end gap-1.5">
-                                {isDraft ? (
-                                  <Button
-                                    variant="warning"
-                                    size="sm"
-                                    className="bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white dark:bg-amber-600 dark:hover:bg-amber-500 border-none shadow-none font-medium"
-                                    onClick={() => setModal({ type: 'wizard', property })}
-                                    rightIcon={<ArrowRight className="w-3.5 h-3.5 shrink-0" />}
-                                  >
-                                    {t('continue_setup_button', 'Continue Setup')}
-                                  </Button>
-                                ) : (
-                                  <>
-                                    <Button variant="primary" size="sm" onClick={() => window.open(dashboardUrl, '_blank', 'noopener,noreferrer')} leftIcon={<ExternalLink className="w-3.5 h-3.5 shrink-0" />}>
-                                      {t('open_dashboard_link', 'Open Property')}
-                                    </Button>
-                                    <Button variant="edit" size="sm" onClick={() => setModal({ type: 'edit', property })} leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}>
-                                      Edit
-                                    </Button>
-                                  </>
-                                )}
-                                <Button variant="ghost" size="xs" onClick={() => setModal({ type: 'delete', property })} title={t('delete_tooltip', 'Delete')} className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
-                                  <Trash2 className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Mobile View: Small Screen Responsive Cards */}
-              <div className="block md:hidden space-y-3">
-                {properties.map((property) => {
-                  const isMultiKey = property.property_type === 'MULTI_KEY';
-                  const roomCount = property.room_count ?? 0;
-                  const tenantSlug = tenantInfo?.slug ?? '';
-                  const dashboardUrl = tenantSlug
-                    ? `${API_ROOT_BASE}/${tenantSlug}/${property.slug}/#dashboard`
-                    : `${API_ROOT_BASE}/${property.slug}/#dashboard`;
-                  const isDraft = property.status === 'draft';
-
-                  if (isDraft) {
-                    return (
-                      <div key={property.id} className="bg-amber-50/50 dark:bg-amber-950/20 rounded-lg border-2 border-dashed border-amber-300 dark:border-amber-800 p-4 shadow-xs space-y-3">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-2.5">
-                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isMultiKey ? 'bg-amber-100/70 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-800' : 'bg-amber-100/70 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-800'}`}>
-                              {isMultiKey ? <Layers className="w-4 h-4 text-amber-700 dark:text-amber-400" /> : <Home className="w-4 h-4 text-amber-700 dark:text-amber-400" />}
-                            </div>
-                            <div>
-                              <h3 className="font-semibold text-slate-900 dark:text-white text-sm">{property.name || 'Untitled property'}</h3>
-                              {property.slug && <p className="text-2xs text-slate-400 dark:text-slate-500 font-mono">/{property.slug}</p>}
-                            </div>
-                          </div>
-                          <span className="text-2xs font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300/60 dark:border-amber-800/40">
-                            Draft
-                          </span>
-                        </div>
-
-                        <div className="pt-3 border-t border-amber-200/80 dark:border-amber-900/60 flex items-center justify-between">
-                          <Button
-                            variant="warning"
-                            size="sm"
-                            className="bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white dark:bg-amber-600 dark:hover:bg-amber-500 border-none shadow-none font-medium"
-                            onClick={() => setModal({ type: 'wizard', property })}
-                            rightIcon={<ArrowRight className="w-3.5 h-3.5 shrink-0" />}
-                          >
-                            {t('continue_setup_button', 'Continue Setup')}
-                          </Button>
-                          <div className="flex items-center gap-1.5">
-                            <Button
-                              variant="ghost"
-                              size="xs"
-                              onClick={() => setModal({ type: 'delete', property })}
-                              className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
-                              title={t('delete_tooltip', 'Delete')}
-                            >
-                              <Trash2 className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <div key={property.id} className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-4 shadow-xs space-y-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-2.5">
-                          <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isMultiKey ? 'bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200' : 'bg-teal-50 dark:bg-teal-950/60 border border-teal-200'}`}>
-                            {isMultiKey ? <Layers className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> : <Home className="w-4 h-4 text-teal-600 dark:text-teal-400" />}
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-slate-900 dark:text-white text-sm">{property.name}</h3>
-                            <p className="text-2xs text-slate-400 dark:text-slate-500 font-mono">/{property.slug}</p>
-                            {isMultiKey && (
-                              <p className="text-2xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                {roomCount > 0 ? `${roomCount} room${roomCount !== 1 ? 's' : ''} · ${roomCount} slot${roomCount !== 1 ? 's' : ''}` : '0 rooms'}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <ToggleSwitch
-                            enabled={!!property.is_active}
-                            onChange={() => handleToggleActive(property)}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                        <Button variant="primary" size="sm" onClick={() => window.open(dashboardUrl, '_blank', 'noopener,noreferrer')} leftIcon={<ExternalLink className="w-3.5 h-3.5 shrink-0" />}>
-                          {t('open_dashboard_link', 'Open Property')}
-                        </Button>
-                        <div className="flex items-center gap-1.5">
-                          <Button variant="edit" size="sm" onClick={() => setModal({ type: 'edit', property })} leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}>
-                            Edit
-                          </Button>
-                          <Button variant="ghost" size="xs" onClick={() => setModal({ type: 'delete', property })} className="text-red-600 dark:text-red-400 hover:text-red-700">
-                            <Trash2 className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
           )}
-        </section>
 
-        {/* Combined Analytics / Property at glance */}
-        {(() => {
-          const singleProp = properties.length === 1 ? properties[0] : null;
-          const selectedProp = selectedAnalyticsPropId !== 'all'
-            ? properties.find(p => String(p.id) === selectedAnalyticsPropId)
-            : null;
-          const activeDisplayProp = singleProp || selectedProp;
+          {error && (
+            <FlowbiteAlert color="failure" icon={AlertCircle}>
+              {error}
+            </FlowbiteAlert>
+          )}
 
-          const analyticsTitle = activeDisplayProp
-            ? `${activeDisplayProp.name} at glance`
-            : t('combined_analytics_heading', 'Combined Analytics');
-
-          const analyticsSubtitle = activeDisplayProp
-            ? t('property_at_glance_subtitle', 'Property overview and live operational metrics')
-            : t('across_all_properties_subtext', 'Across all your properties');
-
-          const revenueLabel = activeDisplayProp
-            ? t('total_revenue_label', 'Total Revenue')
-            : t('combined_revenue_label', 'Combined Revenue');
-
-          return (
-            <section className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-6 shadow-sm tenant-dashboard__analytics">
-              <div className="flex items-center justify-between mb-6 tenant-dashboard__analytics-header">
-                <div className="tenant-dashboard__analytics-title-wrapper">
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white tenant-dashboard__analytics-title">{analyticsTitle}</h2>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 tenant-dashboard__analytics-subtitle">{analyticsSubtitle}</p>
-                </div>
-                {properties.length > 1 && (
-                  <div className="flex items-center gap-2 tenant-dashboard__analytics-filters">
-                    <StyledSelect
-                      value={selectedAnalyticsPropId}
-                      onChange={(value) => setSelectedAnalyticsPropId(value)}
-                      options={[
-                        { value: 'all', label: t('all_properties_option', 'All Properties') },
-                        ...properties.map(p => ({ value: String(p.id), label: p.name })),
-                      ]}
-                      placeholder={t('all_properties_option', 'All Properties')}
-                      className="w-48"
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Operational Overview Metrics - moved inside Combined Analytics, directly under
-                  the title (26 Aug 2026 explicit request), above the Total Bookings/Revenue/
-                  Occupancy summary cards below. */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 tenant-dashboard__metrics-grid">
+          {/* ═══════════ TAB 1: DASHBOARD ═══════════ */}
+          {activeTab === 'dashboard' && (
+            <div className="space-y-6">
+              {/* Top Operational Metrics */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 <KpiCard
                   label="Arrivals"
                   icon={Calendar}
@@ -775,40 +608,656 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 <KpiCard
                   label="Service Requests"
                   icon={Bell}
-                  badge={{ text: 'Active', color: 'failure' }}
+                  badge={{ text: 'Pending', color: 'failure' }}
                   value={pendingRequestsCount}
                   layout="stacked"
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 tenant-dashboard__analytics-grid">
-                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-5 text-center border border-slate-100 dark:border-slate-700/50 tenant-dashboard__analytics-card">
-                  <TrendingUp className="w-6 h-6 text-indigo-500 mx-auto mb-2 tenant-dashboard__analytics-card-icon" />
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 tenant-dashboard__analytics-card-label">{t('total_bookings_label', 'Total Bookings')}</p>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white tenant-dashboard__analytics-card-value">{totalBookingsAnalytics}</p>
+              {/* Slot Usage Widget */}
+              <section className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4 shadow-2xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center">
+                      <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">{usedSlots}/{totalSlots}</span>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">Subscription Property Slots</p>
+                      <p className="text-2xs text-slate-400 dark:text-slate-500">{remaining > 0 ? `${remaining} slot${remaining !== 1 ? 's' : ''} available` : 'All allocated slots in use'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-28 h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden hidden sm:block">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          slotPercent >= 100 ? 'bg-red-500' : slotPercent >= 80 ? 'bg-amber-500' : 'bg-indigo-500'
+                        }`}
+                        style={{ width: `${Math.min(slotPercent, 100)}%` }}
+                      />
+                    </div>
+                    {remaining > 0 ? (
+                      <Button
+                        variant="primary"
+                        size="xs"
+                        leftIcon={<Plus className="w-3.5 h-3.5" />}
+                        onClick={() => setModal({ type: 'wizard' })}
+                      >
+                        Add Property
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="secondary"
+                        size="xs"
+                        leftIcon={<Zap className="w-3.5 h-3.5 text-amber-500" />}
+                        onClick={() => setModal({ type: 'upgrade' })}
+                      >
+                        Upgrade
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-5 text-center border border-slate-100 dark:border-slate-700/50 tenant-dashboard__analytics-card">
-                  <Building2 className="w-6 h-6 text-emerald-500 mx-auto mb-2 tenant-dashboard__analytics-card-icon" />
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 tenant-dashboard__analytics-card-label">{revenueLabel}</p>
-                  <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 tenant-dashboard__analytics-card-value">₹{combinedRevenueAnalytics.toLocaleString('en-IN')}</p>
+              </section>
+
+              {/* Quick Summary Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-white dark:bg-slate-900 rounded-lg p-5 border border-slate-200 dark:border-slate-800 text-center shadow-2xs">
+                  <TrendingUp className="w-5 h-5 text-indigo-500 mx-auto mb-1.5" />
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('total_bookings_label', 'Total Bookings')}</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5">{totalBookingsAnalytics}</p>
                 </div>
-                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-5 text-center border border-slate-100 dark:border-slate-700/50 tenant-dashboard__analytics-card">
-                  <Layers className="w-6 h-6 text-blue-500 mx-auto mb-2 tenant-dashboard__analytics-card-icon" />
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 tenant-dashboard__analytics-card-label">{t('avg_occupancy_label', 'Avg. Occupancy')}</p>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white tenant-dashboard__analytics-card-value">{avgOccupancyAnalytics}%</p>
+                <div className="bg-white dark:bg-slate-900 rounded-lg p-5 border border-slate-200 dark:border-slate-800 text-center shadow-2xs">
+                  <Building2 className="w-5 h-5 text-emerald-500 mx-auto mb-1.5" />
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('combined_revenue_label', 'Combined Revenue')}</p>
+                  <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">₹{combinedRevenueAnalytics.toLocaleString('en-IN')}</p>
+                </div>
+                <div className="bg-white dark:bg-slate-900 rounded-lg p-5 border border-slate-200 dark:border-slate-800 text-center shadow-2xs">
+                  <Layers className="w-5 h-5 text-blue-500 mx-auto mb-1.5" />
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('avg_occupancy_label', 'Avg. Occupancy')}</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5">{avgOccupancyAnalytics}%</p>
+                </div>
+              </div>
+
+              {/* Properties Overview Grid */}
+              <section className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-5 shadow-2xs space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white">Active Properties ({properties.length})</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Launch and configure direct property PMS dashboards</p>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => handleTabChange('properties')}
+                    rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
+                  >
+                    View All
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {properties.map((property) => {
+                    const isMultiKey = property.property_type === 'MULTI_KEY';
+                    const roomCount = property.room_count ?? 0;
+                    const tenantSlug = tenantInfo?.slug ?? '';
+                    const dashboardUrl = tenantSlug
+                      ? `${API_ROOT_BASE}/${tenantSlug}/${property.slug}/#dashboard`
+                      : `${API_ROOT_BASE}/${property.slug}/#dashboard`;
+                    const isDraft = property.status === 'draft';
+
+                    return (
+                      <div
+                        key={property.id}
+                        className="flex items-center justify-between p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850/40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                            isDraft
+                              ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400'
+                              : isMultiKey
+                              ? 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400'
+                              : 'bg-teal-100 dark:bg-teal-950/60 text-teal-700 dark:text-teal-400'
+                          }`}>
+                            {isMultiKey ? <Layers className="w-4.5 h-4.5" /> : <Home className="w-4.5 h-4.5" />}
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">{property.name}</h4>
+                            <p className="text-2xs text-slate-400 dark:text-slate-500 font-mono truncate">/{property.slug}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          {isDraft ? (
+                            <Button
+                              variant="warning"
+                              size="xs"
+                              onClick={() => setModal({ type: 'wizard', property })}
+                            >
+                              Resume
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="primary"
+                              size="xs"
+                              onClick={() => window.open(dashboardUrl, '_blank', 'noopener,noreferrer')}
+                              leftIcon={<ExternalLink className="w-3 h-3" />}
+                            >
+                              Launch
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            </div>
+          )}
+
+          {/* ═══════════ TAB 2: ANALYTICS ═══════════ */}
+          {activeTab === 'analytics' && (
+            <section className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-6 shadow-2xs space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('combined_analytics_heading', 'Combined Analytics')}</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{t('across_all_properties_subtext', 'Across all your managed properties')}</p>
+                </div>
+                {properties.length > 1 && (
+                  <div className="w-full sm:w-56">
+                    <StyledSelect
+                      value={selectedAnalyticsPropId}
+                      onChange={(value) => setSelectedAnalyticsPropId(value)}
+                      options={[
+                        { value: 'all', label: t('all_properties_option', 'All Properties') },
+                        ...properties.map(p => ({ value: String(p.id), label: p.name })),
+                      ]}
+                      placeholder={t('all_properties_option', 'All Properties')}
+                      className="w-full"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Analytics Top KPIs */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <KpiCard
+                  label="Arrivals"
+                  icon={Calendar}
+                  badge={{ text: 'Today', color: 'info' }}
+                  value={todaysArrivalsCount}
+                  layout="stacked"
+                />
+                <KpiCard
+                  label="Departures"
+                  icon={LogOut}
+                  badge={{ text: 'Today', color: 'warning' }}
+                  value={todaysDeparturesCount}
+                  layout="stacked"
+                />
+                <KpiCard
+                  label="Guests In-House"
+                  icon={User}
+                  badge={{ text: 'Active', color: 'success' }}
+                  value={inHouseCount}
+                  layout="stacked"
+                />
+                <KpiCard
+                  label="Service Requests"
+                  icon={Bell}
+                  badge={{ text: 'Pending', color: 'failure' }}
+                  value={pendingRequestsCount}
+                  layout="stacked"
+                />
+              </div>
+
+              {/* Analytics Summary */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-slate-50 dark:bg-slate-850/60 rounded-lg p-5 text-center border border-slate-200/80 dark:border-slate-800">
+                  <TrendingUp className="w-6 h-6 text-indigo-500 mx-auto mb-2" />
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t('total_bookings_label', 'Total Bookings')}</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white">{totalBookingsAnalytics}</p>
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-850/60 rounded-lg p-5 text-center border border-slate-200/80 dark:border-slate-800">
+                  <Building2 className="w-6 h-6 text-emerald-500 mx-auto mb-2" />
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t('combined_revenue_label', 'Combined Revenue')}</p>
+                  <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">₹{combinedRevenueAnalytics.toLocaleString('en-IN')}</p>
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-850/60 rounded-lg p-5 text-center border border-slate-200/80 dark:border-slate-800">
+                  <Layers className="w-6 h-6 text-blue-500 mx-auto mb-2" />
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t('avg_occupancy_label', 'Avg. Occupancy')}</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white">{avgOccupancyAnalytics}%</p>
                 </div>
               </div>
             </section>
-          );
-        })()}
+          )}
 
-        {/* Client Dashboard Flowbite Footer */}
-        <DashboardFooter />
+          {/* ═══════════ TAB 3: PROPERTIES ═══════════ */}
+          {activeTab === 'properties' && (
+            <section className="space-y-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('your_properties_heading', 'Your Properties')}</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Create, edit, toggle active status, and access direct management portals</p>
+                </div>
+                {remaining > 0 ? (
+                  <Button
+                    id="tenant-add-property-btn"
+                    leftIcon={<Plus className="w-4 h-4" />}
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setModal({ type: 'wizard' })}
+                  >
+                    {t('add_property_button', 'Add Property')}
+                  </Button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Button variant="secondary" size="xs" leftIcon={<Zap className="w-3.5 h-3.5 text-amber-500" />} onClick={() => setModal({ type: 'upgrade' })}>
+                      {t('upgrade_package_button', 'Upgrade Package')}
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {properties.length === 0 ? (
+                <div className="bg-white dark:bg-slate-900 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 p-12 text-center">
+                  <Building2 className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+                  <p className="text-slate-600 dark:text-slate-300 font-semibold">{t('tenant_no_properties_yet_message', 'No properties yet')}</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{t('add_first_property_help_text', 'Add your first property to get started')}</p>
+                </div>
+              ) : (
+                <>
+                  {/* Desktop DataTable */}
+                  <div className="hidden md:block bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs text-left text-slate-600 dark:text-slate-300">
+                        <thead className="text-2xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700">
+                          <tr>
+                            <th scope="col" className="px-4 py-3 whitespace-nowrap">Property Name</th>
+                            <th scope="col" className="px-4 py-3 whitespace-nowrap">Type</th>
+                            <th scope="col" className="px-4 py-3 whitespace-nowrap">Rooms & Slots</th>
+                            <th scope="col" className="px-4 py-3 whitespace-nowrap">Status</th>
+                            <th scope="col" className="px-4 py-3 whitespace-nowrap text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                          {properties.map((property) => {
+                            const isMultiKey = property.property_type === 'MULTI_KEY';
+                            const roomCount = property.room_count ?? 0;
+                            const tenantSlug = tenantInfo?.slug ?? '';
+                            const dashboardUrl = tenantSlug
+                              ? `${API_ROOT_BASE}/${tenantSlug}/${property.slug}/#dashboard`
+                              : `${API_ROOT_BASE}/${property.slug}/#dashboard`;
+                            const isDraft = property.status === 'draft';
+
+                            return (
+                              <tr key={property.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center gap-3">
+                                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 shadow-2xs ${
+                                      isDraft
+                                        ? 'bg-amber-100 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-800'
+                                        : isMultiKey
+                                        ? 'bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800'
+                                        : 'bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800'
+                                    }`}>
+                                      {isMultiKey ? (
+                                        <Layers className={`w-4.5 h-4.5 ${isDraft ? 'text-amber-600 dark:text-amber-400' : 'text-indigo-600 dark:text-indigo-400'}`} />
+                                      ) : (
+                                        <Home className={`w-4.5 h-4.5 ${isDraft ? 'text-amber-600 dark:text-amber-400' : 'text-teal-600 dark:text-teal-400'}`} />
+                                      )}
+                                    </div>
+                                    <div>
+                                      <div className="font-semibold text-slate-900 dark:text-white text-xs">{property.name || 'Untitled property'}</div>
+                                      <div className="text-2xs text-slate-400 dark:text-slate-500 font-mono">/{property.slug}</div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <span className={`text-2xs font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+                                    isMultiKey
+                                      ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/40'
+                                      : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                                  }`}>
+                                    {isMultiKey ? 'Multi-Key Property' : 'Single Property'}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  {isMultiKey ? (
+                                    <span className="text-xs text-slate-600 dark:text-slate-300">
+                                      {roomCount > 0 ? `${roomCount} room${roomCount !== 1 ? 's' : ''} · ${roomCount} slot${roomCount !== 1 ? 's' : ''}` : '0 rooms'}
+                                    </span>
+                                  ) : (
+                                    <span className="text-xs text-slate-400 dark:text-slate-500">1 Slot</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  {isDraft ? (
+                                    <span className="text-2xs font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300/60 dark:border-amber-800/40">
+                                      Draft
+                                    </span>
+                                  ) : (
+                                    <ToggleSwitch
+                                      enabled={!!property.is_active}
+                                      onChange={() => handleToggleActive(property)}
+                                    />
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-right">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    {isDraft ? (
+                                      <Button
+                                        variant="warning"
+                                        size="sm"
+                                        onClick={() => setModal({ type: 'wizard', property })}
+                                        rightIcon={<ArrowRight className="w-3.5 h-3.5 shrink-0" />}
+                                      >
+                                        {t('continue_setup_button', 'Continue Setup')}
+                                      </Button>
+                                    ) : (
+                                      <>
+                                        <Button variant="primary" size="sm" onClick={() => window.open(dashboardUrl, '_blank', 'noopener,noreferrer')} leftIcon={<ExternalLink className="w-3.5 h-3.5 shrink-0" />}>
+                                          {t('open_dashboard_link', 'Open Property')}
+                                        </Button>
+                                        <Button variant="edit" size="sm" onClick={() => setModal({ type: 'edit', property })} leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}>
+                                          Edit
+                                        </Button>
+                                      </>
+                                    )}
+                                    <Button variant="ghost" size="xs" onClick={() => setModal({ type: 'delete', property })} title={t('delete_tooltip', 'Delete')} className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
+                                      <Trash2 className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Mobile Responsive Cards */}
+                  <div className="block md:hidden space-y-3">
+                    {properties.map((property) => {
+                      const isMultiKey = property.property_type === 'MULTI_KEY';
+                      const roomCount = property.room_count ?? 0;
+                      const tenantSlug = tenantInfo?.slug ?? '';
+                      const dashboardUrl = tenantSlug
+                        ? `${API_ROOT_BASE}/${tenantSlug}/${property.slug}/#dashboard`
+                        : `${API_ROOT_BASE}/${property.slug}/#dashboard`;
+                      const isDraft = property.status === 'draft';
+
+                      if (isDraft) {
+                        return (
+                          <div key={property.id} className="bg-amber-50/50 dark:bg-amber-950/20 rounded-lg border-2 border-dashed border-amber-300 dark:border-amber-800 p-4 shadow-2xs space-y-3">
+                            <div className="flex items-start justify-between">
+                              <div className="flex items-center gap-2.5">
+                                <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isMultiKey ? 'bg-amber-100/70 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-800' : 'bg-amber-100/70 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-800'}`}>
+                                  {isMultiKey ? <Layers className="w-4 h-4 text-amber-700 dark:text-amber-400" /> : <Home className="w-4 h-4 text-amber-700 dark:text-amber-400" />}
+                                </div>
+                                <div>
+                                  <h3 className="font-semibold text-slate-900 dark:text-white text-sm">{property.name || 'Untitled property'}</h3>
+                                  {property.slug && <p className="text-2xs text-slate-400 dark:text-slate-500 font-mono">/{property.slug}</p>}
+                                </div>
+                              </div>
+                              <span className="text-2xs font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300/60 dark:border-amber-800/40">
+                                Draft
+                              </span>
+                            </div>
+
+                            <div className="pt-3 border-t border-amber-200/80 dark:border-amber-900/60 flex items-center justify-between">
+                              <Button
+                                variant="warning"
+                                size="sm"
+                                onClick={() => setModal({ type: 'wizard', property })}
+                                rightIcon={<ArrowRight className="w-3.5 h-3.5 shrink-0" />}
+                              >
+                                {t('continue_setup_button', 'Continue Setup')}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="xs"
+                                onClick={() => setModal({ type: 'delete', property })}
+                                className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                                title={t('delete_tooltip', 'Delete')}
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div key={property.id} className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4 shadow-2xs space-y-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-2.5">
+                              <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isMultiKey ? 'bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200' : 'bg-teal-50 dark:bg-teal-950/60 border border-teal-200'}`}>
+                                {isMultiKey ? <Layers className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> : <Home className="w-4 h-4 text-teal-600 dark:text-teal-400" />}
+                              </div>
+                              <div>
+                                <h3 className="font-semibold text-slate-900 dark:text-white text-sm">{property.name}</h3>
+                                <p className="text-2xs text-slate-400 dark:text-slate-500 font-mono">/{property.slug}</p>
+                                {isMultiKey && (
+                                  <p className="text-2xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                    {roomCount > 0 ? `${roomCount} room${roomCount !== 1 ? 's' : ''} · ${roomCount} slot${roomCount !== 1 ? 's' : ''}` : '0 rooms'}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <ToggleSwitch
+                                enabled={!!property.is_active}
+                                onChange={() => handleToggleActive(property)}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                            <Button variant="primary" size="sm" onClick={() => window.open(dashboardUrl, '_blank', 'noopener,noreferrer')} leftIcon={<ExternalLink className="w-3.5 h-3.5 shrink-0" />}>
+                              {t('open_dashboard_link', 'Open Property')}
+                            </Button>
+                            <div className="flex items-center gap-1.5">
+                              <Button variant="edit" size="sm" onClick={() => setModal({ type: 'edit', property })} leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}>
+                                Edit
+                              </Button>
+                              <Button variant="ghost" size="xs" onClick={() => setModal({ type: 'delete', property })} className="text-red-600 dark:text-red-400 hover:text-red-700">
+                                <Trash2 className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </section>
+          )}
+
+          {/* ═══════════ TAB 4: ACCOUNT ═══════════ */}
+          {activeTab === 'account' && (
+            <section className="space-y-6">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">Account Details</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Manage your tenant profile, authentication security, and platform settings</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Profile Card */}
+                <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-6 shadow-2xs space-y-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-full bg-blue-100 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-xs">
+                      <UserRound className="w-7 h-7" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-slate-900 dark:text-white">{username}</h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                        {isPlatformAdmin ? 'Root Platform Administrator' : 'Tenant Super Administrator'}
+                      </p>
+                      <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                        Active Account
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2.5 text-xs">
+                    <div className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
+                      <span className="text-slate-500 dark:text-slate-400 font-medium">Tenant Organization</span>
+                      <span className="font-semibold text-slate-900 dark:text-white">{tenantInfo?.name || 'Default Organization'}</span>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
+                      <span className="text-slate-500 dark:text-slate-400 font-medium">Tenant ID</span>
+                      <span className="font-mono text-slate-900 dark:text-white">{tenantId}</span>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
+                      <span className="text-slate-500 dark:text-slate-400 font-medium">Subscription Tier</span>
+                      <span className="font-semibold capitalize text-indigo-600 dark:text-indigo-400">{tenantInfo?.subscription_plan || 'Active Plan'}</span>
+                    </div>
+                    <div className="flex justify-between py-1">
+                      <span className="text-slate-500 dark:text-slate-400 font-medium">Managed Properties</span>
+                      <span className="font-semibold text-slate-900 dark:text-white">{properties.length} Active / {totalSlots} Allocated Slots</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Security & Support Actions Card */}
+                <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-6 shadow-2xs space-y-4 flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                      Security & Compliance
+                    </h4>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                      Your Super Admin account has elevated administrative permissions across all child properties. Ensure session tokens are safeguarded and sign out after administrative work on shared terminals.
+                    </p>
+
+                    <div className="space-y-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setLegalDrawerTab('terms')}
+                        className="w-full flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-xs text-left cursor-pointer"
+                      >
+                        <span className="font-semibold text-slate-800 dark:text-slate-200">Terms of Service & License</span>
+                        <ChevronRight className="w-4 h-4 text-slate-400" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLegalDrawerTab('privacy')}
+                        className="w-full flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-xs text-left cursor-pointer"
+                      >
+                        <span className="font-semibold text-slate-800 dark:text-slate-200">Privacy & Data Governance Policy</span>
+                        <ChevronRight className="w-4 h-4 text-slate-400" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      onClick={handleLogout}
+                      leftIcon={<LogOut className="w-3.5 h-3.5" />}
+                    >
+                      Sign Out
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* ═══════════ TAB 5: BILLING ═══════════ */}
+          {activeTab === 'billing' && (
+            <section className="space-y-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('subscription_heading', 'Subscription & Billing')}</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">View license status, slot entitlements, plan renewals, and data backup options</p>
+                </div>
+              </div>
+              <SubscriptionPanel
+                embedded
+                tenantId={tenantId}
+                onNavigate={(tab) => {
+                  const targetProperty = properties.find((p) => p.status !== 'draft') || properties[0];
+                  if (!targetProperty) return;
+                  const tenantSlug = tenantInfo?.slug ?? '';
+                  const url = tenantSlug
+                    ? `${API_ROOT_BASE}/${tenantSlug}/${targetProperty.slug}/#${tab}`
+                    : `${API_ROOT_BASE}/${targetProperty.slug}/#${tab}`;
+                  window.open(url, '_blank', 'noopener,noreferrer');
+                }}
+              />
+            </section>
+          )}
+
+          {/* Footer */}
+          <DashboardFooter />
+        </div>
       </main>
 
-      {/* Property Setup Wizard (26 Aug 2026) - multi-step, timeline-stepper flow replacing the old
-          single-screen Add Property drawer. `property` (present when resuming a draft) or absent
-          (fresh property) both render the same component - see PropertyCreationWizard.tsx. */}
+      {/* ──────────────── Mobile Bottom Navigation Bar ──────────────── */}
+      <nav
+        id="superAdminMobileBottomNav"
+        aria-label="Super Admin Bottom Navigation"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 h-[calc(4rem+env(safe-area-inset-bottom,0px))] pb-[env(safe-area-inset-bottom,0px)] flex items-center justify-around px-2 shadow-lg"
+      >
+        <button
+          type="button"
+          onClick={() => handleTabChange('dashboard')}
+          className={`flex flex-col items-center justify-center flex-1 h-full py-1 text-center transition-colors cursor-pointer ${
+            activeTab === 'dashboard' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-500 dark:text-slate-400'
+          }`}
+        >
+          <LayoutDashboard className="w-5 h-5 mb-0.5" />
+          <span className="text-[10px] font-semibold">Dashboard</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleTabChange('analytics')}
+          className={`flex flex-col items-center justify-center flex-1 h-full py-1 text-center transition-colors cursor-pointer ${
+            activeTab === 'analytics' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-500 dark:text-slate-400'
+          }`}
+        >
+          <TrendingUp className="w-5 h-5 mb-0.5" />
+          <span className="text-[10px] font-semibold">Analytics</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleTabChange('properties')}
+          className={`flex flex-col items-center justify-center flex-1 h-full py-1 text-center transition-colors cursor-pointer ${
+            activeTab === 'properties' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-500 dark:text-slate-400'
+          }`}
+        >
+          <Building2 className="w-5 h-5 mb-0.5" />
+          <span className="text-[10px] font-semibold">Properties</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleTabChange('billing')}
+          className={`flex flex-col items-center justify-center flex-1 h-full py-1 text-center transition-colors cursor-pointer ${
+            activeTab === 'billing' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-500 dark:text-slate-400'
+          }`}
+        >
+          <CreditCard className="w-5 h-5 mb-0.5" />
+          <span className="text-[10px] font-semibold">Billing</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setIsSidebarOpen(true)}
+          className="flex flex-col items-center justify-center flex-1 h-full py-1 text-center text-slate-500 dark:text-slate-400 transition-colors cursor-pointer"
+        >
+          <Menu className="w-5 h-5 mb-0.5" />
+          <span className="text-[10px] font-semibold">Menu</span>
+        </button>
+      </nav>
+
+      {/* ──────────────── Modals & Drawers ──────────────── */}
+      {/* Property Setup Wizard */}
       {modal.type === 'wizard' && (
         <PropertyCreationWizard
           isOpen
@@ -820,7 +1269,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
         />
       )}
 
-      {/* Edit Property Redirect Modal */}
+      {/* Edit Property Modal */}
       <Modal
         show={modal.type === 'edit'}
         onClose={() => setModal({ type: 'none' })}
@@ -896,14 +1345,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
         })()}
       </Modal>
 
-      {/* Delete Confirmation Modal - a centered flowbite-react <Modal>, not a
-          right-side Drawer (23 Aug 2026: this is a confirmation prompt, not a
-          creation/edit form - same "modal, not drawer" rule as
-          ConfirmDialogContext.tsx, applied here too since this one has rich
-          custom content - a bulleted consequences list, conditional sub-room
-          note - that doesn't reduce to that shared component's plain-string
-          message prop). Add/Edit Property directly above/below stay Drawers
-          - those are genuine multi-field forms. */}
+      {/* Delete Confirmation Modal */}
       <Modal
         show={modal.type === 'delete'}
         onClose={() => { setModal({ type: 'none' }); setError(null); }}
@@ -931,40 +1373,40 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
         </div>
         {modal.type === 'delete' && (
           <>
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 tenant-dashboard__modal-body">
-              <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg tenant-dashboard__warning-box">
-                <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5 tenant-dashboard__warning-icon" />
-                <div className="text-sm text-red-800 dark:text-red-300 space-y-1 w-full tenant-dashboard__warning-content">
-                  <p className="font-semibold text-red-700 dark:text-red-400 tenant-dashboard__warning-text">{t('permanent_irreversible_warning', 'This action is permanent and irreversible.')}</p>
-                  <div className="text-xs space-y-2 mt-1 tenant-dashboard__warning-details">
-                    <p className="font-semibold text-2xs uppercase tracking-wider text-red-600 dark:text-red-400 tenant-dashboard__warning-subtitle">{t('deletion_consequences_for_label', 'Deletion Consequences for')} "{modal.property.name}":</p>
-                    <ul className="list-disc list-inside space-y-1 text-red-800 dark:text-red-300 tenant-dashboard__warning-list">
-                      <li className="tenant-dashboard__warning-list-item">All <strong>active and upcoming bookings</strong> (present and future stays) will be permanently deleted.</li>
-                      <li className="tenant-dashboard__warning-list-item">Past bookings (checked-out/cancelled) and associated financial ledger records <strong>will remain intact</strong> for historical audit trail.</li>
-                      <li className="tenant-dashboard__warning-list-item">Menus, inventory stock list, modules, and staff assignments will be deleted.</li>
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
+                <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                <div className="text-sm text-red-800 dark:text-red-300 space-y-1 w-full">
+                  <p className="font-semibold text-red-700 dark:text-red-400">{t('permanent_irreversible_warning', 'This action is permanent and irreversible.')}</p>
+                  <div className="text-xs space-y-2 mt-1">
+                    <p className="font-semibold text-2xs uppercase tracking-wider text-red-600 dark:text-red-400">{t('deletion_consequences_for_label', 'Deletion Consequences for')} "{modal.property.name}":</p>
+                    <ul className="list-disc list-inside space-y-1 text-red-800 dark:text-red-300">
+                      <li>All <strong>active and upcoming bookings</strong> (present and future stays) will be permanently deleted.</li>
+                      <li>Past bookings (checked-out/cancelled) and associated financial ledger records <strong>will remain intact</strong> for historical audit trail.</li>
+                      <li>Menus, inventory stock list, modules, and staff assignments will be deleted.</li>
                     </ul>
                   </div>
                   {(modal.property.room_count ?? 0) > 0 && (
-                    <p className="text-[11px] font-semibold mt-1 tenant-dashboard__warning-note">Note: This will also delete all {modal.property.room_count} sub-rooms.</p>
+                    <p className="text-[11px] font-semibold mt-1">Note: This will also delete all {modal.property.room_count} sub-rooms.</p>
                   )}
                 </div>
               </div>
-              <p className="text-sm text-slate-600 dark:text-slate-400 tenant-dashboard__delete-info">
+              <p className="text-sm text-slate-600 dark:text-slate-400">
                 Deleting this property will free{' '}
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400 tenant-dashboard__delete-slots">
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">
                   {modal.property.property_type === 'MULTI_KEY' ? (modal.property.room_count ?? 1) : 1} slot(s)
                 </span>{' '}
                 back to your subscription.
               </p>
               {error && (
-                <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg tenant-dashboard__modal-error">
+                <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
                   <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />
                   <p className="text-sm text-red-800 dark:text-red-300">{error}</p>
                 </div>
               )}
             </div>
             <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850 rounded-b-lg">
-              <Button variant="secondary" size="sm" onClick={() => { setModal({ type: 'none' }); setError(null); }} className="tenant-dashboard__modal-cancel-btn">
+              <Button variant="secondary" size="sm" onClick={() => { setModal({ type: 'none' }); setError(null); }}>
                 {t('cancel_button', 'Cancel')}
               </Button>
               <Button
@@ -972,7 +1414,6 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 variant="danger"
                 size="sm"
                 onClick={() => handleDeleteProperty(modal.property)}
-                className="tenant-dashboard__modal-delete-btn"
               >
                 {t('delete_permanently_button', 'Delete Permanently')}
               </Button>
@@ -981,8 +1422,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
         )}
       </Modal>
 
-      {/* Upgrade Modal (Roadmap Placeholder) - alert/informational prompt,
-          not a form; same "modal, not drawer" rule as above. */}
+      {/* Upgrade Package Modal */}
       <Modal
         show={modal.type === 'upgrade'}
         onClose={() => setModal({ type: 'none' })}
@@ -1008,26 +1448,25 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
             <X className="w-5 h-5" />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-6 text-center space-y-4 tenant-dashboard__modal-body">
-          <div className="w-14 h-14 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center mx-auto shadow-lg tenant-dashboard__upgrade-icon-container">
-            <Zap className="w-7 h-7 text-white tenant-dashboard__upgrade-icon" />
+        <div className="flex-1 overflow-y-auto p-6 text-center space-y-4">
+          <div className="w-14 h-14 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center mx-auto shadow-lg">
+            <Zap className="w-7 h-7 text-white" />
           </div>
-          <h3 className="text-xl font-semibold text-slate-900 dark:text-white tenant-dashboard__modal-title">{t('upgrade_package_button', 'Upgrade Package')}</h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400 tenant-dashboard__upgrade-message">
+          <h3 className="text-xl font-semibold text-slate-900 dark:text-white">{t('upgrade_package_button', 'Upgrade Package')}</h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             {t('upgrade_managed_by_root_admin_message', 'Package upgrades are managed by the Root Admin. Please contact your administrator to increase your slot limit.')}
           </p>
-          <div className="text-xs text-slate-400 dark:text-slate-500 flex items-center justify-center gap-1.5 mt-1 tenant-dashboard__upgrade-subtext">
-            <ChevronRight className="w-3 h-3 tenant-dashboard__upgrade-subtext-icon" />
+          <div className="text-xs text-slate-400 dark:text-slate-500 flex items-center justify-center gap-1.5 mt-1">
+            <ChevronRight className="w-3 h-3" />
             {t('upgrade_portal_coming_soon_message', 'Self-service upgrade portal — coming soon')}
           </div>
         </div>
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850 rounded-b-lg tenant-dashboard__modal-footer">
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850 rounded-b-lg">
           <Button
             variant="primary"
             size="sm"
             block
             onClick={() => setModal({ type: 'none' })}
-            className="tenant-dashboard__modal-got-it-btn"
           >
             {t('got_it_button', 'Got it')}
           </Button>
@@ -1035,10 +1474,6 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
       </Modal>
 
       {/* Mandatory Terms & Policy Acceptance Modal */}
-      {/* Demo/sales tenants (tenants.is_demo) never see this - see the schema_tenants_table_v3
-          self-heal in router.php. A prospect being walked through the app, or a QA/staging
-          demo account, shouldn't be asked to accept Ground Code's live billing/ToS agreement
-          the way a real onboarding customer must. */}
       {!(tenantInfo?.is_demo || propTenantInfo?.is_demo) && (
         <TermsAcceptanceModal tenantId={tenantId || 'default'} tenantName={tenantInfo?.name || propTenantInfo?.name || 'Your Property'} />
       )}
