@@ -129,15 +129,21 @@ class ChannexWebhookReceiver {
 
     public function handleWebhook(array $payload): array {
         // Support Channex notification envelope:
-        // {"event": "booking", "payload": {"booking_id": "...", "property_id": "...", "revision_id": "..."}, "user_id": null, "timestamp": "..."}
+        // {"event": "booking_new", "payload": {"booking_id": "...", "property_id": "...", "booking_revision_id": "..."}, "user_id": null, "timestamp": "..."}
+        // Confirmed live 3 Sep 2026: the real field is "booking_revision_id", not
+        // "revision_id" - the old "revision_id"-only lookup silently missed it and
+        // fell all the way back to using channexBookingId as the revision id, which
+        // then made every acknowledgeRevision() call target the wrong id and fail
+        // ("Re-ACK on redelivery failed") even though the booking itself processed.
         // as well as direct objects from internal test suites:
         // {"booking_revision": {...}} or raw booking revision attributes.
         $envelopePayload = $payload['payload'] ?? [];
         $revisionId = $envelopePayload['revision_id']
+            ?? ($envelopePayload['booking_revision_id']
             ?? ($payload['booking_revision']['id']
             ?? ($payload['data']['id']
             ?? ($payload['revision_id']
-            ?? ($payload['id'] ?? null))));
+            ?? ($payload['id'] ?? null)))));
         $channexBookingId = $envelopePayload['booking_id']
             ?? ($payload['booking_revision']['booking_id']
             ?? ($payload['booking_revision']['booking']['id']
