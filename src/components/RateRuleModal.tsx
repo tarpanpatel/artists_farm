@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal } from 'flowbite-react';
 import { Button } from './Button';
 import { RateRule, saveRateRuleDB, deleteRateRuleDB, updatePricingModeDB, apiFetch } from '../services/api';
-import { Trash2, Plus, DollarSign, X, Loader2, Pencil } from './icons/FlowbiteIcons';
+import { Trash2, Plus, DollarSign, X, Loader2, Pencil, Send } from './icons/FlowbiteIcons';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 
@@ -78,6 +78,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
   const [roomTariffs, setRoomTariffs] = useState<Record<number, string>>({});
   const [editingRoomId, setEditingRoomId] = useState<number | null>(null);
   const [isSavingTariff, setIsSavingTariff] = useState(false);
+  const [syncingRoomId, setSyncingRoomId] = useState<number | null>(null);
 
   useEffect(() => {
     setCurrentPricingMode(pricingMode);
@@ -120,6 +121,32 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
       }
     } catch {
       showToast('Network error updating pricing mode', { type: 'error' });
+    }
+  };
+
+  const handleSyncSingleRoom = async (room: { id: number; name: string; default_tariff?: number }) => {
+    setSyncingRoomId(room.id);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const future = new Date();
+      future.setDate(future.getDate() + 500);
+      const dateTo = future.toISOString().split('T')[0];
+
+      const res = await apiFetch('/php/api/router.php?action=channex_push_ari', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ room_id: room.id, date_from: today, date_to: dateTo }),
+      });
+      const data = await res.json();
+      if (data.status === 'success' || data.success) {
+        showToast(`Pushed ${room.name} rates & availability to Airbnb & connected channels successfully!`, { type: 'success' });
+      } else {
+        showToast(data.message || `Failed to push ${room.name} to channels`, { type: 'error' });
+      }
+    } catch {
+      showToast(`Network error pushing ${room.name} to channels`, { type: 'error' });
+    } finally {
+      setSyncingRoomId(null);
     }
   };
 
@@ -418,17 +445,29 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                               </Button>
                             </div>
                           ) : (
-                            <Button
-                              variant="edit"
-                              size="xs"
-                              onClick={() => {
-                                setEditingRoomId(room.id);
-                                setRoomTariffs({ ...roomTariffs, [room.id]: room.default_tariff != null ? String(room.default_tariff) : '' });
-                              }}
-                              leftIcon={<Pencil className="w-3 h-3 text-blue-600 dark:text-blue-400" />}
-                            >
-                              Edit Rate
-                            </Button>
+                            <>
+                              <Button
+                                variant="secondary"
+                                size="xs"
+                                disabled={syncingRoomId === room.id}
+                                onClick={() => handleSyncSingleRoom(room)}
+                                className="text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800"
+                                leftIcon={syncingRoomId === room.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                              >
+                                Sync to Airbnb
+                              </Button>
+                              <Button
+                                variant="edit"
+                                size="xs"
+                                onClick={() => {
+                                  setEditingRoomId(room.id);
+                                  setRoomTariffs({ ...roomTariffs, [room.id]: room.default_tariff != null ? String(room.default_tariff) : '' });
+                                }}
+                                leftIcon={<Pencil className="w-3 h-3 text-blue-600 dark:text-blue-400" />}
+                              >
+                                Edit Rate
+                              </Button>
+                            </>
                           )}
                         </div>
                       </div>

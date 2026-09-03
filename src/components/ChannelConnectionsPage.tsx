@@ -131,6 +131,36 @@ export const ChannelConnectionsPage: React.FC<ChannelConnectionsPageProps> = ({ 
     }
   };
 
+  const [syncingRoomId, setSyncingRoomId] = useState<number | null>(null);
+
+  const handleSyncSingleRoom = async (room: ChannexLocalRoom) => {
+    if (!room.local_room_id) return;
+    setSyncingRoomId(room.local_room_id);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const future = new Date();
+      future.setDate(future.getDate() + 500);
+      const dateTo = future.toISOString().split('T')[0];
+
+      const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=channex_push_ari`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ room_id: room.local_room_id, date_from: today, date_to: dateTo }),
+      });
+      const data = await res.json();
+      if (data.status === 'success' || data.success) {
+        showToast(`Pushed ${room.name} rates & availability to Airbnb & connected channels successfully!`, { type: 'success' });
+        onLogAudit?.(`Manual ARI sync pushed for ${room.name}`, { module: 'ChannelConnectionsPage', status: 'SUCCESS' });
+      } else {
+        showToast(data.message || `Failed to push ${room.name} to channels`, { type: 'error' });
+      }
+    } catch (err: any) {
+      showToast(err?.message || `Failed to push ${room.name} to channels`, { type: 'error' });
+    } finally {
+      setSyncingRoomId(null);
+    }
+  };
+
   const handleRemoveConnection = async (c: ChannexChannelConnection) => {
     const isLive = c.status === 'active';
     const confirmed = await confirm({
@@ -207,10 +237,10 @@ export const ChannelConnectionsPage: React.FC<ChannelConnectionsPageProps> = ({ 
       </PageHeader>
 
       {connections.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 px-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 text-center space-y-3">
-          <Plug className="w-10 h-10 text-slate-300 dark:text-slate-600" />
-          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{t('no_channels_connected_title', 'No channels connected yet')}</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm">
+        <div className="flex flex-col items-center justify-center py-16 px-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 text-center space-y-3">
+          <Plug className="w-10 h-10 text-gray-300 dark:text-gray-600" />
+          <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">{t('no_channels_connected_title', 'No channels connected yet')}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 max-w-sm">
             {t('no_channels_connected_body', 'Connect Airbnb, Booking.com, or another OTA to automatically sync availability and rates and receive bookings directly in Ground Code.')}
           </p>
           <Button variant="primary" size="sm" onClick={() => handleOpenWizard()} className="mt-2">
@@ -219,48 +249,99 @@ export const ChannelConnectionsPage: React.FC<ChannelConnectionsPageProps> = ({ 
           </Button>
         </div>
       ) : (
-        <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-800">
-          {connections.map((c) => {
-            const badge = STATUS_BADGE[c.status] || STATUS_BADGE.draft;
-            const resumable = c.status !== 'active' && c.status !== 'staff_action_required';
-            const ChannelIcon = getOtaIcon(c.channel_code);
-            return (
-              <div key={c.id} className="flex items-center justify-between gap-3 p-4">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    {ChannelIcon && <ChannelIcon className="w-5 h-5 shrink-0 rounded-md" />}
-                    <span className="text-sm font-semibold text-slate-900 dark:text-white truncate">{c.channel_code}</span>
-                    <Badge variant={badge.variant}>{badge.label}</Badge>
+        <div className="space-y-6">
+          {/* Connected Channels List */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700 shadow-xs">
+            {connections.map((c) => {
+              const badge = STATUS_BADGE[c.status] || STATUS_BADGE.draft;
+              const resumable = c.status !== 'active' && c.status !== 'staff_action_required';
+              const ChannelIcon = getOtaIcon(c.channel_code);
+              return (
+                <div key={c.id} className="flex items-center justify-between gap-3 p-4">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      {ChannelIcon && <ChannelIcon className="w-5 h-5 shrink-0 rounded-md" />}
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white truncate">{c.channel_code}</span>
+                      <Badge variant={badge.variant}>{badge.label}</Badge>
+                    </div>
+                    {c.status === 'error' && c.last_error && c.last_error !== 'null' && c.last_error.trim() !== '' && (
+                      <p className="text-2xs text-red-600 dark:text-red-400 mt-1 truncate">{c.last_error}</p>
+                    )}
+                    {c.status === 'staff_action_required' && (
+                      <p className="text-2xs text-gray-500 dark:text-gray-400 mt-1">
+                        {t('airbnb_staff_pending_note', "Our team will finish connecting your Airbnb account and let you know once it's live.")}
+                      </p>
+                    )}
                   </div>
-                  {c.status === 'error' && c.last_error && c.last_error !== 'null' && c.last_error.trim() !== '' && (
-                    <p className="text-2xs text-red-600 dark:text-red-400 mt-1 truncate">{c.last_error}</p>
-                  )}
-                  {c.status === 'staff_action_required' && (
-                    <p className="text-2xs text-slate-500 dark:text-slate-400 mt-1">
-                      {t('airbnb_staff_pending_note', "Our team will finish connecting your Airbnb account and let you know once it's live.")}
-                    </p>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {resumable && (
-                    <Button variant="secondary" size="sm" onClick={() => handleOpenWizard(c.channel_code)} className="h-9 text-xs">
-                      {t('continue_setup_button', 'Continue Setup')}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {resumable && (
+                      <Button variant="secondary" size="sm" onClick={() => handleOpenWizard(c.channel_code)} className="h-9 text-xs">
+                        {t('continue_setup_button', 'Continue Setup')}
+                      </Button>
+                    )}
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleRemoveConnection(c)}
+                      disabled={removingCode === c.channel_code}
+                      className="h-9 text-xs text-red-600 hover:text-red-700 dark:text-red-400"
+                      title={t('remove_connection_button', 'Remove connection')}
+                    >
+                      {removingCode === c.channel_code ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                     </Button>
-                  )}
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => handleRemoveConnection(c)}
-                    disabled={removingCode === c.channel_code}
-                    className="h-9 text-xs text-red-600 hover:text-red-700 dark:text-red-400"
-                    title={t('remove_connection_button', 'Remove connection')}
-                  >
-                    {removingCode === c.channel_code ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                  </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Individual Room Listings with Dedicated Sync Buttons */}
+          {localRooms.length > 0 && (
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-4 shadow-xs">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                    Individual Listings ({localRooms.length})
+                  </h4>
+                  <p className="text-2xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    Sync live rates and availability to Airbnb & connected channels per individual listing.
+                  </p>
                 </div>
               </div>
-            );
-          })}
+
+              <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                {localRooms.map((room) => {
+                  const isSyncingThis = syncingRoomId === room.local_room_id;
+                  return (
+                    <div key={room.local_room_id || room.name} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 first:pt-0 last:pb-0">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-700 dark:text-gray-300 text-xs font-bold shrink-0">
+                          {room.name.slice(0, 2).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{room.name}</p>
+                          <p className="text-2xs text-gray-500 dark:text-gray-400">
+                            {room.channex_rate_plan_id ? 'Mapped & Active' : 'Connected to Property'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <Button
+                        variant="secondary"
+                        size="xs"
+                        disabled={isSyncingThis || !room.local_room_id}
+                        onClick={() => handleSyncSingleRoom(room)}
+                        className="text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700 h-8 self-start sm:self-auto"
+                        leftIcon={isSyncingThis ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                      >
+                        {isSyncingThis ? 'Syncing...' : 'Sync Listing'}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
