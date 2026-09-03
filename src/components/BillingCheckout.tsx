@@ -14,6 +14,7 @@ import {
   Plus,
   ArrowRight,
   Phone,
+  MessageCircle,
   Home,
   Loader2,
   Globe,
@@ -23,6 +24,7 @@ import {
   X,
 } from './icons/FlowbiteIcons';
 import { Guest, BillingReceipt } from '../types';
+import { getTelUri, getWhatsAppPhone } from '../utils/phoneUtils';
 import { t } from '../i18n/en';
 import { GUEST_STATUS_CHECKEDOUT_LEGACY, GUEST_STATUS_CHECKED_OUT } from '../constants/guestStatus';
 import { Badge } from './Badge';
@@ -569,15 +571,28 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                               ({guest.numberOfGuests || 1} {(guest.numberOfGuests || 1) === 1 ? 'guest' : 'guests'})
                             </span>
                             {guest.phoneNumber ? (
-                              <a
-                                href={`tel:${guest.phoneNumber}`}
-                                onClick={(e) => e.stopPropagation()}
-                                className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline font-semibold shrink-0"
-                                title={`Call ${guest.phoneNumber}`}
-                              >
-                                <Phone className="w-3 h-3 text-blue-500" />
-                                <span>{guest.phoneNumber}</span>
-                              </a>
+                              <div className="inline-flex items-center gap-2 shrink-0">
+                                <a
+                                  href={getTelUri(guest.phoneNumber)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline font-semibold"
+                                  title={`Call ${guest.phoneNumber}`}
+                                >
+                                  <Phone className="w-3 h-3 text-blue-500" />
+                                  <span>{guest.phoneNumber}</span>
+                                </a>
+                                <a
+                                  href={`https://wa.me/${getWhatsAppPhone(guest.phoneNumber)}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 hover:underline font-medium"
+                                  title={`WhatsApp ${guest.phoneNumber}`}
+                                >
+                                  <MessageCircle className="w-3 h-3 text-green-500" />
+                                  <span>WhatsApp</span>
+                                </a>
+                              </div>
                             ) : (
                               <span className="text-xs text-slate-400 dark:text-slate-500 italic shrink-0">
                                 ({t('no_contact', 'No contact')})
@@ -817,15 +832,28 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
           <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2 mt-0.5">
             <span>({row.numberOfGuests || 1} {(row.numberOfGuests || 1) === 1 ? 'guest' : 'guests'})</span>
             {row.phoneNumber ? (
-              <a
-                href={`tel:${row.phoneNumber}`}
-                onClick={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                title={`Call ${row.phoneNumber}`}
-              >
-                <Phone className="w-3 h-3 text-blue-500" />
-                <span>{row.phoneNumber}</span>
-              </a>
+              <div className="inline-flex items-center gap-2">
+                <a
+                  href={getTelUri(row.phoneNumber)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                  title={`Call ${row.phoneNumber}`}
+                >
+                  <Phone className="w-3 h-3 text-blue-500" />
+                  <span>{row.phoneNumber}</span>
+                </a>
+                <a
+                  href={`https://wa.me/${getWhatsAppPhone(row.phoneNumber)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 hover:underline"
+                  title={`WhatsApp ${row.phoneNumber}`}
+                >
+                  <MessageCircle className="w-3 h-3 text-green-500" />
+                  <span>WhatsApp</span>
+                </a>
+              </div>
             ) : (
               <span>{t('no_contact', 'No contact')}</span>
             )}

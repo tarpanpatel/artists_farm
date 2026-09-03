@@ -18,6 +18,7 @@ import {
   GUEST_STATUS_CHECKEDOUT_LEGACY,
 } from '../constants/guestStatus';
 import { parseDateToYMD } from '../utils/dateUtils';
+import { normalizePhoneNumber } from '../utils/phoneUtils';
 import { DateRangePicker } from './DateRangePicker';
 import { StyledSelect } from './StyledSelect';
 import { Input } from './Input';
@@ -627,7 +628,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                       label={t('contact_phone_label', 'Contact Phone Number *')}
                       type="tel"
                       value={phoneNumber}
-                      onChange={e => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      onChange={e => setPhoneNumber(normalizePhoneNumber(e.target.value))}
                       onBlur={() => setPhoneNumberTouched(true)}
                       placeholder="Enter 10-digit mobile number"
                       required
@@ -686,7 +687,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                       label={t('contact_phone_label', 'Contact Phone Number *')}
                       type="tel"
                       value={phoneNumber}
-                      onChange={e => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      onChange={e => setPhoneNumber(normalizePhoneNumber(e.target.value))}
                       onBlur={() => setPhoneNumberTouched(true)}
                       placeholder="Enter 10-digit mobile number"
                       required

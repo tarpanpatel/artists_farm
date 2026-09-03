@@ -20,6 +20,7 @@ import { MessageQrPreview } from './MessageQrPreview';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
 import { shareTextContent } from '../utils/shareText';
 import { parseDateToYMD, formatDateDDMMYYYY } from '../utils/dateUtils';
+import { normalizePhoneNumber } from '../utils/phoneUtils';
 import { t } from '../i18n/en';
 import {
   GUEST_STATUS_BOOKED,
@@ -871,7 +872,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   // No maxLength - see GuestManagement.tsx's onChange comment (23 Aug 2026): a
                   // native maxLength truncates raw typed characters before this digit-stripping
                   // runs, silently dropping trailing digits from any formatted phone number.
-                  onChange={(e) => setEditPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  onChange={(e) => setEditPhone(normalizePhoneNumber(e.target.value))}
                   placeholder="10-digit mobile number"
                   disabled={!isEditing}
                   required

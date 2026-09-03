@@ -32,7 +32,8 @@
 // v37 (3 Sep 2026): Enforce official Flowbite Toast component styling across all screens
 // v38 (3 Sep 2026): Site-wide Flowbite Toast compliance audit & ad-hoc toast elimination
 // v39 (3 Sep 2026): Pull property check-in/out times on OTA import and fix stay night conflict validator
-const CACHE_NAME = 'farm-pos-v39';
+// v40 (3 Sep 2026): Smart phone number normalization, one-tap WhatsApp integration, and copy-paste sanitization
+const CACHE_NAME = 'farm-pos-v40';
 
 // Hashed asset pattern — Vite content-hashed files (e.g. index-CrXjaekR.js)
 // These must NEVER be cached by the SW; the browser cache handles them natively
