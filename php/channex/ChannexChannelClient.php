@@ -184,4 +184,25 @@ class ChannexChannelClient {
     public function deleteChannel(string $channelId): array {
         return $this->client->delete("channels/{$channelId}");
     }
+
+    /**
+     * POST /channels/:id/execute/load_future_reservations - Airbnb-specific
+     * action (confirmed against Channex's own Airbnb integration guide,
+     * https://docs.channex.io/channel-api-examples/airbnb.md, 3 Sep 2026):
+     * "A freshly connected account usually already holds future reservations.
+     * Pull them into Channex." This is the real, documented mechanism for
+     * getting a listing's pre-existing reservations INTO Channex after
+     * connecting - nothing does this automatically at connection/mapping
+     * time (confirmed: booking_revisions/feed came back empty for a
+     * property with real, confirmed Airbnb bookings that predated the
+     * connection). Runs in the background on Channex's side; the imported
+     * reservations then flow through the normal booking_revisions pipeline
+     * (same feed/webhook path as any new booking), not returned directly in
+     * this call's response. Per listing_id when given, otherwise every
+     * mapped listing on the connection.
+     */
+    public function loadFutureReservations(string $channelId, ?string $listingId = null): array {
+        $body = $listingId !== null ? ['listing_id' => $listingId] : [];
+        return $this->client->post("channels/{$channelId}/execute/load_future_reservations", $body);
+    }
 }
