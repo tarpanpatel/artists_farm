@@ -2073,14 +2073,18 @@ ${itemsStr}
           </div>
         )}
 
-        {!isAuthenticated && !propertySelection && (
+        {typeof window !== 'undefined' && (window.location.hash === '#book' || window.location.hash.startsWith('#book') || window.location.hash.startsWith('#/book') || window.location.pathname.endsWith('/book') || window.location.search.includes('book=true')) ? (
+          <Suspense fallback={<LoadingScreen message="Loading live availability..." />}>
+            <PublicBookingEngine propertySlug={getPropertySlug()} />
+          </Suspense>
+        ) : !isAuthenticated && !propertySelection ? (
           <LoginPage
             variant="management"
             onLoginSuccess={handleLoginSuccess}
             onLoginFailed={handleLoginFailed}
             onNeedsPropertySelection={setPropertySelection}
           />
-        )}
+        ) : null}
 
         {isAuthenticated && (
           <Header
@@ -3023,6 +3027,25 @@ export function App() {
   }, []);
 
   const propertySlug = getPropertySlug();
+  const isPublicBookingPage = typeof window !== 'undefined' && (
+    window.location.hash === '#book' ||
+    window.location.hash.startsWith('#book') ||
+    window.location.hash.startsWith('#/book') ||
+    window.location.pathname.endsWith('/book') ||
+    window.location.pathname.endsWith('/book/') ||
+    window.location.search.includes('book=true')
+  );
+
+  if (isPublicBookingPage) {
+    return (
+      <ErrorBoundary section="Public Booking Engine">
+        <Suspense fallback={<LoadingScreen message="Loading live availability..." />}>
+          <PublicBookingEngine propertySlug={propertySlug} />
+        </Suspense>
+      </ErrorBoundary>
+    );
+  }
+
   const isLoginPath = propertySlug === 'login';
   const isTenantDashboardPath = propertySlug === 'tenant_dashboard';
   const isPlatformPropertyManagementPath = propertySlug === 'platform_property_management';
@@ -3087,23 +3110,6 @@ export function App() {
       }
     }
   };
-
-  const isPublicBookingPage = typeof window !== 'undefined' && (
-    window.location.hash === '#book' ||
-    window.location.hash.startsWith('#book') ||
-    window.location.pathname.endsWith('/book') ||
-    window.location.pathname.endsWith('/book/')
-  );
-
-  if (isPublicBookingPage) {
-    return (
-      <ErrorBoundary section="Public Booking Engine">
-        <Suspense fallback={<LoadingScreen message="Loading live availability..." />}>
-          <PublicBookingEngine propertySlug={propertySlug} />
-        </Suspense>
-      </ErrorBoundary>
-    );
-  }
 
   if (isCheckingTenant) {
     return <LoadingScreen message="Resolving route..." />;
