@@ -74,7 +74,7 @@ function handleGetPublicBookingInfo(PDO $pdo, int $propertyId): void {
         SELECT id, property_id, room_id, checkin_date, expected_checkout, status
         FROM guests
         WHERE (property_id IN ($idPlaceholders) OR room_id IN ($idPlaceholders))
-          AND status NOT IN ('Cancelled', 'CheckedOut')
+          AND (status IS NULL OR LOWER(TRIM(status)) NOT IN ('cancelled', 'checked out', 'checkedout', 'void', 'deleted'))
           AND expected_checkout >= ?
           AND checkin_date <= ?
     ");
@@ -83,13 +83,37 @@ function handleGetPublicBookingInfo(PDO $pdo, int $propertyId): void {
 
     $occupiedBlocks = [];
     foreach ($rawBookings as $b) {
-        $effRoomId = !empty($b['room_id']) ? (int)$b['room_id'] : (int)$b['property_id'];
-        $occupiedBlocks[] = [
-            'room_id' => $effRoomId,
-            'checkin_date' => substr($b['checkin_date'], 0, 10),
-            'expected_checkout' => substr($b['expected_checkout'], 0, 10),
-            'status' => $b['status'] ?? 'Booked',
-        ];
+        $cIn = substr($b['checkin_date'], 0, 10);
+        $cOut = substr($b['expected_checkout'], 0, 10);
+        $bStatus = $b['status'] ?? 'Booked';
+
+        if (empty($b['room_id']) || (int)$b['room_id'] === $propertyId) {
+            // Unassigned or full-property booking blocks all rooms of multi-key property
+            if (!empty($rooms) && count($rooms) > 1) {
+                foreach ($rooms as $r) {
+                    $occupiedBlocks[] = [
+                        'room_id' => (int)$r['id'],
+                        'checkin_date' => $cIn,
+                        'expected_checkout' => $cOut,
+                        'status' => $bStatus,
+                    ];
+                }
+            } else {
+                $occupiedBlocks[] = [
+                    'room_id' => $propertyId,
+                    'checkin_date' => $cIn,
+                    'expected_checkout' => $cOut,
+                    'status' => $bStatus,
+                ];
+            }
+        } else {
+            $occupiedBlocks[] = [
+                'room_id' => (int)$b['room_id'],
+                'checkin_date' => $cIn,
+                'expected_checkout' => $cOut,
+                'status' => $bStatus,
+            ];
+        }
     }
 
     // Fetch Synced iCal OTA Blocks

@@ -235,7 +235,11 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
   // Check if room is occupied on date
   const isRoomOccupied = (roomId: number, dateStr: string): boolean => {
     return occupiedBlocks.some((b) => {
-      const match = b.room_id === roomId || Number(b.room_id) === Number(roomId);
+      const match =
+        b.room_id === roomId ||
+        Number(b.room_id) === Number(roomId) ||
+        Number(b.room_id) === Number(property?.id) ||
+        b.room_id === 0;
       return match && dateStr >= b.checkin_date && dateStr < b.expected_checkout;
     });
   };
