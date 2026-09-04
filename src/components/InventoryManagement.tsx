@@ -1273,7 +1273,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                         placeholder={t('search_by_name_category_placeholder')}
                         value={catalogSearch}
                         onChange={(e) => setCatalogSearch(e.target.value)}
-                        icon={Search}
                         className="w-full"
                       />
                     </div>
@@ -1910,7 +1909,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               <div className="w-full flex flex-col sm:flex-row sm:items-center gap-3 p-4 border-b border-slate-100 dark:border-slate-700/80">
                 <FlowbiteTextInput
                   type="text"
-                  icon={Search}
                   placeholder="Search requests by item name, status..."
                   value={fulfillSearch}
                   onChange={(e) => setFulfillSearch(e.target.value)}
@@ -2042,7 +2040,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             <div className="md:hidden space-y-3">
               <FlowbiteTextInput
                 type="text"
-                icon={Search}
                 placeholder="Search requests by item name, status..."
                 value={fulfillSearch}
                 onChange={(e) => setFulfillSearch(e.target.value)}
@@ -2292,27 +2289,26 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             <div className="bg-white pt-2 pb-3 space-y-3 -mx-1 px-1 sm:-mx-4 sm:px-4 border-b border-slate-100 shadow-md rounded-t-xl">
               {/* Quick Search Bar + Category Filter Toggle */}
               <div className="flex items-center gap-2">
-                <div className="relative flex-1">
+                <div className="flex-1">
                   <FlowbiteTextInput
                     id="req-catalog-search"
                     type="text"
-                    icon={Search}
                     value={reqSearch}
                     onChange={(e) => setReqSearch(e.target.value)}
                     placeholder={t('quick_search_catalog_placeholder')}
                     className="w-full"
                   />
-                  {reqSearch && (
-                    <button
-                      type="button"
-                      onClick={() => setReqSearch('')}
-                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer z-10"
-                      aria-label="Clear search"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
                 </div>
+                {reqSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setReqSearch('')}
+                    className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer shrink-0"
+                    aria-label="Clear search"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setShowReqCategoryFilters((v) => !v)}
@@ -2697,22 +2693,22 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
   const stockLogSubHeader = (
     <div className="flex items-center justify-between gap-3 py-2">
-      <div className="relative flex-1 max-w-xs">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 z-10" />
+      <div className="flex-1 max-w-xs">
         <Input
           type="text"
           value={stockLogSearch}
           onChange={(e) => setStockLogSearch(e.target.value)}
           placeholder={t('search_inventory_placeholder')}
-          className="pl-9"
         />
       </div>
-      <button
+      <Button
+        variant="primary"
+        size="xs"
         onClick={() => setIsAddModalOpen(true)}
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-md cursor-pointer transition-colors"
+        leftIcon={<Plus className="w-3.5 h-3.5" />}
       >
-        <Plus className="w-3.5 h-3.5" /> {t('add_new_item_button')}
-      </button>
+        {t('add_new_item_button')}
+      </Button>
     </div>
   );
 
@@ -2768,13 +2764,12 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       <div className="md:hidden bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md overflow-hidden p-3 space-y-3">
         {/* Search Bar & Category Pills Carousel */}
         <div className="space-y-2.5 pb-2 border-b border-slate-100 dark:border-slate-700">
-          <div className="relative">
+          <div>
             <Input
               type="text"
               placeholder={t('search_by_name_category_placeholder')}
               value={catalogSearch}
               onChange={(e) => setCatalogSearch(e.target.value)}
-              leftIcon={<Search className="w-4 h-4 text-slate-400" />}
               className="w-full"
             />
           </div>

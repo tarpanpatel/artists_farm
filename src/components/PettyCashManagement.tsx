@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useReducer } from 'react';
 import { Drawer, Card, TextInput as FlowbiteTextInput, Label, Checkbox, Dropdown, DropdownItem, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell } from 'flowbite-react';
-import { X, Search, Pencil, Edit2, FileText, FileSpreadsheet, Landmark, Loader2, User, Scale, Building2, Camera, Plus, Trash2, Settings, Filter } from './icons/FlowbiteIcons';
+import { X, Pencil, Edit2, FileText, FileSpreadsheet, Landmark, Loader2, User, Scale, Building2, Camera, Plus, Trash2, Settings, Filter } from './icons/FlowbiteIcons';
 import { TablePagination } from './TablePagination';
 import { PettyCashEntry } from '../types';
 import { Button } from './Button';
@@ -1523,16 +1523,13 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
           <div className="flex flex-wrap items-center gap-2.5 flex-1">
             {/* Search Input */}
-            <div className="relative w-full sm:w-72">
-              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500 dark:text-gray-400">
-                <Search className="w-4 h-4" />
-              </div>
+            <div className="w-full sm:w-72">
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search expenses by description, payee, ID..."
-                className="h-10 bg-gray-50 border border-gray-300 text-gray-900 text-xs font-medium rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-9 pr-3 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                className="h-10 bg-gray-50 border border-gray-300 text-gray-900 text-xs font-medium rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full px-3 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
               />
             </div>
 
@@ -2128,7 +2125,6 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
             <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-200 dark:border-slate-850">
               <div className="flex-1 max-w-xs">
                 <FlowbiteTextInput
-                  icon={Search}
                   value={searchPayeeQuery}
                   onChange={e => setSearchPayeeQuery(e.target.value)}
                   placeholder="Search by name..."
@@ -2348,7 +2344,6 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
             <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-200 dark:border-slate-850">
               <div className="flex-1 max-w-xs">
                 <FlowbiteTextInput
-                  icon={Search}
                   value={searchCustomQuery}
                   onChange={e => setSearchCustomQuery(e.target.value)}
                   placeholder="Search items by name..."

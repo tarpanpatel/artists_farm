@@ -896,20 +896,27 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
         {selectedIds.size > 0 ? (
           <>
             <span className="nav-menu-editor__toolbar-count text-[11px] font-semibold text-blue-700">{selectedIds.size} selected</span>
-            <button onClick={handleBulkDelete} className="nav-menu-editor__toolbar-btn nav-menu-editor__toolbar-btn--danger text-[11px] font-semibold text-red-600 hover:bg-red-50 px-2 py-1 rounded cursor-pointer">{t('nav_delete_selected_button', 'Delete Selected')}</button>
-            <button onClick={() => setSelectedIds(new Set())} className="nav-menu-editor__toolbar-btn text-[11px] text-slate-500 hover:text-slate-700 px-2 py-1 rounded cursor-pointer">{t('clear_button', 'Clear')}</button>
+            <Button variant="danger" size="xs" onClick={handleBulkDelete}>
+              {t('nav_delete_selected_button', 'Delete Selected')}
+            </Button>
+            <Button variant="secondary" size="xs" onClick={() => setSelectedIds(new Set())}>
+              {t('clear_button', 'Clear')}
+            </Button>
           </>
         ) : (
           <>
-            <button onClick={expandAll} className="nav-menu-editor__toolbar-btn text-[11px] text-slate-500 hover:text-slate-700 cursor-pointer font-medium">{t('nav_expand_all_button', 'Expand All')}</button>
-            <span className="text-slate-300">|</span>
-            <button onClick={collapseAll} className="nav-menu-editor__toolbar-btn text-[11px] text-slate-500 hover:text-slate-700 cursor-pointer font-medium">{t('nav_collapse_all_button', 'Collapse All')}</button>
-            <span className="text-slate-300">|</span>
-            <label className="nav-menu-editor__select-all flex items-center gap-1.5 text-[11px] text-slate-500 cursor-pointer">
+            <Button variant="secondary" size="xs" onClick={expandAll}>
+              {t('nav_expand_all_button', 'Expand All')}
+            </Button>
+            <Button variant="secondary" size="xs" onClick={collapseAll}>
+              {t('nav_collapse_all_button', 'Collapse All')}
+            </Button>
+            <label className="nav-menu-editor__select-all flex items-center gap-1.5 text-[11px] text-slate-500 cursor-pointer ml-2">
               <Checkbox
                 checked={selectedIds.size === visibleItems.length && visibleItems.length > 0}
                 onChange={() => { if (selectedIds.size === visibleItems.length) { setSelectedIds(new Set()); } else { setSelectedIds(new Set(visibleItems.map(i => i.id))); } }}
-              />{t('nav_select_all_button', 'Select All')}
+              />
+              <span>{t('nav_select_all_button', 'Select All')}</span>
             </label>
           </>
         )}

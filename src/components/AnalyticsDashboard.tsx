@@ -1314,7 +1314,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                 <Users className="w-4 h-4 text-red-600" /> {t('labor_cost_ratio_heading', 'Labor Cost as % of Revenue (Trended)')}
               </h3>
               {latestLaborRatio && (
-                <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${latestLaborRatio.pct > 30 ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'}`}>
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${latestLaborRatio.pct > 30 ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300 border-red-200 dark:border-red-800' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'}`}>
                   {t('latest_month_label', 'Latest month')}: {latestLaborRatio.pct.toFixed(1)}%
                 </span>
               )}
@@ -1633,7 +1633,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
               <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <Zap className="w-4 h-4 text-amber-600" /> {t('bills_utilities_heading', 'Bills & Utilities Analytics')}
               </h3>
-              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                 {t('this_period_total_label', 'This period')}: ₹{totalBillsThisPeriod.toLocaleString('en-IN')}
               </span>
             </div>

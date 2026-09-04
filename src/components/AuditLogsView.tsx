@@ -5,7 +5,6 @@ import {
   Utensils,
   Plus,
   CreditCard,
-  Search,
   AlertTriangle,
   Receipt,
   UtensilsCrossed,
@@ -205,16 +204,13 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
       <div className="audit-logs__receipts bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
           <div className="flex flex-wrap items-center gap-2.5 flex-1">
-            <div className="relative w-full sm:w-80">
-              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500 dark:text-gray-400">
-                <Search className="w-4 h-4" />
-              </div>
+            <div className="w-full sm:w-80">
               <input
                 type="text"
                 value={receiptsSearch}
                 onChange={(e) => setReceiptsSearch(e.target.value)}
                 placeholder={t('search_receipts_placeholder', 'Search by guest, receipt #, room...')}
-                className="h-10 bg-gray-50 border border-gray-300 text-gray-900 text-xs font-medium rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-9 pr-3 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                className="h-10 bg-gray-50 border border-gray-300 text-gray-900 text-xs font-medium rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full px-3 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
               />
             </div>
 
@@ -275,7 +271,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                   <div className="py-1">
                     <span className="font-semibold text-gray-900 dark:text-white block text-xs whitespace-nowrap">{rec.guestName}</span>
                     {rec.roomNumber && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 mt-0.5 rounded-full text-2xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                      <span className="inline-flex items-center px-2.5 py-0.5 mt-0.5 rounded-full text-2xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 whitespace-nowrap">
                         {rec.roomNumber}
                       </span>
                     )}
@@ -375,16 +371,13 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
 
         {/* Touch-First Mobile Cards View with 10-Item Pagination */}
         <div className="md:hidden p-4 space-y-3">
-          <div className="relative">
-            <Input
-              type="text"
-              value={receiptsSearch}
-              onChange={(e) => setReceiptsSearch(e.target.value)}
-              placeholder={t('search_receipts_placeholder', 'Search receipts...')}
-              leftIcon={<Search className="w-4 h-4 text-slate-400" />}
-              className="w-full"
-            />
-          </div>
+          <Input
+            type="text"
+            value={receiptsSearch}
+            onChange={(e) => setReceiptsSearch(e.target.value)}
+            placeholder={t('search_receipts_placeholder', 'Search receipts...')}
+            className="w-full"
+          />
 
           {(() => {
             const paginatedReceipts = filteredReceipts.slice((receiptsPage - 1) * 10, receiptsPage * 10);

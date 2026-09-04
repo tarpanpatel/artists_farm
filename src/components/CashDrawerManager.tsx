@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Drawer, TextInput as FlowbiteTextInput, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell } from 'flowbite-react';
 import { X } from './icons/FlowbiteIcons';
-import { ArrowRightLeft, Loader2, Search, CheckCircle2, IndianRupee, Handshake, Sliders, ChevronUp, ChevronDown, Plus, Trash2, Check, ChevronLeft, ChevronRight, HelpCircle } from './icons/FlowbiteIcons';
+import { ArrowRightLeft, Loader2, CheckCircle2, IndianRupee, Handshake, Sliders, ChevronUp, ChevronDown, Plus, Trash2, Check, ChevronLeft, ChevronRight, HelpCircle } from './icons/FlowbiteIcons';
 import { CashDrawerEntry, CashDrawerSummary, StaffAdvance, StaffMember } from '../types';
 import { PageHeader } from './PageHeader';
 import { Badge } from './Badge';
@@ -625,7 +625,6 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
               <div className="w-full sm:w-auto">
                 <FlowbiteTextInput
                   type="text"
-                  icon={Search}
                   value={searchHistory}
                   onChange={e => setSearchHistory(e.target.value)}
                   placeholder={t('search_staff_type_notes_placeholder', 'Search staff, type, notes...')}

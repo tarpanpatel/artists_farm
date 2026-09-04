@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback, Suspense } fr
 import { Drawer as FlowbiteDrawer, DrawerItems } from 'flowbite-react';
 import { Header } from './components/Header';
 import { Navigation, TabType } from './components/Navigation';
+import { Button } from './components/Button';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { OperationalDashboard } from './components/OperationalDashboard';
@@ -3153,7 +3154,9 @@ export function App() {
         <div className="min-h-screen bg-red-50 dark:bg-red-950 flex items-center justify-center">
           <div className="text-center">
             <p className="text-red-800 dark:text-red-300 font-medium">Access Denied: You do not have permission to view this tenant.</p>
-            <button onClick={handleAdminLogout} className="mt-4 bg-red-600 text-white px-4 py-2 rounded-lg">Logout</button>
+            <Button variant="danger" size="sm" onClick={handleAdminLogout} className="mt-4">
+              Logout
+            </Button>
           </div>
         </div>
       );

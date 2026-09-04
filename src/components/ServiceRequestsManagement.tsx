@@ -795,7 +795,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
             </div>
           </div>
 
-          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
             <Button variant="secondary" size="md" onClick={() => setIsAddModalOpen(false)}>
               {t('cancel_button', 'Cancel')}
             </Button>
@@ -986,7 +986,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
           </div>
         </div>
 
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end bg-gray-50 dark:bg-gray-850">
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end bg-gray-50 dark:bg-gray-850 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
           <Button variant="secondary" size="md" onClick={() => setIsManageModalOpen(false)}>
             Close
           </Button>

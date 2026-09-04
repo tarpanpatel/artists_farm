@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Phone, MessageSquare, Pencil, Eye, LogIn, LogOut, Users, Building, Search, IndianRupee, CheckCircle2, AlertCircle } from './icons/FlowbiteIcons';
+import { Phone, MessageSquare, Pencil, Eye, LogIn, LogOut, Users, Building, IndianRupee, CheckCircle2, AlertCircle } from './icons/FlowbiteIcons';
 import { Guest } from '../types';
 import { Badge } from './Badge';
 import { Button } from './Button';
@@ -126,15 +126,14 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
       {!hideSearchAndFilter && (
         <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md space-y-3">
           {/* Search Input with Native Keyboard Keypad */}
-          <div className="relative flex items-center">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
+          <div>
             <input
               type="search"
               inputMode="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search guest, room, or phone..."
-              className="w-full h-11 pl-9 pr-4 text-sm bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white rounded-lg border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full h-11 px-4 text-sm bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white rounded-lg border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 

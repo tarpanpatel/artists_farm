@@ -13,7 +13,6 @@ import {
   Pencil,
   Trash2,
   X,
-  Search,
   ShieldCheck,
   CheckSquare,
   Square,
@@ -574,27 +573,26 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
           <div className="bg-white dark:bg-slate-800 p-3.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md space-y-3">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2 flex-1 min-w-0">
-                <div className="relative flex-1">
+                <div className="flex-1">
                   <FlowbiteTextInput
                     id="menu-catalog-search"
                     autoComplete="off"
-                    icon={Search}
                     value={foodSearch}
                     onChange={(e) => setFoodSearch(e.target.value)}
                     placeholder={t('search_food_items_placeholder', 'Quick search catalog metrics...')}
                     className="w-full"
                   />
-                  {foodSearch && (
-                    <button
-                      type="button"
-                      onClick={() => setFoodSearch('')}
-                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer z-10"
-                      aria-label="Clear search"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
                 </div>
+                {foodSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setFoodSearch('')}
+                    className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer shrink-0"
+                    aria-label="Clear search"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
 
                 <button
                   type="button"
@@ -1150,7 +1148,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               </div>
             </div>
           </div>
-          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
             <Button
               type="button"
               variant="secondary"
@@ -1278,7 +1276,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               />
             </div>
           </div>
-          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
             <Button
               type="button"
               variant="secondary"
@@ -1338,7 +1336,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
             error={passcodeError || undefined}
           />
         </div>
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
           <Button
             variant="secondary"
             size="sm"

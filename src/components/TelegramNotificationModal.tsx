@@ -20,7 +20,6 @@ import {
   Check,
   ChevronDown,
   Bot,
-  Search,
   Pencil,
 } from './icons/FlowbiteIcons';
 import { TelegramConfig, TelegramDispatchLog, PropertyTelegramConfig } from '../types';
@@ -1140,21 +1139,20 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
         <div className="bg-white dark:bg-slate-900 rounded-lg rounded-tl-none border border-t-0 border-slate-200 dark:border-slate-800 shadow-xs -mt-px overflow-hidden">
           {/* Keyword Search */}
           <div className="p-3 sm:p-4 border-b border-slate-100 dark:border-slate-800">
-            <div className="relative w-full sm:w-72">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <div className="flex items-center gap-2 w-full sm:w-80">
               <input
                 type="text"
                 value={templateSearch}
                 onChange={(e) => setTemplateSearch(e.target.value)}
                 placeholder={t('search_templates_placeholder', 'Search templates...')}
-                className="w-full h-9 text-xs font-medium pl-9 pr-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0088cc]"
+                className="w-full h-9 text-xs font-medium px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0088cc]"
               />
               {templateSearch && (
                 <button
                   type="button"
                   onClick={() => setTemplateSearch('')}
-                  title={t('clear_search_tooltip', 'Clear search')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-md cursor-pointer"
+                  aria-label={t('clear_search_tooltip', 'Clear search')}
+                  className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-md cursor-pointer shrink-0"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>

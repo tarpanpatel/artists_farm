@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, Receipt, AlertCircle, Loader2, Search, CheckCircle2, FileText } from './icons/FlowbiteIcons';
+import { Plus, Pencil, Trash2, Receipt, AlertCircle, Loader2, CheckCircle2, FileText } from './icons/FlowbiteIcons';
 import { Drawer, Alert } from 'flowbite-react';
 import { X } from './icons/FlowbiteIcons';
 import { useConfirm } from './ConfirmDialogContext';
@@ -190,14 +190,12 @@ export const DefaultBillsManager: React.FC<DefaultBillsManagerProps> = ({ onLogo
               Add New Bill
             </Button>
         </div>
-        <div className="relative mt-3">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <div className="mt-3">
           <Input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search bill types..."
-            className="pl-9"
           />
         </div>
       </div>
@@ -354,7 +352,7 @@ export const DefaultBillsManager: React.FC<DefaultBillsManagerProps> = ({ onLogo
               placeholder="e.g., Monthly electricity charges"
             />
           </div>
-          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
             <Button type="submit" variant="primary" block disabled={saving}>
               {saving ? 'Saving...' : 'Update'}
             </Button>

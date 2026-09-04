@@ -9,7 +9,6 @@ import {
   X,
   Boxes,
   RefreshCw,
-  Search,
   ShoppingCart,
   ArrowUp,
   Save,
@@ -2189,27 +2188,26 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 <div className="pos-category-filter-bar bg-white dark:bg-gray-800 pb-3 space-y-3 border-b border-gray-100 dark:border-gray-700">
                   {/* Quick Search Bar + Category Filter Toggle + Layout Toggle */}
                   <div className="flex items-center gap-2">
-                    <div className="relative flex-1">
+                    <div className="flex-1">
                       <FlowbiteTextInput
                         id="pos-menu-quick-search"
                         type="text"
-                        icon={Search}
                         value={posSearch}
                         onChange={(e) => setPosSearch(e.target.value)}
                         placeholder={t('quick_search_menu_placeholder')}
                         className="w-full"
                       />
-                      {posSearch && (
-                        <button
-                          type="button"
-                          onClick={() => setPosSearch('')}
-                          className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer z-10"
-                          aria-label="Clear search"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      )}
                     </div>
+                    {posSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setPosSearch('')}
+                        className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer shrink-0"
+                        aria-label="Clear search"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
 
                     <button
                       type="button"

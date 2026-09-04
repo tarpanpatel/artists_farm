@@ -1065,7 +1065,6 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
               <TextInput
                 id="bookings-search"
                 type="text"
-                icon={Search}
                 placeholder={t('search_guest_placeholder', 'Search by booking ID, guest, phone, or room...')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}

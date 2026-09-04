@@ -24,7 +24,6 @@ import {
   CreditCard,
   Phone,
   Trash2,
-  Search,
   Building2
 } from './icons/FlowbiteIcons';
 import { StaffMember, AttendanceRecord, UserAccount } from '../types';
@@ -869,7 +868,6 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               <div className="flex-1 max-w-md">
                 <FlowbiteTextInput
                   type="text"
-                  icon={Search}
                   value={searchUsers}
                   onChange={(e) => setSearchUsers(e.target.value)}
                   placeholder="Search for users..."
@@ -2019,7 +2017,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               />
             </div>
           </div>
-          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
             <Button
               type="button"
               variant="secondary"
@@ -2486,7 +2484,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 ) : null}
               </div>
 
-              <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-100 dark:border-slate-700 flex-wrap">
+              <div className="flex items-center justify-between gap-2 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] border-t border-slate-100 dark:border-slate-700 flex-wrap">
                 {canShareLogins && !!(updateUsername || updateTargetUser?.username) ? (
                   <Button
                     type="button"

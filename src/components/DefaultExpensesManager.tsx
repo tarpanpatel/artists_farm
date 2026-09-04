@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, DollarSign, AlertCircle, Loader2, Search, CheckCircle2 } from './icons/FlowbiteIcons';
+import { Plus, Edit2, Trash2, DollarSign, AlertCircle, Loader2, CheckCircle2 } from './icons/FlowbiteIcons';
 import { Drawer, Alert } from 'flowbite-react';
 import { X } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';
@@ -207,23 +207,22 @@ export const DefaultExpensesManager: React.FC<DefaultExpensesManagerProps> = ({ 
             </p>
           </div>
           <div className="flex gap-2">
-            <button
+            <Button
+              variant="primary"
+              size="sm"
               onClick={() => setIsAddingNew(!isAddingNew)}
-              className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+              leftIcon={<Plus className="w-3.5 h-3.5" />}
             >
-              <Plus className="w-3.5 h-3.5" />
               {t('add_new_item_button', 'Add New Item')}
-            </button>
+            </Button>
           </div>
         </div>
-        <div className="relative mt-3">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+        <div className="mt-3">
           <Input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t('search_expense_items_placeholder', 'Search expense items...')}
-            leftIcon={<Search className="w-4 h-4 text-slate-400" />}
           />
         </div>
       </div>
@@ -405,7 +404,7 @@ export const DefaultExpensesManager: React.FC<DefaultExpensesManagerProps> = ({ 
               onChange={(e) => setEditForm({ ...editForm, label: e.target.value })}
             />
           </div>
-          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
             <Button
               type="button"
               variant="secondary"

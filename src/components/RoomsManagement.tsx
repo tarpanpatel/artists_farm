@@ -8,6 +8,7 @@ import { useConfirm } from './ConfirmDialogContext';
 import { useToast } from './ToastContext';
 import { useAuth } from '../contexts/AuthContext';
 import { apiFetch } from '../services/api';
+import { OtaPropertyImporterModal, type ImportedPropertyData } from './OtaPropertyImporterModal';
 
 interface Room {
   id: number;
@@ -146,10 +147,32 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
     loadData();
   }, [isAuthenticated, authChecked, propertyId]);
 
+  const [showUnitImporter, setShowUnitImporter] = useState(false);
+
+  // Fills the Add-New-Unit form from a scraped listing. Deliberately only the two
+  // fields this form actually has - a room's photos/amenities/address belong to
+  // the parent property, and the room does not exist yet to attach them to. The
+  // slug is re-derived from the imported name exactly as typing it would, so an
+  // imported unit is addressable the same way as a hand-made one.
+  const applyImportedUnit = (data: ImportedPropertyData) => {
+    const name = (data.name || '').trim();
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    setNewRoom((prev) => ({
+      name: name || prev.name,
+      slug: slug || prev.slug || `unit-${Date.now()}`,
+      default_tariff: data.default_tariff ? String(data.default_tariff) : prev.default_tariff,
+    }));
+    setShowUnitImporter(false);
+    showToast(`Imported "${name || 'listing'}" - review the details and click Add Room.`, { type: 'success' });
+  };
+
   const handleAddRoom = async () => {
-    if (!newRoom.name || !newRoom.slug) {
+    // Only the name is asked for now - the slug is derived from it (with a
+    // generated fallback), so it can no longer be independently missing and
+    // naming it in this message would point at a field that isn't on screen.
+    if (!newRoom.name.trim()) {
       setRoomNameTouched(true);
-      setError('Room name and slug required');
+      setError('Room name is required');
       return;
     }
 
@@ -486,6 +509,41 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
             </Alert>
           )}
 
+          {/* Import one unit straight from its own OTA listing. In a multi-key
+              property each room is typically its own Airbnb/Booking.com listing,
+              so this fills the name and nightly rate from that listing instead of
+              retyping them. Rendered in callback mode (no propertyId): the room
+              does not exist yet, so the modal hands the scraped data back rather
+              than writing it to a property. Added 4 Sep 2026. */}
+          <div className="rounded-lg border border-dashed border-amber-300 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-gray-900 dark:text-white m-0">
+                  {t('import_unit_from_ota_title', 'Have this unit listed online?')}
+                </p>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 mb-0">
+                  {t('import_unit_from_ota_hint', 'Fill the details from its Airbnb or Booking.com page instead of typing them.')}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="xs"
+                className="shrink-0"
+                onClick={() => setShowUnitImporter(true)}
+                leftIcon={<Sparkles className="w-3.5 h-3.5 text-amber-500" />}
+              >
+                {t('import_button', 'Import')}
+              </Button>
+            </div>
+          </div>
+
+          {/* The Room Link / slug input was removed 4 Sep 2026 at the user's
+              request: it is derived from the name below and nobody needs to
+              choose a URL segment by hand when adding a unit. The slug itself is
+              still generated and still sent - it is what the room's own page is
+              addressed by ("Manage" navigates to #{slug}/edit_property) - it
+              just is not something the form asks about any more. */}
           <Input
             label={t('room_name_label', 'Room Name *')}
             value={newRoom.name}
@@ -494,18 +552,15 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
                 .toLowerCase()
                 .replace(/[^a-z0-9]+/g, '-')
                 .replace(/^-|-$/g, '');
-              setNewRoom({ ...newRoom, name: e.target.value, slug });
+              // A name made only of symbols ("!!!") sanitises to an empty slug.
+              // With the slug field visible that was recoverable by hand; now it
+              // would be an invisible reason the form refuses to submit, so fall
+              // back to a generated one rather than blocking on it.
+              setNewRoom({ ...newRoom, name: e.target.value, slug: slug || `unit-${Date.now()}` });
             }}
             onBlur={() => setRoomNameTouched(true)}
             error={roomNameTouched && !newRoom.name.trim() ? 'This field is required' : undefined}
             placeholder={t('room_name_placeholder', 'e.g., Suite A')}
-          />
-
-          <Input
-            label={t('room_slug_label', 'Room Slug')}
-            value={newRoom.slug}
-            onChange={(e) => setNewRoom({ ...newRoom, slug: e.target.value })}
-            placeholder={t('room_slug_placeholder', 'e.g., suite-a')}
           />
 
           <Input
@@ -516,7 +571,7 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
             placeholder={t('default_tariff_placeholder', 'e.g. 2000')}
           />
         </div>
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
           <Button
             type="button"
             variant="secondary"
@@ -530,17 +585,36 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
           >
             {t('cancel', 'Cancel')}
           </Button>
+          {/* Greyed out via opacity, NOT the native `disabled` attribute, for the
+              "name is still empty" case - a real disabled button swallows the
+              click, so the user gets no clue why nothing happened. `disabled`
+              stays for the genuinely in-flight save. See CLAUDE.md. */}
           <Button
             variant="primary"
             size="sm"
-            onClick={handleAddRoom}
-            disabled={addingRoom || !newRoom.name || !newRoom.slug}
+            onClick={() => {
+              if (!newRoom.name.trim()) {
+                setRoomNameTouched(true);
+                return;
+              }
+              handleAddRoom();
+            }}
+            disabled={addingRoom}
+            className={!newRoom.name.trim() ? 'opacity-50' : undefined}
             leftIcon={addingRoom ? <Loader2 className="w-3 h-3 animate-spin" /> : undefined}
           >
             {addingRoom ? t('adding_room_button', 'Adding...') : t('add_room_button', 'Add Room')}
           </Button>
         </div>
       </Drawer>
+
+      {/* No propertyId: the unit is not saved yet, so this returns the scraped
+          data to applyImportedUnit() instead of writing it to a property. */}
+      <OtaPropertyImporterModal
+        isOpen={showUnitImporter}
+        onClose={() => setShowUnitImporter(false)}
+        onImportSuccess={applyImportedUnit}
+      />
     </div>
   );
 };

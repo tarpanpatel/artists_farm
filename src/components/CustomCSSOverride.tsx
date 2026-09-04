@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Card, Alert, Toast, ToastToggle } from 'flowbite-react';
-import { Paintbrush, Save, Copy, Check, Trash2, Download, Upload, Eye, Code, Search, ChevronDown, ChevronUp, Palette, X, Lock, FLOWBITE_ICONS } from './icons/FlowbiteIcons';
+import { Paintbrush, Save, Copy, Check, Trash2, Download, Upload, Eye, Code, ChevronDown, ChevronUp, Palette, X, Lock, FLOWBITE_ICONS } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';
 import { Input } from './Input';
 import { Button } from './Button';
@@ -435,21 +435,22 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
           <div ref={iconBrowserRef} className="border-t border-slate-200 dark:border-slate-700">
             {/* Search */}
             <div className="px-5 py-4 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700">
-              <div className="relative">
+              <div className="flex items-center gap-2">
                 <Input
                   type="text"
                   value={iconSearch}
                   onChange={(e) => setIconSearch(e.target.value)}
                   placeholder={t('search_icons_placeholder', 'Search icons by name... (e.g. arrow, home, user)')}
-                  leftIcon={<Search className="w-4 h-4 text-slate-400" />}
-                  className="pr-9"
+                  className="w-full"
                 />
                 {iconSearch && (
                   <button
+                    type="button"
                     onClick={() => setIconSearch('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer shrink-0"
+                    aria-label="Clear search"
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <X className="w-4 h-4" />
                   </button>
                 )}
               </div>
