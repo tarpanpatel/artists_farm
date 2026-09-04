@@ -4,7 +4,8 @@ import {
   Pencil, Trash2, ExternalLink, CheckCircle, Layers,
   Home, TrendingUp, ChevronRight, Zap, User, UserRound,
   Calendar, Bell, ArrowRight, HelpCircle, LayoutDashboard,
-  CreditCard, Menu, X, KeyRound, Eye, EyeOff, Save, Loader2
+  CreditCard, Menu, X, KeyRound, Eye, EyeOff, Save, Loader2,
+  BarChart3, PieChart
 } from './icons/FlowbiteIcons';
 import { Popover } from './Popover';
 import { StyledSelect } from './StyledSelect';
@@ -376,7 +377,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
     {
       id: 'analytics',
       label: 'Analytics',
-      icon: TrendingUp,
+      icon: BarChart3,
       tab: 'analytics' as TenantTab,
     },
     {
@@ -406,12 +407,12 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
       {isSidebarOpen && (
         <div
           onClick={() => setIsSidebarOpen(false)}
-          className="fixed inset-0 z-55 bg-gray-900/50 dark:bg-gray-900/80 backdrop-blur-xs transition-opacity md:hidden"
+          className="fixed inset-0 z-[55] bg-gray-900/50 dark:bg-gray-900/80 backdrop-blur-xs transition-opacity md:hidden"
         />
       )}
 
       {/* ──────────────── Top Header Bar (Full Width, Property Page Standard) ──────────────── */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 h-[calc(4rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px))] flex items-center justify-between px-4 sm:px-6">
+      <header className="fixed top-0 left-0 right-0 z-[57] bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 h-[calc(4rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px))] flex items-center justify-between px-4 sm:px-6">
         <div className="flex items-center gap-3 min-w-0">
           {/* Hamburger Menu Toggle (Mobile & Desktop) */}
           <button
@@ -464,7 +465,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
       <aside
         id="superAdminSidebar"
         aria-label="Super Admin Sidebar Navigation"
-        className={`fixed top-0 left-0 h-screen pt-[calc(4rem+env(safe-area-inset-top,0px))] z-[45] w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-transform duration-200 flex flex-col justify-between ${
+        className={`fixed top-0 left-0 h-screen pt-[calc(4rem+env(safe-area-inset-top,0px))] z-[56] w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-transform duration-200 flex flex-col justify-between ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
@@ -634,14 +635,14 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                   layout="stacked"
                 />
                 <KpiCard
-                  label="Checked-In Guests"
+                  label="In-House"
                   icon={User}
                   badge={{ text: 'Active', color: 'success' }}
                   value={inHouseCount}
                   layout="stacked"
                 />
                 <KpiCard
-                  label="Service Requests"
+                  label="Requests"
                   icon={Bell}
                   badge={{ text: 'Pending', color: 'failure' }}
                   value={pendingRequestsCount}
@@ -827,14 +828,14 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                   layout="stacked"
                 />
                 <KpiCard
-                  label="Checked-In Guests"
+                  label="In-House"
                   icon={User}
                   badge={{ text: 'Active', color: 'success' }}
                   value={inHouseCount}
                   layout="stacked"
                 />
                 <KpiCard
-                  label="Service Requests"
+                  label="Requests"
                   icon={Bell}
                   badge={{ text: 'Pending', color: 'failure' }}
                   value={pendingRequestsCount}
@@ -842,22 +843,22 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 />
               </div>
 
-              {/* Analytics Summary */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6 text-center border border-gray-200 dark:border-gray-700">
-                  <TrendingUp className="w-6 h-6 text-indigo-500 mx-auto mb-2" />
-                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{t('total_bookings_label', 'Total Bookings')}</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalBookingsAnalytics}</p>
+              {/* Analytics Summary - compact stat strip */}
+              <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg px-2 py-2.5 text-center border border-gray-200 dark:border-gray-700">
+                  <PieChart className="w-4 h-4 text-indigo-500 mx-auto mb-1" />
+                  <p className="text-[10px] sm:text-[11px] font-medium text-gray-500 dark:text-gray-400 leading-tight">{t('total_bookings_label', 'Total Bookings')}</p>
+                  <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white leading-tight tabular-nums">{totalBookingsAnalytics}</p>
                 </div>
-                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6 text-center border border-gray-200 dark:border-gray-700">
-                  <Building2 className="w-6 h-6 text-emerald-500 mx-auto mb-2" />
-                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{t('combined_revenue_label', 'Combined Revenue')}</p>
-                  <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">₹{combinedRevenueAnalytics.toLocaleString('en-IN')}</p>
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg px-2 py-2.5 text-center border border-gray-200 dark:border-gray-700">
+                  <Building2 className="w-4 h-4 text-emerald-500 mx-auto mb-1" />
+                  <p className="text-[10px] sm:text-[11px] font-medium text-gray-500 dark:text-gray-400 leading-tight">{t('combined_revenue_label', 'Combined Revenue')}</p>
+                  <p className="text-sm sm:text-lg font-bold text-emerald-600 dark:text-emerald-400 leading-tight tabular-nums">₹{combinedRevenueAnalytics.toLocaleString('en-IN')}</p>
                 </div>
-                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6 text-center border border-gray-200 dark:border-gray-700">
-                  <Layers className="w-6 h-6 text-blue-500 mx-auto mb-2" />
-                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{t('avg_occupancy_label', 'Avg. Occupancy')}</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{avgOccupancyAnalytics}%</p>
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg px-2 py-2.5 text-center border border-gray-200 dark:border-gray-700">
+                  <Layers className="w-4 h-4 text-blue-500 mx-auto mb-1" />
+                  <p className="text-[10px] sm:text-[11px] font-medium text-gray-500 dark:text-gray-400 leading-tight">{t('avg_occupancy_label', 'Avg. Occupancy')}</p>
+                  <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white leading-tight tabular-nums">{avgOccupancyAnalytics}%</p>
                 </div>
               </div>
             </section>
@@ -1267,7 +1268,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
             activeTab === 'analytics' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-gray-500 dark:text-gray-400'
           }`}
         >
-          <TrendingUp className="w-5 h-5 mb-0.5" />
+          <BarChart3 className="w-5 h-5 mb-0.5" />
           <span className="text-[10px] font-semibold">Analytics</span>
         </button>
 
