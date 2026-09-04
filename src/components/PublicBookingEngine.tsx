@@ -10,11 +10,11 @@ import {
   ArrowRight,
   X,
   Building,
-  Calendar,
   AlertCircle,
 } from './icons/FlowbiteIcons';
 import { Button } from './Button';
 import { Badge } from './Badge';
+import { DateRangePicker } from './DateRangePicker';
 import { apiFetch, API_ROOT_BASE } from '../services/api';
 
 interface PublicRoom {
@@ -457,39 +457,25 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
         <section className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 shadow-xs space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-3 text-xs w-full lg:w-auto">
-              <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700">
-                <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                <div>
-                  <span className="text-3xs font-bold text-gray-500 uppercase block leading-none">Check-in</span>
-                  <input
-                    type="date"
-                    min={todayStr}
-                    value={checkinDate}
-                    onChange={(e) => {
-                      setCheckinDate(e.target.value);
-                      if (checkoutDate && e.target.value >= checkoutDate) {
-                        const d = new Date(e.target.value + 'T00:00:00');
-                        d.setDate(d.getDate() + 1);
-                        setCheckoutDate(formatDateISO(d));
-                      }
-                    }}
-                    className="bg-transparent text-xs font-bold text-gray-900 dark:text-white border-0 p-0 focus:ring-0 cursor-pointer mt-0.5"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700">
-                <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                <div>
-                  <span className="text-3xs font-bold text-gray-500 uppercase block leading-none">Check-out</span>
-                  <input
-                    type="date"
-                    min={checkinDate || todayStr}
-                    value={checkoutDate}
-                    onChange={(e) => setCheckoutDate(e.target.value)}
-                    className="bg-transparent text-xs font-bold text-gray-900 dark:text-white border-0 p-0 focus:ring-0 cursor-pointer mt-0.5"
-                  />
-                </div>
+              <div className="w-full sm:w-auto min-w-[280px]">
+                <DateRangePicker
+                  checkinDate={checkinDate}
+                  checkoutDate={checkoutDate}
+                  onCheckinChange={(d) => {
+                    setCheckinDate(d);
+                    if (checkoutDate && d >= checkoutDate) {
+                      const next = new Date(d + 'T00:00:00');
+                      next.setDate(next.getDate() + 1);
+                      setCheckoutDate(formatDateISO(next));
+                    }
+                  }}
+                  onCheckoutChange={(d) => {
+                    setCheckoutDate(d);
+                  }}
+                  disablePastDates
+                  fromPlaceholder="Check-in date"
+                  toPlaceholder="Check-out date"
+                />
               </div>
 
               {rooms.length > 1 && (
@@ -669,17 +655,10 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                     {displayedRooms.map((room) => {
-                      const baseTariff = Number(room.default_tariff || property.default_tariff || 0);
-
                       return (
                         <tr key={room.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
                           <td className="sticky left-0 z-10 bg-white dark:bg-gray-900 px-3 py-2 text-left font-bold text-gray-900 dark:text-white text-xs border-r border-gray-200 dark:border-gray-700 shadow-xs">
                             <div className="truncate max-w-[140px]">{room.name}</div>
-                            {baseTariff > 0 && (
-                              <div className="text-3xs text-gray-500 dark:text-gray-400 font-normal">
-                                Base: {currencySym}{baseTariff.toLocaleString('en-IN')}
-                              </div>
-                            )}
                           </td>
 
                           {Array.from({ length: monthInfo.daysInMonth }, (_, i) => i + 1).map((d) => {
@@ -716,7 +695,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                                   <div className="flex flex-col items-center justify-center">
                                     {rate > 0 && (
                                       <span className={`text-2xs font-bold leading-none ${isPendingStart || isSelected ? 'text-white' : ''}`}>
-                                        {currencySym}{rate.toLocaleString('en-IN')}
+                                        {rate.toLocaleString('en-IN')}
                                       </span>
                                     )}
                                     {dayRest?.closed_to_arrival && (
@@ -793,7 +772,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                             <div className="mt-auto text-right">
                               {rate > 0 && (
                                 <span className={`text-xs font-bold block ${isPendingStart || isSelected ? 'text-white' : 'text-emerald-700 dark:text-emerald-300'}`}>
-                                  {currencySym}{rate.toLocaleString('en-IN')}
+                                  {rate.toLocaleString('en-IN')}
                                 </span>
                               )}
                             </div>

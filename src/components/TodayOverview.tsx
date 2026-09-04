@@ -243,13 +243,6 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   const [pricingMode, setPricingMode] = useState<'flat' | 'variable'>('flat');
   const [defaultTariff, setDefaultTariff] = useState<number | null>(null);
 
-  const openRateRuleModal = (opts?: { startDate?: string; endDate?: string; roomIds?: number[] }) => {
-    setRateRuleStartDate(opts?.startDate);
-    setRateRuleEndDate(opts?.endDate);
-    setRateModalRoomIds(opts?.roomIds);
-    setShowRateRuleModal(true);
-  };
-
   const loadRateRules = async () => {
     const data = await fetchRateRulesDB();
     setRateRules(data.rules);
@@ -552,7 +545,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
               className="text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 focus:ring-4 focus:ring-slate-200 dark:focus:ring-slate-600 font-semibold rounded-lg text-xs px-3.5 py-2 flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap"
             >
               <Share2 className="w-4 h-4" />
-              <span>{t('share_food_menu_button', 'Share Menu')}</span>
+              <span>{t('share_food_menu_button', 'Share Food Menu')}</span>
             </button>
           )}
           {onAddBooking && (
@@ -647,27 +640,11 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                 Change Prices
               </button>
             </div>
-            <button
-              type="button"
-              onClick={() => openRateRuleModal()}
-              className="px-2.5 py-1 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 border border-slate-300 dark:border-slate-600 rounded-lg transition-colors cursor-pointer flex items-center gap-1 shrink-0"
-            >
-              <DollarSign className="w-3.5 h-3.5 text-blue-600" />
-              <span>Pricing &amp; Rates</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const slug = getPropertySlug() || '';
-                const url = `${window.location.origin}/availability.php${slug ? `?property_slug=${encodeURIComponent(slug)}` : ''}`;
-                window.open(url, '_blank');
-              }}
-              className="px-2.5 py-1 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 border border-blue-200 dark:border-blue-800 rounded-lg transition-colors cursor-pointer flex items-center gap-1 shrink-0"
-              title="Open public availability page"
-            >
-              <Share2 className="w-3.5 h-3.5" />
-              <span>Share Availability</span>
-            </button>
+            {/* "Pricing & Rates" and "Share Availability" buttons removed here
+                4 Sep 2026 (explicit request): repricing is now the "Change
+                Prices" toggle + click-a-range gesture above, and Share
+                Availability moved to the sidebar's Quick Actions next to
+                Share Menu (see Navigation.tsx). */}
             <div className="flex items-center gap-1 ms-auto sm:ms-0">
               <button
                 onClick={() => navigateWindow(-1)}
@@ -717,11 +694,11 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                   }}
                   className={`w-16 min-w-16 shrink-0 px-1 py-1.5 text-center border-r transition-all ${
                     isToday
-                      ? 'bg-blue-600 text-white shadow-sm border-blue-700 dark:border-blue-500 z-10'
+                      ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm ring-2 ring-inset ring-blue-500 border-blue-500 z-10'
                       : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-600'
                   }`}
                 >
-                  <div className={`text-[8px] uppercase tracking-wider font-bold ${isToday ? 'text-blue-100' : 'text-slate-500 dark:text-slate-400'}`}>{dayName}</div>
+                  <div className={`text-[8px] uppercase tracking-wider font-bold ${isToday ? 'text-blue-500 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`}>{dayName}</div>
                   <div className="text-sm font-extrabold leading-none mt-0.5">{day.getDate()}</div>
                 </div>
               );
@@ -895,7 +872,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                           title={isUnavailable ? undefined : calMode === 'pricing'
                             ? (pendingSelection ? 'Click the last night to price' : 'Click the first night to price a range')
                             : (pendingSelection ? 'Click to set check-out' : 'Click to start a new booking')}
-                          className={`w-16 min-w-16 shrink-0 border-r transition flex items-end justify-center pb-0.5 ${
+                          className={`w-16 min-w-16 shrink-0 border-r transition flex items-center justify-center ${
                             isUnavailable ? '' : 'cursor-pointer'
                           } ${
                             isPendingStart
