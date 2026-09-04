@@ -1496,6 +1496,16 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                                 <div>&nbsp;</div>
                                 <div className="text-2xs">&nbsp;</div>
                               </div>
+                              {/* Small per-day price on unbooked dates (4 Sep
+                                  2026, explicit request) - only when nothing
+                                  else occupies this cell, so it never
+                                  competes with a booking capsule or the
+                                  overflow indicator below it. */}
+                              {!isRangeUnavailable && (
+                                <div className="text-2xs font-medium text-gray-400 dark:text-gray-500 text-right pr-0.5 select-none">
+                                  ₹{Math.round(getDayPrice(dateStr).rate)}
+                                </div>
+                              )}
                               {dayBookingOverflowCount > 0 && (
                                 <Popover
                                   trigger="click"

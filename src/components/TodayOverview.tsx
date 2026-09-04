@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Calendar, LogOut, Bell, User, Globe, Share2, DollarSign } from './icons/FlowbiteIcons';
 import { Popover } from './Popover';
+import { useConfirm } from './ConfirmDialogContext';
 import { Guest } from '../types';
 import { BookingDetailsModal } from './BookingDetailsModal';
 import { RateRuleModal } from './RateRuleModal';
@@ -16,7 +17,12 @@ import { t } from '../i18n/en';
 
 interface TodayOverviewProps {
   guests: Guest[];
-  rooms?: Array<{ id: number; name: string; slug: string }>;
+  // default_tariff (4 Sep 2026, unbooked-date price display) - already
+  // present on the real objects this prop is fed (App.tsx passes
+  // preloadedData.currentProperty.rooms straight through, and RateRuleModal
+  // below reads default_tariff off this same array), just not declared
+  // here until now.
+  rooms?: Array<{ id: number; name: string; slug: string; default_tariff?: number }>;
   isMultiKeyProperty?: boolean;
   kitchenModuleEnabled?: boolean;
   onNavigateToRoom?: (roomSlug: string) => void;
@@ -79,6 +85,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   serviceRequestsAccessAllowed = true,
 }) => {
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
 
   const today = useMemo(() => {
     const d = new Date();
@@ -98,7 +105,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   const formatDateStr = (d: Date): string =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-  const handleRangeCellClick = (
+  const handleRangeCellClick = async (
     roomId: number,
     roomName: string,
     dateStr: string,
@@ -123,7 +130,8 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
 
     // Valid candidate: pendingSelection.dateStr = check-in, dateStr = check-out.
     // Verify every night in between is actually free before opening the form.
-    const cur = new Date(pendingSelection.dateStr + 'T00:00:00');
+    const checkinStr = pendingSelection.dateStr;
+    const cur = new Date(checkinStr + 'T00:00:00');
     const end = new Date(dateStr + 'T00:00:00');
     let hasConflict = false;
     while (cur < end) {
@@ -131,14 +139,30 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
       cur.setDate(cur.getDate() + 1);
     }
 
+    // Clear the pending highlight immediately regardless of what happens
+    // next (confirmed, declined, or rejected below) - a stale highlighted
+    // cell sitting there through an async confirm() dialog reads as still
+    // "waiting for a click" when it isn't.
+    setPendingSelection(null);
+
     if (hasConflict) {
       showToast('That range overlaps an existing booking or block - pick again.', { type: 'error' });
-      setPendingSelection(null);
       return;
     }
 
-    onAddBooking?.({ roomName, checkin: pendingSelection.dateStr, checkout: dateStr });
-    setPendingSelection(null);
+    // Confirmation prompt before opening the form (4 Sep 2026, explicit
+    // request) - the two clicks alone don't clearly signal "this is a real
+    // action about to happen", so a third, deliberate step asks first.
+    const nights = Math.round((end.getTime() - new Date(checkinStr + 'T00:00:00').getTime()) / 86400000);
+    const confirmed = await confirm({
+      title: 'Add Booking?',
+      message: `Create a new booking for ${roomName} from ${formatDateDDMMYYYY(checkinStr)} to ${formatDateDDMMYYYY(dateStr)} (${nights} night${nights === 1 ? '' : 's'})?`,
+      confirmText: 'Add Booking',
+      variant: 'info',
+    });
+    if (!confirmed) return;
+
+    onAddBooking?.({ roomName, checkin: checkinStr, checkout: dateStr });
   };
 
   // Public "Share Menu" link (food_menu.php via the /food_menu/{slug}/
@@ -195,6 +219,25 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   useEffect(() => {
     loadRateRules();
   }, []);
+
+  // Small per-day price shown on unbooked cells (4 Sep 2026, explicit
+  // request). Same day-of-week matching as OperationalDashboard.tsx's
+  // getDayPrice() and availability.php/AriDrainWorker - a rule only claims
+  // a date if it has no days_of_week restriction, or that date's weekday is
+  // in it (Channex's own 2-letter codes).
+  const DAY_CODE_BY_JS_DAY = ['su', 'mo', 'tu', 'we', 'th', 'fr', 'sa'];
+  const getDayPrice = (dateStr: string, room: { id: number; default_tariff?: number }): number => {
+    if (pricingMode === 'variable') {
+      const dayCode = DAY_CODE_BY_JS_DAY[new Date(dateStr + 'T00:00:00').getDay()];
+      const match = rateRules.find((r) => {
+        const roomMatch = !r.room_id || Number(r.room_id) === Number(room.id);
+        const dayMatch = !r.days_of_week || r.days_of_week.split(',').includes(dayCode);
+        return roomMatch && dayMatch && r.start_date <= dateStr && r.end_date >= dateStr;
+      });
+      if (match && match.rate_per_night != null) return Number(match.rate_per_night);
+    }
+    return room.default_tariff || defaultTariff || 0;
+  };
 
   // iCal sync retired app-wide (3 Sep 2026, superseded by the Channex channel
   // manager - see _unwanted/ical/README.md). This used to fetch
@@ -774,7 +817,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                           key={`bg-${day.toISOString()}`}
                           onClick={() => handleRangeCellClick(room.id, room.name, dateStr, isUnavailable, roomOccupiedDateStrings)}
                           title={isUnavailable ? undefined : (pendingSelection ? 'Click to set check-out' : 'Click to start a new booking')}
-                          className={`w-16 min-w-16 shrink-0 border-r transition ${
+                          className={`w-16 min-w-16 shrink-0 border-r transition flex items-end justify-center pb-0.5 ${
                             isUnavailable ? '' : 'cursor-pointer'
                           } ${
                             isPendingStart
@@ -783,7 +826,18 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                               ? 'bg-blue-50/70 dark:bg-blue-950/30 border-blue-200/60 dark:border-blue-900/40'
                               : 'border-slate-100 dark:border-slate-700/50 bg-white dark:bg-slate-800/30'
                           } ${!isUnavailable && !isPendingStart ? 'hover:bg-blue-50/60 dark:hover:bg-blue-900/20' : ''}`}
-                        />
+                        >
+                          {/* Small per-day price on unbooked dates (4 Sep
+                              2026, explicit request) - z-10 to sit above the
+                              capsule overlay's own stacking context, though
+                              in practice a capsule never actually reaches an
+                              unavailable/unbooked cell in the first place. */}
+                          {!isUnavailable && (
+                            <span className="relative z-10 text-[9px] leading-none font-medium text-slate-400 dark:text-slate-500 select-none pointer-events-none">
+                              ₹{Math.round(getDayPrice(dateStr, room))}
+                            </span>
+                          )}
+                        </div>
                       );
                     })}
 
