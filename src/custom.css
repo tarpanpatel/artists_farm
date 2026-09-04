@@ -284,6 +284,12 @@ div[datepicker-popover],
   z-index: 999999 !important;
 }
 
+/* Ensure next-btn in datepicker header has clearance from the inside X cancel button */
+.datepicker-picker .datepicker-header {
+  padding-right: 2.25rem !important;
+}
+
+
 /* A hand-rolled hardcoded-hex override of the datepicker popup (background,
    selected-cell blue, footer buttons, etc.) used to live here, fighting the
    real Flowbite token classes flowbite-datepicker's own pickerTemplate.js

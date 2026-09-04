@@ -543,14 +543,9 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
               </div>
 
               {availableRoomResults.length === 0 ? (
-                <div className="p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg flex items-start gap-3 text-xs text-amber-800 dark:text-amber-300">
-                  <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-bold">No rooms available for the selected dates</p>
-                    <p className="text-2xs text-amber-700 dark:text-amber-400 mt-0.5">
-                      All units are booked for some or all nights between {formatDateDisplay(checkinDate)} and {formatDateDisplay(checkoutDate)}. Please check other dates on the availability calendar below.
-                    </p>
-                  </div>
+                <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center gap-2.5 text-xs text-amber-800 dark:text-amber-300">
+                  <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                  <span className="font-semibold">No rooms available for the selected dates</span>
                 </div>
               ) : (
                 <div className="space-y-2.5">
