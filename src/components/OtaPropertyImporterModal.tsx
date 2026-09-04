@@ -52,6 +52,7 @@ export const OtaPropertyImporterModal: React.FC<OtaPropertyImporterModalProps> =
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<ImportedPropertyData | null>(null);
+  const [hostListings, setHostListings] = useState<Array<{ id: string; url: string; name: string }> | null>(null);
 
   // Checkboxes for selective update on edit_property
   const [applyFields, setApplyFields] = useState<{
@@ -74,13 +75,14 @@ export const OtaPropertyImporterModal: React.FC<OtaPropertyImporterModalProps> =
 
   const handleFetch = async () => {
     if (!identifier.trim()) {
-      setError(`Please enter an ${source === 'airbnb' ? 'Airbnb listing URL or listing ID' : 'Booking.com hotel link or hotel ID'}`);
+      setError(`Please enter an ${source === 'airbnb' ? 'Airbnb listing URL, Host profile URL, or listing ID' : 'Booking.com hotel link or hotel ID'}`);
       return;
     }
 
     setError(null);
     setFetching(true);
     setPreview(null);
+    setHostListings(null);
 
     try {
       const res = await apiFetch<any>('fetch_ota_listing_preview', {
@@ -91,9 +93,14 @@ export const OtaPropertyImporterModal: React.FC<OtaPropertyImporterModalProps> =
         }),
       });
 
-      if (res && res.success && res.data) {
-        setPreview(res.data);
-        showToast(`Successfully extracted listing metadata from ${source === 'airbnb' ? 'Airbnb' : 'Booking.com'}!`, { type: 'success' });
+      if (res && res.success) {
+        if (res.is_host_profile && res.listings && res.listings.length > 0) {
+          setHostListings(res.listings);
+          showToast(`Found ${res.listings.length} listings for this Host on Airbnb! Select one to import.`, { type: 'success' });
+        } else if (res.data) {
+          setPreview(res.data);
+          showToast(`Successfully extracted listing metadata from ${source === 'airbnb' ? 'Airbnb' : 'Booking.com'}!`, { type: 'success' });
+        }
       } else {
         const msg = res?.message || 'Unable to fetch listing details. Please check the URL or ID and try again.';
         setError(msg);
@@ -104,6 +111,32 @@ export const OtaPropertyImporterModal: React.FC<OtaPropertyImporterModalProps> =
       const msg = err?.message || 'Failed to connect to listing importer';
       setError(msg);
       showToast(msg, { type: 'error' });
+    } finally {
+      setFetching(false);
+    }
+  };
+
+  const handleSelectListingFromHost = async (listingId: string) => {
+    setIdentifier(listingId);
+    setHostListings(null);
+    setFetching(true);
+    setError(null);
+    try {
+      const res = await apiFetch<any>('fetch_ota_listing_preview', {
+        method: 'POST',
+        body: JSON.stringify({
+          channel: 'airbnb',
+          identifier: listingId,
+        }),
+      });
+      if (res && res.success && res.data) {
+        setPreview(res.data);
+        showToast(`Extracted details for listing #${listingId}`, { type: 'success' });
+      } else {
+        setError(res?.message || 'Failed to extract listing');
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Failed to fetch listing');
     } finally {
       setFetching(false);
     }
@@ -259,10 +292,10 @@ export const OtaPropertyImporterModal: React.FC<OtaPropertyImporterModalProps> =
             <div className="flex gap-2">
               <div className="flex-1">
                 <Input
-                  label={source === 'airbnb' ? 'Airbnb Listing URL or ID' : 'Booking.com Property Link or Hotel ID'}
+                  label={source === 'airbnb' ? 'Airbnb Listing URL, Host Profile Link, or ID' : 'Booking.com Property Link or Hotel ID'}
                   placeholder={
                     source === 'airbnb'
-                      ? 'e.g. https://www.airbnb.com/rooms/12345678 or 12345678'
+                      ? 'e.g. airbnb.com/rooms/12345678 or host link airbnb.com/users/show/34816822'
                       : 'e.g. https://www.booking.com/hotel/in/my-hotel.html or hotel ID'
                   }
                   value={identifier}
@@ -273,7 +306,11 @@ export const OtaPropertyImporterModal: React.FC<OtaPropertyImporterModalProps> =
                       handleFetch();
                     }
                   }}
-                  helperText="Paste the full link from your browser or your numeric property ID"
+                  helperText={
+                    source === 'airbnb'
+                      ? 'Supports individual listing links, listing IDs, and host profile pages with multiple listings.'
+                      : 'Paste the full link from your browser or your numeric property ID'
+                  }
                 />
               </div>
               <div className="pt-6">
@@ -296,10 +333,78 @@ export const OtaPropertyImporterModal: React.FC<OtaPropertyImporterModalProps> =
               </div>
             </div>
 
+            {/* How to find link guide for Airbnb */}
+            {source === 'airbnb' && !preview && !hostListings && (
+              <details className="text-2xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/60 p-3 rounded-lg border border-gray-200 dark:border-gray-700/80 cursor-pointer group">
+                <summary className="font-semibold text-gray-700 dark:text-gray-300 flex items-center justify-between list-none">
+                  <span className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 font-bold">
+                    💡 How do I find my Airbnb Host Profile link?
+                  </span>
+                  <span className="text-3xs text-gray-400 group-open:rotate-180 transition-transform">▼</span>
+                </summary>
+                <div className="mt-2.5 space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700/80 text-gray-600 dark:text-gray-300">
+                  <div className="flex items-start gap-2">
+                    <span className="font-bold text-gray-900 dark:text-white shrink-0">1. On Desktop:</span>
+                    <span>Log in to <strong className="text-gray-800 dark:text-gray-200">airbnb.com</strong> ➔ Click your profile icon (top-right) ➔ Select <strong className="text-gray-800 dark:text-gray-200">Profile</strong> ➔ Copy the URL from your browser address bar.</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="font-bold text-gray-900 dark:text-white shrink-0">2. On Airbnb App:</span>
+                    <span>Tap <strong className="text-gray-800 dark:text-gray-200">Profile</strong> (bottom-right) ➔ Tap your name/photo ➔ Tap the <strong className="text-gray-800 dark:text-gray-200">Share</strong> icon (top-right) ➔ Tap <strong className="text-gray-800 dark:text-gray-200">Copy Link</strong>.</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="font-bold text-gray-900 dark:text-white shrink-0">3. From Any Listing:</span>
+                    <span>Open any of your listing pages ➔ Scroll down to the <strong className="text-gray-800 dark:text-gray-200">&quot;Hosted by...&quot;</strong> section ➔ Click your host photo/name ➔ Copy that page URL.</span>
+                  </div>
+                </div>
+              </details>
+            )}
+
             {error && (
               <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg text-xs text-red-700 dark:text-red-300">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{error}</span>
+              </div>
+            )}
+
+            {/* Host Profile Multi-Listing Picker */}
+            {hostListings && hostListings.length > 0 && (
+              <div className="p-4 bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <AirbnbIcon className="w-5 h-5" />
+                    <span className="text-sm font-bold text-gray-900 dark:text-white">
+                      Found {hostListings.length} Listings for this Host on Airbnb
+                    </span>
+                  </div>
+                  <span className="text-2xs text-gray-500 dark:text-gray-400">Click a listing to import:</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-60 overflow-y-auto pr-1">
+                  {hostListings.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-indigo-500 dark:hover:border-indigo-500 transition-all shadow-2xs"
+                    >
+                      <div className="min-w-0 pr-2">
+                        <div className="text-xs font-bold text-gray-900 dark:text-white line-clamp-1">
+                          {item.name}
+                        </div>
+                        <div className="text-3xs text-gray-500 dark:text-gray-400 font-mono">
+                          ID: {item.id}
+                        </div>
+                      </div>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleSelectListingFromHost(item.id)}
+                        disabled={fetching}
+                        className="text-xs shrink-0"
+                      >
+                        Select &amp; Import
+                      </Button>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>

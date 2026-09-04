@@ -23,6 +23,13 @@ class PropertyImporter {
 
         if ($channel === 'airbnb' || strpos($input, 'airbnb.') !== false) {
             $channel = 'airbnb';
+            // Check if this is an Airbnb Host/User profile URL (e.g. /users/show/34816822)
+            if (preg_match('/users\/(?:show\/)?(\d+)/i', $input, $um)) {
+                $hostId = $um[1];
+                $url = "https://www.airbnb.com/users/show/{$hostId}";
+                return ['channel' => 'airbnb', 'type' => 'host_profile', 'host_id' => $hostId, 'id' => '', 'url' => $url];
+            }
+
             // Extract listing ID: /rooms/12345678 or raw numeric 12345678
             if (preg_match('/rooms\/(\d+)/i', $input, $m)) {
                 $listingId = $m[1];
@@ -34,7 +41,7 @@ class PropertyImporter {
                 $listingId = '';
                 $url = $input;
             }
-            return ['channel' => 'airbnb', 'id' => $listingId, 'url' => $url];
+            return ['channel' => 'airbnb', 'type' => 'listing', 'id' => $listingId, 'url' => $url];
         }
 
         if ($channel === 'booking_com' || $channel === 'bookingcom' || strpos($input, 'booking.com') !== false) {
@@ -64,13 +71,53 @@ class PropertyImporter {
 
         $html = self::fetchHtml($targetUrl);
 
-        if (!$html && $parsed['channel'] === 'airbnb' && $parsed['id']) {
-            // Try alternate locale URL
-            $targetUrl = "https://www.airbnb.co.in/rooms/{$parsed['id']}";
-            $html = self::fetchHtml($targetUrl);
-        }
-
         if ($parsed['channel'] === 'airbnb') {
+            if (($parsed['type'] ?? '') === 'host_profile') {
+                if (!$html || strpos($html, '/rooms/') === false) {
+                    // Try alternate locale domain
+                    $altUrl = "https://www.airbnb.co.in/users/show/{$parsed['host_id']}";
+                    $altHtml = self::fetchHtml($altUrl);
+                    if ($altHtml && strpos($altHtml, '/rooms/') !== false) {
+                        $html = $altHtml;
+                    }
+                }
+
+                preg_match_all('/\/rooms\/(\d+)/', $html, $rMatches);
+                $roomIds = array_values(array_unique($rMatches[1] ?? []));
+
+                if (!empty($roomIds)) {
+                    if (count($roomIds) === 1) {
+                        $parsed['id'] = $roomIds[0];
+                        $parsed['url'] = "https://www.airbnb.com/rooms/{$roomIds[0]}";
+                        $roomHtml = self::fetchHtml($parsed['url']);
+                        return self::extractAirbnbMetadata($roomHtml ?: $html, $parsed);
+                    }
+
+                    $listings = [];
+                    foreach ($roomIds as $rId) {
+                        $listings[] = [
+                            'id' => $rId,
+                            'url' => "https://www.airbnb.com/rooms/{$rId}",
+                            'name' => "Airbnb Listing #{$rId}",
+                        ];
+                    }
+
+                    return [
+                        'success' => true,
+                        'is_host_profile' => true,
+                        'host_id' => $parsed['host_id'] ?? '',
+                        'listings_count' => count($listings),
+                        'listings' => $listings,
+                        'message' => "Found " . count($listings) . " listings on this Airbnb Host Profile. Click any listing below to import its details.",
+                    ];
+                }
+            }
+
+            if (!$html && $parsed['id']) {
+                $targetUrl = "https://www.airbnb.co.in/rooms/{$parsed['id']}";
+                $html = self::fetchHtml($targetUrl);
+            }
+
             return self::extractAirbnbMetadata($html, $parsed);
         } else {
             return self::extractBookingComMetadata($html, $parsed);

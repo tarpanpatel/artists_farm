@@ -50,6 +50,7 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
   const [otaFetching, setOtaFetching] = useState(false);
   const [otaPreview, setOtaPreview] = useState<ImportedPropertyData | null>(null);
   const [otaError, setOtaError] = useState<string | null>(null);
+  const [hostListings, setHostListings] = useState<Array<{ id: string; url: string; name: string }> | null>(null);
 
   // --- Step 3: Property Setup ---
   const [propertyName, setPropertyName] = useState('');
@@ -70,9 +71,6 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
   const isStep1Valid = !!fullName.trim() && !!email.trim() && phone.replace(/\D/g, '').length === 10 && passcode.length === 6;
   const isStep3Valid = !!propertyName.trim() && hasKitchen !== null && Number(defaultTariff) > 0;
 
-  // Field-level error messages - only surface once the user has actually tried to advance past
-  // the step (step1Attempted/step3Attempted), then stay live as the field itself changes, same
-  // pattern as CLAUDE.md's "Real-Time Form Validation" section.
   const fullNameError = step1Attempted && !fullName.trim() ? 'Full name is required' : undefined;
   const emailError = step1Attempted && !email.trim() ? 'Email address is required' : undefined;
   const phoneError = step1Attempted && phone.replace(/\D/g, '').length !== 10 ? 'Enter a valid 10-digit mobile number' : undefined;
@@ -80,20 +78,15 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
   const propertyNameError = step3Attempted && !propertyName.trim() ? 'Property name is required' : undefined;
   const defaultTariffError = step3Attempted && !(Number(defaultTariff) > 0) ? 'Enter your standard room rate' : undefined;
 
-  // 28 Aug 2026, explicit request: clicking "Next Step" while it looks greyed out used to do
-  // nothing at all (native `disabled` blocks onClick entirely) - both step-gate buttons below are
-  // no longer natively disabled for their OWN validation gate (only for `loading`), so a click
-  // always reaches one of these two handlers, which now surface exactly why nothing happened:
-  // a field-level reason gets its own inline error (see the four *Error consts above), and
-  // hasKitchen (a button-pair toggle, not a text Input with its own error slot) gets a toast.
   const handleFetchOta = async () => {
     if (!otaIdentifier.trim()) {
-      setOtaError(`Please enter an ${creationMode === 'airbnb' ? 'Airbnb listing URL or listing ID' : 'Booking.com hotel link or hotel ID'}`);
+      setOtaError(`Please enter an ${creationMode === 'airbnb' ? 'Airbnb listing URL, Host profile URL, or listing ID' : 'Booking.com hotel link or hotel ID'}`);
       return;
     }
 
     setOtaError(null);
     setOtaFetching(true);
+    setHostListings(null);
     try {
       const response = await fetch('/php/api/router.php?action=fetch_ota_listing_preview', {
         method: 'POST',
@@ -105,17 +98,23 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
       });
 
       const data = await response.json();
-      if (data && data.success && data.data) {
-        const preview = data.data as ImportedPropertyData;
-        setOtaPreview(preview);
-        if (preview.name) setPropertyName(preview.name);
-        if (preview.property_type) setPropertyType(preview.property_type);
-        if (preview.room_count) setRoomCount(preview.room_count);
-        if (preview.default_tariff) setDefaultTariff(String(preview.default_tariff));
-        if (preview.checkin_time) setCheckinTime(preview.checkin_time);
-        if (preview.checkout_time) setCheckoutTime(preview.checkout_time);
-        if (preview.has_kitchen !== undefined) setHasKitchen(preview.has_kitchen === 1);
-        showToast(`Listing details & photos imported from ${creationMode === 'airbnb' ? 'Airbnb' : 'Booking.com'}!`, { type: 'success' });
+      if (data && data.success) {
+        if (data.is_host_profile && data.listings && data.listings.length > 0) {
+          setHostListings(data.listings);
+          showToast(`Found ${data.listings.length} listings for this Host on Airbnb! Select one to import.`, { type: 'success' });
+        } else if (data.data) {
+          const preview = data.data as ImportedPropertyData;
+          setOtaPreview(preview);
+          setHostListings(null);
+          if (preview.name) setPropertyName(preview.name);
+          if (preview.property_type) setPropertyType(preview.property_type);
+          if (preview.room_count) setRoomCount(preview.room_count);
+          if (preview.default_tariff) setDefaultTariff(String(preview.default_tariff));
+          if (preview.checkin_time) setCheckinTime(preview.checkin_time);
+          if (preview.checkout_time) setCheckoutTime(preview.checkout_time);
+          if (preview.has_kitchen !== undefined) setHasKitchen(preview.has_kitchen === 1);
+          showToast(`Listing details & photos imported from ${creationMode === 'airbnb' ? 'Airbnb' : 'Booking.com'}!`, { type: 'success' });
+        }
       } else {
         const msg = data?.message || 'Unable to fetch listing details. You can enter details manually.';
         setOtaError(msg);
@@ -126,6 +125,42 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
       const msg = 'Network error fetching listing. You can enter details manually.';
       setOtaError(msg);
       showToast(msg, { type: 'error' });
+    } finally {
+      setOtaFetching(false);
+    }
+  };
+
+  const handleSelectListingFromHost = async (listingId: string) => {
+    setOtaIdentifier(listingId);
+    setHostListings(null);
+    setOtaFetching(true);
+    setOtaError(null);
+    try {
+      const response = await fetch('/php/api/router.php?action=fetch_ota_listing_preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          channel: 'airbnb',
+          identifier: listingId,
+        }),
+      });
+      const data = await response.json();
+      if (data && data.success && data.data) {
+        const preview = data.data as ImportedPropertyData;
+        setOtaPreview(preview);
+        if (preview.name) setPropertyName(preview.name);
+        if (preview.property_type) setPropertyType(preview.property_type);
+        if (preview.room_count) setRoomCount(preview.room_count);
+        if (preview.default_tariff) setDefaultTariff(String(preview.default_tariff));
+        if (preview.checkin_time) setCheckinTime(preview.checkin_time);
+        if (preview.checkout_time) setCheckoutTime(preview.checkout_time);
+        if (preview.has_kitchen !== undefined) setHasKitchen(preview.has_kitchen === 1);
+        showToast(`Listing #${listingId} details & photos imported!`, { type: 'success' });
+      } else {
+        setOtaError(data?.message || 'Failed to extract listing');
+      }
+    } catch (err: any) {
+      setOtaError('Failed to extract listing');
     } finally {
       setOtaFetching(false);
     }
@@ -480,10 +515,69 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
                   </Button>
                 </div>
 
+                {/* How to find link guide for Airbnb */}
+                {creationMode === 'airbnb' && !otaPreview && !hostListings && (
+                  <details className="text-2xs text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer group">
+                    <summary className="font-semibold text-gray-700 dark:text-gray-300 flex items-center justify-between list-none">
+                      <span className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 font-bold">
+                        💡 How do I find my Airbnb Profile Link?
+                      </span>
+                      <span className="text-3xs text-gray-400 group-open:rotate-180 transition-transform">▼</span>
+                    </summary>
+                    <div className="mt-2 space-y-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300">
+                      <div><strong className="text-slate-800 dark:text-slate-200">1. Desktop:</strong> Go to airbnb.com ➔ Click avatar (top-right) ➔ Click <strong>Profile</strong> ➔ Copy page URL.</div>
+                      <div><strong className="text-slate-800 dark:text-slate-200">2. App:</strong> Tap <strong>Profile</strong> (bottom-right) ➔ Tap photo ➔ <strong>Share</strong> (top-right) ➔ <strong>Copy Link</strong>.</div>
+                      <div><strong className="text-slate-800 dark:text-slate-200">3. From Listing:</strong> Open any listing ➔ Scroll to <strong>&quot;Hosted by...&quot;</strong> ➔ Click host name ➔ Copy URL.</div>
+                    </div>
+                  </details>
+                )}
+
                 {otaError && (
                   <div className="flex items-center gap-2 p-2.5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg text-2xs text-red-700 dark:text-red-300">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                     <span>{otaError}</span>
+                  </div>
+                )}
+
+                {/* Host Profile Multi-Listing Picker */}
+                {hostListings && hostListings.length > 0 && (
+                  <div className="p-3 bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-xl space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <AirbnbIcon className="w-4 h-4" />
+                        <span className="text-xs font-bold text-gray-900 dark:text-white">
+                          Found {hostListings.length} Listings for this Host
+                        </span>
+                      </div>
+                      <span className="text-3xs text-gray-500 dark:text-gray-400">Click to import:</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
+                      {hostListings.map((item) => (
+                        <div
+                          key={item.id}
+                          className="flex items-center justify-between p-2.5 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-indigo-500 dark:hover:border-indigo-500 transition-all shadow-2xs"
+                        >
+                          <div className="min-w-0 pr-1.5">
+                            <div className="text-2xs font-bold text-gray-900 dark:text-white line-clamp-1">
+                              {item.name}
+                            </div>
+                            <div className="text-3xs text-gray-500 dark:text-gray-400 font-mono">
+                              ID: {item.id}
+                            </div>
+                          </div>
+                          <Button
+                            variant="primary"
+                            size="xs"
+                            onClick={() => handleSelectListingFromHost(item.id)}
+                            disabled={otaFetching}
+                            className="text-3xs shrink-0 px-2 py-1"
+                          >
+                            Import
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
