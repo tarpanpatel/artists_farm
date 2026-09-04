@@ -66,6 +66,14 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
   const [ruleName, setRuleName] = useState<string>('');
   const [selectedRoomIds, setSelectedRoomIds] = useState<number[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  // The rules table is collapsed by default and its rows are capped (4 Sep
+  // 2026). A one-shot price import (e.g. a full year of PriceLabs daily
+  // prices) can leave thousands of one-night rules here, and rendering every
+  // row - each with its own <Button> - on modal open froze the whole
+  // "Change Prices" flow for several seconds.
+  const RULES_PAGE = 50;
+  const [showRulesList, setShowRulesList] = useState(false);
+  const [rulesRenderLimit, setRulesRenderLimit] = useState(RULES_PAGE);
 
   // Restriction state fields
   const [minStay, setMinStay] = useState<string>('');
@@ -109,6 +117,9 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
     if (!isOpen) return;
     if (initialRoomIds && initialRoomIds.length > 0) setSelectedRoomIds(initialRoomIds);
     if (initialRatePerNight != null && initialRatePerNight !== '') setRatePerNight(initialRatePerNight);
+    // Every open starts with the (potentially huge) rules list collapsed.
+    setShowRulesList(false);
+    setRulesRenderLimit(RULES_PAGE);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
@@ -824,15 +835,39 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
               </div>
             </form>
 
-            {/* Existing Rate Rules Table */}
+            {/* Existing Rate Rules Table - collapsed by default, rows capped
+                (see the showRulesList / rulesRenderLimit comment above). */}
             <div className="space-y-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                Active Date-Range Rules ({rateRules.length})
-              </h4>
+              <div className="flex items-center justify-between gap-2">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                  Active Date-Range Rules ({rateRules.length})
+                </h4>
+                {rateRules.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => { setShowRulesList((v) => !v); setRulesRenderLimit(RULES_PAGE); }}
+                    className="text-2xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 cursor-pointer shrink-0"
+                  >
+                    {showRulesList ? 'Hide list' : 'Show list'}
+                  </button>
+                )}
+              </div>
 
               {rateRules.length === 0 ? (
                 <div className="text-center py-6 bg-gray-50 dark:bg-gray-800/40 rounded-xl border border-gray-200 dark:border-gray-700 text-xs text-gray-400">
                   No custom rate rules set. All dates use standard base tariffs and restrictions.
+                </div>
+              ) : !showRulesList ? (
+                <div className="text-center py-4 px-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl border border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
+                  {rateRules.length} active rule{rateRules.length === 1 ? '' : 's'} cover your dates. Setting a rate above adds a new one or overrides these for the dates it touches.{' '}
+                  <button
+                    type="button"
+                    onClick={() => setShowRulesList(true)}
+                    className="text-blue-600 dark:text-blue-400 font-semibold cursor-pointer"
+                  >
+                    Show the full list
+                  </button>{' '}
+                  to review or delete individual rules.
                 </div>
               ) : (
                 <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
@@ -848,7 +883,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-800">
-                      {rateRules.map((rule) => (
+                      {rateRules.slice(0, rulesRenderLimit).map((rule) => (
                         <tr key={rule.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/50">
                           <td className="px-3 py-2 font-semibold text-gray-900 dark:text-white whitespace-nowrap">
                             <div>
@@ -920,6 +955,15 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                       ))}
                     </tbody>
                   </table>
+                  {rateRules.length > rulesRenderLimit && (
+                    <button
+                      type="button"
+                      onClick={() => setRulesRenderLimit((n) => n + RULES_PAGE * 2)}
+                      className="w-full py-2 text-2xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 bg-gray-50 dark:bg-gray-800/60 border-t border-gray-200 dark:border-gray-700 cursor-pointer"
+                    >
+                      Showing {rulesRenderLimit} of {rateRules.length} — show more
+                    </button>
+                  )}
                 </div>
               )}
             </div>
