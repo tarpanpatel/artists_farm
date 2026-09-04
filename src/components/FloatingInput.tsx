@@ -25,11 +25,12 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
       className = '',
       disabled,
       id,
-      placeholder = ' ',
+      placeholder: _ignoredPlaceholder,
       leftIcon,
       rightIcon,
       value,
       defaultValue,
+      type = 'text',
       ...props
     },
     ref
@@ -40,7 +41,7 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
     const hasSuccess = !hasError && Boolean(success);
     const successMessage = typeof success === 'string' ? success : undefined;
 
-    // Background token for label cutout to seamlessly match the parent container
+    // Background token for label cutout to seamlessly match parent surface
     const bgToken =
       bgMode === 'page'
         ? 'bg-white dark:bg-gray-900'
@@ -65,6 +66,15 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
       ? 'disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-800/90 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:border-gray-200 dark:disabled:border-gray-700'
       : '';
 
+    // Date/time inputs have native browser glyphs/placeholders (--:--, dd/mm/yyyy)
+    // so their label must always remain in the top-floating position to avoid colliding.
+    const isAlwaysFloatingType = type === 'date' || type === 'time' || type === 'datetime-local' || type === 'month';
+    const hasExplicitValue = value !== undefined && value !== '' && value !== null;
+
+    const labelTransform = (isAlwaysFloatingType || hasExplicitValue)
+      ? '-translate-y-4 scale-75 top-2'
+      : '-translate-y-4 scale-75 top-2 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4';
+
     return (
       <div className={twMerge('w-full min-w-0', containerClassName)}>
         <div className="relative">
@@ -76,8 +86,11 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
           <input
             ref={ref}
             id={inputId}
+            type={type}
             disabled={disabled}
-            placeholder={placeholder || ' '}
+            // CRITICAL: Must always be a single space " " for CSS :placeholder-shown to work
+            // without rendering raw placeholder text that collides with the floating label.
+            placeholder=" "
             value={value}
             defaultValue={defaultValue}
             className={twMerge(
@@ -93,10 +106,11 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
           <label
             htmlFor={inputId}
             className={twMerge(
-              'absolute text-xs duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] px-2 peer-focus:px-2 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 rtl:peer-focus:translate-x-1/4 rtl:peer-focus:left-auto start-2 pointer-events-none transition-all',
+              'absolute text-xs duration-300 transform origin-[0] px-2 peer-focus:px-2 start-2 pointer-events-none transition-all z-10',
+              labelTransform,
               bgToken,
               disabled ? 'text-gray-400 dark:text-gray-500' : labelColor,
-              leftIcon ? 'start-8 peer-placeholder-shown:start-8 peer-focus:start-2' : 'start-2'
+              leftIcon ? 'start-8 peer-focus:start-2' : 'start-2'
             )}
           >
             {label}
