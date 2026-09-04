@@ -680,7 +680,7 @@ $provided_key = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
 // non-sensitive branding/config columns (name, slug, type, currency,
 // colors, ...) - no guest, financial, or staff data - so this is exactly
 // the same "safe to read before login" class as the settings above.
-$public_actions = ['login_user', 'verify_admin_passcode', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token', 'check_session', 'logout', 'get_tenant_by_slug', 'get_demo_login_credentials', 'get_system_settings', 'get_theme_settings', 'get_current_property', 'register_tenant_trial', 'channex_webhook', 'channex_airbnb_oauth_landing', 'get_public_booking_info', 'create_public_booking'];
+$public_actions = ['login_user', 'verify_admin_passcode', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token', 'check_session', 'logout', 'get_tenant_by_slug', 'get_demo_login_credentials', 'get_system_settings', 'get_theme_settings', 'get_current_property', 'register_tenant_trial', 'channex_webhook', 'channex_airbnb_oauth_landing', 'get_public_booking_info', 'create_public_booking', 'fetch_ota_listing_preview'];
 
 
 $request_method = $_SERVER['REQUEST_METHOD'];
@@ -5102,6 +5102,41 @@ switch ($action) {
     case 'create_public_booking':
         require_once __DIR__ . '/public_booking.php';
         handleCreatePublicBooking($pdo);
+        break;
+
+    case 'fetch_ota_listing_preview':
+        require_once __DIR__ . '/property_importer.php';
+        $rawInput = file_get_contents('php://input');
+        $input = json_decode($rawInput, true) ?: $_GET;
+        $channel = trim((string)($input['channel'] ?? 'airbnb'));
+        $identifier = trim((string)($input['url'] ?? ($input['id'] ?? ($input['identifier'] ?? ''))));
+        if (!$identifier) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Listing URL or Listing ID is required']);
+            break;
+        }
+        $preview = PropertyImporter::fetchPreview($channel, $identifier);
+        echo json_encode($preview);
+        break;
+
+    case 'apply_ota_listing_to_property':
+        require_once __DIR__ . '/property_importer.php';
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        $targetPropertyId = (int)($input['property_id'] ?? $propertyId);
+        $importedData = $input['imported_data'] ?? [];
+        $selectedFields = $input['selected_fields'] ?? [];
+        if ($targetPropertyId <= 0 || empty($importedData)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Property ID and imported data are required']);
+            break;
+        }
+        try {
+            $result = PropertyImporter::applyToProperty($pdo, $targetPropertyId, $importedData, $selectedFields);
+            echo json_encode($result);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
         break;
 
     default:

@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card } from 'flowbite-react';
 import { t } from '../i18n/en';
 import { PropertyEditForm } from './PropertyEditForm';
 import { RoomsManagement } from './RoomsManagement';
 import { PageHeader } from './PageHeader';
+import { Button } from './Button';
+import { Sparkles } from './icons/FlowbiteIcons';
+import { OtaPropertyImporterModal } from './OtaPropertyImporterModal';
 
 interface EditPropertyPageProps {
   onNavigateToRoom?: (roomSlug: string, initialTab?: string) => void;
@@ -28,6 +31,8 @@ interface EditPropertyPageProps {
 }
 
 export const EditPropertyPage: React.FC<EditPropertyPageProps> = ({ property, onNavigateToRoom }) => {
+  const [showImporterModal, setShowImporterModal] = useState(false);
+
   if (!property) {
     return (
       <div className="edit-property-page__not-found text-center py-8 text-slate-500 text-sm">
@@ -49,8 +54,27 @@ export const EditPropertyPage: React.FC<EditPropertyPageProps> = ({ property, on
               ? t('edit_room_help_text', 'Configure details, room name, and per-night tariff for this specific room.')
               : t('edit_property_help_text', "Use this page to update your property's details:\n• Phone & UPI payment info\n• Check-in & Check-out times\n• Address & special guest notes\nAll changes update live on guest receipts & messages!")
           }
-        />
+        >
+          {!isRoom && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowImporterModal(true)}
+              className="flex items-center gap-1.5"
+            >
+              <Sparkles className="w-4 h-4 text-amber-500" />
+              <span>Import from Airbnb / Booking.com</span>
+            </Button>
+          )}
+        </PageHeader>
       </div>
+
+      <OtaPropertyImporterModal
+        isOpen={showImporterModal}
+        onClose={() => setShowImporterModal(false)}
+        propertyId={property.id}
+        onImportSuccess={() => window.location.reload()}
+      />
 
       <div className="edit-property-page__grid grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
       {property.property_type === 'MULTI_KEY' && (

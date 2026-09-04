@@ -2,13 +2,14 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   Home, Hotel, Layers, Phone, Wallet,
   Clock, FileText, CheckCircle2, Loader2, ArrowRight, ArrowLeft, X,
-  ChefHat, AlertCircle,
+  ChefHat, AlertCircle, Sparkles,
 } from './icons/FlowbiteIcons';
 import { Drawer } from 'flowbite-react';
 import { Input } from './Input';
 import { Textarea } from './Textarea';
 import { Button } from './Button';
 import { UpiPaymentBlock, isValidUpiIdSyntax } from '../utils/upiQrCode';
+import { OtaPropertyImporterModal, type ImportedPropertyData } from './OtaPropertyImporterModal';
 
 /**
  * Owner-facing Property Setup Wizard (added 26 Aug 2026, explicit request) - replaces the old
@@ -87,6 +88,7 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [finished, setFinished] = useState(false);
+  const [showImporterModal, setShowImporterModal] = useState(false);
 
   // --- Step 0: Basics ---
   const [propertyType, setPropertyType] = useState<'SINGLE' | 'MULTI_KEY'>(
@@ -305,6 +307,18 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
     }
   };
 
+  const handleImportSuccess = (imported: ImportedPropertyData) => {
+    if (imported.name) setName(imported.name);
+    if (imported.property_type) setPropertyType(imported.property_type);
+    if (imported.room_count) setRoomCount(imported.room_count);
+    if (imported.address) setAddress(imported.address);
+    if (imported.default_tariff) setDefaultTariff(String(imported.default_tariff));
+    if (imported.checkin_time) setCheckinTime(imported.checkin_time);
+    if (imported.checkout_time) setCheckoutTime(imported.checkout_time);
+    if (imported.description) setInstructions(imported.description);
+    if (imported.has_kitchen !== undefined) setHasKitchen(imported.has_kitchen === 1);
+  };
+
   return (
     <Drawer
       open={isOpen}
@@ -329,6 +343,12 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
           <X className="w-5 h-5" />
         </button>
       </div>
+
+      <OtaPropertyImporterModal
+        isOpen={showImporterModal}
+        onClose={() => setShowImporterModal(false)}
+        onImportSuccess={handleImportSuccess}
+      />
 
       {/* Timeline stepper (https://flowbite.com/docs/components/stepper/#stepper-with-form) -
           small circular step icons connected by progress bars, current step highlighted, done
@@ -414,6 +434,32 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
 
         {activeStep.key === 'basics' && (
           <div className="space-y-4">
+            {!isResuming && (
+              <div className="flex items-center justify-between p-3.5 bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/80 rounded-xl">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-white dark:bg-gray-800 rounded-lg shadow-xs border border-indigo-100 dark:border-indigo-800 shrink-0 text-amber-500">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-indigo-950 dark:text-indigo-200">
+                      Import from Airbnb or Booking.com?
+                    </div>
+                    <div className="text-2xs text-indigo-700/80 dark:text-indigo-300/80">
+                      Auto-fill title, rooms, rates, and policies in seconds.
+                    </div>
+                  </div>
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setShowImporterModal(true)}
+                  className="text-xs shrink-0"
+                >
+                  Import Details
+                </Button>
+              </div>
+            )}
+
             <div>
               <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Property Type</label>
               <div className="grid grid-cols-2 gap-3">

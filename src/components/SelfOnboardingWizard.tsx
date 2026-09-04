@@ -3,12 +3,15 @@ import { Drawer } from 'flowbite-react';
 import {
   User, Home, Layers, ChefHat,
   CheckCircle2, ArrowRight, ArrowLeft, Loader2, Sparkles, ShieldCheck, X, AlertCircle,
-  Smartphone, Share, PlusSquare, MoreVertical,
+  Smartphone, Share, PlusSquare, MoreVertical, RefreshCw, Image as ImageIcon, MapPin,
 } from './icons/FlowbiteIcons';
+import { AirbnbIcon } from './icons/AirbnbIcon';
+import { BookingComIcon } from './icons/BookingComIcon';
 import { Button } from './Button';
 import { Input } from './Input';
 import { useToast } from './ToastContext';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
+import type { ImportedPropertyData } from './OtaPropertyImporterModal';
 
 interface SelfOnboardingWizardProps {
   isOpen: boolean;
@@ -41,17 +44,19 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
   const [phone, setPhone] = useState('');
   const [passcode, setPasscode] = useState('');
 
+  // --- Step 3: Creation Mode & OTA Import ---
+  const [creationMode, setCreationMode] = useState<'manual' | 'airbnb' | 'booking_com'>('manual');
+  const [otaIdentifier, setOtaIdentifier] = useState('');
+  const [otaFetching, setOtaFetching] = useState(false);
+  const [otaPreview, setOtaPreview] = useState<ImportedPropertyData | null>(null);
+  const [otaError, setOtaError] = useState<string | null>(null);
+
   // --- Step 3: Property Setup ---
   const [propertyName, setPropertyName] = useState('');
   const [propertyType, setPropertyType] = useState<'SINGLE' | 'MULTI_KEY'>('SINGLE');
   const [roomCount, setRoomCount] = useState<number>(5);
   const [checkinTime, setCheckinTime] = useState('14:00');
   const [checkoutTime, setCheckoutTime] = useState('11:00');
-  // Required, not optional (added 3 Sep 2026) - a property created with no
-  // rate at all used to silently fall back to a hardcoded guessed price the
-  // moment a channel manager got connected (see CLAUDE.md's Channel Manager
-  // protocol section). Left blank ('') rather than pre-filled with a guess of
-  // our own, so the field's emptiness is itself the validation signal.
   const [defaultTariff, setDefaultTariff] = useState('');
   const [hasKitchen, setHasKitchen] = useState<boolean | null>(true);
 
@@ -81,6 +86,51 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
   // always reaches one of these two handlers, which now surface exactly why nothing happened:
   // a field-level reason gets its own inline error (see the four *Error consts above), and
   // hasKitchen (a button-pair toggle, not a text Input with its own error slot) gets a toast.
+  const handleFetchOta = async () => {
+    if (!otaIdentifier.trim()) {
+      setOtaError(`Please enter an ${creationMode === 'airbnb' ? 'Airbnb listing URL or listing ID' : 'Booking.com hotel link or hotel ID'}`);
+      return;
+    }
+
+    setOtaError(null);
+    setOtaFetching(true);
+    try {
+      const response = await fetch('/php/api/router.php?action=fetch_ota_listing_preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          channel: creationMode,
+          identifier: otaIdentifier.trim(),
+        }),
+      });
+
+      const data = await response.json();
+      if (data && data.success && data.data) {
+        const preview = data.data as ImportedPropertyData;
+        setOtaPreview(preview);
+        if (preview.name) setPropertyName(preview.name);
+        if (preview.property_type) setPropertyType(preview.property_type);
+        if (preview.room_count) setRoomCount(preview.room_count);
+        if (preview.default_tariff) setDefaultTariff(String(preview.default_tariff));
+        if (preview.checkin_time) setCheckinTime(preview.checkin_time);
+        if (preview.checkout_time) setCheckoutTime(preview.checkout_time);
+        if (preview.has_kitchen !== undefined) setHasKitchen(preview.has_kitchen === 1);
+        showToast(`Listing details & photos imported from ${creationMode === 'airbnb' ? 'Airbnb' : 'Booking.com'}!`, { type: 'success' });
+      } else {
+        const msg = data?.message || 'Unable to fetch listing details. You can enter details manually.';
+        setOtaError(msg);
+        showToast(msg, { type: 'error' });
+      }
+    } catch (err: any) {
+      console.error('Fetch OTA listing failed:', err);
+      const msg = 'Network error fetching listing. You can enter details manually.';
+      setOtaError(msg);
+      showToast(msg, { type: 'error' });
+    } finally {
+      setOtaFetching(false);
+    }
+  };
+
   const handleNextStepClick = () => {
     if (step === 1 && !isStep1Valid) {
       setStep1Attempted(true);
@@ -126,6 +176,7 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
           checkin_time: checkinTime,
           checkout_time: checkoutTime,
           has_kitchen: hasKitchen ? 1 : 0,
+          imported_data: otaPreview,
         }),
       });
 
@@ -315,8 +366,157 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
                 <Home className="w-4 h-4 text-indigo-600" />
                 <span>Add Your First Property</span>
               </h3>
-              <p className="text-2xs text-slate-500 dark:text-slate-400 mt-0.5">Enter details for your homestay, villa, or hotel.</p>
+              <p className="text-2xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Import in 1-click from Airbnb or Booking.com, or create manually.
+              </p>
             </div>
+
+            {/* Creation Source Mode Switcher */}
+            <div>
+              <label className="block text-2xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+                Setup Method
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCreationMode('manual');
+                    setOtaError(null);
+                  }}
+                  className={`flex flex-col items-center justify-center p-2.5 rounded-lg border-2 text-center transition-all ${
+                    creationMode === 'manual'
+                      ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 font-bold shadow-xs'
+                      : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 text-slate-700 dark:text-slate-300'
+                  }`}
+                >
+                  <Home className="w-4 h-4 text-indigo-600 mb-1" />
+                  <span className="text-xs">Manual Entry</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCreationMode('airbnb');
+                    setOtaError(null);
+                  }}
+                  className={`flex flex-col items-center justify-center p-2.5 rounded-lg border-2 text-center transition-all ${
+                    creationMode === 'airbnb'
+                      ? 'border-[#FF5A5F] bg-red-50/50 dark:bg-red-950/30 text-gray-900 dark:text-white font-bold shadow-xs'
+                      : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 text-slate-700 dark:text-slate-300'
+                  }`}
+                >
+                  <AirbnbIcon className="w-4 h-4 mb-1" />
+                  <span className="text-xs">Airbnb Import</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCreationMode('booking_com');
+                    setOtaError(null);
+                  }}
+                  className={`flex flex-col items-center justify-center p-2.5 rounded-lg border-2 text-center transition-all ${
+                    creationMode === 'booking_com'
+                      ? 'border-[#003580] bg-blue-50/50 dark:bg-blue-950/30 text-gray-900 dark:text-white font-bold shadow-xs'
+                      : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 text-slate-700 dark:text-slate-300'
+                  }`}
+                >
+                  <BookingComIcon className="w-4 h-4 mb-1" />
+                  <span className="text-xs">Booking.com</span>
+                </button>
+              </div>
+            </div>
+
+            {/* OTA Import Input Section */}
+            {creationMode !== 'manual' && (
+              <div className="p-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    {creationMode === 'airbnb' ? <AirbnbIcon className="w-4 h-4" /> : <BookingComIcon className="w-4 h-4" />}
+                    <span>{creationMode === 'airbnb' ? 'Import from Airbnb' : 'Import from Booking.com'}</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setCreationMode('manual')}
+                    className="text-2xs text-indigo-600 dark:text-indigo-400 hover:underline"
+                  >
+                    Skip &amp; Type Manually
+                  </button>
+                </div>
+
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <Input
+                      placeholder={
+                        creationMode === 'airbnb'
+                          ? 'Paste Airbnb link (e.g. airbnb.com/rooms/12345678)'
+                          : 'Paste Booking.com link or enter Hotel ID'
+                      }
+                      value={otaIdentifier}
+                      onChange={(e) => setOtaIdentifier(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleFetchOta();
+                        }
+                      }}
+                    />
+                  </div>
+                  <Button
+                    variant="primary"
+                    onClick={handleFetchOta}
+                    disabled={otaFetching || !otaIdentifier.trim()}
+                    className="h-10 shrink-0"
+                  >
+                    {otaFetching ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin mr-1" /> Fetching...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-1" /> Fetch
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {otaError && (
+                  <div className="flex items-center gap-2 p-2.5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg text-2xs text-red-700 dark:text-red-300">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{otaError}</span>
+                  </div>
+                )}
+
+                {/* Fetched Preview Strip */}
+                {otaPreview && (
+                  <div className="space-y-2 pt-1 border-t border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center justify-between text-2xs text-slate-600 dark:text-slate-300">
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Details &amp; Photos Extracted
+                      </span>
+                      {otaPreview.photos && otaPreview.photos.length > 0 && (
+                        <span>{otaPreview.photos.length} photos ready</span>
+                      )}
+                    </div>
+
+                    {otaPreview.photos && otaPreview.photos.length > 0 && (
+                      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
+                        {otaPreview.photos.slice(0, 5).map((imgUrl, idx) => (
+                          <div key={idx} className="relative w-20 h-14 rounded-md overflow-hidden shrink-0 border border-slate-200 dark:border-slate-700">
+                            <img src={imgUrl} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
+                            {idx === 0 && (
+                              <span className="absolute bottom-0.5 left-0.5 bg-black/70 text-white text-3xs px-1 rounded">
+                                Cover
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             <Input
               label="Property Name"

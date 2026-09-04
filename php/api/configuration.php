@@ -598,6 +598,38 @@ function registerTenantTrial($pdo) {
             $propertyId = (int)$pdo->lastInsertId();
         }
 
+        // 2b. Persist imported metadata (photos, amenities, description, address) if provided
+        $importedData = $input['imported_data'] ?? null;
+        if (is_array($importedData) && !empty($importedData)) {
+            $propConfig = [
+                'amenities' => array_values(array_unique($importedData['amenities'] ?? [])),
+                'photos' => array_values(array_unique($importedData['photos'] ?? [])),
+                'description' => trim($importedData['description'] ?? ''),
+                'imported_from' => !empty($importedData['source']) ? [
+                    'source' => $importedData['source'],
+                    'source_id' => $importedData['source_id'] ?? '',
+                    'source_url' => $importedData['source_url'] ?? '',
+                    'imported_at' => date('Y-m-d H:i:s'),
+                ] : null,
+            ];
+            $importedAddress = trim($importedData['address'] ?? '');
+            $importedDesc = trim($importedData['description'] ?? '');
+
+            $updConfigStmt = $pdo->prepare("
+                UPDATE properties 
+                SET property_configurations = ?,
+                    address = COALESCE(NULLIF(address, ''), ?),
+                    instructions = COALESCE(NULLIF(instructions, ''), ?)
+                WHERE id = ?
+            ");
+            $updConfigStmt->execute([
+                json_encode($propConfig, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                $importedAddress,
+                $importedDesc,
+                $propertyId
+            ]);
+        }
+
         // 3. Create Master Owner User. 'Admin' (capitalized) matches the role string every
         // other admin-permission check in the app compares against exactly
         // (MenuManager.tsx etc.) - 'admin' lowercase would silently fail those checks.
