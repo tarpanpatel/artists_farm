@@ -7,6 +7,7 @@ import { BookingDetailsModal } from './BookingDetailsModal';
 import { RateRuleModal } from './RateRuleModal';
 import { KpiCard } from './KpiCard';
 import { fetchRateRulesDB, RateRule } from '../services/api';
+import { Button } from './Button';
 import { useToast } from './ToastContext';
 import { isCFormGenuinelyFiled } from '../utils/cFormStatus';
 import { getFirstName } from '../utils/nameUtils';
@@ -565,8 +566,9 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-3">
           <div className="flex items-center gap-2 shrink-0">
             <h2 className="today-overview__title text-base font-semibold text-slate-900 dark:text-white">{visibleMonthLabel}</h2>
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="xs"
               onClick={() => {
                 const newStart = new Date(today);
                 newStart.setDate(newStart.getDate() - PAST_BUFFER_DAYS);
@@ -575,10 +577,10 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                   scrollTargetRef.current?.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
                 }, 50);
               }}
-              className="px-2.5 py-1 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800/80 rounded-lg transition-colors cursor-pointer shrink-0"
+              className="h-7 text-xs font-semibold px-2.5 shrink-0"
             >
               {t('today_button', 'Today')}
-            </button>
+            </Button>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap">
             {/* Booking / Pricing interaction toggle. In Pricing mode a
