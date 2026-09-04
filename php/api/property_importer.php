@@ -23,6 +23,13 @@ class PropertyImporter {
 
         if ($channel === 'airbnb' || strpos($input, 'airbnb.') !== false) {
             $channel = 'airbnb';
+            // Check if this is an Airbnb Custom Pro Profile URL (e.g. airbnb.com/p/artistic-sthan)
+            if (preg_match('/\/p\/([a-zA-Z0-9\-_]+)/i', $input, $pm)) {
+                $proSlug = $pm[1];
+                $url = filter_var($input, FILTER_VALIDATE_URL) ? $input : "https://www.airbnb.com/p/{$proSlug}";
+                return ['channel' => 'airbnb', 'type' => 'host_profile', 'host_id' => $proSlug, 'id' => '', 'url' => $url];
+            }
+
             // Check if this is an Airbnb Host/User profile URL (e.g. /users/show/34816822)
             if (preg_match('/users\/(?:show\/)?(\d+)/i', $input, $um)) {
                 $hostId = $um[1];

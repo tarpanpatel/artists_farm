@@ -525,9 +525,10 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
                       <span className="text-3xs text-gray-400 group-open:rotate-180 transition-transform">▼</span>
                     </summary>
                     <div className="mt-2 space-y-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300">
-                      <div><strong className="text-slate-800 dark:text-slate-200">1. Desktop:</strong> Go to airbnb.com ➔ Click avatar (top-right) ➔ Click <strong>Profile</strong> ➔ Copy page URL.</div>
-                      <div><strong className="text-slate-800 dark:text-slate-200">2. App:</strong> Tap <strong>Profile</strong> (bottom-right) ➔ Tap photo ➔ <strong>Share</strong> (top-right) ➔ <strong>Copy Link</strong>.</div>
-                      <div><strong className="text-slate-800 dark:text-slate-200">3. From Listing:</strong> Open any listing ➔ Scroll to <strong>&quot;Hosted by...&quot;</strong> ➔ Click host name ➔ Copy URL.</div>
+                      <div><strong className="text-slate-800 dark:text-slate-200">1. Pro Hosting URL:</strong> Go to <strong>Account Settings ➔ Professional hosting tools</strong> ➔ Copy your custom profile URL (e.g. <code>airbnb.co.in/p/your-brand</code>).</div>
+                      <div><strong className="text-slate-800 dark:text-slate-200">2. Desktop:</strong> Go to airbnb.com ➔ Click avatar (top-right) ➔ Click <strong>Profile</strong> ➔ Copy page URL.</div>
+                      <div><strong className="text-slate-800 dark:text-slate-200">3. App:</strong> Tap <strong>Profile</strong> (bottom-right) ➔ Tap photo ➔ <strong>Share</strong> (top-right) ➔ <strong>Copy Link</strong>.</div>
+                      <div><strong className="text-slate-800 dark:text-slate-200">4. From Listing:</strong> Open any listing ➔ Scroll to <strong>&quot;Hosted by...&quot;</strong> ➔ Click host name ➔ Copy URL.</div>
                     </div>
                   </details>
                 )}
