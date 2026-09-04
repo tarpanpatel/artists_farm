@@ -218,6 +218,19 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
     return { daysInMonth, firstDayOfWeek, monthName };
   }, [selectedYear, selectedMonth]);
 
+  // Days of the month to display in the multi-room table
+  // When viewing current month, only keep 1 past date (yesterday = today - 1)
+  // to remove older past dates and keep the calendar compact on mobile & desktop
+  const tableDays = useMemo(() => {
+    const totalDays = monthInfo.daysInMonth;
+    const startDay = isAtCurrentMonth ? Math.max(1, now.getDate() - 1) : 1;
+    const days: number[] = [];
+    for (let d = startDay; d <= totalDays; d++) {
+      days.push(d);
+    }
+    return days;
+  }, [monthInfo.daysInMonth, isAtCurrentMonth, now]);
+
   // Rate resolver for a given room and date
   const getRoomDailyPrice = (room: PublicRoom, dateStr: string): number => {
     if (dailyRatesMap[room.id] && dailyRatesMap[room.id][dateStr] !== undefined) {
@@ -638,13 +651,16 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
           {displayedRooms.length > 1 ? (
             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
               <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
-                <table className="w-full border-collapse min-w-[900px] text-center text-xs">
+                <table
+                  className="w-full border-collapse text-center text-xs"
+                  style={{ minWidth: `${Math.max(600, 150 + tableDays.length * 34)}px` }}
+                >
                   <thead>
                     <tr className="bg-gray-50 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400">
                       <th className="sticky left-0 z-20 bg-gray-50 dark:bg-gray-800 px-3 py-2.5 text-left font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-2xs min-w-[150px] border-r border-gray-200 dark:border-gray-700 shadow-xs">
                         Room
                       </th>
-                      {Array.from({ length: monthInfo.daysInMonth }, (_, i) => i + 1).map((d) => {
+                      {tableDays.map((d) => {
                         const dStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                         const dayDate = new Date(selectedYear, selectedMonth - 1, d);
                         const dayInitial = dayDate.toLocaleDateString('default', { weekday: 'narrow' });
@@ -672,7 +688,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                             <div className="truncate max-w-[140px]">{room.name}</div>
                           </td>
 
-                          {Array.from({ length: monthInfo.daysInMonth }, (_, i) => i + 1).map((d) => {
+                          {tableDays.map((d) => {
                             const dStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                             const isPast = dStr < todayStr;
                             const occupied = isRoomOccupied(room.id, dStr);
