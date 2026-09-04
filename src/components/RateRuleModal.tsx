@@ -331,13 +331,28 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
       className="z-50"
     >
       <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-t-lg">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5 flex-wrap">
           <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400">
             <DollarSign className="w-4 h-4" />
           </div>
           <h3 className="text-base font-semibold text-gray-900 dark:text-white m-0">
             Prices & Booking Rules
           </h3>
+          {rooms.length > 0 && (
+            <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full border ${
+              selectedRoomIds.length === 0
+                ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300'
+                : selectedRoomIds.length === 1
+                ? 'bg-blue-100 dark:bg-blue-900/60 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200'
+                : 'bg-purple-50 dark:bg-purple-950/60 border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300'
+            }`}>
+              {selectedRoomIds.length === 0
+                ? '🌐 All Units'
+                : selectedRoomIds.length === 1
+                ? `🏠 ${rooms.find((r) => r.id === selectedRoomIds[0])?.name || '1 Unit'}`
+                : `${selectedRoomIds.length} Units`}
+            </span>
+          )}
         </div>
         <button
           type="button"
@@ -427,13 +442,31 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                     const currentVal = roomTariffs[room.id] !== undefined ? roomTariffs[room.id] : (room.default_tariff != null ? String(room.default_tariff) : '');
 
                     return (
-                      <div key={room.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 first:pt-0 last:pb-0">
+                      <div
+                        key={room.id}
+                        className={`py-3 px-3 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors ${
+                          selectedRoomIds.includes(room.id)
+                            ? 'bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 shadow-2xs'
+                            : 'hover:bg-gray-50/60 dark:hover:bg-gray-800/40'
+                        }`}
+                      >
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 text-xs font-bold shrink-0">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
+                            selectedRoomIds.includes(room.id)
+                              ? 'bg-blue-600 text-white shadow-xs'
+                              : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                          }`}>
                             {room.name.slice(0, 2).toUpperCase()}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{room.name}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{room.name}</p>
+                              {selectedRoomIds.includes(room.id) && (
+                                <span className="px-1.5 py-0.5 text-3xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 rounded border border-blue-200 dark:border-blue-800">
+                                  Chosen Unit
+                                </span>
+                              )}
+                            </div>
                             <p className="text-2xs text-gray-500 dark:text-gray-400">
                               Base Tariff: <span className="font-semibold text-emerald-600 dark:text-emerald-400">{room.default_tariff != null ? `₹${Math.round(room.default_tariff)}/night` : 'Not set'}</span>
                             </p>
@@ -578,6 +611,95 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                 </h4>
                 <span className="text-2xs text-gray-400">Sent to Airbnb, Booking.com & your own booking page</span>
               </div>
+
+              {/* Chosen Unit / Target Room Selector (Prominent at top) */}
+              {rooms.length > 1 ? (
+                <div className="p-3.5 bg-blue-50/60 dark:bg-blue-950/40 rounded-xl border border-blue-200 dark:border-blue-800 space-y-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-200">
+                        Target Unit
+                      </span>
+                      <span className={`px-2.5 py-0.5 text-2xs font-semibold rounded-full border ${
+                        selectedRoomIds.length === 0
+                          ? 'bg-emerald-100 dark:bg-emerald-900/60 border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200'
+                          : selectedRoomIds.length === 1
+                          ? 'bg-blue-100 dark:bg-blue-900/60 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200 font-bold'
+                          : 'bg-purple-100 dark:bg-purple-900/60 border-purple-300 dark:border-purple-700 text-purple-800 dark:text-purple-200'
+                      }`}>
+                        {selectedRoomIds.length === 0
+                          ? '🌐 All Units (Property-wide)'
+                          : selectedRoomIds.length === 1
+                          ? `🏠 ${rooms.find((r) => r.id === selectedRoomIds[0])?.name || '1 Unit Selected'}`
+                          : `${selectedRoomIds.length} Units Selected`}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedRoomIds([])}
+                        className={`text-2xs font-semibold px-2 py-0.5 rounded transition-colors cursor-pointer ${
+                          selectedRoomIds.length === 0
+                            ? 'text-emerald-700 dark:text-emerald-300 underline font-bold'
+                            : 'text-blue-600 hover:text-blue-700 dark:text-blue-400'
+                        }`}
+                      >
+                        Apply to All Units
+                      </button>
+                      <span className="text-gray-300 dark:text-gray-600">|</span>
+                      <button
+                        type="button"
+                        onClick={toggleAllRooms}
+                        className="text-2xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 cursor-pointer"
+                      >
+                        {selectedRoomIds.length === rooms.length ? 'Deselect All' : 'Select All'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5 pt-0.5">
+                    {rooms.map((room) => {
+                      const isChecked = selectedRoomIds.includes(room.id);
+                      return (
+                        <button
+                          key={room.id}
+                          type="button"
+                          onClick={() => toggleRoomSelection(room.id)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer flex items-center gap-1.5 ${
+                            isChecked
+                              ? 'bg-blue-600 text-white border-blue-600 shadow-xs font-semibold ring-2 ring-blue-300 dark:ring-blue-800'
+                              : 'bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+                          }`}
+                        >
+                          <span className={`w-3.5 h-3.5 rounded flex items-center justify-center text-3xs border ${isChecked ? 'bg-white text-blue-600 border-white font-bold' : 'border-gray-400 dark:border-gray-500'}`}>
+                            {isChecked ? '✓' : ''}
+                          </span>
+                          <span>{room.name}</span>
+                          {room.default_tariff != null && (
+                            <span className={`text-2xs ${isChecked ? 'text-blue-100' : 'text-gray-400'}`}>
+                              (₹{Math.round(room.default_tariff)})
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-2xs text-gray-500 dark:text-gray-400">
+                    {selectedRoomIds.length === 0
+                      ? 'No specific unit selected — this price rule will apply across ALL units.'
+                      : `Rule will apply strictly to the ${selectedRoomIds.length} highlighted unit${selectedRoomIds.length === 1 ? '' : 's'} above.`}
+                  </p>
+                </div>
+              ) : rooms.length === 1 ? (
+                <div className="p-3 bg-blue-50/60 dark:bg-blue-950/40 rounded-xl border border-blue-200 dark:border-blue-800 flex items-center gap-2">
+                  <span className="text-2xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-200">
+                    Target Unit:
+                  </span>
+                  <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-blue-100 dark:bg-blue-900/60 border border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200">
+                    🏠 {rooms[0].name}
+                  </span>
+                </div>
+              ) : null}
 
               {/* Date range row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -799,47 +921,6 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                   </span>
                 </label>
               </div>
-
-              {/* Multi-Room Bulk Checkboxes (if multiple rooms available) */}
-              {rooms.length > 1 && (
-                <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-2xs font-semibold text-gray-700 dark:text-gray-300">
-                      Which rooms? <span className="font-normal text-gray-400">Leave all unticked to apply to every room</span>
-                    </span>
-                    <button
-                      type="button"
-                      onClick={toggleAllRooms}
-                      className="text-2xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 cursor-pointer"
-                    >
-                      {selectedRoomIds.length === rooms.length ? 'Clear All' : 'Select All Rooms'}
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {rooms.map((room) => {
-                      const isChecked = selectedRoomIds.includes(room.id);
-                      return (
-                        <label
-                          key={room.id}
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer border transition-colors ${
-                            isChecked
-                              ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 font-semibold'
-                              : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50'
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => toggleRoomSelection(room.id)}
-                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          />
-                          <span>{room.name}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
 
               <div className="flex justify-end pt-2">
                 <Button
