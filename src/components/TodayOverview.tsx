@@ -146,6 +146,9 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     setPendingSelection(null);
 
     if (calMode === 'pricing') {
+      // Starting a row selection abandons any half-finished column one, so the
+      // two gestures can't leave two conflicting highlights on screen at once.
+      setPendingColumn(null);
       // Open the existing Pricing & Rates modal, pre-scoped to this room and
       // the picked range. End date is inclusive there, and the modal treats
       // the range as "the nights this rule covers", so a click on the 5th and
@@ -196,6 +199,47 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     onAddBooking?.({ roomName, checkin: startStr, checkout: dateStr });
   };
 
+  /**
+   * Click on a DATE HEADER while in Change Prices mode: price that date (or a
+   * range of dates) across every room at once.
+   *
+   * Unlike the row flow above, both ends are inclusive here and no -1 day is
+   * applied. A column click means "this date", not "a stay starting here", so
+   * clicking the 13th alone must price the 13th - the row flow subtracts a day
+   * because it reads its second click as a checkout.
+   */
+  const handleColumnClick = (dateStr: string) => {
+    if (calMode !== 'pricing') return;
+
+    // A column selection abandons any half-finished row one, mirroring the
+    // reverse case above.
+    setPendingSelection(null);
+
+    if (!pendingColumn) {
+      setPendingColumn(dateStr);
+      return;
+    }
+    if (pendingColumn === dateStr) {
+      setPendingColumn(null); // same header twice = cancel, as with a cell
+      return;
+    }
+
+    // Second click completes the range. Accept the two clicks in either
+    // order - dragging right-to-left across a calendar is just as natural,
+    // and silently doing nothing would read as a broken click.
+    const startStr = pendingColumn < dateStr ? pendingColumn : dateStr;
+    const endStr = pendingColumn < dateStr ? dateStr : pendingColumn;
+    setPendingColumn(null);
+
+    setRateRuleStartDate(startStr);
+    setRateRuleEndDate(endStr);
+    // Every room, pre-ticked rather than left as a property-wide rule: the
+    // modal shows the room checkboxes, so the owner can immediately see which
+    // rooms this will change and untick any that shouldn't be included.
+    setRateModalRoomIds((rooms || []).filter((r) => r.id !== undefined).map((r) => r.id as number));
+    setShowRateRuleModal(true);
+  };
+
   // "Share Food Menu" and "Direct Booking Link" moved off this page header
   // 4 Sep 2026 (explicit request) - Share Food Menu / Share Availability live
   // in the sidebar's Quick Actions now, and the header is back to a single
@@ -225,6 +269,15 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   const [showRateRuleModal, setShowRateRuleModal] = useState(false);
   const [rateRuleStartDate, setRateRuleStartDate] = useState<string | undefined>(undefined);
   const [rateRuleEndDate, setRateRuleEndDate] = useState<string | undefined>(undefined);
+  // Column (whole-date) price selection, 4 Sep 2026. The row flow prices ONE
+  // room over a date range; this prices ONE date range across EVERY room -
+  // which is what a festival or a peak weekend actually is. Same two-click
+  // range gesture as the row flow so there is only one interaction to learn,
+  // and clicking the same header twice cancels, exactly like a cell.
+  //
+  // Deliberately pricing-mode only: "book every room at once" is not a real
+  // operation, so a column click does nothing in booking mode.
+  const [pendingColumn, setPendingColumn] = useState<string | null>(null);
   const [rateRules, setRateRules] = useState<RateRule[]>([]);
   const [pricingMode, setPricingMode] = useState<'flat' | 'variable'>('flat');
   const [defaultTariff, setDefaultTariff] = useState<number | null>(null);
@@ -589,7 +642,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-700 p-0.5 rounded-lg border border-slate-200 dark:border-slate-600 shrink-0">
               <button
                 type="button"
-                onClick={() => { setCalMode('booking'); setPendingSelection(null); }}
+                onClick={() => { setCalMode('booking'); setPendingSelection(null); setPendingColumn(null); }}
                 className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
                   calMode === 'booking'
                     ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs'
@@ -600,7 +653,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => { setCalMode('pricing'); setPendingSelection(null); }}
+                onClick={() => { setCalMode('pricing'); setPendingSelection(null); setPendingColumn(null); }}
                 className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer flex items-center gap-1 ${
                   calMode === 'pricing'
                     ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs'
@@ -616,6 +669,17 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                 Prices" toggle + click-a-range gesture above, and Share
                 Availability moved to the sidebar's Quick Actions next to
                 Share Menu (see Navigation.tsx). */}
+            {/* Change Prices is a two-gesture mode and neither is guessable
+                from looking at the grid, so say both out loud while it's on
+                (4 Sep 2026). The column gesture especially - nothing about a
+                date header suggests it can be clicked. */}
+            {calMode === 'pricing' && (
+              <span className="text-2xs text-amber-700 dark:text-amber-400 hidden md:inline">
+                {pendingColumn
+                  ? 'Now click another date — or the same one to cancel'
+                  : 'Click a date at the top to price every room · click cells in a row to price one room'}
+              </span>
+            )}
             <div className="flex items-center gap-1 ms-auto sm:ms-0">
               <button
                 onClick={() => navigateWindow(-1)}
@@ -655,6 +719,11 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             {daysArray.map((day, idx) => {
               const dayName = day.toLocaleString('default', { weekday: 'short' });
               const isToday = isSameDate(day, today);
+              // Column price selection (4 Sep 2026). Only offered in Change
+              // Prices mode - see handleColumnClick.
+              const dayStr = formatDateStr(day);
+              const isColumnPickable = calMode === 'pricing';
+              const isColumnPending = pendingColumn === dayStr;
 
               return (
                 <div
@@ -663,10 +732,30 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                     if (idx === scrollTargetIdx) scrollTargetRef.current = el;
                     if (idx === 0) columnWidthRef.current = el;
                   }}
+                  onClick={isColumnPickable ? () => handleColumnClick(dayStr) : undefined}
+                  role={isColumnPickable ? 'button' : undefined}
+                  tabIndex={isColumnPickable ? 0 : undefined}
+                  onKeyDown={isColumnPickable ? (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleColumnClick(dayStr); }
+                  } : undefined}
+                  title={isColumnPickable
+                    ? (pendingColumn
+                        ? 'Click another date to price the whole range across every room'
+                        : 'Price this date across every room')
+                    : undefined}
                   className={`w-16 min-w-16 shrink-0 px-1 py-1.5 text-center border-r transition-all ${
-                    isToday
+                    isColumnPickable ? 'cursor-pointer' : ''
+                  } ${
+                    // A pending column outranks the today ring - it's the thing
+                    // the user is actively doing, and the two rings on one cell
+                    // would otherwise fight.
+                    isColumnPending
+                      ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200 ring-2 ring-inset ring-amber-500 border-amber-500 z-10'
+                      : isToday
                       ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm ring-2 ring-inset ring-blue-500 border-blue-500 z-10'
-                      : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-600'
+                      : `bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-600 ${
+                          isColumnPickable ? 'hover:bg-amber-50 dark:hover:bg-amber-950/40' : ''
+                        }`
                   }`}
                 >
                   <div className={`text-[8px] uppercase tracking-wider font-bold ${isToday ? 'text-blue-500 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`}>{dayName}</div>
