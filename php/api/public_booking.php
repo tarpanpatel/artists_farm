@@ -34,12 +34,15 @@ function handleGetPublicBookingInfo(PDO $pdo, int $propertyId): void {
         return;
     }
 
+    $propPricingMode = $property['pricing_mode'] ?: 'flat';
+    $baseTariff = (float)($property['default_tariff'] ?? 0);
+
     // Fetch active rooms for multi-key property (stored in properties table)
     $roomsStmt = $pdo->prepare("
-        SELECT id, name, slug, room_order, default_tariff, checkin_time, checkout_time
+        SELECT id, name, slug, room_order, default_tariff, checkin_time, checkout_time, pricing_mode
         FROM properties
-        WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM' AND (is_deleted = 0 OR is_deleted IS NULL)
-        ORDER BY room_order ASC, id ASC
+        WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM' AND (is_deleted = 0 OR is_deleted IS NULL) AND is_active = 1
+        ORDER BY room_order ASC, name ASC, id ASC
     ");
     $roomsStmt->execute([$propertyId]);
     $rooms = $roomsStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -54,10 +57,11 @@ function handleGetPublicBookingInfo(PDO $pdo, int $propertyId): void {
             'default_tariff' => $property['default_tariff'] ? (float)$property['default_tariff'] : null,
             'checkin_time' => $property['checkin_time'] ?: '14:00',
             'checkout_time' => $property['checkout_time'] ?: '11:00',
+            'pricing_mode' => $propPricingMode,
         ]];
     }
 
-    // Fetch occupied/confirmed booking blocks across rolling 180 days
+    // Rolling 180-day window
     $today = date('Y-m-d');
     $futureLimit = date('Y-m-d', strtotime('+180 days'));
 
@@ -65,6 +69,7 @@ function handleGetPublicBookingInfo(PDO $pdo, int $propertyId): void {
     $allTargetIds = array_unique(array_merge([$propertyId], $roomIds));
     $idPlaceholders = implode(',', array_fill(0, count($allTargetIds), '?'));
 
+    // Fetch occupied/confirmed booking blocks
     $bookingsStmt = $pdo->prepare("
         SELECT id, property_id, room_id, checkin_date, expected_checkout, status
         FROM guests
@@ -73,43 +78,148 @@ function handleGetPublicBookingInfo(PDO $pdo, int $propertyId): void {
           AND expected_checkout >= ?
           AND checkin_date <= ?
     ");
-    $bookingsStmt->execute(array_merge($allTargetIds, $allTargetIds, [$today, $futureLimit]));
+    $bookingsStmt->execute(array_merge($allTargetIds, $allTargetIds, [$today, $futureLimit . ' 23:59:59']));
     $rawBookings = $bookingsStmt->fetchAll(PDO::FETCH_ASSOC);
 
-    $occupiedBlocks = array_map(function ($b) {
+    $occupiedBlocks = [];
+    foreach ($rawBookings as $b) {
         $effRoomId = !empty($b['room_id']) ? (int)$b['room_id'] : (int)$b['property_id'];
-        return [
+        $occupiedBlocks[] = [
             'room_id' => $effRoomId,
             'checkin_date' => substr($b['checkin_date'], 0, 10),
             'expected_checkout' => substr($b['expected_checkout'], 0, 10),
             'status' => $b['status'] ?? 'Booked',
         ];
-    }, $rawBookings);
+    }
 
-    // Fetch active dynamic rate rules if property uses variable pricing
+    // Fetch Synced iCal OTA Blocks
+    try {
+        $oStmt = $pdo->prepare("
+            SELECT e.event_start, e.event_end, c.property_id as room_id
+            FROM ical_synced_events e
+            JOIN ical_sync_configs c ON e.sync_config_id = c.id
+            WHERE c.property_id IN ($idPlaceholders)
+            AND e.sync_status = 'synced'
+            AND e.event_start <= ? AND e.event_end >= ?
+        ");
+        $oStmt->execute(array_merge($allTargetIds, [$futureLimit . ' 23:59:59', $today . ' 00:00:00']));
+        $otaBlocks = $oStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($otaBlocks as $ob) {
+            $occupiedBlocks[] = [
+                'room_id' => (int)$ob['room_id'],
+                'checkin_date' => substr($ob['event_start'], 0, 10),
+                'expected_checkout' => substr($ob['event_end'], 0, 10),
+                'status' => 'Booked',
+            ];
+        }
+    } catch (Exception $e) {}
+
+    // Fetch active dynamic rate rules
     $rules = [];
+    $rateRulesPerRoom = [];
+    $restrictionsPerRoom = [];
+    $dayCodeByIso = [1 => 'mo', 2 => 'tu', 3 => 'we', 4 => 'th', 5 => 'fr', 6 => 'sa', 7 => 'su'];
+
     try {
         $rulesStmt = $pdo->prepare("
             SELECT id, property_id, room_id, name, start_date, end_date, rate_per_night,
-                   days_of_week, min_stay_arrival, stop_sell, closed_to_arrival, closed_to_departure
+                   days_of_week, min_stay_arrival, min_stay_through, max_stay, stop_sell,
+                   closed_to_arrival, closed_to_departure
             FROM room_rate_rules
-            WHERE (property_id IN ($idPlaceholders) OR room_id IN ($idPlaceholders)) AND end_date >= ?
+            WHERE (property_id IN ($idPlaceholders) OR room_id IN ($idPlaceholders))
+              AND end_date >= ?
+            ORDER BY room_id DESC, created_at DESC, id DESC
         ");
         $rulesStmt->execute(array_merge($allTargetIds, $allTargetIds, [$today]));
         $rules = $rulesStmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (Exception $e) {
-        // Soft fail if table absent
-    }
 
-    // Fetch all public properties for property switcher
-    $allPropsStmt = $pdo->prepare("
-        SELECT id, name, slug, property_type
-        FROM properties
-        WHERE parent_property_id IS NULL AND (is_deleted = 0 OR is_deleted IS NULL) AND is_active = 1
-        ORDER BY name ASC
-    ");
-    $allPropsStmt->execute();
-    $allProperties = $allPropsStmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rules as $rr) {
+            $rId = $rr['room_id'] !== null ? (int)$rr['room_id'] : 0;
+            $ruleDays = !empty($rr['days_of_week']) ? explode(',', $rr['days_of_week']) : null;
+            $cur = strtotime($rr['start_date']);
+            $end = strtotime($rr['end_date']);
+            $isStopSell = !empty($rr['stop_sell']);
+
+            while ($cur <= $end) {
+                $dStr = date('Y-m-d', $cur);
+                if ($ruleDays !== null && !in_array($dayCodeByIso[(int)date('N', $cur)], $ruleDays, true)) {
+                    $cur = strtotime('+1 day', $cur);
+                    continue;
+                }
+                if ($rr['rate_per_night'] !== null && !isset($rateRulesPerRoom[$rId][$dStr])) {
+                    $rateRulesPerRoom[$rId][$dStr] = (float)$rr['rate_per_night'];
+                }
+                if (!isset($restrictionsPerRoom[$rId][$dStr])) {
+                    $restrictionsPerRoom[$rId][$dStr] = [
+                        'min_stay_arrival' => $rr['min_stay_arrival'] ? (int)$rr['min_stay_arrival'] : null,
+                        'min_stay_through' => $rr['min_stay_through'] ? (int)$rr['min_stay_through'] : null,
+                        'max_stay' => $rr['max_stay'] ? (int)$rr['max_stay'] : null,
+                        'closed_to_arrival' => !empty($rr['closed_to_arrival']),
+                        'closed_to_departure' => !empty($rr['closed_to_departure']),
+                    ];
+                }
+                if ($isStopSell) {
+                    if ($rId === 0) {
+                        foreach ($allTargetIds as $sId) {
+                            $occupiedBlocks[] = [
+                                'room_id' => $sId,
+                                'checkin_date' => $dStr,
+                                'expected_checkout' => date('Y-m-d', strtotime('+1 day', $cur)),
+                                'status' => 'StopSell',
+                            ];
+                        }
+                    } else {
+                        $occupiedBlocks[] = [
+                            'room_id' => $rId,
+                            'checkin_date' => $dStr,
+                            'expected_checkout' => date('Y-m-d', strtotime('+1 day', $cur)),
+                            'status' => 'StopSell',
+                        ];
+                    }
+                }
+                $cur = strtotime('+1 day', $cur);
+            }
+        }
+    } catch (Exception $e) {}
+
+    // Precalculate accurate daily rates map for every room across rolling 180 days
+    $dailyRatesPerRoom = [];
+    $dailyRestrictionsPerRoom = [];
+
+    foreach ($rooms as $room) {
+        $rId = (int)$room['id'];
+        $rTariff = (float)($room['default_tariff'] ?? 0);
+        $rPricingMode = !empty($room['pricing_mode']) ? $room['pricing_mode'] : $propPricingMode;
+
+        $cur = strtotime($today);
+        $end = strtotime($futureLimit);
+        while ($cur <= $end) {
+            $dStr = date('Y-m-d', $cur);
+            $rate = $rTariff > 0 ? $rTariff : ($baseTariff > 0 ? $baseTariff : 0);
+
+            if ($rPricingMode === 'variable') {
+                if (isset($rateRulesPerRoom[$rId][$dStr])) {
+                    $rate = $rateRulesPerRoom[$rId][$dStr];
+                } elseif (isset($rateRulesPerRoom[0][$dStr])) {
+                    $rate = $rateRulesPerRoom[0][$dStr];
+                } elseif (isset($rateRulesPerRoom[$propertyId][$dStr])) {
+                    $rate = $rateRulesPerRoom[$propertyId][$dStr];
+                }
+            }
+            $dailyRatesPerRoom[$rId][$dStr] = $rate;
+
+            if ($rPricingMode === 'variable') {
+                if (isset($restrictionsPerRoom[$rId][$dStr])) {
+                    $dailyRestrictionsPerRoom[$rId][$dStr] = $restrictionsPerRoom[$rId][$dStr];
+                } elseif (isset($restrictionsPerRoom[0][$dStr])) {
+                    $dailyRestrictionsPerRoom[$rId][$dStr] = $restrictionsPerRoom[0][$dStr];
+                }
+            }
+
+            $cur = strtotime('+1 day', $cur);
+        }
+    }
 
     echo json_encode([
         'status' => 'success',
@@ -127,12 +237,14 @@ function handleGetPublicBookingInfo(PDO $pdo, int $propertyId): void {
                 'instructions' => $property['instructions'] ?? '',
                 'checkin_time' => $property['checkin_time'] ?: '14:00',
                 'checkout_time' => $property['checkout_time'] ?: '11:00',
-                'pricing_mode' => $property['pricing_mode'] ?: 'flat',
+                'pricing_mode' => $propPricingMode,
+                'default_tariff' => $baseTariff,
             ],
             'rooms' => $rooms,
             'occupied_blocks' => $occupiedBlocks,
+            'daily_rates' => $dailyRatesPerRoom,
+            'daily_restrictions' => $dailyRestrictionsPerRoom,
             'rate_rules' => $rules,
-            'all_properties' => $allProperties,
         ]
     ]);
 }
@@ -171,7 +283,7 @@ function handleCreatePublicBooking(PDO $pdo): void {
     }
 
     // Verify property
-    $propStmt = $pdo->prepare("SELECT id, tenant_id, name, default_tariff, upi_id, phone, address, checkin_time, checkout_time FROM properties WHERE id = ? LIMIT 1");
+    $propStmt = $pdo->prepare("SELECT id, tenant_id, name, default_tariff, pricing_mode, upi_id, phone, address, checkin_time, checkout_time FROM properties WHERE id = ? LIMIT 1");
     $propStmt->execute([$propertyId]);
     $prop = $propStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -184,21 +296,87 @@ function handleCreatePublicBooking(PDO $pdo): void {
     $targetPropertyId = $propertyId;
     $targetRoomId = $roomId ?: $propertyId;
     $roomName = $prop['name'];
-    $nightlyRate = $prop['default_tariff'] ? (float)$prop['default_tariff'] : 0;
+    $roomPricingMode = $prop['pricing_mode'] ?: 'flat';
+    $baseDefaultTariff = (float)($prop['default_tariff'] ?? 0);
+    $roomDefaultTariff = $baseDefaultTariff;
 
     // Resolve room details if multi-key
     if ($roomId && $roomId !== $propertyId) {
-        $rStmt = $pdo->prepare("SELECT id, name, default_tariff FROM properties WHERE id = ? AND parent_property_id = ? LIMIT 1");
+        $rStmt = $pdo->prepare("SELECT id, name, default_tariff, pricing_mode FROM properties WHERE id = ? AND parent_property_id = ? LIMIT 1");
         $rStmt->execute([$roomId, $propertyId]);
         $rRow = $rStmt->fetch(PDO::FETCH_ASSOC);
         if ($rRow) {
             $targetRoomId = (int)$rRow['id'];
             $roomName = $rRow['name'];
+            if (!empty($rRow['pricing_mode'])) {
+                $roomPricingMode = $rRow['pricing_mode'];
+            }
             if ($rRow['default_tariff'] !== null) {
-                $nightlyRate = (float)$rRow['default_tariff'];
+                $roomDefaultTariff = (float)$rRow['default_tariff'];
             }
         }
     }
+
+    // Fetch dynamic rate rules for exact total calculation
+    $rateRulesPerRoom = [];
+    $dayCodeByIso = [1 => 'mo', 2 => 'tu', 3 => 'we', 4 => 'th', 5 => 'fr', 6 => 'sa', 7 => 'su'];
+    try {
+        $rrStmt = $pdo->prepare("
+            SELECT room_id, start_date, end_date, rate_per_night, days_of_week
+            FROM room_rate_rules
+            WHERE (property_id = ? OR room_id = ? OR room_id = 0 OR room_id IS NULL)
+              AND start_date <= ? AND end_date >= ?
+            ORDER BY room_id DESC, created_at DESC, id DESC
+        ");
+        $rrStmt->execute([$propertyId, $targetRoomId, $checkoutDate, $checkinDate]);
+        $fetchedRules = $rrStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($fetchedRules as $rr) {
+            $rId = $rr['room_id'] !== null ? (int)$rr['room_id'] : 0;
+            $ruleDays = !empty($rr['days_of_week']) ? explode(',', $rr['days_of_week']) : null;
+            $cur = strtotime($rr['start_date']);
+            $end = strtotime($rr['end_date']);
+            while ($cur <= $end) {
+                $dStr = date('Y-m-d', $cur);
+                if ($ruleDays !== null && !in_array($dayCodeByIso[(int)date('N', $cur)], $ruleDays, true)) {
+                    $cur = strtotime('+1 day', $cur);
+                    continue;
+                }
+                if ($rr['rate_per_night'] !== null && !isset($rateRulesPerRoom[$rId][$dStr])) {
+                    $rateRulesPerRoom[$rId][$dStr] = (float)$rr['rate_per_night'];
+                }
+                $cur = strtotime('+1 day', $cur);
+            }
+        }
+    } catch (Exception $e) {}
+
+    // Calculate nights and exact total tariff by summing each day's dynamic rate
+    $cur = strtotime($checkinDate);
+    $end = strtotime($checkoutDate);
+    $totalTariff = 0;
+    $nightCount = 0;
+
+    while ($cur < $end) {
+        $dStr = date('Y-m-d', $cur);
+        $dailyRate = $roomDefaultTariff > 0 ? $roomDefaultTariff : ($baseDefaultTariff > 0 ? $baseDefaultTariff : 0);
+
+        if ($roomPricingMode === 'variable') {
+            if (isset($rateRulesPerRoom[$targetRoomId][$dStr])) {
+                $dailyRate = $rateRulesPerRoom[$targetRoomId][$dStr];
+            } elseif (isset($rateRulesPerRoom[0][$dStr])) {
+                $dailyRate = $rateRulesPerRoom[0][$dStr];
+            } elseif (isset($rateRulesPerRoom[$propertyId][$dStr])) {
+                $dailyRate = $rateRulesPerRoom[$propertyId][$dStr];
+            }
+        }
+
+        $totalTariff += $dailyRate;
+        $nightCount++;
+        $cur = strtotime('+1 day', $cur);
+    }
+
+    $nights = max(1, $nightCount);
+    $avgNightlyRate = round($totalTariff / $nights, 2);
 
     // Begin atomic transaction to prevent double bookings
     $pdo->beginTransaction();
@@ -220,12 +398,6 @@ function handleCreatePublicBooking(PDO $pdo): void {
             echo json_encode(['status' => 'error', 'message' => 'These dates were just booked by another guest. Please pick different dates.']);
             return;
         }
-
-        // Calculate nights and total tariff
-        $dStart = new DateTime($checkinDate);
-        $dEnd = new DateTime($checkoutDate);
-        $nights = max(1, $dStart->diff($dEnd)->days);
-        $totalTariff = $nights * $nightlyRate;
 
         $refNumber = 'GC-' . date('ymd') . '-' . strtoupper(substr(md5(uniqid((string)mt_rand(), true)), 0, 4));
 
@@ -258,7 +430,7 @@ function handleCreatePublicBooking(PDO $pdo): void {
             $checkoutDate,
             $totalTariff,
             $totalTariff,
-            $nightlyRate,
+            $avgNightlyRate,
             $notes,
             $numGuests,
             $targetPropertyId,
