@@ -147,7 +147,7 @@ function handleGetPublicBookingInfo(PDO $pdo, int $propertyId): void {
 
     try {
         $rulesStmt = $pdo->prepare("
-            SELECT id, property_id, room_id, name, start_date, end_date, rate_per_night,
+            SELECT id, property_id, room_id, rule_name as name, start_date, end_date, rate_per_night,
                    days_of_week, min_stay_arrival, min_stay_through, max_stay, stop_sell,
                    closed_to_arrival, closed_to_departure
             FROM room_rate_rules
@@ -205,7 +205,12 @@ function handleGetPublicBookingInfo(PDO $pdo, int $propertyId): void {
                 $cur = strtotime('+1 day', $cur);
             }
         }
-    } catch (Exception $e) {}
+    } catch (Exception $e) {
+        error_log("Public booking rate rules error: " . $e->getMessage());
+        if (class_exists('TelescopeLogger')) {
+            TelescopeLogger::log('sql', 'Rate Rules Fetch Error', $e->getMessage(), 'Public Booking');
+        }
+    }
 
     // Precalculate accurate daily rates map for every room across rolling 180 days
     $dailyRatesPerRoom = [];
