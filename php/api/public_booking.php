@@ -66,21 +66,23 @@ function handleGetPublicBookingInfo(PDO $pdo, int $propertyId): void {
     $idPlaceholders = implode(',', array_fill(0, count($allTargetIds), '?'));
 
     $bookingsStmt = $pdo->prepare("
-        SELECT id, property_id, checkin_date, expected_checkout, status
+        SELECT id, property_id, room_id, checkin_date, expected_checkout, status
         FROM guests
-        WHERE property_id IN ($idPlaceholders)
+        WHERE (property_id IN ($idPlaceholders) OR room_id IN ($idPlaceholders))
           AND status NOT IN ('Cancelled', 'CheckedOut')
           AND expected_checkout >= ?
           AND checkin_date <= ?
     ");
-    $bookingsStmt->execute(array_merge($allTargetIds, [$today, $futureLimit]));
+    $bookingsStmt->execute(array_merge($allTargetIds, $allTargetIds, [$today, $futureLimit]));
     $rawBookings = $bookingsStmt->fetchAll(PDO::FETCH_ASSOC);
 
     $occupiedBlocks = array_map(function ($b) {
+        $effRoomId = !empty($b['room_id']) ? (int)$b['room_id'] : (int)$b['property_id'];
         return [
-            'room_id' => $b['property_id'] ? (int)$b['property_id'] : null,
+            'room_id' => $effRoomId,
             'checkin_date' => substr($b['checkin_date'], 0, 10),
             'expected_checkout' => substr($b['expected_checkout'], 0, 10),
+            'status' => $b['status'] ?? 'Booked',
         ];
     }, $rawBookings);
 
@@ -91,13 +93,23 @@ function handleGetPublicBookingInfo(PDO $pdo, int $propertyId): void {
             SELECT id, property_id, room_id, name, start_date, end_date, rate_per_night,
                    days_of_week, min_stay_arrival, stop_sell, closed_to_arrival, closed_to_departure
             FROM room_rate_rules
-            WHERE property_id IN ($idPlaceholders) AND end_date >= ?
+            WHERE (property_id IN ($idPlaceholders) OR room_id IN ($idPlaceholders)) AND end_date >= ?
         ");
-        $rulesStmt->execute(array_merge($allTargetIds, [$today]));
+        $rulesStmt->execute(array_merge($allTargetIds, $allTargetIds, [$today]));
         $rules = $rulesStmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (Exception $e) {
         // Soft fail if table absent
     }
+
+    // Fetch all public properties for property switcher
+    $allPropsStmt = $pdo->prepare("
+        SELECT id, name, slug, property_type
+        FROM properties
+        WHERE parent_property_id IS NULL AND (is_deleted = 0 OR is_deleted IS NULL) AND is_active = 1
+        ORDER BY name ASC
+    ");
+    $allPropsStmt->execute();
+    $allProperties = $allPropsStmt->fetchAll(PDO::FETCH_ASSOC);
 
     echo json_encode([
         'status' => 'success',
@@ -120,6 +132,7 @@ function handleGetPublicBookingInfo(PDO $pdo, int $propertyId): void {
             'rooms' => $rooms,
             'occupied_blocks' => $occupiedBlocks,
             'rate_rules' => $rules,
+            'all_properties' => $allProperties,
         ]
     ]);
 }
@@ -169,6 +182,7 @@ function handleCreatePublicBooking(PDO $pdo): void {
     }
 
     $targetPropertyId = $propertyId;
+    $targetRoomId = $roomId ?: $propertyId;
     $roomName = $prop['name'];
     $nightlyRate = $prop['default_tariff'] ? (float)$prop['default_tariff'] : 0;
 
@@ -178,7 +192,7 @@ function handleCreatePublicBooking(PDO $pdo): void {
         $rStmt->execute([$roomId, $propertyId]);
         $rRow = $rStmt->fetch(PDO::FETCH_ASSOC);
         if ($rRow) {
-            $targetPropertyId = (int)$rRow['id'];
+            $targetRoomId = (int)$rRow['id'];
             $roomName = $rRow['name'];
             if ($rRow['default_tariff'] !== null) {
                 $nightlyRate = (float)$rRow['default_tariff'];
@@ -193,12 +207,12 @@ function handleCreatePublicBooking(PDO $pdo): void {
         // Concurrency Check with SELECT ... FOR UPDATE
         $conflictStmt = $pdo->prepare("
             SELECT id FROM guests
-            WHERE property_id = ?
+            WHERE (property_id = ? OR room_id = ?)
               AND status NOT IN ('Cancelled', 'CheckedOut')
               AND NOT (expected_checkout <= ? OR checkin_date >= ?)
             FOR UPDATE
         ");
-        $conflictStmt->execute([$targetPropertyId, $checkinDate, $checkoutDate]);
+        $conflictStmt->execute([$targetRoomId, $targetRoomId, $checkinDate, $checkoutDate]);
 
         if ($conflictStmt->fetch()) {
             $pdo->rollBack();
@@ -215,31 +229,29 @@ function handleCreatePublicBooking(PDO $pdo): void {
 
         $refNumber = 'GC-' . date('ymd') . '-' . strtoupper(substr(md5(uniqid((string)mt_rand(), true)), 0, 4));
 
-        $insertStmt = $pdo->prepare("
-            INSERT INTO guests (
-                guest_name, phone_number, checkin_date, expected_checkout,
-                status, advance_paid, total_charge, pending_amount,
-                base_room_rent, notes, booking_source, no_of_guests,
-                property_id, created_at, updated_at
-            ) VALUES (
-                ?, ?, ?, ?,
-                'Active', 0, ?, ?,
-                ?, ?, 'Direct Website', ?,
-                ?, NOW(), NOW()
-            )
-        ");
-
         $notes = "Ref: {$refNumber}\nPayment Method: {$paymentMethod}";
-        if (!empty($email)) {
-            $notes .= "\nEmail: " . $email;
-        }
         if (!empty($specialRequests)) {
             $notes .= "\nSpecial Requests: " . $specialRequests;
         }
 
+        $insertStmt = $pdo->prepare("
+            INSERT INTO guests (
+                guest_name, phone_number, email_id, checkin_date, expected_checkout,
+                status, advance_paid, total_charge, pending_amount,
+                base_room_rent, notes, booking_source, no_of_guests,
+                property_id, room_id
+            ) VALUES (
+                ?, ?, ?, ?, ?,
+                'Booked', 0, ?, ?,
+                ?, ?, 'Direct Website', ?,
+                ?, ?
+            )
+        ");
+
         $insertStmt->execute([
             $guestName,
             $phone,
+            $email,
             $checkinDate,
             $checkoutDate,
             $totalTariff,
@@ -247,7 +259,8 @@ function handleCreatePublicBooking(PDO $pdo): void {
             $nightlyRate,
             $notes,
             $numGuests,
-            $targetPropertyId
+            $targetPropertyId,
+            $targetRoomId
         ]);
 
         $bookingId = (int)$pdo->lastInsertId();
@@ -256,7 +269,7 @@ function handleCreatePublicBooking(PDO $pdo): void {
         if (is_file(__DIR__ . '/../channex/outbox.php')) {
             require_once __DIR__ . '/../channex/outbox.php';
             if (function_exists('enqueueOutboxItem')) {
-                enqueueOutboxItem($pdo, $propertyId, ($targetPropertyId !== $propertyId ? $targetPropertyId : null), 'availability', $checkinDate, $checkoutDate, [
+                enqueueOutboxItem($pdo, $propertyId, ($targetRoomId !== $propertyId ? $targetRoomId : null), 'availability', $checkinDate, $checkoutDate, [
                     'action' => 'direct_booking_block',
                     'booking_id' => $bookingId,
                     'guest_name' => $guestName,
