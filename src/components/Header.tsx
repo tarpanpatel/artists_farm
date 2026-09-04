@@ -19,7 +19,6 @@ import {
   Home as RoomIcon,
   X,
   HelpCircle,
-  ArrowRightLeft,
   ChevronDown,
 } from './icons/FlowbiteIcons';
 import { useAuth } from '../contexts/AuthContext';
@@ -95,7 +94,7 @@ export const Header: React.FC<HeaderProps> = ({
   onInstallIconClick,
   onNavigate,
   onOpenFaq,
-  onSwitchProperty,
+  onSwitchProperty: _onSwitchProperty,
   canSwitchProperties,
   tenantId,
   tenantSlug,
