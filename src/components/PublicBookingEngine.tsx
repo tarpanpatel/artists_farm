@@ -5,7 +5,6 @@ import {
   ChevronRight,
   CheckCircle2,
   Phone,
-  MapPin,
   Loader2,
   Share2,
   Sparkles,
@@ -329,30 +328,25 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 flex flex-col">
       {/* Top Header / Property Banner */}
       <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-30 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-base shadow-xs">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-sm shadow-xs shrink-0">
               {property.name.slice(0, 2).toUpperCase()}
             </div>
-            <div>
-              <h1 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white tracking-tight leading-tight">
+            <div className="min-w-0">
+              <h1 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white tracking-tight leading-tight truncate">
                 {property.name}
               </h1>
-              <div className="flex items-center gap-2 text-2xs text-gray-500 dark:text-gray-400 mt-0.5">
-                <span className="flex items-center gap-1">
-                  <MapPin className="w-3 h-3 text-gray-400" />
-                  {property.address || 'Direct Booking'}
-                </span>
-                <span className="inline-block w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
-                <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
-                  <Sparkles className="w-3 h-3" />
+              <div className="flex items-center gap-1.5 text-3xs sm:text-2xs text-gray-500 dark:text-gray-400 mt-0.5">
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1 truncate">
+                  <Sparkles className="w-2.5 h-2.5 shrink-0" />
                   Best Rate Guaranteed (0% Commission)
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 shrink-0">
             {property.phone && (
               <a
                 href={`tel:${property.phone}`}
@@ -469,13 +463,10 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                   return (
                     <div key={room.id} className="flex group hover:bg-gray-50/30 dark:hover:bg-gray-800/30 transition-colors">
                       {/* Sticky Left Room Name Card */}
-                      <div className="w-44 sm:w-56 shrink-0 p-3.5 sticky left-0 z-10 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex items-center justify-between gap-2 shadow-xs">
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{room.name}</p>
-                          <p className="text-2xs text-emerald-600 dark:text-emerald-400 font-semibold">
-                            {room.default_tariff ? `₹${Math.round(room.default_tariff)}/night` : 'Live tariff'}
-                          </p>
-                        </div>
+                      <div className="w-40 sm:w-52 shrink-0 p-3.5 sticky left-0 z-10 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex items-center shadow-xs">
+                        <p className="text-xs font-bold text-gray-900 dark:text-white truncate" title={room.name}>
+                          {room.name}
+                        </p>
                       </div>
 
                       {/* Day Cells */}
@@ -492,29 +483,26 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                               key={dateStr}
                               style={{ width: `${columnWidth}px` }}
                               onClick={() => !isPast && handleCellClick(room, dateStr, isOccupied)}
-                              className={`shrink-0 h-16 p-1 border-r border-gray-100 dark:border-gray-800/60 flex flex-col items-center justify-center transition-all ${
+                              className={`shrink-0 h-13 p-1 border-r border-gray-100 dark:border-gray-800/60 flex flex-col items-center justify-center transition-all ${
                                 isPast
-                                  ? 'bg-gray-50/60 dark:bg-gray-950/40 cursor-not-allowed opacity-40'
+                                  ? 'bg-gray-100/50 dark:bg-gray-900/40 text-gray-300 dark:text-gray-600 cursor-not-allowed opacity-40'
                                   : isOccupied
-                                  ? 'bg-red-50/60 dark:bg-red-950/30 cursor-not-allowed'
+                                  ? 'bg-gray-100 dark:bg-gray-800/80 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-70'
                                   : isSelectedStart
-                                  ? 'bg-blue-600 text-white cursor-pointer ring-2 ring-blue-600 z-10 rounded-sm'
-                                  : 'bg-emerald-50/40 dark:bg-emerald-950/20 hover:bg-emerald-100/70 dark:hover:bg-emerald-900/40 cursor-pointer'
+                                  ? 'bg-blue-600 text-white cursor-pointer ring-2 ring-blue-600 z-10'
+                                  : 'bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100/80 dark:hover:bg-emerald-900/50 cursor-pointer'
                               }`}
                             >
-                              {isOccupied ? (
-                                <span className="text-3xs font-semibold text-red-600 dark:text-red-400">Booked</span>
-                              ) : isPast ? (
-                                <span className="text-3xs text-gray-400">-</span>
+                              {isOccupied || isPast ? (
+                                <span className="text-2xs font-semibold text-gray-400 dark:text-gray-500">-</span>
                               ) : (
-                                <>
-                                  <span className={`text-2xs font-bold ${isSelectedStart ? 'text-white' : 'text-emerald-700 dark:text-emerald-300'}`}>
-                                    ₹{price}
-                                  </span>
-                                  <span className={`text-3xs ${isSelectedStart ? 'text-blue-100' : 'text-emerald-600/70 dark:text-emerald-400/70'}`}>
-                                    {isSelectedStart ? 'Check-in' : 'Available'}
-                                  </span>
-                                </>
+                                <span
+                                  className={`text-2xs font-bold tracking-tight ${
+                                    isSelectedStart ? 'text-white' : 'text-emerald-700 dark:text-emerald-300'
+                                  }`}
+                                >
+                                  ₹{price}
+                                </span>
                               )}
                             </div>
                           );
