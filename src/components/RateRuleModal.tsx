@@ -36,6 +36,11 @@ interface RateRuleModalProps {
   onRulesUpdated: () => void;
   initialStartDate?: string;
   initialEndDate?: string;
+  // Prefill for the "Change Prices" calendar flow (click a date range on a
+  // room row -> open this same modal already scoped to that room + range).
+  // Only applied on the isOpen rising edge so the user can still change them.
+  initialRoomIds?: number[];
+  initialRatePerNight?: string;
 }
 
 export const RateRuleModal: React.FC<RateRuleModalProps> = ({
@@ -49,6 +54,8 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
   onRulesUpdated,
   initialStartDate,
   initialEndDate,
+  initialRoomIds,
+  initialRatePerNight,
 }) => {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
@@ -94,6 +101,16 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
     if (initialStartDate) setStartDate(initialStartDate);
     if (initialEndDate) setEndDate(initialEndDate);
   }, [initialStartDate, initialEndDate]);
+
+  // "Change Prices" calendar flow: seed the room + rate the user selected on
+  // the grid. Only on the rising edge of isOpen - once the modal is open the
+  // fields are the user's to edit, and this must not fight their typing.
+  useEffect(() => {
+    if (!isOpen) return;
+    if (initialRoomIds && initialRoomIds.length > 0) setSelectedRoomIds(initialRoomIds);
+    if (initialRatePerNight != null && initialRatePerNight !== '') setRatePerNight(initialRatePerNight);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   const handleTogglePricingMode = async (newMode: 'flat' | 'variable') => {
     if (newMode === currentPricingMode) return;

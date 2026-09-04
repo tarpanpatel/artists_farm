@@ -158,23 +158,13 @@ export const Navigation: React.FC<NavigationProps> = ({
       return false;
     }
 
-    // The Channel Manager ops console (manual ARI push, outbox drain, mapping
-    // UUIDs) is an integrator/debug tool, not a tenant feature - platform admins
-    // only, regardless of tenant role, and checked BEFORE the Super Admin bypass
-    // below (a tenant's own Super Admin is not a platform admin). The client-
-    // facing counterpart the owner should use is "Connect Channels". The backend
-    // channex_* ops actions are gated the same way in router.php.
-    if ((uniqueKey || itemTabKey || '').toLowerCase().trim() === 'channel_manager' && !currentUser?.isPlatformAdmin) {
-      return false;
-    }
-
     if (!allowedRoles || allowedRoles.length === 0) return true;
     // Case-insensitive role comparison
     const normalizedActiveRole = activeRole.toLowerCase().trim();
     // Super admin and root admin have access to all menu items
     if (normalizedActiveRole === 'super admin' || normalizedActiveRole === 'root admin') return true;
     return allowedRoles.some(role => role.toLowerCase().trim() === normalizedActiveRole);
-  }, [activeRole, kitchenModuleEnabled, currentUser?.isPlatformAdmin]);
+  }, [activeRole, kitchenModuleEnabled]);
 
   const { pendingStockRequestsCount } = useInventoryContext();
   const { pendingOrdersCount } = useKitchenContext();

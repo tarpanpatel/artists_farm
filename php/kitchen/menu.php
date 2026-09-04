@@ -280,22 +280,29 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                 markSchemaVerified('nav_menu_self_heal_v10');
             }
 
-            // v11 (4 Sep 2026): Channel Manager (nav-channel-manager, seeded by v8
-            // with roles_json ["Super Admin","Admin"]) is the internal ops console -
-            // manual full-range ARI push, outbox drain/retry, mapping UUIDs. A
-            // mistaken push there overwrites live OTA pricing and reopens blocked
-            // dates across every channel, so it must not be a tenant-reachable
-            // screen. Navigation.tsx now hard-gates this unique_key on
-            // is_platform_admin (before its Super Admin bypass) and router.php gates
-            // the channex_* ops actions the same way; narrow roles_json here too so
-            // the data layer agrees and a tenant 'Admin' can't see it even if that
-            // client gate is later changed. The owner-facing surface is
-            // 'Connect Channels' (nav-connect-channels), left untouched.
+            // v11 (4 Sep 2026, REVERTED by v12 same day): briefly narrowed
+            // nav-channel-manager's roles_json to ["Root Admin"] to hide the ops
+            // console from tenants. The client-facing "Connect Channels" wizard
+            // already covers the owner's actual need, but the user wants the
+            // Channel Manager screen back on the tenant dashboard (they operate as
+            // the property Super Admin). router.php still keeps the genuinely
+            // structural ops (content sync, webhook registration) platform-admin
+            // only - see $channex_root_ops_actions there.
             if (!isSchemaVerified('nav_menu_self_heal_v11')) {
-                try {
-                    $pdo->exec("UPDATE nav_menu_items SET roles_json = '[\"Root Admin\"]' WHERE unique_key = 'channel_manager'");
-                } catch (Exception $e) {}
+                // no-op: superseded by v12 below. Left as a marker so an install
+                // that already ran v11 doesn't matter - v12 sets the final state.
                 markSchemaVerified('nav_menu_self_heal_v11');
+            }
+
+            // v12 (4 Sep 2026): restore Channel Manager to the tenant nav -
+            // Super Admin + Admin, matching every other 'System Controls' item
+            // (Connect Channels, Subscription). Idempotent: fixes any DB where
+            // v11 already set ["Root Admin"], and harmless everywhere else.
+            if (!isSchemaVerified('nav_menu_self_heal_v12')) {
+                try {
+                    $pdo->exec("UPDATE nav_menu_items SET roles_json = '[\"Super Admin\",\"Admin\"]', is_visible = 1 WHERE unique_key = 'channel_manager'");
+                } catch (Exception $e) {}
+                markSchemaVerified('nav_menu_self_heal_v12');
             }
 
             if (!isSchemaVerified('nav_menu_self_heal_v2')) {

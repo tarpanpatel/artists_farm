@@ -999,19 +999,19 @@ if (!in_array($action, $public_actions, true)) {
     }
 }
 
-// SECURITY: Low-level integrator debug ops (webhook registration, content sync,
-// retry outbox) are restricted to platform administrators.
-// Property-level rate/availability sync (channex_push_ari, channex_outbox_drain)
-// is available to authenticated property Super Admins & Admins.
-$channex_root_ops_actions = ['channex_content_sync', 'channex_register_webhook', 'channex_retry_outbox'];
-if (in_array($action, $channex_root_ops_actions, true) && !($_SESSION['is_platform_admin'] ?? false)) {
-    http_response_code(403);
-    echo json_encode(['status' => 'error', 'message' => 'This Channel Manager operation is restricted to platform administrators.']);
-    exit;
-}
-
-$channex_property_ops_actions = ['channex_push_ari', 'channex_outbox_drain', 'get_channex_status'];
-if (in_array($action, $channex_property_ops_actions, true)) {
+// Channel Manager ops console actions. All of them are available to an
+// authenticated user with access to the property in scope - the universal
+// gate above already enforced $is_authenticated_user + isPropertyAccessAllowed()
+// for these (none are in $public_actions or $tenant_scope_actions). The
+// property Super Admin runs the whole console: status, ARI push, outbox
+// drain/retry, one-time content sync and webhook registration during
+// onboarding. This block just gives a clearer 403 message than the generic
+// "Access denied for this property." if something unauthenticated slips through.
+$channex_ops_actions = [
+    'channex_content_sync', 'channex_register_webhook', 'channex_retry_outbox',
+    'channex_push_ari', 'channex_outbox_drain', 'get_channex_status',
+];
+if (in_array($action, $channex_ops_actions, true)) {
     $userRole = strtolower($_SESSION['role'] ?? '');
     $isAuthed = !empty($_SESSION['is_platform_admin'])
         || in_array($userRole, ['root_admin', 'super_admin', 'admin', 'staff_supervisor', 'supervisor', 'staff'], true)
