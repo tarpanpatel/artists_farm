@@ -6,6 +6,8 @@ import { Trash2, Plus, DollarSign, X, Loader2, Pencil, Send } from './icons/Flow
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { TablePagination } from './TablePagination';
+import { FloatingInput } from './FloatingInput';
+import { FloatingSelect } from './FloatingSelect';
 
 // Channex's own 2-letter day codes (used verbatim in the API's `days`
 // param) - single source of truth for the picker below and for reading a
@@ -704,30 +706,20 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
 
               {/* Date range row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                    First date *
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full h-10 px-3 text-xs bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                    Last date *
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full h-10 px-3 text-xs bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
-                  />
-                </div>
+                <FloatingInput
+                  type="date"
+                  required
+                  label="First date *"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+                <FloatingInput
+                  type="date"
+                  required
+                  label="Last date *"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
               </div>
 
               {/* Day-of-Week Scoping (4 Sep 2026, "Monday to Friday 3000,
@@ -790,82 +782,60 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
 
               {/* Nightly Rate & Label */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                    Price per night (₹) <span className="font-normal text-gray-400">— leave empty to keep your usual price</span>
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    placeholder="e.g. 4500"
-                    value={ratePerNight}
-                    onChange={(e) => setRatePerNight(e.target.value)}
-                    className="w-full h-10 px-3 text-xs bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white font-semibold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                    Name this rule <span className="font-normal text-gray-400">— so you recognise it later</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Diwali week, Weekend price"
-                    value={ruleName}
-                    onChange={(e) => setRuleName(e.target.value)}
-                    className="w-full h-10 px-3 text-xs bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
-                  />
-                </div>
+                <FloatingInput
+                  type="number"
+                  min="0"
+                  step="1"
+                  label="Price per night (₹)"
+                  placeholder=" "
+                  value={ratePerNight}
+                  onChange={(e) => setRatePerNight(e.target.value)}
+                  helperText="Leave empty to keep your usual price"
+                />
+                <FloatingInput
+                  type="text"
+                  label="Name this rule (Optional)"
+                  placeholder=" "
+                  value={ruleName}
+                  onChange={(e) => setRuleName(e.target.value)}
+                  helperText="e.g. Diwali week, Weekend price"
+                />
               </div>
 
               {/* Minimum & Maximum Stay Restrictions */}
-              <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3">
+              <div className="p-3.5 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3">
                 <span className="text-2xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400 block">
                   How long guests can stay
                 </span>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                      Fewest nights a guest can book
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      placeholder="e.g. 2 nights"
-                      value={minStay}
-                      onChange={(e) => setMinStay(e.target.value)}
-                      className="w-full h-9 px-2.5 text-xs bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
-                    />
-                  </div>
+                  <FloatingInput
+                    type="number"
+                    min="1"
+                    label="Fewest nights"
+                    placeholder=" "
+                    value={minStay}
+                    onChange={(e) => setMinStay(e.target.value)}
+                  />
 
-                  <div>
-                    <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                      Who does that apply to?
-                    </label>
-                    <select
-                      value={minStayType}
-                      onChange={(e) => setMinStayType(e.target.value as 'arrival' | 'through')}
-                      className="w-full h-9 px-2 text-xs bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
-                    >
-                      <option value="arrival">Guests who arrive on these dates (normal)</option>
-                      <option value="through">Anyone staying over these dates, even if they arrived earlier</option>
-                    </select>
-                  </div>
+                  <FloatingSelect
+                    label="Who does that apply to?"
+                    value={minStayType}
+                    onChange={(e) => setMinStayType(e.target.value as 'arrival' | 'through')}
+                    options={[
+                      { value: 'arrival', label: 'Guests arriving on these dates' },
+                      { value: 'through', label: 'Anyone staying over these dates' },
+                    ]}
+                  />
 
-                  <div>
-                    <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                      Most nights a guest can book
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      placeholder="e.g. 14 nights"
-                      value={maxStay}
-                      onChange={(e) => setMaxStay(e.target.value)}
-                      className="w-full h-9 px-2.5 text-xs bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
-                    />
-                  </div>
+                  <FloatingInput
+                    type="number"
+                    min="1"
+                    label="Most nights"
+                    placeholder=" "
+                    value={maxStay}
+                    onChange={(e) => setMaxStay(e.target.value)}
+                  />
                 </div>
               </div>
 

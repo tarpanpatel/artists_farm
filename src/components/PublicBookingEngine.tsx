@@ -17,6 +17,8 @@ import { Dropdown, DropdownItem } from 'flowbite-react';
 import { Button } from './Button';
 import { Badge } from './Badge';
 import { DateRangePicker } from './DateRangePicker';
+import { FloatingInput } from './FloatingInput';
+import { FloatingSelect } from './FloatingSelect';
 import { apiFetch, API_ROOT_BASE } from '../services/api';
 
 interface PublicRoom {
@@ -611,11 +613,11 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
 
                       <div className="flex items-center justify-between sm:justify-end gap-4 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100 dark:border-gray-700 shrink-0">
                         <div className="text-left sm:text-right">
-                          <span className="text-3xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 block">Total Stay</span>
-                          <span className="text-base sm:text-lg font-extrabold text-emerald-600 dark:text-emerald-400 leading-tight block">
+                          <span className="text-xs font-medium text-gray-600 dark:text-gray-300 block">Total Stay</span>
+                          <span className="text-base font-black text-emerald-600 dark:text-emerald-400 block">
                             {currencySym}{totalTariff.toLocaleString('en-IN')}
                           </span>
-                          <span className="text-3xs text-gray-400 dark:text-gray-400 block">
+                          <span className="text-2xs text-gray-400 dark:text-gray-400 block">
                             ({currencySym}{avgNightlyRate.toLocaleString('en-IN')}/night)
                           </span>
                         </div>
@@ -838,8 +840,14 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
 
       {/* SLIDE-OVER BOOKING DRAWER */}
       {bookingDrawerRoom && (
-        <div className="fixed inset-0 z-50 overflow-hidden bg-black/50 backdrop-blur-xs flex justify-end animate-fade-in">
-          <div className="w-full max-w-lg bg-white dark:bg-gray-800 h-full shadow-2xl flex flex-col justify-between border-l border-gray-200 dark:border-gray-700 animate-slide-in-right">
+        <div
+          className="fixed inset-0 z-50 overflow-hidden bg-black/50 backdrop-blur-xs flex justify-end animate-fade-in"
+          onClick={() => setBookingDrawerRoom(null)}
+        >
+          <div
+            className="w-full max-w-lg bg-white dark:bg-gray-800 h-full shadow-2xl flex flex-col justify-between border-l border-gray-200 dark:border-gray-700 animate-slide-in-right"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Header */}
             <div className="p-4 sm:p-5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-gray-50/50 dark:bg-gray-750">
               <div>
@@ -900,64 +908,45 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                     Guest Information
                   </h4>
 
-                  <div>
-                    <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                      Full Name *
-                    </label>
-                    <input
-                      type="text"
+                  <FloatingInput
+                    type="text"
+                    required
+                    label="Full Name *"
+                    placeholder=" "
+                    value={guestName}
+                    onChange={(e) => setGuestName(e.target.value)}
+                  />
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <FloatingInput
+                      type="tel"
                       required
-                      placeholder="e.g. Rahul Sharma"
-                      value={guestName}
-                      onChange={(e) => setGuestName(e.target.value)}
-                      className="w-full h-10 px-3 text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                      label="Phone / WhatsApp *"
+                      placeholder=" "
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                    />
+                    <FloatingInput
+                      type="email"
+                      label="Email Address (Optional)"
+                      placeholder=" "
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                        Phone / WhatsApp *
-                      </label>
-                      <input
-                        type="tel"
-                        required
-                        placeholder="+91 98765 43210"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        className="w-full h-10 px-3 text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                        Email Address (Optional)
-                      </label>
-                      <input
-                        type="email"
-                        placeholder="rahul@example.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="w-full h-10 px-3 text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                      Number of Guests
-                    </label>
-                    <select
-                      value={numGuests}
-                      onChange={(e) => setNumGuests(Number(e.target.value))}
-                      className="w-full h-10 px-3 text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value={1}>1 Guest</option>
-                      <option value={2}>2 Guests</option>
-                      <option value={3}>3 Guests</option>
-                      <option value={4}>4 Guests</option>
-                      <option value={5}>5+ Guests</option>
-                    </select>
-                  </div>
+                  <FloatingSelect
+                    label="Number of Guests"
+                    value={numGuests}
+                    onChange={(e) => setNumGuests(Number(e.target.value))}
+                    options={[
+                      { value: 1, label: '1 Guest' },
+                      { value: 2, label: '2 Guests' },
+                      { value: 3, label: '3 Guests' },
+                      { value: 4, label: '4 Guests' },
+                      { value: 5, label: '5+ Guests' },
+                    ]}
+                  />
 
                   <div>
                     <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
