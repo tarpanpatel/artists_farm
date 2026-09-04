@@ -1,14 +1,13 @@
 import React, { useMemo, useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Calendar, LogOut, Bell, User, Globe, Share2, DollarSign } from './icons/FlowbiteIcons';
+import { ChevronLeft, ChevronRight, Plus, Calendar, LogOut, Bell, User, Globe, DollarSign } from './icons/FlowbiteIcons';
 import { Popover } from './Popover';
 import { useConfirm } from './ConfirmDialogContext';
 import { Guest } from '../types';
 import { BookingDetailsModal } from './BookingDetailsModal';
 import { RateRuleModal } from './RateRuleModal';
 import { KpiCard } from './KpiCard';
-import { getPropertySlug, fetchRateRulesDB, RateRule } from '../services/api';
+import { fetchRateRulesDB, RateRule } from '../services/api';
 import { useToast } from './ToastContext';
-import { shareTextContent } from '../utils/shareText';
 import { isCFormGenuinelyFiled } from '../utils/cFormStatus';
 import { getFirstName } from '../utils/nameUtils';
 import { getOtaIcon } from '../utils/otaIcons';
@@ -60,7 +59,8 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   guests,
   rooms = [],
   isMultiKeyProperty = false,
-  kitchenModuleEnabled = true,
+  // kitchenModuleEnabled: still in the props interface (App.tsx passes it) but
+  // no longer read here since "Share Food Menu" moved to the sidebar.
   onNavigateToRoom: _onNavigateToRoom,
   onNavigate: _onNavigate,
   onAddBooking,
@@ -189,23 +189,9 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     onAddBooking?.({ roomName, checkin: startStr, checkout: dateStr });
   };
 
-  // Public "Share Menu" link (food_menu.php via the /food_menu/{slug}/
-  // rewrite in .htaccess) - lives on the dashboard rather than buried in
-  // Edit Food Menu, since this is a "hand it to a guest right now" action,
-  // not a menu-editing one. getPropertySlug() reads straight from the URL
-  // (already imported/used elsewhere in this file), so no new prop needed.
-  const handleShareFoodMenu = () => {
-    const propertySlug = getPropertySlug();
-    const menuUrl = `${window.location.origin}/food_menu/${propertySlug}/`;
-    const message = `🍽️ Check out the menu at ${propertyName || 'our place'}!\n${menuUrl}`;
-    shareTextContent(
-      `${propertyName || 'Food'} Menu`,
-      message,
-      showToast,
-      'Menu link copied - paste it wherever you\'d like to share it.',
-      'Could not share or copy the menu link.',
-    );
-  };
+  // "Share Food Menu" moved to the sidebar's Quick Actions (Navigation.tsx)
+  // 4 Sep 2026 (explicit request) - the dashboard page header is back to a
+  // single "+ Add Booking" action.
 
   // OTA-synced blocked dates (Airbnb/Booking.com/etc via connected iCal
   // feeds) - same fetch OperationalDashboard.tsx already does for single
@@ -524,15 +510,6 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           </h1>
         </div>
         <div className="today-overview__header-actions flex items-center gap-2 shrink-0">
-          {kitchenModuleEnabled && (
-            <button
-              onClick={handleShareFoodMenu}
-              className="text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 focus:ring-4 focus:ring-slate-200 dark:focus:ring-slate-600 font-semibold rounded-lg text-xs px-3.5 py-2 flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap"
-            >
-              <Share2 className="w-4 h-4" />
-              <span>{t('share_food_menu_button', 'Share Food Menu')}</span>
-            </button>
-          )}
           {onAddBooking && (
             <button
               onClick={() => onAddBooking()}
