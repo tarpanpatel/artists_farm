@@ -680,7 +680,7 @@ $provided_key = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
 // non-sensitive branding/config columns (name, slug, type, currency,
 // colors, ...) - no guest, financial, or staff data - so this is exactly
 // the same "safe to read before login" class as the settings above.
-$public_actions = ['login_user', 'verify_admin_passcode', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token', 'check_session', 'logout', 'get_tenant_by_slug', 'get_demo_login_credentials', 'get_system_settings', 'get_theme_settings', 'get_current_property', 'register_tenant_trial', 'channex_webhook', 'channex_airbnb_oauth_landing'];
+$public_actions = ['login_user', 'verify_admin_passcode', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token', 'check_session', 'logout', 'get_tenant_by_slug', 'get_demo_login_credentials', 'get_system_settings', 'get_theme_settings', 'get_current_property', 'register_tenant_trial', 'channex_webhook', 'channex_airbnb_oauth_landing', 'get_public_booking_info', 'create_public_booking'];
 
 
 $request_method = $_SERVER['REQUEST_METHOD'];
@@ -5083,6 +5083,16 @@ switch ($action) {
         $worker = new AriDrainWorker($pdo);
         $res = $worker->processBatch();
         echo json_encode(['status' => 'success', 'data' => $res]);
+        break;
+
+    case 'get_public_booking_info':
+        require_once __DIR__ . '/public_booking.php';
+        handleGetPublicBookingInfo($pdo, (int)$propertyId);
+        break;
+
+    case 'create_public_booking':
+        require_once __DIR__ . '/public_booking.php';
+        handleCreatePublicBooking($pdo);
         break;
 
     default:
