@@ -649,7 +649,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               </div>
 
               <Button variant="secondary" size="sm" onClick={handleShareFoodMenu} leftIcon={<Share2 className="w-4 h-4" />}>
-                <span>{t('share_food_menu_button', 'Share Menu')}</span>
+                <span>{t('share_food_menu_button', 'Share Food Menu')}</span>
               </Button>
 
               <Button variant="primary" size="sm" onClick={handleOpenAddFood} leftIcon={<Plus className="w-4 h-4" />}>

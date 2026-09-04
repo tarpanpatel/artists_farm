@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { getIconComponent } from '../utils/iconResolver';
-import { ChevronRight, ChevronDown, LogOut, LinkIcon, UserRound, Share2 } from './icons/FlowbiteIcons';
+import { ChevronRight, ChevronDown, LogOut, LinkIcon, UserRound, Share2, CalendarDays } from './icons/FlowbiteIcons';
 import { NavMenuItem } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
@@ -435,6 +435,18 @@ export const Navigation: React.FC<NavigationProps> = ({
     if (window.innerWidth < 768) onCloseSidebar();
   };
 
+  // Public availability page (availability.php) - a "hand this link to a guest
+  // so they can see which dates are open" action. Moved here from the
+  // dashboard calendar header (4 Sep 2026, explicit request) to sit right
+  // below Share Menu in Quick Actions, since the two are the same kind of
+  // "share a public link" action.
+  const handleShareAvailability = () => {
+    const slug = getPropertySlug() || '';
+    const url = `${window.location.origin}/availability.php${slug ? `?property_slug=${encodeURIComponent(slug)}` : ''}`;
+    window.open(url, '_blank');
+    if (window.innerWidth < 768) onCloseSidebar();
+  };
+
   const handleLogoutClick = useCallback(async () => {
     if (logout) {
       logout();
@@ -774,9 +786,9 @@ export const Navigation: React.FC<NavigationProps> = ({
                   public page itself - see food_menu.php's isModuleEnabledForProperty
                   gate - this is the "don't even offer the broken action"
                   half of it. */}
-              {kitchenModuleEnabled && (
-                <div className="pb-2 border-b border-gray-200 dark:border-gray-700 space-y-1">
-                  <ul className="space-y-1">
+              <div className="pb-2 border-b border-gray-200 dark:border-gray-700 space-y-1">
+                <ul className="space-y-1">
+                  {kitchenModuleEnabled && (
                     <li>
                       <button
                         type="button"
@@ -784,12 +796,26 @@ export const Navigation: React.FC<NavigationProps> = ({
                         className="w-full flex items-center p-2 text-sm font-medium rounded-lg transition duration-75 cursor-pointer text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
                       >
                         <Share2 className="w-5 h-5 shrink-0 text-gray-500 dark:text-gray-400" />
-                        <span className="ms-3 flex-1 text-left truncate">{t('share_food_menu_button', 'Share Menu')}</span>
+                        <span className="ms-3 flex-1 text-left truncate">{t('share_food_menu_button', 'Share Food Menu')}</span>
                       </button>
                     </li>
-                  </ul>
-                </div>
-              )}
+                  )}
+                  {/* Share Availability - moved here from the dashboard calendar
+                      header 4 Sep 2026 (explicit request), sits directly below
+                      Share Menu. Not gated on any module - every property has a
+                      public availability page. */}
+                  <li>
+                    <button
+                      type="button"
+                      onClick={handleShareAvailability}
+                      className="w-full flex items-center p-2 text-sm font-medium rounded-lg transition duration-75 cursor-pointer text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      <CalendarDays className="w-5 h-5 shrink-0 text-gray-500 dark:text-gray-400" />
+                      <span className="ms-3 flex-1 text-left truncate">Share Availability</span>
+                    </button>
+                  </li>
+                </ul>
+              </div>
 
               <ul className="space-y-1 font-medium">
                 {/* filteredNavItems.length, not tree.length (2 Sep 2026, user

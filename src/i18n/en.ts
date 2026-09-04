@@ -1187,7 +1187,7 @@ export const strings: Record<string, string> = {
   telescope_monitor_label: "Telescope Monitor",
   logged_in_as_label: "Logged in as",
   quick_actions_label: "Quick Actions",
-  share_food_menu_button: "Share Menu",
+  share_food_menu_button: "Share Food Menu",
   add_expense_quick_action: "Add Expense",
   add_service_request_quick_action: "Add Service Request",
   sign_out_terminal_button: "Sign Out",
