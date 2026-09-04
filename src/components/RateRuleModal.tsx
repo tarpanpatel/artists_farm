@@ -595,9 +595,10 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                     can still be matched against what Airbnb calls the same
                     setting. */}
                 <p className="text-xs text-emerald-800/90 dark:text-emerald-300 mt-1 leading-relaxed">
-                  Set a different price for particular dates — a festival week, weekends, a quiet month.
-                  Any date you don't set a rule for keeps its usual price. Whatever you save here goes
-                  out to Airbnb, Booking.com and your own booking page automatically.
+                  Charge more during Diwali. Charge less in a slow month. Ask for 3 nights minimum on New Year.
+                  You pick the dates and set the price — that's it. Dates you don't touch stay at their
+                  normal price, and anything you save here reaches Airbnb, Booking.com and your own
+                  booking page on its own.
                 </p>
               </div>
             </div>
@@ -705,7 +706,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                    Start Date *
+                    First date *
                   </label>
                   <input
                     type="date"
@@ -717,7 +718,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                 </div>
                 <div>
                   <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                    End Date (Inclusive) *
+                    Last date *
                   </label>
                   <input
                     type="date"
@@ -826,7 +827,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                      Shortest stay allowed
+                      Fewest nights a guest can book
                     </label>
                     <input
                       type="number"
@@ -840,21 +841,21 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
 
                   <div>
                     <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                      Apply that minimum to
+                      Who does that apply to?
                     </label>
                     <select
                       value={minStayType}
                       onChange={(e) => setMinStayType(e.target.value as 'arrival' | 'through')}
                       className="w-full h-9 px-2 text-xs bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
                     >
-                      <option value="arrival">Guests arriving on these dates (usual choice)</option>
-                      <option value="through">Any stay that covers these dates</option>
+                      <option value="arrival">Guests who arrive on these dates (normal)</option>
+                      <option value="through">Anyone staying over these dates, even if they arrived earlier</option>
                     </select>
                   </div>
 
                   <div>
                     <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                      Longest stay allowed
+                      Most nights a guest can book
                     </label>
                     <input
                       type="number"
@@ -883,7 +884,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                   />
                   <span className="text-xs">
                     <span className="font-semibold block">Block these dates</span>
-                    <span className="text-2xs opacity-75">Nobody can book at all — here or on any channel</span>
+                    <span className="text-2xs opacity-75">Nobody can book. Use it for repairs, or when you need the room yourself.</span>
                   </span>
                 </label>
 
@@ -900,7 +901,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                   />
                   <span className="text-xs">
                     <span className="font-semibold block">No check-ins</span>
-                    <span className="text-2xs opacity-75">A stay can't start on these dates, but one already running continues</span>
+                    <span className="text-2xs opacity-75">Nobody new arrives. Guests already staying are unaffected.</span>
                   </span>
                 </label>
 
@@ -917,7 +918,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                   />
                   <span className="text-xs">
                     <span className="font-semibold block">No check-outs</span>
-                    <span className="text-2xs opacity-75">A stay can't end on these dates, so guests book through them</span>
+                    <span className="text-2xs opacity-75">Nobody leaves. Handy over a long weekend you want booked end to end.</span>
                   </span>
                 </label>
               </div>
