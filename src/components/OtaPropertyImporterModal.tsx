@@ -338,26 +338,32 @@ export const OtaPropertyImporterModal: React.FC<OtaPropertyImporterModalProps> =
               <details className="text-2xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/60 p-3 rounded-lg border border-gray-200 dark:border-gray-700/80 cursor-pointer group">
                 <summary className="font-semibold text-gray-700 dark:text-gray-300 flex items-center justify-between list-none">
                   <span className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 font-bold">
-                    💡 How do I find my Airbnb Host Profile link?
+                    💡 How do I find my Airbnb Host Profile or Listing Link?
                   </span>
                   <span className="text-3xs text-gray-400 group-open:rotate-180 transition-transform">▼</span>
                 </summary>
-                <div className="mt-2.5 space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700/80 text-gray-600 dark:text-gray-300">
-                  <div className="flex items-start gap-2">
-                    <span className="font-bold text-gray-900 dark:text-white shrink-0">1. Pro Hosting URL:</span>
-                    <span>Go to <strong className="text-gray-800 dark:text-gray-200">Account Settings ➔ Professional hosting tools</strong> ➔ Copy your custom profile URL (e.g. <strong className="text-indigo-600 dark:text-indigo-400">airbnb.co.in/p/your-brand</strong>).</span>
+                <div className="mt-2.5 space-y-2.5 pt-2 border-t border-gray-200 dark:border-gray-700/80 text-gray-600 dark:text-gray-300">
+                  <div>
+                    <div className="font-bold text-gray-900 dark:text-white mb-0.5">👤 For Standard / Non-Professional Hosts (Imports all listings):</div>
+                    <ul className="list-disc list-inside space-y-1 ml-1 text-3xs text-gray-600 dark:text-gray-300">
+                      <li><strong className="text-gray-800 dark:text-gray-200">Via Desktop:</strong> Log in to airbnb.com ➔ Click avatar (top-right) ➔ Click <strong className="text-gray-800 dark:text-gray-200">Account</strong> ➔ Click <strong className="text-gray-800 dark:text-gray-200">Go to profile</strong> ➔ Copy URL (<code className="text-indigo-600 dark:text-indigo-400">airbnb.com/users/show/12345</code>).</li>
+                      <li><strong className="text-gray-800 dark:text-gray-200">From Any Listing:</strong> Open your listing ➔ Scroll to <strong className="text-gray-800 dark:text-gray-200">&quot;Hosted by...&quot;</strong> ➔ Click your photo/name ➔ Copy browser URL.</li>
+                      <li><strong className="text-gray-800 dark:text-gray-200">Via Mobile App:</strong> Tap <strong className="text-gray-800 dark:text-gray-200">Profile</strong> (bottom-right) ➔ Tap your name/photo ➔ Tap <strong className="text-gray-800 dark:text-gray-200">Share</strong> (top-right) ➔ <strong className="text-gray-800 dark:text-gray-200">Copy Link</strong>.</li>
+                    </ul>
                   </div>
-                  <div className="flex items-start gap-2">
-                    <span className="font-bold text-gray-900 dark:text-white shrink-0">2. On Desktop:</span>
-                    <span>Click your profile icon (top-right) ➔ Select <strong className="text-gray-800 dark:text-gray-200">Profile</strong> ➔ Copy the URL from your browser address bar (e.g. <strong className="text-indigo-600 dark:text-indigo-400">airbnb.com/users/show/12345</strong>).</span>
+
+                  <div>
+                    <div className="font-bold text-gray-900 dark:text-white mb-0.5">🏢 For Professional Hosts (Custom Brand URL):</div>
+                    <ul className="list-disc list-inside space-y-1 ml-1 text-3xs text-gray-600 dark:text-gray-300">
+                      <li>Go to <strong className="text-gray-800 dark:text-gray-200">Account Settings ➔ Professional hosting tools</strong> ➔ Copy your custom profile URL (<code className="text-indigo-600 dark:text-indigo-400">airbnb.co.in/p/your-brand</code>).</li>
+                    </ul>
                   </div>
-                  <div className="flex items-start gap-2">
-                    <span className="font-bold text-gray-900 dark:text-white shrink-0">3. On Airbnb App:</span>
-                    <span>Tap <strong className="text-gray-800 dark:text-gray-200">Profile</strong> (bottom-right) ➔ Tap your name/photo ➔ Tap <strong className="text-gray-800 dark:text-gray-200">Share</strong> (top-right) ➔ Tap <strong className="text-gray-800 dark:text-gray-200">Copy Link</strong>.</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="font-bold text-gray-900 dark:text-white shrink-0">4. From Any Listing:</span>
-                    <span>Open any listing page ➔ Scroll to <strong className="text-gray-800 dark:text-gray-200">&quot;Hosted by...&quot;</strong> ➔ Click host name ➔ Copy that page URL.</span>
+
+                  <div>
+                    <div className="font-bold text-gray-900 dark:text-white mb-0.5">🏠 For Single Listing Only:</div>
+                    <ul className="list-disc list-inside space-y-1 ml-1 text-3xs text-gray-600 dark:text-gray-300">
+                      <li>Go to <strong className="text-gray-800 dark:text-gray-200">Listings</strong> tab ➔ Click your property ➔ Click <strong className="text-gray-800 dark:text-gray-200">Preview / Share</strong> ➔ Copy link (<code className="text-indigo-600 dark:text-indigo-400">airbnb.com/rooms/12345678</code>) or enter just the numerical Listing ID.</li>
+                    </ul>
                   </div>
                 </div>
               </details>

@@ -520,15 +520,33 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
                   <details className="text-2xs text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer group">
                     <summary className="font-semibold text-gray-700 dark:text-gray-300 flex items-center justify-between list-none">
                       <span className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 font-bold">
-                        💡 How do I find my Airbnb Profile Link?
+                        💡 How do I find my Airbnb Host Profile or Listing Link?
                       </span>
                       <span className="text-3xs text-gray-400 group-open:rotate-180 transition-transform">▼</span>
                     </summary>
-                    <div className="mt-2 space-y-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300">
-                      <div><strong className="text-slate-800 dark:text-slate-200">1. Pro Hosting URL:</strong> Go to <strong>Account Settings ➔ Professional hosting tools</strong> ➔ Copy your custom profile URL (e.g. <code>airbnb.co.in/p/your-brand</code>).</div>
-                      <div><strong className="text-slate-800 dark:text-slate-200">2. Desktop:</strong> Go to airbnb.com ➔ Click avatar (top-right) ➔ Click <strong>Profile</strong> ➔ Copy page URL.</div>
-                      <div><strong className="text-slate-800 dark:text-slate-200">3. App:</strong> Tap <strong>Profile</strong> (bottom-right) ➔ Tap photo ➔ <strong>Share</strong> (top-right) ➔ <strong>Copy Link</strong>.</div>
-                      <div><strong className="text-slate-800 dark:text-slate-200">4. From Listing:</strong> Open any listing ➔ Scroll to <strong>&quot;Hosted by...&quot;</strong> ➔ Click host name ➔ Copy URL.</div>
+                    <div className="mt-2 space-y-2 pt-1.5 border-t border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300">
+                      <div>
+                        <div className="font-bold text-slate-800 dark:text-slate-200 mb-0.5">👤 For Standard / Non-Professional Hosts (Imports all listings):</div>
+                        <ul className="list-disc list-inside space-y-0.5 ml-1 text-3xs">
+                          <li><strong className="text-slate-800 dark:text-slate-200">Via Desktop:</strong> airbnb.com ➔ Click avatar (top-right) ➔ <strong>Account</strong> ➔ <strong>Go to profile</strong> ➔ Copy URL (<code>airbnb.com/users/show/12345</code>).</li>
+                          <li><strong className="text-slate-800 dark:text-slate-200">From Any Listing:</strong> Open your listing ➔ Scroll to <strong>&quot;Hosted by...&quot;</strong> ➔ Click host name ➔ Copy browser URL.</li>
+                          <li><strong className="text-slate-800 dark:text-slate-200">Via Mobile App:</strong> Tap <strong>Profile</strong> ➔ Tap photo ➔ <strong>Share</strong> (top-right) ➔ <strong>Copy Link</strong>.</li>
+                        </ul>
+                      </div>
+
+                      <div>
+                        <div className="font-bold text-slate-800 dark:text-slate-200 mb-0.5">🏢 For Professional Hosts (Custom Brand URL):</div>
+                        <ul className="list-disc list-inside space-y-0.5 ml-1 text-3xs">
+                          <li>Go to <strong>Account Settings ➔ Professional hosting tools</strong> ➔ Copy custom profile URL (<code>airbnb.co.in/p/your-brand</code>).</li>
+                        </ul>
+                      </div>
+
+                      <div>
+                        <div className="font-bold text-slate-800 dark:text-slate-200 mb-0.5">🏠 For Single Listing Only:</div>
+                        <ul className="list-disc list-inside space-y-0.5 ml-1 text-3xs">
+                          <li>Go to <strong>Listings</strong> tab ➔ Click your property ➔ <strong>Preview / Share</strong> ➔ Copy link (<code>airbnb.com/rooms/12345678</code>) or enter just numerical Listing ID.</li>
+                        </ul>
+                      </div>
                     </div>
                   </details>
                 )}
