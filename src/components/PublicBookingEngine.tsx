@@ -427,7 +427,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
       <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-30 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-sm shadow-xs shrink-0">
+            <div className="w-10 h-10 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black text-sm shadow-xs shrink-0">
               {property.name.slice(0, 2).toUpperCase()}
             </div>
             <div className="min-w-0">
@@ -529,7 +529,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
             </div>
           </div>
 
-          {/* REAL-TIME AVAILABLE ROOM CARDS SECTION */}
+          {/* REAL-TIME AVAILABLE ROOM CARDS SECTION (Horizontal Space-Saving Layout per DESIGN.md) */}
           {checkinDate && checkoutDate && checkinDate < checkoutDate && (
             <div className="pt-3 border-t border-gray-200 dark:border-gray-700 space-y-3">
               <div className="flex items-center justify-between">
@@ -553,28 +553,33 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="space-y-2.5">
                   {availableRoomResults.map(({ room, nights, totalTariff, avgNightlyRate }) => (
                     <div
                       key={room.id}
-                      className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 transition-colors flex flex-col justify-between space-y-3 shadow-sm"
+                      className="p-3.5 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm"
                     >
-                      <div>
-                        <div className="flex items-start justify-between gap-2">
-                          <h4 className="text-sm font-bold text-gray-900 dark:text-white leading-snug">
-                            {room.name}
-                          </h4>
-                          <Badge variant="info">{nights} Night{nights > 1 ? 's' : ''}</Badge>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-200 dark:border-blue-800">
+                          <Building className="w-5 h-5" />
                         </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
-                          {formatDateDisplay(checkinDate)} → {formatDateDisplay(checkoutDate)}
-                        </p>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="text-sm font-bold text-gray-900 dark:text-white truncate">
+                              {room.name}
+                            </h4>
+                            <Badge variant="info">{nights} Night{nights > 1 ? 's' : ''}</Badge>
+                          </div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            {formatDateDisplay(checkinDate)} → {formatDateDisplay(checkoutDate)}
+                          </p>
+                        </div>
                       </div>
 
-                      <div className="flex items-end justify-between pt-2.5 border-t border-gray-100 dark:border-gray-700">
-                        <div>
+                      <div className="flex items-center justify-between sm:justify-end gap-4 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100 dark:border-gray-700 shrink-0">
+                        <div className="text-left sm:text-right">
                           <span className="text-3xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 block">Total Stay</span>
-                          <span className="text-base sm:text-lg font-extrabold text-emerald-600 dark:text-emerald-400 leading-tight block mt-0.5">
+                          <span className="text-base sm:text-lg font-extrabold text-emerald-600 dark:text-emerald-400 leading-tight block">
                             {currencySym}{totalTariff.toLocaleString('en-IN')}
                           </span>
                           <span className="text-3xs text-gray-400 dark:text-gray-400 block">
@@ -586,7 +591,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                           variant="primary"
                           size="sm"
                           onClick={() => handleOpenBookingDrawer(room, checkinDate, checkoutDate)}
-                          className="h-8 text-xs font-semibold px-3.5"
+                          className="h-9 text-xs font-semibold px-4 shrink-0"
                         >
                           Book Now
                           <ArrowRight className="w-3.5 h-3.5 ms-1.5" />
@@ -602,32 +607,32 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
 
         {/* CALENDAR SECTION */}
         <section className="space-y-4">
-          {/* Month Navigation Header (Matches availability.php style) */}
-          <div className="flex items-center justify-between bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-4 py-3 rounded-lg shadow-sm">
-            <button
+          {/* Month Navigation Header with Flowbite Buttons per DESIGN.md */}
+          <div className="flex items-center justify-between bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-4 py-2.5 rounded-lg shadow-sm">
+            <Button
+              variant="secondary"
+              size="xs"
               onClick={handlePrevMonth}
               disabled={isAtCurrentMonth}
-              className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs font-semibold transition ${
-                isAtCurrentMonth
-                  ? 'border-gray-200 dark:border-gray-800 text-gray-300 dark:text-gray-600 cursor-not-allowed bg-gray-50 dark:bg-gray-800/40'
-                  : 'border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-blue-600 hover:text-white hover:border-blue-600'
-              }`}
+              leftIcon={<ChevronLeft className="w-4 h-4" />}
+              className="h-8 text-xs font-semibold"
             >
-              <ChevronLeft className="w-4 h-4" />
-              <span>Previous</span>
-            </button>
+              Previous
+            </Button>
 
             <h2 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white">
               {monthInfo.monthName}
             </h2>
 
-            <button
+            <Button
+              variant="secondary"
+              size="xs"
               onClick={handleNextMonth}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition"
+              rightIcon={<ChevronRight className="w-4 h-4" />}
+              className="h-8 text-xs font-semibold"
             >
-              <span>Next</span>
-              <ChevronRight className="w-4 h-4" />
-            </button>
+              Next
+            </Button>
           </div>
 
           {/* MULTI-KEY TABLE VIEW (Matches availability.php Layout) */}
@@ -813,166 +818,177 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
               </button>
             </div>
 
-            {/* Form */}
-            <form onSubmit={handleConfirmReservation} className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
-              {formError && (
-                <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-lg text-xs text-red-700 dark:text-red-300 flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>{formError}</span>
-                </div>
-              )}
-
-              {/* Stay Summary Card */}
-              <div className="bg-blue-50/60 dark:bg-blue-950/40 rounded-lg p-4 border border-blue-200 dark:border-blue-800/80 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-blue-900 dark:text-blue-200">{bookingDrawerRoom.roomName}</span>
-                  <Badge variant="info">{bookingDrawerRoom.nights} Night{bookingDrawerRoom.nights > 1 ? 's' : ''}</Badge>
-                </div>
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div>
-                    <span className="text-2xs text-gray-500 dark:text-gray-400 block">Check-in</span>
-                    <span className="font-semibold text-gray-900 dark:text-white">
-                      {formatDateDisplay(bookingDrawerRoom.checkin)}
-                    </span>
-                    <span className="text-3xs text-gray-400 block">From {property.checkin_time}</span>
+            {/* Form with Scrollable Body & Fixed Footer */}
+            <form onSubmit={handleConfirmReservation} className="flex-1 flex flex-col justify-between overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
+                {formError && (
+                  <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-lg text-xs text-red-700 dark:text-red-300 flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{formError}</span>
                   </div>
-                  <div>
-                    <span className="text-2xs text-gray-500 dark:text-gray-400 block">Check-out</span>
-                    <span className="font-semibold text-gray-900 dark:text-white">
-                      {formatDateDisplay(bookingDrawerRoom.checkout)}
+                )}
+
+                {/* Stay Summary Card */}
+                <div className="bg-blue-50/60 dark:bg-blue-950/40 rounded-lg p-4 border border-blue-200 dark:border-blue-800/80 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-blue-900 dark:text-blue-200">{bookingDrawerRoom.roomName}</span>
+                    <Badge variant="info">{bookingDrawerRoom.nights} Night{bookingDrawerRoom.nights > 1 ? 's' : ''}</Badge>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <span className="text-2xs text-gray-500 dark:text-gray-400 block">Check-in</span>
+                      <span className="font-semibold text-gray-900 dark:text-white">
+                        {formatDateDisplay(bookingDrawerRoom.checkin)}
+                      </span>
+                      <span className="text-3xs text-gray-400 block">From {property.checkin_time}</span>
+                    </div>
+                    <div>
+                      <span className="text-2xs text-gray-500 dark:text-gray-400 block">Check-out</span>
+                      <span className="font-semibold text-gray-900 dark:text-white">
+                        {formatDateDisplay(bookingDrawerRoom.checkout)}
+                      </span>
+                      <span className="text-3xs text-gray-400 block">Until {property.checkout_time}</span>
+                    </div>
+                  </div>
+                  <div className="pt-2 border-t border-blue-200/60 dark:border-blue-800/60 flex items-center justify-between">
+                    <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Total Payable on Arrival:</span>
+                    <span className="text-base font-black text-blue-700 dark:text-blue-300">
+                      {currencySym}{bookingDrawerRoom.totalTariff.toLocaleString('en-IN')}
                     </span>
-                    <span className="text-3xs text-gray-400 block">Until {property.checkout_time}</span>
                   </div>
                 </div>
-                <div className="pt-2 border-t border-blue-200/60 dark:border-blue-800/60 flex items-center justify-between">
-                  <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Total Payable on Arrival:</span>
-                  <span className="text-base font-black text-blue-700 dark:text-blue-300">
-                    {currencySym}{bookingDrawerRoom.totalTariff.toLocaleString('en-IN')}
-                  </span>
-                </div>
-              </div>
 
-              {/* Guest Details */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                  Guest Information
-                </h4>
+                {/* Guest Details */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                    Guest Information
+                  </h4>
 
-                <div>
-                  <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                    Full Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Rahul Sharma"
-                    value={guestName}
-                    onChange={(e) => setGuestName(e.target.value)}
-                    className="w-full h-10 px-3 text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                      Phone / WhatsApp *
+                      Full Name *
                     </label>
                     <input
-                      type="tel"
+                      type="text"
                       required
-                      placeholder="+91 98765 43210"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="e.g. Rahul Sharma"
+                      value={guestName}
+                      onChange={(e) => setGuestName(e.target.value)}
                       className="w-full h-10 px-3 text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                        Phone / WhatsApp *
+                      </label>
+                      <input
+                        type="tel"
+                        required
+                        placeholder="+91 98765 43210"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        className="w-full h-10 px-3 text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                        Email Address (Optional)
+                      </label>
+                      <input
+                        type="email"
+                        placeholder="rahul@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full h-10 px-3 text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+
                   <div>
                     <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                      Email Address (Optional)
+                      Number of Guests
                     </label>
-                    <input
-                      type="email"
-                      placeholder="rahul@example.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                    <select
+                      value={numGuests}
+                      onChange={(e) => setNumGuests(Number(e.target.value))}
                       className="w-full h-10 px-3 text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value={1}>1 Guest</option>
+                      <option value={2}>2 Guests</option>
+                      <option value={3}>3 Guests</option>
+                      <option value={4}>4 Guests</option>
+                      <option value={5}>5+ Guests</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                      Special Requests / Expected Arrival Time
+                    </label>
+                    <textarea
+                      rows={2}
+                      placeholder="e.g. Arriving around 3 PM, extra towels"
+                      value={specialRequests}
+                      onChange={(e) => setSpecialRequests(e.target.value)}
+                      className="w-full p-3 text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                    Number of Guests
-                  </label>
-                  <select
-                    value={numGuests}
-                    onChange={(e) => setNumGuests(Number(e.target.value))}
-                    className="w-full h-10 px-3 text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value={1}>1 Guest</option>
-                    <option value={2}>2 Guests</option>
-                    <option value={3}>3 Guests</option>
-                    <option value={4}>4 Guests</option>
-                    <option value={5}>5+ Guests</option>
-                  </select>
-                </div>
+                {/* Payment Method */}
+                <div className="space-y-2.5 pt-3 border-t border-gray-200 dark:border-gray-700">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                    Payment Method
+                  </h4>
 
-                <div>
-                  <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                    Special Requests / Expected Arrival Time
-                  </label>
-                  <textarea
-                    rows={2}
-                    placeholder="e.g. Arriving around 3 PM, extra towels"
-                    value={specialRequests}
-                    onChange={(e) => setSpecialRequests(e.target.value)}
-                    className="w-full p-3 text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              {/* Payment Method */}
-              <div className="space-y-2.5 pt-3 border-t border-gray-200 dark:border-gray-700">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                  Payment Method
-                </h4>
-
-                <div className="p-3.5 rounded-lg border border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30 flex items-start gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-                  <div className="space-y-1">
-                    <p className="text-xs font-bold text-gray-900 dark:text-white">
-                      Pay at Property (Cash / UPI / Card on Arrival)
-                    </p>
-                    <p className="text-2xs text-gray-600 dark:text-gray-400">
-                      No advance payment needed right now. Your reservation will be immediately confirmed and dates locked on our calendar.
-                    </p>
-                    {property.upi_id && (
-                      <p className="text-2xs text-emerald-700 dark:text-emerald-300 font-medium pt-1">
-                        💡 Advance UPI: <span className="font-mono font-bold">{property.upi_id}</span>
+                  <div className="p-3.5 rounded-lg border border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30 flex items-start gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold text-gray-900 dark:text-white">
+                        Pay at Property (Cash / UPI / Card on Arrival)
                       </p>
-                    )}
+                      <p className="text-2xs text-gray-600 dark:text-gray-400">
+                        No advance payment needed right now. Your reservation will be immediately confirmed and dates locked on our calendar.
+                      </p>
+                      {property.upi_id && (
+                        <p className="text-2xs text-emerald-700 dark:text-emerald-300 font-medium pt-1">
+                          💡 Advance UPI: <span className="font-mono font-bold">{property.upi_id}</span>
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Submit CTA */}
-              <div className="pt-3">
+              {/* Fixed Bottom Drawer Footer with Safe Area Support per DESIGN.md */}
+              <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex items-center justify-end gap-2 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] shrink-0">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setBookingDrawerRoom(null)}
+                  className="h-10 text-xs font-semibold px-4"
+                >
+                  Cancel
+                </Button>
                 <Button
                   type="submit"
                   variant="primary"
-                  size="lg"
+                  size="sm"
                   disabled={submitting}
-                  className="w-full h-11 text-xs font-bold justify-center"
+                  className="h-10 text-xs font-bold px-5"
                 >
                   {submitting ? (
                     <>
                       <Loader2 className="w-4 h-4 me-2 animate-spin" />
-                      Locking Reservation...
+                      Locking...
                     </>
                   ) : (
                     <>
                       Confirm Reservation ({currencySym}{bookingDrawerRoom.totalTariff.toLocaleString('en-IN')})
-                      <ArrowRight className="w-4 h-4 ms-2" />
+                      <ArrowRight className="w-4 h-4 ms-1.5" />
                     </>
                   )}
                 </Button>
