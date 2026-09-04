@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Modal } from 'flowbite-react';
 import {
-  X, CheckCircle2, AlertCircle, Loader2, ArrowRight,
+  X, CheckCircle2, AlertCircle, Loader2,
   Image as ImageIcon, MapPin, Clock, BedDouble, Sparkles, Check,
   RefreshCw,
 } from './icons/FlowbiteIcons';
@@ -10,7 +10,46 @@ import { BookingComIcon } from './icons/BookingComIcon';
 import { Button } from './Button';
 import { Input } from './Input';
 import { useToast } from './ToastContext';
-import { apiFetch } from '../services/api';
+import { apiFetch, API_ROOT_BASE } from '../services/api';
+
+/** One row of an Airbnb host profile's listing list, as built by
+ *  PropertyImporter::fetchPreview - {id, url, name}, nothing more. */
+interface HostListing {
+  id: string;
+  url: string;
+  name: string;
+}
+
+/** Shape returned by router.php's `fetch_ota_listing_preview` /
+ *  `apply_ota_listing_to_property` (see PropertyImporter::fetchPreview and
+ *  ::applyToProperty). A host-profile URL comes back as a listing LIST
+ *  (is_host_profile + listings); a single listing URL comes back as `data`. */
+interface ImporterResponse {
+  success?: boolean;
+  message?: string;
+  is_host_profile?: boolean;
+  listings?: HostListing[];
+  data?: ImportedPropertyData;
+  /** Set by the extractors when the page yielded no real content (Airbnb
+   *  serving a login wall or a soft 404) and `data` is therefore placeholder
+   *  defaults, not scraped values. Worth saying so - the fields still need
+   *  filling in by hand. */
+  partial?: boolean;
+}
+
+/** apiFetch returns a raw Response, not parsed JSON - every call here has to
+ *  .json() it itself. The router answers its own 400/500 cases with a JSON
+ *  {success:false,message} body, so those parse fine and surface the real
+ *  message; only a genuinely non-JSON response (a 404 served as HTML) throws,
+ *  which each caller's catch block already handles. */
+async function importerCall(action: string, body: Record<string, unknown>): Promise<ImporterResponse> {
+  const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=${action}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return (await res.json()) as ImporterResponse;
+}
 
 export interface ImportedPropertyData {
   source: 'airbnb' | 'booking_com';
@@ -52,9 +91,14 @@ export const OtaPropertyImporterModal: React.FC<OtaPropertyImporterModalProps> =
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<ImportedPropertyData | null>(null);
-  const [hostListings, setHostListings] = useState<Array<{ id: string; url: string; name: string }> | null>(null);
+  const [hostListings, setHostListings] = useState<HostListing[] | null>(null);
 
   // Checkboxes for selective update on edit_property
+  // Re-fetch mode. Off = first import (keep photos/amenities already here and add
+  // the listing's on top). On = the OTA listing is the source of truth, so its
+  // photos/amenities REPLACE what's stored - the only way a picture deleted on
+  // Airbnb can ever disappear from here.
+  const [replaceMedia, setReplaceMedia] = useState(false);
   const [applyFields, setApplyFields] = useState<{
     name: boolean;
     description: boolean;
@@ -85,12 +129,9 @@ export const OtaPropertyImporterModal: React.FC<OtaPropertyImporterModalProps> =
     setHostListings(null);
 
     try {
-      const res = await apiFetch<any>('fetch_ota_listing_preview', {
-        method: 'POST',
-        body: JSON.stringify({
-          channel: source,
-          identifier: identifier.trim(),
-        }),
+      const res = await importerCall('fetch_ota_listing_preview', {
+        channel: source,
+        identifier: identifier.trim(),
       });
 
       if (res && res.success) {
@@ -99,7 +140,14 @@ export const OtaPropertyImporterModal: React.FC<OtaPropertyImporterModalProps> =
           showToast(`Found ${res.listings.length} listings for this Host on Airbnb! Select one to import.`, { type: 'success' });
         } else if (res.data) {
           setPreview(res.data);
-          showToast(`Successfully extracted listing metadata from ${source === 'airbnb' ? 'Airbnb' : 'Booking.com'}!`, { type: 'success' });
+          if (res.partial) {
+            showToast(
+              res.message || 'Only basic details could be read from that page - please review and fill in the fields below.',
+              { type: 'warning' }
+            );
+          } else {
+            showToast(`Successfully extracted listing metadata from ${source === 'airbnb' ? 'Airbnb' : 'Booking.com'}!`, { type: 'success' });
+          }
         }
       } else {
         const msg = res?.message || 'Unable to fetch listing details. Please check the URL or ID and try again.';
@@ -122,12 +170,9 @@ export const OtaPropertyImporterModal: React.FC<OtaPropertyImporterModalProps> =
     setFetching(true);
     setError(null);
     try {
-      const res = await apiFetch<any>('fetch_ota_listing_preview', {
-        method: 'POST',
-        body: JSON.stringify({
-          channel: 'airbnb',
-          identifier: listingId,
-        }),
+      const res = await importerCall('fetch_ota_listing_preview', {
+        channel: 'airbnb',
+        identifier: listingId,
       });
       if (res && res.success && res.data) {
         setPreview(res.data);
@@ -159,15 +204,21 @@ export const OtaPropertyImporterModal: React.FC<OtaPropertyImporterModalProps> =
         selectedFieldKeys.push('checkin_time');
         selectedFieldKeys.push('checkout_time');
       }
+      // Photos and Amenities have had visible checkboxes all along but were never
+      // mapped into the payload, so toggling them did nothing at all - the backend
+      // applied both unconditionally. Fixed 4 Sep 2026 together with the backend
+      // gate that makes these keys mean something.
+      if (applyFields.photos) selectedFieldKeys.push('photos');
+      if (applyFields.amenities) selectedFieldKeys.push('amenities');
 
       try {
-        const res = await apiFetch<any>('apply_ota_listing_to_property', {
-          method: 'POST',
-          body: JSON.stringify({
-            property_id: propertyId,
-            imported_data: preview,
-            selected_fields: selectedFieldKeys,
-          }),
+        const res = await importerCall('apply_ota_listing_to_property', {
+          property_id: propertyId,
+          // Re-fetch replaces photos/amenities instead of merging, so a picture
+          // the host removed on the OTA actually disappears here too.
+          replace_media: replaceMedia,
+          imported_data: preview,
+          selected_fields: selectedFieldKeys,
         });
 
         if (res && res.success) {
@@ -588,6 +639,26 @@ export const OtaPropertyImporterModal: React.FC<OtaPropertyImporterModalProps> =
                       <span className="text-gray-800 dark:text-gray-200">Default Tariff</span>
                     </label>
                   </div>
+
+                  {(applyFields.photos || applyFields.amenities) && (
+                    <label className="mt-3 flex items-start gap-2 p-2.5 bg-amber-50 dark:bg-amber-950/30 rounded-md border border-amber-200 dark:border-amber-900/50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={replaceMedia}
+                        onChange={() => setReplaceMedia((v) => !v)}
+                        className="mt-0.5 rounded text-amber-600 focus:ring-amber-500 dark:bg-gray-700"
+                      />
+                      <span className="text-gray-800 dark:text-gray-200">
+                        <span className="font-medium">This is a re-fetch — replace photos &amp; amenities</span>
+                        <span className="block text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                          Use this when the listing changed and you want the current
+                          version. Anything you deleted on {source === 'airbnb' ? 'Airbnb' : 'Booking.com'} is
+                          removed here too. Leave it off to keep what's already saved
+                          and just add anything new.
+                        </span>
+                      </span>
+                    </label>
+                  )}
                 </div>
               )}
             </div>

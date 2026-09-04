@@ -8,6 +8,7 @@
  */
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/guest_status.php';
 require_once __DIR__ . '/../config/schema_cache.php';
 require_once __DIR__ . '/ChannexAdapter.php';
 require_once __DIR__ . '/outbox.php';
@@ -226,6 +227,24 @@ class ChannexWebhookReceiver {
             return ['status' => 'success', 'http_code' => 200, 'message' => 'Revision already processed (idempotent)', 'guest_id' => $existing['guest_id']];
         }
 
+        // NOTE ON THE OVERLAP CHECKS BELOW (4 Sep 2026)
+        //
+        // They compare DATES, not datetimes, and pass $checkinDateOnly /
+        // $checkoutDateOnly rather than the timed values. `guests.checkin_date`
+        // is a DATE column while `expected_checkout` is DATETIME, so a check-in
+        // written as "2026-09-11 14:00:00" is silently truncated to midnight
+        // while the checkout keeps its real time. Comparing the two directly
+        // therefore reads every arrival as 00:00 and invents conflicts:
+        //
+        //   Max      6 Sep 14:00 -> 11 Sep 11:00   (leaves on the 11th)
+        //   Divya   11 Sep 00:00 -> 13 Sep         (arrives on the 11th at 14:00)
+        //
+        // A textbook same-day turnover, rejected as a double-booking - which is
+        // what blocked a real confirmed Airbnb reservation from ever being
+        // ingested. DATE() on both sides keeps the half-open semantics CLAUDE.md
+        // requires (a genuine overlap is still rejected; verified against live
+        // data) while letting same-day turnover through.
+
         // 2. Resolve Local Property & Room Mapping
         $channexPropertyId = $booking['property_id'] ?? ($revision['property_id'] ?? '');
         // room_type_id lives inside rooms[0], not at the top level - reading only
@@ -369,11 +388,11 @@ class ChannexWebhookReceiver {
 
                     // Overlap check excluding self
                     if ($roomId !== null) {
-                        $conflictStmt = $this->pdo->prepare("SELECT id FROM guests WHERE room_id = ? AND property_id = ? AND id != ? AND status IN ('Active', 'CheckedIn', 'Booked') AND checkin_date < ? AND expected_checkout > ? LIMIT 1 FOR UPDATE");
-                        $conflictStmt->execute([$roomId, $propertyId, $guestId, $checkoutDate, $checkinDate]);
+                        $conflictStmt = $this->pdo->prepare("SELECT id FROM guests WHERE room_id = ? AND property_id = ? AND id != ? AND status IN (" . guestOccupyingStatusPlaceholders() . ") AND checkin_date < ? AND DATE(expected_checkout) > ? LIMIT 1 FOR UPDATE");
+                        $conflictStmt->execute(array_merge([$roomId, $propertyId, $guestId], guestOccupyingStatuses(), [$checkoutDateOnly, $checkinDateOnly]));
                     } else {
-                        $conflictStmt = $this->pdo->prepare("SELECT id FROM guests WHERE room_id IS NULL AND property_id = ? AND id != ? AND status IN ('Active', 'CheckedIn', 'Booked') AND checkin_date < ? AND expected_checkout > ? LIMIT 1 FOR UPDATE");
-                        $conflictStmt->execute([$propertyId, $guestId, $checkoutDate, $checkinDate]);
+                        $conflictStmt = $this->pdo->prepare("SELECT id FROM guests WHERE room_id IS NULL AND property_id = ? AND id != ? AND status IN (" . guestOccupyingStatusPlaceholders() . ") AND checkin_date < ? AND DATE(expected_checkout) > ? LIMIT 1 FOR UPDATE");
+                        $conflictStmt->execute(array_merge([$propertyId, $guestId], guestOccupyingStatuses(), [$checkoutDateOnly, $checkinDateOnly]));
                     }
 
                     if ($conflictStmt->fetchColumn()) {
@@ -422,11 +441,11 @@ class ChannexWebhookReceiver {
                     // New Inbound Booking
                     // Overlap conflict check with FOR UPDATE
                     if ($roomId !== null) {
-                        $conflictStmt = $this->pdo->prepare("SELECT id FROM guests WHERE room_id = ? AND property_id = ? AND status IN ('Active', 'CheckedIn', 'Booked') AND checkin_date < ? AND expected_checkout > ? LIMIT 1 FOR UPDATE");
-                        $conflictStmt->execute([$roomId, $propertyId, $checkoutDate, $checkinDate]);
+                        $conflictStmt = $this->pdo->prepare("SELECT id FROM guests WHERE room_id = ? AND property_id = ? AND status IN (" . guestOccupyingStatusPlaceholders() . ") AND checkin_date < ? AND DATE(expected_checkout) > ? LIMIT 1 FOR UPDATE");
+                        $conflictStmt->execute(array_merge([$roomId, $propertyId], guestOccupyingStatuses(), [$checkoutDateOnly, $checkinDateOnly]));
                     } else {
-                        $conflictStmt = $this->pdo->prepare("SELECT id FROM guests WHERE room_id IS NULL AND property_id = ? AND status IN ('Active', 'CheckedIn', 'Booked') AND checkin_date < ? AND expected_checkout > ? LIMIT 1 FOR UPDATE");
-                        $conflictStmt->execute([$propertyId, $checkoutDate, $checkinDate]);
+                        $conflictStmt = $this->pdo->prepare("SELECT id FROM guests WHERE room_id IS NULL AND property_id = ? AND status IN (" . guestOccupyingStatusPlaceholders() . ") AND checkin_date < ? AND DATE(expected_checkout) > ? LIMIT 1 FOR UPDATE");
+                        $conflictStmt->execute(array_merge([$propertyId], guestOccupyingStatuses(), [$checkoutDateOnly, $checkinDateOnly]));
                     }
 
                     if ($conflictStmt->fetchColumn()) {
@@ -508,6 +527,33 @@ class ChannexWebhookReceiver {
             // Commit transaction
             $this->pdo->commit();
 
+            // 3b. Tell staff a booking just landed.
+            //
+            // Until 4 Sep 2026 this file contained ZERO notification code: a
+            // staff-entered booking fired a Telegram "NEW GUEST BOOKING" from
+            // guests.php, while an OTA booking arrived in complete silence. The
+            // room was correctly held and the guest was correctly stored - nobody
+            // was simply ever told. Reported as "new bookings are not arriving in
+            // our app", which turned out to mean "nothing announces them": the
+            // example given (Shreyas, 4-5 Oct) had in fact ingested correctly at
+            // 15:13 the same afternoon.
+            //
+            // Strictly after commit(), like every other notification in this
+            // codebase - a Telegram failure must never roll back a real booking.
+            $this->notifyBookingEvent($propertyId, $roomId, $bookingStatus, [
+                'guest_id' => $guestId,
+                'guest_name' => $guestName,
+                'phone' => $phone,
+                'no_of_guests' => $noOfGuests,
+                'checkin' => $checkinDateOnly,
+                'checkout' => $checkoutDateOnly,
+                'total' => $totalAmount,
+                'advance' => $advancePaid,
+                'pending' => $pendingAmount,
+                'ota_source' => $otaSource,
+                'ota_code' => $otaReservationCode,
+            ]);
+
             // 4. ACK AFTER COMMIT. A failure here is recorded rather than
             // swallowed: the revision stays in Channex's queue and will be
             // redelivered, and without FAILED state that redelivery loop is
@@ -553,6 +599,171 @@ class ChannexWebhookReceiver {
                 'http_code' => 500,
                 'message' => 'Failed to process booking revision: ' . $e->getMessage(),
             ];
+        }
+    }
+
+    /**
+     * Drain Channex's booking_revisions feed.
+     *
+     * The integration was webhook-only until 4 Sep 2026, and that is not
+     * sufficient on its own. `booking_revisions/feed` holds every revision
+     * Channex has not been acknowledged for, and things land there WITHOUT a
+     * webhook ever firing:
+     *
+     *   - an imported back-catalogue (`load_future_reservations`) - confirmed
+     *     live: pulling six listings put Max's 6-11 Sep reservation in the feed
+     *     and delivered no webhook at all
+     *   - any webhook Channex could not deliver (we were down, a deploy, a
+     *     timeout) - it is retried, but the feed is the durable copy
+     *
+     * So a booking could be sitting at Channex, correct and confirmed, while
+     * Ground Code showed the room as free indefinitely. Nothing in the codebase
+     * read this endpoint; the only mention of it was a comment.
+     *
+     * Each entry is replayed through handleWebhook() rather than parsed here, so
+     * the feed path and the webhook path cannot drift apart - same mapping, same
+     * overlap checks, same ACK, same idempotency (a revision already processed
+     * returns the idempotent success and is simply re-ACKed).
+     */
+    public function drainFeed(int $limit = 50): array {
+        $client = new ChannexClient();
+        $res = $client->get('booking_revisions/feed');
+        if (empty($res['success'])) {
+            return ['status' => 'error', 'message' => 'Could not read booking_revisions/feed', 'processed' => 0];
+        }
+
+        $entries = is_array($res['data'] ?? null) ? $res['data'] : [];
+        $processed = 0; $failed = 0; $details = [];
+
+        foreach (array_slice($entries, 0, $limit) as $entry) {
+            $revisionId = $entry['id'] ?? ($entry['attributes']['id'] ?? null);
+            $attrs = $entry['attributes'] ?? $entry;
+            if (!$revisionId) { $failed++; continue; }
+
+            // Shaped as handleWebhook's "full data already present" branch expects,
+            // so it does not make a second API call for something we just fetched.
+            $result = $this->handleWebhook([
+                'booking_revision' => array_merge($attrs, ['id' => $revisionId]),
+            ]);
+
+            $ok = ($result['status'] ?? '') === 'success';
+            $ok ? $processed++ : $failed++;
+            $details[] = [
+                'revision_id' => $revisionId,
+                'guest' => $attrs['customer']['name'] ?? null,
+                'arrival' => $attrs['arrival_date'] ?? null,
+                'status' => $result['status'] ?? '?',
+                'message' => $result['message'] ?? '',
+                'guest_id' => $result['guest_id'] ?? null,
+            ];
+        }
+
+        return [
+            'status' => 'success',
+            'in_feed' => count($entries),
+            'processed' => $processed,
+            'failed' => $failed,
+            'details' => $details,
+        ];
+    }
+
+    /**
+     * Telegram alert for an inbound OTA booking / modification / cancellation.
+     *
+     * Mirrors the "NEW GUEST BOOKING" message add_guest sends in guests.php, with
+     * two additions staff actually need for an OTA stay: which platform it came
+     * from, and the guest-facing confirmation code, which is the only reference
+     * shared with the OTA when someone turns up at the door or a reservation is
+     * disputed.
+     *
+     * Entirely best-effort. Every failure path is swallowed: this runs after the
+     * booking is already committed, so nothing here may be allowed to turn a
+     * successful ingestion into an error response - that would make Channex retry
+     * a booking that landed perfectly well.
+     */
+    private function notifyBookingEvent(int $propertyId, ?int $roomId, string $action, array $b): void {
+        try {
+            // A bulk back-catalogue import (loadFutureReservations) arrives through
+            // this exact path, one webhook per reservation. Without this guard,
+            // catching up a listing with a year of forward bookings would fire
+            // dozens of Telegram messages about stays that are old news - the
+            // property's Admin group gets spammed and the genuinely new booking is
+            // buried. An operator sets this key just before running a pull.
+            $until = null;
+            try {
+                $s = $this->pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'channex_suppress_booking_alerts_until' LIMIT 1");
+                $s->execute();
+                $until = $s->fetchColumn();
+            } catch (Throwable $e) { /* table/row absent - no suppression */ }
+            if ($until && strtotime((string)$until) > time()) {
+                return;
+            }
+
+            $senderPath = __DIR__ . '/../telegram/sender.php';
+            if (!is_file($senderPath)) return;
+            require_once $senderPath;
+            if (!function_exists('sendPropertyTelegramMessage')) return;
+
+            // Routed by the ROOM's id, not the multi-key parent's - matches the
+            // convention every other booking notification in this codebase uses
+            // (see guests.php), so a multi-key room's alert reaches the group that
+            // was configured for that room.
+            $notifyPropertyId = $roomId ?: $propertyId;
+
+            $roomName = '';
+            try {
+                $r = $this->pdo->prepare("SELECT name FROM properties WHERE id = ? LIMIT 1");
+                $r->execute([$notifyPropertyId]);
+                $roomName = (string)$r->fetchColumn();
+            } catch (Throwable $e) {}
+
+            $source = $b['ota_source'] ?: 'OTA';
+            $code = $b['ota_code'] ?: '-';
+
+            if ($action === 'cancelled') {
+                $msg  = "❌ <b>OTA BOOKING CANCELLED</b> ({$source})\n\n";
+                $msg .= "👤 <b>Guest:</b> {$b['guest_name']}\n";
+                if ($roomName) $msg .= "🏠 <b>Unit:</b> {$roomName}\n";
+                $msg .= "📅 <b>Was:</b> {$b['checkin']} → {$b['checkout']}\n";
+                $msg .= "🔖 <b>Confirmation:</b> {$code}\n\n";
+                $msg .= "These dates are now open again.";
+            } else {
+                $isMod = ($action === 'modified');
+                $msg  = $isMod
+                    ? "✏️ <b>OTA BOOKING MODIFIED</b> ({$source})\n\n"
+                    : "🌐 <b>NEW OTA BOOKING</b> ({$source})\n\n";
+                $msg .= "👤 <b>Guest:</b> {$b['guest_name']}\n";
+                $msg .= "📱 <b>Phone:</b> {$b['phone']}\n";
+                if ($roomName) $msg .= "🏠 <b>Unit:</b> {$roomName}\n";
+                $msg .= "👥 <b>No. of Guests:</b> {$b['no_of_guests']}\n\n";
+                $msg .= "📅 <b>Check-in:</b> {$b['checkin']}\n";
+                $msg .= "📅 <b>Check-out:</b> {$b['checkout']}\n\n";
+                $msg .= "💰 <b>Total:</b> ₹" . number_format((float)$b['total'], 2) . "\n";
+                $msg .= "✅ <b>Paid via {$source}:</b> ₹" . number_format((float)$b['advance'], 2) . "\n";
+                $msg .= "⏳ <b>Collect on arrival:</b> ₹" . number_format((float)$b['pending'], 2) . "\n\n";
+                $msg .= "🔖 <b>Confirmation:</b> {$code}\n";
+                $msg .= "🆔 <b>Booking ID:</b> {$b['guest_id']}";
+            }
+
+            // Same "Mark Checked-In" affordance a staff-made booking gets, so an
+            // OTA arrival can be checked in from Telegram like any other.
+            $markup = ($action !== 'cancelled')
+                ? ['inline_keyboard' => [[
+                    ['text' => '🛎️ Mark Checked-In', 'callback_data' => "checkin_guest_{$b['guest_id']}"]
+                  ]]]
+                : null;
+
+            if (function_exists('enqueueTelegramMessage')) {
+                enqueueTelegramMessage($this->pdo, (int)$notifyPropertyId, 'admin', $msg, $markup, 'ota_booking_' . $action, (string)$b['guest_id'], 'booking');
+            } else {
+                sendPropertyTelegramMessage($this->pdo, $notifyPropertyId, 'admin', $msg, $markup);
+            }
+        } catch (Throwable $e) {
+            // Deliberately silent - see the docblock. Recorded for Telescope only.
+            if (class_exists('TelescopeLogger')) {
+                TelescopeLogger::log('telegram', 'OTA Booking Alert Failed', $e->getMessage(),
+                    'ChannexWebhookReceiver::notifyBookingEvent', ['guest_id' => $b['guest_id'] ?? null]);
+            }
         }
     }
 }

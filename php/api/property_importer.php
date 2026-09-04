@@ -200,9 +200,31 @@ class PropertyImporter {
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $effectiveUrl = (string)curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
         curl_close($ch);
 
         if ($httpCode >= 200 && $httpCode < 400 && is_string($response)) {
+            // Airbnb answers both of these with a normal HTTP 200 body rather
+            // than a 401/404, so the status code alone can't tell them apart
+            // from a real listing page (verified live 4 Sep 2026):
+            //
+            //  - a host profile (/users/show/:id) 302s to
+            //    /login?redirect_url=... and serves ~433KB of login-page HTML
+            //  - a listing id that doesn't exist serves a "404 Page Not Found"
+            //    page body
+            //
+            // Returning that HTML to the callers below means the extractor
+            // happily scrapes it and reports success:true for a "property"
+            // named "Log In / Sign Up - Airbnb". That preview then feeds
+            // apply_ota_listing_to_property, which would UPDATE the owner's
+            // real property name/description with it. Treat both as a failed
+            // fetch instead, so callers fall through to their own fallbacks.
+            if (preg_match('#/login(\?|/|$)|/signup(\?|/|$)#i', $effectiveUrl)) {
+                return '';
+            }
+            if (preg_match('#<title>\s*404 Page Not Found#i', $response)) {
+                return '';
+            }
             return $response;
         }
 
@@ -617,21 +639,57 @@ class PropertyImporter {
         }
 
         // Update JSON property_configurations (photos, amenities, imported source)
-        if (!empty($importedData['photos'])) {
-            $existingConfig['photos'] = array_values(array_unique(array_merge(
-                $existingConfig['photos'] ?? [],
-                $importedData['photos']
-            )));
+        //
+        // $replaceMedia distinguishes the two genuinely different operations that
+        // both land here (4 Sep 2026):
+        //
+        //   false (merge)   - a FIRST import onto a property that may already have
+        //                     photos someone added by hand. Keep both.
+        //   true  (replace) - a RE-FETCH, where the OTA listing is the source of
+        //                     truth and the point is to pick up what changed there.
+        //
+        // Merging was previously the only behaviour, which made re-fetch quietly
+        // wrong in one direction: a photo or amenity the host DELETED on Airbnb
+        // could never be removed here, because array_merge only ever adds. Photos
+        // accumulated permanently and no amount of re-importing could clear one.
+        //
+        // Both also used to ignore $selectedFields entirely, so a re-fetch with
+        // every checkbox cleared still rewrote photos and amenities.
+        $replaceMedia = !empty($importedData['__replace_media']);
+
+        if ($applyAll || in_array('photos', $selectedFields)) {
+            if (!empty($importedData['photos'])) {
+                $existingConfig['photos'] = $replaceMedia
+                    ? array_values(array_unique($importedData['photos']))
+                    : array_values(array_unique(array_merge(
+                        $existingConfig['photos'] ?? [],
+                        $importedData['photos']
+                    )));
+            } elseif ($replaceMedia) {
+                // The listing genuinely has no photos any more. On a re-fetch that
+                // is a real answer, not a failed scrape - but only trust it when
+                // the caller explicitly asked to replace.
+                $existingConfig['photos'] = [];
+            }
         }
 
-        if (!empty($importedData['amenities'])) {
-            $existingConfig['amenities'] = array_values(array_unique(array_merge(
-                $existingConfig['amenities'] ?? [],
-                $importedData['amenities']
-            )));
+        if ($applyAll || in_array('amenities', $selectedFields)) {
+            if (!empty($importedData['amenities'])) {
+                $existingConfig['amenities'] = $replaceMedia
+                    ? array_values(array_unique($importedData['amenities']))
+                    : array_values(array_unique(array_merge(
+                        $existingConfig['amenities'] ?? [],
+                        $importedData['amenities']
+                    )));
+            } elseif ($replaceMedia) {
+                $existingConfig['amenities'] = [];
+            }
         }
 
-        if (!empty($importedData['description'])) {
+        // Gated on the same key as the `instructions` column above - these are two
+        // copies of one value, so writing the JSON one while the caller had
+        // deselected the field left the two silently disagreeing.
+        if (($applyAll || in_array('instructions', $selectedFields)) && !empty($importedData['description'])) {
             $existingConfig['description'] = trim($importedData['description']);
         }
 

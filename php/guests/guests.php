@@ -673,10 +673,10 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         $pdo->prepare("SELECT id FROM properties WHERE id = ? FOR UPDATE")->execute([$lockTargetId]);
 
                         if ($roomId !== null) {
-                            $roomConflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id = ? AND property_id = ? AND status IN (?, ?, ?) AND checkin_date < ? AND expected_checkout > ? LIMIT 1 FOR UPDATE");
+                            $roomConflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id = ? AND property_id = ? AND status IN (?, ?, ?) AND checkin_date < DATE(?) AND DATE(expected_checkout) > DATE(?) LIMIT 1 FOR UPDATE");
                             $roomConflictStmt->execute([$roomId, $propertyId, GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_IN, GUEST_STATUS_BOOKED, $newCheckout, $newCheckin]);
                         } else {
-                            $roomConflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id IS NULL AND property_id = ? AND status IN (?, ?, ?) AND checkin_date < ? AND expected_checkout > ? LIMIT 1 FOR UPDATE");
+                            $roomConflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id IS NULL AND property_id = ? AND status IN (?, ?, ?) AND checkin_date < DATE(?) AND DATE(expected_checkout) > DATE(?) LIMIT 1 FOR UPDATE");
                             $roomConflictStmt->execute([$propertyId, GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_IN, GUEST_STATUS_BOOKED, $newCheckout, $newCheckin]);
                         }
 
@@ -1032,10 +1032,10 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         // silently excluded (found + fixed alongside add_guest's
                         // missing check, 20 Aug 2026).
                         if ($roomId !== null) {
-                            $conflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id = ? AND status IN (?, ?, ?) AND id != ? AND property_id = ? AND checkin_date < ? AND expected_checkout > ? LIMIT 1 FOR UPDATE");
+                            $conflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id = ? AND status IN (?, ?, ?) AND id != ? AND property_id = ? AND checkin_date < DATE(?) AND DATE(expected_checkout) > DATE(?) LIMIT 1 FOR UPDATE");
                             $conflictStmt->execute([$roomId, GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_IN, GUEST_STATUS_BOOKED, $guestId, $propertyId, $newCheckout, $newCheckin]);
                         } else {
-                            $conflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id IS NULL AND status IN (?, ?, ?) AND id != ? AND property_id = ? AND checkin_date < ? AND expected_checkout > ? LIMIT 1 FOR UPDATE");
+                            $conflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id IS NULL AND status IN (?, ?, ?) AND id != ? AND property_id = ? AND checkin_date < DATE(?) AND DATE(expected_checkout) > DATE(?) LIMIT 1 FOR UPDATE");
                             $conflictStmt->execute([GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_IN, GUEST_STATUS_BOOKED, $guestId, $propertyId, $newCheckout, $newCheckin]);
                         }
                         if ($conflictStmt->fetch()) {

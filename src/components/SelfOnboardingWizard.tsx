@@ -3,7 +3,7 @@ import { Drawer } from 'flowbite-react';
 import {
   User, Home, Layers, ChefHat,
   CheckCircle2, ArrowRight, ArrowLeft, Loader2, Sparkles, ShieldCheck, X, AlertCircle,
-  Smartphone, Share, PlusSquare, MoreVertical, RefreshCw, Image as ImageIcon, MapPin,
+  Smartphone, Share, PlusSquare, MoreVertical, RefreshCw,
 } from './icons/FlowbiteIcons';
 import { AirbnbIcon } from './icons/AirbnbIcon';
 import { BookingComIcon } from './icons/BookingComIcon';

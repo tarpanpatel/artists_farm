@@ -1010,6 +1010,7 @@ if (!in_array($action, $public_actions, true)) {
 $channex_ops_actions = [
     'channex_content_sync', 'channex_register_webhook', 'channex_retry_outbox',
     'channex_push_ari', 'channex_outbox_drain', 'get_channex_status',
+    'channex_drain_feed',
 ];
 if (in_array($action, $channex_ops_actions, true)) {
     $userRole = strtolower($_SESSION['role'] ?? '');
@@ -3956,6 +3957,27 @@ switch ($action) {
         break;
 
     // --- CHANNEX CHANNEL MANAGER INTEGRATION ---
+    case 'channex_drain_feed':
+        // Safety net for the webhook path. Channex parks every unacknowledged
+        // revision in booking_revisions/feed, including ones no webhook was ever
+        // sent for (an imported back-catalogue) and ones whose delivery failed.
+        // Authenticated + admin-only: unlike channex_webhook this is ours to
+        // call, so it does not belong in $public_actions.
+        if (!isset($_SESSION['user_id'])) {
+            http_response_code(401);
+            echo json_encode(['status' => 'error', 'message' => 'Authentication required']);
+            break;
+        }
+        if (!is_file(__DIR__ . '/../channex/webhook_receiver.php')) {
+            http_response_code(503);
+            echo json_encode(['status' => 'error', 'message' => 'Channex module not installed']);
+            break;
+        }
+        require_once __DIR__ . '/../channex/webhook_receiver.php';
+        $drainReceiver = new ChannexWebhookReceiver($pdo);
+        echo json_encode($drainReceiver->drainFeed(50));
+        break;
+
     case 'channex_webhook':
         // This action is deliberately in $public_actions - Channex calls it
         // unauthenticated, with no session and no CSRF token. That makes the
@@ -5125,6 +5147,13 @@ switch ($action) {
         $targetPropertyId = (int)($input['property_id'] ?? $propertyId);
         $importedData = $input['imported_data'] ?? [];
         $selectedFields = $input['selected_fields'] ?? [];
+        // Re-fetch mode: the OTA listing is authoritative, so photos/amenities are
+        // REPLACED rather than merged - otherwise anything the host deleted on
+        // Airbnb could never be removed here. Passed inside imported_data so
+        // applyToProperty() keeps its existing signature.
+        if (!empty($input['replace_media'])) {
+            $importedData['__replace_media'] = true;
+        }
         if ($targetPropertyId <= 0 || empty($importedData)) {
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'Property ID and imported data are required']);

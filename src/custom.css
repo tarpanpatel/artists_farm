@@ -2156,3 +2156,46 @@ pre,
     border-bottom-color: #334155 !important;
   }
 }
+/* ---------------------------------------------------------------------------
+   WhatsAppEditor (src/components/WhatsAppEditor.tsx)
+
+   The editor is WYSIWYG - it shows the formatting rather than the raw markup
+   ("*~66~*") the author used to have to read. These rules are what make the
+   contentEditable surface actually LOOK like the formatting it represents; the
+   saved value is still plain WhatsApp markup.
+   Added 4 Sep 2026. Lives here, not index.css, per the Flowbite/app-rule split.
+--------------------------------------------------------------------------- */
+.whatsapp-editor-surface:empty::before,
+.whatsapp-editor-surface:has(> div:only-child > br:only-child)::before {
+  content: attr(data-placeholder);
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.whatsapp-editor-surface blockquote {
+  border-left: 3px solid #cbd5e1;
+  padding-left: 0.625rem;
+  margin: 0.125rem 0;
+  color: #475569;
+}
+
+.whatsapp-editor-surface code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background-color: #f1f5f9;
+  border-radius: 0.25rem;
+  padding: 0.05rem 0.3rem;
+  font-size: 0.9em;
+}
+
+.whatsapp-editor-surface s {
+  text-decoration: line-through;
+}
+
+html.dark .whatsapp-editor-surface blockquote {
+  border-left-color: #475569;
+  color: #cbd5e1;
+}
+
+html.dark .whatsapp-editor-surface code {
+  background-color: #1e293b;
+}

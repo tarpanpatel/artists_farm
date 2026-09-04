@@ -7,6 +7,7 @@
  */
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/guest_status.php';
 require_once __DIR__ . '/outbox.php';
 require_once __DIR__ . '/ChannexAdapter.php';
 
@@ -204,14 +205,23 @@ class AriDrainWorker {
     public function computeCompressedAvailability(int $propertyId, ?int $roomId, string $startDate, string $endDate): array {
         // Fetch active bookings and hold blocks
         $scopeId = $roomId ?: $propertyId;
+        // Occupancy statuses come from guestOccupyingStatuses() - this was a
+        // hardcoded IN ('Booked', 'Active', 'CheckedIn') that missed the real
+        // 'Checked In' spelling, so an in-house guest's room was computed as
+        // free and pushed to the OTAs as bookable. See guest_status.php.
+        $occupying = guestOccupyingStatuses();
         $stmt = $this->pdo->prepare("
             SELECT checkin_date, expected_checkout
             FROM guests
             WHERE (room_id = ? OR (room_id IS NULL AND property_id = ?))
-              AND status IN ('Booked', 'Active', 'CheckedIn')
+              AND status IN (" . guestOccupyingStatusPlaceholders() . ")
               AND checkin_date <= ? AND expected_checkout >= ?
         ");
-        $stmt->execute([$scopeId, $scopeId, $endDate . ' 23:59:59', $startDate . ' 00:00:00']);
+        $stmt->execute(array_merge(
+            [$scopeId, $scopeId],
+            $occupying,
+            [$endDate . ' 23:59:59', $startDate . ' 00:00:00']
+        ));
         $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $bookedDays = [];

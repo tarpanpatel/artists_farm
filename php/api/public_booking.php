@@ -10,6 +10,13 @@ if (!defined('GROUND_CODE_API')) {
     define('GROUND_CODE_API', true);
 }
 
+// The booking-conflict check below compares against the canonical guest-status
+// constants rather than string literals - getting 'Checked Out' vs the legacy
+// 'CheckedOut' wrong here silently refuses real bookings. router.php already
+// loads this, but don't depend on include order for something that decides
+// whether a paying guest can book.
+require_once __DIR__ . '/../config/guest_status.php';
+
 function handleGetPublicBookingInfo(PDO $pdo, int $propertyId): void {
     if ($propertyId <= 0) {
         http_response_code(404);
@@ -411,15 +418,41 @@ function handleCreatePublicBooking(PDO $pdo): void {
     $pdo->beginTransaction();
 
     try {
+        // Take the exclusive row lock FIRST, before the overlap check, so two
+        // concurrent public bookings for the same unit serialize here instead of
+        // racing. guests.php's add_guest does exactly this and explains why at
+        // length: `FOR UPDATE` on the overlap query alone "is correct but relies
+        // purely on gap locks over an index range". A public, unauthenticated
+        // endpoint gets genuinely simultaneous requests far more often than two
+        // staff clicking at once, so it needs the stronger of the two guarantees,
+        // not the weaker. Always the same single row, so it can't deadlock.
+        $pdo->prepare("SELECT id FROM properties WHERE id = ? FOR UPDATE")->execute([$targetRoomId]);
+
         // Concurrency Check with SELECT ... FOR UPDATE
+        //
+        // Status must be an ALLOWLIST of the states that actually occupy a room,
+        // matching add_guest/update_guest in guests.php. This was a denylist of
+        // ('Cancelled', 'CheckedOut') - and 'CheckedOut' is the LEGACY spelling
+        // (see php/config/guest_status.php: the current constant is 'Checked
+        // Out', with a space). Every completed stay therefore still counted as a
+        // blocking booking, so the direct booking engine answered 409 "just
+        // booked by another guest" for dates that were actually free, for ever,
+        // while staff could book the very same room and dates without complaint.
+        // Confirmed 4 Sep 2026 against real data: guest #2300, checked out
+        // 30 Aug, still blocked its own past dates here.
         $conflictStmt = $pdo->prepare("
             SELECT id FROM guests
             WHERE (property_id = ? OR room_id = ?)
-              AND status NOT IN ('Cancelled', 'CheckedOut')
-              AND NOT (expected_checkout <= ? OR checkin_date >= ?)
+              AND status IN (?, ?, ?, ?)
+              AND NOT (DATE(expected_checkout) <= DATE(?) OR checkin_date >= DATE(?))
             FOR UPDATE
         ");
-        $conflictStmt->execute([$targetRoomId, $targetRoomId, $checkinDate, $checkoutDate]);
+        $conflictStmt->execute([
+            $targetRoomId, $targetRoomId,
+            GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CONFIRMED_LEGACY,
+            GUEST_STATUS_CHECKED_IN, GUEST_STATUS_BOOKED,
+            $checkinDate, $checkoutDate,
+        ]);
 
         if ($conflictStmt->fetch()) {
             $pdo->rollBack();

@@ -47,14 +47,20 @@
 param(
     [switch]$SkipPhpSync,
     [switch]$DryRun,
-    # Which branch staging runs. Defaults to multi-tenant, the normal case.
+    # Which branch staging runs. Defaults to whatever is checked out here.
+    #
     # Added 30 Aug 2026: the branch was hardcoded in two places (the push and
     # the server-side reset) while dist/ was always built from the local working
     # tree. Deploying from any other branch therefore produced a hybrid -
-    # staging's PHP from multi-tenant, its frontend bundle from whatever was
+    # staging's PHP from one branch, its frontend bundle from whatever was
     # checked out locally - so a screen could ship calling endpoints its own
     # backend did not have.
-    [string]$Branch = 'multi-tenant'
+    #
+    # Defaulted to the current branch 4 Sep 2026: a fixed default meant every
+    # deploy from any other branch had to remember the flag, and forgetting it
+    # hit the mismatch guard below rather than doing the obvious thing. The
+    # guard still holds - it is what makes the default safe rather than lucky.
+    [string]$Branch = ''
 )
 
 $ErrorActionPreference = 'Continue'
@@ -105,6 +111,17 @@ function Invoke-Ssh([string]$Command) {
 }
 
 Set-Location $ProjectRoot
+
+# -Branch defaults to the branch checked out here, so the common case needs no
+# argument. The mismatch guard below still runs - that is what makes this safe
+# rather than merely convenient.
+if ([string]::IsNullOrWhiteSpace($Branch)) {
+    $Branch = (git rev-parse --abbrev-ref HEAD).Trim()
+    if ([string]::IsNullOrWhiteSpace($Branch) -or $Branch -eq 'HEAD') {
+        throw "Could not determine the current branch (detached HEAD?). Pass -Branch explicitly."
+    }
+    Write-Host "    Branch not specified - using current checkout: $Branch" -ForegroundColor DarkGray
+}
 
 $CustomCssFile = "assets/css/custom_css_override.css"
 
@@ -171,16 +188,22 @@ try {
         Write-Ok "Working tree is clean."
     }
 
-    # 4. Build
-    Write-Step "Building (npm run build)"
-    npm run build
-    $buildExitCode = $LASTEXITCODE
-
-    # 5. Restore stash
-    if ($stashed) {
-        Write-Step "Restoring stashed changes"
-        git stash pop
-        Write-Ok "Restored."
+    # 4. Build, with the stash restore in a finally.
+    #    A build that fails or is interrupted must never strand uncommitted work
+    #    in the stash. That happened 4 Sep 2026: the script stashed, threw before
+    #    reaching the pop, and the edits looked like they had simply vanished.
+    $buildExitCode = 1
+    try {
+        Write-Step "Building (npm run build)"
+        npm run build
+        $buildExitCode = $LASTEXITCODE
+    } finally {
+        # 5. Restore stash
+        if ($stashed) {
+            Write-Step "Restoring stashed changes"
+            git stash pop
+            Write-Ok "Restored."
+        }
     }
 
     if ($buildExitCode -ne 0) {
