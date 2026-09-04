@@ -102,6 +102,15 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   // instead of erroring - the first click is just treated as abandoned.
   const [pendingSelection, setPendingSelection] = useState<{ roomId: number; roomName: string; dateStr: string } | null>(null);
 
+  // Calendar interaction mode (4 Sep 2026). 'booking' = the click-a-range ->
+  // Add Booking flow above. 'pricing' = the same click-a-range gesture, but it
+  // opens the existing RateRuleModal ("Pricing & Rates") pre-scoped to that
+  // room + date range - the Airbnb Multi-Calendar "change prices for these
+  // dates" behaviour, reusing the one pricing modal rather than a new system.
+  const [calMode, setCalMode] = useState<'booking' | 'pricing'>('booking');
+  // Room the "Change Prices" range click landed on, passed to RateRuleModal.
+  const [rateModalRoomIds, setRateModalRoomIds] = useState<number[] | undefined>(undefined);
+
   const formatDateStr = (d: Date): string =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
@@ -112,7 +121,10 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     isUnavailable: boolean,
     roomOccupiedDateStrings: string[],
   ) => {
-    if (isUnavailable) return; // never a valid start or end point
+    // Occupied/past cells are never a valid start or end point - true for
+    // both modes for now (a booked night's capsule owns that click; repricing
+    // already-booked dates is a later, separate concern).
+    if (isUnavailable) return;
 
     if (!pendingSelection || pendingSelection.roomId !== roomId || dateStr <= pendingSelection.dateStr) {
       // No pending selection, a different room (restart here instead of
@@ -128,22 +140,34 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
       return;
     }
 
-    // Valid candidate: pendingSelection.dateStr = check-in, dateStr = check-out.
+    // Valid candidate: pendingSelection.dateStr = start, dateStr = end.
+    const startStr = pendingSelection.dateStr;
+    setPendingSelection(null);
+
+    if (calMode === 'pricing') {
+      // Open the existing Pricing & Rates modal, pre-scoped to this room and
+      // the picked range. End date is inclusive there, and the modal treats
+      // the range as "the nights this rule covers", so a click on the 5th and
+      // then the 9th sets a rate for the 5th-8th inclusive - one fewer than
+      // the booking flow's checkout-exclusive reading, which is what "price
+      // these dates" means.
+      const priceEndStr = formatDateStr(new Date(new Date(dateStr + 'T00:00:00').getTime() - 86400000));
+      setRateRuleStartDate(startStr);
+      setRateRuleEndDate(priceEndStr < startStr ? startStr : priceEndStr);
+      setRateModalRoomIds([roomId]);
+      setShowRateRuleModal(true);
+      return;
+    }
+
+    // --- booking mode ---
     // Verify every night in between is actually free before opening the form.
-    const checkinStr = pendingSelection.dateStr;
-    const cur = new Date(checkinStr + 'T00:00:00');
+    const cur = new Date(startStr + 'T00:00:00');
     const end = new Date(dateStr + 'T00:00:00');
     let hasConflict = false;
     while (cur < end) {
       if (roomOccupiedDateStrings.includes(formatDateStr(cur))) { hasConflict = true; break; }
       cur.setDate(cur.getDate() + 1);
     }
-
-    // Clear the pending highlight immediately regardless of what happens
-    // next (confirmed, declined, or rejected below) - a stale highlighted
-    // cell sitting there through an async confirm() dialog reads as still
-    // "waiting for a click" when it isn't.
-    setPendingSelection(null);
 
     if (hasConflict) {
       showToast('That range overlaps an existing booking or block - pick again.', { type: 'error' });
@@ -153,16 +177,16 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     // Confirmation prompt before opening the form (4 Sep 2026, explicit
     // request) - the two clicks alone don't clearly signal "this is a real
     // action about to happen", so a third, deliberate step asks first.
-    const nights = Math.round((end.getTime() - new Date(checkinStr + 'T00:00:00').getTime()) / 86400000);
+    const nights = Math.round((end.getTime() - new Date(startStr + 'T00:00:00').getTime()) / 86400000);
     const confirmed = await confirm({
       title: 'Add Booking?',
-      message: `Create a new booking for ${roomName} from ${formatDateDDMMYYYY(checkinStr)} to ${formatDateDDMMYYYY(dateStr)} (${nights} night${nights === 1 ? '' : 's'})?`,
+      message: `Create a new booking for ${roomName} from ${formatDateDDMMYYYY(startStr)} to ${formatDateDDMMYYYY(dateStr)} (${nights} night${nights === 1 ? '' : 's'})?`,
       confirmText: 'Add Booking',
       variant: 'info',
     });
     if (!confirmed) return;
 
-    onAddBooking?.({ roomName, checkin: checkinStr, checkout: dateStr });
+    onAddBooking?.({ roomName, checkin: startStr, checkout: dateStr });
   };
 
   // Public "Share Menu" link (food_menu.php via the /food_menu/{slug}/
@@ -205,9 +229,18 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   // OperationalDashboard.tsx's identical comment on its own copy of this.
   const [, setOtaConversionTarget] = useState<{ block: (typeof blockedDates)[number]; roomName: string; blockedDateStrings: string[] } | null>(null);
   const [showRateRuleModal, setShowRateRuleModal] = useState(false);
+  const [rateRuleStartDate, setRateRuleStartDate] = useState<string | undefined>(undefined);
+  const [rateRuleEndDate, setRateRuleEndDate] = useState<string | undefined>(undefined);
   const [rateRules, setRateRules] = useState<RateRule[]>([]);
   const [pricingMode, setPricingMode] = useState<'flat' | 'variable'>('flat');
   const [defaultTariff, setDefaultTariff] = useState<number | null>(null);
+
+  const openRateRuleModal = (opts?: { startDate?: string; endDate?: string; roomIds?: number[] }) => {
+    setRateRuleStartDate(opts?.startDate);
+    setRateRuleEndDate(opts?.endDate);
+    setRateModalRoomIds(opts?.roomIds);
+    setShowRateRuleModal(true);
+  };
 
   const loadRateRules = async () => {
     const data = await fetchRateRulesDB();
@@ -571,13 +604,41 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             </button>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap">
+            {/* Booking / Pricing interaction toggle. In Pricing mode a
+                click-a-range on the grid opens the same Pricing & Rates modal
+                pre-scoped to that room + dates (Airbnb Multi-Calendar style). */}
+            <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-700 p-0.5 rounded-lg border border-slate-200 dark:border-slate-600 shrink-0">
+              <button
+                type="button"
+                onClick={() => { setCalMode('booking'); setPendingSelection(null); }}
+                className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                  calMode === 'booking'
+                    ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                Add Booking
+              </button>
+              <button
+                type="button"
+                onClick={() => { setCalMode('pricing'); setPendingSelection(null); }}
+                className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer flex items-center gap-1 ${
+                  calMode === 'pricing'
+                    ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                <DollarSign className="w-3 h-3" />
+                Change Prices
+              </button>
+            </div>
             <button
               type="button"
-              onClick={() => setShowRateRuleModal(true)}
+              onClick={() => openRateRuleModal()}
               className="px-2.5 py-1 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 border border-slate-300 dark:border-slate-600 rounded-lg transition-colors cursor-pointer flex items-center gap-1 shrink-0"
             >
               <DollarSign className="w-3.5 h-3.5 text-blue-600" />
-              <span>Pricing & Rates</span>
+              <span>Pricing &amp; Rates</span>
             </button>
             <button
               type="button"
@@ -816,7 +877,9 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                         <div
                           key={`bg-${day.toISOString()}`}
                           onClick={() => handleRangeCellClick(room.id, room.name, dateStr, isUnavailable, roomOccupiedDateStrings)}
-                          title={isUnavailable ? undefined : (pendingSelection ? 'Click to set check-out' : 'Click to start a new booking')}
+                          title={isUnavailable ? undefined : calMode === 'pricing'
+                            ? (pendingSelection ? 'Click the last night to price' : 'Click the first night to price a range')
+                            : (pendingSelection ? 'Click to set check-out' : 'Click to start a new booking')}
                           className={`w-16 min-w-16 shrink-0 border-r transition flex items-end justify-center pb-0.5 ${
                             isUnavailable ? '' : 'cursor-pointer'
                           } ${
@@ -1034,12 +1097,15 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
       {showRateRuleModal && (
         <RateRuleModal
           isOpen={showRateRuleModal}
-          onClose={() => setShowRateRuleModal(false)}
+          onClose={() => { setShowRateRuleModal(false); setRateModalRoomIds(undefined); setRateRuleStartDate(undefined); setRateRuleEndDate(undefined); }}
           rooms={rooms}
           rateRules={rateRules}
           pricingMode={pricingMode}
           defaultTariff={defaultTariff}
           onRulesUpdated={loadRateRules}
+          initialStartDate={rateRuleStartDate}
+          initialEndDate={rateRuleEndDate}
+          initialRoomIds={rateModalRoomIds}
         />
       )}
     </div>

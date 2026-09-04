@@ -421,10 +421,25 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       return;
     }
 
-    // Valid candidate: pendingRangeDateStr = check-in, dateStr = check-out -
+    const startStr = pendingRangeDateStr;
+    setPendingRangeDateStr(null);
+
+    if (calendarViewMode === 'pricing') {
+      // Same click-a-range gesture as booking, but open the existing
+      // Pricing & Rates modal pre-scoped to this room + range (end date
+      // inclusive there = one night before the second click, so "5th then
+      // 9th" prices the 5th-8th).
+      const priceEndStr = `${(() => { const e = new Date(dateStr + 'T00:00:00'); e.setDate(e.getDate() - 1); return `${e.getFullYear()}-${String(e.getMonth() + 1).padStart(2, '0')}-${String(e.getDate()).padStart(2, '0')}`; })()}`;
+      setSelectedRateRuleStartDate(startStr);
+      setSelectedRateRuleEndDate(priceEndStr < startStr ? startStr : priceEndStr);
+      setShowRateRuleModal(true);
+      return;
+    }
+
+    // Valid candidate: startStr = check-in, dateStr = check-out -
     // verify every night in between is actually free first.
     let hasConflict = false;
-    const cur = new Date(pendingRangeDateStr + 'T00:00:00');
+    const cur = new Date(startStr + 'T00:00:00');
     const end = new Date(dateStr + 'T00:00:00');
     while (cur < end) {
       const curStr = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`;
@@ -434,13 +449,11 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
 
     if (hasConflict) {
       showToast('That range overlaps an existing booking - pick again.', { type: 'error' });
-      setPendingRangeDateStr(null);
       return;
     }
 
-    setAddBookingPrefillDates({ checkin: pendingRangeDateStr, checkout: dateStr });
+    setAddBookingPrefillDates({ checkin: startStr, checkout: dateStr });
     setShowAddGuestModal(true);
-    setPendingRangeDateStr(null);
   };
 
   // --- Front-desk alerts: bookings needing attention, with no time cutoff so
@@ -1181,22 +1194,25 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               </h3>
             </div>
             <div className="flex items-center gap-2">
-              {/* Bookings / Pricing View Toggle */}
+              {/* Add Booking / Change Prices interaction toggle. In "Change
+                  Prices" a click-a-range on the grid opens the same Pricing &
+                  Rates modal pre-scoped to that range (Airbnb Multi-Calendar
+                  style) instead of the Add Booking flow. */}
               <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-gray-700 p-0.5 rounded-lg border border-gray-200 dark:border-gray-600">
                 <button
                   type="button"
-                  onClick={() => setCalendarViewMode('bookings')}
+                  onClick={() => { setCalendarViewMode('bookings'); setPendingRangeDateStr(null); }}
                   className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
                     calendarViewMode === 'bookings'
                       ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-xs'
                       : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
                   }`}
                 >
-                  Bookings
+                  Add Booking
                 </button>
                 <button
                   type="button"
-                  onClick={() => setCalendarViewMode('pricing')}
+                  onClick={() => { setCalendarViewMode('pricing'); setPendingRangeDateStr(null); }}
                   className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer flex items-center gap-1 ${
                     calendarViewMode === 'pricing'
                       ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-xs'
@@ -1204,7 +1220,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                   }`}
                 >
                   <DollarSign className="w-3 h-3" />
-                  Pricing
+                  Change Prices
                 </button>
               </div>
 
@@ -1446,14 +1462,16 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                         return <div key={`blank-${col}`} className="min-h-[96px] sm:min-h-[110px] p-2 bg-gray-50/50 dark:bg-gray-800/40" />;
                       }
                       const { d, dateStr, dayBookingsForDate, dayBookingOverflowCount, isToday, isRangeUnavailable } = slot;
-                      const isPendingRangeStart = calendarViewMode !== 'pricing' && pendingRangeDateStr === dateStr;
+                      const isPendingRangeStart = pendingRangeDateStr === dateStr;
                       return (
                         <div
                           key={`day-${d}`}
-                          onClick={calendarViewMode !== 'pricing' ? () => handleRangeCellClick(dateStr, isRangeUnavailable) : undefined}
-                          title={calendarViewMode !== 'pricing' && !isRangeUnavailable ? (pendingRangeDateStr ? 'Click to set check-out' : 'Click to start a new booking') : undefined}
+                          onClick={() => handleRangeCellClick(dateStr, isRangeUnavailable)}
+                          title={isRangeUnavailable ? undefined : calendarViewMode === 'pricing'
+                            ? (pendingRangeDateStr ? 'Click the last night to price' : 'Click the first night to price a range')
+                            : (pendingRangeDateStr ? 'Click to set check-out' : 'Click to start a new booking')}
                           className={`min-h-[96px] sm:min-h-[110px] p-1.5 sm:p-2 flex flex-col justify-between transition-colors ${
-                            calendarViewMode !== 'pricing' && !isRangeUnavailable ? 'cursor-pointer' : ''
+                            !isRangeUnavailable ? 'cursor-pointer' : ''
                           } ${
                             isPendingRangeStart
                               ? 'bg-blue-100 dark:bg-blue-900/40 ring-2 ring-inset ring-blue-500'
@@ -1474,14 +1492,12 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                             )}
                           </div>
                           {calendarViewMode === 'pricing' ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedRateRuleStartDate(dateStr);
-                                setSelectedRateRuleEndDate(dateStr);
-                                setShowRateRuleModal(true);
-                              }}
-                              className="w-full text-left mt-2 p-1.5 rounded-md bg-slate-50 dark:bg-slate-700/60 hover:bg-blue-50 dark:hover:bg-blue-900/30 border border-slate-200 dark:border-slate-600 transition-colors cursor-pointer"
+                            <div
+                              className={`w-full text-left mt-2 p-1.5 rounded-md border transition-colors ${
+                                isRangeUnavailable
+                                  ? 'bg-slate-50/60 dark:bg-slate-700/40 border-slate-200/70 dark:border-slate-700'
+                                  : 'bg-slate-50 dark:bg-slate-700/60 border-slate-200 dark:border-slate-600'
+                              }`}
                             >
                               <div className="text-xs font-bold text-slate-900 dark:text-white">
                                 ₹{Math.round(getDayPrice(dateStr).rate)}
@@ -1489,7 +1505,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                               <div className="text-2xs text-slate-500 dark:text-slate-400 truncate">
                                 {getDayPrice(dateStr).isRule ? (getDayPrice(dateStr).label || 'Dynamic Rule') : 'Base Tariff'}
                               </div>
-                            </button>
+                            </div>
                           ) : (
                             <>
                               <div className="invisible px-2 py-1 text-xs" aria-hidden="true">
@@ -2001,6 +2017,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           onRulesUpdated={loadRateRules}
           initialStartDate={selectedRateRuleStartDate}
           initialEndDate={selectedRateRuleEndDate}
+          initialRoomIds={roomId ? [roomId] : undefined}
         />
       )}
     </div>
