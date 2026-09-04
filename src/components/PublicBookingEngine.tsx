@@ -70,13 +70,18 @@ interface BookingConfirmation {
   address: string;
 }
 
-// Format YYYY-MM-DD to DD MMM YYYY (e.g. 05 Sep 2026) per DESIGN.md
+const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// Format YYYY-MM-DD to DD MMM YYYY (e.g. 09 Sep 2026) per DESIGN.md
 function formatDateDisplay(dateStr: string): string {
   if (!dateStr) return '';
-  const parts = dateStr.split('-');
+  const parts = dateStr.split(' ')[0].split('-');
   if (parts.length !== 3) return dateStr;
-  const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  const day = parts[2].padStart(2, '0');
+  const monthIdx = parseInt(parts[1], 10) - 1;
+  const month = SHORT_MONTHS[monthIdx] || parts[1];
+  const year = parts[0];
+  return `${day} ${month} ${year}`;
 }
 
 function formatDateISO(d: Date): string {
@@ -454,7 +459,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         {/* Date Range Selection & Filter Toolbar */}
-        <section className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 shadow-xs space-y-3">
+        <section className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-3 text-xs w-full lg:w-auto">
               <div className="w-full sm:w-auto min-w-[280px]">
@@ -479,7 +484,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
               </div>
 
               {rooms.length > 1 && (
-                <div className="flex items-center bg-gray-50 dark:bg-gray-800 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className="flex items-center bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600">
                   <select
                     value={filterRoomId}
                     onChange={(e) => setFilterRoomId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
@@ -496,27 +501,29 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
               )}
 
               {(checkinDate || checkoutDate) && (
-                <button
+                <Button
+                  variant="ghost"
+                  size="xs"
                   onClick={() => {
                     setCheckinDate('');
                     setCheckoutDate('');
                     setPendingStart(null);
                   }}
-                  className="text-xs text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 underline font-medium px-1"
+                  className="text-xs text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 font-medium px-2"
                 >
                   Clear dates
-                </button>
+                </Button>
               )}
             </div>
 
             {/* Availability Legend (Available & Booked only, No Past Legend) */}
-            <div className="flex items-center gap-4 text-xs font-semibold text-gray-600 dark:text-gray-300">
+            <div className="flex items-center gap-4 text-xs font-medium text-gray-600 dark:text-gray-300">
               <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-xs bg-[#22c55e] inline-block shadow-xs" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[#22c55e] inline-block border border-green-600" />
                 <span>Available</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-xs bg-[#ef4444] inline-block shadow-xs" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[#ef4444] inline-block border border-red-600" />
                 <span>Booked / Closed</span>
               </div>
             </div>
@@ -524,19 +531,19 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
 
           {/* REAL-TIME AVAILABLE ROOM CARDS SECTION */}
           {checkinDate && checkoutDate && checkinDate < checkoutDate && (
-            <div className="pt-3 border-t border-gray-200 dark:border-gray-800 space-y-3">
+            <div className="pt-3 border-t border-gray-200 dark:border-gray-700 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  Available Options for {formatDateDisplay(checkinDate)} $\to$ {formatDateDisplay(checkoutDate)}
+                  Available Options for {formatDateDisplay(checkinDate)} → {formatDateDisplay(checkoutDate)}
                 </h3>
-                <span className="text-2xs font-semibold text-gray-500 dark:text-gray-400">
+                <Badge variant="success">
                   {availableRoomResults.length} {availableRoomResults.length === 1 ? 'room' : 'rooms'} available
-                </span>
+                </Badge>
               </div>
 
               {availableRoomResults.length === 0 ? (
-                <div className="p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl flex items-start gap-3 text-xs text-amber-800 dark:text-amber-300">
+                <div className="p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg flex items-start gap-3 text-xs text-amber-800 dark:text-amber-300">
                   <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                   <div>
                     <p className="font-bold">No rooms available for the selected dates</p>
@@ -550,39 +557,39 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                   {availableRoomResults.map(({ room, nights, totalTariff, avgNightlyRate }) => (
                     <div
                       key={room.id}
-                      className="p-3.5 bg-gray-50 dark:bg-gray-800/80 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 transition-all flex flex-col justify-between space-y-3 shadow-2xs"
+                      className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 transition-colors flex flex-col justify-between space-y-3 shadow-sm"
                     >
                       <div>
                         <div className="flex items-start justify-between gap-2">
-                          <h4 className="text-xs font-bold text-gray-900 dark:text-white leading-snug">
+                          <h4 className="text-sm font-bold text-gray-900 dark:text-white leading-snug">
                             {room.name}
                           </h4>
                           <Badge variant="info">{nights} Night{nights > 1 ? 's' : ''}</Badge>
                         </div>
-                        <p className="text-3xs text-gray-500 dark:text-gray-400 mt-1">
-                          {formatDateDisplay(checkinDate)} $\to$ {formatDateDisplay(checkoutDate)}
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
+                          {formatDateDisplay(checkinDate)} → {formatDateDisplay(checkoutDate)}
                         </p>
                       </div>
 
-                      <div className="flex items-end justify-between pt-2 border-t border-gray-200/80 dark:border-gray-700/80">
+                      <div className="flex items-end justify-between pt-2.5 border-t border-gray-100 dark:border-gray-700">
                         <div>
-                          <span className="text-3xs text-gray-500 uppercase block">Total Stay</span>
-                          <span className="text-base font-black text-emerald-600 dark:text-emerald-400 leading-tight">
+                          <span className="text-3xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 block">Total Stay</span>
+                          <span className="text-base sm:text-lg font-extrabold text-emerald-600 dark:text-emerald-400 leading-tight block mt-0.5">
                             {currencySym}{totalTariff.toLocaleString('en-IN')}
                           </span>
-                          <span className="text-3xs text-gray-400 block">
+                          <span className="text-3xs text-gray-400 dark:text-gray-400 block">
                             ({currencySym}{avgNightlyRate.toLocaleString('en-IN')}/night)
                           </span>
                         </div>
 
                         <Button
                           variant="primary"
-                          size="xs"
+                          size="sm"
                           onClick={() => handleOpenBookingDrawer(room, checkinDate, checkoutDate)}
-                          className="h-8 text-xs font-bold px-3 shadow-xs"
+                          className="h-8 text-xs font-semibold px-3.5"
                         >
                           Book Now
-                          <ArrowRight className="w-3.5 h-3.5 ms-1" />
+                          <ArrowRight className="w-3.5 h-3.5 ms-1.5" />
                         </Button>
                       </div>
                     </div>
@@ -596,7 +603,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
         {/* CALENDAR SECTION */}
         <section className="space-y-4">
           {/* Month Navigation Header (Matches availability.php style) */}
-          <div className="flex items-center justify-between bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 px-4 py-3 rounded-xl shadow-xs">
+          <div className="flex items-center justify-between bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-4 py-3 rounded-lg shadow-sm">
             <button
               onClick={handlePrevMonth}
               disabled={isAtCurrentMonth}
@@ -625,7 +632,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
 
           {/* MULTI-KEY TABLE VIEW (Matches availability.php Layout) */}
           {displayedRooms.length > 1 ? (
-            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-xs overflow-hidden">
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
               <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
                 <table className="w-full border-collapse min-w-[900px] text-center text-xs">
                   <thead>
@@ -722,8 +729,8 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
             /* SINGLE-KEY / SINGLE-ROOM 7-DAY GRID (Matches availability.php Single Grid) */
             displayedRooms.map((room) => {
               return (
-                <div key={room.id} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-xs overflow-hidden">
-                  <div className="grid grid-cols-7 gap-px bg-gray-200 dark:bg-gray-800 text-center">
+                <div key={room.id} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                  <div className="grid grid-cols-7 gap-px bg-gray-200 dark:bg-gray-700 text-center">
                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((dw) => (
                       <div key={dw} className="bg-gray-50 dark:bg-gray-800 py-2 text-2xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
                         {dw}
@@ -732,7 +739,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
 
                     {/* Prepend empty cells for the first day of week */}
                     {Array.from({ length: monthInfo.firstDayOfWeek }, (_, idx) => (
-                      <div key={`empty-${idx}`} className="bg-gray-50/50 dark:bg-gray-900/50 min-h-[4.5rem] opacity-30" />
+                      <div key={`empty-${idx}`} className="bg-gray-50/50 dark:bg-gray-800/40 min-h-[4.5rem] opacity-30" />
                     ))}
 
                     {/* Days of Month */}
@@ -749,9 +756,9 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                         <div
                           key={dStr}
                           onClick={() => handleCellClick(room, dStr, occupied, isPast)}
-                          className={`bg-white dark:bg-gray-900 p-2 min-h-[4.5rem] flex flex-col justify-between transition-all ${
+                          className={`bg-white dark:bg-gray-800 p-2 min-h-[4.5rem] flex flex-col justify-between transition-all ${
                             isPast
-                              ? 'bg-gray-50 dark:bg-gray-900/50 opacity-40 cursor-not-allowed'
+                              ? 'bg-gray-50 dark:bg-gray-800/40 opacity-40 cursor-not-allowed'
                               : occupied
                               ? 'bg-[#fef2f2] dark:bg-red-950/20 text-[#b91c1c] dark:text-red-400 cursor-not-allowed'
                               : isPendingStart || isSelected
@@ -791,16 +798,16 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
       {/* SLIDE-OVER BOOKING DRAWER */}
       {bookingDrawerRoom && (
         <div className="fixed inset-0 z-50 overflow-hidden bg-black/50 backdrop-blur-xs flex justify-end animate-fade-in">
-          <div className="w-full max-w-lg bg-white dark:bg-gray-900 h-full shadow-2xl flex flex-col justify-between border-l border-gray-200 dark:border-gray-800 animate-slide-in-right">
+          <div className="w-full max-w-lg bg-white dark:bg-gray-800 h-full shadow-2xl flex flex-col justify-between border-l border-gray-200 dark:border-gray-700 animate-slide-in-right">
             {/* Header */}
-            <div className="p-4 sm:p-5 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between bg-gray-50/50 dark:bg-gray-800/50">
+            <div className="p-4 sm:p-5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-gray-50/50 dark:bg-gray-750">
               <div>
                 <h3 className="text-base font-bold text-gray-900 dark:text-white">Complete Your Booking</h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400">{property.name}</p>
               </div>
               <button
                 onClick={() => setBookingDrawerRoom(null)}
-                className="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                className="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -809,14 +816,14 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
             {/* Form */}
             <form onSubmit={handleConfirmReservation} className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
               {formError && (
-                <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl text-xs text-red-700 dark:text-red-300 flex items-start gap-2">
+                <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-lg text-xs text-red-700 dark:text-red-300 flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                   <span>{formError}</span>
                 </div>
               )}
 
               {/* Stay Summary Card */}
-              <div className="bg-blue-50/60 dark:bg-blue-950/40 rounded-xl p-4 border border-blue-200 dark:border-blue-800/80 space-y-2.5">
+              <div className="bg-blue-50/60 dark:bg-blue-950/40 rounded-lg p-4 border border-blue-200 dark:border-blue-800/80 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-blue-900 dark:text-blue-200">{bookingDrawerRoom.roomName}</span>
                   <Badge variant="info">{bookingDrawerRoom.nights} Night{bookingDrawerRoom.nights > 1 ? 's' : ''}</Badge>
@@ -925,12 +932,12 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
               </div>
 
               {/* Payment Method */}
-              <div className="space-y-2.5 pt-3 border-t border-gray-200 dark:border-gray-800">
+              <div className="space-y-2.5 pt-3 border-t border-gray-200 dark:border-gray-700">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
                   Payment Method
                 </h4>
 
-                <div className="p-3.5 rounded-xl border-2 border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30 flex items-start gap-3">
+                <div className="p-3.5 rounded-lg border border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30 flex items-start gap-3">
                   <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                   <div className="space-y-1">
                     <p className="text-xs font-bold text-gray-900 dark:text-white">
@@ -978,7 +985,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
       {/* CONFIRMATION VOUCHER MODAL */}
       {confirmation && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 p-6 space-y-4 animate-scale-up">
+          <div className="w-full max-w-lg bg-white dark:bg-gray-800 rounded-lg shadow-2xl border border-gray-200 dark:border-gray-700 p-6 space-y-4 animate-scale-up">
             <div className="text-center space-y-1.5">
               <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-xs">
                 <CheckCircle2 className="w-7 h-7" />
@@ -987,13 +994,13 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 We've locked your room and notified the property manager.
               </p>
-              <div className="inline-block px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded-lg text-xs font-mono font-bold text-gray-800 dark:text-gray-200">
+              <div className="inline-block px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-lg text-xs font-mono font-bold text-gray-800 dark:text-gray-200">
                 Ref: {confirmation.reference_number}
               </div>
             </div>
 
             {/* Voucher Details */}
-            <div className="bg-gray-50 dark:bg-gray-800/60 rounded-xl p-4 border border-gray-200 dark:border-gray-700 space-y-2.5 text-xs">
+            <div className="bg-gray-50 dark:bg-gray-750 rounded-lg p-4 border border-gray-200 dark:border-gray-700 space-y-2.5 text-xs">
               <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-2">
                 <span className="text-gray-500">Property</span>
                 <span className="font-bold text-gray-900 dark:text-white">{confirmation.property_name}</span>
@@ -1005,7 +1012,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
               <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-2">
                 <span className="text-gray-500">Dates</span>
                 <span className="font-semibold text-gray-900 dark:text-white">
-                  {formatDateDisplay(confirmation.checkin_date)} $\to$ {formatDateDisplay(confirmation.checkout_date)} ({confirmation.nights}N)
+                  {formatDateDisplay(confirmation.checkin_date)} → {formatDateDisplay(confirmation.checkout_date)} ({confirmation.nights}N)
                 </span>
               </div>
               <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-2">
