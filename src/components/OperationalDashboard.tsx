@@ -1251,14 +1251,14 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                     type="button"
                     onClick={() => {
                       const slug = getPropertySlug() || '';
-                      const url = `${window.location.origin}/availability.php${slug ? `?property_slug=${encodeURIComponent(slug)}` : ''}`;
+                      const url = `${window.location.origin}/${slug ? `${slug}/#book` : '#book'}`;
                       window.open(url, '_blank');
                     }}
                     className="text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 font-medium rounded-lg text-xs px-2.5 py-1.5 inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
-                    title="Open public availability page"
+                    title="Open public direct booking engine & availability"
                   >
                     <Share2 className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Public Page</span>
+                    <span>Booking Page</span>
                   </button>
                 </div>
               )}

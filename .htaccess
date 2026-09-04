@@ -28,9 +28,11 @@ DirectoryIndex index.php index.html
     RewriteRule ^food_menu/([a-z0-9-_]+)/?$ food_menu.php?property_slug=$1 [QSA,L]
     RewriteRule ^food_menu/?$ food_menu.php [QSA,L]
 
-    # Public, no-login "Share Availability" link (availability.php)
-    RewriteRule ^availability/([a-z0-9-_]+)/?$ availability.php?property_slug=$1 [QSA,L]
-    RewriteRule ^availability/?$ availability.php [QSA,L]
+    # Public, no-login "Share Availability" link -> 301 Redirect to Direct Booking Engine (/#book)
+    RewriteCond %{QUERY_STRING} property_slug=([a-z0-9-_]+) [NC]
+    RewriteRule ^availability\.php$ /%1/#book? [R=301,NE,L]
+    RewriteRule ^availability/([a-z0-9-_]+)/?$ /$1/#book [R=301,NE,L]
+    RewriteRule ^availability/?$ /#book [R=301,NE,L]
 
     # Favicon and App Icons: route any subpath requests (e.g. /jaipur/favicon.ico or /jaipur/app-icons/...)
     # to the actual root static files so browsers receive the real image rather than an HTML SPA rewrite.
