@@ -5,6 +5,7 @@ import { RateRule, saveRateRuleDB, deleteRateRuleDB, updatePricingModeDB, apiFet
 import { Trash2, Plus, DollarSign, X, Loader2, Pencil, Send } from './icons/FlowbiteIcons';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
+import { TablePagination } from './TablePagination';
 
 // Channex's own 2-letter day codes (used verbatim in the API's `days`
 // param) - single source of truth for the picker below and for reading a
@@ -66,14 +67,14 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
   const [ruleName, setRuleName] = useState<string>('');
   const [selectedRoomIds, setSelectedRoomIds] = useState<number[]>([]);
   const [isSaving, setIsSaving] = useState(false);
-  // The rules table is collapsed by default and its rows are capped (4 Sep
-  // 2026). A one-shot price import (e.g. a full year of PriceLabs daily
-  // prices) can leave thousands of one-night rules here, and rendering every
-  // row - each with its own <Button> - on modal open froze the whole
-  // "Change Prices" flow for several seconds.
-  const RULES_PAGE = 50;
+  // The rules table is collapsed by default and its rows are paginated (4
+  // Sep 2026, 10/page added 4 Sep 2026). A one-shot price import (e.g. a
+  // full year of PriceLabs daily prices) can leave thousands of one-night
+  // rules here, and rendering every row - each with its own <Button> - on
+  // modal open froze the whole "Change Prices" flow for several seconds.
+  const RULES_PAGE_SIZE = 10;
   const [showRulesList, setShowRulesList] = useState(false);
-  const [rulesRenderLimit, setRulesRenderLimit] = useState(RULES_PAGE);
+  const [rulesPage, setRulesPage] = useState(1);
 
   // Restriction state fields
   const [minStay, setMinStay] = useState<string>('');
@@ -119,7 +120,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
     if (initialRatePerNight != null && initialRatePerNight !== '') setRatePerNight(initialRatePerNight);
     // Every open starts with the (potentially huge) rules list collapsed.
     setShowRulesList(false);
-    setRulesRenderLimit(RULES_PAGE);
+    setRulesPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
@@ -128,11 +129,11 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
 
     if (rateRules.length > 0) {
       const confirmed = await confirm({
-        title: newMode === 'flat' ? 'Switch to Flat Base Rate?' : 'Switch to Dynamic Rules?',
+        title: newMode === 'flat' ? 'Use one price for every date?' : 'Use different prices by date?',
         message: newMode === 'flat'
           ? `This immediately suspends every saved rate rule for this ${localRooms.length > 1 ? 'room/property' : 'property'} everywhere - your own calendar, Airbnb, Booking.com, and your public availability page all switch to the flat base rate with no restrictions right away. Any dates a rule had Stop Sell-blocked will reopen. Rules stay saved and can be reactivated by switching back.`
           : `This immediately activates every saved rate rule for this ${localRooms.length > 1 ? 'room/property' : 'property'} everywhere - your own calendar, Airbnb, Booking.com, and your public availability page will start showing rule rates and enforcing any Stop Sell/stay restrictions right away.`,
-        confirmText: newMode === 'flat' ? 'Switch to Flat Rate' : 'Switch to Dynamic Rules',
+        confirmText: newMode === 'flat' ? 'Use one price' : 'Use prices by date',
         variant: 'warning',
       });
       if (!confirmed) return;
@@ -142,7 +143,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
       const res = await updatePricingModeDB(newMode);
       if (res.success) {
         setCurrentPricingMode(newMode);
-        showToast(`Pricing mode set to ${newMode === 'variable' ? 'Dynamic Date-Range' : 'Flat Base Rate'}.`, { type: 'success' });
+        showToast(newMode === 'variable' ? 'Now using different prices by date.' : 'Now using one price for every date.', { type: 'success' });
         onRulesUpdated();
       } else {
         showToast(res.message || 'Failed to update pricing mode', { type: 'error' });
@@ -335,7 +336,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
             <DollarSign className="w-4 h-4" />
           </div>
           <h3 className="text-base font-semibold text-gray-900 dark:text-white m-0">
-            Pricing Mode, Rates & Stay Restrictions
+            Prices & Booking Rules
           </h3>
         </div>
         <button
@@ -372,7 +373,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
-              Flat Base Rate
+              One price always
             </button>
             <button
               type="button"
@@ -383,7 +384,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
-              Dynamic Rules
+              Price by date
             </button>
           </div>
         </div>
@@ -533,7 +534,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                     onClick={() => handleTogglePricingMode('variable')}
                     className="shrink-0 bg-white dark:bg-gray-800 hover:bg-amber-100 dark:hover:bg-amber-900/60"
                   >
-                    Activate Dynamic Rules
+                    Start using these rules
                   </Button>
                 </div>
               </div>
@@ -551,10 +552,19 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
               </div>
               <div>
                 <h5 className="text-xs font-bold text-emerald-900 dark:text-emerald-200 uppercase tracking-wider">
-                  Dynamic Date-Range Pricing Active
+                  Prices vary by date
                 </h5>
+                {/* Plain-language explainer (4 Sep 2026). This page is the one
+                    place an owner meets channel-manager vocabulary - Stop Sell,
+                    CTA, CTD, "min stay type" - none of which says what it
+                    actually does to a booking. Say the effect in ordinary words
+                    and keep the industry term only as a quiet subtitle, so it
+                    can still be matched against what Airbnb calls the same
+                    setting. */}
                 <p className="text-xs text-emerald-800/90 dark:text-emerald-300 mt-1 leading-relaxed">
-                  Custom date-range rules override standard base rates for matching dates on your direct calendar and connected OTAs (Airbnb, Booking.com). Dates without rules automatically use your standard base rates.
+                  Set a different price for particular dates — a festival week, weekends, a quiet month.
+                  Any date you don't set a rule for keeps its usual price. Whatever you save here goes
+                  out to Airbnb, Booking.com and your own booking page automatically.
                 </p>
               </div>
             </div>
@@ -564,9 +574,9 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
                   <Plus className="w-3.5 h-3.5 text-blue-600" />
-                  Set Date-Range Rates & Restrictions
+                  Set prices & rules for a date range
                 </h4>
-                <span className="text-2xs text-gray-400">OTA & Direct channel synced</span>
+                <span className="text-2xs text-gray-400">Sent to Airbnb, Booking.com & your own booking page</span>
               </div>
 
               {/* Date range row */}
@@ -605,7 +615,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300">
-                    Applies On <span className="font-normal text-gray-400">(default: every day)</span>
+                    Only on these days <span className="font-normal text-gray-400">(all selected = every day)</span>
                   </label>
                   <div className="flex items-center gap-2">
                     <button
@@ -659,13 +669,13 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                    Nightly Rate (₹) <span className="font-normal text-gray-400">(Optional if restrictions set)</span>
+                    Price per night (₹) <span className="font-normal text-gray-400">— leave empty to keep your usual price</span>
                   </label>
                   <input
                     type="number"
                     min="0"
                     step="1"
-                    placeholder="e.g. 4500 (or leave empty for base rate)"
+                    placeholder="e.g. 4500"
                     value={ratePerNight}
                     onChange={(e) => setRatePerNight(e.target.value)}
                     className="w-full h-10 px-3 text-xs bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white font-semibold"
@@ -673,11 +683,11 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                 </div>
                 <div>
                   <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                    Rule Label (Optional)
+                    Name this rule <span className="font-normal text-gray-400">— so you recognise it later</span>
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. Weekend Peak, Diwali 3N Min, Stop Sell"
+                    placeholder="e.g. Diwali week, Weekend price"
                     value={ruleName}
                     onChange={(e) => setRuleName(e.target.value)}
                     className="w-full h-10 px-3 text-xs bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
@@ -688,18 +698,18 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
               {/* Minimum & Maximum Stay Restrictions */}
               <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3">
                 <span className="text-2xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400 block">
-                  Stay Duration Restrictions
+                  How long guests can stay
                 </span>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                      Min Stay Nights
+                      Shortest stay allowed
                     </label>
                     <input
                       type="number"
                       min="1"
-                      placeholder="e.g. 2, 3, 5"
+                      placeholder="e.g. 2 nights"
                       value={minStay}
                       onChange={(e) => setMinStay(e.target.value)}
                       className="w-full h-9 px-2.5 text-xs bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
@@ -708,26 +718,26 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
 
                   <div>
                     <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                      Min Stay Type
+                      Apply that minimum to
                     </label>
                     <select
                       value={minStayType}
                       onChange={(e) => setMinStayType(e.target.value as 'arrival' | 'through')}
                       className="w-full h-9 px-2 text-xs bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
                     >
-                      <option value="arrival">Arrival Day Only (Standard)</option>
-                      <option value="through">Through (Any stay spanning date)</option>
+                      <option value="arrival">Guests arriving on these dates (usual choice)</option>
+                      <option value="through">Any stay that covers these dates</option>
                     </select>
                   </div>
 
                   <div>
                     <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                      Max Stay Nights (Optional)
+                      Longest stay allowed
                     </label>
                     <input
                       type="number"
                       min="1"
-                      placeholder="e.g. 14, 30"
+                      placeholder="e.g. 14 nights"
                       value={maxStay}
                       onChange={(e) => setMaxStay(e.target.value)}
                       className="w-full h-9 px-2.5 text-xs bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
@@ -738,7 +748,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
 
               {/* Availability & Check-in/out Block Controls (Stop Sell / CTA / CTD) */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
-                <label className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-colors ${
+                <label className={`flex items-start gap-2 p-2.5 rounded-lg border cursor-pointer transition-colors ${
                   stopSell
                     ? 'bg-red-50 dark:bg-red-950/60 border-red-300 dark:border-red-800 text-red-900 dark:text-red-300'
                     : 'bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300'
@@ -749,10 +759,13 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                     onChange={(e) => setStopSell(e.target.checked)}
                     className="rounded border-gray-300 text-red-600 focus:ring-red-500"
                   />
-                  <span className="text-xs font-semibold">Stop Sell (Close Dates)</span>
+                  <span className="text-xs">
+                    <span className="font-semibold block">Block these dates</span>
+                    <span className="text-2xs opacity-75">Nobody can book at all — here or on any channel</span>
+                  </span>
                 </label>
 
-                <label className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-colors ${
+                <label className={`flex items-start gap-2 p-2.5 rounded-lg border cursor-pointer transition-colors ${
                   closedToArrival
                     ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-300'
                     : 'bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300'
@@ -763,10 +776,13 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                     onChange={(e) => setClosedToArrival(e.target.checked)}
                     className="rounded border-gray-300 text-amber-600 focus:ring-amber-500"
                   />
-                  <span className="text-xs font-semibold">Closed to Arrival (CTA)</span>
+                  <span className="text-xs">
+                    <span className="font-semibold block">No check-ins</span>
+                    <span className="text-2xs opacity-75">A stay can't start on these dates, but one already running continues</span>
+                  </span>
                 </label>
 
-                <label className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-colors ${
+                <label className={`flex items-start gap-2 p-2.5 rounded-lg border cursor-pointer transition-colors ${
                   closedToDeparture
                     ? 'bg-purple-50 dark:bg-purple-950/60 border-purple-300 dark:border-purple-800 text-purple-900 dark:text-purple-300'
                     : 'bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300'
@@ -777,7 +793,10 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                     onChange={(e) => setClosedToDeparture(e.target.checked)}
                     className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                   />
-                  <span className="text-xs font-semibold">Closed to Departure (CTD)</span>
+                  <span className="text-xs">
+                    <span className="font-semibold block">No check-outs</span>
+                    <span className="text-2xs opacity-75">A stay can't end on these dates, so guests book through them</span>
+                  </span>
                 </label>
               </div>
 
@@ -786,7 +805,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                 <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-2xs font-semibold text-gray-700 dark:text-gray-300">
-                      Apply To Specific Rooms (leave unselected for property-wide rule):
+                      Which rooms? <span className="font-normal text-gray-400">Leave all unticked to apply to every room</span>
                     </span>
                     <button
                       type="button"
@@ -877,7 +896,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                         <th className="px-3 py-2.5">Date Range</th>
                         <th className="px-3 py-2.5">Scope / Room</th>
                         <th className="px-3 py-2.5">Label</th>
-                        <th className="px-3 py-2.5">Nightly Rate</th>
+                        <th className="px-3 py-2.5">Price / night</th>
                         <th className="px-3 py-2.5">Restrictions</th>
                         <th className="px-3 py-2.5 text-right">Action</th>
                       </tr>

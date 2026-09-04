@@ -317,7 +317,20 @@ function saveRateRule($pdo, $propertyId) {
                     foreach ($changedFields as $f) {
                         $payload[$f] = $newRuleState[$f];
                     }
-                    enqueueOutboxItem($pdo, (int)$propertyId, $roomId, 'rates', $startDate, $endDate, $payload);
+                    // A null $roomId here means "the whole property". That is a
+                    // real mapping for a single-unit property and NOT one for a
+                    // MULTI_KEY property, which maps per room - so enqueueing the
+                    // null would fail with "No Channex mapping found ... room
+                    // null" and be marked failed in silence. Expand it into the
+                    // property's actual rooms; [null] comes back unchanged for a
+                    // genuine single unit. (See the same fix in the pricing-mode
+                    // handler below and channex_push_ari in router.php.)
+                    $pushRoomIds = ($roomId === null && function_exists('getChannexPushRoomIds'))
+                        ? getChannexPushRoomIds($pdo, (int)$propertyId)
+                        : [$roomId];
+                    foreach ($pushRoomIds as $pushRoomId) {
+                        enqueueOutboxItem($pdo, (int)$propertyId, $pushRoomId, 'rates', $startDate, $endDate, $payload);
+                    }
                 }
             }
         }
@@ -374,7 +387,18 @@ function deleteRateRule($pdo, $propertyId) {
                     foreach ($changedFields as $f) {
                         $payload[$f] = $neutralRuleState[$f];
                     }
-                    enqueueOutboxItem($pdo, (int)$propertyId, $roomId, 'rates', $existingRule['start_date'], $existingRule['end_date'], $payload);
+                    // Same whole-property expansion as save_rate_rule above - a
+                    // null room on a MULTI_KEY property has no mapping to push to.
+                    // This one matters especially: deleting a rule is what RESTORES
+                    // a date to its neutral state, so a silently-failed push leaves
+                    // a stale rate or a Stop Sell block live on the channel after
+                    // the rule that created it is gone.
+                    $pushRoomIds = ($roomId === null && function_exists('getChannexPushRoomIds'))
+                        ? getChannexPushRoomIds($pdo, (int)$propertyId)
+                        : [$roomId];
+                    foreach ($pushRoomIds as $pushRoomId) {
+                        enqueueOutboxItem($pdo, (int)$propertyId, $pushRoomId, 'rates', $existingRule['start_date'], $existingRule['end_date'], $payload);
+                    }
                 }
             }
         }
@@ -436,8 +460,28 @@ function updatePricingMode($pdo, $propertyId) {
                 $range = $rangeStmt->fetch();
                 if (!empty($range['min_date']) && !empty($range['max_date'])) {
                     $payload = ['action' => 'pricing_mode_changed', 'pricing_mode' => $mode];
-                    enqueueOutboxItem($pdo, (int)$propertyId, null, 'availability', $range['min_date'], $range['max_date'], $payload);
-                    enqueueOutboxItem($pdo, (int)$propertyId, null, 'rates', $range['min_date'], $range['max_date'], $payload);
+                    // Never enqueue a bare room_id=null for a property that maps
+                    // per-room. A MULTI_KEY property has no `room_id IS NULL` row
+                    // in channex_mappings once it has real MULTI_KEY_ROOM
+                    // children, so getMapping(propertyId, null) finds nothing, the
+                    // push returns success:false, and AriDrainWorker just marks the
+                    // row failed and moves on - silently. This is the exact bug
+                    // CLAUDE.md documents for channex_push_ari; this call site was
+                    // missed when getChannexPushRoomIds() was introduced to fix it.
+                    //
+                    // Found live 4 Sep 2026: 23 failed outbox rows on Patel Colony,
+                    // all "No Channex mapping found for property 290476 room null",
+                    // 23 attempts each - so every pricing-mode change on a
+                    // multi-key property had silently pushed nothing at all.
+                    //
+                    // Returns [null] unchanged for a genuine single-unit property.
+                    $modeRoomIds = function_exists('getChannexPushRoomIds')
+                        ? getChannexPushRoomIds($pdo, (int)$propertyId)
+                        : [null];
+                    foreach ($modeRoomIds as $modeRoomId) {
+                        enqueueOutboxItem($pdo, (int)$propertyId, $modeRoomId, 'availability', $range['min_date'], $range['max_date'], $payload);
+                        enqueueOutboxItem($pdo, (int)$propertyId, $modeRoomId, 'rates', $range['min_date'], $range['max_date'], $payload);
+                    }
                 }
             }
         }

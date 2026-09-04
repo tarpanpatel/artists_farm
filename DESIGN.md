@@ -53,6 +53,26 @@ one - it gives every future change a plausible-looking but wrong thing to match 
 - **Colors**: not a separate hand-picked palette - follow `flowbite-react`'s own semantic color
   tokens per `node_modules/flowbite-react/dist/components/*/theme.js` rather than hand-picking
   Tailwind color classes, same ground-truth approach as everything else here.
+- **Device Mockups (marketing/landing pages only, added 30 Aug 2026)**: `home.html` (the public
+  marketing landing page - plain static HTML + compiled Tailwind, not `flowbite-react`, so the
+  component-library rules above don't apply to it) uses two distinct app-screenshot mockup styles,
+  picked by what the screen actually is:
+  - **Desktop "browser chrome" mockup** (dark `bg-slate-900` bezel + red/amber/emerald traffic-light
+    dots) for screens genuinely used on a desktop/tablet - the Dashboard, Analytics, Kitchen Display,
+    Cash Drawer, and Payroll screenshot sections all use this.
+  - **Real phone Device Mockup** (`https://flowbite.com/docs/components/device-mockups/` - the
+    smartphone frame: 14px bezel, 2.5rem corner radius, notch + side-button divs) for anything that's
+    genuinely phone-native, first used for the Telegram staff-ops chat screen (`#telegram-ops`) since
+    staff actually use Telegram on their phones, not in a browser window. Use this same frame for any
+    future WhatsApp/PWA-screen marketing mockup.
+  - **Re-confirms the warning right above**: fetching that device-mockups doc page live (30 Aug 2026)
+    reproduced the exact same unreleased-token-class problem - it renders its example with
+    `border-default`/`bg-base`/`bg-neutral-primary`, none of which exist in this project's compiled
+    Tailwind. The frame's pixel dimensions/structure in that doc page are real and stable and worth
+    reusing; the color class names are not - substitute real Tailwind color utilities (this page uses
+    `slate-900`, matching its existing browser-chrome bezels) instead of copying the doc's classes
+    verbatim. See the phone-mockup markup already built out in `home.html`'s `#telegram-ops` section
+    for the corrected, working version.
 
 ## If a genuinely new, non-Flowbite-covered pattern comes up
 
