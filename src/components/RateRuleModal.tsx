@@ -131,8 +131,8 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
       const confirmed = await confirm({
         title: newMode === 'flat' ? 'Use one price for every date?' : 'Use different prices by date?',
         message: newMode === 'flat'
-          ? `This immediately suspends every saved rate rule for this ${localRooms.length > 1 ? 'room/property' : 'property'} everywhere - your own calendar, Airbnb, Booking.com, and your public availability page all switch to the flat base rate with no restrictions right away. Any dates a rule had Stop Sell-blocked will reopen. Rules stay saved and can be reactivated by switching back.`
-          : `This immediately activates every saved rate rule for this ${localRooms.length > 1 ? 'room/property' : 'property'} everywhere - your own calendar, Airbnb, Booking.com, and your public availability page will start showing rule rates and enforcing any Stop Sell/stay restrictions right away.`,
+          ? `Every date goes back to the usual price straight away - on your own calendar, on Airbnb and Booking.com, and on your booking page. Any dates you had blocked will open up again for booking. Your rules aren't deleted; switch back and they return exactly as they were.`
+          : `Your saved rules start applying straight away - on your own calendar, on Airbnb and Booking.com, and on your booking page. Dates with a rule use that price and any limits you set; every other date keeps its usual price.`,
         confirmText: newMode === 'flat' ? 'Use one price' : 'Use prices by date',
         variant: 'warning',
       });
@@ -235,7 +235,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
     const hasRestriction = minStayNum !== null || maxStayNum !== null || stopSell || closedToArrival || closedToDeparture;
 
     if (rateNum === null && !hasRestriction) {
-      showToast('Please enter a nightly rate or at least one restriction (minimum stay, stop sell, CTA/CTD).', { type: 'error' });
+      showToast('Enter a price, or set at least one rule (shortest stay, blocked dates, no check-ins or no check-outs).', { type: 'error' });
       return;
     }
 
@@ -268,7 +268,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
 
       const res = await saveRateRuleDB(payload);
       if (res.success) {
-        showToast('Dynamic rate & restriction rule saved successfully.', { type: 'success' });
+        showToast('Saved. These dates are updated everywhere.', { type: 'success' });
         setRatePerNight('');
         setRuleName('');
         setMinStay('');
@@ -358,7 +358,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
             </h4>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
               {currentPricingMode === 'variable'
-                ? 'Dynamic rules override standard base rates for matching date ranges.'
+                ? 'Dates with a rule use that rule’s price; every other date uses the usual price.'
                 : `Using flat base rate (₹${defaultTariff ? Math.round(defaultTariff) : '0'}/night) for all dates.`}
             </p>
           </div>
@@ -522,10 +522,10 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                   <div>
                     <h5 className="text-xs font-bold text-amber-900 dark:text-amber-200 uppercase tracking-wider">
-                      {rateRules.length} Custom Dynamic Rule{rateRules.length === 1 ? '' : 's'} on Standby
+                      {rateRules.length} saved rule{rateRules.length === 1 ? '' : 's'}, not in use
                     </h5>
                     <p className="text-xs text-amber-800/90 dark:text-amber-300 mt-0.5">
-                      You have {rateRules.length} date-range pricing rule{rateRules.length === 1 ? '' : 's'} saved in your database (e.g. weekend peaks, minimum stays). They are currently suspended while Flat Base Rate is active.
+                      You've saved {rateRules.length} rule{rateRules.length === 1 ? '' : 's'} for particular dates (weekend prices, minimum stays, and so on). They're switched off right now because every date is using one price.
                     </p>
                   </div>
                   <Button
@@ -854,8 +854,8 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
               </div>
             </form>
 
-            {/* Existing Rate Rules Table - collapsed by default, rows capped
-                (see the showRulesList / rulesRenderLimit comment above). */}
+            {/* Existing Rate Rules Table - collapsed by default, rows paginated
+                (see the showRulesList / rulesPage comment above). */}
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
@@ -864,7 +864,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                 {rateRules.length > 0 && (
                   <button
                     type="button"
-                    onClick={() => { setShowRulesList((v) => !v); setRulesRenderLimit(RULES_PAGE); }}
+                    onClick={() => { setShowRulesList((v) => !v); setRulesPage(1); }}
                     className="text-2xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 cursor-pointer shrink-0"
                   >
                     {showRulesList ? 'Hide list' : 'Show list'}
@@ -902,7 +902,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-800">
-                      {rateRules.slice(0, rulesRenderLimit).map((rule) => (
+                      {rateRules.slice((rulesPage - 1) * RULES_PAGE_SIZE, rulesPage * RULES_PAGE_SIZE).map((rule) => (
                         <tr key={rule.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/50">
                           <td className="px-3 py-2 font-semibold text-gray-900 dark:text-white whitespace-nowrap">
                             <div>
@@ -974,15 +974,13 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                       ))}
                     </tbody>
                   </table>
-                  {rateRules.length > rulesRenderLimit && (
-                    <button
-                      type="button"
-                      onClick={() => setRulesRenderLimit((n) => n + RULES_PAGE * 2)}
-                      className="w-full py-2 text-2xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 bg-gray-50 dark:bg-gray-800/60 border-t border-gray-200 dark:border-gray-700 cursor-pointer"
-                    >
-                      Showing {rulesRenderLimit} of {rateRules.length} — show more
-                    </button>
-                  )}
+                  <TablePagination
+                    page={rulesPage}
+                    totalItems={rateRules.length}
+                    pageSize={RULES_PAGE_SIZE}
+                    onPageChange={setRulesPage}
+                    itemLabel="rules"
+                  />
                 </div>
               )}
             </div>
