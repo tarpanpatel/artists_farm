@@ -20,17 +20,18 @@ import {
   X,
   HelpCircle,
   ArrowRightLeft,
+  ChevronDown,
 } from './icons/FlowbiteIcons';
 import { useAuth } from '../contexts/AuthContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
 import { useServiceRequestContext } from '../contexts/ServiceRequestContext';
-import { Guest } from '../types';
+import { Guest, StaffMember } from '../types';
 import { GUEST_STATUS_CHECKEDOUT_LEGACY, GUEST_STATUS_CHECKED_OUT } from '../constants/guestStatus';
 import { t } from '../i18n';
 import { TabType } from './Navigation';
 
-import { fulfillServiceRequestInDB, fetchPendingRatePushAlertsDB, acknowledgeRatePushAlertsDB } from '../services/api';
+import { fulfillServiceRequestInDB, fetchPendingRatePushAlertsDB, acknowledgeRatePushAlertsDB, API_ROOT_BASE, getPropertyAndRoomSlugs } from '../services/api';
 import { useToast } from './ToastContext';
 
 interface HeaderProps {
@@ -72,6 +73,9 @@ interface HeaderProps {
   // property's tenant Root Admin is currently viewing as the switch target, since a real
   // Super Admin of that tenant would always see this icon.
   canSwitchProperties?: boolean;
+  tenantId?: number | null;
+  tenantSlug?: string | null;
+  currentPropertySlug?: string | null;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -93,8 +97,60 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenFaq,
   onSwitchProperty,
   canSwitchProperties,
+  tenantId,
+  tenantSlug,
+  currentPropertySlug,
 }) => {
   const { currentUser, activeRole, setActiveRole } = useAuth();
+
+  // Multi-property switching for Super Admin / authorized staff
+  const [properties, setProperties] = useState<Array<{ id: number; name: string; slug: string; property_type?: string; is_active?: number; room_count?: number }>>([]);
+  const [_loadingProperties, setLoadingProperties] = useState(false);
+
+  const resolvedTenantId = tenantId || currentUser?.tenantId || null;
+
+  useEffect(() => {
+    if (!canSwitchProperties || !resolvedTenantId) return;
+    let cancelled = false;
+    (async () => {
+      setLoadingProperties(true);
+      try {
+        const res = await fetch(`${API_ROOT_BASE}/php/api/router.php?action=get_tenant_properties&tenant_id=${resolvedTenantId}`, {
+          credentials: 'include',
+        });
+        const json = await res.json();
+        if (!cancelled && json.success && Array.isArray(json.data)) {
+          setProperties(json.data.filter((p: any) => p.is_active));
+        }
+      } catch (err) {
+        console.error('Failed to load properties for header switcher:', err);
+      } finally {
+        if (!cancelled) setLoadingProperties(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [canSwitchProperties, resolvedTenantId]);
+
+  const handleSelectProperty = (property: { id: number; name: string; slug: string }) => {
+    const slug = property.slug.toLowerCase();
+    const currSlug = (currentPropertySlug || getPropertyAndRoomSlugs().propertySlug || '').toLowerCase();
+    if (slug === currSlug) return;
+
+    const staffMember: StaffMember = {
+      id: String(currentUser?.id || '1'),
+      name: currentUser?.name || currentUser?.username || 'User',
+      username: currentUser?.username || 'user',
+      role: currentUser?.role || 'Super Admin',
+      phone: currentUser?.phone || currentUser?.username || '',
+      monthlySalary: 0,
+      status: 'Active',
+    };
+    localStorage.setItem(`artists_farm_authenticated_${slug}`, 'true');
+    localStorage.setItem(`artists_farm_user_${slug}`, JSON.stringify(staffMember));
+
+    const tSlug = tenantSlug || currentUser?.tenantSlug || getPropertyAndRoomSlugs().tenantSlug || 'tenant';
+    window.location.href = `${API_ROOT_BASE}/${tSlug}/${property.slug}/#dashboard`;
+  };
   // "View site as" (Root Admin only) - a pure frontend preview: it only
   // changes what activeRole-gated UI shows/hides, never the real backend
   // session, so nothing about actual permissions is gained or lost. Gated
@@ -327,17 +383,90 @@ export const Header: React.FC<HeaderProps> = ({
             <Menu className="w-5 h-5" />
           </button>
 
-          {/* Logo */}
-          <div className="header__logo pos-logo-container flex items-center gap-2.5">
-            <div className="header__logo-icon w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs font-semibold">
-              <Building2 className="w-5 h-5" />
+          {/* Logo / Property Dropdown */}
+          {canSwitchProperties && properties.length > 1 ? (
+            <Dropdown
+              placement="bottom-start"
+              dismissOnClick
+              label=""
+              className="z-60 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden text-xs py-1 min-w-[260px] max-w-xs divide-y divide-gray-100 dark:divide-gray-700"
+              renderTrigger={() => (
+                <button
+                  type="button"
+                  title="Switch property"
+                  aria-label="Switch property"
+                  className="header__logo pos-logo-container flex items-center gap-2 p-1.5 -ml-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors cursor-pointer group"
+                >
+                  <div className="header__logo-icon w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs font-semibold shrink-0">
+                    <Building2 className="w-5 h-5" />
+                  </div>
+                  <div className="header__logo-text block text-left">
+                    <span className="text-sm font-semibold text-gray-800 dark:text-white tracking-tight truncate block max-w-[150px] sm:max-w-[220px] md:max-w-xs">
+                      {propertyName}
+                    </span>
+                  </div>
+                  <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400 group-hover:text-gray-800 dark:group-hover:text-gray-200 transition-transform shrink-0 ml-0.5" />
+                </button>
+              )}
+            >
+              <div className="px-3.5 py-2 text-2xs font-semibold text-gray-500 dark:text-gray-400 bg-gray-50/80 dark:bg-gray-800/80 flex items-center justify-between">
+                <span>Switch Property</span>
+                <span className="text-3xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800">
+                  {properties.length} Properties
+                </span>
+              </div>
+              <div className="py-1 max-h-72 overflow-y-auto">
+                {properties.map((prop) => {
+                  const isCurrent =
+                    prop.slug.toLowerCase() === (currentPropertySlug || getPropertyAndRoomSlugs().propertySlug || '').toLowerCase() ||
+                    prop.name.toLowerCase() === propertyName.toLowerCase();
+                  return (
+                    <DropdownItem
+                      key={prop.id}
+                      onClick={() => handleSelectProperty(prop)}
+                      className={`flex items-center justify-between gap-2.5 px-3.5 py-2.5 text-xs transition-colors cursor-pointer ${
+                        isCurrent
+                          ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 font-bold'
+                          : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div
+                          className={`w-6 h-6 rounded flex items-center justify-center shrink-0 ${
+                            isCurrent
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                          }`}
+                        >
+                          <Building2 className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="min-w-0 text-left">
+                          <div className="truncate text-xs font-semibold">{prop.name}</div>
+                          {prop.room_count !== undefined && prop.room_count > 0 && (
+                            <div className="text-3xs text-gray-500 dark:text-gray-400 font-normal">
+                              {prop.room_count} {prop.room_count === 1 ? 'room' : 'rooms'}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      {isCurrent && <Check className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />}
+                    </DropdownItem>
+                  );
+                })}
+              </div>
+            </Dropdown>
+          ) : (
+            <div className="header__logo pos-logo-container flex items-center gap-2.5">
+              <div className="header__logo-icon w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs font-semibold">
+                <Building2 className="w-5 h-5" />
+              </div>
+              <div className="header__logo-text block">
+                <span className="text-sm font-semibold text-slate-700 dark:text-white tracking-tight">
+                  {propertyName}
+                </span>
+              </div>
             </div>
-            <div className="header__logo-text block">
-              <span className="text-sm font-semibold text-slate-700 dark:text-white tracking-tight">
-                {propertyName}
-              </span>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Right Section: Notifications + Dark Mode + Profile Username */}
@@ -414,35 +543,6 @@ export const Header: React.FC<HeaderProps> = ({
                     <Download className="w-2 h-2 text-white" strokeWidth={3} />
                   </span>
                 </span>
-              </button>
-            </Popover>
-          )}
-
-          {/* Switch Property icon (28 Aug 2026, explicit request) - takes this exact header
-              slot for any session that can actually use it: a staff account with
-              access_all_properties, the tenant owner (both via currentUser.canSwitchProperties -
-              see check_session/login_user in router.php), or Root Admin previewing "View site as
-              Super Admin" above (App.tsx computes the final canSwitchProperties prop, folding in
-              that preview case too - a real Super Admin always has this). Everyone else gets
-              nothing in this slot now - it used to fall back to a calendar-sync quick action,
-              archived 3 Sep 2026 along with the rest of ICalSyncManager - see
-              _unwanted/ical/README.md. */}
-          {canSwitchProperties && (
-            <Popover
-              trigger="hover"
-              placement="bottom"
-              content={
-                <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
-                  {t('switch_property_tooltip', 'Switch property')}
-                </div>
-              }
-            >
-              <button
-                onClick={() => onSwitchProperty?.()}
-                aria-label={t('switch_property_aria', 'Switch property')}
-                className="header__switch-property relative p-2 text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
-              >
-                <ArrowRightLeft className="w-5 h-5" />
               </button>
             </Popover>
           )}

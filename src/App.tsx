@@ -286,8 +286,14 @@ function AppBody({ preloadedData }: AppBodyProps) {
       }
 
       // If hash is not in routeMap but exists, assume it's a room slug (with optional /subtab)
+      //
+      // Split rawHash, not hash: `hash` had its "/subtab" stripped at the top of
+      // this function, so `hash.split('/')` could only ever yield one element and
+      // tabPart was unconditionally undefined - making the subtab branch below
+      // dead code and leaving a `#room/edit_property` refresh to fall back to
+      // whatever tab sessionStorage happened to hold (4 Sep 2026).
       if (hash) {
-        const [roomPart, tabPart] = hash.split('/');
+        const [roomPart, tabPart] = rawHash.split('?')[0].split('/');
         if (tabPart && routeMap[tabPart]) {
           return { tab: routeMap[tabPart].tab, key: roomPart };
         }
@@ -417,10 +423,22 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // address bar - lives further down, right after navItems is declared, since
   // it needs to look up the current item's urlSlug.
 
-  // Preserve room hash when room is selected
+  // Preserve room hash when room is selected.
+  //
+  // Only writes the hash when it isn't ALREADY pointing at this room. It used
+  // to write `#${slug}` unconditionally, which silently truncated any
+  // `#room/subtab` deep link: RoomsManagement's "Manage" button sets
+  // `#room/edit_property` and then this effect - firing on the very same
+  // selectedRoomSlugOverride change - immediately rewrote it to `#room`, so the
+  // subtab was gone before anything could route on it and Manage always landed
+  // on the room dashboard instead of the room's Edit Property page (reported
+  // 4 Sep 2026 as "manage property button not working").
   useEffect(() => {
     if (selectedRoomSlugOverride && typeof window !== 'undefined') {
-      window.location.hash = `#${selectedRoomSlugOverride}`;
+      const currentRoom = window.location.hash.replace('#', '').trim().split('/')[0];
+      if (currentRoom !== selectedRoomSlugOverride) {
+        window.location.hash = `#${selectedRoomSlugOverride}`;
+      }
     }
   }, [selectedRoomSlugOverride]);
 
@@ -1430,7 +1448,11 @@ function AppBody({ preloadedData }: AppBodyProps) {
 
       // 404 or Invalid Route -> Try dynamic nav items from DB, then check if it's a room slug (with optional /subtab)
       if (!routeMap[baseHash]) {
-        const [roomPart, tabPart] = hash.split('/');
+        // rawHash, not hash: `hash` was already truncated at the '/' above, so
+        // tabPart could never be anything but undefined and resolvedSubTab below
+        // was always null - the "#room-101/edit_property" support this branch
+        // documents had in fact never once run (4 Sep 2026).
+        const [roomPart, tabPart] = rawHash.split('?')[0].split('/');
         // urlSlug first - that's what a renamed item's link actually points at now;
         // uniqueKey/tabKey stay as fallbacks for items that were never renamed.
         const dynamicItem = visibleNavItems.find((n) => n.urlSlug === baseHash || n.uniqueKey === baseHash || n.tabKey === baseHash);
@@ -2106,6 +2128,9 @@ ${itemsStr}
             onOpenFaq={() => setLegalDrawerActiveTab('faq')}
             onSwitchProperty={() => setIsSwitchingProperty(true)}
             canSwitchProperties={effectiveCanSwitchProperties}
+            tenantId={effectiveSwitchTenantId}
+            tenantSlug={effectiveSwitchTenantSlug}
+            currentPropertySlug={preloadedData.currentProperty?.slug || getPropertyAndRoomSlugs().propertySlug}
           />
         )}
 
