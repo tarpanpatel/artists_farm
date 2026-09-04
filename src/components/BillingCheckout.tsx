@@ -28,7 +28,6 @@ import { getTelUri, getWhatsAppPhone } from '../utils/phoneUtils';
 import { t } from '../i18n/en';
 import { GUEST_STATUS_CHECKEDOUT_LEGACY, GUEST_STATUS_CHECKED_OUT } from '../constants/guestStatus';
 import { Badge } from './Badge';
-import { Popover } from './Popover';
 import { useToast } from './ToastContext';
 import { useAuth } from '../contexts/AuthContext';
 import { MobileBookingCardStack } from './MobileBookingCardStack';
@@ -599,34 +598,17 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                               </span>
                             )}
                             {guest.otaSource && (
-                              // Click-triggered Popover (24 Aug 2026) - was a hover-only Badge
-                              // `title` (rendered via Badge.tsx's Tooltip wrapper), which can't
-                              // hold a clickable link and is a stuck-open risk on mobile taps
-                              // (see CLAUDE.md's hover-popover rule). Room number dropped from
-                              // the badge text itself - it's already the room card's own
-                              // header, repeating it here is redundant.
-                              <Popover
-                                trigger="click"
-                                placement="bottom"
-                                content={
-                                  <div className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-300 leading-relaxed max-w-xs space-y-1.5">
-                                    <p>{t('ota_converted_badge_tooltip', 'Converted from an OTA calendar sync - editing this only changes this app, not the original platform.')}</p>
-                                  </div>
-                                }
+                              <Badge
+                                variant="warning"
+                                size="sm"
+                                title={t('ota_converted_badge_tooltip', 'Converted from an OTA calendar sync - editing this only changes this app, not the original platform.')}
+                                className="billing-checkout__ota-badge whitespace-nowrap shrink-0"
                               >
-                                <span className="inline-flex cursor-pointer">
-                                  <Badge
-                                    variant="warning"
-                                    size="sm"
-                                    className="billing-checkout__ota-badge whitespace-nowrap shrink-0"
-                                  >
-                                    <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                                      <Globe className="w-2.5 h-2.5 shrink-0" />
-                                      <span>{guest.otaSourceLabel || guest.otaSource}</span>
-                                    </span>
-                                  </Badge>
+                                <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                                  <Globe className="w-2.5 h-2.5 shrink-0" />
+                                  <span>{guest.otaSourceLabel || guest.otaSource}</span>
                                 </span>
-                              </Popover>
+                              </Badge>
                             )}
                           </div>
                         </div>
@@ -647,60 +629,31 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                                 </span>
                               </Badge>
                             ) : (
-                              // Click-triggered Popover (24 Aug 2026, same request/pattern
-                              // as the "requiring attention today" pill above and the
-                              // OTA badge elsewhere in this card) - a button straight to
-                              // where the C-Form actually gets filed, instead of a
-                              // dead-end warning with nowhere to go from here.
-                              <Popover
-                                trigger="click"
-                                placement="bottom"
-                                content={
-                                  <div className="p-3 space-y-2 max-w-[220px]">
-                                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                                      {t('c_form_pending_popover_text', 'This foreign guest still needs a C-Form filed.')}
-                                    </p>
-                                    <Button variant="warning" size="xs" block onClick={() => handleEditGuest(guest, 'c_form')}>
-                                      {t('resolve_c_form_button', 'Go to C-Form')}
-                                    </Button>
-                                  </div>
-                                }
+                              <Badge
+                                variant="warning"
+                                size="sm"
+                                title={t('c_form_pending_popover_text', 'This foreign guest still needs a C-Form filed.')}
+                                className="whitespace-nowrap"
                               >
-                                <span className="inline-flex cursor-pointer">
-                                  <Badge variant="warning" size="sm" className="whitespace-nowrap">
-                                    <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                                      <AlertCircle className="w-3 h-3 shrink-0" />
-                                      <span>{t('c_form_pending_badge', 'C-Form Pending')}</span>
-                                    </span>
-                                  </Badge>
+                                <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                                  <AlertCircle className="w-3 h-3 shrink-0" />
+                                  <span>{t('c_form_pending_badge', 'C-Form Pending')}</span>
                                 </span>
-                              </Popover>
+                              </Badge>
                             )
                           )}
                           {guest.idVerificationStatus !== 'Complete' && (
-                            <Popover
-                              trigger="click"
-                              placement="bottom"
-                              content={
-                                <div className="p-3 space-y-2 max-w-[220px]">
-                                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                                    {t('id_pending_popover_text', 'This guest\'s ID verification is still incomplete.')}
-                                  </p>
-                                  <Button variant="warning" size="xs" block onClick={() => handleEditGuest(guest, 'id_verification')}>
-                                    {t('resolve_id_button', 'Go to ID Upload')}
-                                  </Button>
-                                </div>
-                              }
+                            <Badge
+                              variant="warning"
+                              size="sm"
+                              title={t('id_pending_popover_text', 'This guest\'s ID verification is still incomplete.')}
+                              className="whitespace-nowrap"
                             >
-                              <span className="inline-flex cursor-pointer">
-                                <Badge variant="warning" size="sm" className="whitespace-nowrap">
-                                  <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                                    <AlertCircle className="w-3 h-3 shrink-0" />
-                                    <span>{t('id_verification_pending_badge', 'ID Pending')}</span>
-                                  </span>
-                                </Badge>
+                              <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                                <AlertCircle className="w-3 h-3 shrink-0" />
+                                <span>{t('id_verification_pending_badge', 'ID Pending')}</span>
                               </span>
-                            </Popover>
+                            </Badge>
                           )}
                         </div>
                       </div>

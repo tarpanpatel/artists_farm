@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Badge, Checkbox } from 'flowbite-react';
+import { Button, Checkbox } from 'flowbite-react';
+import { Badge } from './Badge';
 import {
   Trash2,
   Plus,
@@ -481,7 +482,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               <h3 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 <span>{t('add_guest_booking_header', 'Add Booking')}</span>
                 {isMultiKeyProperty && roomNumber && (
-                  <Badge color="blue" size="sm">
+                  <Badge variant="info" size="sm">
                     {roomNumber}
                   </Badge>
                 )}

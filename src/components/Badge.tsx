@@ -10,7 +10,6 @@ interface BadgeProps {
   size?: BadgeSize;
   dot?: boolean;
   title?: string;
-  onClick?: (e: React.MouseEvent<HTMLElement>) => void;
   children: React.ReactNode;
   className?: string;
 }
@@ -47,7 +46,6 @@ export const Badge: React.FC<BadgeProps> = ({
   size = 'sm',
   dot = false,
   title,
-  onClick,
   children,
   className = '',
 }) => {
@@ -56,7 +54,6 @@ export const Badge: React.FC<BadgeProps> = ({
       theme={badgeTheme}
       color={variant}
       size={size}
-      onClick={onClick}
       className={`app-badge-${variant} badge ${className}`}
     >
       {dot && (

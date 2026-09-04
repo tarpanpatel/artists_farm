@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2, Share2, LogOut, Upload, CreditCard, Globe, AlertTriangle, X, ScanLine } from './icons/FlowbiteIcons';
 import { Drawer as FlowbiteDrawer, DrawerItems, Checkbox, Modal } from 'flowbite-react';
 import { Badge } from './Badge';
-import { Popover } from './Popover';
 import { Guest } from '../types';
 import { markCFormFiled, checkinGuestInDB, uploadDocumentDB } from '../services/api';
 import { scanApplicantIdFromFile } from '../utils/cFormBarcodeScanner';
@@ -696,33 +695,21 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               // modal, same fix ConvertOtaBookingModal already needed for its Help?
               // popover). Room number already dropped from this badge above (24 Aug
               // 2026) - redundant with "Assigned Room / Villa" a few fields down.
-              <Popover
-                trigger="click"
-                placement="bottom"
-                zIndex={70}
-                content={
-                  <div className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-300 leading-relaxed max-w-xs space-y-1.5">
-                    <p>{t('ota_converted_badge_tooltip', 'Converted from an OTA calendar sync - editing this only changes this app, not the original platform.')}</p>
-                  </div>
-                }
+              <Badge
+                variant="warning"
+                size="sm"
+                title={t('ota_converted_badge_tooltip', 'Converted from an OTA calendar sync - editing this only changes this app, not the original platform.')}
+                className="booking-details-modal__ota-badge whitespace-nowrap shrink-0"
               >
-                <span className="inline-flex cursor-pointer">
-                  <Badge
-                    variant="warning"
-                    size="sm"
-                    className="booking-details-modal__ota-badge whitespace-nowrap shrink-0"
-                  >
-                    <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                      {OtaBadgeIcon ? (
-                        <OtaBadgeIcon className="w-3.5 h-3.5 shrink-0 rounded-[2px]" />
-                      ) : (
-                        <Globe className="w-3 h-3 shrink-0" />
-                      )}
-                      <span>{guest.otaSourceLabel || guest.otaSource}</span>
-                    </span>
-                  </Badge>
+                <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                  {OtaBadgeIcon ? (
+                    <OtaBadgeIcon className="w-3.5 h-3.5 shrink-0 rounded-[2px]" />
+                  ) : (
+                    <Globe className="w-3 h-3 shrink-0" />
+                  )}
+                  <span>{guest.otaSourceLabel || guest.otaSource}</span>
                 </span>
-              </Popover>
+              </Badge>
             )}
           </h2>
           <button

@@ -492,14 +492,11 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
       name: t('status_column', 'Status'),
       align: 'center' as const,
       cell: (item: MenuItem) => (
-        <Badge
-          variant={item.available ? 'success' : 'danger'}
-          size="sm"
-          onClick={() => onUpdateFoodItem(item.id, { available: !item.available })}
-          className="cursor-pointer whitespace-nowrap"
-        >
-          {item.available ? t('available_badge', 'Available') : t('out_of_stock_badge', 'Out of Stock')}
-        </Badge>
+        <ToggleSwitch
+          enabled={item.available}
+          onChange={(enabled) => onUpdateFoodItem(item.id, { available: enabled })}
+          label={item.available ? t('available_badge', 'Available') : t('out_of_stock_badge', 'Out of Stock')}
+        />
       ),
     },
     {
@@ -751,14 +748,10 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                               </span>
                             </div>
 
-                            <Badge
-                              variant={item.available ? 'success' : 'danger'}
-                              size="sm"
-                              onClick={() => onUpdateFoodItem(item.id, { available: !item.available })}
-                              className="shrink-0 cursor-pointer"
-                            >
-                              {item.available ? t('available_badge', 'Available') : t('out_of_stock_badge', 'Out of Stock')}
-                            </Badge>
+                            <ToggleSwitch
+                              enabled={item.available}
+                              onChange={(enabled) => onUpdateFoodItem(item.id, { available: enabled })}
+                            />
                           </div>
 
                           {/* Image Preview & Quick Upload */}
@@ -899,14 +892,10 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                               <span className="text-2xs font-medium text-slate-500 dark:text-slate-400 truncate">
                                 {item.category}
                               </span>
-                              <Badge
-                                variant={item.available ? 'success' : 'danger'}
-                                size="sm"
-                                onClick={() => onUpdateFoodItem(item.id, { available: !item.available })}
-                                className="cursor-pointer text-2xs py-0 px-1.5"
-                              >
-                                {item.available ? t('available_badge', 'Available') : t('out_of_stock_badge', 'Out of Stock')}
-                              </Badge>
+                              <ToggleSwitch
+                                enabled={item.available}
+                                onChange={(enabled) => onUpdateFoodItem(item.id, { available: enabled })}
+                              />
                             </div>
                           </div>
                         </div>
