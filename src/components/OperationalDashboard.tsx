@@ -122,7 +122,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   // modal's own onSave the same way every other field edit here does. Left in the props
   // interface (optional, so no call site needs to change) in case a future direct-toggle
   // path wants it back once it can collect a confirmation number too.
-  onCFormFiledUpdated: _onCFormFiledUpdated,
+  onCFormFiledUpdated,
   onGuestCheckedIn,
   activeMenuItemKey: _activeMenuItemKey,
   kitchenModuleEnabled = true,
@@ -1822,6 +1822,10 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           propertyCheckoutTime={propertyCheckoutTime}
           onOpenIdVerification={() => setShowCheckinVerification(true)}
           onCheckedIn={onGuestCheckedIn}
+          onCFormFiled={(guestId, filedAt) => {
+            setSelectedBooking((prev) => (prev ? { ...prev, cFormFiledAt: filedAt } : prev));
+            onCFormFiledUpdated?.(guestId, filedAt);
+          }}
           onCheckout={onCheckout ? () => { onCheckout(selectedBooking.id); setSelectedBooking(null); setSelectedBookingFocusSection(null); } : undefined}
         />
       )}

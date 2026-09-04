@@ -14,6 +14,7 @@ import { getFirstName } from '../utils/nameUtils';
 import { getOtaIcon } from '../utils/otaIcons';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import { t } from '../i18n/en';
+import { GUEST_STATUS_CHECKED_IN } from '../constants/guestStatus';
 
 interface TodayOverviewProps {
   guests: Guest[];
@@ -71,6 +72,9 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   onAddGuest: _onAddGuest,
   onUpdateGuest,
   onDeleteGuest,
+  onCheckInGuest,
+  onGuestVerificationUpdated,
+  onCFormFiledUpdated,
   onCheckout,
   propertyName = '',
   propertyMapsLink = '',
@@ -1139,6 +1143,21 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           propertyCheckinTime={propertyCheckinTime}
           propertyCheckoutTime={propertyCheckoutTime}
           onCheckout={onCheckout ? () => { onCheckout(selectedGuest.id); setSelectedGuest(null); } : undefined}
+          // Both endpoints have already written to the DB by the time these
+          // fire - these only keep the calendar and the rest of the app in
+          // step with what the modal just did, without a reload.
+          onCheckedIn={(guestId) => {
+            setSelectedGuest((prev) => (prev ? { ...prev, status: GUEST_STATUS_CHECKED_IN as any } : prev));
+            onCheckInGuest?.(guestId);
+          }}
+          onIdVerified={(guestId) => {
+            setSelectedGuest((prev) => (prev ? { ...prev, idVerificationStatus: 'Complete' } : prev));
+            onGuestVerificationUpdated?.(guestId);
+          }}
+          onCFormFiled={(guestId, filedAt) => {
+            setSelectedGuest((prev) => (prev ? { ...prev, cFormFiledAt: filedAt } : prev));
+            onCFormFiledUpdated?.(guestId, filedAt);
+          }}
         />
       )}
 

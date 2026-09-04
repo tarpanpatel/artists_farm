@@ -52,6 +52,15 @@ interface BookingDetailsModalProps {
   propertyInstructions?: string;
   onOpenIdVerification?: () => void;
   onCheckedIn?: (guestId: string) => void;
+  // Fired once the guest's ID has actually been verified through this modal's
+  // OWN CheckinVerificationModal (the fallback path used when the caller
+  // didn't supply onOpenIdVerification). Lets the caller mark the guest
+  // verified in its list without this modal round-tripping through onSave -
+  // see the onVerificationComplete handler below for why that mattered.
+  onIdVerified?: (guestId: string) => void;
+  // Same idea for the C-Form section: mark_c_form_filed has already written
+  // the row, so the caller just needs telling, not a second save.
+  onCFormFiled?: (guestId: string, filedAt: string | null) => void;
   // Guest can be checked out and billed anytime during the stay, not just on
   // the original expected checkout date.
   onCheckout?: () => void;
@@ -106,6 +115,8 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   propertyInstructions = '',
   onOpenIdVerification,
   onCheckedIn,
+  onIdVerified,
+  onCFormFiled,
   onCheckout,
   initialFocusSection = null,
   isMultiKeyProperty,
@@ -149,8 +160,36 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   // Check-in is pending/due only when the guest is in Booked status AND their
   // check-in date is today or in the past (an Upcoming booking with a future
   // check-in date is NOT pending check-in yet).
+  // Local echoes of the two server-side flips this modal triggers itself:
+  // "Mark Checked In" and completing ID verification. Both are already
+  // persisted by their own dedicated endpoint by the time they land here, so
+  // these exist purely to re-render THIS modal - nothing else.
+  //
+  // FIXED 4 Sep 2026 (live report: "i just uploaded guest id, bt the banner
+  // stays there"). The two paths were broken in different ways:
+  //   - check-in wrote `guest.status = ...` straight onto the prop object, a
+  //     mutation React never re-renders for;
+  //   - ID verification round-tripped through onSave(), which is worse -
+  //     complete_checkin_verification has ALREADY bumped the row's updated_at
+  //     by then, so the follow-up update_guest was rejected 409 stale_booking
+  //     (see update_guest's expected_updated_at handling in guests.php), the
+  //     caller's setState never ran, and nothing surfaced the failure. It was
+  //     deterministic, not a race - it could never have worked.
+  // Reset per guest so reusing one mounted modal for a different booking
+  // (TodayOverview swaps selectedGuest without unmounting) never carries a
+  // previous guest's state across.
+  const [checkedInLocally, setCheckedInLocally] = useState(false);
+  const [idVerifiedLocally, setIdVerifiedLocally] = useState(false);
+  useEffect(() => {
+    setCheckedInLocally(false);
+    setIdVerifiedLocally(false);
+  }, [guest.id]);
+
+  const effectiveStatus = checkedInLocally ? GUEST_STATUS_CHECKED_IN : String(guest?.status || '');
+  const isIdVerified = idVerifiedLocally || guest.idVerificationStatus === 'Complete';
+
   const isCheckinDue = (() => {
-    const statusStr = String(guest?.status || '');
+    const statusStr = effectiveStatus;
     if (statusStr !== GUEST_STATUS_BOOKED && statusStr !== GUEST_STATUS_CONFIRMED_LEGACY) {
       return false;
     }
@@ -187,7 +226,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const handleMarkCheckedIn = async () => {
     const ok = await checkinGuestInDB(guest.id);
     if (ok) {
-      guest.status = GUEST_STATUS_CHECKED_IN as any;
+      setCheckedInLocally(true);
       onCheckedIn?.(guest.id);
       showToast(`${guest.guestName} marked as Checked In!`, { type: 'success' });
     } else {
@@ -762,35 +801,40 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           <div
             data-tour="checkin-folio"
             className={`booking-details-modal__id-btn w-full mb-3 px-3.5 py-2.5 rounded-lg border flex items-center justify-between gap-2 transition-colors ${
-              guest.idVerificationStatus === 'Complete'
+              isIdVerified
                 ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800'
                 : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800'
             }`}
           >
             <span className={`flex items-center gap-2 text-xs font-semibold ${
-              guest.idVerificationStatus === 'Complete'
-                ? 'text-slate-700 dark:text-slate-100'
+              isIdVerified
+                ? 'text-emerald-900 dark:text-emerald-200'
                 : 'text-rose-900 dark:text-rose-200'
             }`}>
-              <IdCard className={`w-4 h-4 shrink-0 ${
-                guest.idVerificationStatus === 'Complete'
-                  ? 'text-emerald-500'
-                  : 'text-rose-600 dark:text-rose-400'
-              }`} />
-              {t('checkin_id_verification_label', 'Check-in ID Verification')}
+              {isIdVerified ? (
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+              ) : (
+                <IdCard className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
+              )}
+              {/* Says what the state IS, not what the section is about - the old
+                  label read "Check-in ID Verification" in both states, so a
+                  green banner still looked like an outstanding task. */}
+              {isIdVerified
+                ? t('checkin_id_uploaded_label', 'Guest ID Uploaded')
+                : t('checkin_id_verification_label', 'Check-in ID Verification')}
             </span>
             {canActOnBooking && (
               <button
                 type="button"
                 onClick={handleOpenId}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs flex items-center gap-1.5 shrink-0 ${
-                  guest.idVerificationStatus === 'Complete'
+                  isIdVerified
                     ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
                     : 'bg-rose-600 hover:bg-rose-700 text-white'
                 }`}
               >
                 <Upload className="w-3.5 h-3.5" />
-                {guest.idVerificationStatus === 'Complete' ? 'View / Re-upload ID' : 'Upload Guest ID'}
+                {isIdVerified ? 'View / Re-upload ID' : 'Upload Guest ID'}
               </button>
             )}
           </div>
@@ -917,6 +961,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   options={[
                     { value: 'Offline', label: 'Offline' },
                     { value: 'Online', label: 'Online' },
+                    ...(editBookingSource && editBookingSource !== 'Offline' && editBookingSource !== 'Online'
+                      ? [{ value: editBookingSource, label: guest.otaSourceLabel || editBookingSource }]
+                      : []),
                   ]}
                 />
               </div>
@@ -1102,7 +1149,11 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                           setCFormSectionOpen(false);
                           setCFormNumberState('');
                           showToast('C-Form marked as pending', { type: 'success' });
-                          await onSave({ ...guest, cFormFiledAt: null, cFormFiled: false, c_form_filed: false, cFormNumber: '', c_form_number: '' } as any);
+                          // Not onSave() - markCFormFiled above has already
+                          // written the row and moved its updated_at on, so an
+                          // update_guest behind it is rejected 409 stale_booking
+                          // (the same trap the ID banner fell into, 4 Sep 2026).
+                          onCFormFiled?.(guest.id, null);
                         } else {
                           showToast('Failed to update C-Form status', { type: 'error' });
                         }
@@ -1244,7 +1295,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                             documentUrl ? 'C-Form saved & sent to Telegram with the uploaded document' : 'C-Form saved & Telegram notification sent',
                             { type: 'success' }
                           );
-                          await onSave({ ...guest, cFormFiledAt: filedAt, cFormFiled: true, c_form_filed: true, cFormNumber: cFormNumberState, c_form_number: cFormNumberState, cFormDocumentUrl: documentUrl } as any);
+                          onCFormFiled?.(guest.id, filedAt);
                         } else {
                           showToast('Failed to save C-Form details', { type: 'error' });
                         }
@@ -1287,15 +1338,35 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 {/* Checkout & Settle Bill (Full-width action if status is Checked In).
                     canCheckoutBooking (23 Aug 2026, ROLES.md): Staff and Staff Kitchen
                     both lose this action - see this file's top-of-component comment. */}
-                {onCheckout && canCheckoutBooking && (guest.status === GUEST_STATUS_CHECKED_IN || (guest.status as string) === GUEST_STATUS_ACTIVE_LEGACY) && (
-                  <button
-                    type="button"
-                    onClick={onCheckout}
-                    className="w-full h-10 px-4 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 active:scale-98"
-                  >
-                    <LogOut className="w-4 h-4 shrink-0" />
-                    <span>{t('checkout_settle_bill_button', 'Checkout & Settle Bill')}</span>
-                  </button>
+                {onCheckout && canCheckoutBooking && (effectiveStatus === GUEST_STATUS_CHECKED_IN || effectiveStatus === GUEST_STATUS_ACTIVE_LEGACY) && (
+                  /* Two real options once a guest is in-house (4 Sep 2026,
+                     explicit request): settle up and leave today, OR just put
+                     the ID/details away and come back on the actual checkout
+                     day. Checkout used to be the only button here, which read
+                     as the only way out of this screen. Everything this modal
+                     can change - ID upload, C-Form, check-in - is written by
+                     its own endpoint the moment it happens, so "Save & Close"
+                     genuinely has nothing left to submit; it confirms and
+                     closes rather than pretending to post something. */
+                  <div className="grid grid-cols-2 gap-2.5 w-full">
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="w-full h-10 px-3 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 dark:text-blue-300 dark:border-blue-800 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                      title={t('save_and_close_hint', 'Keep this booking as it is and check out later')}
+                    >
+                      <Save className="w-4 h-4 shrink-0" />
+                      <span className="truncate">{t('save_and_close_button', 'Save & Close')}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onCheckout}
+                      className="w-full h-10 px-3 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 active:scale-98"
+                    >
+                      <LogOut className="w-4 h-4 shrink-0" />
+                      <span className="truncate">{t('checkout_settle_bill_button', 'Checkout & Settle Bill')}</span>
+                    </button>
+                  </div>
                 )}
 
                 {/* Delete, Share with Guest, Edit - 3 columns when Delete is
@@ -1398,9 +1469,17 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           guest={guest}
           isOpen={isIdModalOpen}
           onClose={() => setIsIdModalOpen(false)}
-          onVerificationComplete={async () => {
+          onVerificationComplete={(guestId) => {
+            // No onSave() here on purpose - see the checkedInLocally /
+            // idVerifiedLocally comment near the top. complete_checkin_
+            // verification has already written this to the DB and bumped the
+            // row's updated_at, so an update_guest right behind it is
+            // guaranteed to come back 409 stale_booking, which is exactly why
+            // the banner used to stay red. Just reflect it locally and let the
+            // caller patch its own list.
             setIsIdModalOpen(false);
-            await onSave({ ...guest, idVerificationStatus: 'Complete' });
+            setIdVerifiedLocally(true);
+            onIdVerified?.(guestId);
           }}
         />
       )}

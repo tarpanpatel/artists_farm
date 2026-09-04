@@ -141,3 +141,5 @@ export { FloatingInput } from './FloatingInput';
 export type { FloatingInputProps } from './FloatingInput';
 export { FloatingSelect } from './FloatingSelect';
 export type { FloatingSelectProps } from './FloatingSelect';
+export { FloatingTextarea } from './FloatingTextarea';
+export type { FloatingTextareaProps } from './FloatingTextarea';

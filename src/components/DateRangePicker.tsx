@@ -30,11 +30,7 @@ const CalendarIcon: React.FC = () => (
   </svg>
 );
 
-const fieldClass =
-  'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-9 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:text-gray-500 dark:disabled:text-gray-400 disabled:border-gray-300 dark:disabled:border-gray-600 disabled:opacity-100 transition-colors';
 
-const errorFieldClass =
-  'bg-red-50 border border-red-500 text-red-900 placeholder-red-700 focus:ring-red-500 focus:border-red-500 block w-full ps-9 p-2.5 dark:bg-red-100 dark:border-red-400 dark:placeholder-red-700 dark:text-red-900 dark:focus:ring-red-500 dark:focus:border-red-500 disabled:cursor-not-allowed disabled:opacity-100 transition-colors';
 
 function toIsoDate(date: number | Date | undefined): string {
   if (date === undefined) return '';
@@ -162,10 +158,12 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   checkoutDate,
   onCheckinChange,
   onCheckoutChange,
-  fromPlaceholder = 'Select date start',
-  toPlaceholder = 'Select date end',
+  fromPlaceholder: _fromPlaceholder,
+  toPlaceholder: _toPlaceholder,
   className = '',
   label,
+  fromLabel,
+  toLabel,
   disabled = false,
   error,
   disablePastDates = false,
@@ -286,7 +284,6 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   const [rangeError, setRangeError] = useState<string | undefined>(undefined);
   const hasError = Boolean(error) || Boolean(rangeError);
   const errorMessage = rangeError ?? (typeof error === 'string' ? error : undefined);
-  const currentFieldClass = hasError ? errorFieldClass : fieldClass;
   const lastBlockedDatesKeyRef = useRef<string>('');
 
   useEffect(() => {
@@ -885,50 +882,96 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     syncEndCeilingRef.current(toIsoDate(rangepicker.dates[0]));
   }, [blockedDates]);
 
+  const startLabel = fromLabel || (label && label.includes('*') ? 'Check-in *' : 'Check-in Date');
+  const endLabel = toLabel || (label && label.includes('*') ? 'Check-out *' : 'Check-out Date');
+  const isSpecialLabel = label && (label.includes('locked') || label.includes('past'));
+
   return (
     <div className="w-full">
-      {label && (
-        <div className="mb-1 block">
-          <label className="app-label text-xs font-semibold text-slate-700 dark:text-slate-200">
+      {isSpecialLabel && (
+        <div className="mb-1.5 block">
+          <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
             {label}
-          </label>
+          </span>
         </div>
       )}
       <div ref={containerRef} className={`flex items-center gap-2 ${className}`}>
         <div className="relative flex-1">
-          <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
+          <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3 text-gray-400 dark:text-gray-500 z-10">
             <CalendarIcon />
           </div>
           <input
             ref={startInputRef}
+            id="daterange-start-input"
             name="start"
             type="text"
             readOnly
             inputMode="none"
             disabled={disabled}
-            className={currentFieldClass}
-            placeholder={fromPlaceholder}
+            className={`block px-3 pb-2.5 pt-4 ps-9 w-full text-xs bg-transparent rounded-lg border appearance-none focus:outline-none focus:ring-0 peer transition-all duration-200 cursor-pointer ${
+              hasError
+                ? 'border-red-600 dark:border-red-500 text-red-900 dark:text-white'
+                : 'border-gray-300 dark:border-gray-600 focus:border-blue-600 dark:focus:border-blue-500 text-gray-900 dark:text-white'
+            } ${
+              disabled
+                ? 'disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-800/90 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:border-gray-200 dark:disabled:border-gray-700'
+                : ''
+            }`}
+            placeholder=" "
           />
+          <label
+            htmlFor="daterange-start-input"
+            className={`absolute text-xs duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] px-2 start-8 pointer-events-none bg-white dark:bg-gray-800 transition-all ${
+              disabled
+                ? 'text-gray-400 dark:text-gray-500'
+                : hasError
+                ? 'text-red-600 dark:text-red-500'
+                : 'text-gray-500 dark:text-gray-400 peer-focus:text-blue-600 peer-focus:dark:text-blue-500'
+            }`}
+          >
+            {startLabel}
+          </label>
         </div>
         <span className="shrink-0 text-xs font-medium text-gray-500 dark:text-gray-400">to</span>
         <div className="relative flex-1">
-          <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
+          <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3 text-gray-400 dark:text-gray-500 z-10">
             <CalendarIcon />
           </div>
           <input
             ref={endInputRef}
+            id="daterange-end-input"
             name="end"
             type="text"
             readOnly
             inputMode="none"
             disabled={disabled}
-            className={currentFieldClass}
-            placeholder={toPlaceholder}
+            className={`block px-3 pb-2.5 pt-4 ps-9 w-full text-xs bg-transparent rounded-lg border appearance-none focus:outline-none focus:ring-0 peer transition-all duration-200 cursor-pointer ${
+              hasError
+                ? 'border-red-600 dark:border-red-500 text-red-900 dark:text-white'
+                : 'border-gray-300 dark:border-gray-600 focus:border-blue-600 dark:focus:border-blue-500 text-gray-900 dark:text-white'
+            } ${
+              disabled
+                ? 'disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-800/90 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:border-gray-200 dark:disabled:border-gray-700'
+                : ''
+            }`}
+            placeholder=" "
           />
+          <label
+            htmlFor="daterange-end-input"
+            className={`absolute text-xs duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] px-2 start-8 pointer-events-none bg-white dark:bg-gray-800 transition-all ${
+              disabled
+                ? 'text-gray-400 dark:text-gray-500'
+                : hasError
+                ? 'text-red-600 dark:text-red-500'
+                : 'text-gray-500 dark:text-gray-400 peer-focus:text-blue-600 peer-focus:dark:text-blue-500'
+            }`}
+          >
+            {endLabel}
+          </label>
         </div>
       </div>
       {errorMessage && (
-        <p className="app-error-text mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+        <p className="app-error-text mt-1.5 text-xs text-red-600 dark:text-red-400 flex items-center gap-1 font-medium">
           <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {errorMessage}
         </p>
       )}

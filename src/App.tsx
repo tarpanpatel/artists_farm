@@ -1757,22 +1757,39 @@ function AppBody({ preloadedData }: AppBodyProps) {
     logAudit(`Deleted booking: ${target?.guestName || guestId} (${target?.roomNumber || 'unknown room'})`);
   };
 
+  // checkin_guest, complete_checkin_verification and mark_c_form_filed all
+  // write to the guests row, so each one bumps that row's updated_at while our
+  // local copy keeps the token it was loaded with. update_guest compares that
+  // token and rejects a mismatch with 409 stale_booking - so without this, the
+  // next ordinary edit of the same booking in the same session fails with
+  // "Someone else changed this booking while you were editing it" when nobody
+  // else was involved at all. Dropping the token keeps that edit working right
+  // now (the server documents no-token as last-write-wins, for older bundles),
+  // and the refetch restores real conflict detection a moment later.
+  const forgetStaleEditToken = (g: Guest) => ({ ...g, updatedAt: undefined });
+  const refreshGuestEditTokens = () => {
+    fetchGuestsFromDB().then((fresh) => { if (fresh.length) setGuests(fresh); }).catch(() => {});
+  };
+
   const handleGuestVerificationUpdated = (guestId: string) => {
     setGuests((prev) =>
-      prev.map((g) => (g.id === guestId ? { ...g, idVerificationStatus: 'Complete' } : g))
+      prev.map((g) => (g.id === guestId ? forgetStaleEditToken({ ...g, idVerificationStatus: 'Complete' }) : g))
     );
+    refreshGuestEditTokens();
   };
 
   const handleCFormFiledUpdated = (guestId: string, filedAt: string | null) => {
     setGuests((prev) =>
-      prev.map((g) => (g.id === guestId ? { ...g, cFormFiledAt: filedAt } : g))
+      prev.map((g) => (g.id === guestId ? forgetStaleEditToken({ ...g, cFormFiledAt: filedAt }) : g))
     );
+    refreshGuestEditTokens();
   };
 
   const handleGuestCheckedIn = (guestId: string) => {
     setGuests((prev) =>
-      prev.map((g) => (g.id === guestId ? { ...g, status: 'Checked In' as any } : g))
+      prev.map((g) => (g.id === guestId ? forgetStaleEditToken({ ...g, status: 'Checked In' as any }) : g))
     );
+    refreshGuestEditTokens();
   };
 
   const handleCheckoutGuest = async (receipt: BillingReceipt) => {
@@ -2326,6 +2343,12 @@ ${itemsStr}
                         onAddGuest={handleAddGuest}
                         onUpdateGuest={handleUpdateGuest}
                         onDeleteGuest={handleDeleteGuest}
+                        // Both declared on TodayOverviewProps for a while but never
+                        // actually passed, so checking a guest in or verifying their ID
+                        // from THIS calendar left the rest of the app (dashboard alerts,
+                        // the bookings list) showing the old state until a reload.
+                        onCheckInGuest={handleGuestCheckedIn}
+                        onGuestVerificationUpdated={handleGuestVerificationUpdated}
                         propertyName={preloadedData.currentProperty?.name || ''}
                         propertyMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
                         propertyPhone={preloadedData.currentProperty?.phone || ''}

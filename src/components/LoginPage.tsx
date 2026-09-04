@@ -521,47 +521,45 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
             </div>
 
             <div>
-              <div className="relative">
-                {!isTerminal && (
-                  <div className="absolute right-0 top-0 z-10">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setForgotMobile(mobileNumber);
-                        setForgotResult(null);
-                        setForgotMobileTouched(false);
-                        setShowForgotPassword(true);
-                      }}
-                      className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-500 cursor-pointer"
-                    >
-                      {t('forgot_password_link', 'Forgot passcode?')}
-                    </button>
-                  </div>
-                )}
-                <Input
-                  id="passcode"
-                  name="passcode"
-                  type="password"
-                  label={t('pin_passcode_label', '6-Digit Security Passcode')}
-                  value={passcode}
-                  onChange={handlePasscodeChange}
-                  onBlur={() => {
-                    if (passcodeInputRef.current?.value && !passcode) {
-                      setPasscode(passcodeInputRef.current.value);
-                    }
-                    setPasscodeTouched(true);
-                  }}
-                  placeholder="••••••"
-                  maxLength={6}
-                  inputMode="numeric"
-                  disabled={isLoading}
-                  autoComplete="off"
-                  ref={passcodeInputRef}
-                  required
-                  className="font-mono tracking-[0.25em]"
-                  error={passcodeEmpty ? 'Passcode is required' : passcodeInvalid ? t('enter_6_digit_passcode_error', 'Enter 6-digit passcode') : undefined}
-                />
-              </div>
+              <Input
+                id="passcode"
+                name="passcode"
+                type="password"
+                label={t('pin_passcode_label', '6-Digit Security Passcode')}
+                value={passcode}
+                onChange={handlePasscodeChange}
+                onBlur={() => {
+                  if (passcodeInputRef.current?.value && !passcode) {
+                    setPasscode(passcodeInputRef.current.value);
+                  }
+                  setPasscodeTouched(true);
+                }}
+                placeholder="••••••"
+                maxLength={6}
+                inputMode="numeric"
+                disabled={isLoading}
+                autoComplete="off"
+                ref={passcodeInputRef}
+                required
+                className="font-mono tracking-[0.25em]"
+                error={passcodeEmpty ? 'Passcode is required' : passcodeInvalid ? t('enter_6_digit_passcode_error', 'Enter 6-digit passcode') : undefined}
+              />
+              {!isTerminal && (
+                <div className="flex justify-end mt-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForgotMobile(mobileNumber);
+                      setForgotResult(null);
+                      setForgotMobileTouched(false);
+                      setShowForgotPassword(true);
+                    }}
+                    className="text-xs font-medium text-blue-600 hover:underline dark:text-blue-500 cursor-pointer"
+                  >
+                    {t('forgot_password_link', 'Forgot passcode?')}
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Touch Keypad - terminal only */}

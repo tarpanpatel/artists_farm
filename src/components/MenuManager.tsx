@@ -999,8 +999,8 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
         <form onSubmit={handleSaveNavItem} className="app-form app-form--save-nav-item menu-manager__nav-form flex-1 flex flex-col justify-between overflow-y-auto">
           <div className="flex-1 overflow-y-auto p-4 space-y-3.5 text-xs">
             <div>
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('menu_title_label', 'Menu Title / Label')}</label>
               <Input
+                label={t('menu_title_label', 'Menu Title / Label')}
                 type="text"
                 required
                 value={navForm.title}
@@ -1011,8 +1011,8 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('target_section_tab_label', 'Target Section / Tab')}</label>
                 <StyledSelect
+                  label={t('target_section_tab_label', 'Target Section / Tab')}
                   value={navForm.tabKey}
                   onChange={(val) => setNavForm({ ...navForm, tabKey: val })}
                   options={[
@@ -1031,8 +1031,8 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               </div>
 
               <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('category_group_label', 'Category Group')}</label>
                 <StyledSelect
+                  label={t('category_group_label', 'Category Group')}
                   value={navForm.category}
                   onChange={(val) => setNavForm({ ...navForm, category: val })}
                   options={NAV_CATEGORIES.filter((c) => c !== 'All Categories').map((cat) => ({ value: cat, label: cat }))}
@@ -1041,8 +1041,8 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
             </div>
 
             <div>
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('parent_menu_item_label', 'Parent Menu Item (Hierarchy)')}</label>
               <StyledSelect
+                label={t('parent_menu_item_label', 'Parent Menu Item (Hierarchy)')}
                 value={navForm.parentId || ''}
                 onChange={(val) => setNavForm({ ...navForm, parentId: val || null })}
                 options={[
@@ -1195,8 +1195,8 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
         <form onSubmit={handleSaveFoodItem} className="app-form app-form--save-food-item menu-manager__food-form flex-1 flex flex-col justify-between overflow-y-auto">
           <div className="flex-1 overflow-y-auto p-4 space-y-3 text-xs">
             <div>
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('item_title_name_label', 'Item Title / Name')}</label>
               <Input
+                label={t('item_title_name_label', 'Item Title / Name')}
                 type="text"
                 required
                 value={foodForm.name}
@@ -1209,8 +1209,8 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('menu_category_label', 'Category')}</label>
                 <StyledSelect
+                  label={t('menu_category_label', 'Category')}
                   value={foodForm.category}
                   onChange={(val) => setFoodForm({ ...foodForm, category: val })}
                   options={foodCategories.filter((c) => c !== 'All').map((cat) => ({ value: cat, label: cat }))}
@@ -1218,8 +1218,8 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               </div>
 
               <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('price_rupees_label', 'Price (₹)')}</label>
                 <Input
+                  label={t('price_rupees_label', 'Price (₹)')}
                   type="number"
                   min="0"
                   step="1"

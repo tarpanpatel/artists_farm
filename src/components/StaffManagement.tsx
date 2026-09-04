@@ -1970,8 +1970,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             </div>
 
             <div>
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('team_role', 'Team Role')}</label>
               <StyledSelect
+                label={t('team_role', 'Team Role')}
                 value={role}
                 onChange={(val) => setRole(val as any)}
                 options={roleOptions.map((roleName) => ({ value: roleName, label: roleName }))}
@@ -2067,8 +2067,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             <form onSubmit={handleCreateUser} className="app-form app-form--create-user space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('staff_name_label', 'Staff Name')} *</label>
                   <Input
+                    label={`${t('staff_name_label', 'Staff Name')} *`}
                     type="text"
                     required
                     value={newFullName}
@@ -2078,14 +2078,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('phone_login_username_label', 'Phone Number (Login Username)')} *</label>
                   <Input
+                    label={`${t('phone_login_username_label', 'Phone Number (Login Username)')} *`}
                     type="tel"
                     required
                     value={newUsername}
-                    // No maxLength - see GuestManagement.tsx's onChange comment (23 Aug 2026): it
-                    // truncates raw typed characters before digit-stripping runs, silently
-                    // dropping trailing digits from any formatted phone number.
                     onChange={(e) => setNewUsername(e.target.value.replace(/\D/g, '').slice(0, 10))}
                     placeholder="10-digit mobile number"
                     error={newUsernameInvalid ? 'Must be exactly 10 digits' : undefined}
@@ -2096,8 +2093,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('six_digit_passcode_label', '6-Digit Passcode PIN')} *</label>
                   <Input
+                    label={`${t('six_digit_passcode_label', '6-Digit Passcode PIN')} *`}
                     type="password"
                     autoComplete="new-password"
                     required
@@ -2112,8 +2109,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 </div>
 
                 <div>
-                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Confirm New Passcode PIN *</label>
                   <Input
+                    label="Confirm New Passcode PIN *"
                     type="password"
                     autoComplete="new-password"
                     required
@@ -2131,33 +2128,16 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <div className="h-5 flex items-center justify-between mb-1.5">
-                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 m-0">{t('team_role', 'System Role')}</label>
-                    <Popover
-                      trigger="hover"
-                      placement="top"
-                      zIndex={9999}
-                      content={roleHelpPopoverContent}
-                    >
-                      <button
-                        type="button"
-                        className="appearance-none border-0 p-0 m-0 inline-flex items-center text-2xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline cursor-pointer"
-                      >
-                        <span>Help?</span>
-                      </button>
-                    </Popover>
-                  </div>
                   <StyledSelect
+                    label={t('team_role', 'System Role')}
                     value={newRole}
                     onChange={(val) => setNewRole(val as any)}
                     options={roleOptions.map((roleName) => ({ value: roleName, label: roleName }))}
                   />
                 </div>
                 <div>
-                  <div className="h-5 flex items-center mb-1.5">
-                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 m-0">{t('daily_wage_label', 'Daily Wage (₹)')}</label>
-                  </div>
                   <Input
+                    label={t('daily_wage_label', 'Daily Wage (₹)')}
                     type="number"
                     min="0"
                     value={newDailyWage}
@@ -2255,8 +2235,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             <form onSubmit={handleUpdateUserSubmit} className="app-form app-form--update-user space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('staff_name_label', 'Staff Name')} *</label>
                   <Input
+                    label={`${t('staff_name_label', 'Staff Name')} *`}
                     type="text"
                     required
                     value={updateFullName}
@@ -2266,31 +2246,24 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('phone_login_username_label', 'Phone Number (Login Username)')}</label>
                   <Input
+                    label={t('phone_login_username_label', 'Phone Number (Login Username)')}
                     type="tel"
                     value={updateUsername}
                     disabled={isEditingSuperAdmin}
-                    // No maxLength - see GuestManagement.tsx's onChange comment (23 Aug 2026): it
-                    // truncates raw typed characters before digit-stripping runs, silently
-                    // dropping trailing digits from any formatted phone number.
                     onChange={(e) => setUpdateUsername(e.target.value.replace(/\D/g, '').slice(0, 10))}
                     placeholder="10-digit mobile number"
                     error={updateUsernameInvalid ? 'Must be exactly 10 digits' : undefined}
+                    helperText={isEditingSuperAdmin ? t('super_admin_username_locked_hint', "This is the tenant's own login - change it from the Root Dashboard's tenant login tools instead.") : undefined}
                     className="text-slate-900 dark:text-white"
                   />
-                  {isEditingSuperAdmin && (
-                    <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
-                      {t('super_admin_username_locked_hint', "This is the tenant's own login - change it from the Root Dashboard's tenant login tools instead.")}
-                    </p>
-                  )}
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('new_passcode_optional_label', 'New 6-Digit Passcode PIN')}</label>
                   <Input
+                    label={t('new_passcode_optional_label', 'New 6-Digit Passcode PIN')}
                     type="password"
                     autoComplete="new-password"
                     maxLength={6}
@@ -2304,8 +2277,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 </div>
 
                 <div>
-                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Confirm New Passcode PIN</label>
                   <Input
+                    label="Confirm New Passcode PIN"
                     type="password"
                     autoComplete="new-password"
                     maxLength={6}
@@ -2323,23 +2296,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               <div className="grid grid-cols-2 gap-3">
                 {!isEditingSuperAdmin ? (
                   <div>
-                    <div className="h-5 flex items-center justify-between mb-1.5">
-                      <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 m-0">{t('new_system_role_label', 'New System Role')}</label>
-                      <Popover
-                        trigger="hover"
-                        placement="top"
-                        zIndex={9999}
-                        content={roleHelpPopoverContent}
-                      >
-                        <button
-                          type="button"
-                          className="appearance-none border-0 p-0 m-0 inline-flex items-center text-2xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline cursor-pointer"
-                        >
-                          <span>Help?</span>
-                        </button>
-                      </Popover>
-                    </div>
                     <StyledSelect
+                      label={t('new_system_role_label', 'New System Role')}
                       value={updateRole}
                       onChange={(val) => setUpdateRole(val as any)}
                       placeholder="-- Keep Role --"
@@ -2348,10 +2306,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   </div>
                 ) : null}
                 <div>
-                  <div className="h-5 flex items-center mb-1.5">
-                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 m-0">{t('daily_wage_label', 'Daily Wage (₹)')}</label>
-                  </div>
                   <Input
+                    label={t('daily_wage_label', 'Daily Wage (₹)')}
                     type="number"
                     min="0"
                     value={updateDailyWage}

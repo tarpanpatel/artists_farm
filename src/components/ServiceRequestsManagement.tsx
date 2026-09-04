@@ -21,11 +21,11 @@ import { StyledSelect } from './StyledSelect';
 import { t } from '../i18n/en';
 import { PageHeader, PageHeaderButton } from './PageHeader';
 import { Button } from './Button';
-import { Input } from './Input';
+import { Input, FloatingTextarea } from './Input';
 import { formatDateTimeDDMMYYYY } from '../utils/dateUtils';
 
 import { useConfigurationData } from '../contexts/ConfigurationDataContext';
-import { Tabs, TabItem, Card, Badge, TextInput as FlowbiteTextInput, Textarea as FlowbiteTextarea, Checkbox as FlowbiteCheckbox, Label as FlowbiteLabel, Drawer } from 'flowbite-react';
+import { Tabs, TabItem, Card, Badge, Checkbox as FlowbiteCheckbox, Label as FlowbiteLabel, Drawer } from 'flowbite-react';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
 
 interface Room {
@@ -767,11 +767,9 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
             )}
 
             <div className="service-requests-management__form-group">
-              <div className="mb-1.5 block">
-                <FlowbiteLabel htmlFor="newChargeAmount">Charge Amount (₹) (Optional - added to checkout bill if set)</FlowbiteLabel>
-              </div>
-              <FlowbiteTextInput
+              <Input
                 id="newChargeAmount"
+                label="Charge Amount (₹) (Optional - added to checkout bill if set)"
                 type="number"
                 min="0"
                 step="0.01"
@@ -782,11 +780,9 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
             </div>
 
             <div className="service-requests-management__form-group">
-              <div className="mb-1.5 block">
-                <FlowbiteLabel htmlFor="newDescription">{t('details_label', 'Details')}</FlowbiteLabel>
-              </div>
-              <FlowbiteTextarea
+              <FloatingTextarea
                 id="newDescription"
+                label={t('details_label', 'Details')}
                 value={newDescription}
                 onChange={(e) => setNewDescription(e.target.value)}
                 placeholder={t('service_request_details_placeholder', 'Describe the request (optional)...')}
@@ -845,19 +841,19 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Category</label>
-                <select
+                <StyledSelect
+                  label="Category"
                   value={newTypeCategory}
-                  onChange={(e) => setNewTypeCategory(e.target.value)}
-                  className="h-10 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs rounded-lg block w-full px-2.5 cursor-pointer"
-                >
-                  <option value="Guest Charges">Guest Charges</option>
-                  <option value="Housekeeping">Housekeeping</option>
-                  <option value="Maintenance">Maintenance</option>
-                  <option value="Food & Extras">Food & Extras</option>
-                  <option value="Activities & Tours">Activities & Tours</option>
-                  <option value="Other">Other</option>
-                </select>
+                  onChange={(val) => setNewTypeCategory(val)}
+                  options={[
+                    { value: 'Guest Charges', label: 'Guest Charges' },
+                    { value: 'Housekeeping', label: 'Housekeeping' },
+                    { value: 'Maintenance', label: 'Maintenance' },
+                    { value: 'Food & Extras', label: 'Food & Extras' },
+                    { value: 'Activities & Tours', label: 'Activities & Tours' },
+                    { value: 'Other', label: 'Other' },
+                  ]}
+                />
               </div>
               <div>
                 <Input

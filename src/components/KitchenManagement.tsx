@@ -3630,25 +3630,13 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               <h4 className="kitchen-management__caption font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2"><Plus className="w-4 h-4 text-indigo-500" /> Add Ingredient</h4>
               <form onSubmit={handleAddIngredient} className="app-form app-form--add-ingredient space-y-3">
                 <div>
-                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('from_kitchen_stock_label')}</label>
                   {inventory && inventory.length > 0 ? (
                     <StyledSelect
+                      label={t('from_kitchen_stock_label')}
                       searchable
                       value={selectedStockItemId}
                       onChange={(val) => handleStockItemSelect(val)}
                       placeholder={t('choose_ingredient_placeholder')}
-                      // FIXED 25 Aug 2026: this crashed every render with "Cannot find name
-                      // 'ingredientCategoryNames'" - a ReferenceError at runtime, not just a
-                      // type-checker nit, so the Add Ingredient dropdown (and likely this whole
-                      // recipe section, depending on error-boundary placement) was broken for
-                      // any property with inventory items. Traced via `git log -S` to a 21 Aug
-                      // 2026 commit that deleted the state/effect which populated this variable
-                      // but left this one usage behind. Didn't restore that state/effect: it
-                      // filtered categories by an `is_ingredient` flag the backend
-                      // (`get_material_categories` in inventory.php) never actually SELECTs, so
-                      // it always resolved to an empty list - meaning even before the deletion,
-                      // `!ingredientCategoryNames.length` was always true and this filter was
-                      // already a no-op showing every item, same as omitting it entirely below.
                       options={inventory
                         .map(item => ({
                           value: item.id,
@@ -3674,8 +3662,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     />
                   </div>
                   <div>
-                    <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Unit</label>
                     <StyledSelect
+                      label="Unit"
                       value={newIngUnit}
                       onChange={setNewIngUnit}
                       options={[
@@ -3746,8 +3734,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             </div>
 
             <div>
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('category_label')}</label>
               <StyledSelect
+                label={t('category_label')}
                 value={newItemCategory}
                 onChange={(val) => setNewItemCategory(val as any)}
                 options={[
@@ -3872,8 +3860,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               </div>
 
               <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('unit_label')}</label>
                 <StyledSelect
+                  label={t('unit_label')}
                   value={reqUnit}
                   onChange={setReqUnit}
                   options={[

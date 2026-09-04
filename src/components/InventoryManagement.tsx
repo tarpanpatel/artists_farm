@@ -980,8 +980,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             <form onSubmit={handleRecordWastage} className="record-wastage-form app-form app-form--record-wastage space-y-4">
               <div className="space-y-4">
                 <div>
-                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1">Select Material Item *</label>
                   <StyledSelect
+                    label="Select Material Item *"
                     searchable
                     value={wastedItem}
                     onChange={setWastedItem}
@@ -991,10 +991,10 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1">Wasted / Spilled Quantity *</label>
-                    <div className="flex gap-1.5">
+                  <div className="flex gap-1.5 items-center">
+                    <div className="flex-1">
                       <Input
+                        label="Wasted / Spilled Qty *"
                         type="number"
                         required
                         min="0.1"
@@ -1004,8 +1004,10 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                         placeholder="0.00"
                         className="wastage-qty-input w-full font-semibold"
                       />
+                    </div>
+                    <div className="w-24 shrink-0">
                       <StyledSelect
-                        className="w-24 shrink-0"
+                        label="Unit"
                         value={wastedUnit}
                         onChange={setWastedUnit}
                         options={['Kg', 'Gm', 'Ltr', 'Ml', 'Pcs', 'Pack'].map(u => ({ value: u, label: u }))}
@@ -1014,8 +1016,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   </div>
 
                   <div>
-                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1">Reason for Loss *</label>
                     <StyledSelect
+                      label="Reason for Loss *"
                       value={wastedReason}
                       onChange={setWastedReason}
                       options={[
@@ -1759,8 +1761,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               </div>
 
               <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('category_label')}</label>
                 <StyledSelect
+                  label={t('category_label')}
                   value={catCategory}
                   onChange={setCatCategory}
                   placeholder="Select category..."
@@ -1778,8 +1780,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     <Input label={t('pack_size_label')} type="number" step="0.01" required value={catPackSize} onChange={e => setCatPackSize(Number(e.target.value))} />
                   </div>
                   <div className="w-1/2">
-                    <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('unit_label')}</label>
                     <StyledSelect
+                      label={t('unit_label')}
                       value={catUnit}
                       onChange={setCatUnit}
                       options={['Kg', 'Gms', 'Liter', 'Ml', 'Packets', 'Pc', 'Box', 'Dozen'].map(u => ({ value: u, label: u }))}
@@ -2905,8 +2907,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             </div>
 
             <div>
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('category_label')}</label>
               <StyledSelect
+                label={t('category_label')}
                 value={category}
                 onChange={setCategory}
                 options={[
@@ -2939,8 +2941,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               </div>
 
               <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('unit_label')}</label>
                 <StyledSelect
+                  label={t('unit_label')}
                   value={unit}
                   onChange={setUnit}
                   options={[

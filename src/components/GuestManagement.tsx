@@ -22,7 +22,7 @@ import { parseDateToYMD } from '../utils/dateUtils';
 import { normalizePhoneNumber } from '../utils/phoneUtils';
 import { DateRangePicker } from './DateRangePicker';
 import { StyledSelect } from './StyledSelect';
-import { Input } from './Input';
+import { Input, FloatingTextarea } from './Input';
 import { BillingCheckout } from './BillingCheckout';
 import { t } from '../i18n/en';
 
@@ -855,11 +855,11 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             {/* Guest Notes Textarea (if checked) */}
             {showGuestNotes && (
               <div>
-                <textarea
+                <FloatingTextarea
+                  label="Guest Preferences / Notes"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Enter guest preferences or notes..."
-                  className="w-full p-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-blue-500 focus:border-blue-500 outline-none"
                   rows={2}
                 />
               </div>

@@ -1899,8 +1899,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('category_label', 'Category')}</label>
                     <StyledSelect
+                      label={t('category_label', 'Category')}
                       value={editingEntry.category || editingEntry.costCategory || 'Other'}
                       onChange={val => setEditingEntry({ ...editingEntry, category: val, costCategory: val })}
                       options={[
@@ -1938,8 +1938,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                   </div>
 
                   <div>
-                    <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('payment_mode_label', 'Payment Mode')}</label>
                     <StyledSelect
+                      label={t('payment_mode_label', 'Payment Mode')}
                       value={normalizePaymentMode(editingEntry.paymentMode)}
                       onChange={val => setEditingEntry({ ...editingEntry, paymentMode: val })}
                       options={[
@@ -2022,8 +2022,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               <form onSubmit={handleSavePayee} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Payee Account Name *</label>
                     <Input
+                      label="Payee Account Name *"
                       type="text"
                       required
                       value={editingPayee ? editingPayee.name : newPayeeForm.name}
@@ -2040,8 +2040,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                     />
                   </div>
                   <div>
-                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">UPI ID (Optional)</label>
                     <Input
+                      label="UPI ID (Optional)"
                       type="text"
                       value={editingPayee ? (editingPayee.upiId || '') : newPayeeForm.upiId}
                       onChange={e => {
@@ -2246,8 +2246,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               <form onSubmit={handleSaveCustomItem} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Item Name *</label>
                     <Input
+                      label="Item Name *"
                       type="text"
                       required
                       value={editingCustomItem ? editingCustomItem.label : newCustomItemForm.label}
@@ -2264,8 +2264,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                     />
                   </div>
                   <div>
-                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Category</label>
                     <StyledSelect
+                      label="Category"
                       value={editingCustomItem ? editingCustomItem.category : newCustomItemForm.category}
                       onChange={val => {
                         if (editingCustomItem) {
@@ -2286,8 +2286,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Default Amount (₹)</label>
                     <Input
+                      label="Default Amount (₹)"
                       type="number"
                       step="any"
                       value={editingCustomItem ? editingCustomItem.defaultAmount : newCustomItemForm.defaultAmount}
@@ -2302,8 +2302,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                     />
                   </div>
                   <div>
-                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Short Notes / Description (Optional)</label>
                     <Input
+                      label="Short Notes / Description (Optional)"
                       type="text"
                       value={editingCustomItem ? (editingCustomItem.description || '') : newCustomItemForm.description}
                       onChange={e => {
