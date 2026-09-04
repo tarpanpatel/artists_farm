@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   CheckCircle2,
   Phone,
   Loader2,
@@ -12,6 +13,7 @@ import {
   Building,
   AlertCircle,
 } from './icons/FlowbiteIcons';
+import { Dropdown, DropdownItem } from 'flowbite-react';
 import { Button } from './Button';
 import { Badge } from './Badge';
 import { DateRangePicker } from './DateRangePicker';
@@ -501,20 +503,39 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
               </div>
 
               {rooms.length > 1 && (
-                <div className="flex items-center bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600">
-                  <select
-                    value={filterRoomId}
-                    onChange={(e) => setFilterRoomId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-                    className="bg-transparent text-xs font-semibold text-gray-900 dark:text-white border-0 p-0 focus:ring-0 cursor-pointer"
+                <Dropdown
+                  label=""
+                  dismissOnClick
+                  renderTrigger={() => (
+                    <button
+                      type="button"
+                      className="h-10 inline-flex items-center justify-between gap-2 px-3 text-xs font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:hover:bg-gray-700 cursor-pointer shadow-xs min-w-[140px]"
+                    >
+                      <span className="truncate">
+                        {filterRoomId === 'all'
+                          ? `All Rooms (${rooms.length})`
+                          : rooms.find((r) => r.id === filterRoomId)?.name || 'Select Room'}
+                      </span>
+                      <ChevronDown className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+                    </button>
+                  )}
+                >
+                  <DropdownItem
+                    onClick={() => setFilterRoomId('all')}
+                    className={filterRoomId === 'all' ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 font-semibold' : ''}
                   >
-                    <option value="all" className="dark:bg-gray-800">All Rooms ({rooms.length})</option>
-                    {rooms.map((r) => (
-                      <option key={r.id} value={r.id} className="dark:bg-gray-800">
-                        {r.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                    All Rooms ({rooms.length})
+                  </DropdownItem>
+                  {rooms.map((r) => (
+                    <DropdownItem
+                      key={r.id}
+                      onClick={() => setFilterRoomId(r.id)}
+                      className={filterRoomId === r.id ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 font-semibold' : ''}
+                    >
+                      {r.name}
+                    </DropdownItem>
+                  ))}
+                </Dropdown>
               )}
 
               {(checkinDate || checkoutDate) && (
