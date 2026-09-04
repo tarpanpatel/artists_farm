@@ -230,18 +230,21 @@ function handleCreatePublicBooking(PDO $pdo): void {
         $refNumber = 'GC-' . date('ymd') . '-' . strtoupper(substr(md5(uniqid((string)mt_rand(), true)), 0, 4));
 
         $notes = "Ref: {$refNumber}\nPayment Method: {$paymentMethod}";
+        if (!empty($email)) {
+            $notes .= "\nEmail: " . $email;
+        }
         if (!empty($specialRequests)) {
             $notes .= "\nSpecial Requests: " . $specialRequests;
         }
 
         $insertStmt = $pdo->prepare("
             INSERT INTO guests (
-                guest_name, phone_number, email_id, checkin_date, expected_checkout,
+                guest_name, phone_number, checkin_date, expected_checkout,
                 status, advance_paid, total_charge, pending_amount,
                 base_room_rent, notes, booking_source, no_of_guests,
                 property_id, room_id
             ) VALUES (
-                ?, ?, ?, ?, ?,
+                ?, ?, ?, ?,
                 'Booked', 0, ?, ?,
                 ?, ?, 'Direct Website', ?,
                 ?, ?
@@ -251,7 +254,6 @@ function handleCreatePublicBooking(PDO $pdo): void {
         $insertStmt->execute([
             $guestName,
             $phone,
-            $email,
             $checkinDate,
             $checkoutDate,
             $totalTariff,
