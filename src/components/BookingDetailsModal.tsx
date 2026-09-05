@@ -733,7 +733,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               // needing an explicit higher value for triggers inside a secondary
               // modal, same fix ConvertOtaBookingModal already needed for its Help?
               // popover). Room number already dropped from this badge above (24 Aug
-              // 2026) - redundant with "Assigned Room / Villa" a few fields down.
+              // 2026) - redundant with "Assigned Place" a few fields down.
               <Badge
                 variant="warning"
                 size="sm"
@@ -911,7 +911,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               </div>
               <div>
                 <Input
-                  label={t('contact_phone_label', 'Contact Phone Number *')}
+                  label={t('contact_phone_label', 'Phone Number *')}
                   type="tel"
                   value={editPhone}
                   // No maxLength - see GuestManagement.tsx's onChange comment (23 Aug 2026): a
@@ -929,7 +929,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             {rooms.length > 0 && (
               <div>
                 <StyledSelect
-                  label={t('assigned_room_label', 'Assigned Room / Villa *')}
+                  label={t('assigned_room_label', 'Assigned Place *')}
                   value={editRoomId}
                   onChange={setEditRoomId}
                   disabled={!isEditing}

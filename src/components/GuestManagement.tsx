@@ -57,7 +57,7 @@ interface GuestManagementProps {
   onGuestVerificationUpdated?: (guestId: string) => void;
   onCFormFiledUpdated?: (guestId: string, filedAt: string | null) => void;
   activeMenuItemKey?: string;
-  onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin', replyMarkup?: any, templateKey?: string) => void;
+  onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin', replyMarkup?: any, templateKey?: string, mediaUrls?: string[], deepLinkParams?: Record<string, string | number>) => void;
   isMultiKeyProperty?: boolean;
   rooms?: Room[];
   onNavigateToBilling?: (guestId: string) => void;
@@ -515,7 +515,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             }
 
             if (isMultiKeyProperty && (!roomNumber || !roomNumber.trim())) {
-              showToast('Booking Rejected: An assigned room/villa selection is required.', { type: 'error' });
+              showToast('Booking Rejected: An assigned place selection is required.', { type: 'error' });
               return;
             }
 
@@ -646,7 +646,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <Input
-                      label={t('contact_phone_label', 'Contact Phone Number *')}
+                      label={t('contact_phone_label', 'Phone Number *')}
                       type="tel"
                       value={phoneNumber}
                       onChange={e => setPhoneNumber(normalizePhoneNumber(e.target.value))}
@@ -665,14 +665,14 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
                   <div>
                     <StyledSelect
-                      label={t('assigned_room_label', 'Assigned Room / Villa *')}
+                      label={t('assigned_room_label', 'Assigned Place *')}
                       value={roomNumber}
                       onChange={(val) => {
                         handleRoomChange(val);
                         setRoomTouched(true);
                       }}
                       options={rooms.map((room) => ({ value: room.name, label: room.name }))}
-                      error={isMultiKeyProperty && roomTouched && (!roomNumber || !roomNumber.trim()) ? 'An assigned room/villa selection is required' : undefined}
+                      error={isMultiKeyProperty && roomTouched && (!roomNumber || !roomNumber.trim()) ? 'An assigned place selection is required' : undefined}
                     />
                   </div>
                 </div>
@@ -705,7 +705,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <Input
-                      label={t('contact_phone_label', 'Contact Phone Number *')}
+                      label={t('contact_phone_label', 'Phone Number *')}
                       type="tel"
                       value={phoneNumber}
                       onChange={e => setPhoneNumber(normalizePhoneNumber(e.target.value))}
