@@ -150,14 +150,18 @@ function getCronJobDefinitions(): array {
 }
 
 function ensureCronJobsSchema(PDO $pdo): void {
-    // Bumped to v5 (2 Sep 2026) to seed the new drain_worker_outbox job below
-    // onto an already-provisioned cron_jobs table - the seed loop right below
-    // only ever runs while its own version marker is unset, so simply adding
-    // a new entry to getCronJobDefinitions() above does nothing on staging/
-    // production without also bumping this (INSERT IGNORE means existing
-    // jobs' live-edited settings are untouched either way - only a genuinely
-    // new job_key actually inserts).
-    if (!isSchemaVerified('schema_cron_jobs_v5')) {
+    // Bumped to v6 (5 Sep 2026) to seed channex_outbox_health and
+    // channex_sync_audit. Previously v5 (2 Sep 2026) for drain_worker_outbox.
+    //
+    // The seed loop below only ever runs while its own version marker is
+    // unset, so adding an entry to getCronJobDefinitions() above does NOTHING
+    // on an already-provisioned environment without also bumping this. Caught
+    // exactly that way: both new jobs were deployed, both ran correctly by
+    // hand, and neither appeared in cron_jobs - so neither would ever have
+    // been scheduled. If you add a job, bump this line in the same commit.
+    // (INSERT IGNORE, so existing jobs' live-edited settings are untouched
+    // either way - only a genuinely new job_key actually inserts.)
+    if (!isSchemaVerified('schema_cron_jobs_v6')) {
         $pdo->exec("CREATE TABLE IF NOT EXISTS cron_jobs (
             job_key VARCHAR(64) PRIMARY KEY,
             name VARCHAR(150) NOT NULL,
@@ -181,7 +185,7 @@ function ensureCronJobsSchema(PDO $pdo): void {
                 $job['schedule_type'], $job['interval_minutes'], $job['daily_at_time'],
             ]);
         }
-        markSchemaVerified('schema_cron_jobs_v5');
+        markSchemaVerified('schema_cron_jobs_v6');
     }
 }
 
