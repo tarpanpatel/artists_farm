@@ -542,8 +542,8 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
         <form onSubmit={handleAdd} className="app-form app-form--add-misc-charge flex-1 flex flex-col justify-between overflow-y-auto">
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             <div>
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('service_name_label', 'Service Name')}</label>
               <Input
+                label={t('service_name_label', 'Service Name *')}
                 type="text"
                 required
                 value={newForm.label}
@@ -552,10 +552,10 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
               />
             </div>
             <div>
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('category_label', 'Category')}</label>
               {isCreatingCategoryModal ? (
                 <div className="flex items-center gap-1.5">
                   <Input
+                    label={t('category_label', 'Category *')}
                     autoFocus
                     type="text"
                     required
@@ -575,6 +575,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
                 </div>
               ) : (
                 <StyledSelect
+                  label={t('category_label', 'Category')}
                   value={newForm.category}
                   onChange={(value) => {
                     if (value === CREATE_CATEGORY_OPTION) {
@@ -584,7 +585,6 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
                       setNewForm({ ...newForm, category: value });
                     }
                   }}
-                  placeholder={t('select_category_placeholder', '-- Select Category --')}
                   searchable
                   options={[
                     { value: CREATE_CATEGORY_OPTION, label: `+ ${t('create_new_category_option', 'Create New Category')}` },
@@ -594,8 +594,8 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
               )}
             </div>
             <div>
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('default_price_label', 'Default Price (₹)')}</label>
               <Input
+                label={t('default_price_label', 'Default Price (₹)')}
                 type="number"
                 required
                 value={newForm.default_amount === '' as unknown as number ? '' : newForm.default_amount}

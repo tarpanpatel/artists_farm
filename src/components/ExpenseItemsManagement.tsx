@@ -271,10 +271,8 @@ export const ExpenseItemsManagement: React.FC = () => {
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-                  {t('item_name_required_label', 'Item Name *')}
-                </label>
                 <Input
+                  label={t('item_name_required_label', 'Item Name *')}
                   value={newItem.label}
                   onChange={(e) => setNewItem({ ...newItem, label: e.target.value })}
                   onBlur={() => setItemNameTouched(true)}
@@ -283,12 +281,10 @@ export const ExpenseItemsManagement: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-                  {t('category_required_label', 'Category *')}
-                </label>
                 {isCreatingCategory ? (
                   <div className="flex items-center gap-1.5">
                     <Input
+                      label={t('category_required_label', 'Category *')}
                       autoFocus
                       value={newItem.category}
                       onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
@@ -308,6 +304,7 @@ export const ExpenseItemsManagement: React.FC = () => {
                   </div>
                 ) : (
                   <StyledSelect
+                    label={t('category_required_label', 'Category *')}
                     value={newItem.category}
                     onChange={(value) => {
                       if (value === CREATE_CATEGORY_OPTION) {
@@ -317,7 +314,6 @@ export const ExpenseItemsManagement: React.FC = () => {
                         setNewItem({ ...newItem, category: value });
                       }
                     }}
-                    placeholder={t('select_category_placeholder', '-- Select Category --')}
                     searchable
                     options={[
                       { value: CREATE_CATEGORY_OPTION, label: `+ ${t('create_new_category_option', 'Create New Category')}` },
@@ -327,10 +323,8 @@ export const ExpenseItemsManagement: React.FC = () => {
                 )}
               </div>
               <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-                  {t('default_amount_label', 'Default Amount (₹)')}
-                </label>
                 <Input
+                  label={t('default_amount_label', 'Default Amount (₹)')}
                   type="number"
                   value={newItem.default_amount}
                   onChange={(e) => setNewItem({ ...newItem, default_amount: e.target.value })}

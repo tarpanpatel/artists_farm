@@ -1,12 +1,16 @@
 import React, { forwardRef } from 'react';
 import { AlertTriangle } from './icons/FlowbiteIcons';
 import { Textarea as FlowbiteTextarea, Label as FlowbiteLabel } from 'flowbite-react';
+import { FloatingTextarea } from './FloatingTextarea';
 
 export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string;
   error?: string | boolean;
+  success?: string | boolean;
   helperText?: string;
   fullWidth?: boolean;
+  variant?: 'standard' | 'floating';
+  bgMode?: 'modal' | 'page' | 'drawer' | 'card';
 }
 
 const textareaTheme = {
@@ -23,16 +27,40 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     {
       label,
       error,
+      success,
       helperText,
       fullWidth = true,
       className = '',
       disabled,
       id,
       color,
+      variant = 'floating',
+      bgMode = 'modal',
+      placeholder,
+      rows = 3,
       ...props
     },
     ref
   ) => {
+    if (label && variant === 'floating') {
+      return (
+        <FloatingTextarea
+          ref={ref}
+          id={id}
+          label={label}
+          disabled={disabled}
+          error={error}
+          success={success}
+          helperText={helperText}
+          bgMode={bgMode}
+          rows={rows}
+          placeholder={placeholder || ' '}
+          className={className}
+          containerClassName={fullWidth ? 'w-full min-w-0' : 'inline-block'}
+          {...props}
+        />
+      );
+    }
     const textareaId = id || (label ? `textarea-${label.toLowerCase().replace(/\s+/g, '-')}` : undefined);
     const hasError = Boolean(error);
     const errorMessage = typeof error === 'string' ? error : undefined;
