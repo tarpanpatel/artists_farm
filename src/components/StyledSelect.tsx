@@ -114,8 +114,8 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
             type="button"
             id={id}
             disabled={disabled}
-            className={`app-select-button peer group w-full flex items-center justify-between gap-2 px-3 border rounded-lg transition-colors outline-none text-xs ${
-              isFloating ? 'pb-2.5 pt-4 bg-transparent' : 'h-10 bg-white dark:bg-gray-800'
+            className={`app-select-button peer group w-full flex items-center justify-between gap-2 px-2.5 border rounded-lg transition-colors outline-none ${
+              isFloating ? 'pb-2.5 pt-4 bg-transparent text-sm' : 'h-10 bg-white dark:bg-gray-800 text-xs px-3'
             } ${
               disabled
                 ? 'bg-gray-100 dark:bg-gray-800/90 text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-700 cursor-not-allowed'
@@ -127,7 +127,7 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
             <span className={`truncate text-inherit ${disabled ? 'text-gray-400 dark:text-gray-500' : selected ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>
               {selected ? selected.label : (isFloating ? ' ' : placeholder)}
             </span>
-            <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform group-focus:rotate-180 ${disabled ? 'text-gray-400 dark:text-gray-500' : 'text-gray-400 dark:text-gray-500'}`} />
+            <ChevronDown className={`w-4 h-4 shrink-0 transition-transform group-focus:rotate-180 ${disabled ? 'text-gray-400 dark:text-gray-500' : 'text-gray-400 dark:text-gray-500'}`} />
           </button>
         )}
       >
@@ -174,7 +174,7 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
       </Dropdown>
       {isFloating && label && (
         <label
-          className={`absolute text-xs duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] px-2 start-2 pointer-events-none transition-all ${bgToken} ${
+          className={`absolute text-sm duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] px-2 start-2 pointer-events-none transition-all ${bgToken} ${
             disabled
               ? 'text-gray-400 dark:text-gray-500'
               : error

@@ -79,7 +79,7 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
       <div className={twMerge('w-full min-w-0', containerClassName)}>
         <div className="relative">
           {leftIcon && (
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 dark:text-gray-500 z-10">
+            <div className="absolute inset-y-0 start-0 ps-3 flex items-center pointer-events-none text-gray-400 dark:text-gray-500 z-10">
               {leftIcon}
             </div>
           )}
@@ -94,11 +94,11 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
             value={value}
             defaultValue={defaultValue}
             className={twMerge(
-              'block px-3 pb-2.5 pt-4 w-full text-xs bg-transparent rounded-lg border appearance-none focus:outline-none focus:ring-0 peer transition-all duration-200',
+              'block px-2.5 pb-2.5 pt-4 w-full text-sm bg-transparent rounded-lg border appearance-none focus:outline-none focus:ring-0 peer transition-all duration-200',
               borderAndFocusColor,
               disabledClasses,
-              leftIcon ? 'pl-9' : '',
-              rightIcon ? 'pr-9' : '',
+              leftIcon ? 'ps-10' : '',
+              rightIcon ? 'pe-10' : '',
               className
             )}
             {...props}
@@ -106,17 +106,17 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
           <label
             htmlFor={inputId}
             className={twMerge(
-              'absolute text-xs duration-300 transform origin-[0] px-2 peer-focus:px-2 start-2 pointer-events-none transition-all z-10',
+              'absolute text-sm duration-300 transform origin-[0] px-2 peer-focus:px-2 start-2 pointer-events-none transition-all z-10',
               labelTransform,
               bgToken,
               disabled ? 'text-gray-400 dark:text-gray-500' : labelColor,
-              leftIcon ? 'start-8 peer-focus:start-2' : 'start-2'
+              leftIcon ? 'peer-placeholder-shown:start-8 peer-focus:start-2' : 'start-2'
             )}
           >
             {label}
           </label>
           {rightIcon && (
-            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-gray-400 dark:text-gray-500 z-10">
+            <div className="absolute inset-y-0 end-0 pe-3 flex items-center pointer-events-none text-gray-400 dark:text-gray-500 z-10">
               {rightIcon}
             </div>
           )}

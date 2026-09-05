@@ -908,7 +908,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
             readOnly
             inputMode="none"
             disabled={disabled}
-            className={`block px-3 pb-2.5 pt-4 ps-9 w-full text-xs bg-transparent rounded-lg border appearance-none focus:outline-none focus:ring-0 peer transition-all duration-200 cursor-pointer ${
+            className={`block px-2.5 pb-2.5 pt-4 ps-10 w-full text-sm bg-transparent rounded-lg border appearance-none focus:outline-none focus:ring-0 peer transition-all duration-200 cursor-pointer ${
               hasError
                 ? 'border-red-600 dark:border-red-500 text-red-900 dark:text-white'
                 : 'border-gray-300 dark:border-gray-600 focus:border-blue-600 dark:focus:border-blue-500 text-gray-900 dark:text-white'
@@ -921,7 +921,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           />
           <label
             htmlFor="daterange-start-input"
-            className={`absolute text-xs duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] px-2 start-8 pointer-events-none bg-white dark:bg-gray-800 transition-all ${
+            className={`absolute text-sm duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] px-2 start-2 pointer-events-none bg-white dark:bg-gray-800 transition-all ${
               disabled
                 ? 'text-gray-400 dark:text-gray-500'
                 : hasError
@@ -945,7 +945,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
             readOnly
             inputMode="none"
             disabled={disabled}
-            className={`block px-3 pb-2.5 pt-4 ps-9 w-full text-xs bg-transparent rounded-lg border appearance-none focus:outline-none focus:ring-0 peer transition-all duration-200 cursor-pointer ${
+            className={`block px-2.5 pb-2.5 pt-4 ps-10 w-full text-sm bg-transparent rounded-lg border appearance-none focus:outline-none focus:ring-0 peer transition-all duration-200 cursor-pointer ${
               hasError
                 ? 'border-red-600 dark:border-red-500 text-red-900 dark:text-white'
                 : 'border-gray-300 dark:border-gray-600 focus:border-blue-600 dark:focus:border-blue-500 text-gray-900 dark:text-white'
@@ -958,7 +958,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           />
           <label
             htmlFor="daterange-end-input"
-            className={`absolute text-xs duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] px-2 start-8 pointer-events-none bg-white dark:bg-gray-800 transition-all ${
+            className={`absolute text-sm duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] px-2 start-2 pointer-events-none bg-white dark:bg-gray-800 transition-all ${
               disabled
                 ? 'text-gray-400 dark:text-gray-500'
                 : hasError

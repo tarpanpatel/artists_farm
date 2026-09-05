@@ -78,7 +78,7 @@ export const FloatingTextarea = forwardRef<HTMLTextAreaElement, FloatingTextarea
             defaultValue={defaultValue}
             rows={rows}
             className={twMerge(
-              'block px-3 pb-2.5 pt-4 w-full text-xs bg-transparent rounded-lg border appearance-none focus:outline-none focus:ring-0 peer transition-all duration-200 resize-y',
+              'block px-2.5 pb-2.5 pt-4 w-full text-sm bg-transparent rounded-lg border appearance-none focus:outline-none focus:ring-0 peer transition-all duration-200 resize-y',
               borderAndFocusColor,
               disabledClasses,
               className
@@ -88,7 +88,7 @@ export const FloatingTextarea = forwardRef<HTMLTextAreaElement, FloatingTextarea
           <label
             htmlFor={textareaId}
             className={twMerge(
-              'absolute text-xs duration-300 transform origin-[0] px-2 peer-focus:px-2 start-2 pointer-events-none transition-all z-10',
+              'absolute text-sm duration-300 transform origin-[0] px-2 peer-focus:px-2 start-2 pointer-events-none transition-all z-10',
               labelTransform,
               bgToken,
               disabled ? 'text-gray-400 dark:text-gray-500' : labelColor

@@ -64,7 +64,7 @@ export const FloatingSelect = forwardRef<HTMLSelectElement, FloatingSelectProps>
             value={value}
             defaultValue={defaultValue}
             className={twMerge(
-              'block px-3 pb-2.5 pt-4 pr-8 w-full text-xs bg-transparent rounded-lg border appearance-none focus:outline-none focus:ring-0 peer transition-all duration-200 cursor-pointer',
+              'block px-2.5 pb-2.5 pt-4 pe-8 w-full text-sm bg-transparent rounded-lg border appearance-none focus:outline-none focus:ring-0 peer transition-all duration-200 cursor-pointer',
               borderAndFocusColor,
               disabledClasses,
               className
@@ -82,15 +82,15 @@ export const FloatingSelect = forwardRef<HTMLSelectElement, FloatingSelectProps>
           <label
             htmlFor={selectId}
             className={twMerge(
-              'absolute text-xs duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] px-2 start-2 pointer-events-none transition-all',
+              'absolute text-sm duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] px-2 start-2 pointer-events-none transition-all',
               bgToken,
               disabled ? 'text-gray-400 dark:text-gray-500' : labelColor
             )}
           >
             {label}
           </label>
-          <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none text-gray-400 dark:text-gray-500">
-            <ChevronDown className="w-3.5 h-3.5" />
+          <div className="absolute inset-y-0 end-0 pe-2.5 flex items-center pointer-events-none text-gray-400 dark:text-gray-500">
+            <ChevronDown className="w-4 h-4" />
           </div>
         </div>
 
