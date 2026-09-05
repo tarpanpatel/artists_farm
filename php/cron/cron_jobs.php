@@ -122,6 +122,21 @@ function getCronJobDefinitions(): array {
             'daily_at_time' => null,
         ],
         [
+            // The data-level companion to channex_outbox_health above: that one
+            // watches the plumbing (stuck/abandoned pushes), this one asks
+            // Channex what it is actually publishing and compares it night by
+            // night against Ground Code. Every pipe can be clear while the
+            // numbers on Airbnb are still wrong - see the script's doc comment.
+            'job_key' => 'channex_sync_audit',
+            'name' => 'Channel Sync Audit (Data)',
+            'description' => 'Daily audit that what the OTAs publish still matches Ground Code: availability per room per night, an empty booking feed, no stuck acknowledgements, rate rules not about to run out, and no overlapping bookings.',
+            'script_path' => 'channex_sync_audit.php',
+            'log_file' => 'channex_sync_audit.log',
+            'schedule_type' => 'daily_at',
+            'interval_minutes' => null,
+            'daily_at_time' => '06:20:00',
+        ],
+        [
             'job_key' => 'trial_lifecycle_cadence',
             'name' => '30-Day Trial Lifecycle & Renewal Cadence',
             'description' => 'Automated Day 1/3/7/14/21/23(7-day notice)/28/30 follow-up nudges, trial expiry notices, and subscription status transitions.',
