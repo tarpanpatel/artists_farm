@@ -228,7 +228,10 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
           rows forced 2 columns at every viewport width, unlike PropertySetupWizard's mobile-
           first single-column fields - cramped on a ~380px phone screen). Stacks to one column
           below sm, matching that wizard's own convention. */}
-      <div className={`grid gap-4 grid-cols-1 ${isRoom ? '' : 'sm:grid-cols-2'}`}>
+      {/* Room mode is a 2x2 form (name + tariff, then check-in + check-out) rather
+          than three rows with a half-empty one at the bottom - reported 5 Sep 2026
+          as the Edit Room page being too airy. Property mode keeps its own layout. */}
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
         <div className="property-edit-form__field">
           <Input
             label={isRoom ? t('room_name_label', 'Room Name') : t('tenant_property_name_label', 'Property Name')}
@@ -238,6 +241,18 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
             error={nameTouched && !name.trim() ? 'This field is required' : undefined}
           />
         </div>
+        {isRoom && property.property_type !== 'MULTI_KEY' && (
+          <div className="property-edit-form__field">
+            <Input
+              type="number"
+              label={t('default_tariff_label', 'Default Tariff / Night (₹, optional)')}
+              value={defaultTariff}
+              onChange={(e) => setDefaultTariff(e.target.value)}
+              placeholder={t('default_tariff_placeholder', 'e.g. 2000')}
+              helperText={t('default_tariff_help', 'Pre-fills the rate when creating a new booking - still editable per booking.')}
+            />
+          </div>
+        )}
         {!isRoom && (
           <div className="property-edit-form__field">
             <Input
@@ -365,7 +380,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
 
       {/* Multi-key parent properties aren't themselves bookable - each room has
           its own tariff, set here (in room mode) instead. */}
-      {property.property_type !== 'MULTI_KEY' && (
+      {!isRoom && property.property_type !== 'MULTI_KEY' && (
         <div className="property-edit-form__row grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="property-edit-form__field">
             <Input
