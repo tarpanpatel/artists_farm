@@ -218,9 +218,29 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
         case 'get_nav_menu':
             if (!isSchemaVerified('nav_menu_self_heal_v6')) {
                 try {
-                    $pdo->exec("UPDATE property_modules SET is_enabled = 1 WHERE module_slug = 'kitchen'");
+                    // REMOVED 5 Sep 2026: this was
+                    //   UPDATE property_modules SET is_enabled = 1 WHERE module_slug = 'kitchen'
+                    // - an unscoped write that force-enabled the kitchen module for EVERY
+                    // property of EVERY tenant on the platform, silently overriding whatever
+                    // each owner had actually chosen. It was almost certainly added to fix a
+                    // "Kitchen is missing from the sidebar" report; that symptom's real cause
+                    // was the self-parented nav row corrected on the next line, not a disabled
+                    // module - so this re-enabled a module nobody asked for and never fixed the
+                    // thing it was aimed at. A property's module toggles are tenant data; a
+                    // platform-wide self-heal must never overwrite them.
+                    // Note this does not turn kitchen back OFF anywhere it already ran - rows
+                    // set to 1 by the old statement stay 1 until an owner toggles them.
                     $pdo->exec("DELETE FROM nav_menu_items WHERE unique_key = 'staff_meals' AND id != 'nav-8'");
-                    $pdo->exec("UPDATE nav_menu_items SET is_visible = 1, parent_id = 'nav-kitchen-overview', roles_json = '[\"Super Admin\",\"Root Admin\",\"Admin\",\"Staff Kitchen\",\"Staff Supervisor\",\"Staff\"]' WHERE unique_key IN ('kitchen_overview', 'take_food_order', 'kitchen_orders', 'staff_meals')");
+                    // parent_id is deliberately NOT set here (fixed 5 Sep 2026). This
+                    // statement's WHERE list includes 'kitchen_overview' - the Kitchen
+                    // ROOT itself - so assigning parent_id = 'nav-kitchen-overview' to
+                    // the whole list made that row its own parent. Navigation.tsx's
+                    // buildTree() then pushed it into its own children instead of into
+                    // roots, and the entire Kitchen group disappeared from the sidebar
+                    // on every tenant while still being reachable by URL. The children's
+                    // parent_id is set by the next statement, which correctly excludes
+                    // the root.
+                    $pdo->exec("UPDATE nav_menu_items SET is_visible = 1, roles_json = '[\"Super Admin\",\"Root Admin\",\"Admin\",\"Staff Kitchen\",\"Staff Supervisor\",\"Staff\"]' WHERE unique_key IN ('kitchen_overview', 'take_food_order', 'kitchen_orders', 'staff_meals')");
                     $pdo->exec("UPDATE nav_menu_items SET parent_id = 'nav-kitchen-overview' WHERE unique_key IN ('take_food_order', 'kitchen_orders', 'staff_meals', 'edit_food_menu', 'edit_kitchen_stock')");
                     markSchemaVerified('nav_menu_self_heal_v6');
                 } catch (Exception $e) {}
@@ -303,6 +323,18 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                     $pdo->exec("UPDATE nav_menu_items SET roles_json = '[\"Super Admin\",\"Admin\"]', is_visible = 1 WHERE unique_key = 'channel_manager'");
                 } catch (Exception $e) {}
                 markSchemaVerified('nav_menu_self_heal_v12');
+            }
+
+            // v13 (5 Sep 2026) - repair databases that already ran the broken v6
+            // above and are therefore left with a self-parented Kitchen root. Without
+            // this, existing environments keep the bad row forever: v6's marker is
+            // already set, so the corrected statement above never re-runs there.
+            // Generic on purpose - any self-parenting row is invalid, not just this one.
+            if (!isSchemaVerified('nav_menu_self_heal_v13')) {
+                try {
+                    $pdo->exec("UPDATE nav_menu_items SET parent_id = NULL WHERE parent_id = id");
+                } catch (Exception $e) {}
+                markSchemaVerified('nav_menu_self_heal_v13');
             }
 
             if (!isSchemaVerified('nav_menu_self_heal_v2')) {

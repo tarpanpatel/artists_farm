@@ -298,7 +298,22 @@ export const Navigation: React.FC<NavigationProps> = ({
 
     visible.forEach(item => {
       const node = map.get(item.id)!;
-      let effectiveParentId = item.parentId;
+      // A node must never be its own parent (5 Sep 2026, root-caused live on
+      // staging from "why is there no kitchen navigation in the sidebar").
+      // The seeded `nav-kitchen-overview` row has parentId === its own id, and
+      // without this guard the attach loop below took the `map.has(...)` branch
+      // - because the node IS in `map`, being itself - and pushed Kitchen into
+      // its OWN children instead of into `roots`. The node therefore never
+      // reached the rendered tree and the entire Kitchen group (Take Food
+      // Order, Live Orders, Staff Meals...) silently vanished from the sidebar,
+      // while remaining reachable by URL and still listed in the mobile bottom
+      // bar - which is exactly what made it look like the kitchen module was
+      // switched off when it was in fact enabled the whole time.
+      //
+      // Guarding here rather than only correcting the row also removes a latent
+      // infinite recursion: a self-parented node that DID reach `roots` would
+      // contain itself, and sortByOrder() recurses through children unbounded.
+      let effectiveParentId = item.parentId === item.id ? null : item.parentId;
       if (!effectiveParentId && kitchenChildKeys.has(item.uniqueKey || '') && item.id !== kitchenRoot!.id) {
         effectiveParentId = kitchenRoot!.id;
       }
@@ -316,7 +331,7 @@ export const Navigation: React.FC<NavigationProps> = ({
     groupOnlyIds.forEach(id => {
       const parentRaw = flat.find(f => f.id === id)!;
       const node = map.get(id)!;
-      if (parentRaw.parentId && map.has(parentRaw.parentId)) {
+      if (parentRaw.parentId && parentRaw.parentId !== parentRaw.id && map.has(parentRaw.parentId)) {
         map.get(parentRaw.parentId)!.children.push(node);
       } else {
         roots.push(node);
