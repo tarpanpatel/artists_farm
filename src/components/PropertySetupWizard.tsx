@@ -510,24 +510,29 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
           Back / Save & Exit on the left, Skip / Next Step / Finish Setup on the right. "Do it
           later" (added 27 Aug 2026) sits alongside them unconditionally - unlike Skip (which
           only advances past the current step) it dismisses the whole checklist and snoozes
-          its auto-open for 24h, so it needs to be reachable from step 0 too, not just once
-          Back/Save & Exit are already showing. */}
+          its auto-open for 24h, so it needs to be reachable from every step, not just step 0.
+          (Bug fixed 5 Sep 2026: it was wired as an either/or with Back - `stepIndex > 0 ? Back
+          : Do It Later` - so past step 0 it was replaced by Back and unreachable entirely,
+          contradicting this very comment's stated intent. Now rendered unconditionally
+          alongside Back/Save & Exit instead of substituting for either.) */}
       {/* pb-[calc(1rem+env(safe-area-inset-bottom))] per DESIGN.md's "Bottom-Anchored Drawer
           Footer Safe Area" rule - this footer is a shrink-0 child pinned to the drawer's
           physical bottom edge, so on a home-indicator device a plain p-4 leaves the primary
           action button with zero breathing room. Mirrors SelfOnboardingWizard.tsx's footer. */}
       <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] border-t border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2 bg-gray-50 dark:bg-gray-850 shrink-0 flex-wrap sm:flex-nowrap">
         <div className="flex items-center gap-2">
-          {stepIndex > 0 && !finished ? (
+          {stepIndex > 0 && !finished && (
             <Button type="button" variant="secondary" size="sm" onClick={handleBack} disabled={saving} className="whitespace-nowrap flex items-center gap-1">
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Back</span>
             </Button>
-          ) : !finished ? (
+          )}
+
+          {!finished && (
             <Button type="button" variant="secondary" size="sm" onClick={handleDoItLater} disabled={saving} className="whitespace-nowrap">
               Do It Later
             </Button>
-          ) : null}
+          )}
 
           {stepIndex > 0 && !isLastStep && !finished && (
             <Button type="button" variant="secondary" size="sm" onClick={handleSaveAndExit} disabled={saving} className="whitespace-nowrap">
