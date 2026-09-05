@@ -78,7 +78,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 }) => {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
-  const { currentUser, isAuthenticated } = useAuth();
+  const { currentUser, activeRole, isAuthenticated } = useAuth();
   const getInitialStaffSubTab = (): 'control_center' | 'calendar' | 'roster' => {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.replace('#', '').trim().toLowerCase();
@@ -415,9 +415,22 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   // Role hierarchy: lower index = higher privilege
   const ROLE_HIERARCHY = ['Root Admin', 'Super Admin', 'Admin', 'Staff Supervisor', 'Staff Kitchen', 'Staff'];
 
+  const normalizeRoleName = (role: string): string => {
+    if (!role) return '';
+    const r = role.toLowerCase().replace(/[\s_-]+/g, ' ').trim();
+    if (r === 'root admin' || r === 'root_admin' || r === 'root') return 'Root Admin';
+    if (r === 'super admin' || r === 'super_admin' || r === 'superadmin') return 'Super Admin';
+    if (r === 'admin') return 'Admin';
+    if (r === 'staff supervisor' || r === 'supervisor') return 'Staff Supervisor';
+    if (r === 'staff kitchen' || r === 'kitchen') return 'Staff Kitchen';
+    if (r === 'staff') return 'Staff';
+    return role;
+  };
+
   const getRoleLevel = (role: string) => {
-    const r = role === 'root_admin' ? 'Root Admin' : role;
-    return ROLE_HIERARCHY.indexOf(r) >= 0 ? ROLE_HIERARCHY.indexOf(r) : ROLE_HIERARCHY.length;
+    const norm = normalizeRoleName(role);
+    const idx = ROLE_HIERARCHY.indexOf(norm);
+    return idx >= 0 ? idx : ROLE_HIERARCHY.length;
   };
 
   const canEditUser = (currentUserRole: string, targetUserRole: string) => {
@@ -431,10 +444,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   // (canEditUser already lets peers at the same hierarchy level edit each
   // other, e.g. one Staff Supervisor editing another) - restricted to actual
   // admin roles only, regardless of what canEditUser would otherwise permit.
-  const normalizedCurrentRole = (currentUser?.role || '') === 'root_admin' ? 'Root Admin' : (currentUser?.role || '');
+  const normalizedCurrentRole = normalizeRoleName(activeRole || currentUser?.role || '');
   const canShareLogins = ['Root Admin', 'Super Admin', 'Admin'].includes(normalizedCurrentRole);
 
-  const visibleUsers = users.filter(u => u.role !== 'Root Admin');
+  const visibleUsers = users.filter(u => normalizeRoleName(u.role) !== 'Root Admin');
 
   // Handlers for Control Center
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -888,7 +901,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     cell: (row: any) => {
                       const rawPhone = row.phone || row.phone_number || row.username || '';
                       const phoneVal = rawPhone.replace(/\D/g, '');
-                      const isCurrentUser = currentUser?.id === row.id;
+                      const isCurrentUser = Boolean(
+                        (currentUser?.id && String(currentUser.id) === String(row.id)) ||
+                        (currentUser?.username && (row.username === currentUser.username || (row.phone && row.phone.replace(/\D/g, '') === currentUser.username.replace(/\D/g, ''))))
+                      );
                       return (
                         <div className="py-3 min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
@@ -1004,9 +1020,13 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     name: 'ACTIONS',
                     align: 'right' as const,
                     cell: (row: any) => {
-                      const isCurrentUser = currentUser?.id === row.id;
-                      const canEdit = isCurrentUser || canEditUser(currentUser?.role || 'Staff', row.role);
-                      const canDelete = !isCurrentUser && canEditUser(currentUser?.role || 'Staff', row.role);
+                      const isCurrentUser = Boolean(
+                        (currentUser?.id && String(currentUser.id) === String(row.id)) ||
+                        (currentUser?.username && (row.username === currentUser.username || (row.phone && row.phone.replace(/\D/g, '') === currentUser.username.replace(/\D/g, ''))))
+                      );
+                      const currentEffectiveRole = activeRole || currentUser?.role || 'Staff';
+                      const canEdit = isCurrentUser || canEditUser(currentEffectiveRole, row.role);
+                      const canDelete = !isCurrentUser && canEditUser(currentEffectiveRole, row.role) && normalizeRoleName(row.role) !== 'Super Admin' && normalizeRoleName(row.role) !== 'Root Admin';
                       return (
                         <div className="flex items-center gap-1.5 justify-end">
                           {canShareLogins && !!row.username && (
@@ -1101,9 +1121,13 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               ) : (
                 <div className="space-y-3">
                   {visibleUsers.slice((staffPermissionsPage - 1) * 10, staffPermissionsPage * 10).map((row: any) => {
-                  const isCurrentUser = currentUser?.id === row.id;
-                  const canEdit = isCurrentUser || canEditUser(currentUser?.role || 'Staff', row.role);
-                  const canDelete = !isCurrentUser && canEditUser(currentUser?.role || 'Staff', row.role);
+                  const isCurrentUser = Boolean(
+                    (currentUser?.id && String(currentUser.id) === String(row.id)) ||
+                    (currentUser?.username && (row.username === currentUser.username || (row.phone && row.phone.replace(/\D/g, '') === currentUser.username.replace(/\D/g, ''))))
+                  );
+                  const currentEffectiveRole = activeRole || currentUser?.role || 'Staff';
+                  const canEdit = isCurrentUser || canEditUser(currentEffectiveRole, row.role);
+                  const canDelete = !isCurrentUser && canEditUser(currentEffectiveRole, row.role) && normalizeRoleName(row.role) !== 'Super Admin' && normalizeRoleName(row.role) !== 'Root Admin';
                   const rawPhone = row.phone || row.phone_number || row.username || '';
                   const phoneVal = rawPhone.replace(/\D/g, '');
 
