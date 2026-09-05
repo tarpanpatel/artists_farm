@@ -70,6 +70,7 @@ export const EditPropertyPage: React.FC<EditPropertyPageProps> = ({ property, on
       </div>
 
       <OtaPropertyImporterModal
+        propertyType={property.property_type}
         isOpen={showImporterModal}
         onClose={() => setShowImporterModal(false)}
         propertyId={property.id}

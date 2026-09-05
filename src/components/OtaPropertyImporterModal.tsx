@@ -75,6 +75,8 @@ interface OtaPropertyImporterModalProps {
   isOpen: boolean;
   onClose: () => void;
   propertyId?: number;
+  /** Target's property_type - MULTI_KEY parents must not be renamed, see below. */
+  propertyType?: string;
   onImportSuccess?: (data: ImportedPropertyData) => void;
 }
 
@@ -82,9 +84,14 @@ export const OtaPropertyImporterModal: React.FC<OtaPropertyImporterModalProps> =
   isOpen,
   onClose,
   propertyId,
+  propertyType,
   onImportSuccess,
 }) => {
   const { showToast } = useToast();
+  // What actually landed, shown after a successful apply instead of closing
+  // straight away - "it should show all the data imported" (5 Sep 2026). Closing
+  // silently left no way to tell what an import had changed.
+  const [appliedSummary, setAppliedSummary] = useState<Array<{ label: string; value: string }> | null>(null);
   const [source, setSource] = useState<'airbnb' | 'booking_com'>('airbnb');
   const [identifier, setIdentifier] = useState('');
   const [fetching, setFetching] = useState(false);
@@ -108,7 +115,11 @@ export const OtaPropertyImporterModal: React.FC<OtaPropertyImporterModalProps> =
     photos: boolean;
     amenities: boolean;
   }>({
-    name: true,
+    // Unticked for a MULTI_KEY parent (5 Sep 2026, reported live). An OTA listing
+    // describes ONE unit, so importing its title renamed a 7-room property from
+    // "Patel Colony" to "Guest suite in Jaipur" - the parent is the building, not
+    // any single listing. Still offered, just never the default there.
+    name: propertyType !== 'MULTI_KEY',
     description: true,
     address: true,
     checkin_checkout: true,
@@ -222,11 +233,29 @@ export const OtaPropertyImporterModal: React.FC<OtaPropertyImporterModalProps> =
         });
 
         if (res && res.success) {
+          const fmt = (v: any) => {
+            if (v === null || v === undefined || v === '') return '-';
+            if (Array.isArray(v)) return `${v.length}`;
+            return String(v);
+          };
+          const summary: Array<{ label: string; value: string }> = [];
+          if (applyFields.name) summary.push({ label: 'Property name', value: fmt(preview.name) });
+          if (applyFields.description) summary.push({ label: 'Description', value: fmt(preview.description).slice(0, 140) });
+          if (applyFields.address) summary.push({ label: 'Address', value: fmt((preview as any).address) });
+          if (applyFields.default_tariff) summary.push({ label: 'Default tariff', value: fmt((preview as any).default_tariff) });
+          if (applyFields.checkin_checkout) {
+            summary.push({ label: 'Check-in time', value: fmt((preview as any).checkin_time) });
+            summary.push({ label: 'Check-out time', value: fmt((preview as any).checkout_time) });
+          }
+          if (applyFields.photos) summary.push({ label: 'Photos', value: `${(preview.photos || []).length} imported` });
+          if (applyFields.amenities) summary.push({ label: 'Amenities', value: `${(preview.amenities || []).length} imported` });
+
           showToast('Property updated with imported OTA listing details!', { type: 'success' });
           if (onImportSuccess) {
             onImportSuccess(preview);
           }
-          onClose();
+          // Deliberately NOT closing here - the summary below is the whole point.
+          setAppliedSummary(summary);
         } else {
           const msg = res?.message || 'Failed to apply imported details';
           setError(msg);
@@ -280,6 +309,46 @@ export const OtaPropertyImporterModal: React.FC<OtaPropertyImporterModalProps> =
 
         {/* Content Body */}
         <div className="p-5 overflow-y-auto space-y-5 flex-1">
+          {/* Post-import summary. Shown INSTEAD of the form once an apply has
+              landed, because closing straight back to the page left no way to see
+              what an import had actually changed (reported 5 Sep 2026). */}
+          {appliedSummary && (
+            <div className="space-y-4">
+              <div className="flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950/30">
+                <Check className="mt-0.5 h-5 w-5 shrink-0 text-green-600 dark:text-green-400" />
+                <div>
+                  <p className="text-sm font-semibold text-green-900 dark:text-green-200">
+                    Imported into this property
+                  </p>
+                  <p className="mt-0.5 text-xs text-green-800 dark:text-green-300">
+                    These values are now saved. Anything you did not tick was left untouched.
+                  </p>
+                </div>
+              </div>
+              <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+                {appliedSummary.length === 0 && (
+                  <p className="p-4 text-sm text-gray-500 dark:text-gray-400">
+                    Nothing was selected, so nothing changed.
+                  </p>
+                )}
+                {appliedSummary.map((row, i) => (
+                  <div
+                    key={row.label}
+                    className={`flex items-start justify-between gap-4 px-4 py-2.5 ${
+                      i % 2 ? 'bg-gray-50 dark:bg-gray-900/40' : ''
+                    }`}
+                  >
+                    <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{row.label}</span>
+                    <span className="max-w-[60%] break-words text-right text-xs font-semibold text-gray-900 dark:text-white">
+                      {row.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!appliedSummary && (<>
           {/* Source Selection Buttons */}
           <div>
             <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2">
@@ -663,6 +732,7 @@ export const OtaPropertyImporterModal: React.FC<OtaPropertyImporterModalProps> =
               )}
             </div>
           )}
+          </>)}
         </div>
 
         {/* Footer */}
@@ -671,7 +741,7 @@ export const OtaPropertyImporterModal: React.FC<OtaPropertyImporterModalProps> =
             Cancel
           </Button>
 
-          {preview && (
+          {preview && !appliedSummary && (
             <Button
               variant="primary"
               onClick={handleApply}
