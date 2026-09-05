@@ -41,6 +41,19 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
     const hasSuccess = !hasError && Boolean(success);
     const successMessage = typeof success === 'string' ? success : undefined;
 
+    // whitespace-nowrap is load-bearing (5 Sep 2026). scale-75 is a TRANSFORM:
+    // it is applied after layout, so the browser breaks lines at the label's
+    // real font size and only then shrinks the result. A long label like
+    // "Contact Phone Number *" therefore wrapped to two lines and the second
+    // line landed on top of the input's own text. Raising the mobile label to
+    // 16px (to match the input, see custom.css) made that worse, not better.
+    //
+    // The chip behind a floated label has to match whatever is BEHIND the
+    // border it is cutting through - that is the whole trick. A disabled field
+    // fills grey (disabled:bg-gray-100), so a bg-white chip on top of it reads
+    // as a stray white box rather than a gap in the border. Booking Details
+    // renders every field disabled until you hit Edit, so that was most of the
+    // screen.
     // Background token for label cutout to seamlessly match parent surface
     const bgToken =
       bgMode === 'page'
@@ -106,9 +119,9 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
           <label
             htmlFor={inputId}
             className={twMerge(
-              'floating-label absolute text-sm duration-300 transform origin-[0] px-2 peer-focus:px-2 start-2 pointer-events-none transition-all z-10',
+              'floating-label absolute whitespace-nowrap text-sm duration-300 transform origin-[0] px-2 peer-focus:px-2 start-2 pointer-events-none transition-all z-10',
               labelTransform,
-              bgToken,
+              disabled ? 'bg-gray-100 dark:bg-gray-800/90' : bgToken,
               disabled ? 'text-gray-400 dark:text-gray-500' : labelColor,
               leftIcon ? 'peer-placeholder-shown:start-8 peer-focus:start-2' : 'start-2'
             )}

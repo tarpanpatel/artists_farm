@@ -82,8 +82,8 @@ export const FloatingSelect = forwardRef<HTMLSelectElement, FloatingSelectProps>
           <label
             htmlFor={selectId}
             className={twMerge(
-              'floating-label absolute text-sm duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] px-2 start-2 pointer-events-none transition-all',
-              bgToken,
+              'floating-label absolute whitespace-nowrap text-sm duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] px-2 start-2 pointer-events-none transition-all',
+              disabled ? 'bg-gray-100 dark:bg-gray-800/90' : bgToken,
               disabled ? 'text-gray-400 dark:text-gray-500' : labelColor
             )}
           >
