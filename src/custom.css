@@ -267,6 +267,38 @@ label:not(.floating-label),
   font-weight: 600;
 }
 
+/* Browser autofill repaint (5 Sep 2026, reported on the sign-in screen: "this
+   is also not looking good").
+
+   Chrome paints its own background on an autofilled field - a light blue
+   (#E8F0FE) that ignores every author background, including our inputs'
+   bg-transparent. That breaks the floating label specifically: the label's
+   chip exists to cut a gap in the border by matching the surface BEHIND it,
+   and Chrome's fill is not that surface. The result is a white notch sitting
+   on a blue field, which is what the sign-in page showed once Chrome had a
+   saved mobile number and passcode to offer.
+
+   An inset box-shadow is the only reliable way to override it - background-color
+   is simply ignored on :-webkit-autofill. The absurd transition delay is the
+   standard companion trick: Chrome re-applies its colour on interaction, and a
+   long enough transition means the repaint never visibly lands.
+
+   Light-mode only, deliberately. Dark mode is switched off app-wide (see
+   CLAUDE.md) and adding a prefers-color-scheme block here without the .dark
+   class toggle would recreate the exact boot-flash bug that got it disabled. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+  box-shadow: 0 0 0 1000px #ffffff inset !important;
+  -webkit-text-fill-color: #111827 !important;
+  caret-color: #111827;
+  transition: background-color 600000s 0s, color 600000s 0s;
+}
+
 /* Floating labels follow Flowbite exactly: same size as the input's text at
    rest, then scale-75 handles the floated state (14px -> 10.5px here). The
    mobile counterpart lives in mobile_screen_fix.css, where inputs are 16px. */
