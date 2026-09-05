@@ -74,6 +74,35 @@ const SelfOnboardingWizard = lazyWithRetry(() => import('./components/SelfOnboar
 const PropertySetupWizard = lazyWithRetry(() => import('./components/PropertySetupWizard').then(m => ({ default: m.PropertySetupWizard })), 'PropertySetupWizard');
 const PublicBookingEngine = lazyWithRetry(() => import('./components/PublicBookingEngine').then(m => ({ default: m.PublicBookingEngine })), 'PublicBookingEngine');
 
+// Is this URL the PUBLIC booking engine (a guest booking a room), rather than
+// the internal app? Shared by the two guards below so they cannot drift apart.
+//
+// FIXED 5 Sep 2026 (reported live: "Booking engine is being shown on this
+// page"). Both guards tested `hash.startsWith('#book')`, and '#bookings' -
+// a real, deliberately-supported internal route for the Bookings page, aliased
+// in the routeMaps above since 20 Aug 2026 - starts with '#book'. So typing or
+// bookmarking #bookings replaced the entire authenticated app with the public
+// guest-facing booking engine. The prefix must end at a real boundary: end of
+// string, '/', or '?'.
+const isPublicBookingUrl = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const hash = window.location.hash;
+  const hashIsBook =
+    hash === '#book' ||
+    hash.startsWith('#book/') ||
+    hash.startsWith('#book?') ||
+    hash === '#/book' ||
+    hash.startsWith('#/book/') ||
+    hash.startsWith('#/book?');
+  return (
+    hashIsBook ||
+    window.location.pathname.endsWith('/book') ||
+    window.location.pathname.endsWith('/book/') ||
+    window.location.search.includes('book=true')
+  );
+};
+
+
 // Small inline fallback for tab-content Suspense boundaries - deliberately
 // NOT LoadingScreen (that's a fixed-inset-0 full-page overlay meant for app
 // boot; using it here would blank out the still-loaded header/sidebar every
@@ -2113,7 +2142,7 @@ ${itemsStr}
           </div>
         )}
 
-        {typeof window !== 'undefined' && (window.location.hash === '#book' || window.location.hash.startsWith('#book') || window.location.hash.startsWith('#/book') || window.location.pathname.endsWith('/book') || window.location.search.includes('book=true')) ? (
+        {isPublicBookingUrl() ? (
           <Suspense fallback={<LoadingScreen message="Loading live availability..." />}>
             <PublicBookingEngine propertySlug={getPropertySlug()} />
           </Suspense>
@@ -3062,14 +3091,7 @@ export function App() {
   }, []);
 
   const propertySlug = getPropertySlug();
-  const isPublicBookingPage = typeof window !== 'undefined' && (
-    window.location.hash === '#book' ||
-    window.location.hash.startsWith('#book') ||
-    window.location.hash.startsWith('#/book') ||
-    window.location.pathname.endsWith('/book') ||
-    window.location.pathname.endsWith('/book/') ||
-    window.location.search.includes('book=true')
-  );
+  const isPublicBookingPage = isPublicBookingUrl();
 
   if (isPublicBookingPage) {
     return (
