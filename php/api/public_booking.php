@@ -123,28 +123,21 @@ function handleGetPublicBookingInfo(PDO $pdo, int $propertyId): void {
         }
     }
 
-    // Fetch Synced iCal OTA Blocks
-    try {
-        $oStmt = $pdo->prepare("
-            SELECT e.event_start, e.event_end, c.property_id as room_id
-            FROM ical_synced_events e
-            JOIN ical_sync_configs c ON e.sync_config_id = c.id
-            WHERE c.property_id IN ($idPlaceholders)
-            AND e.sync_status = 'synced'
-            AND e.event_start <= ? AND e.event_end >= ?
-        ");
-        $oStmt->execute(array_merge($allTargetIds, [$futureLimit . ' 23:59:59', $today . ' 00:00:00']));
-        $otaBlocks = $oStmt->fetchAll(PDO::FETCH_ASSOC);
-
-        foreach ($otaBlocks as $ob) {
-            $occupiedBlocks[] = [
-                'room_id' => (int)$ob['room_id'],
-                'checkin_date' => substr($ob['event_start'], 0, 10),
-                'expected_checkout' => substr($ob['event_end'], 0, 10),
-                'status' => 'Booked',
-            ];
-        }
-    } catch (Exception $e) {}
+    // iCal OTA blocks are NOT read here any more (removed 5 Sep 2026).
+    //
+    // iCal sync was retired on 3 Sep 2026 and its whole implementation moved to
+    // _unwanted/ical/, on the understanding that the leftover ical_synced_events
+    // rows were inert - that folder's README says as much: "harmless leftover
+    // data since nothing can read it any more". That was wrong. THIS query read
+    // them, and fed every one straight into $occupiedBlocks as a confirmed
+    // booking, so the public direct-booking engine kept refusing dates on the
+    // strength of a feed that had not run in days.
+    //
+    // Found 5 Sep 2026: 21 still-current events were blocking real dates, 12 of
+    // them on Artists Farm Jaipur, running as far out as September 2027 - dates
+    // a guest could not book and nobody could see a reason for. Availability now
+    // comes from Ground Code's own bookings plus the Channex channel manager,
+    // which is the whole point of having replaced iCal.
 
     // Fetch active dynamic rate rules
     $rules = [];

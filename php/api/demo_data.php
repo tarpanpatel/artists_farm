@@ -66,8 +66,6 @@ function ensureDemoSchema($pdo) {
         "ALTER TABLE `billing_receipts` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
         "ALTER TABLE `payee_entities` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
         "ALTER TABLE `staff_attendance` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
-        "ALTER TABLE `ical_sync_configs` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
-        "ALTER TABLE `ical_sync_configs` ADD COLUMN IF NOT EXISTS `sync_interval` INT NOT NULL DEFAULT 0",
         "ALTER TABLE `farm_utility_expenses` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
         "ALTER TABLE `dish_recipes` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
         // Itemized booking-time "Additional Charges" (Decoration Fees, Extra
@@ -1660,17 +1658,11 @@ function purgeDemoBookingOverlaps($pdo, $propertyId): int {
     $stmt->execute([$propertyId, GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_IN, GUEST_STATUS_BOOKED]);
     $removed += deleteOverlappingRows($pdo, $stmt->fetchAll(PDO::FETCH_ASSOC), 'room_id', 'guests');
 
-    // --- 2. Synced OTA events, grouped per room (a config belongs to exactly one room, so group
-    //        by the config's property_id to catch Airbnb-vs-Booking.com conflicts on one room).
-    $stmt = $pdo->prepare("
-        SELECT e.id, c.property_id AS room_id, e.event_start AS start_at, e.event_end AS end_at
-        FROM ical_synced_events e
-        JOIN ical_sync_configs c ON c.id = e.sync_config_id
-        WHERE c.property_id IN ($inScope) AND c.is_demo = 1
-        ORDER BY c.property_id, e.event_start, e.id
-    ");
-    $stmt->execute($scopeIds);
-    $removed += deleteOverlappingRows($pdo, $stmt->fetchAll(PDO::FETCH_ASSOC), 'room_id', 'ical_synced_events');
+    // --- 2. (removed 5 Sep 2026) Swept synced OTA events against each other.
+    //        Demo data stopped seeding ical_sync_configs/ical_synced_events rows
+    //        when iCal sync was retired on 3 Sep 2026, so this had nothing left
+    //        to find. Airbnb-vs-Booking.com conflicts on one room now arrive
+    //        through Channex, which is a live feed rather than demo fixtures.
 
     // --- 3. Cross-check: an OTA event that overlaps a real guest booking in the SAME room
     //        (found 28 Aug 2026, live: Room 102 on the Luxe Stays demo property had a guest
@@ -1699,32 +1691,10 @@ function purgeDemoBookingOverlaps($pdo, $propertyId): int {
         $guestRangesByRoom[(int)$g['room_id']][] = [$gStart, $gEnd];
     }
 
-    if (!empty($guestRangesByRoom)) {
-        $stmt = $pdo->prepare("
-            SELECT e.id, c.property_id AS room_id, e.event_start AS start_at, e.event_end AS end_at
-            FROM ical_synced_events e
-            JOIN ical_sync_configs c ON c.id = e.sync_config_id
-            WHERE c.property_id IN ($inScope) AND c.is_demo = 1
-        ");
-        $stmt->execute($scopeIds);
-        $delOta = $pdo->prepare("DELETE FROM ical_synced_events WHERE id = ?");
-        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $e) {
-            $roomId = (int)$e['room_id'];
-            if (empty($guestRangesByRoom[$roomId])) continue;
-            $eStart = strtotime($e['start_at']);
-            $eEnd = strtotime($e['end_at']);
-            if ($eStart === false || $eEnd === false) continue;
-            foreach ($guestRangesByRoom[$roomId] as [$gStart, $gEnd]) {
-                // Half-open, same rule as deleteOverlappingRows() - same-day turnover
-                // (checkout day = event start day, or vice versa) is not a conflict.
-                if ($gStart < $eEnd && $gEnd > $eStart) {
-                    $delOta->execute([$e['id']]);
-                    $removed += $delOta->rowCount();
-                    break;
-                }
-            }
-        }
-    }
+    // The OTA-event-vs-guest-booking cross-check that used to run here was
+    // removed 5 Sep 2026: demo data no longer seeds ical_synced_events, so it
+    // had nothing left to compare against. $guestRangesByRoom is still built
+    // above because sweep 1 uses it.
 
     return $removed;
 }
@@ -1901,18 +1871,10 @@ function clearDemoData($pdo, $propertyId) {
         $scopeIds = $scopeStmt->fetchAll(PDO::FETCH_COLUMN);
         if (!empty($scopeIds)) {
             $inPlaceholders = implode(',', array_fill(0, count($scopeIds), '?'));
-            $configIdStmt = $pdo->prepare("SELECT id FROM ical_sync_configs WHERE property_id IN ($inPlaceholders) AND is_demo = 1");
-            $configIdStmt->execute($scopeIds);
-            $demoConfigIds = $configIdStmt->fetchAll(PDO::FETCH_COLUMN);
-            if (!empty($demoConfigIds)) {
-                $configPlaceholders = implode(',', array_fill(0, count($demoConfigIds), '?'));
-                $stmt = $pdo->prepare("DELETE FROM ical_synced_events WHERE sync_config_id IN ($configPlaceholders)");
-                $stmt->execute($demoConfigIds);
-                $deletedRows += $stmt->rowCount();
-            }
-            $stmt = $pdo->prepare("DELETE FROM ical_sync_configs WHERE property_id IN ($inPlaceholders) AND is_demo = 1");
-            $stmt->execute($scopeIds);
-            $deletedRows += $stmt->rowCount();
+            // The demo iCal feed/event cleanup that used to run here was removed
+            // 5 Sep 2026 - nothing seeds those tables any more (iCal sync retired
+            // 3 Sep 2026, archived to _unwanted/ical/), so there is nothing left
+            // for a demo reset to clear.
         }
 
         // Delete demo financial ledger entries - generateDemoData() posts these

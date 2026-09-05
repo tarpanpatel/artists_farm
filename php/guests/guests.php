@@ -692,43 +692,19 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         }
                     }
 
-                    // Advisory only, not a hard block - staff may already know an OTA
-                    // block is stale (guest cancelled by phone, feed hasn't resynced
-                    // yet). Only checked for genuine new offline bookings, never when
-                    // this call IS the OTA conversion itself (that request is deliberately
-                    // claiming the very block this query would otherwise flag).
+                    // The advisory "this clashes with an external calendar block"
+                    // warning was removed 5 Sep 2026 along with the rest of iCal
+                    // sync (retired 3 Sep 2026, archived to _unwanted/ical/). It read
+                    // ical_synced_events, a table nothing has written to since - so
+                    // the only warnings it could still produce were about a feed that
+                    // stopped running, which is worse than no warning at all.
+                    //
+                    // The response key stays declared so add_guest's shape does not
+                    // change for any client still reading it; it is simply never
+                    // populated now. Real conflict protection is unaffected: the hard
+                    // 409 overlap check above this comment is the actual guarantee,
+                    // and inbound OTA bookings arrive through Channex.
                     $overlapWarning = null;
-                    if ($icalExternalEventId === null) {
-                        try {
-                            $overlapScopeId = $roomId ?? $propertyId;
-                            $newCheckinForOverlap = $input['checkin_date'] ?? date('Y-m-d');
-                            $newCheckoutForOverlap = $input['expected_checkout'] ?? date('Y-m-d H:i:s', strtotime('+1 day'));
-                            $overlapStmt = $pdo->prepare("
-                                SELECT e.event_start, e.event_end, c.service_name
-                                FROM ical_synced_events e
-                                JOIN ical_sync_configs c ON e.sync_config_id = c.id
-                                WHERE c.property_id = ?
-                                AND e.sync_status = 'synced'
-                                AND e.event_start < ?
-                                AND e.event_end > ?
-                                AND NOT EXISTS (
-                                    SELECT 1 FROM guests g2
-                                    WHERE g2.ical_external_event_id = e.external_event_id
-                                    AND (g2.room_id = c.property_id OR g2.property_id = c.property_id)
-                                )
-                                LIMIT 1
-                            ");
-                            $overlapStmt->execute([$overlapScopeId, $newCheckoutForOverlap, $newCheckinForOverlap]);
-                            $overlapRow = $overlapStmt->fetch(PDO::FETCH_ASSOC);
-                            if ($overlapRow) {
-                                $overlapWarning = [
-                                    'source_label' => $overlapRow['service_name'] ?: 'an external calendar',
-                                    'event_start' => $overlapRow['event_start'],
-                                    'event_end' => $overlapRow['event_end'],
-                                ];
-                            }
-                        } catch (PDOException $e) {}
-                    }
 
                     // advance_received_by/pending_received_by columns have existed on
                     // this table all along - the Add Booking form collects both as
