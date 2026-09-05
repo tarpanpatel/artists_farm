@@ -3,6 +3,7 @@ import { AlertCircle, RefreshCw } from './icons/FlowbiteIcons';
 import { Button } from './Button';
 import { t } from '../i18n/en';
 import { recordTelescopeLog } from '../utils/telescopeLogger';
+import { isChunkLoadError } from '../utils/lazyWithRetry';
 
 interface Props {
   children: ReactNode;
@@ -43,6 +44,31 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
+      // Stale-chunk failures (lazyWithRetry's own silent one-shot reload
+      // already tried and failed again) are reported by the user as
+      // recurring "since it's just a stale file, refreshing fixes it most
+      // of the time" - so for this specific class of error, skip the normal
+      // crash-card details entirely and show nothing but a big Reload
+      // button, dead center of the viewport, so there's exactly one obvious
+      // thing to do. Every other kind of error keeps the detailed card
+      // below - this app deliberately never hides genuine error details
+      // (see CLAUDE.md's Telescope noise-filter rule), this is narrowly
+      // scoped to the one class of error a reload actually fixes.
+      if (isChunkLoadError(this.state.error?.message)) {
+        return (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-white dark:bg-slate-900 error-boundary error-boundary--chunk">
+            <Button
+              variant="primary"
+              size="lg"
+              leftIcon={<RefreshCw className="w-5 h-5" />}
+              onClick={() => window.location.reload()}
+            >
+              {t('error_boundary_reload_button', 'Reload Page')}
+            </Button>
+          </div>
+        );
+      }
+
       return (
         <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-start gap-3 error-boundary">
           <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5 error-boundary__icon" />

@@ -1,6 +1,70 @@
 import { lazy, ComponentType } from 'react';
 
 /**
+ * Whether an error is the "stale chunk after a deploy" class this whole file
+ * exists to recover from - used by ErrorBoundary.tsx to show a bare Reload
+ * button instead of a normal crash card once lazyWithRetry's own one-shot
+ * silent reload above has already been tried and it's STILL failing. Message
+ * wording varies by browser (Vite's own phrasing vs. Firefox/Safari's), so
+ * this checks for every known variant rather than one exact string.
+ */
+export function isChunkLoadError(message: string | undefined | null): boolean {
+  if (!message) return false;
+  const m = message.toLowerCase();
+  return (
+    m.includes('dynamically imported module') ||
+    m.includes('importing a module script failed') ||
+    m.includes('loading chunk') ||
+    m.includes('loading css chunk')
+  );
+}
+
+/**
+ * Forces a genuinely fresh page load - not just `window.location.reload()`,
+ * which re-requests the SAME URL and can be answered by sw.js's own
+ * stale-while-revalidate HTML cache with the exact same stale shell that
+ * caused the chunk to go missing in the first place (sw.js instantly returns
+ * whatever it has cached and only refreshes it in the BACKGROUND - see
+ * sw.js's fetch handler). That produces the real-world bug this was written
+ * to fix (reported live 5 Sep 2026): switching property hangs on an endless
+ * spinner - not even an error - because the promise below is deliberately
+ * never resolved/rejected while a reload is "about to" happen, and a reload
+ * that keeps re-serving the same stale cache never actually clears that
+ * hang. Only a full PWA force-quit (which drops the in-memory JS context
+ * entirely, sidestepping the bad cache) recovered.
+ *
+ * Two independent guarantees fix this, mirroring index.html's own inline
+ * recovery script for the same class of failure:
+ *   1. A cache-busting query param (`_r=<timestamp>`) makes this a URL
+ *      sw.js has never cached, so its fetch handler can't answer from a
+ *      stale entry - it MUST fall through to a real network fetch.
+ *   2. A hard 2.5s timeout guarantees the navigation actually fires even if
+ *      the pre-warming fetch below hangs (slow network, cold server) - so
+ *      the never-resolving promise this replaces is bounded, not eternal.
+ */
+function forceFreshReload(): void {
+  const url = new URL(window.location.href);
+  url.searchParams.set('_r', String(Date.now()));
+  const freshUrl = url.toString();
+
+  let navigated = false;
+  const go = () => {
+    if (navigated) return;
+    navigated = true;
+    window.location.href = freshUrl;
+  };
+
+  // Pre-warm sw.js's cache for freshUrl before navigating, same reasoning
+  // as index.html's own copy of this trick - by the time `go()` navigates,
+  // the fetch below has already primed the cache, so the real navigation
+  // answers instantly instead of waiting on the network a second time.
+  fetch(freshUrl, { credentials: 'include', headers: { Accept: 'text/html' } })
+    .then(go)
+    .catch(go);
+  setTimeout(go, 2500);
+}
+
+/**
  * Drop-in replacement for React's own lazy() that recovers automatically
  * from a stale-chunk load failure (found 22 Aug 2026, reported as a
  * "Kitchen Management Error" / "'text/html' is not a valid JavaScript MIME
@@ -20,9 +84,10 @@ import { lazy, ComponentType } from 'react';
  * short of the user realizing they need to force-quit and reopen the app.
  *
  * The fix: on a failed chunk load, do exactly what a manual force-quit/
- * reopen would have accomplished - one full page reload, which fetches the
- * CURRENT index.html (referencing the CURRENT chunk hashes) and lets the
- * retry after reload succeed transparently. Guarded via sessionStorage
+ * reopen would have accomplished - one full, cache-busted page reload (see
+ * forceFreshReload() above) that's guaranteed to fetch the CURRENT
+ * index.html (referencing the CURRENT chunk hashes), and lets the retry
+ * after reload succeed transparently. Guarded via sessionStorage
  * (a reload wipes any in-memory guard, so a plain module-level flag
  * wouldn't survive it) keyed per chunk, so a genuinely persistent failure
  * (offline, a truly broken deploy, a real 404 unrelated to staleness)
@@ -49,10 +114,12 @@ export function lazyWithRetry<T extends ComponentType<any>>(
       }
 
       if (!alreadyRetried) {
-        window.location.reload();
+        forceFreshReload();
         // The reload is about to tear this whole JS context down anyway -
         // return a promise that never resolves so React doesn't render the
         // error boundary for the brief moment before navigation lands.
+        // forceFreshReload()'s own 2.5s timeout is what keeps this bounded
+        // instead of an eternal hang if the navigation is ever slow to fire.
         return new Promise<{ default: T }>(() => {});
       }
 
