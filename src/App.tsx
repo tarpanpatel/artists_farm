@@ -165,24 +165,45 @@ function AppBody({ preloadedData }: AppBodyProps) {
     multiKeyRoomsRef.current = preloadedData.currentProperty?.rooms || [];
   }, [preloadedData.currentProperty?.rooms]);
 
-  // Restore room view on page refresh if hash is a room slug
+  // Restore room view on page refresh if hash is a room slug.
+  //
+  // Reads and depends on preloadedData.currentProperty?.rooms - real reactive
+  // state - NOT multiKeyRoomsRef.current, which is what this used to do and is
+  // why it failed at random (root-caused 5 Sep 2026 by reproducing it live on
+  // staging: the SAME #room/edit_property URL landed on #take_food_order on one
+  // load and #edit_property on the next).
+  //
+  // A ref is not reactive. Mutating multiKeyRoomsRef.current never schedules a
+  // render, and React only re-reads a dependency array during a render caused
+  // by something else - so a cold load went:
+  //   render 1: rooms not fetched yet          -> dep = 0, effect no-ops
+  //   render 2: rooms arrive, but the ref-sync effect above only runs AFTER
+  //             this render commits, so the dep READ during render 2 is still
+  //             0 -> unchanged -> effect never re-runs
+  //   render 3: only if some unrelated state happens to update, the dep finally
+  //             flips 0 -> N and the room view is restored
+  // Whether render 3 ever arrived was luck, which is why this looked
+  // intermittent, why it presented as "Go Back doesn't work" (you were never in
+  // a room view to go back FROM), and why several earlier attempts at fixing it
+  // appeared to work and then regressed.
+  const multiKeyRoomSlugs = preloadedData.currentProperty?.rooms;
   useEffect(() => {
-    if (typeof window !== 'undefined' && multiKeyRoomsRef.current.length > 0) {
-      const rawHash = window.location.hash.replace('#', '').trim();
-      const [hash, tabPart] = rawHash.split('/');
-      if (hash) {
-        const isRoomSlug = multiKeyRoomsRef.current.some((r: any) => r.slug === hash);
-        if (isRoomSlug && selectedRoomSlugOverride !== hash) {
-          const targetTab: TabType = (tabPart && ['dashboard', 'guests', 'edit_property'].includes(tabPart) ? tabPart as TabType : null)
-            || (sessionStorage.getItem('artists_farm_active_tab') as TabType)
-            || 'dashboard';
-          setActiveTab(targetTab);
-          setActiveMenuItemKey(hash);
-          setSelectedRoomSlugOverride(hash);
-        }
-      }
+    if (typeof window === 'undefined') return;
+    const rooms: any[] = multiKeyRoomSlugs || [];
+    if (rooms.length === 0) return;
+    const rawHash = window.location.hash.replace('#', '').trim();
+    const [hash, tabPart] = rawHash.split('?')[0].split('/');
+    if (!hash) return;
+    const isRoomSlug = rooms.some((r: any) => r.slug === hash);
+    if (isRoomSlug && selectedRoomSlugOverride !== hash) {
+      const targetTab: TabType = (tabPart && ['dashboard', 'guests', 'edit_property'].includes(tabPart) ? tabPart as TabType : null)
+        || (sessionStorage.getItem('artists_farm_active_tab') as TabType)
+        || 'dashboard';
+      setActiveTab(targetTab);
+      setActiveMenuItemKey(hash);
+      setSelectedRoomSlugOverride(hash);
     }
-  }, [multiKeyRoomsRef.current.length, selectedRoomSlugOverride]);
+  }, [multiKeyRoomSlugs, selectedRoomSlugOverride]);
 
   const getInitialActiveState = (): { tab: TabType; key: string } => {
     if (typeof window !== 'undefined') {
