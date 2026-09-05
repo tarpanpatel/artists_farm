@@ -1358,8 +1358,30 @@ function AppBody({ preloadedData }: AppBodyProps) {
   useEffect(() => {
     if (!authChecked || !isAuthenticated) return;
     if (visibleNavItems.length === 0) return;
+
+    // A room slug is a legitimate route, but it is never a nav item - so
+    // isRouteAllowed() below always says "not allowed" for one and bounces to
+    // the first permitted nav item instead (verified live 5 Sep 2026: opening
+    // #<room>/edit_property landed on #take_food_order, because that is simply
+    // the first kitchen-enabled entry in the nav list).
+    //
+    // selectedRoomSlugOverride alone does NOT cover this. On a cold load the
+    // override is still null - the effect that sets it has to wait for the
+    // rooms list to arrive - so this guard runs first, rewrites the hash, and
+    // the room the URL asked for is gone before anything can restore it. That
+    // race is the actual "Go Back doesn't work" cause; the reactive-dependency
+    // fix earlier today was necessary but not sufficient on its own.
+    //
+    // While rooms are still loading on a multi-key property we cannot yet tell
+    // a room slug from a genuinely forbidden route, so the guard defers rather
+    // than guessing. This is a UX route guard only - server-side RBAC is the
+    // real gate - so deferring it briefly costs nothing.
+    const roomsForGuard: any[] = multiKeyRoomSlugs || [];
+    if (preloadedData.isMultiKeyProperty && roomsForGuard.length === 0) return;
+    const isRoomSlugRoute = roomsForGuard.some((r: any) => r.slug === activeMenuItemKey);
+
     // Skip RBAC check if viewing a room, property overview, or editing property configuration
-    if (selectedRoomSlugOverride || activeMenuItemKey === 'multikey_property_overview' || activeMenuItemKey === 'edit_property') return;
+    if (selectedRoomSlugOverride || isRoomSlugRoute || activeMenuItemKey === 'multikey_property_overview' || activeMenuItemKey === 'edit_property') return;
 
     const currentKey = activeMenuItemKey;
     const allowed = isRouteAllowed(currentKey, activeRole, visibleNavItems);
@@ -1374,7 +1396,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
       setActiveMenuItemKey(fallbackKey);
       window.location.hash = `#${fallbackKey}`;
     }
-  }, [activeRole, activeMenuItemKey, visibleNavItems, isAuthenticated, authChecked, selectedRoomSlugOverride]);
+  }, [activeRole, activeMenuItemKey, visibleNavItems, isAuthenticated, authChecked, selectedRoomSlugOverride, multiKeyRoomSlugs, preloadedData.isMultiKeyProperty]);
 
   // Guard Effect 2: Trigger whenever user types a URL hash in the browser bar
   useEffect(() => {
