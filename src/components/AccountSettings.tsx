@@ -164,7 +164,7 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ username, onUs
         <div className="account-settings__grid grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="account-settings__field">
             <Input
-              label="Phone Number (Login Username)"
+              label="Phone Number (Username)"
               type="tel"
               value={profileUsername}
               // No maxLength - see GuestManagement.tsx's onChange comment (23 Aug 2026): it

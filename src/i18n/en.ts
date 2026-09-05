@@ -156,10 +156,10 @@ export const strings: Record<string, string> = {
   none_label: "None",
   staff_name_label: "Team Name",
   staff_name_required_label: "Team Name *",
-  phone_login_username_label: "Phone Number (Login Username)",
-  phone_login_username_required_label: "Phone Number (Login Username) *",
-  six_digit_passcode_label: "6-Digit Passcode PIN",
-  new_passcode_optional_label: "New 6-Digit Passcode PIN",
+  phone_login_username_label: "Phone Number (Username)",
+  phone_login_username_required_label: "Phone Number (Username) *",
+  six_digit_passcode_label: "6-Digit Password",
+  new_passcode_optional_label: "New 6-Digit Password (optional)",
   staff_upi_id_label: "Payment UPI ID (Optional)",
   staff_upi_id_help_text: "A scannable QR code is generated automatically from this ID so this team member can be paid by scanning it.",
   select_staff_target_account_label: "Select Staff Target Account",
@@ -186,7 +186,7 @@ export const strings: Record<string, string> = {
   view_qr_button: "View QR",
   no_system_users_message: "No system users registered.",
   registered_suffix: "Registered",
-  six_digit_passcode_required_label: "6-Digit Passcode PIN *",
+  six_digit_passcode_required_label: "6-Digit Password *",
 
   // Inventory Management
   stock_log_tab_label: "Stock & Adjustments",

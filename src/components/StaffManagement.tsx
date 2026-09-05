@@ -186,6 +186,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const [updateQrCodeUrl, setUpdateQrCodeUrl] = useState('');
   const [updateUpiId, setUpdateUpiId] = useState('');
   const [updateDailyWage, setUpdateDailyWage] = useState('');
+  const [isUserSubmitting, setIsUserSubmitting] = useState(false);
   // Super Admin's role/username/cash-handling/access-all-properties are
   // permanently fixed (14 Aug 2026 - "no one can change Super Admin's role,
   // it's always Cash Handler + Access All Properties by definition") - the
@@ -440,115 +441,125 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   // Handlers for Control Center
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newFullName.trim() || !newUsername || !newPasscode) return;
+    if (!newFullName.trim()) {
+      showToast('Staff Name is required.', { type: 'error' });
+      return;
+    }
+    if (!newUsername) {
+      showToast('Phone Number (Username) is required.', { type: 'error' });
+      return;
+    }
     if (!/^\d{10}$/.test(newUsername)) {
       showToast('Username must be a 10-digit phone number.', { type: 'error' });
       return;
     }
+    if (!newPasscode) {
+      showToast('6-Digit Password is required.', { type: 'error' });
+      return;
+    }
     if (!/^\d{6}$/.test(newPasscode)) {
-      showToast('Passcode must be exactly 6 digits.', { type: 'error' });
+      showToast('Password must be exactly 6 digits.', { type: 'error' });
+      return;
+    }
+    if (!newConfirmPasscode) {
+      showToast('Please confirm the 6-digit password.', { type: 'error' });
       return;
     }
     if (newPasscode !== newConfirmPasscode) {
-      showToast('Passcodes do not match! Please verify both passcode fields.', { type: 'error' });
+      showToast('Passwords do not match! Please verify both password fields.', { type: 'error' });
       return;
     }
     if (newUpiId.trim() && !isValidUpiIdSyntax(newUpiId)) {
       showToast('Enter a valid UPI ID, e.g. name@bank', { type: 'error' });
       return;
     }
-    const newUser: UserAccount = {
-      id: `usr-${Date.now().toString().slice(-4)}`,
-      fullName: newFullName.trim(),
-      username: newUsername,
-      role: newRole,
-      passcodePin: newPasscode,
-      isFinancialHandler: newIsFinancialHandler,
-      upiId: newUpiId.trim() || undefined,
-      status: 'Active',
-      dailyWage: newDailyWage ? Number(newDailyWage) : 0,
-    };
-    const saved = await addStaffUserDB({
-      id: newUser.id,
-      username: newUser.username,
-      fullName: newUser.fullName,
-      role: newUser.role,
-      passcode: newUser.passcodePin,
-      phone: newUser.username,
-      isFinancialHandler: newUser.isFinancialHandler,
-      accessAllProperties: newUser.accessAllProperties,
-      upiId: newUser.upiId,
-      status: newUser.status,
-      dailyWage: newUser.dailyWage,
-    });
-    if (!saved) {
-      showToast('Unable to save the staff member to the database.', { type: 'error' });
-      return;
+
+    setIsUserSubmitting(true);
+    try {
+      const newUser: UserAccount = {
+        id: `usr-${Date.now().toString().slice(-4)}`,
+        fullName: newFullName.trim(),
+        username: newUsername,
+        role: newRole,
+        passcodePin: newPasscode,
+        isFinancialHandler: newIsFinancialHandler,
+        upiId: newUpiId.trim() || undefined,
+        status: 'Active',
+        dailyWage: newDailyWage ? Number(newDailyWage) : 0,
+      };
+      const saved = await addStaffUserDB({
+        id: newUser.id,
+        username: newUser.username,
+        fullName: newUser.fullName,
+        role: newUser.role,
+        passcode: newUser.passcodePin,
+        phone: newUser.username,
+        isFinancialHandler: newUser.isFinancialHandler,
+        accessAllProperties: newUser.accessAllProperties,
+        upiId: newUser.upiId,
+        status: newUser.status,
+        dailyWage: newUser.dailyWage,
+      });
+      if (!saved) {
+        showToast('Unable to save the team member to the database.', { type: 'error' });
+        return;
+      }
+      // Awaited so the local `users` list is guaranteed fresh before the modal closes
+      await refreshStaff?.();
+      showToast('Team member added successfully!', { type: 'success' });
+      setNewFullName('');
+      setNewUsername('');
+      setNewPasscode('');
+      setNewConfirmPasscode('');
+      setNewUpiId('');
+      setNewIsFinancialHandler(false);
+      setNewAccessAllProperties(false);
+      setNewDailyWage('');
+      setIsTeamMemberModalOpen(false);
+    } catch (err) {
+      console.error('Failed to create team member:', err);
+      showToast('Failed to add team member. Please try again.', { type: 'error' });
+    } finally {
+      setIsUserSubmitting(false);
     }
-    // Awaited (24 Aug 2026, see refreshStaff's own comment in StaffContext.tsx)
-    // so the local `users` list is guaranteed fresh before the modal closes -
-    // reopening Edit on this same person right after creating them should
-    // never show stale/blank data.
-    await refreshStaff?.();
-    showToast('Staff login account created successfully!', { type: 'success' });
-    setNewFullName('');
-    setNewUsername('');
-    setNewPasscode('');
-    setNewConfirmPasscode('');
-    setNewUpiId('');
-    setNewIsFinancialHandler(false);
-    setNewAccessAllProperties(false);
-    setNewDailyWage('');
-    setIsTeamMemberModalOpen(false);
   };
 
-   const handleDeleteUser = async (id: string) => {
-     const confirmed = await confirm({
-       title: 'Delete User Profile',
-       message: 'Delete user profile permanently?',
-       confirmText: 'Delete User',
-       variant: 'danger',
-     });
-     if (confirmed) {
-       if (await deleteStaffUserDB(id)) await refreshStaff?.();
-       else showToast('Unable to delete the staff member from the database.', { type: 'error' });
-     }
-   };
+  const handleDeleteUser = async (id: string) => {
+    const confirmed = await confirm({
+      title: 'Delete User Profile',
+      message: 'Delete user profile permanently?',
+      confirmText: 'Delete User',
+      variant: 'danger',
+    });
+    if (confirmed) {
+      if (await deleteStaffUserDB(id)) await refreshStaff?.();
+      else showToast('Unable to delete the staff member from the database.', { type: 'error' });
+    }
+  };
 
-   const handleEditUser = (user: any) => {
-     setSelectedUpdateUserId(user.id);
-     setUpdateFullName(user.fullName || user.name || '');
-     setUpdateUsername(user.username || user.phone || '');
-     setUpdateRole(user.role);
-     setUpdateStatus(user.status === 'Disabled' || user.status === 'Inactive' ? 'Disabled' : 'Active');
-     setUpdatePasscode('');
-     setUpdateConfirmPasscode('');
-     setUpdateIsFinancialHandler(Boolean(user.isFinancialHandler));
-     setUpdateAccessAllProperties(Boolean(user.accessAllProperties));
-     setUpdateQrCodeUrl(user.qrCodeUrl || '');
-     setUpdateUpiId(user.upiId || '');
-     setUpdateDailyWage(user.dailyWage ? String(user.dailyWage) : '');
-     setUserFormTab('update');
-     setIsTeamMemberModalOpen(true);
-   };
+  const handleEditUser = (user: any) => {
+    setSelectedUpdateUserId(user.id);
+    setUpdateFullName(user.fullName || user.name || '');
+    setUpdateUsername(user.username || user.phone || '');
+    setUpdateRole(user.role);
+    setUpdateStatus(user.status === 'Disabled' || user.status === 'Inactive' ? 'Disabled' : 'Active');
+    setUpdatePasscode('');
+    setUpdateConfirmPasscode('');
+    setUpdateIsFinancialHandler(Boolean(user.isFinancialHandler));
+    setUpdateAccessAllProperties(Boolean(user.accessAllProperties));
+    setUpdateQrCodeUrl(user.qrCodeUrl || '');
+    setUpdateUpiId(user.upiId || '');
+    setUpdateDailyWage(user.dailyWage ? String(user.dailyWage) : '');
+    setUserFormTab('update');
+    setIsTeamMemberModalOpen(true);
+  };
 
-  // Builds this staff member's CURRENT login (username + their existing
-  // passcode, already loaded client-side as passcodePin - not a reveal
-  // endpoint) as plain text. The login URL is this property's own
-  // origin+pathname (not the bare platform root) so the staff member lands
-  // directly on the right property's login screen.
+  // Builds this staff member's CURRENT login as plain text.
   const buildStaffLoginShareMessage = (user: { fullName: string; username: string; passcodePin?: string }) => {
     const loginUrl = window.location.origin + window.location.pathname;
-    return `Hi ${user.fullName},\n\nHere are your Ground Code login details:\n\nLogin URL: ${loginUrl}\nUsername: ${user.username}\nPasscode: ${user.passcodePin || '(ask your admin to set one)'}\n\nPlease keep this passcode private. Didn't request this? You can ignore this message.`;
+    return `Hi ${user.fullName},\n\nHere are your Ground Code login details:\n\nLogin URL: ${loginUrl}\nUsername: ${user.username}\nPassword: ${user.passcodePin || '(ask your admin to set one)'}\n\nPlease keep this password private. Didn't request this? You can ignore this message.`;
   };
 
-  // Prefers the OS-level share sheet (navigator.share) so the admin picks
-  // WhatsApp/SMS/Telegram/Email/whatever's actually installed, rather than
-  // this app guessing a single channel (WhatsApp specifically assumes both a
-  // phone-number username AND that the recipient has WhatsApp - neither is
-  // guaranteed). Falls back to copying the message to the clipboard on
-  // browsers without Web Share support (notably desktop Firefox) - that
-  // still works for every staff member regardless of username format.
   const handleShareLogin = async (user: { fullName: string; username: string; passcodePin?: string }) => {
     const message = buildStaffLoginShareMessage(user);
     await shareTextContent(
@@ -559,8 +570,6 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       'Could not share or copy login details.',
     );
   };
-
-
 
   const handleUpdateUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -576,71 +585,66 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       return;
     }
     if (updatePasscode && !/^\d{6}$/.test(updatePasscode)) {
-      showToast('Passcode must be exactly 6 digits.', { type: 'error' });
+      showToast('Password must be exactly 6 digits.', { type: 'error' });
       return;
     }
     if (updatePasscode && updatePasscode !== updateConfirmPasscode) {
-      showToast('Passcodes do not match! Please verify both passcode fields.', { type: 'error' });
+      showToast('Passwords do not match! Please verify both password fields.', { type: 'error' });
       return;
     }
     if (updateUpiId.trim() && !isValidUpiIdSyntax(updateUpiId)) {
       showToast('Enter a valid UPI ID, e.g. name@bank', { type: 'error' });
       return;
     }
-    // Super Admin IS the tenant's own login - route through the tenant-login
-    // sync path (Name/Passcode/QR only) instead of the normal per-property
-    // write, which would otherwise desync this property's copy from every
-    // other property's and from the tenant's real login (see
-    // updateTenantSuperAdminDB / update_tenant_super_admin).
-    const saved = isEditingSuperAdmin
-      ? await updateTenantSuperAdminDB({
-          tenantId: tenantId as number,
-          propertyId,
-          fullName: updateFullName.trim(),
-          passcode: updatePasscode,
-          qrCodeUrl: updateQrCodeUrl || targetUser.qrCodeUrl,
-          upiId: updateUpiId.trim(),
-        })
-      : await updateStaffUserDB(selectedUpdateUserId, {
-          fullName: updateFullName.trim(),
-          username: updateUsername || targetUser.username,
-          role: updateRole || targetUser.role,
-          status: updateStatus,
-          passcode: updatePasscode || targetUser.passcodePin,
-          isFinancialHandler: updateIsFinancialHandler,
-          accessAllProperties: updateAccessAllProperties,
-          qrCodeUrl: updateQrCodeUrl || targetUser.qrCodeUrl,
-          upiId: updateUpiId.trim(),
-          dailyWage: updateDailyWage ? Number(updateDailyWage) : (targetUser.dailyWage ?? 0),
-        });
-    if (!saved) {
-      showToast('Unable to update the user in the database.', { type: 'error' });
-      return;
+
+    setIsUserSubmitting(true);
+    try {
+      // Super Admin IS the tenant's own login - route through the tenant-login
+      // sync path (Name/Passcode/QR only) instead of the normal per-property write
+      const saved = isEditingSuperAdmin
+        ? await updateTenantSuperAdminDB({
+            tenantId: tenantId as number,
+            propertyId,
+            fullName: updateFullName.trim(),
+            passcode: updatePasscode,
+            qrCodeUrl: updateQrCodeUrl || targetUser.qrCodeUrl,
+            upiId: updateUpiId.trim(),
+          })
+        : await updateStaffUserDB(selectedUpdateUserId, {
+            fullName: updateFullName.trim(),
+            username: updateUsername || targetUser.username,
+            role: updateRole || targetUser.role,
+            status: updateStatus,
+            passcode: updatePasscode || targetUser.passcodePin,
+            isFinancialHandler: updateIsFinancialHandler,
+            accessAllProperties: updateAccessAllProperties,
+            qrCodeUrl: updateQrCodeUrl || targetUser.qrCodeUrl,
+            upiId: updateUpiId.trim(),
+            dailyWage: updateDailyWage ? Number(updateDailyWage) : (targetUser.dailyWage ?? 0),
+          });
+      if (!saved) {
+        showToast('Unable to update the user in the database.', { type: 'error' });
+        return;
+      }
+      await refreshStaff?.();
+      setSelectedUpdateUserId('');
+      setUpdateFullName('');
+      setUpdateUsername('');
+      setUpdateStatus('Active');
+      setUpdatePasscode('');
+      setUpdateConfirmPasscode('');
+      setUpdateRole('');
+      setUpdateQrCodeUrl('');
+      setUpdateUpiId('');
+      setUpdateDailyWage('');
+      setIsTeamMemberModalOpen(false);
+      showToast('Team member updated successfully!', { type: 'success' });
+    } catch (err) {
+      console.error('Failed to update team member:', err);
+      showToast('Failed to update team member. Please try again.', { type: 'error' });
+    } finally {
+      setIsUserSubmitting(false);
     }
-    // Awaited (24 Aug 2026, found live: "updated Abhijeet's details but it
-    // didn't save" - the DB write and its audit_logs entry both confirmed
-    // correct, but reopening Edit right after saving showed stale
-    // pre-fill values - Daily Wage blank, Access All Properties unchecked -
-    // because the local `users` list (derived from StaffContext's `staff`
-    // array) hadn't actually finished refetching yet when the drawer closed
-    // and the user was free to reopen it. refreshStaff() kicks off a
-    // fetch-with-retry chain that can legitimately take a couple seconds;
-    // without awaiting it there was no guarantee the fresh data had landed
-    // before the next interaction. See refreshStaff's own comment in
-    // StaffContext.tsx for the Promise plumbing this relies on.
-    await refreshStaff?.();
-    setSelectedUpdateUserId('');
-    setUpdateFullName('');
-    setUpdateUsername('');
-    setUpdateStatus('Active');
-    setUpdatePasscode('');
-    setUpdateConfirmPasscode('');
-    setUpdateRole('');
-    setUpdateQrCodeUrl('');
-    setUpdateUpiId('');
-    setUpdateDailyWage('');
-    setIsTeamMemberModalOpen(false);
-    showToast('User account updated successfully!', { type: 'success' });
   };
 
 
@@ -788,6 +792,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   setNewFullName('');
                   setNewUsername('');
                   setNewPasscode('');
+                  setNewConfirmPasscode('');
                   setNewUpiId('');
                   setNewIsFinancialHandler(false);
                   setNewAccessAllProperties(false);
@@ -799,7 +804,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 leftIcon={<Plus className="w-4 h-4" />}
                 className="font-semibold shadow-md cursor-pointer"
               >
-                Create Team Member
+                Add Team Member
               </Button>
             </div>
           )}
@@ -885,10 +890,18 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     cell: (row: any) => {
                       const rawPhone = row.phone || row.phone_number || row.username || '';
                       const phoneVal = rawPhone.replace(/\D/g, '');
+                      const isCurrentUser = currentUser?.id === row.id;
                       return (
                         <div className="py-3 min-w-0">
-                          <div className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                            {row.fullName}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                              {row.fullName}
+                            </span>
+                            {isCurrentUser && (
+                              <span className="text-2xs font-semibold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800 shrink-0">
+                                You
+                              </span>
+                            )}
                           </div>
                           <div className="text-xs truncate mt-0.5">
                             {phoneVal ? (
@@ -994,10 +1007,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     align: 'right' as const,
                     cell: (row: any) => {
                       const isCurrentUser = currentUser?.id === row.id;
-                      const canEdit = !isCurrentUser && canEditUser(currentUser?.role || 'Staff', row.role);
-                      const canDelete = !isCurrentUser && canEdit;
+                      const canEdit = isCurrentUser || canEditUser(currentUser?.role || 'Staff', row.role);
+                      const canDelete = !isCurrentUser && canEditUser(currentUser?.role || 'Staff', row.role);
                       return (
-                        <div className="flex items-center gap-2 justify-end">
+                        <div className="flex items-center gap-1.5 justify-end">
                           {canShareLogins && !!row.username && (
                             <Popover
                               trigger="hover"
@@ -1019,21 +1032,15 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                               </Button>
                             </Popover>
                           )}
-                          {isCurrentUser ? (
-                            <span className="text-gray-400 italic text-xs">Active Session</span>
-                          ) : (
-                            <>
-                              {canEdit && (
-                                <Button variant="edit" size="sm" onClick={() => handleEditUser(row)} leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}>
-                                  <span className="whitespace-nowrap">Edit</span>
-                                </Button>
-                              )}
-                              {canDelete && (
-                                <Button variant="danger" size="sm" onClick={() => handleDeleteUser(row.id)} leftIcon={<Trash2 className="w-3.5 h-3.5 shrink-0" />}>
-                                  <span className="whitespace-nowrap">Delete</span>
-                                </Button>
-                              )}
-                            </>
+                          {canEdit && (
+                            <Button variant="edit" size="sm" onClick={() => handleEditUser(row)} leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}>
+                              <span className="whitespace-nowrap">Edit</span>
+                            </Button>
+                          )}
+                          {canDelete && (
+                            <Button variant="danger" size="sm" onClick={() => handleDeleteUser(row.id)} leftIcon={<Trash2 className="w-3.5 h-3.5 shrink-0" />}>
+                              <span className="whitespace-nowrap">Delete</span>
+                            </Button>
                           )}
                         </div>
                       );
@@ -1097,16 +1104,21 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 <div className="space-y-3">
                   {visibleUsers.slice((staffPermissionsPage - 1) * 10, staffPermissionsPage * 10).map((row: any) => {
                   const isCurrentUser = currentUser?.id === row.id;
-                  const canEdit = !isCurrentUser && canEditUser(currentUser?.role || 'Staff', row.role);
-                  const canDelete = !isCurrentUser && canEdit;
+                  const canEdit = isCurrentUser || canEditUser(currentUser?.role || 'Staff', row.role);
+                  const canDelete = !isCurrentUser && canEditUser(currentUser?.role || 'Staff', row.role);
                   const rawPhone = row.phone || row.phone_number || row.username || '';
                   const phoneVal = rawPhone.replace(/\D/g, '');
 
                   return (
                     <div key={row.id} className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 space-y-2.5">
                       <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1 flex items-center flex-wrap gap-2">
+                        <div className="min-w-0 flex-1 flex items-center flex-wrap gap-1.5">
                           <h4 className="font-bold text-slate-900 dark:text-white text-sm m-0">{row.fullName}</h4>
+                          {isCurrentUser && (
+                            <span className="text-2xs font-semibold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800 shrink-0">
+                              You
+                            </span>
+                          )}
                           {phoneVal ? (
                             <a
                               href={`tel:${phoneVal}`}
@@ -1138,15 +1150,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                               </Button>
                             </Popover>
                           )}
-                          {!isCurrentUser && (
-                            <>
-                              {canEdit && (
-                                <Button onClick={() => handleEditUser(row)} variant="edit" size="xs" leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />} className="cursor-pointer px-2 shrink-0">{t('edit_button', 'Edit')}</Button>
-                              )}
-                              {canDelete && (
-                                <Button onClick={() => handleDeleteUser(row.id)} variant="danger" size="xs" className="font-semibold cursor-pointer px-2 shrink-0">{t('delete_button', 'Delete')}</Button>
-                              )}
-                            </>
+                          {canEdit && (
+                            <Button onClick={() => handleEditUser(row)} variant="edit" size="xs" leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />} className="cursor-pointer px-2 shrink-0">{t('edit_button', 'Edit')}</Button>
+                          )}
+                          {canDelete && (
+                            <Button onClick={() => handleDeleteUser(row.id)} variant="danger" size="xs" className="font-semibold cursor-pointer px-2 shrink-0">{t('delete_button', 'Delete')}</Button>
                           )}
                         </div>
                       </div>
@@ -1980,7 +1988,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
             <div>
               <Input
-                label={t('phone_login_username_required_label', 'Phone Number (Login Username) *')}
+                label={t('phone_login_username_required_label', 'Phone Number (Username) *')}
                 type="tel"
                 required
                 value={phone}
@@ -1994,7 +2002,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
             <div>
               <Input
-                label={t('six_digit_passcode_required_label', '6-Digit Passcode PIN *')}
+                label={t('six_digit_passcode_required_label', '6-Digit Password *')}
                 type="password"
                 autoComplete="new-password"
                 required
@@ -2046,10 +2054,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             </div>
             <div>
               <h3 className="staff-management__subtitle font-bold text-gray-900 dark:text-white text-base">
-                {userFormTab === 'create' ? 'Add user' : 'Edit user'}
+                {userFormTab === 'create' ? 'Add Team Member' : 'Edit Team Member'}
               </h3>
               <p className="text-xs text-gray-500 dark:text-gray-400 font-normal">
-                {userFormTab === 'create' ? 'Add a new user to the system' : 'Update credentials and role permissions'}
+                {userFormTab === 'create' ? 'Add a new team member to the system' : 'Update credentials and role permissions'}
               </p>
             </div>
           </div>
@@ -2079,7 +2087,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 </div>
                 <div>
                   <Input
-                    label={`${t('phone_login_username_label', 'Phone Number (Login Username)')} *`}
+                    label={`${t('phone_login_username_label', 'Phone Number (Username)')} *`}
                     type="tel"
                     required
                     value={newUsername}
@@ -2094,7 +2102,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
                   <Input
-                    label={`${t('six_digit_passcode_label', '6-Digit Passcode PIN')} *`}
+                    label={`${t('six_digit_passcode_label', '6-Digit Password')} *`}
                     type="password"
                     autoComplete="new-password"
                     required
@@ -2110,17 +2118,17 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
                 <div>
                   <Input
-                    label="Confirm New Passcode PIN *"
+                    label="Confirm 6-Digit Password *"
                     type="password"
                     autoComplete="new-password"
                     required
                     maxLength={6}
                     value={newConfirmPasscode}
                     onChange={(e) => setNewConfirmPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    placeholder="Re-enter new passcode"
+                    placeholder="Re-enter 6-digit password"
                     inputMode="numeric"
-                    error={newPasscodeMismatch ? "Passcodes don't match" : undefined}
-                    success={newPasscodeMatch ? 'Passcodes match' : undefined}
+                    error={newPasscodeMismatch ? "Passwords don't match" : undefined}
+                    success={newPasscodeMatch ? 'Passwords match' : undefined}
                     className="text-slate-900 dark:text-white"
                   />
                 </div>
@@ -2225,9 +2233,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   type="submit"
                   variant="primary"
                   size="md"
-                  className="font-semibold cursor-pointer ml-auto"
+                  disabled={isUserSubmitting}
+                  className="font-semibold cursor-pointer ml-auto flex items-center gap-1.5"
                 >
-                  Register Team Member
+                  {isUserSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  <span>{isUserSubmitting ? 'Adding...' : 'Add Team Member'}</span>
                 </Button>
               </div>
             </form>
@@ -2247,7 +2257,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 </div>
                 <div>
                   <Input
-                    label={t('phone_login_username_label', 'Phone Number (Login Username)')}
+                    label={t('phone_login_username_label', 'Phone Number (Username)')}
                     type="tel"
                     value={updateUsername}
                     disabled={isEditingSuperAdmin}
@@ -2263,7 +2273,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
                   <Input
-                    label={t('new_passcode_optional_label', 'New 6-Digit Passcode PIN')}
+                    label={t('new_passcode_optional_label', 'New 6-Digit Password (optional)')}
                     type="password"
                     autoComplete="new-password"
                     maxLength={6}
@@ -2278,16 +2288,16 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
                 <div>
                   <Input
-                    label="Confirm New Passcode PIN"
+                    label="Confirm 6-Digit Password"
                     type="password"
                     autoComplete="new-password"
                     maxLength={6}
                     value={updateConfirmPasscode}
                     onChange={(e) => setUpdateConfirmPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    placeholder="Re-enter new passcode"
+                    placeholder="Re-enter 6-digit password"
                     inputMode="numeric"
-                    error={updatePasscodeMismatch ? "Passcodes don't match" : undefined}
-                    success={updatePasscodeMatch ? 'Passcodes match' : undefined}
+                    error={updatePasscodeMismatch ? "Passwords don't match" : undefined}
+                    success={updatePasscodeMatch ? 'Passwords match' : undefined}
                     className="text-slate-900 dark:text-white"
                   />
                 </div>
@@ -2462,9 +2472,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   type="submit"
                   variant="primary"
                   size="md"
-                  className="font-semibold cursor-pointer ml-auto"
+                  disabled={isUserSubmitting}
+                  className="font-semibold cursor-pointer ml-auto flex items-center gap-1.5"
                 >
-                  Save Team Member
+                  {isUserSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  <span>{isUserSubmitting ? 'Saving...' : 'Save Team Member'}</span>
                 </Button>
               </div>
             </form>
