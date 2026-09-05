@@ -186,12 +186,39 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // intermittent, why it presented as "Go Back doesn't work" (you were never in
   // a room view to go back FROM), and why several earlier attempts at fixing it
   // appeared to work and then regressed.
+  // The hash the user actually ARRIVED on, captured during the first render -
+  // before any guard, route-map or nav-default effect has had a chance to
+  // rewrite it (5 Sep 2026).
+  //
+  // Needed because the room list is not available at that moment: on a cold
+  // load isAuthenticated has not resolved yet, so DataLoader skips the
+  // get_multikey_property fetch entirely and patches rooms in later. Nothing
+  // can recognise a room slug until then, so a guard rewrites the hash first
+  // and the room the URL asked for is lost. Verified live: the warm path (the
+  // app already mounted) routes to Edit Room correctly, only the cold path
+  // fails - which is exactly the shape of this race.
+  const arrivalHashRef = useRef<string>(typeof window !== 'undefined' ? window.location.hash : '');
   const multiKeyRoomSlugs = preloadedData.currentProperty?.rooms;
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const rooms: any[] = multiKeyRoomSlugs || [];
     if (rooms.length === 0) return;
-    const rawHash = window.location.hash.replace('#', '').trim();
+
+    // Prefer the live hash, but fall back to the arrival hash when the live one
+    // no longer names a room - that is the signal a guard rewrote it while the
+    // rooms list was still loading. Consumed once, then cleared, so a later
+    // deliberate navigation away from the room is never undone.
+    let rawHash = window.location.hash.replace('#', '').trim();
+    const namesARoom = (h: string) => {
+      const slug = h.split('?')[0].split('/')[0];
+      return !!slug && rooms.some((r: any) => r.slug === slug);
+    };
+    if (!namesARoom(rawHash) && arrivalHashRef.current) {
+      const arrival = arrivalHashRef.current.replace('#', '').trim();
+      if (namesARoom(arrival)) rawHash = arrival;
+    }
+    arrivalHashRef.current = '';
+
     const [hash, tabPart] = rawHash.split('?')[0].split('/');
     if (!hash) return;
     const isRoomSlug = rooms.some((r: any) => r.slug === hash);
@@ -1377,8 +1404,13 @@ function AppBody({ preloadedData }: AppBodyProps) {
     // than guessing. This is a UX route guard only - server-side RBAC is the
     // real gate - so deferring it briefly costs nothing.
     const roomsForGuard: any[] = multiKeyRoomSlugs || [];
-    if (preloadedData.isMultiKeyProperty && roomsForGuard.length === 0) return;
     const isRoomSlugRoute = roomsForGuard.some((r: any) => r.slug === activeMenuItemKey);
+    // Defer only when the key matches no nav item EITHER - then it may still
+    // turn out to be a room once the list arrives. A key that is a real nav
+    // item can be judged right now, so RBAC is not weakened by this.
+    const matchesNavItem = visibleNavItems.some((i) =>
+      i.uniqueKey === activeMenuItemKey || i.urlSlug === activeMenuItemKey || i.tabKey === activeMenuItemKey);
+    if (preloadedData.isMultiKeyProperty && roomsForGuard.length === 0 && !matchesNavItem) return;
 
     // Skip RBAC check if viewing a room, property overview, or editing property configuration
     if (selectedRoomSlugOverride || isRoomSlugRoute || activeMenuItemKey === 'multikey_property_overview' || activeMenuItemKey === 'edit_property') return;
@@ -1609,18 +1641,28 @@ function AppBody({ preloadedData }: AppBodyProps) {
     category: 'kitchen' | 'admin' | 'finance' | 'all' = 'all',
     replyMarkup?: any,
     templateKey?: string,
-    mediaUrls?: string[]
+    mediaUrls?: string[],
+    // Explicit record id(s) for the backend's deep-link builder (5 Sep 2026) - e.g.
+    // {booking_id: guest.id}, {request_id: req.id}, {order_id: order.orderId}. Pass
+    // this whenever the caller already knows which specific record the message is
+    // about, so "Open in App" lands on that record instead of a generic tab.
+    deepLinkParams?: Record<string, string | number>
   ) => {
     const logId = `tg-${Date.now().toString().slice(-4)}`;
     const now = new Date();
     const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 
-    // Automatically append current debug URL if not present
-    let outboundMessage = message;
-    if (!outboundMessage.includes('http://') && !outboundMessage.includes('https://')) {
-      const currentUrl = window.location.href;
-      outboundMessage += `\n\n🔗 <b>Source Page:</b> <a href="${currentUrl}">${currentUrl}</a>`;
-    }
+    // Was: unconditionally appending "Source Page: <window.location.href>" here -
+    // removed 5 Sep 2026. That made every message a link to WHATEVER page the
+    // staff member happened to be on when they triggered the action, not the
+    // specific record - and worse, it actively blocked the backend's own,
+    // smarter "Open in App" link: appendAppUrlToMessage() (php/telegram/sender.php)
+    // bails out immediately if the message already contains any http(s) URL, so
+    // this client-side link was silently pre-empting a better one every single
+    // time. Sending the raw message (no URL) lets the backend always be the one
+    // source of truth for the link - it infers the right tab from category/
+    // templateKey and, when deepLinkParams is passed, the exact record.
+    const outboundMessage = message;
 
     // Add pending log entry
     const newLog: TelegramDispatchLog = {
@@ -1645,6 +1687,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         replyMarkup,
         templateKey,
         mediaUrls,
+        deepLinkParams,
       });
       if (!outcome.success) {
         hasError = true;
