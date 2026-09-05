@@ -140,15 +140,62 @@ class AriDrainWorker {
             $rowIds = $group['row_ids'];
             $attempts = $group['max_attempts'] + 1;
 
+            // Expand a property-wide row (room_id NULL) into its real rooms.
+            //
+            // ADDED 5 Sep 2026. The 3 Sep fix taught the ENQUEUE side to do
+            // this (getChannexPushRoomIds() in rate_rules.php / router.php)
+            // but the drain worker never learned it, so any row that reached
+            // the outbox with room_id NULL against a MULTI_KEY property went
+            // straight to getMapping($propId, null), found nothing (mappings
+            // are per child room), and failed - forever, since retrying
+            // changes nothing about the row. Found live with 23 such rows on
+            // staging, one of them on its 74th identical attempt. Fixing only
+            // the enqueue side left the failure mode fully armed for any
+            // future code path that forgets; this closes it at the one place
+            // every push has to pass through. Single-unit properties are
+            // unaffected: getChannexPushRoomIds() returns [null] for them,
+            // which is exactly the old behaviour.
+            $pushRoomIds = [$roomId];
+            if ($roomId === null && function_exists('getChannexPushRoomIds')) {
+                $pushRoomIds = getChannexPushRoomIds($this->pdo, $propId);
+            }
+
             try {
-                if ($kind === 'availability') {
-                    $compressedRanges = $this->computeCompressedAvailability($propId, $roomId, $startDate, $endDate);
-                    $res = $this->adapter->pushAvailability($propId, $roomId, $compressedRanges);
-                } else {
-                    $touchedFields = $this->computeTouchedFields($rowIds);
-                    $compressedRestrictions = $this->computeCompressedRestrictions($propId, $roomId, $startDate, $endDate, $touchedFields);
-                    $res = $this->adapter->pushRestrictions($propId, $roomId, $compressedRestrictions);
+                $res = null;
+                $errors = [];
+                $taskIds = [];
+                $sentSomething = false;
+
+                foreach ($pushRoomIds as $pushRoomId) {
+                    if ($kind === 'availability') {
+                        $compressedRanges = $this->computeCompressedAvailability($propId, $pushRoomId, $startDate, $endDate);
+                        $one = $this->adapter->pushAvailability($propId, $pushRoomId, $compressedRanges);
+                    } else {
+                        $touchedFields = $this->computeTouchedFields($rowIds);
+                        $compressedRestrictions = $this->computeCompressedRestrictions($propId, $pushRoomId, $startDate, $endDate, $touchedFields);
+                        $one = $this->adapter->pushRestrictions($propId, $pushRoomId, $compressedRestrictions);
+                    }
+
+                    if (empty($one['success'])) {
+                        $errors[] = ($pushRoomId ?? 'property') . ': ' . json_encode($one['error'] ?? 'API reject');
+                        continue;
+                    }
+                    // A no-op ("nothing to send for these dates") is a success
+                    // but is NOT a push - see the adapter's no_op flag. Only a
+                    // real API call counts towards "something reached Channex",
+                    // which is what the rate-push alert below is reporting on.
+                    if (empty($one['no_op'])) {
+                        $sentSomething = true;
+                    }
+                    $tid = $one['data'][0]['id'] ?? ($one['task_id'] ?? null);
+                    if ($tid) $taskIds[] = $tid;
                 }
+
+                // All-or-nothing: one room failing must not mark the row done,
+                // or the remaining rooms are silently never retried.
+                $res = empty($errors)
+                    ? ['success' => true, 'task_id' => $taskIds ? implode(',', $taskIds) : null]
+                    : ['success' => false, 'error' => implode(' | ', $errors)];
 
                 if (!empty($res['success'])) {
                     // Channex answers an ARI push with an async task object -
@@ -158,8 +205,12 @@ class AriDrainWorker {
                     // counts). It is also what the certification reviewers look
                     // up in their own logs for scenarios 1-6, so a push whose
                     // task id was discarded cannot be evidenced afterwards.
-                    $taskId = $res['data'][0]['id'] ?? ($res['task_id'] ?? null);
-                    $this->markRowsDone($rowIds, $taskId);
+                    $taskId = $res['task_id'] ?? null;
+                    $this->markRowsDone(
+                        $rowIds,
+                        $taskId,
+                        $sentSomething ? null : 'No-op: nothing to send for these dates (no API call made)'
+                    );
                     $processedCount += count($rowIds);
 
                     // Guaranteed-visibility rate push alert (4 Sep 2026, see
@@ -169,7 +220,7 @@ class AriDrainWorker {
                     // it, so the app can prompt the user about it on next
                     // load even when the trigger was a script run directly
                     // against the server, not a confirm()'d UI action.
-                    if ($kind !== 'availability' && function_exists('recordRatePushAlert')) {
+                    if ($kind !== 'availability' && $sentSomething && function_exists('recordRatePushAlert')) {
                         recordRatePushAlert($this->pdo, $propId, $roomId, $startDate, $endDate);
                     }
                 } else {
@@ -526,11 +577,20 @@ class AriDrainWorker {
         return $ranges;
     }
 
-    private function markRowsDone(array $rowIds, ?string $taskId = null): void {
+    /**
+     * $note records WHY a row finished without a Channex task id - currently
+     * only "nothing needed sending". Written into last_error, which is
+     * otherwise NULL on a done row, so it reads as a footnote rather than a
+     * failure. Added 5 Sep 2026: a rates row was found marked done with an
+     * empty task_id and there was no way to tell "no dates to send" apart from
+     * "sent, receipt lost", which took a live cross-check against the OTA's own
+     * listing to resolve. A done row should always say which of the two it was.
+     */
+    private function markRowsDone(array $rowIds, ?string $taskId = null, ?string $note = null): void {
         if (empty($rowIds)) return;
         $placeholders = implode(',', array_fill(0, count($rowIds), '?'));
-        $stmt = $this->pdo->prepare("UPDATE channex_outbox SET status = 'done', task_id = ?, last_error = NULL WHERE id IN ($placeholders)");
-        $stmt->execute(array_merge([$taskId], $rowIds));
+        $stmt = $this->pdo->prepare("UPDATE channex_outbox SET status = 'done', task_id = ?, last_error = ? WHERE id IN ($placeholders)");
+        $stmt->execute(array_merge([$taskId, $note], $rowIds));
     }
 
     private function markRowsFailed(array $rowIds, int $attempts, string $error): void {

@@ -55,7 +55,15 @@ class ChannexAdapter implements ChannelManagerAdapter {
         }
 
         if (empty($values)) {
-            return ['success' => true, 'message' => 'No active future dates to push'];
+            // no_op, not just success (5 Sep 2026): this path never calls the
+            // API at all, so it returns no Channex task id - which made it
+            // indistinguishable from a real push whose response shape we
+            // failed to parse. That ambiguity cost a live investigation: a
+            // rates row sat marked "done" with an empty task_id and there was
+            // no way to tell "nothing needed sending" from "sent, but we lost
+            // the receipt". Callers branch on this flag rather than guessing
+            // from a missing id.
+            return ['success' => true, 'no_op' => true, 'message' => 'No active future dates to push'];
         }
 
         $res = $this->client->post('availability', ['values' => $values]);
@@ -132,7 +140,15 @@ class ChannexAdapter implements ChannelManagerAdapter {
         }
 
         if (empty($values)) {
-            return ['success' => true, 'message' => 'No active future dates to push'];
+            // no_op, not just success (5 Sep 2026): this path never calls the
+            // API at all, so it returns no Channex task id - which made it
+            // indistinguishable from a real push whose response shape we
+            // failed to parse. That ambiguity cost a live investigation: a
+            // rates row sat marked "done" with an empty task_id and there was
+            // no way to tell "nothing needed sending" from "sent, but we lost
+            // the receipt". Callers branch on this flag rather than guessing
+            // from a missing id.
+            return ['success' => true, 'no_op' => true, 'message' => 'No active future dates to push'];
         }
 
         $res = $this->client->post('restrictions', ['values' => $values]);

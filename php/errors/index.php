@@ -508,6 +508,18 @@ if ($wantsJson) {
                             <span id="unseen-ai_chat" class="hidden px-2 py-0.5 text-[10px] rounded-full bg-red-500/90 text-white font-mono">0</span>
                         </span>
                     </button>
+
+                    <!-- Channel Manager portal (added 5 Sep 2026): Channex ARI pushes, booking-feed
+                         drains, and the stuck-outbox health check. Added after a live incident where
+                         23 ARI pushes failed silently for days - one of them on its 74th identical
+                         retry - with nothing anywhere saying so. -->
+                    <button onclick="switchPortal('channel_manager', this)" class="nav-portal-item w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800/60 transition">
+                        <span class="flex items-center gap-2.5"><svg class="icon text-cyan-400 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12"/><path d="M2 17h20v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z"/><path d="M8 21h8"/></svg>Channel Manager</span>
+                        <span class="flex items-center gap-1">
+                            <span id="badge-channel_manager" class="px-2 py-0.5 text-[10px] rounded-full bg-gray-800 text-gray-300 font-mono">0</span>
+                            <span id="unseen-channel_manager" class="hidden px-2 py-0.5 text-[10px] rounded-full bg-red-500/90 text-white font-mono">0</span>
+                        </span>
+                    </button>
                 </nav>
             </div>
         </aside>
@@ -609,7 +621,7 @@ if ($wantsJson) {
     }
 
         function getUnseenCounts(logs) {
-            const counts = { requests: 0, php: 0, sql: 0, js: 0, telegram: 0, whatsapp: 0, security: 0, 404: 0, staff_activity: 0, login: 0, ai_chat: 0 };
+            const counts = { requests: 0, php: 0, sql: 0, js: 0, telegram: 0, whatsapp: 0, security: 0, 404: 0, staff_activity: 0, login: 0, ai_chat: 0, channel_manager: 0 };
         logs.forEach(l => {
             const p = (l.portal || '').toLowerCase();
             if (!counts.hasOwnProperty(p)) return;
@@ -849,7 +861,7 @@ if ($wantsJson) {
             }
         } else {
             // Fallback: count only if server didn't provide counts
-            const counts = { requests: 0, php: 0, sql: 0, js: 0, telegram: 0, whatsapp: 0, security: 0, 404: 0, staff_activity: 0, login: 0, ai_chat: 0 };
+            const counts = { requests: 0, php: 0, sql: 0, js: 0, telegram: 0, whatsapp: 0, security: 0, 404: 0, staff_activity: 0, login: 0, ai_chat: 0, channel_manager: 0 };
             allLogs.forEach(l => {
                 const p = (l.portal || '').toLowerCase();
                 if (counts[p] !== undefined) counts[p]++;

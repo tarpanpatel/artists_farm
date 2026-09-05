@@ -292,7 +292,14 @@ if (!class_exists('TelescopeLogger')) {
                 'audit' => 0,
                 'staff_activity' => 0,
                 'login' => 0,
-                'ai_chat' => 0
+                'ai_chat' => 0,
+                // Channel-manager portal (5 Sep 2026). channex_feed_drain.php and
+                // channex_outbox_health.php were already logging under this name with
+                // no entry here and no sidebar tab, so their entries sat in logs.json
+                // uncounted and findable only by searching - exactly the invisible-
+                // portal problem the ai_chat tab was added to fix. A stuck ARI push is
+                // the last thing that should be hard to see.
+                'channel_manager' => 0
             ];
 
             $now = time();
@@ -379,7 +386,8 @@ if (!class_exists('TelescopeLogger')) {
                 'audit' => 0,
                 'staff_activity' => 0,
                 'login' => 0,
-                'ai_chat' => 0
+                'ai_chat' => 0,
+                'channel_manager' => 0
             ];
         }
     }

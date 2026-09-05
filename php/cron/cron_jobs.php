@@ -107,6 +107,21 @@ function getCronJobDefinitions(): array {
             'daily_at_time' => null,
         ],
         [
+            // Added 5 Sep 2026 after a live incident: 23 ARI pushes failed
+            // silently for days (one on its 74th identical retry) with nothing
+            // anywhere surfacing it. Quiet unless something is actually wrong -
+            // see the script's own doc comment for why an hourly "all clear"
+            // would defeat the purpose.
+            'job_key' => 'channex_outbox_health',
+            'name' => 'Channel Sync Health Check',
+            'description' => 'Hourly check that no Channex ARI push is stuck, abandoned mid-send, or aimed at an unmapped room - so a channel silently drifting out of sync with Ground Code gets noticed in hours rather than weeks.',
+            'script_path' => 'channex_outbox_health.php',
+            'log_file' => 'channex_outbox_health.log',
+            'schedule_type' => 'interval_minutes',
+            'interval_minutes' => 60,
+            'daily_at_time' => null,
+        ],
+        [
             'job_key' => 'trial_lifecycle_cadence',
             'name' => '30-Day Trial Lifecycle & Renewal Cadence',
             'description' => 'Automated Day 1/3/7/14/21/23(7-day notice)/28/30 follow-up nudges, trial expiry notices, and subscription status transitions.',
