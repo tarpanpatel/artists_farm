@@ -1090,8 +1090,39 @@ if (in_array($action, $kitchen_module_actions, true)) {
  * valid guest count from 1 up to capacity - so capacity is its maximum. One
  * request covers every listing on the account.
  */
-function proposeAirbnbRoomConfig(PDO $pdo, $channelClient, string $channexChannelId, array $roomMappings): array {
-    $out = ['proposals' => [], 'unmatched' => []];
+function airbnbNormalizeHour($raw): ?string {
+    // Airbnb returns an hour, not a time: check_in_time_start "13" (string),
+    // check_out_time 11 (int). Non-numeric values like "FLEXIBLE" are real and
+    // must not be coerced into a bogus 0:00.
+    if ($raw === null || $raw === '') return null;
+    if (!is_numeric($raw)) return null;
+    $h = (int)$raw;
+    if ($h < 0 || $h > 23) return null;
+    return str_pad((string)$h, 2, '0', STR_PAD_LEFT) . ':00';
+}
+
+/**
+ * Read each mapped Airbnb listing and PROPOSE its configuration - writes nothing.
+ *
+ * Imports everything that maps onto an existing Ground Code column EXCEPT price
+ * (explicit product decision): an OTA's displayed price carries that channel's
+ * commission and taxes, so it is not the owner's base rate. Importing it would
+ * seed Ground Code with inflated numbers and push them straight back out.
+ *
+ * Proposes rather than writes (5 Sep 2026) because OTA data turned out NOT to be
+ * reliable. Measured against this account's own listings, 5 of 10 capacities
+ * disagreed with the owner - in both directions: Airbnb overstated four rooms (a
+ * 3-guest studio listed as sleeping 5) and understated another (16 against a real
+ * 18). Silently writing the overstating direction is how a guest books a room
+ * that cannot hold them, the exact failure this data exists to prevent. The owner
+ * is the only reliable source, so the owner confirms.
+ *
+ * Capacity comes from the listings call (`occupancies` holds every valid guest
+ * count from 1 up to capacity, so capacity is its maximum) in ONE request for the
+ * whole account; the remaining fields need a per-listing detail call.
+ */
+function proposeAirbnbRoomConfig(PDO $pdo, $channelClient, string $channexChannelId, array $roomMappings, bool $withDetails = true): array {
+    $out = ['proposals' => [], 'property' => null, 'capacity_context' => [], 'unmatched' => []];
     if (empty($roomMappings)) return $out;
 
     $res = $channelClient->getChannelListings($channexChannelId);
@@ -1107,57 +1138,147 @@ function proposeAirbnbRoomConfig(PDO $pdo, $channelClient, string $channexChanne
         }
     }
 
+    $propertyProposal = null;
+
     foreach ($roomMappings as $m) {
         $localRoomId = (int)($m['local_room_id'] ?? 0);
         $listingId = (string)($m['external_room_code'] ?? '');
-        if ($localRoomId <= 0 || $listingId === '' || !isset($byId[$listingId]) || !$byId[$listingId]['capacity']) {
+        if ($localRoomId <= 0 || $listingId === '' || !isset($byId[$listingId])) {
             if ($listingId !== '') $out['unmatched'][] = $listingId;
             continue;
         }
-        $cur = $pdo->prepare("SELECT name, max_capacity FROM properties WHERE id = ? AND is_deleted = 0");
+        $cur = $pdo->prepare("SELECT name, max_capacity, checkin_time, checkout_time FROM properties WHERE id = ? AND is_deleted = 0");
         $cur->execute([$localRoomId]);
         $row = $cur->fetch(PDO::FETCH_ASSOC);
         if (!$row) { $out['unmatched'][] = $listingId; continue; }
 
         $current = (int)$row['max_capacity'];
-        $suggested = (int)$byId[$listingId]['capacity'];
+        $suggested = (int)($byId[$listingId]['capacity'] ?? 0);
+
+        $fields = [];
+        // Capacity is deliberately NOT proposed (5 Sep 2026, owner's call). Airbnb
+        // disagreed with the owner on 5 of 10 rooms here, so the owner's own
+        // numbers are the authoritative ones and re-offering Airbnb's would only
+        // invite them back in. Reported as read-only context so a UI can show the
+        // mismatch without offering to write it; applyAirbnbRoomConfig() still
+        // accepts the column if a future screen deliberately asks for it.
+        $out['capacity_context'][] = [
+            'room' => $row['name'],
+            'stored' => $current ?: null,
+            'airbnb' => $suggested ?: null,
+            'differs' => $current > 0 && $suggested > 0 && $current !== $suggested,
+        ];
+
+        // Per-listing detail call - times, and (once, from the first listing that
+        // has them) the shared property-level address/location fields.
+        if ($withDetails) {
+            $det = $channelClient->getListingDetails($channexChannelId, $listingId);
+            $L = $det['success'] ? ($det['data']['listing'] ?? []) : [];
+            if ($L) {
+                $bs = $L['booking_settings'] ?? [];
+                $ci = airbnbNormalizeHour($bs['check_in_time_start'] ?? null);
+                $co = airbnbNormalizeHour($bs['check_out_time'] ?? null);
+                if ($ci) {
+                    $fields['checkin_time'] = ['label' => 'Check-in time', 'current' => $row['checkin_time'], 'airbnb' => $ci,
+                        'differs' => $row['checkin_time'] && $row['checkin_time'] !== $ci];
+                }
+                if ($co) {
+                    $fields['checkout_time'] = ['label' => 'Check-out time', 'current' => $row['checkout_time'], 'airbnb' => $co,
+                        'differs' => $row['checkout_time'] && $row['checkout_time'] !== $co];
+                }
+
+                if ($propertyProposal === null) {
+                    $addrParts = array_values(array_filter([
+                        trim((string)($L['street'] ?? '')),
+                        trim((string)($L['city'] ?? '')),
+                        trim((string)($L['state'] ?? '')),
+                        trim((string)($L['zipcode'] ?? '')),
+                    ], fn($v) => $v !== ''));
+                    $addr = $addrParts ? implode(', ', $addrParts) : null;
+                    $maps = (!empty($L['lat']) && !empty($L['lng']))
+                        ? 'https://maps.google.com/?q=' . $L['lat'] . ',' . $L['lng'] : null;
+                    if ($addr || $maps) {
+                        $propertyProposal = ['address' => $addr, 'google_maps_link' => $maps, 'source_listing' => $listingId];
+                    }
+                }
+            }
+        }
+
         $out['proposals'][] = [
             'room_id' => $localRoomId,
             'room' => $row['name'],
             'listing_title' => $byId[$listingId]['title'],
-            'current_capacity' => $current ?: null,
-            'airbnb_capacity' => $suggested,
-            // differs: a value is already stored and Airbnb disagrees - the case
-            // most worth a human looking at before anything is overwritten.
-            'differs' => $current > 0 && $current !== $suggested,
-            'is_new' => $current === 0,
+            'fields' => $fields,
         ];
+    }
+
+    if ($propertyProposal) {
+        $pp = $pdo->prepare("SELECT address, google_maps_link FROM properties WHERE id = ? AND is_deleted = 0");
+        $pp->execute([$roomMappings[0]['parent_property_id'] ?? 0]);
+        $out['property'] = $propertyProposal;
     }
     return $out;
 }
+
 
 /**
  * Write only the capacities the owner actually confirmed.
  * $confirmed: [{room_id, capacity}, ...] - anything not listed is left alone.
  */
-function applyAirbnbRoomConfig(PDO $pdo, array $confirmed, int $parentPropertyId): array {
+function applyAirbnbRoomConfig(PDO $pdo, array $confirmed, int $parentPropertyId, ?array $propertyFields = null): array {
     $applied = [];
-    $upd = $pdo->prepare("UPDATE properties SET max_capacity = ?, updated_at = NOW() WHERE id = ? AND is_deleted = 0");
-    // Only ever touch this property or one of its own rooms - a room_id posted in
-    // the request body must never be able to edit another tenant's row.
+    // Whitelist: only these columns can ever be written by an import, so a crafted
+    // field name cannot reach anything else (price columns included - deliberately
+    // absent, see proposeAirbnbRoomConfig()).
+    $allowed = ['max_capacity', 'checkin_time', 'checkout_time'];
+    // A room_id posted in the request body must never reach another tenant's row.
     $check = $pdo->prepare("SELECT name FROM properties WHERE id = ? AND (id = ? OR parent_property_id = ?) AND is_deleted = 0");
+
     foreach ($confirmed as $c) {
         $roomId = (int)($c['room_id'] ?? 0);
-        $cap = (int)($c['capacity'] ?? 0);
-        if ($roomId <= 0 || $cap < 1 || $cap > 99) continue;
+        if ($roomId <= 0) continue;
         $check->execute([$roomId, $parentPropertyId, $parentPropertyId]);
         $row = $check->fetch(PDO::FETCH_ASSOC);
         if (!$row) continue;
-        $upd->execute([$cap, $roomId]);
-        $applied[] = ['room' => $row['name'], 'capacity' => $cap];
+
+        $sets = []; $params = []; $names = [];
+        foreach ($allowed as $col) {
+            if (!array_key_exists($col, $c)) continue;
+            $v = $c[$col];
+            if ($col === 'max_capacity') {
+                $v = (int)$v;
+                if ($v < 1 || $v > 99) continue;
+            } else {
+                $v = trim((string)$v);
+                if (!preg_match('/^([01][0-9]|2[0-3]):[0-5][0-9]$/', $v)) continue;
+            }
+            $sets[] = "`{$col}` = ?"; $params[] = $v; $names[] = $col;
+        }
+        if (!$sets) continue;
+        $params[] = $roomId;
+        $pdo->prepare("UPDATE properties SET " . implode(', ', $sets) . ", updated_at = NOW() WHERE id = ?")->execute($params);
+        $applied[] = ['room' => $row['name'], 'fields' => $names];
+    }
+
+    // Property-level (address / maps link) - same whitelist discipline.
+    if ($propertyFields && $parentPropertyId > 0) {
+        $pAllowed = ['address', 'google_maps_link'];
+        $sets = []; $params = []; $names = [];
+        foreach ($pAllowed as $col) {
+            if (!array_key_exists($col, $propertyFields)) continue;
+            $v = trim((string)$propertyFields[$col]);
+            if ($v === '') continue;
+            $sets[] = "`{$col}` = ?"; $params[] = $v; $names[] = $col;
+        }
+        if ($sets) {
+            $params[] = $parentPropertyId;
+            $pdo->prepare("UPDATE properties SET " . implode(', ', $sets) . ", updated_at = NOW() WHERE id = ?")->execute($params);
+            $applied[] = ['room' => '(property)', 'fields' => $names];
+        }
     }
     return ['applied' => $applied];
 }
+
 
 
 switch ($action) {
@@ -4673,12 +4794,13 @@ switch ($action) {
                 $mode = strtolower(trim((string)($input['mode'] ?? $_GET['mode'] ?? 'preview')));
                 if ($mode === 'apply') {
                     $confirmed = is_array($input['rooms'] ?? null) ? $input['rooms'] : [];
-                    if (empty($confirmed)) {
+                    if (empty($confirmed) && empty($input['property'])) {
                         http_response_code(400);
                         echo json_encode(['status' => 'error', 'message' => 'Nothing confirmed to apply']);
                         break 2;
                     }
-                    echo json_encode(['status' => 'success', 'data' => applyAirbnbRoomConfig($pdo, $confirmed, $targetPropertyId)]);
+                    $propFields = is_array($input['property'] ?? null) ? $input['property'] : null;
+                    echo json_encode(['status' => 'success', 'data' => applyAirbnbRoomConfig($pdo, $confirmed, $targetPropertyId, $propFields)]);
                     break 2;
                 }
                 try {
