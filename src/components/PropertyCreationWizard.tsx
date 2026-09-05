@@ -678,15 +678,16 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
           to the physical bottom edge, same as SelfOnboardingWizard.tsx's and
           PropertySetupWizard.tsx's own footers (already fixed) - this sibling
           wizard was missed at the time. */}
-      <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] border-t border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2 bg-gray-50 dark:bg-gray-850 shrink-0">
+      <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] border-t border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2 bg-gray-50 dark:bg-gray-850 shrink-0 flex-wrap sm:flex-nowrap">
         <div className="flex items-center gap-2">
           {stepIndex > 0 && !finished && (
-            <Button type="button" variant="secondary" size="sm" onClick={handleBack} disabled={saving}>
+            <Button type="button" variant="secondary" size="sm" onClick={handleBack} disabled={saving} className="whitespace-nowrap flex items-center gap-1">
               <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back</span>
             </Button>
           )}
           {stepIndex > 0 && !isLastStep && !finished && (
-            <Button type="button" variant="secondary" size="sm" onClick={handleSaveAndExit} disabled={saving}>
+            <Button type="button" variant="secondary" size="sm" onClick={handleSaveAndExit} disabled={saving} className="whitespace-nowrap">
               Save &amp; Exit
             </Button>
           )}
@@ -695,20 +696,20 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
         {!finished && (
           <div className="flex items-center gap-2">
             {stepIndex > 0 && !isLastStep && (
-              <Button type="button" variant="secondary" size="sm" onClick={handleSkip} disabled={saving}>
+              <Button type="button" variant="secondary" size="sm" onClick={handleSkip} disabled={saving} className="whitespace-nowrap">
                 Skip
               </Button>
             )}
             {isLastStep ? (
-              <Button type="button" variant="primary" size="sm" onClick={handleFinish} disabled={saving}>
+              <Button type="button" variant="primary" size="sm" onClick={handleFinish} disabled={saving} className="whitespace-nowrap flex items-center gap-1.5">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                <span className="ml-1.5">Finish Setup</span>
+                <span>Finish Setup</span>
               </Button>
             ) : (
-              <Button type="button" variant="primary" size="sm" onClick={handleNext} disabled={saving || (stepIndex === 0 && !step0Valid)}>
+              <Button type="button" variant="primary" size="sm" onClick={handleNext} disabled={saving || (stepIndex === 0 && !step0Valid)} className="whitespace-nowrap flex items-center gap-1.5">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                <span className={saving ? 'ml-1.5' : ''}>Next Step: {steps[stepIndex + 1]?.label}</span>
-                <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                <span>Next Step</span>
+                {!saving && <ArrowRight className="w-3.5 h-3.5" />}
               </Button>
             )}
           </div>

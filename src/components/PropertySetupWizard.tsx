@@ -524,13 +524,13 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
               <span>Back</span>
             </Button>
           ) : !finished ? (
-            <Button type="button" variant="ghost" size="sm" onClick={handleDoItLater} disabled={saving} className="whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
+            <Button type="button" variant="secondary" size="sm" onClick={handleDoItLater} disabled={saving} className="whitespace-nowrap">
               Do It Later
             </Button>
           ) : null}
 
           {stepIndex > 0 && !isLastStep && !finished && (
-            <Button type="button" variant="ghost" size="sm" onClick={handleSaveAndExit} disabled={saving} className="whitespace-nowrap text-xs text-gray-600 dark:text-gray-300">
+            <Button type="button" variant="secondary" size="sm" onClick={handleSaveAndExit} disabled={saving} className="whitespace-nowrap">
               Save &amp; Exit
             </Button>
           )}
