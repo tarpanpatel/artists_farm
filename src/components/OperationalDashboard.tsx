@@ -56,7 +56,7 @@ interface OperationalDashboardProps {
   onOpenCheckin: () => void;
   onAddGuest?: (guest: Guest) => Promise<void>;
   onCheckoutGuest?: (receipt: any) => void;
-  onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin', replyMarkup?: any, templateKey?: string) => void;
+  onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin', replyMarkup?: any, templateKey?: string, mediaUrls?: string[], deepLinkParams?: Record<string, string | number>) => void;
   onUpdateRoomName?: (newName: string) => void;
   onUpdateBooking?: (guest: Guest) => Promise<void>;
   onDeleteBooking?: (guestId: string) => Promise<void>;

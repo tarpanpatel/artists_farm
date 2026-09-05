@@ -88,7 +88,7 @@ interface MultiKeyPropertyOverviewProps {
   onUpdateStock?: (itemId: string, newStock: number) => void;
   onAddInventoryItem?: (item: any) => void;
   onUpdateItemImage?: (itemId: string, imagePath: string) => void;
-  onDispatchTelegram?: (eventType: string, message: string, category?: 'all' | 'kitchen' | 'finance' | 'admin', replyMarkup?: any, templateKey?: string) => void;
+  onDispatchTelegram?: (eventType: string, message: string, category?: 'all' | 'kitchen' | 'finance' | 'admin', replyMarkup?: any, templateKey?: string, mediaUrls?: string[], deepLinkParams?: Record<string, string | number>) => void;
   onCheckInGuest?: (guestId: string) => void;
   onCheckout?: (guestId: string) => void;
   activeMenuItemKey?: string;

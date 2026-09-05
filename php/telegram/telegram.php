@@ -29,6 +29,12 @@ function handleTelegramRequests($pdo, $request_method, $action, $propertyId) {
                 $replyMarkup = $input['replyMarkup'] ?? null;
                 $templateKey = $input['templateKey'] ?? null;
                 $mediaUrls   = is_array($input['mediaUrls'] ?? null) ? $input['mediaUrls'] : [];
+                // Explicit deep-link params (5 Sep 2026) - lets a frontend call site that
+                // already knows the specific record's id (a guest, service request, kitchen
+                // order, petty cash entry, etc.) hand it straight through to
+                // appendAppUrlToMessage() instead of relying on regex-scraping the rendered
+                // text (see that function's own comment for the class of bug this replaces).
+                $deepLinkParams = is_array($input['deepLinkParams'] ?? null) ? $input['deepLinkParams'] : [];
 
                 $filePaths = [];
                 $fileTypes = [];
@@ -72,12 +78,12 @@ function handleTelegramRequests($pdo, $request_method, $action, $propertyId) {
                 }
 
                 if (!empty($filePaths)) {
-                    $result = sendPropertyTelegramPhoto($pdo, $propertyId, $category, $filePaths, $message, $templateKey, $fileTypes);
+                    $result = sendPropertyTelegramPhoto($pdo, $propertyId, $category, $filePaths, $message, $templateKey, $fileTypes, $deepLinkParams);
                     foreach ($tempFilesToDelete as $tmp) {
                         if (file_exists($tmp)) @unlink($tmp);
                     }
                 } else {
-                    $result = sendPropertyTelegramMessage($pdo, $propertyId, $category, $message, $replyMarkup, $templateKey);
+                    $result = sendPropertyTelegramMessage($pdo, $propertyId, $category, $message, $replyMarkup, $templateKey, $deepLinkParams);
                 }
 
                 echo json_encode([

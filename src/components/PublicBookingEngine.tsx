@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   Phone,
   Loader2,
-  Share2,
   Sparkles,
   ArrowRight,
   X,
@@ -589,7 +588,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                 </div>
               ) : (
                 <div className="space-y-2.5">
-                  {availableRoomResults.map(({ room, nights, totalTariff, avgNightlyRate }) => (
+                  {availableRoomResults.map(({ room, nights, totalTariff }) => (
                     <div
                       key={room.id}
                       className="p-3.5 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm"
@@ -615,10 +614,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                         <div className="text-left sm:text-right">
                           <span className="text-xs font-medium text-gray-600 dark:text-gray-300 block">Total Stay</span>
                           <span className="text-base font-black text-emerald-600 dark:text-emerald-400 block">
-                            {currencySym}{totalTariff.toLocaleString('en-IN')}
-                          </span>
-                          <span className="text-2xs text-gray-400 dark:text-gray-400 block">
-                            ({currencySym}{avgNightlyRate.toLocaleString('en-IN')}/night)
+                            {currencySym}{totalTariff.toLocaleString('en-IN')} <span className="text-2xs font-semibold text-gray-400 dark:text-gray-400">for {nights} Night{nights > 1 ? 's' : ''}</span>
                           </span>
                         </div>
 
@@ -1070,20 +1066,19 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
               )}
             </div>
 
-            {/* Actions */}
-            <div className="flex flex-col sm:flex-row gap-2.5">
-              <Button
-                variant="primary"
-                size="md"
-                onClick={() => {
-                  const text = `🏨 Booking Confirmation (${confirmation.property_name})\nRef: ${confirmation.reference_number}\nRoom: ${confirmation.room_name}\nDates: ${formatDateDisplay(confirmation.checkin_date)} to ${formatDateDisplay(confirmation.checkout_date)}\nTotal: ${currencySym}${confirmation.total_tariff}\nGuest: ${confirmation.guest_name}`;
-                  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-                }}
-                className="flex-1 justify-center h-10 text-xs font-bold"
+            {/* Actions - always 2 columns (not stacked on mobile), WhatsApp button
+                matching the site-wide "Share via WhatsApp" convention (emerald,
+                plain wa.me link) instead of the generic blue primary Button - see
+                WalkInTabBillModal.tsx for the same pattern. */}
+            <div className="grid grid-cols-2 gap-2.5">
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(`🏨 Booking Confirmation (${confirmation.property_name})\nRef: ${confirmation.reference_number}\nRoom: ${confirmation.room_name}\nDates: ${formatDateDisplay(confirmation.checkin_date)} to ${formatDateDisplay(confirmation.checkout_date)}\nTotal: ${currencySym}${confirmation.total_tariff}\nGuest: ${confirmation.guest_name}`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-3 py-2 rounded-lg flex items-center justify-center h-10 cursor-pointer text-center"
               >
-                <Share2 className="w-4 h-4 me-1.5" />
                 Share on WhatsApp
-              </Button>
+              </a>
               <Button
                 variant="secondary"
                 size="md"

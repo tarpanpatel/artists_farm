@@ -36,7 +36,7 @@ interface Room {
 interface ServiceRequestsManagementProps {
   rooms?: Room[];
   isMultiKeyProperty?: boolean;
-  onDispatchTelegram?: (eventType: string, message: string, category?: 'kitchen' | 'admin' | 'finance' | 'all', replyMarkup?: any, templateKey?: string) => void;
+  onDispatchTelegram?: (eventType: string, message: string, category?: 'kitchen' | 'admin' | 'finance' | 'all', replyMarkup?: any, templateKey?: string, mediaUrls?: string[], deepLinkParams?: Record<string, string | number>) => void;
   // AI Assistant deep-link (restored 27 Aug 2026, mirrors StaffManagement.tsx's
   // initialEditStaffName) - "send towels to room 102" lands on this page with the New Service
   // Request drawer already open, room + best-guess request type pre-filled - the user still

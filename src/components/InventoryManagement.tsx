@@ -146,7 +146,7 @@ interface InventoryManagementProps {
   onAddInventoryItem: (item: InventoryItem) => void;
   onUpdateItemImage?: (itemId: string, imagePath: string) => void;
   activeMenuItemKey?: string;
-  onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin', replyMarkup?: any, templateKey?: string) => void;
+  onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin', replyMarkup?: any, templateKey?: string, mediaUrls?: string[], deepLinkParams?: Record<string, string | number>) => void;
   onLogAudit?: (actionText: string, extra?: { status?: string; module?: string; user?: string }) => void;
 }
 

@@ -335,14 +335,14 @@ if (!function_exists('sendPropertyTelegramMessage')) {
  * group goes out first so it isn't duplicated across both.
  */
 if (!function_exists('sendPropertyTelegramPhoto')) {
-    function sendPropertyTelegramPhoto($pdo, $propertyId, $category, array $filePaths, $caption, $templateKey = null, array $fileTypes = []) {
+    function sendPropertyTelegramPhoto($pdo, $propertyId, $category, array $filePaths, $caption, $templateKey = null, array $fileTypes = [], $deepLinkParams = []) {
         $config = getPropertyTelegramConfig($pdo, $propertyId);
         if (!$config['enabled']) {
             return ['skipped' => true, 'reason' => 'Telegram notifications are turned off for this property'];
         }
 
         $token = !empty($config['botToken']) ? $config['botToken'] : TELEGRAM_BOT_TOKEN;
-        $caption = appendAppUrlToMessage($pdo, $propertyId, $category, $caption);
+        $caption = appendAppUrlToMessage($pdo, $propertyId, $category, $caption, $deepLinkParams);
 
         $chatId = null;
         if ($templateKey && isset($config['routing'][$templateKey])) {

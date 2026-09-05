@@ -2239,6 +2239,11 @@ export async function sendTelegramAlertDB(payload: {
   replyMarkup?: any;
   templateKey?: string;
   mediaUrls?: string[];
+  // Explicit record id(s) for the backend's "Open in App" link builder (5 Sep 2026) -
+  // e.g. {booking_id: 123} / {request_id: 45} / {order_id: 9} - see
+  // appendAppUrlToMessage()'s own comment in php/telegram/sender.php for why this
+  // exists instead of relying on regex-scraping the message text.
+  deepLinkParams?: Record<string, string | number>;
 }): Promise<TelegramSendOutcome> {
   try {
     const res = await apiFetch(`${API_BASE}?action=send_telegram_alert`, {

@@ -82,7 +82,7 @@ interface KitchenManagementProps {
   menu: MenuItem[];
   onAddMenuItem: (item: MenuItem) => void;
   onRequestMaterial: (req: Requisition) => void;
-  onDispatchTelegram?: (eventType: string, message: string, category?: 'kitchen' | 'admin' | 'finance' | 'all', replyMarkup?: any, templateKey?: string) => void;
+  onDispatchTelegram?: (eventType: string, message: string, category?: 'kitchen' | 'admin' | 'finance' | 'all', replyMarkup?: any, templateKey?: string, mediaUrls?: string[], deepLinkParams?: Record<string, string | number>) => void;
   activeMenuItemKey?: string;
   // Gates the Target Guest Picker below (24 Aug 2026 report: "no need to
   // have dropdown of property name ... don't have the whole dropdown thing
@@ -472,7 +472,12 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       };
 
       const fallbackMsg = `🍽️ <b>DISH READY TO SERVE</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #${cleanTicketId}\n• <b>${item.quantity}x</b> ${item.name}\n━━━━━━━━━━━━━━━━━━\n🏃‍♂️ <i>Staff, please collect and tap below when served.</i>`;
-      onDispatchTelegram('Single Dish Ready', resolved || fallbackMsg, 'kitchen', inlineKeyboard, 'kitchen_single_dish_ready');
+      // deepLinkParams (5 Sep 2026) - the text above only ever says "Order Ticket: #123",
+      // never the literal word "ID", so the backend's regex-based link extraction never
+      // matched this template. Passing order_id explicitly opens straight to this exact
+      // ticket on the KDS board (see KitchenManagement.tsx's focusOrderId effect) instead
+      // of a generic Kitchen tab.
+      onDispatchTelegram('Single Dish Ready', resolved || fallbackMsg, 'kitchen', inlineKeyboard, 'kitchen_single_dish_ready', undefined, { order_id: cleanTicketId });
     }
 
     showToast(`Dish marked ready: ${item.quantity}x ${item.name}`, { type: 'success' });
@@ -665,7 +670,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       };
       const resolved = await resolveTelegramTemplate('item_served', servedVars);
       const singleItemServedMsg = resolved || `✅ <b>DISH SERVED TO RESIDENT</b>\n• Ticket: <b>#${cleanTicketId}</b>\n• Guest: <b>${ord.guestName}</b>\n• Room: <b>${ord.roomNumber}</b>\n• Served Dish: <b>${item.quantity}x ${item.name}</b>\n• Delivered By: <b>${servedByUser}</b>\n• Served At: <b>${nowTime}</b>\n• Status: <b>Delivered & Served 🍽️</b>`;
-      onDispatchTelegram('Dish Served', singleItemServedMsg, 'kitchen', undefined, 'item_served');
+      onDispatchTelegram('Dish Served', singleItemServedMsg, 'kitchen', undefined, 'item_served', undefined, { order_id: cleanTicketId });
     }
 
     recordTelescopeLog({
@@ -701,13 +706,14 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         elapsed_minutes: String(elapsedMin),
       };
       const resolved = await resolveTelegramTemplate('kitchen_order_reminder', reminderVars);
-      // #live_tickets (not bare #kitchen, which lands on Take Order) - these
-      // reminders are about an order already sitting in the queue, so the
-      // link should open straight to the tab that shows it (20 Aug 2026).
-      const appUrl = `${window.location.origin}${window.location.pathname}#live_tickets`;
-      const fallbackMsg = `⏰ <b>KITCHEN REMINDER</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #${cleanTicketId}\n• <b>${item.quantity}x</b> ${item.name}\n🚪 <b>Room:</b> ${ord.roomNumber}\n⏱️ <b>Pending for:</b> ${elapsedMin} min\n━━━━━━━━━━━━━━━━━━\n🔍 <i>Please check on this order.</i>\n\n🔗 <b>Open Kitchen Board:</b> <a href="${appUrl}">${appUrl}</a>`;
-      const finalMsg = resolved ? `${resolved}\n\n🔗 <b>Open Kitchen Board:</b> <a href="${appUrl}">${appUrl}</a>` : fallbackMsg;
-      onDispatchTelegram('Kitchen Order Reminder', finalMsg, 'kitchen', undefined, 'kitchen_order_reminder');
+      // Was: manually building a "#live_tickets" link here (20 Aug 2026) - replaced
+      // 5 Sep 2026 with the backend's own deep-link builder via deepLinkParams, since
+      // a manually-attached http(s) link makes appendAppUrlToMessage() bail out
+      // immediately (see its own comment), which meant this reminder could never open
+      // straight to the SPECIFIC order the way "Open in App" now can - only ever the
+      // generic Kitchen tab, no ticket highlighted.
+      const fallbackMsg = `⏰ <b>KITCHEN REMINDER</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #${cleanTicketId}\n• <b>${item.quantity}x</b> ${item.name}\n🚪 <b>Room:</b> ${ord.roomNumber}\n⏱️ <b>Pending for:</b> ${elapsedMin} min\n━━━━━━━━━━━━━━━━━━\n🔍 <i>Please check on this order.</i>`;
+      onDispatchTelegram('Kitchen Order Reminder', resolved || fallbackMsg, 'kitchen', undefined, 'kitchen_order_reminder', undefined, { order_id: cleanTicketId });
     }
 
     showToast(`Reminder sent to kitchen: ${item.quantity}x ${item.name}`, { type: 'success' });
@@ -739,18 +745,15 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         ready_since: readySince || 'a while ago',
       };
       const resolved = await resolveTelegramTemplate('kitchen_pickup_reminder', reminderVars);
-      // #live_tickets (not bare #kitchen, which lands on Take Order) - these
-      // reminders are about an order already sitting in the queue, so the
-      // link should open straight to the tab that shows it (20 Aug 2026).
-      const appUrl = `${window.location.origin}${window.location.pathname}#live_tickets`;
       const inlineKeyboard = {
         inline_keyboard: [
           [{ text: '🍽️ Tap when Served', callback_data: `serve_item_${cleanTicketId}_${itemIndex}` }]
         ]
       };
-      const fallbackMsg = `⏰ <b>STILL WAITING FOR PICKUP</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #${cleanTicketId}\n• <b>${item.quantity}x</b> ${item.name}\n🚪 <b>Room:</b> ${ord.roomNumber}\n⏱️ <b>Ready since:</b> ${readySince || 'a while ago'}\n━━━━━━━━━━━━━━━━━━\n🏃 <i>Please collect and tap below when served.</i>\n\n🔗 <b>Open Kitchen Board:</b> <a href="${appUrl}">${appUrl}</a>`;
-      const finalMsg = resolved ? `${resolved}\n\n🔗 <b>Open Kitchen Board:</b> <a href="${appUrl}">${appUrl}</a>` : fallbackMsg;
-      onDispatchTelegram('Pickup Reminder', finalMsg, 'admin', inlineKeyboard, 'kitchen_pickup_reminder');
+      const fallbackMsg = `⏰ <b>STILL WAITING FOR PICKUP</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #${cleanTicketId}\n• <b>${item.quantity}x</b> ${item.name}\n🚪 <b>Room:</b> ${ord.roomNumber}\n⏱️ <b>Ready since:</b> ${readySince || 'a while ago'}\n━━━━━━━━━━━━━━━━━━\n🏃 <i>Please collect and tap below when served.</i>`;
+      // deepLinkParams, not a manually-built "#live_tickets" link (5 Sep 2026, same fix
+      // as handleSendKitchenReminder above) - opens straight to this specific ticket.
+      onDispatchTelegram('Pickup Reminder', resolved || fallbackMsg, 'admin', inlineKeyboard, 'kitchen_pickup_reminder', undefined, { order_id: cleanTicketId });
     }
 
     showToast(`Pickup reminder sent: ${item.quantity}x ${item.name}`, { type: 'success' });

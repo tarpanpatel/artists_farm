@@ -21,7 +21,7 @@ import { formatDateTimeDDMMYYYY } from '../utils/dateUtils';
 
 interface CashDrawerManagerProps {
   onLogAudit?: (action: string, extra?: any) => void;
-  onDispatchTelegram?: (eventType: string, message: string, category?: string, replyMarkup?: any, templateKey?: string) => void;
+  onDispatchTelegram?: (eventType: string, message: string, category?: string, replyMarkup?: any, templateKey?: string, mediaUrls?: string[], deepLinkParams?: Record<string, string | number>) => void;
   onAddDrawerEntry?: (entry: any) => Promise<boolean>;
 }
 

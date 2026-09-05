@@ -21,7 +21,7 @@ import { formatDateDDMMYYYY } from '../utils/dateUtils';
 
 interface PettyCashManagementProps {
   activeRole?: string;
-  onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin', replyMarkup?: any, templateKey?: string, mediaUrls?: string[]) => void;
+  onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin', replyMarkup?: any, templateKey?: string, mediaUrls?: string[], deepLinkParams?: Record<string, string | number>) => void;
   onlyForm?: boolean;
   onClose?: () => void;
   // AI Assistant deep-link (restored 27 Aug 2026) - pre-fills the Add Expense drawer's
