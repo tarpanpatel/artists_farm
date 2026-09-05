@@ -54,7 +54,7 @@ interface GuestManagementProps {
   onUpdateGuest?: (updatedGuest: Guest) => void;
   onDeleteGuest?: (guestId: string) => Promise<void>;
   onCheckInGuest?: (guestId: string) => Promise<void>;
-  onGuestVerificationUpdated?: (guestId: string, verified: boolean) => void;
+  onGuestVerificationUpdated?: (guestId: string) => void;
   onCFormFiledUpdated?: (guestId: string, filedAt: string | null) => void;
   activeMenuItemKey?: string;
   onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin', replyMarkup?: any, templateKey?: string) => void;
@@ -134,12 +134,13 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   onClose,
   focusGuestId = null,
   onClearFocusGuest,
-  // No longer used within this component (was only for the now-removed
-  // GuestHistory/"Past Guests" archive view) - kept in the prop interface
-  // since MultiKeyPropertyOverview/OperationalDashboard still forward it
-  // down from App.tsx, and BookingDetailsModal (opened via Edit Booking)
-  // handles C-Form filing on its own now.
-  onCFormFiledUpdated: _onCFormFiledUpdated,
+  // Not used by this component directly - forwarded to BillingCheckout, whose
+  // Past Bookings table and Booking Details modal both file C-Forms and verify
+  // IDs. Those write through their own endpoints, so they need a "tell the app
+  // it happened" callback rather than a second save (4 Sep 2026 - going back
+  // through onUpdateGuest was rejected 409 stale_booking every time).
+  onCFormFiledUpdated,
+  onGuestVerificationUpdated,
   kitchenModuleEnabled = true,
   propertyGstin = '',
   propertyName = '',
@@ -1030,6 +1031,8 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       onCheckoutGuest={onCheckoutGuest}
       onUpdateGuest={onUpdateGuest}
       onDeleteGuest={onDeleteGuest}
+      onCFormFiledUpdated={onCFormFiledUpdated}
+      onGuestVerificationUpdated={onGuestVerificationUpdated}
       onAddGuest={onAddGuest}
       isMultiKeyProperty={isMultiKeyProperty}
       rooms={rooms}

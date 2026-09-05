@@ -43,6 +43,13 @@ interface BillingCheckoutProps {
   receipts: BillingReceipt[];
   onCheckoutGuest: (receipt: BillingReceipt) => void;
   onUpdateGuest?: (updatedGuest: Guest) => void;
+  // Both of these report something an endpoint has ALREADY written (
+  // mark_c_form_filed / complete_checkin_verification), so they exist to keep
+  // the app's guest list in step - never to trigger another save. Going back
+  // through onUpdateGuest is what broke this: that row's updated_at has just
+  // moved, so update_guest rejects it 409 stale_booking (4 Sep 2026).
+  onCFormFiledUpdated?: (guestId: string, filedAt: string | null) => void;
+  onGuestVerificationUpdated?: (guestId: string) => void;
   onDeleteGuest?: (guestId: string) => Promise<void>;
   onAddGuest?: (guest: Guest) => Promise<void>;
   isMultiKeyProperty?: boolean;
@@ -82,6 +89,8 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   receipts,
   onCheckoutGuest,
   onUpdateGuest,
+  onCFormFiledUpdated,
+  onGuestVerificationUpdated,
   onDeleteGuest,
   onAddGuest,
   isMultiKeyProperty = false,
@@ -466,7 +475,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     const ok = await markCFormFiled(guest.id, newFiledState);
     if (ok) {
       const filedAt = newFiledState ? new Date().toISOString() : null;
-      onUpdateGuest?.({ ...guest, cFormFiledAt: filedAt });
+      onCFormFiledUpdated?.(guest.id, filedAt);
       showToast(newFiledState ? `C-Form marked as filed for ${guest.guestName}` : `C-Form marked as pending for ${guest.guestName}`, { type: 'success' });
     } else {
       showToast('Failed to update C-Form status', { type: 'error' });
@@ -1245,6 +1254,14 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
           propertyCheckoutTime={propertyCheckoutTime}
           propertyUpiId={propertyUpiId}
           propertyUpiQrCodeUrl={propertyUpiQrCodeUrl}
+          onCFormFiled={(guestId, filedAt) => {
+            setSelectedGuestForDetails((prev) => (prev ? { ...prev, cFormFiledAt: filedAt } : prev));
+            onCFormFiledUpdated?.(guestId, filedAt);
+          }}
+          onIdVerified={(guestId) => {
+            setSelectedGuestForDetails((prev) => (prev ? { ...prev, idVerificationStatus: 'Complete' } : prev));
+            onGuestVerificationUpdated?.(guestId);
+          }}
           onCheckout={() => {
             const guest = selectedGuestForDetails;
             setSelectedGuestForDetails(null);
