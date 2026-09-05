@@ -4895,16 +4895,17 @@ switch ($action) {
                     }
                     upsertChannexChannelConnection($pdo, $targetPropertyId, $channelCode, ['status' => 'ready_to_activate', 'last_error' => null]);
 
-                    // Import each listing's own configuration now that we know which
+                    // Read each listing's own configuration now that we know which
                     // Ground Code room maps to which Airbnb listing. This is the
-                    // moment a client "adds their listing", so it is the natural
-                    // place to pull the data they have already kept accurate on the
-                    // OTA rather than ask them to retype it.
+                    // moment a client "adds their listing", so it is the natural place
+                    // to offer them the data already on the OTA instead of asking them
+                    // to retype it.
                     //
-                    // Non-price fields only - see importAirbnbRoomConfig()'s own note
-                    // on why OTA prices are deliberately NOT imported. Never fails the
-                    // mapping save: a listing read that goes wrong leaves the mapping
-                    // (the thing actually being saved) intact.
+                    // Returned as a PROPOSAL, not applied - see proposeAirbnbRoomConfig()
+                    // for why OTA capacity cannot be trusted unreviewed, and why price is
+                    // never imported at all. Never fails the mapping save: a listing read
+                    // that goes wrong leaves the mapping (the thing actually being saved)
+                    // intact.
                     $importReport = null;
                     try {
                         $importReport = proposeAirbnbRoomConfig($pdo, $channelClient, (string)$conn['channex_channel_id'], $localRows);
