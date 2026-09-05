@@ -2883,6 +2883,32 @@ switch ($action) {
                 $sets[] = 'default_tariff = ?';
                 $params[] = ($rawTariff !== null && $rawTariff !== '') ? (float)$rawTariff : null;
             }
+            // max_capacity - how many guests the room/property sleeps (added 5 Sep
+            // 2026). The column already existed on `properties` but nothing ever
+            // wrote to it, so every row sat at 0 and Channex room types were
+            // created with a hardcoded capacity of 6 regardless of the real room
+            // (see php/channex/content_sync.php). That advertised every room to
+            // every OTA as sleeping 6, which can produce a booking the property
+            // physically cannot honour. It is also the input occupancy-based
+            // pricing needs.
+            if (array_key_exists('max_capacity', $input)) {
+                $rawCapacity = $input['max_capacity'];
+                if ($rawCapacity !== null && $rawCapacity !== '' && !is_numeric($rawCapacity)) {
+                    http_response_code(400);
+                    echo json_encode(['success' => false, 'message' => 'max_capacity must be a number']);
+                    exit;
+                }
+                // 0 is the "not set yet" sentinel every existing row already holds,
+                // so an empty field stays 0 rather than becoming NULL.
+                $capacity = ($rawCapacity !== null && $rawCapacity !== '') ? (int)$rawCapacity : 0;
+                if ($capacity < 0 || $capacity > 99) {
+                    http_response_code(400);
+                    echo json_encode(['success' => false, 'message' => 'max_capacity must be between 0 and 99']);
+                    exit;
+                }
+                $sets[] = 'max_capacity = ?';
+                $params[] = $capacity;
+            }
             if (array_key_exists('whatsapp_voucher_template', $input)) {
                 // Empty string means "reset to the built-in default" - stored as NULL,
                 // not an empty template, so the frontend's fallback logic kicks in.

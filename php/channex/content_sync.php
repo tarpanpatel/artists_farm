@@ -65,7 +65,7 @@ class ChannexContentSyncer {
         // Determine units: if MULTI_KEY, fetch child rooms; else single whole property
         $units = [];
         if ($prop['property_type'] === 'MULTI_KEY') {
-            $roomStmt = $this->pdo->prepare("SELECT id, name, default_tariff FROM properties WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM' AND is_deleted = 0 ORDER BY room_order ASC, name ASC");
+            $roomStmt = $this->pdo->prepare("SELECT id, name, default_tariff, max_capacity FROM properties WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM' AND is_deleted = 0 ORDER BY room_order ASC, name ASC");
             $roomStmt->execute([$propertyId]);
             $rooms = $roomStmt->fetchAll(PDO::FETCH_ASSOC);
             foreach ($rooms as $r) {
@@ -73,6 +73,11 @@ class ChannexContentSyncer {
                     'room_id' => (int)$r['id'],
                     'name' => $r['name'],
                     'default_tariff' => (float)($r['default_tariff'] ?: $prop['default_tariff'] ?: 2500),
+                    // Falls back to the parent property's capacity, then to 2 - a
+                    // conservative default, unlike the 6 this used to hardcode.
+                    // Under-stating capacity loses a booking; over-stating it
+                    // produces one the room cannot physically hold.
+                    'max_capacity' => (int)($r['max_capacity'] ?: $prop['max_capacity'] ?: 0),
                 ];
             }
         }
@@ -82,6 +87,7 @@ class ChannexContentSyncer {
                 'room_id' => null,
                 'name' => $prop['name'],
                 'default_tariff' => (float)($prop['default_tariff'] ?: 3500),
+                'max_capacity' => (int)($prop['max_capacity'] ?: 0),
             ];
         }
 
@@ -150,17 +156,28 @@ class ChannexContentSyncer {
             }
 
             if (!$channexRoomTypeId) {
+                $unitCapacity = max(1, (int)($unit['max_capacity'] ?? 0) ?: 2);
                 $roomPayload = [
                     'room_type' => [
                         'property_id' => $channexPropertyId,
                         'title' => $unit['name'],
                         'count_of_rooms' => 1,
                         'room_kind' => 'room',
-                        'capacity' => 6,
-                        'occ_adults' => 6,
+                        // Real capacity, not a hardcoded 6 (fixed 5 Sep 2026).
+                        // This block used to send capacity/occ_adults = 6 for
+                        // EVERY room type, so a two-person studio was advertised
+                        // to every OTA as sleeping six - a booking the property
+                        // cannot honour. Falls back to 2 when nobody has set a
+                        // capacity yet, because understating loses a booking
+                        // while overstating creates one that cannot be housed.
+                        //
+                        // default_occupancy must be <= occ_adults per the Channex
+                        // API, so it is clamped rather than assumed.
+                        'capacity' => $unitCapacity,
+                        'occ_adults' => $unitCapacity,
                         'occ_children' => 2,
                         'occ_infants' => 2,
-                        'default_occupancy' => 2,
+                        'default_occupancy' => min(2, $unitCapacity),
                     ]
                 ];
                 $roomRes = $this->client->post('room_types', $roomPayload);

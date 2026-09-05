@@ -390,6 +390,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                           default_tariff: selectedRoom.default_tariff,
                           checkin_time: selectedRoom.checkin_time,
                           checkout_time: selectedRoom.checkout_time,
+                          max_capacity: (selectedRoom as any).max_capacity,
                         }}
                         onSaved={() => window.location.reload()}
                         isRoom

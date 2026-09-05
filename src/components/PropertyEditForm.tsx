@@ -41,6 +41,7 @@ interface PropertyEditFormProps {
     instructions?: string;
     property_type?: string;
     default_tariff?: number | null;
+    max_capacity?: number | null;
     checkin_time?: string | null;
     checkout_time?: string | null;
   };
@@ -93,6 +94,12 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
   // bookable, each of its rooms has its own tariff (set in RoomsManagement.tsx).
   const [defaultTariff, setDefaultTariff] = useState(
     property.default_tariff != null ? String(property.default_tariff) : ''
+  );
+  // 0 is the "never set" sentinel every existing row holds (the column was
+  // added long ago but nothing ever wrote to it), so it shows as an empty
+  // field rather than a literal 0.
+  const [maxCapacity, setMaxCapacity] = useState(
+    property.max_capacity ? String(property.max_capacity) : ''
   );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -162,6 +169,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
         checkin_time: checkinTime,
         checkout_time: checkoutTime,
         default_tariff: defaultTariff,
+        max_capacity: maxCapacity,
       };
       if (!isRoom) {
         payload.email = email.trim();
@@ -358,6 +366,25 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
       )}
 
       <div className="property-edit-form__row grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Sleeps (added 5 Sep 2026). This is what Channex publishes as the room
+            type's capacity/occ_adults to every OTA. Until this field existed the
+            sync hardcoded 6 for every room, so a two-person studio was listed as
+            sleeping six - see php/channex/content_sync.php. */}
+        <div className="property-edit-form__field">
+          <Input
+            type="number"
+            label={t('max_capacity_label', 'Sleeps (max guests)')}
+            value={maxCapacity}
+            onChange={(e) => setMaxCapacity(e.target.value)}
+            placeholder={t('max_capacity_placeholder', 'e.g. 2')}
+            error={maxCapacity !== '' && (!/^\d+$/.test(maxCapacity) || Number(maxCapacity) < 1 || Number(maxCapacity) > 99)
+              ? t('max_capacity_invalid', 'Enter a whole number of guests between 1 and 99.')
+              : undefined}
+            helperText={isRoom
+              ? t('max_capacity_help_room', "How many guests this room sleeps. Published to Airbnb and Booking.com.")
+              : t('max_capacity_help', 'How many guests this property sleeps. Published to Airbnb and Booking.com.')}
+          />
+        </div>
         <div className="property-edit-form__field">
           <Input
             type="time"

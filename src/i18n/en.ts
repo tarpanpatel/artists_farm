@@ -1441,6 +1441,11 @@ export const strings: Record<string, string> = {
   not_logged_in_label: "Not logged in",
 
   // Misc Charges Management
+  max_capacity_label: "Sleeps (max guests)",
+  max_capacity_placeholder: "e.g. 2",
+  max_capacity_help: "How many guests this property sleeps. Published to Airbnb and Booking.com.",
+  max_capacity_help_room: "How many guests this room sleeps. Published to Airbnb and Booking.com.",
+  max_capacity_invalid: "Enter a whole number of guests between 1 and 99.",
   misc_charges_heading: "Extra Charges & Fees",
   // Matches the sidebar/nav title for this same page ("Extra Charges & Fees",
   // set in php/kitchen/menu.php). The heading used to read "Expense Categories
