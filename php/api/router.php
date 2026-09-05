@@ -4261,6 +4261,7 @@ switch ($action) {
     case 'channex_channel_start_airbnb':
     case 'channex_channel_airbnb_connection_link':
     case 'channex_channel_mapping_details':
+    case 'channex_airbnb_listing_details':
     case 'channex_channel_save_mapping':
     case 'channex_channel_check_readiness':
     case 'channex_channel_activate':
@@ -4556,6 +4557,31 @@ switch ($action) {
                 echo json_encode(['status' => 'success', 'data' => ['url' => $linkRes['data']['attributes']['url']]]);
                 break 2;
 
+            // Read-only: pulls one Airbnb listing's own configuration (capacity,
+            // guests_included, price_per_extra_person, base/weekend price) so it
+            // can be imported instead of re-typed. Pushes nothing.
+            case 'channex_airbnb_listing_details':
+                $listingId = trim((string)($input['listing_id'] ?? $_GET['listing_id'] ?? ''));
+                $conn = $targetPropertyId > 0 ? getChannexChannelConnection($pdo, $targetPropertyId, 'AirBNB') : null;
+                if (!$conn || empty($conn['channex_channel_id'])) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'No connected Airbnb channel for this property']);
+                    break 2;
+                }
+                if ($listingId === '') {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'listing_id required']);
+                    break 2;
+                }
+                $res = $channelClient->getListingDetails($conn['channex_channel_id'], $listingId);
+                if (!$res['success']) {
+                    http_response_code($res['http_code'] ?: 502);
+                    echo json_encode(['status' => 'error', 'message' => 'Failed to load listing details', 'error' => $res['error'] ?? null]);
+                    break 2;
+                }
+                echo json_encode(['status' => 'success', 'data' => $res['data']]);
+                break 2;
+
             case 'channex_channel_mapping_details':
                 $channelCode = trim((string)($input['channel_code'] ?? $_GET['channel_code'] ?? ''));
                 $conn = $targetPropertyId > 0 && $channelCode !== '' ? getChannexChannelConnection($pdo, $targetPropertyId, $channelCode) : null;
@@ -4585,8 +4611,26 @@ switch ($action) {
                         break 2;
                     }
                     // Real shape confirmed live: {data: {listing_id_dictionary: {values: [{id, title, ...}]}}}
+                    //
+                    // The "..." matters (5 Sep 2026): each listing also carries
+                    // `occupancies` - every valid guest count from 1 up to the
+                    // listing's capacity, so capacity is simply the max of that
+                    // array. This mapper used to keep only id/title and throw the
+                    // rest away, which is why Ground Code had no capacity data and
+                    // content_sync.php fell back to hardcoding 6 guests for every
+                    // room. Airbnb knew the real number the whole time.
                     $rawListings = $res['data']['listing_id_dictionary']['values'] ?? [];
-                    $listings = array_map(fn($l) => ['id' => (string)($l['id'] ?? ''), 'title' => (string)($l['title'] ?? ('Listing ' . ($l['id'] ?? '')))], $rawListings);
+                    $listings = array_map(function ($l) {
+                        $occ = array_values(array_filter(array_map('intval', (array)($l['occupancies'] ?? [])), fn($n) => $n > 0));
+                        return [
+                            'id' => (string)($l['id'] ?? ''),
+                            'title' => (string)($l['title'] ?? ('Listing ' . ($l['id'] ?? ''))),
+                            'occupancies' => $occ,
+                            'max_occupancy' => $occ ? max($occ) : null,
+                            'listing_type' => (string)($l['type'] ?? ''),
+                            'city' => (string)($l['city'] ?? ''),
+                        ];
+                    }, $rawListings);
                     echo json_encode(['status' => 'success', 'data' => ['rooms' => $listings, 'is_airbnb_listing_mode' => true]]);
                     break 2;
                 }

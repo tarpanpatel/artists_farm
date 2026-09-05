@@ -129,6 +129,25 @@ class ChannexChannelClient {
     }
 
     /**
+     * GET /channels/:id/action/listing_details?listing_id=X - everything Airbnb
+     * knows about ONE listing (confirmed against Channex's Airbnb channel docs
+     * 5 Sep 2026).
+     *
+     * Carries the two things Ground Code has no other source for:
+     *   guests_included         - how many guests the base nightly price covers
+     *   price_per_extra_person  - the surcharge per guest beyond that
+     * plus default_daily_price, weekend_price, cleaning_fee, security_deposit
+     * and a `rooms` array with real bed configuration.
+     *
+     * That pair is exactly the occupancy-pricing model the PMS needs, already
+     * filled in by the host on Airbnb - so it can be imported rather than
+     * re-entered by hand.
+     */
+    public function getListingDetails(string $channelId, string $listingId): array {
+        return $this->client->get("channels/{$channelId}/action/listing_details", ['listing_id' => $listingId]);
+    }
+
+    /**
      * POST /channels/:id/mappings - map ONE local room's rate plan to ONE
      * external listing/room. This is Airbnb's actual mapping call (one
      * request per room, no bulk rate_plans array like updateChannel()) -
