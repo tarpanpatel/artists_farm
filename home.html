@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GroundCode — Simple Property App for Homestays</title>
-    <meta name="description" content="GroundCode helps homestays track guest requests, kitchen meals, cash, and staff on WhatsApp & Telegram.">
+    <title>GroundCode — The Simple Everyday App for Homestays & Resorts</title>
+    <meta name="description" content="The simple everyday app for homestays & resorts. Track rooms, hot chai, food bills, cash in hand, and staff jobs on WhatsApp & Telegram.">
     
     <!-- Open Graph / Meta -->
-    <meta property="og:title" content="GroundCode — Simple Homestay Operations">
-    <meta property="og:description" content="Zero staff arguments. Photo proof for every rupee.">
+    <meta property="og:title" content="GroundCode — Simple Everyday Homestay App">
+    <meta property="og:description" content="No more staff confusion. Clear photo proof for every single rupee.">
     <meta property="og:type" content="website">
     <meta name="theme-color" content="#2563EB">
 
@@ -24,7 +24,7 @@
          (mirrors the old inline tailwind.config's fontFamily/brand-color
          extension via Tailwind v4 @theme). Regenerate after editing classes
          here via `npm run build:landing`. -->
-    <link rel="stylesheet" href="./assets/css/landing.css">
+    <link rel="stylesheet" href="./assets/css/landing.css?v=1788612124061">
 
     <!-- Google Fonts (non-render-blocking, 25 Aug 2026 - see index.html for
          the full writeup: a plain stylesheet <link> here would hold this
@@ -42,43 +42,68 @@
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .tabular-nums { font-variant-numeric: tabular-nums; }
         .screen-shadow { box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(15, 23, 42, 0.06); }
+    
+        /* Guaranteed styling for key landing sections regardless of browser CSS cache */
+        #booking-lifecycle-card { background-color: #09261B !important; color: #FFFFFF !important; }
+        @media (min-width: 768px) {
+            .lifecycle-grid { display: grid !important; grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+        }
+        #tailored-prop-card { background-color: #EEF4FB !important; }
+        #workload-cta-card { background-color: #2563EB !important; color: #FFFFFF !important; }
+    
     </style>
 </head>
 <body class="antialiased selection:bg-blue-500 selection:text-white">
 
 
-    <!-- Navigation Bar -->
-    <nav class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center sticky top-0 bg-white/95 backdrop-blur-md z-40 border-b border-slate-200/80">
-        <div class="flex items-center gap-3">
+    <!-- Full-Width Stretched Header (Edge-to-Edge Background) -->
+    <header class="w-full sticky top-0 bg-white/95 backdrop-blur-md z-50 border-b border-slate-200/80 shadow-xs">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex justify-between items-center">
+            <!-- Brand Logo -->
             <a href="/" class="flex items-center gap-3 group">
-                <img src="dist/app-icons/icon-source.png" alt="GroundCode Logo" class="w-9 h-9 object-contain group-hover:scale-105 transition-transform shadow-2xs">
-                <div>
+                <img src="assets/images/icon-source.png" onerror="this.onerror=null; this.src='dist/app-icons/icon-source.png';" alt="GroundCode Logo" class="w-9 h-9 rounded-xl shadow-xs object-contain group-hover:scale-105 transition-transform">
+                <div class="leading-none">
                     <span class="text-xl font-bold tracking-tight text-slate-900">GroundCode</span>
-                    <span class="block text-[10px] uppercase tracking-wider font-semibold text-slate-400 -mt-1">Homestay Operations</span>
+                    <span class="block text-[10px] uppercase tracking-wider font-semibold text-slate-400 mt-0.5">Simple Homestay App</span>
                 </div>
             </a>
+
+            <!-- Feature Links (Doorloom-Inspired Clean Nav) -->
+            <nav class="hidden lg:flex items-center gap-7 text-sm font-medium text-slate-600">
+                <a href="#booking-lifecycle" class="hover:text-blue-600 transition-colors">How Guests Book</a>
+                <a href="#channel-manager" class="hover:text-blue-600 transition-colors">Sync All Sites</a>
+                <a href="#booking-engine" class="hover:text-blue-600 transition-colors">Direct Web Link</a>
+                <a href="#features-overview" class="hover:text-blue-600 transition-colors">Kitchen Orders</a>
+                <a href="#cash-is-king" class="hover:text-blue-600 transition-colors">Cash &amp; Staff</a>
+                <a href="#pricing" class="hover:text-blue-600 transition-colors">Pricing</a>
+            </nav>
+
+            <!-- Right CTAs -->
+            <div class="flex items-center gap-3">
+                <a href="/login" class="text-xs sm:text-sm font-semibold text-slate-700 hover:text-blue-600 px-3 py-2 rounded-xl hover:bg-slate-100 transition-colors">
+                    Log In
+                </a>
+                <a href="https://ground-code.com/rivera-resorts/luxe-stays/" target="_blank" rel="noopener noreferrer" class="bg-blue-600 text-white text-xs sm:text-sm font-semibold px-4 sm:px-5 py-2.5 rounded-xl hover:bg-blue-700 active:bg-blue-800 transition-all shadow-md shadow-blue-500/25 hover-lift flex items-center gap-1.5">
+                    <span>Try Demo</span>
+                    <svg class="w-4 h-4" width="24" height="24" fill="none" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M19 12H5m14 0-4 4m4-4-4-4"></path></svg>
+                </a>
+                <!-- Mobile Menu Hamburger Button -->
+                <button id="mobile-menu-btn" type="button" onclick="const m=document.getElementById('mobile-menu'); m.classList.toggle('hidden');" class="lg:hidden p-2 text-slate-600 hover:text-slate-900 rounded-xl hover:bg-slate-100 focus:outline-hidden" aria-label="Toggle navigation">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+            </div>
         </div>
 
-        <div class="hidden md:flex items-center space-x-7 text-sm font-medium text-slate-600">
-            <a href="#how-it-helps" class="hover:text-blue-600 transition-colors">How It Helps You</a>
-            <a href="#channel-manager" class="hover:text-blue-600 transition-colors">2-Way Channel Manager</a>
-            <a href="#ota-savings" class="hover:text-blue-600 transition-colors">Save 15–25% OTA Fees</a>
-            <a href="#features-overview" class="hover:text-blue-600 transition-colors">See App Screens</a>
-            <a href="#telegram-ops" class="hover:text-blue-600 transition-colors">Telegram for Staff</a>
-            <a href="#who-its-for" class="hover:text-blue-600 transition-colors">Who It's For</a>
-            <a href="#pricing" class="hover:text-blue-600 transition-colors">Pricing & Trial</a>
+        <!-- Mobile Dropdown Menu -->
+        <div id="mobile-menu" class="hidden lg:hidden bg-white border-t border-slate-200 px-6 py-4 space-y-3 font-medium text-sm text-slate-700 shadow-md">
+            <a href="#booking-lifecycle" onclick="document.getElementById('mobile-menu').classList.add('hidden')" class="block py-1 hover:text-blue-600">How Guests Book (5 Steps)</a>
+            <a href="#channel-manager" onclick="document.getElementById('mobile-menu').classList.add('hidden')" class="block py-1 hover:text-blue-600">Sync All Sites (Airbnb & Booking.com)</a>
+            <a href="#booking-engine" onclick="document.getElementById('mobile-menu').classList.add('hidden')" class="block py-1 hover:text-blue-600">Direct Web Link (0% Fees)</a>
+            <a href="#kitchen-kds" onclick="document.getElementById('mobile-menu').classList.add('hidden')" class="block py-1 hover:text-blue-600">Kitchen Orders (Chai & Meals)</a>
+            <a href="#cash-is-king" onclick="document.getElementById('mobile-menu').classList.add('hidden')" class="block py-1 hover:text-blue-600">Cash Box &amp; Staff Jobs</a>
+            <a href="#pricing" onclick="document.getElementById('mobile-menu').classList.add('hidden')" class="block py-1 hover:text-blue-600">Pricing</a>
         </div>
-
-        <div class="flex items-center gap-3">
-            <a href="/login" class="text-sm font-semibold text-slate-700 hover:text-blue-600 px-3.5 py-2 rounded-xl hover:bg-slate-100 transition-colors border border-transparent hover:border-slate-200">
-                Log In
-            </a>
-            <a href="https://ground-code.com/rivera-resorts/luxe-stays/" target="_blank" rel="noopener noreferrer" class="bg-blue-600 text-white text-xs sm:text-sm font-semibold px-4 sm:px-5 py-2.5 rounded-xl hover:bg-blue-700 active:bg-blue-800 transition-all shadow-md shadow-blue-500/25 hover-lift flex items-center gap-1.5">
-                <span>Try Demo</span>
-                <svg class="w-4 h-4" width="24" height="24" fill="none" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M19 12H5m14 0-4 4m4-4-4-4"></path></svg>
-            </a>
-        </div>
-    </nav>
+    </header>
 
     <!-- Hero Section -->
     <section class="max-w-7xl mx-auto px-6 pt-14 pb-12 text-center relative overflow-hidden">
@@ -87,22 +112,22 @@
 
 
         <h1 class="text-4xl sm:text-5xl md:text-6xl font-serif font-semibold leading-[1.15] mb-6 max-w-4xl mx-auto text-slate-900 tracking-tight">
-            A bird's-eye view for you.<br>
-            <span class="text-slate-500 italic font-medium">Total control of your homestay.</span>
+            See everything at your homestay.<br>
+            <span class="text-slate-500 italic font-medium">Without being stuck there all day.</span>
         </h1>
 
-        <div class="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed mb-4 font-sans">
-            <p>Booking apps only get guests to your door.</p>
-            <p>GroundCode takes care of everything after they arrive:</p>
-            <p class="font-medium text-slate-800 mt-1">Meals, extra beds, cash collected, and staff tasks.</p>
+        <div class="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed mb-4 font-sans space-y-1">
+            <p>Booking apps only find you guests.</p>
+            <p>GroundCode runs your everyday resort work:</p>
+            <p class="font-medium text-slate-800">Rooms, hot chai, food bills, cash, and staff jobs.</p>
         </div>
 
         <!-- Trust Badges -->
         <div class="flex flex-wrap items-center justify-center gap-6 text-xs text-slate-500 font-medium pt-4">
-            <span class="flex items-center gap-1.5"><svg class="w-4 h-4 text-emerald-500" width="24" height="24" fill="none" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M5 11.917 9.724 16.5 19 7.5"></path></svg> Built for Homestay Owners</span>
-            <span class="flex items-center gap-1.5"><svg class="w-4 h-4 text-emerald-500" width="24" height="24" fill="none" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M5 11.917 9.724 16.5 19 7.5"></path></svg> 2-Way OTA Price & Calendar Sync (Airbnb, Booking.com, Agoda)</span>
-            <span class="flex items-center gap-1.5"><svg class="w-4 h-4 text-emerald-500" width="24" height="24" fill="none" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M5 11.917 9.724 16.5 19 7.5"></path></svg> Save 15–25% OTA Fees</span>
-            <span class="flex items-center gap-1.5"><svg class="w-4 h-4 text-emerald-500" width="24" height="24" fill="none" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M5 11.917 9.724 16.5 19 7.5"></path></svg> Zero Double Bookings via Channex</span>
+            <span class="flex items-center gap-1.5"><svg class="w-4 h-4 text-emerald-500" width="24" height="24" fill="none" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M5 11.917 9.724 16.5 19 7.5"></path></svg> Made for Homestay Owners</span>
+            <span class="flex items-center gap-1.5"><svg class="w-4 h-4 text-emerald-500" width="24" height="24" fill="none" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M5 11.917 9.724 16.5 19 7.5"></path></svg> Update Rates on Airbnb in 1 Tap</span>
+            <span class="flex items-center gap-1.5"><svg class="w-4 h-4 text-emerald-500" width="24" height="24" fill="none" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M5 11.917 9.724 16.5 19 7.5"></path></svg> Keep 100% of Direct Guest Money</span>
+            <span class="flex items-center gap-1.5"><svg class="w-4 h-4 text-emerald-500" width="24" height="24" fill="none" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M5 11.917 9.724 16.5 19 7.5"></path></svg> No Double Bookings Ever</span>
         </div>
     </section>
 
@@ -111,10 +136,10 @@
         <div class="text-center px-6 sm:px-0 mb-10">
 
             <h2 class="text-2xl sm:text-3xl font-serif font-bold text-slate-900 mb-2">
-                Getting Bookings is Only 10%
+                Getting bookings is the easy 10%
             </h2>
             <p class="text-slate-600 text-sm font-sans max-w-xl mx-auto">
-                The real work starts once guests arrive.
+                The real work starts once guests step inside.
             </p>
         </div>
 
@@ -126,10 +151,10 @@
                     <div class="flex items-center justify-between mb-3">
                         <span class="text-xs font-bold uppercase tracking-wider text-blue-200">The 90% Reality</span>
                     </div>
-                    <h3 class="text-xl sm:text-2xl font-serif font-bold text-white mb-2">The Ground Reality</h3>
+                    <h3 class="text-xl sm:text-2xl font-serif font-bold text-white mb-2">Your Everyday Property Work</h3>
                     <p class="text-sm text-blue-100 mb-4 leading-relaxed">
-                        What happens after the guest arrives.<br>
-                        Where your daily profit is protected.
+                        What happens during stays.<br>
+                    Where your profits are protected.
                     </p>
 
                     <!-- Real Photo with Overlay Badge -->
@@ -145,12 +170,12 @@
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-blue-50 font-medium">
-                        <div class="flex items-center gap-2">✓ Caretaker check-in & ID photo</div>
-                        <div class="flex items-center gap-2">✓ Tea & kitchen meals added to bill</div>
-                        <div class="flex items-center gap-2">✓ Extra mattress & towel alerts</div>
-                        <div class="flex items-center gap-2">✓ Cash collections in drawer</div>
-                        <div class="flex items-center gap-2">✓ Staff advance & emergency runs</div>
-                        <div class="flex items-center gap-2">✓ WhatsApp bills & instant checkout</div>
+                        <div class="flex items-center gap-2">✓ Caretaker snaps guest ID in 5s</div>
+                        <div class="flex items-center gap-2">✓ Tea & food auto-added to room bill</div>
+                        <div class="flex items-center gap-2">✓ Extra towel & bed alerts on phone</div>
+                        <div class="flex items-center gap-2">✓ Every cash rupee in drawer counted</div>
+                        <div class="flex items-center gap-2">✓ Staff salary advances logged clearly</div>
+                        <div class="flex items-center gap-2">✓ WhatsApp bill sent in 1 tap</div>
                     </div>
                 </div>
                 <div class="mt-5 pt-3 border-t border-blue-500/80 text-xs text-blue-200 font-semibold flex items-center justify-between">
@@ -159,6 +184,150 @@
                 </div>
             </div>
         </div>
+    
+
+        <!-- Doorloom-Inspired Question Chips: The Daily Floor Reality -->
+        <div class="mt-12 text-center max-w-4xl mx-auto px-4">
+            <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Everyday questions booking apps can never answer:</p>
+            <div class="flex flex-wrap justify-center gap-2 sm:gap-2.5 mb-8">
+                <span class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white border border-slate-200 text-slate-700 text-xs shadow-2xs font-medium">
+                    <span class="text-emerald-500 font-bold">“</span>Bhaiya, send 2 hot chais to Room 102
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white border border-slate-200 text-slate-700 text-xs shadow-2xs font-medium">
+                    <span class="text-emerald-500 font-bold">“</span>Can we get an extra blanket tonight?
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white border border-slate-200 text-slate-700 text-xs shadow-2xs font-medium">
+                    <span class="text-emerald-500 font-bold">“</span>Can I pay remaining ₹3,000 cash at checkout?
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white border border-slate-200 text-slate-700 text-xs shadow-2xs font-medium">
+                    <span class="text-emerald-500 font-bold">“</span>Caretaker bought ₹450 vegetables — where is receipt?
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white border border-slate-200 text-slate-700 text-xs shadow-2xs font-medium">
+                    <span class="text-emerald-500 font-bold">“</span>Send GST bill on WhatsApp for office claim
+                </span>
+            </div>
+
+            <!-- Big Stat Strip (Doorloom Pattern) -->
+            <div class="bg-amber-50/90 border border-amber-200/90 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-5 text-center sm:text-left shadow-xs">
+                <div class="text-4xl sm:text-5xl font-extrabold text-amber-600 font-serif tracking-tight shrink-0">90%</div>
+                <div class="text-xs sm:text-sm text-slate-700 leading-snug">
+                    <span class="font-bold text-slate-900">of a homestay's daily money and headache happens inside the gate.</span><br>
+                    That is why GroundCode protects your peace of mind.
+                </div>
+            </div>
+        </div>
+    </section>
+
+    
+    <!-- SECTION: THE BOOKING LIFECYCLE (Doorloom-Style Minimal & Powerful) -->
+    <section id="booking-lifecycle" class="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-16 scroll-mt-24">
+        <!-- Main Dark Green Container -->
+        <div id="booking-lifecycle-card" class="bg-[#09261B] text-white rounded-3xl p-8 sm:p-12 lg:p-14 border border-emerald-800/40 shadow-2xl relative overflow-hidden" style="background-color: #09261B; color: #ffffff;">
+            <!-- Subtle ambient glow -->
+            <div class="absolute -top-32 -right-32 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -bottom-32 -left-32 w-96 h-96 bg-emerald-600/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div class="relative z-10">
+                <!-- Amber accent kicker -->
+                <div class="flex items-center gap-2 text-amber-400 font-mono tracking-widest text-xs font-bold uppercase mb-4">
+                    <span class="tracking-tighter text-amber-400 font-black">||||||</span>
+                    <span>HOW GUESTS BOOK IN 5 STEPS</span>
+                </div>
+
+                <!-- Main Section Heading -->
+                <h2 class="text-3xl sm:text-4xl md:text-5xl font-serif font-bold text-white tracking-tight leading-tight mb-12 sm:mb-16 max-w-3xl">
+                    From first "Hi" message to confirmed booking in 5 steps
+                </h2>
+
+                <!-- The 5 Steps Minimal Flow -->
+                <div class="lifecycle-grid grid grid-cols-1 md:grid-cols-5 gap-6 md:gap-3 items-center">
+                    
+                    <!-- Step 1: Enquiry -->
+                    <div class="flex flex-col items-center text-center">
+                        <div class="w-14 h-14 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center text-emerald-300 mb-3 shadow-inner hover:scale-105 transition-transform">
+                            <!-- Chat Bubble Icon -->
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-base font-bold text-white mb-1">1. Guest Asks</h3>
+                        <p class="text-xs text-slate-300 leading-snug">On WhatsApp, call, or Instagram</p>
+                    </div>
+
+                    <!-- Step 2: Send Link -->
+                    <div class="flex flex-col items-center text-center relative">
+                        <div class="hidden md:block absolute -left-4 top-5 text-emerald-400/50">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                        </div>
+                        <div class="w-14 h-14 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center text-emerald-300 mb-3 shadow-inner hover:scale-105 transition-transform">
+                            <!-- Lightning / Send Link Icon -->
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-base font-bold text-white mb-1">2. You Send Link</h3>
+                        <p class="text-xs text-slate-300 leading-snug">Send direct booking link in 5s</p>
+                    </div>
+
+                    <!-- Step 3: Direct Payment -->
+                    <div class="flex flex-col items-center text-center relative">
+                        <div class="hidden md:block absolute -left-4 top-5 text-emerald-400/50">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                        </div>
+                        <div class="w-14 h-14 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center text-emerald-300 mb-3 shadow-inner hover:scale-105 transition-transform">
+                            <!-- Direct QR / UPI Icon -->
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-base font-bold text-white mb-1">3. Guest Pays</h3>
+                        <p class="text-xs text-slate-300 leading-snug">Via UPI QR or bank. No passwords</p>
+                    </div>
+
+                    <!-- Step 4: Booking -->
+                    <div class="flex flex-col items-center text-center relative">
+                        <div class="hidden md:block absolute -left-4 top-5 text-emerald-400/50">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                        </div>
+                        <div class="w-14 h-14 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center text-emerald-300 mb-3 shadow-inner hover:scale-105 transition-transform">
+                            <!-- Voucher / Document Icon -->
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-base font-bold text-white mb-1">4. Confirmed!</h3>
+                        <p class="text-xs text-slate-300 leading-snug">Instant voucher with map sent to guest</p>
+                    </div>
+
+                    <!-- Step 5: OTA Sync -->
+                    <div class="flex flex-col items-center text-center relative">
+                        <div class="hidden md:block absolute -left-4 top-5 text-emerald-400/50">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                        </div>
+                        <div class="w-14 h-14 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center text-emerald-300 mb-3 shadow-inner hover:scale-105 transition-transform">
+                            <!-- 2-Way Sync Icon -->
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-base font-bold text-white mb-1">5. Sites Blocked</h3>
+                        <p class="text-xs text-slate-300 leading-snug">Airbnb &amp; Booking.com auto-blocked</p>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- Tagline Banner Below Dark Container -->
+        <div class="text-center pt-12 sm:pt-14 pb-4 max-w-4xl mx-auto px-4">
+            <h3 class="text-2xl sm:text-3xl md:text-4xl font-serif font-bold text-slate-900 leading-tight">
+                Other software waits until someone books.<br>
+                <span class="text-emerald-800">GroundCode helps you from first message</span> — and runs your whole day.
+            </h3>
+            <p class="text-slate-500 text-xs sm:text-sm mt-3 max-w-xl mx-auto font-sans">
+                Zero middleman fees. Total clarity on rooms and cash.
+            </p>
+        </div>
     </section>
 
     <!-- SECTION: HOW IT HELPS YOU EVERY DAY -->
@@ -166,10 +335,10 @@
         <div class="text-center px-6 sm:px-0 mb-10 sm:mb-14">
 
             <h2 class="text-2xl sm:text-3xl font-serif font-bold text-slate-900 mb-2">
-                What GroundCode Solves For You
+                What GroundCode Fixes For You
             </h2>
             <p class="text-sm text-slate-600 font-sans max-w-xl mx-auto">
-                Simple daily tools so you never feel stressed.
+                Simple everyday tools so you never feel stressed.
             </p>
         </div>
 
@@ -181,12 +350,10 @@
                         <div class="w-10 h-10 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center border border-blue-100 group-hover:scale-110 transition-transform shrink-0">
                             <svg class="w-5 h-5" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
                         </div>
-                        <h3 class="text-lg font-serif font-bold text-slate-900">Zero staff arguments</h3>
+                        <h3 class="text-lg font-serif font-bold text-slate-900">No more staff arguments</h3>
                     </div>
-                    <p class="text-slate-600 text-sm leading-relaxed">
-                        Every action logs staff name and time.<br>
-                        No more excuses.
-                    </p>
+                    <p class="text-slate-600 text-sm leading-relaxed">Every task saves staff name.<br>
+                        Zero excuses or guessing.</p>
 
                     <!-- Rich UI Micro-Preview -->
                     <div class="bg-slate-50/80 rounded-2xl p-2.5 border border-slate-200/80 my-3 space-y-1.5 font-sans">
@@ -203,10 +370,6 @@
                         </div>
                     </div>
                 </div>
-                <div class="pt-2 border-t border-slate-100 text-xs text-blue-600 font-semibold flex items-center justify-between">
-                    <span>Total staff accountability</span>
-                    <svg class="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" width="24" height="24" fill="none" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M19 12H5m14 0-4 4m4-4-4-4"></path></svg>
-                </div>
             </div>
 
             <!-- Benefit 2: Never Drop a Request -->
@@ -216,12 +379,10 @@
                         <div class="w-10 h-10 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center border border-purple-100 group-hover:scale-110 transition-transform shrink-0">
                             <svg class="w-5 h-5" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
                         </div>
-                        <h3 class="text-lg font-serif font-bold text-slate-900">Never drop a guest request</h3>
+                        <h3 class="text-lg font-serif font-bold text-slate-900">Never forget a guest request</h3>
                     </div>
-                    <p class="text-slate-600 text-sm leading-relaxed mb-3">
-                        Towels, tea, or water alerts staff.<br>
-                        Gentle reminders if forgotten.
-                    </p>
+                    <p class="text-slate-600 text-sm leading-relaxed mb-3">Guest asks alert staff instantly.<br>
+                        Phone reminds them automatically.</p>
 
                     <!-- Real Staff Photo with Floating Nudge Preview -->
                     <div class="relative rounded-2xl overflow-hidden mb-3 border border-slate-200 shadow-2xs">
@@ -232,10 +393,6 @@
                             <span class="bg-blue-600 text-white px-1.5 py-0.5 rounded text-xs font-bold shrink-0 ml-1">Assigned</span>
                         </div>
                     </div>
-                </div>
-                <div class="pt-2 border-t border-slate-100 text-xs text-purple-600 font-semibold flex items-center justify-between">
-                    <span>Happy guests, great reviews</span>
-                    <svg class="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" width="24" height="24" fill="none" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M19 12H5m14 0-4 4m4-4-4-4"></path></svg>
                 </div>
             </div>
 
@@ -248,10 +405,8 @@
                         </div>
                         <h3 class="text-lg font-serif font-bold text-slate-900">Photo proof for every rupee</h3>
                     </div>
-                    <p class="text-slate-600 text-sm leading-relaxed">
-                        Staff snaps photos of every bill.<br>
-                        Advances recorded in one tap.
-                    </p>
+                    <p class="text-slate-600 text-sm leading-relaxed">Staff snaps bill photos.<br>
+                        Every single rupee recorded.</p>
 
                     <!-- Rich UI Micro-Preview -->
                     <div class="bg-slate-50/80 rounded-2xl p-2.5 border border-slate-200/80 my-3 space-y-1.5 font-sans">
@@ -265,10 +420,6 @@
                         </div>
                     </div>
                 </div>
-                <div class="pt-2 border-t border-slate-100 text-xs text-emerald-600 font-semibold flex items-center justify-between">
-                    <span>Zero missing cash</span>
-                    <svg class="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" width="24" height="24" fill="none" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M19 12H5m14 0-4 4m4-4-4-4"></path></svg>
-                </div>
             </div>
 
             <!-- Benefit 4: Instant Guest ID Alerts -->
@@ -280,10 +431,8 @@
                         </div>
                         <h3 class="text-lg font-serif font-bold text-slate-900">Instant guest ID alerts</h3>
                     </div>
-                    <p class="text-slate-600 text-sm leading-relaxed">
-                        Clear alerts if photo ID is missing.<br>
-                        Stay compliant easily.
-                    </p>
+                    <p class="text-slate-600 text-sm leading-relaxed">Instant alert for missing IDs.<br>
+                        Keep stays safe.</p>
 
                     <!-- Rich UI Micro-Preview -->
                     <div class="bg-slate-50/80 rounded-2xl p-2.5 border border-slate-200/80 my-3 space-y-1.5 font-sans">
@@ -297,10 +446,6 @@
                         </div>
                     </div>
                 </div>
-                <div class="pt-2 border-t border-slate-100 text-xs text-amber-600 font-semibold flex items-center justify-between">
-                    <span>Safe and compliant homestay</span>
-                    <svg class="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" width="24" height="24" fill="none" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M19 12H5m14 0-4 4m4-4-4-4"></path></svg>
-                </div>
             </div>
 
             <!-- Benefit 5: Meals & Tea Billed -->
@@ -312,10 +457,8 @@
                         </div>
                         <h3 class="text-lg font-serif font-bold text-slate-900">Every meal & tea gets billed</h3>
                     </div>
-                    <p class="text-slate-600 text-sm leading-relaxed">
-                        Cook taps to confirm snacks or chai.<br>
-                        Directly added to bill.
-                    </p>
+                    <p class="text-slate-600 text-sm leading-relaxed">Cook taps to confirm meals.<br>
+                        Added straight to bill.</p>
 
                     <!-- Rich UI Micro-Preview -->
                     <div class="bg-slate-50/80 rounded-2xl p-2.5 border border-slate-200/80 my-3 space-y-1.5 font-sans">
@@ -329,10 +472,6 @@
                         </div>
                     </div>
                 </div>
-                <div class="pt-2 border-t border-slate-100 text-xs text-rose-600 font-semibold flex items-center justify-between">
-                    <span>Zero unbilled meals at checkout</span>
-                    <svg class="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" width="24" height="24" fill="none" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M19 12H5m14 0-4 4m4-4-4-4"></path></svg>
-                </div>
             </div>
 
             <!-- Benefit 6: Save 15-25% OTA Fees on Direct Bookings -->
@@ -342,12 +481,10 @@
                         <div class="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center border border-emerald-100 group-hover:scale-110 transition-transform shrink-0">
                             <svg class="w-5 h-5" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path></svg>
                         </div>
-                        <h3 class="text-lg font-serif font-bold text-slate-900">Save 15–25% OTA fees on direct bookings</h3>
+                        <h3 class="text-lg font-serif font-bold text-slate-900">Direct booking links</h3>
                     </div>
-                    <p class="text-slate-600 text-sm leading-relaxed">
-                        Save 15–25% commission paid to OTAs.<br>
-                        Convert repeat guests with instant WhatsApp vouchers.
-                    </p>
+                    <p class="text-slate-600 text-sm leading-relaxed">Send payment link on WhatsApp.<br>
+                        Zero commissions or middlemen.</p>
 
                     <!-- Rich UI Micro-Preview -->
                     <div class="bg-slate-50/80 rounded-2xl p-2.5 border border-slate-200/80 my-3 space-y-1.5 font-sans">
@@ -361,10 +498,6 @@
                         </div>
                     </div>
                 </div>
-                <div class="pt-2 border-t border-slate-100 text-xs text-emerald-600 font-semibold flex items-center justify-between">
-                    <span>Keep 100% room earnings on repeat guests</span>
-                    <svg class="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" width="24" height="24" fill="none" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M19 12H5m14 0-4 4m4-4-4-4"></path></svg>
-                </div>
             </div>
         </div>
 
@@ -376,7 +509,7 @@
                 </div>
                 <div>
                     <h4 class="text-sm sm:text-base font-serif font-bold text-white mb-1">Staff uses only Telegram with zero new apps to learn</h4>
-                    <p class="text-xs sm:text-sm text-slate-300">No stress of onboarding guards or cleaners — they stay in the loop seamlessly.</p>
+                    <p class="text-xs sm:text-sm text-slate-300">No onboarding stress. Cleaners and staff stay in loop.</p>
                 </div>
             </div>
             <span class="text-xs font-semibold text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-3.5 py-1.5 rounded-full whitespace-nowrap">
@@ -404,7 +537,7 @@
                     </h2>
 
                     <p class="text-slate-300 text-sm sm:text-base leading-relaxed font-sans">
-                        Update your room tariffs, minimum stays, and weekend surge prices once in GroundCode. Rates and calendar blocks push to <strong>Airbnb, Booking.com, Agoda, MakeMyTrip, and Expedia</strong> in seconds.
+                        Update prices once. Syncs to Airbnb and Booking.com instantly.
                     </p>
 
                     <div class="space-y-3.5 pt-1">
@@ -414,7 +547,7 @@
                             </div>
                             <div>
                                 <h4 class="text-xs font-bold text-white mb-1">Instant 2-Way ARI Outbox Sync</h4>
-                                <p class="text-xs text-slate-400 leading-relaxed">Change room prices or availability in GroundCode, and our persistent outbox worker synchronizes rates across all connected OTA channels immediately.</p>
+                                <p class="text-xs text-slate-400 leading-relaxed">Change rates anytime. Syncs across all sites right away.</p>
                             </div>
                         </div>
 
@@ -424,7 +557,7 @@
                             </div>
                             <div>
                                 <h4 class="text-xs font-bold text-white mb-1">Zero Double-Bookings Guarantee</h4>
-                                <p class="text-xs text-slate-400 leading-relaxed">When a guest books on Airbnb or Booking.com, inbound webhooks immediately create the booking and lock out the dates on all other OTAs and your direct booking calendar.</p>
+                                <p class="text-xs text-slate-400 leading-relaxed">When guests book, dates lock everywhere. Zero double-bookings.</p>
                             </div>
                         </div>
 
@@ -434,7 +567,7 @@
                             </div>
                             <div>
                                 <h4 class="text-xs font-bold text-white mb-1">0% Commission Direct Booking Engine</h4>
-                                <p class="text-xs text-slate-400 leading-relaxed">Share your live, mobile-friendly direct booking link with guests for instant reservations and direct bank payments via UPI QR with 0% middleman fees.</p>
+                                <p class="text-xs text-slate-400 leading-relaxed">Share direct links. Guests pay UPI with 0% fees.</p>
                             </div>
                         </div>
                     </div>
@@ -562,7 +695,7 @@
     </section>
 
     <!-- SECTION: SAVE 15-25% OTA FEES ON DIRECT BOOKINGS -->
-    <section id="ota-savings" class="max-w-7xl mx-auto px-0 sm:px-6 py-14 border-t border-slate-200 scroll-mt-24">
+    <section id="booking-engine" class="max-w-7xl mx-auto px-0 sm:px-6 py-14 border-t border-slate-200 scroll-mt-24">
         <div class="bg-gradient-to-br from-emerald-900 via-slate-900 to-slate-950 text-white rounded-none sm:rounded-3xl p-6 sm:p-12 shadow-2xl border-y border-x-0 sm:border border-emerald-500/30 relative overflow-hidden">
             <div class="absolute -top-24 -right-24 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
@@ -575,8 +708,7 @@
                     </h2>
 
                     <p class="text-slate-300 text-sm sm:text-base leading-relaxed font-sans max-w-xl">
-                        Stop giving away your profits on repeat guests.<br>
-                        Convert past guests into 100% direct revenue.
+                        Send link in 5 seconds. Guests pay UPI directly.
                     </p>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
@@ -747,8 +879,8 @@
                         Everything today in one easy view
                     </h3>
                     <p class="text-slate-600 text-sm sm:text-base leading-relaxed">
-                        Arrivals, checkouts, and drawer cash.<br>
-                        Know your property status in 3 seconds.
+                        Arrivals, checkouts, and cash.<br>
+                        See full status in seconds.
                     </p>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
                         <div class="flex items-center gap-2 text-xs font-semibold text-slate-700">
@@ -780,8 +912,8 @@
                         Real profits without Excel sheets
                     </h3>
                     <p class="text-slate-600 text-sm sm:text-base leading-relaxed">
-                        Track room income, food sales, and expenses.<br>
-                        Know your take-home profit anytime.
+                        Track room and food sales.<br>
+                        See take-home profit anytime.
                     </p>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
                         <div class="flex items-center gap-2 text-xs font-semibold text-slate-700">
@@ -889,7 +1021,7 @@
             </div>
 
             <!-- SCREEN 3: Live KDS & Kitchen (Screenshot Left, Text Right) -->
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center" id="kitchen-kds" style="scroll-margin-top: 6rem;">
                 <!-- Screenshot Mockup Column -->
                 <div class="lg:col-span-7 px-4 sm:px-0">
                     <div class="bg-slate-900 rounded-2xl p-2.5 sm:p-3 screen-shadow">
@@ -956,11 +1088,11 @@
                 <div class="lg:col-span-5 px-6 sm:px-0 space-y-4">
 
                     <h3 class="text-2xl sm:text-3xl font-serif font-bold text-slate-900 leading-tight">
-                        Kitchen orders go straight to tablet
+                        Kitchen orders go straight to cook's phone
                     </h3>
                     <p class="text-slate-600 text-sm sm:text-base leading-relaxed">
-                        Cook taps when food is ready.<br>
-                        Items add directly to the guest's folio.
+                        Cook taps when ready.<br>
+                        Items add to guest bill.
                     </p>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
                         <div class="flex items-center gap-2 text-xs font-semibold text-slate-700">
@@ -984,7 +1116,7 @@
             </div>
 
             <!-- SCREEN 4: Cash Drawer, Petty Cash & Staff Advances (Text Left, Screenshot Right) -->
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center" id="cash-is-king" style="scroll-margin-top: 6rem;">
                 <!-- Text Column -->
                 <div class="lg:col-span-5 order-2 lg:order-1 px-6 sm:px-0 space-y-4">
 
@@ -992,13 +1124,13 @@
                         Every single rupee accounted for
                     </h3>
                     <p class="text-slate-600 text-sm sm:text-base leading-relaxed">
-                        Track who collected cash at reception.<br>
-                        Log salary advances with zero payday disputes.
+                        Know who collected cash.<br>
+                        Staff snaps bill photo.
                     </p>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
                         <div class="flex items-center gap-2 text-xs font-semibold text-slate-700">
                             <svg class="w-4 h-4 text-emerald-600 shrink-0" width="24" height="24" fill="none" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0"></path></svg>
-                            <span>Shift Cash Reconciled</span>
+                            <span>Shift Cash Matched in 2m</span>
                         </div>
                         <div class="flex items-center gap-2 text-xs font-semibold text-slate-700">
                             <svg class="w-4 h-4 text-emerald-600 shrink-0" width="24" height="24" fill="none" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0"></path></svg>
@@ -1006,11 +1138,11 @@
                         </div>
                         <div class="flex items-center gap-2 text-xs font-semibold text-slate-700">
                             <svg class="w-4 h-4 text-emerald-600 shrink-0" width="24" height="24" fill="none" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0"></path></svg>
-                            <span>Petty Cash Photo Proof</span>
+                            <span>Photo Proof For Every Slip</span>
                         </div>
                         <div class="flex items-center gap-2 text-xs font-semibold text-slate-700">
                             <svg class="w-4 h-4 text-emerald-600 shrink-0" width="24" height="24" fill="none" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0"></path></svg>
-                            <span>Exact Staff Timestamps</span>
+                            <span>Zero Doubt on Who Spent What</span>
                         </div>
                     </div>
                 </div>
@@ -1142,8 +1274,8 @@
                         Daily staff attendance & easy payroll
                     </h3>
                     <p class="text-slate-600 text-sm sm:text-base leading-relaxed">
-                        Mark attendance in 10 seconds.<br>
-                        Deducts advances automatically on month-end payday.
+                        Mark attendance in seconds.<br>
+                        Advances deducted on payday.
                     </p>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
                         <div class="flex items-center gap-2 text-xs font-semibold text-slate-700">
@@ -1249,8 +1381,8 @@
                         Staff already knows how to use it
                     </h3>
                     <p class="text-slate-600 text-sm sm:text-base leading-relaxed">
-                        No new apps for ground staff to install.<br>
-                        Staff runs tasks directly inside Telegram.
+                        Zero new apps needed.<br>
+                        Staff runs tasks in Telegram.
                     </p>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
                         <div class="flex items-center gap-2 text-xs font-semibold text-slate-700">
@@ -1307,7 +1439,7 @@
                 </div>
             </div>
 
-            <!-- Card 2: Food & Kitchen -->
+            <!-- Card 2: Kitchen & Food -->
             <div class="bg-white p-6 sm:p-8 rounded-none sm:rounded-3xl border-y border-x-0 sm:border border-slate-200 shadow-2xs hover-shadow-lg transition-all relative overflow-hidden flex flex-col justify-between">
                 <div class="absolute top-0 left-0 w-full h-1.5 bg-amber-500"></div>
                 <div>
@@ -1345,41 +1477,233 @@
         </div>
     </section>
 
-    <!-- SECTION: WHO IS IT FOR (Property Types) -->
-    <section id="who-its-for" class="max-w-7xl mx-auto px-0 sm:px-6 py-12 border-t border-slate-200 scroll-mt-24">
-        <div class="text-center px-6 sm:px-0 mb-8">
-            <h2 class="text-2xl sm:text-3xl font-serif font-bold text-slate-900 mb-2">
-                Built For You.
-            </h2>
+        <!-- SECTION: TAILORED FOR EVERY KIND OF PROPERTY (Automated Slideshow) -->
+    <section id="who-its-for" class="max-w-7xl mx-auto px-3 sm:px-6 py-8 sm:py-12 lg:py-16 border-t border-slate-200 scroll-mt-20">
+        <div id="tailored-prop-card" class="bg-[#EEF4FB] rounded-2xl sm:rounded-3xl p-4 sm:p-8 lg:p-10 border border-slate-200/80 shadow-xs relative overflow-hidden" style="background-color: #EEF4FB;">
+            <!-- Header -->
+            <div class="text-center max-w-2xl mx-auto mb-4 sm:mb-6 lg:mb-8">
+                <h2 class="text-xl sm:text-3xl lg:text-4xl font-serif font-bold text-slate-900 mb-1 tracking-tight">
+                    Made for every kind of stay
+                </h2>
+                <p class="text-slate-600 text-xs sm:text-sm lg:text-base font-sans">
+                    For small stays or villas. Work simple and calm.
+                </p>
+            </div>
+
+            <!-- Slideshow Wrapper with Left/Right Arrows -->
+            <div class="relative max-w-5xl mx-auto" id="prop-carousel-container">
+                <!-- Left Navigation Arrow -->
+                <button type="button" id="prop-prev-btn" aria-label="Previous stay type" class="absolute left-1 sm:left-2 lg:-left-5 top-1/2 -translate-y-1/2 z-30 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/95 hover:bg-white text-slate-800 shadow-md flex items-center justify-center border border-slate-200 hover:scale-105 active:scale-95 transition-all cursor-pointer">
+                    <svg class="w-4 h-4 sm:w-5 sm:h-5 text-slate-700" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
+                </button>
+
+                <!-- Right Navigation Arrow -->
+                <button type="button" id="prop-next-btn" aria-label="Next stay type" class="absolute right-1 sm:right-2 lg:-right-5 top-1/2 -translate-y-1/2 z-30 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/95 hover:bg-white text-slate-800 shadow-md flex items-center justify-center border border-slate-200 hover:scale-105 active:scale-95 transition-all cursor-pointer">
+                    <svg class="w-4 h-4 sm:w-5 sm:h-5 text-slate-700" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+                </button>
+
+                <!-- Slide Overflow Viewport -->
+                <div class="overflow-hidden rounded-2xl sm:rounded-3xl shadow-xs">
+                    <div id="prop-slides-track" class="flex transition-transform duration-500 ease-out w-full select-none cursor-grab active:cursor-grabbing">
+                        
+                        <!-- Slide 1: Villas -->
+                        <div class="w-full shrink-0">
+                            <div class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl border border-slate-200/70 grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 items-center">
+                                <div class="lg:col-span-6 relative overflow-hidden rounded-xl lg:rounded-2xl h-40 sm:h-56 lg:h-72 w-full bg-slate-100 shadow-2xs">
+                                    <img src="assets/images/prop-villa.jpg" alt="Vacation homes & villas" class="w-full h-full object-cover">
+                                </div>
+                                <div class="lg:col-span-6 space-y-2 sm:space-y-3">
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-2xs sm:text-xs font-bold uppercase tracking-wider border border-blue-200">Vacation Homes & Villas</span>
+                                    <h3 class="text-lg sm:text-2xl font-serif font-bold text-slate-900 leading-snug">Whole villas & apartments</h3>
+                                    <p class="text-slate-600 text-xs sm:text-sm leading-relaxed font-sans">
+                                        Rent whole homes simply. Send link, keep full money.
+                                    </p>
+                                    <div class="flex flex-wrap gap-1.5 sm:gap-2 pt-1">
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-2xs sm:text-xs font-semibold border border-slate-200/70">Rent Whole Houses</span>
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-2xs sm:text-xs font-semibold border border-slate-200/70">Keep All Your Money</span>
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-2xs sm:text-xs font-semibold border border-slate-200/70">Cleaner Checklists</span>
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-2xs sm:text-xs font-semibold border border-slate-200/70">Direct Bank / UPI Pay</span>
+                                    </div>
+                                    <div class="pt-2 sm:pt-3 border-t border-slate-100 text-[11px] sm:text-xs text-slate-500 font-medium flex items-center gap-1.5">
+                                        <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+                                        <span>Stop losing big cuts to outside booking sites</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Slide 2: Hotels -->
+                        <div class="w-full shrink-0">
+                            <div class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl border border-slate-200/70 grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 items-center">
+                                <div class="lg:col-span-6 relative overflow-hidden rounded-xl lg:rounded-2xl h-40 sm:h-56 lg:h-72 w-full bg-slate-100 shadow-2xs">
+                                    <img src="assets/images/prop-hotel.jpg" alt="Small boutique hotels" class="w-full h-full object-cover">
+                                </div>
+                                <div class="lg:col-span-6 space-y-2 sm:space-y-3">
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-2xs sm:text-xs font-bold uppercase tracking-wider border border-blue-200">Boutique Hotels</span>
+                                    <h3 class="text-lg sm:text-2xl font-serif font-bold text-slate-900 leading-snug">Small boutique hotels</h3>
+                                    <p class="text-slate-600 text-xs sm:text-sm leading-relaxed font-sans">
+                                        Sync all rooms automatically. Print bills and send orders.
+                                    </p>
+                                    <div class="flex flex-wrap gap-1.5 sm:gap-2 pt-1">
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-2xs sm:text-xs font-semibold border border-slate-200/70">Automatic Calendar Sync</span>
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-2xs sm:text-xs font-semibold border border-slate-200/70">Kitchen Order Screen</span>
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-2xs sm:text-xs font-semibold border border-slate-200/70">Simple Tax Invoices</span>
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-2xs sm:text-xs font-semibold border border-slate-200/70">Manage All Room Types</span>
+                                    </div>
+                                    <div class="pt-2 sm:pt-3 border-t border-slate-100 text-[11px] sm:text-xs text-slate-500 font-medium flex items-center gap-1.5">
+                                        <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+                                        <span>No more stressful double-bookings</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Slide 3: Homestays & B&Bs -->
+                        <div class="w-full shrink-0">
+                            <div class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl border border-slate-200/70 grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 items-center">
+                                <div class="lg:col-span-6 relative overflow-hidden rounded-xl lg:rounded-2xl h-40 sm:h-56 lg:h-72 w-full bg-slate-100 shadow-2xs">
+                                    <img src="assets/images/prop-bnb.jpg" alt="Homestays & bed and breakfasts" class="w-full h-full object-cover">
+                                </div>
+                                <div class="lg:col-span-6 space-y-2 sm:space-y-3">
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-2xs sm:text-xs font-bold uppercase tracking-wider border border-blue-200">Homestays & B&Bs</span>
+                                    <h3 class="text-lg sm:text-2xl font-serif font-bold text-slate-900 leading-snug">Homestays & bed and breakfasts</h3>
+                                    <p class="text-slate-600 text-xs sm:text-sm leading-relaxed font-sans">
+                                        Warmest welcome, zero paper books. Track orders and cash.
+                                    </p>
+                                    <div class="flex flex-wrap gap-1.5 sm:gap-2 pt-1">
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-2xs sm:text-xs font-semibold border border-slate-200/70">WhatsApp Booking Link</span>
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-2xs sm:text-xs font-semibold border border-slate-200/70">Breakfast & Chai List</span>
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-2xs sm:text-xs font-semibold border border-slate-200/70">Daily Grocery Receipts</span>
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-2xs sm:text-xs font-semibold border border-slate-200/70">1-Click Guest Check-In</span>
+                                    </div>
+                                    <div class="pt-2 sm:pt-3 border-t border-slate-100 text-[11px] sm:text-xs text-slate-500 font-medium flex items-center gap-1.5">
+                                        <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+                                        <span>Zero guest sign-up • Direct UPI to bank</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Slide 4: Guest Houses -->
+                        <div class="w-full shrink-0">
+                            <div class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl border border-slate-200/70 grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 items-center">
+                                <div class="lg:col-span-6 relative overflow-hidden rounded-xl lg:rounded-2xl h-40 sm:h-56 lg:h-72 w-full bg-slate-100 shadow-2xs">
+                                    <img src="assets/images/prop-guesthouse.jpg" alt="Guest houses & family rooms" class="w-full h-full object-cover">
+                                </div>
+                                <div class="lg:col-span-6 space-y-2 sm:space-y-3">
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-2xs sm:text-xs font-bold uppercase tracking-wider border border-blue-200">Guest Houses</span>
+                                    <h3 class="text-lg sm:text-2xl font-serif font-bold text-slate-900 leading-snug">Guest houses & family rooms</h3>
+                                    <p class="text-slate-600 text-xs sm:text-sm leading-relaxed font-sans">
+                                        Fast check-ins. Snap IDs, take cash, track clean rooms.
+                                    </p>
+                                    <div class="flex flex-wrap gap-1.5 sm:gap-2 pt-1">
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-2xs sm:text-xs font-semibold border border-slate-200/70">Fast ID Photos</span>
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-2xs sm:text-xs font-semibold border border-slate-200/70">Instant Cash & UPI</span>
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-2xs sm:text-xs font-semibold border border-slate-200/70">Room Cleaning Status</span>
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-2xs sm:text-xs font-semibold border border-slate-200/70">Zero Guest Sign-Up</span>
+                                    </div>
+                                    <div class="pt-2 sm:pt-3 border-t border-slate-100 text-[11px] sm:text-xs text-slate-500 font-medium flex items-center gap-1.5">
+                                        <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+                                        <span>Check in guests in under 60 seconds</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Slide 5: Glamping -->
+                        <div class="w-full shrink-0">
+                            <div class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl border border-slate-200/70 grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 items-center">
+                                <div class="lg:col-span-6 relative overflow-hidden rounded-xl lg:rounded-2xl h-40 sm:h-56 lg:h-72 w-full bg-slate-100 shadow-2xs">
+                                    <img src="assets/images/prop-glamping.jpg" alt="Tents, camps & glamping" class="w-full h-full object-cover">
+                                </div>
+                                <div class="lg:col-span-6 space-y-2 sm:space-y-3">
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-2xs sm:text-xs font-bold uppercase tracking-wider border border-blue-200">Tents & Glamping</span>
+                                    <h3 class="text-lg sm:text-2xl font-serif font-bold text-slate-900 leading-snug">Tents, camps & glamping</h3>
+                                    <p class="text-slate-600 text-xs sm:text-sm leading-relaxed font-sans">
+                                        Runs on weak internet. Collect advance money before arrival.
+                                    </p>
+                                    <div class="flex flex-wrap gap-1.5 sm:gap-2 pt-1">
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-2xs sm:text-xs font-semibold border border-slate-200/70">Works on Weak Internet</span>
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-2xs sm:text-xs font-semibold border border-slate-200/70">Bonfire & BBQ Charges</span>
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-2xs sm:text-xs font-semibold border border-slate-200/70">Pre-Arrival Payment Links</span>
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-2xs sm:text-xs font-semibold border border-slate-200/70">Super Easy on Phone</span>
+                                    </div>
+                                    <div class="pt-2 sm:pt-3 border-t border-slate-100 text-[11px] sm:text-xs text-slate-500 font-medium flex items-center gap-1.5">
+                                        <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+                                        <span>Runs smoothly even in deep valleys & forests</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Slide 6: Farm Stays -->
+                        <div class="w-full shrink-0">
+                            <div class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl border border-slate-200/70 grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 items-center">
+                                <div class="lg:col-span-6 relative overflow-hidden rounded-xl lg:rounded-2xl h-40 sm:h-56 lg:h-72 w-full bg-slate-100 shadow-2xs">
+                                    <img src="assets/images/prop-farmstay.jpg" alt="Farm stays & nature retreats" class="w-full h-full object-cover">
+                                </div>
+                                <div class="lg:col-span-6 space-y-2 sm:space-y-3">
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-2xs sm:text-xs font-bold uppercase tracking-wider border border-blue-200">Farm Stays</span>
+                                    <h3 class="text-lg sm:text-2xl font-serif font-bold text-slate-900 leading-snug">Farm stays & nature retreats</h3>
+                                    <p class="text-slate-600 text-xs sm:text-sm leading-relaxed font-sans">
+                                        Note down meals, track cash, spend days with nature.
+                                    </p>
+                                    <div class="flex flex-wrap gap-1.5 sm:gap-2 pt-1">
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-2xs sm:text-xs font-semibold border border-slate-200/70">Home-Cooked Meal Tracker</span>
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-2xs sm:text-xs font-semibold border border-slate-200/70">Worker Cash Tracking</span>
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-2xs sm:text-xs font-semibold border border-slate-200/70">Direct UPI Payments</span>
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-2xs sm:text-xs font-semibold border border-slate-200/70">Clean & Simple Screen</span>
+                                    </div>
+                                    <div class="pt-2 sm:pt-3 border-t border-slate-100 text-[11px] sm:text-xs text-slate-500 font-medium flex items-center gap-1.5">
+                                        <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+                                        <span>Spend your day in the garden, not on computers</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Slide Dot Indicators -->
+                <div class="flex items-center justify-center gap-2 mt-4" id="prop-dots">
+                    <button type="button" class="prop-dot w-2 h-2 rounded-full transition-all duration-200 bg-blue-600 scale-125" data-index="0" aria-label="Slide 1"></button>
+                    <button type="button" class="prop-dot w-2 h-2 rounded-full transition-all duration-200 bg-slate-300 hover:bg-slate-400" data-index="1" aria-label="Slide 2"></button>
+                    <button type="button" class="prop-dot w-2 h-2 rounded-full transition-all duration-200 bg-slate-300 hover:bg-slate-400" data-index="2" aria-label="Slide 3"></button>
+                    <button type="button" class="prop-dot w-2 h-2 rounded-full transition-all duration-200 bg-slate-300 hover:bg-slate-400" data-index="3" aria-label="Slide 4"></button>
+                    <button type="button" class="prop-dot w-2 h-2 rounded-full transition-all duration-200 bg-slate-300 hover:bg-slate-400" data-index="4" aria-label="Slide 5"></button>
+                    <button type="button" class="prop-dot w-2 h-2 rounded-full transition-all duration-200 bg-slate-300 hover:bg-slate-400" data-index="5" aria-label="Slide 6"></button>
+                </div>
+            </div>
         </div>
+    </section>
 
-        <div class="flex flex-wrap items-center justify-center gap-3 sm:gap-4 max-w-4xl mx-auto px-4 sm:px-0">
-            <div class="inline-flex items-center gap-2.5 px-4 py-2.5 bg-white border border-slate-200 rounded-2xl shadow-2xs text-slate-800 font-semibold text-xs sm:text-sm hover:border-purple-300 hover:shadow-xs transition-all">
-                <div class="w-7 h-7 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
-                    <svg class="w-4 h-4" width="24" height="24" fill="none" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="m4 12 8-8 8 8M6 10.5V19a1 1 0 0 0 1 1h3v-3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3h3a1 1 0 0 0 1-1v-8.5"></path></svg>
-                </div>
-                <span>Homestays & B&Bs</span>
-            </div>
+    <!-- SECTION: READY TO TAKE 80% WORK LOAD? (Aligned with Site Design) -->
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
+        <div id="workload-cta-card" class="bg-[#09261B] rounded-3xl sm:rounded-[2.5rem] p-8 sm:p-14 lg:p-16 text-center text-white shadow-2xl relative overflow-hidden border border-emerald-800/40" style="background-color: #09261B; color: #ffffff;">
+            <!-- Ambient emerald glow accents matching booking lifecycle -->
+            <div class="absolute -right-20 -bottom-20 w-80 h-80 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none"></div>
+            <div class="absolute -left-20 -top-20 w-80 h-80 rounded-full bg-emerald-600/15 blur-3xl pointer-events-none"></div>
 
-            <div class="inline-flex items-center gap-2.5 px-4 py-2.5 bg-white border border-slate-200 rounded-2xl shadow-2xs text-slate-800 font-semibold text-xs sm:text-sm hover:border-emerald-300 hover:shadow-xs transition-all">
-                <div class="w-7 h-7 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                    <svg class="w-4 h-4" width="24" height="24" fill="none" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M6 4h12M6 4v16M6 4H5m13 0v16m0-16h1m-1 16H6m12 0h1M6 20H5M9 7h1v1H9zm5 0h1v1h-1zm-5 4h1v1H9zm5 0h1v1h-1zm-3 4h2a1 1 0 0 1 1 1v4h-4v-4a1 1 0 0 1 1-1"></path></svg>
+            <div class="relative z-10 max-w-3xl mx-auto">
+                <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/10 border border-white/15 text-amber-400 text-xs font-mono font-bold uppercase tracking-wider mb-5">
+                    <span class="text-amber-400 font-black">||||||</span>
+                    <span>TAKE BACK YOUR DAY</span>
                 </div>
-                <span>Guest Houses</span>
-            </div>
 
-            <div class="inline-flex items-center gap-2.5 px-4 py-2.5 bg-white border border-slate-200 rounded-2xl shadow-2xs text-slate-800 font-semibold text-xs sm:text-sm hover:border-amber-300 hover:shadow-xs transition-all">
-                <div class="w-7 h-7 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-                    <svg class="w-4 h-4" width="24" height="24" fill="none" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M9.839 12.454s1.25-3.088-.216-5.29-5.036-3.055-5.225-2.92c-.189.134-1.118 3.325.348 5.527s5.093 2.683 5.093 2.683m0 0C10.339 13.454 12 15 12 18v2c0-2-.43-3.419 2.07-5.919m0 0s-.49-2.789 1.12-4.358 4.49-1.547 4.67-1.284.432 2.844-1.08 4.318c-1.61 1.569-4.71 1.324-4.71 1.324"></path></svg>
-                </div>
-                <span>Farm Stays & Eco Stays</span>
-            </div>
+                <h2 class="text-3xl sm:text-5xl lg:text-6xl font-serif font-bold text-white tracking-tight mb-6 leading-tight">
+                    Ready to take 80% work load?
+                </h2>
 
-            <div class="inline-flex items-center gap-2.5 px-4 py-2.5 bg-white border border-slate-200 rounded-2xl shadow-2xs text-slate-800 font-semibold text-xs sm:text-sm hover:border-blue-300 hover:shadow-xs transition-all">
-                <div class="w-7 h-7 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                    <svg class="w-4 h-4" width="24" height="24" fill="none" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M16.872 9.687 20 6.56 17.44 4 4 17.44 6.56 20 16.873 9.687Zm0 0-2.56-2.56M6 7v2m0 0v2m0-2H4m2 0h2m7 7v2m0 0v2m0-2h-2m2 0h2M8 4h.01v.01H8zm2 2h.01v.01H10zm2-2h.01v.01H12zm8 8h.01v.01H20zm-2 2h.01v.01H18zm2 2h.01v.01H20z"></path></svg>
+                <div class="flex items-center justify-center mb-5">
+                    <a href="https://ground-code.com/rivera-resorts/luxe-stays/" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center px-8 py-3.5 sm:px-10 sm:py-4 bg-white hover:bg-slate-100 text-slate-900 font-bold text-sm sm:text-base rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all">
+                        <span>Try for free</span>
+                    </a>
                 </div>
-                <span>Boutique Villas</span>
+
+                <p class="text-slate-300 text-xs sm:text-sm font-medium tracking-wide">
+                    14-day trial, no credit card needed!
+                </p>
             </div>
         </div>
     </section>
@@ -1424,7 +1748,7 @@
                         <div>
                             <h4 class="text-sm font-serif font-bold text-slate-900 mb-0.5">Need extra rooms or expanding your resort?</h4>
                             <p class="text-xs text-slate-600 leading-relaxed">
-                                Simply add more room keys anytime directly inside your app dashboard — zero contracts or setup delays!
+                                Add extra rooms anytime. Zero contracts or setup delays.
                             </p>
                         </div>
                     </div>
@@ -1483,32 +1807,39 @@
         </div>
     </section>
 
-    <!-- BOTTOM CTA BANNER -->
-    <section class="max-w-7xl mx-auto px-0 sm:px-6 py-14">
-        <div class="bg-slate-900 rounded-none sm:rounded-3xl p-8 sm:p-14 text-center text-white relative overflow-hidden shadow-2xl border-y border-x-0 sm:border border-slate-800">
-            <div class="absolute -top-24 -right-24 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl pointer-events-none"></div>
+    <!-- BOTTOM CTA BANNER (Doorloom-Inspired Warm Let's Talk Section) -->
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 py-14">
+        <div class="bg-[#F8F5EE] rounded-3xl p-8 sm:p-14 text-center text-slate-900 relative overflow-hidden border border-[#E8E1D5] shadow-sm">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-[#DDD5C7] text-slate-700 text-xs font-bold uppercase tracking-wider mb-4">
+                <span>Let's Talk Operations</span>
+            </div>
             
-            <h2 class="text-2xl sm:text-4xl font-serif font-bold mb-4 relative z-10">
-                Ready to stop daily homestay stress?
+            <h2 class="text-3xl sm:text-4xl font-serif font-bold mb-3 text-slate-900">
+                Want help setting up your homestay?
             </h2>
-            <p class="text-slate-400 text-sm sm:text-base max-w-xl mx-auto mb-8 font-sans relative z-10 leading-relaxed px-6 sm:px-0">
-                Take the interactive sandbox for a spin.<br>
-                Meals, cash drawer tracking, and guest billing.
+            <p class="text-slate-600 text-sm sm:text-base max-w-xl mx-auto mb-8 font-sans leading-relaxed">
+                Message on WhatsApp. Set up in 10 minutes.
             </p>
-            <div class="flex items-center justify-center relative z-10 px-6 sm:px-0">
-                <a href="https://ground-code.com/rivera-resorts/luxe-stays/" target="_blank" rel="noopener noreferrer" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold px-8 py-3.5 rounded-xl shadow-lg shadow-blue-500/30 hover-lift transition-all text-sm flex items-center justify-center gap-2">
-                    <span>Try the Live Demo</span>
+
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-3.5 max-w-md mx-auto">
+                <a href="https://wa.me/918928700200?text=Hi%2C%20I%20want%20to%20set%20up%20GroundCode%20for%20my%20property" target="_blank" rel="noopener noreferrer" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-6 py-3 rounded-xl shadow-md hover-lift transition-all text-sm flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 00-8.6 15l-1.3 4.7 4.8-1.3A10 10 0 1012 2zm0 18a8 8 0 01-4.1-1.1l-.3-.2-2.9.8.8-2.8-.2-.3A8 8 0 1112 20zm4.4-6c-.2-.1-1.4-.7-1.6-.8-.2-.1-.4-.1-.5.1l-.7.9c-.1.2-.3.2-.5.1a6.5 6.5 0 01-1.9-1.2 7.2 7.2 0 01-1.3-1.7c-.1-.2 0-.4.1-.5l.4-.5c.1-.1.1-.3.2-.4 0-.1 0-.3-.1-.4l-.7-1.7c-.2-.4-.4-.4-.5-.4h-.5a1 1 0 00-.7.3A2.8 2.8 0 006 9.4c0 1.7 1.2 3.3 1.4 3.5.2.2 2.4 3.7 5.8 5 .8.3 1.4.5 1.9.7.8.2 1.5.2 2.1.1.6-.1 1.4-.6 1.6-1.2.2-.6.2-1.1.1-1.2 0-.1-.2-.2-.4-.3z"/></svg>
+                    <span>Message on WhatsApp</span>
+                </a>
+                <a href="https://ground-code.com/rivera-resorts/luxe-stays/" target="_blank" rel="noopener noreferrer" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl shadow-md hover-lift transition-all text-sm flex items-center justify-center gap-2">
+                    <span>Try Live Sandbox</span>
                     <svg class="w-4 h-4" width="24" height="24" fill="none" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M19 12H5m14 0-4 4m4-4-4-4"></path></svg>
                 </a>
             </div>
         </div>
     </section>
 
+
     <!-- Footer -->
     <footer class="border-t border-slate-200 bg-white pt-12 pb-8 text-slate-600">
         <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
             <div class="flex items-center gap-3">
-                <img src="dist/app-icons/icon-source.png" alt="GroundCode Logo" class="w-7 h-7 object-contain">
+                <img src="assets/images/icon-source.png" onerror="this.onerror=null; this.src='dist/app-icons/icon-source.png';" alt="GroundCode Logo" class="w-8 h-8 rounded-lg object-contain">
                 <div>
                     <span class="text-base font-bold text-slate-900">GroundCode</span>
                     <span class="text-xs text-slate-400 block -mt-0.5">Homestay Operations</span>
@@ -1528,5 +1859,100 @@
         </div>
     </footer>
 
+    <!-- Slideshow Carousel Logic (Right to left, 1s auto-advance, touch swipeable) -->
+    <script>
+    (function() {
+        const track = document.getElementById('prop-slides-track');
+        const prevBtn = document.getElementById('prop-prev-btn');
+        const nextBtn = document.getElementById('prop-next-btn');
+        const dots = document.querySelectorAll('.prop-dot');
+        const container = document.getElementById('prop-carousel-container');
+
+        if (!track || !dots.length) return;
+
+        const totalSlides = dots.length;
+        let currentSlide = 0;
+        let autoPlayTimer = null;
+
+        function goToSlide(idx) {
+            currentSlide = (idx + totalSlides) % totalSlides;
+            track.style.transform = 'translateX(-' + (currentSlide * 100) + '%)';
+            dots.forEach((d, i) => {
+                if (i === currentSlide) {
+                    d.className = 'prop-dot w-2.5 h-2.5 rounded-full transition-all duration-200 bg-blue-600 scale-125';
+                } else {
+                    d.className = 'prop-dot w-2 h-2 rounded-full transition-all duration-200 bg-slate-300 hover:bg-slate-400';
+                }
+            });
+        }
+
+        function nextSlide() {
+            goToSlide(currentSlide + 1);
+        }
+
+        function prevSlide() {
+            goToSlide(currentSlide - 1);
+        }
+
+        if (nextBtn) nextBtn.addEventListener('click', () => { nextSlide(); resetTimer(); });
+        if (prevBtn) prevBtn.addEventListener('click', () => { prevSlide(); resetTimer(); });
+
+        dots.forEach(d => {
+            d.addEventListener('click', () => {
+                const idx = parseInt(d.getAttribute('data-index'), 10);
+                goToSlide(idx);
+                resetTimer();
+            });
+        });
+
+        function startTimer() {
+            stopTimer();
+            // Automatically advance every 1 second (right to left transition)
+            autoPlayTimer = setInterval(nextSlide, 1000);
+        }
+
+        function stopTimer() {
+            if (autoPlayTimer) clearInterval(autoPlayTimer);
+            autoPlayTimer = null;
+        }
+
+        function resetTimer() {
+            stopTimer();
+            startTimer();
+        }
+
+        // Pause on hover, resume on leave
+        if (container) {
+            container.addEventListener('mouseenter', stopTimer);
+            container.addEventListener('mouseleave', startTimer);
+        }
+
+        // Touch swipe support
+        let startX = 0;
+        let isDragging = false;
+
+        track.addEventListener('touchstart', (e) => {
+            stopTimer();
+            startX = e.touches[0].clientX;
+            isDragging = true;
+        }, { passive: true });
+
+        track.addEventListener('touchend', (e) => {
+            if (!isDragging) return;
+            isDragging = false;
+            const endX = e.changedTouches[0].clientX;
+            const diff = startX - endX;
+            if (diff > 40) {
+                nextSlide(); // Swipe left -> advance next
+            } else if (diff < -40) {
+                prevSlide(); // Swipe right -> advance prev
+            }
+            startTimer();
+        }, { passive: true });
+
+        // Start 1s auto-advance
+        startTimer();
+    })();
+    </script>
 </body>
 </html>

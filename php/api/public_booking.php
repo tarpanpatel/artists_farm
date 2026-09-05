@@ -454,6 +454,20 @@ function handleCreatePublicBooking(PDO $pdo): void {
             return;
         }
 
+        // A pending "Inquiry -> Instant Quote" WhatsApp link (booking_holds.php)
+        // also locks the room for its 30-minute window - a different guest
+        // browsing the same public page must not be able to book straight
+        // over one that's actively being completed elsewhere.
+        if (is_file(__DIR__ . '/booking_holds.php')) {
+            require_once __DIR__ . '/booking_holds.php';
+            if (function_exists('getActiveBookingHoldConflict') && getActiveBookingHoldConflict($pdo, $targetRoomId, $checkinDate, $checkoutDate)) {
+                $pdo->rollBack();
+                http_response_code(409);
+                echo json_encode(['status' => 'error', 'message' => 'These dates are currently on hold for another guest completing a booking. Please try again shortly.']);
+                return;
+            }
+        }
+
         $refNumber = 'GC-' . date('ymd') . '-' . strtoupper(substr(md5(uniqid((string)mt_rand(), true)), 0, 4));
 
         $notes = "Ref: {$refNumber}\nPayment Method: {$paymentMethod}";

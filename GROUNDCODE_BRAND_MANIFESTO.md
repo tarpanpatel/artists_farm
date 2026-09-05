@@ -1,12 +1,15 @@
 # GroundCode — Brand Manifesto
-
-> **Philosophy:** Operations-First Property App  
+> **Philosophy: 1** Operations-First Property App  
+> **Philosophy: 2** Cash is King, but its hard to save and track cash, our app does that for you  
 > **Audience:** Homestay, Vacation Rental & Guesthouse Hosts (1–15 rooms)  
 > **Core Driver:** Operations Ease & Daily Peace of Mind  
-> **Design Rule:** Maximum visuals, images, icons — least words.  
-> **Bottom level Staff App:** Telegram only (Zero apps to install)  
+> **Design Rule 1:** Maximum visuals, images, icons — least words.  
+> **Design Rule 2:** No line longer than 10 words.
+> **Design Rule 3:** Never show fake URLs (e.g. `domain.com/path`) in screenshots.  
+> **Bottom level Staff App:** Telegram also (Zero apps to install ina ny situation as ours is a webapp)  
 > **Guest Share:** WhatsApp only (Direct bills & booking vouchers)  
-
+> Booking system > Guest book through the webpage without ever need to create an account, basically what you do through over call and whatsapp is now done 80% work by the webapp
+>https://doorloom.com/  < pull ideas from it only exclude >Your own brand website and Transparent pricing section
 ---
 
 ## 🏡 1. Who We Build For
@@ -86,6 +89,18 @@
    - Convert repeat guests with instant WhatsApp vouchers.
    - Keep 100% of your room earnings.
    - Direct booking links open fast on phones.
+
+9. **Turn Every Call Into an Instant Quote:**
+   - Send a ready-made booking link over WhatsApp.
+   - Room details, dates, and price already filled in.
+   - Room stays held for 30 minutes, no double-booking.
+   - Never lose a guest to "let me check and call back."
+
+10. **Never Miss a License Renewal:**
+   - Automatic alerts before licenses expire.
+   - Covers Homestay, Tourism Department, and FSSAI.
+   - One less government deadline to remember.
+   - Stay compliant without watching a calendar.
 
 ---
 

@@ -680,7 +680,7 @@ $provided_key = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
 // non-sensitive branding/config columns (name, slug, type, currency,
 // colors, ...) - no guest, financial, or staff data - so this is exactly
 // the same "safe to read before login" class as the settings above.
-$public_actions = ['login_user', 'verify_admin_passcode', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token', 'check_session', 'logout', 'get_tenant_by_slug', 'get_demo_login_credentials', 'get_system_settings', 'get_theme_settings', 'get_current_property', 'register_tenant_trial', 'channex_webhook', 'channex_airbnb_oauth_landing', 'get_public_booking_info', 'create_public_booking', 'fetch_ota_listing_preview'];
+$public_actions = ['login_user', 'verify_admin_passcode', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token', 'check_session', 'logout', 'get_tenant_by_slug', 'get_demo_login_credentials', 'get_system_settings', 'get_theme_settings', 'get_current_property', 'register_tenant_trial', 'channex_webhook', 'channex_airbnb_oauth_landing', 'get_public_booking_info', 'create_public_booking', 'fetch_ota_listing_preview', 'get_booking_hold', 'confirm_booking_hold'];
 
 
 $request_method = $_SERVER['REQUEST_METHOD'];
@@ -1071,31 +1071,33 @@ if (in_array($action, $kitchen_module_actions, true)) {
 
 
 /**
- * Pull each mapped Airbnb listing's own configuration into the local rooms.
+ * Read each mapped Airbnb listing's configuration and PROPOSE it - writes nothing.
  *
- * Deliberately imports NOTHING about price (5 Sep 2026, explicit product
- * decision). A client's non-price data on an OTA is reliable - they have to
- * keep capacity, bed counts and descriptions accurate or guests complain - but
- * the PRICE shown on an OTA is not the owner's base rate: it carries the
- * channel's commission and taxes on top. Importing it would quietly seed
- * Ground Code with inflated rates and then push them back out.
+ * Deliberately excludes price (explicit product decision): an OTA's displayed
+ * price carries that channel's commission and taxes, so it is not the owner's
+ * base rate. Importing it would seed Ground Code with inflated numbers and push
+ * them straight back out.
+ *
+ * Proposes rather than writes (5 Sep 2026) because OTA capacity turned out NOT
+ * to be trustworthy. Measured against this account's own listings, 5 of 10
+ * disagreed with the owner - and in both directions: Airbnb overstated four
+ * rooms (a 3-guest studio listed as sleeping 5) and understated another (16 vs
+ * a real 18). Writing those in silently is how a guest ends up booking a room
+ * that cannot hold them, which is the exact failure this data exists to
+ * prevent. The owner is the only reliable source, so the owner confirms.
  *
  * Capacity comes from the listings call, whose `occupancies` array holds every
- * valid guest count from 1 up to the listing's capacity - so capacity is simply
- * its maximum. One request covers every listing on the account.
- *
- * Only fills a room whose capacity is still unset (0), so a number an owner
- * typed by hand is never silently overwritten by the OTA. Returns a per-room
- * report for the caller to surface.
+ * valid guest count from 1 up to capacity - so capacity is its maximum. One
+ * request covers every listing on the account.
  */
-function importAirbnbRoomConfig(PDO $pdo, $channelClient, string $channexChannelId, array $roomMappings): array {
-    $report = ['updated' => [], 'skipped' => [], 'unmatched' => []];
-    if (empty($roomMappings)) return $report;
+function proposeAirbnbRoomConfig(PDO $pdo, $channelClient, string $channexChannelId, array $roomMappings): array {
+    $out = ['proposals' => [], 'unmatched' => []];
+    if (empty($roomMappings)) return $out;
 
     $res = $channelClient->getChannelListings($channexChannelId);
     if (empty($res['success'])) {
-        $report['error'] = 'Could not read listings from Airbnb';
-        return $report;
+        $out['error'] = 'Could not read listings from Airbnb';
+        return $out;
     }
     $byId = [];
     foreach (($res['data']['listing_id_dictionary']['values'] ?? []) as $l) {
@@ -1108,27 +1110,53 @@ function importAirbnbRoomConfig(PDO $pdo, $channelClient, string $channexChannel
     foreach ($roomMappings as $m) {
         $localRoomId = (int)($m['local_room_id'] ?? 0);
         $listingId = (string)($m['external_room_code'] ?? '');
-        if ($localRoomId <= 0 || $listingId === '' || !isset($byId[$listingId])) {
-            $report['unmatched'][] = $listingId;
+        if ($localRoomId <= 0 || $listingId === '' || !isset($byId[$listingId]) || !$byId[$listingId]['capacity']) {
+            if ($listingId !== '') $out['unmatched'][] = $listingId;
             continue;
         }
-        $capacity = $byId[$listingId]['capacity'];
-        if (!$capacity || $capacity < 1) { $report['unmatched'][] = $listingId; continue; }
-
         $cur = $pdo->prepare("SELECT name, max_capacity FROM properties WHERE id = ? AND is_deleted = 0");
         $cur->execute([$localRoomId]);
         $row = $cur->fetch(PDO::FETCH_ASSOC);
-        if (!$row) { $report['unmatched'][] = $listingId; continue; }
+        if (!$row) { $out['unmatched'][] = $listingId; continue; }
 
-        if ((int)$row['max_capacity'] > 0) {
-            $report['skipped'][] = ['room' => $row['name'], 'kept' => (int)$row['max_capacity'], 'airbnb' => $capacity];
-            continue;
-        }
-        $upd = $pdo->prepare("UPDATE properties SET max_capacity = ?, updated_at = NOW() WHERE id = ?");
-        $upd->execute([$capacity, $localRoomId]);
-        $report['updated'][] = ['room' => $row['name'], 'capacity' => $capacity];
+        $current = (int)$row['max_capacity'];
+        $suggested = (int)$byId[$listingId]['capacity'];
+        $out['proposals'][] = [
+            'room_id' => $localRoomId,
+            'room' => $row['name'],
+            'listing_title' => $byId[$listingId]['title'],
+            'current_capacity' => $current ?: null,
+            'airbnb_capacity' => $suggested,
+            // differs: a value is already stored and Airbnb disagrees - the case
+            // most worth a human looking at before anything is overwritten.
+            'differs' => $current > 0 && $current !== $suggested,
+            'is_new' => $current === 0,
+        ];
     }
-    return $report;
+    return $out;
+}
+
+/**
+ * Write only the capacities the owner actually confirmed.
+ * $confirmed: [{room_id, capacity}, ...] - anything not listed is left alone.
+ */
+function applyAirbnbRoomConfig(PDO $pdo, array $confirmed, int $parentPropertyId): array {
+    $applied = [];
+    $upd = $pdo->prepare("UPDATE properties SET max_capacity = ?, updated_at = NOW() WHERE id = ? AND is_deleted = 0");
+    // Only ever touch this property or one of its own rooms - a room_id posted in
+    // the request body must never be able to edit another tenant's row.
+    $check = $pdo->prepare("SELECT name FROM properties WHERE id = ? AND (id = ? OR parent_property_id = ?) AND is_deleted = 0");
+    foreach ($confirmed as $c) {
+        $roomId = (int)($c['room_id'] ?? 0);
+        $cap = (int)($c['capacity'] ?? 0);
+        if ($roomId <= 0 || $cap < 1 || $cap > 99) continue;
+        $check->execute([$roomId, $parentPropertyId, $parentPropertyId]);
+        $row = $check->fetch(PDO::FETCH_ASSOC);
+        if (!$row) continue;
+        $upd->execute([$cap, $roomId]);
+        $applied[] = ['room' => $row['name'], 'capacity' => $cap];
+    }
+    return ['applied' => $applied];
 }
 
 
@@ -4639,8 +4667,22 @@ switch ($action) {
                     echo json_encode(['status' => 'error', 'message' => 'No room mappings saved for this Airbnb connection yet']);
                     break 2;
                 }
+                // Two-phase on purpose. The default is a dry run: it returns what
+                // Airbnb claims next to what is stored and writes nothing. Only an
+                // explicit mode=apply carrying a confirmed list changes any row.
+                $mode = strtolower(trim((string)($input['mode'] ?? $_GET['mode'] ?? 'preview')));
+                if ($mode === 'apply') {
+                    $confirmed = is_array($input['rooms'] ?? null) ? $input['rooms'] : [];
+                    if (empty($confirmed)) {
+                        http_response_code(400);
+                        echo json_encode(['status' => 'error', 'message' => 'Nothing confirmed to apply']);
+                        break 2;
+                    }
+                    echo json_encode(['status' => 'success', 'data' => applyAirbnbRoomConfig($pdo, $confirmed, $targetPropertyId)]);
+                    break 2;
+                }
                 try {
-                    $report = importAirbnbRoomConfig($pdo, $channelClient, (string)$conn['channex_channel_id'], $existingMappings);
+                    $report = proposeAirbnbRoomConfig($pdo, $channelClient, (string)$conn['channex_channel_id'], $existingMappings);
                 } catch (Throwable $e) {
                     http_response_code(502);
                     echo json_encode(['status' => 'error', 'message' => 'Listing import failed: ' . $e->getMessage()]);
@@ -4865,7 +4907,7 @@ switch ($action) {
                     // (the thing actually being saved) intact.
                     $importReport = null;
                     try {
-                        $importReport = importAirbnbRoomConfig($pdo, $channelClient, (string)$conn['channex_channel_id'], $localRows);
+                        $importReport = proposeAirbnbRoomConfig($pdo, $channelClient, (string)$conn['channex_channel_id'], $localRows);
                     } catch (Throwable $e) {
                         $importReport = ['error' => 'Listing import failed: ' . $e->getMessage()];
                     }
@@ -5307,6 +5349,26 @@ switch ($action) {
     case 'create_public_booking':
         require_once __DIR__ . '/public_booking.php';
         handleCreatePublicBooking($pdo);
+        break;
+
+    // "Inquiry -> Instant Quote" WhatsApp booking links (see booking_holds.php's
+    // own doc comment). create_booking_hold is staff-only (uses the session's
+    // current property, same as add_guest above); get/confirm are intentionally
+    // public/unauthenticated - the quote_token itself (20 random bytes) is the
+    // only credential a guest needs to view or confirm their own quote.
+    case 'create_booking_hold':
+        require_once __DIR__ . '/booking_holds.php';
+        handleCreateBookingHold($pdo, $propertyId, $_SESSION['username'] ?? 'Staff');
+        break;
+
+    case 'get_booking_hold':
+        require_once __DIR__ . '/booking_holds.php';
+        handleGetBookingHold($pdo);
+        break;
+
+    case 'confirm_booking_hold':
+        require_once __DIR__ . '/booking_holds.php';
+        handleConfirmBookingHold($pdo);
         break;
 
     case 'fetch_ota_listing_preview':

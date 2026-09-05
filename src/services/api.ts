@@ -2262,6 +2262,110 @@ export async function sendTelegramAlertDB(payload: {
   }
 }
 
+/**
+ * "Inquiry -> Instant Quote" WhatsApp booking links (see php/api/booking_holds.php's
+ * own doc comment for the full picture). Staff generates a hold via
+ * createBookingHoldDB() (locks the room 30 minutes), shares the resulting link,
+ * and the guest-facing quote page (PublicBookingEngine.tsx's `?quote=` mode)
+ * uses getBookingHoldDB()/confirmBookingHoldDB() - unauthenticated, the token
+ * itself is the credential - to view and complete it.
+ */
+export interface BookingHoldQuote {
+  quote_token: string;
+  property_slug: string;
+  room_name: string;
+  checkin_date: string;
+  checkout_date: string;
+  nights: number;
+  total_tariff: number;
+  expires_in_seconds: number;
+}
+
+export async function createBookingHoldDB(payload: {
+  // Omit entirely for a single-unit (non multi-key) property - the backend
+  // defaults to the session's current property, same convention as
+  // create_public_booking's roomId ?: propertyId.
+  room_id?: number;
+  checkin_date: string;
+  checkout_date: string;
+  guest_name?: string;
+  phone?: string;
+  num_guests?: number;
+}): Promise<{ success: boolean; data?: BookingHoldQuote; message?: string }> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=create_booking_hold`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json();
+    if (json.status !== 'success') {
+      return { success: false, message: json.message || 'Failed to create quote' };
+    }
+    return { success: true, data: json.data };
+  } catch (err: any) {
+    return { success: false, message: err?.message || 'Network error creating quote' };
+  }
+}
+
+export interface BookingHoldDetails {
+  hold_status: 'active' | 'expired' | 'converted' | 'cancelled';
+  property_slug?: string;
+  property_name?: string;
+  currency?: string;
+  address?: string;
+  upi_id?: string;
+  upi_qr_code_url?: string;
+  checkin_time?: string;
+  checkout_time?: string;
+  room_name?: string;
+  guest_name?: string;
+  phone?: string;
+  no_of_guests?: number;
+  checkin_date?: string;
+  checkout_date?: string;
+  nights?: number;
+  total_tariff?: number;
+  expires_in_seconds?: number;
+}
+
+export async function getBookingHoldDB(token: string): Promise<{ success: boolean; data?: BookingHoldDetails; message?: string }> {
+  try {
+    const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=get_booking_hold&token=${encodeURIComponent(token)}`);
+    const json = await res.json();
+    if (json.status !== 'success') {
+      return { success: false, message: json.message || 'not_found' };
+    }
+    return { success: true, data: json.data };
+  } catch (err: any) {
+    return { success: false, message: err?.message || 'Network error loading quote' };
+  }
+}
+
+export async function confirmBookingHoldDB(payload: {
+  quote_token: string;
+  guest_name: string;
+  phone: string;
+  email?: string;
+  num_guests?: number;
+  special_requests?: string;
+}): Promise<{ success: boolean; data?: any; message?: string }> {
+  try {
+    const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=confirm_booking_hold`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json();
+    if (json.status !== 'success') {
+      return { success: false, message: json.message || 'Failed to confirm booking' };
+    }
+    return { success: true, data: json.data };
+  } catch (err: any) {
+    return { success: false, message: err?.message || 'Network error confirming booking' };
+  }
+}
+
 export async function fetchTelegramConfigDB(propertySlug?: string): Promise<PropertyTelegramConfig> {
   const fallback: PropertyTelegramConfig = { enabled: true, botToken: null, groups: [], routing: {} };
   try {

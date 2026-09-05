@@ -13,6 +13,7 @@
 @import "tailwindcss";
 
 @source "../home.html";
+@source "../home-eli.html";
 @source "../index3.html";
 
 @theme {

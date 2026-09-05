@@ -5,6 +5,7 @@ import {
   Trash2,
   Plus,
   Loader2,
+  MessageCircle,
 } from './icons/FlowbiteIcons';
 import { Guest, BillingReceipt, MiscChargeTemplate, MenuItem } from '../types';
 import { Popover } from './Popover';
@@ -25,6 +26,7 @@ import { StyledSelect } from './StyledSelect';
 import { Input, FloatingTextarea } from './Input';
 import { BillingCheckout } from './BillingCheckout';
 import { t } from '../i18n/en';
+import { createBookingHoldDB } from '../services/api';
 
 interface Room {
   id: number;
@@ -195,6 +197,15 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const [showGuestNotes, setShowGuestNotes] = useState(false);
   const [isForeignGuest, setIsForeignGuest] = useState(false);
   const [noOfGuests, setNoOfGuests] = useState(1);
+
+  // "Inquiry -> Instant Quote" (5 Sep 2026) - lets staff send a guest who
+  // called or messaged a WhatsApp link with the room/dates/price already
+  // filled in, instead of finalizing the booking themselves. Reuses this
+  // exact form's own room/date/guest fields rather than a separate drawer,
+  // since it's the same information either way. Generating the link locks
+  // the room for 30 minutes server-side (see booking_holds.php) - if the
+  // guest never confirms, it quietly expires and the room frees up again.
+  const [sendingQuote, setSendingQuote] = useState(false);
 
   // Live duplicate-booking check (26 Aug 2026, part of the site-wide real-time
   // validation sweep - see CLAUDE.md's "Real-Time Form Validation" note)
@@ -471,6 +482,51 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     setRoomTouched(false);
     if (isMultiKeyProperty && rooms && rooms.length > 0) {
       setRoomNumber(rooms[0].name);
+    }
+  };
+
+  const handleSendInstantQuote = async () => {
+    if (!checkinDate || !expectedCheckout) {
+      showToast('Pick check-in and check-out dates first.', { type: 'error' });
+      return;
+    }
+    if (isMultiKeyProperty && (!roomNumber || !roomNumber.trim())) {
+      showToast('Select a room first.', { type: 'error' });
+      return;
+    }
+
+    const selectedRoomObj = rooms.find((r) => r.name === roomNumber || r.slug === roomNumber);
+
+    setSendingQuote(true);
+    try {
+      const result = await createBookingHoldDB({
+        room_id: selectedRoomObj?.id,
+        checkin_date: checkinDate,
+        checkout_date: expectedCheckout,
+        guest_name: guestName.trim() || undefined,
+        phone: phoneNumber.trim() || undefined,
+        num_guests: noOfGuests,
+      });
+
+      if (!result.success || !result.data) {
+        showToast(result.message || 'Failed to create quote link', { type: 'error' });
+        return;
+      }
+
+      const quote = result.data;
+      const shareUrl = `${window.location.origin}${window.location.pathname}#book?quote=${quote.quote_token}`;
+      const greeting = guestName.trim() ? `Hi ${guestName.trim()}, ` : 'Hi, ';
+      const waText = `${greeting}here's your instant quote for ${quote.room_name}:\n`
+        + `📅 ${quote.checkin_date} to ${quote.checkout_date} (${quote.nights} night${quote.nights > 1 ? 's' : ''})\n`
+        + `💰 Total: ₹${quote.total_tariff.toLocaleString('en-IN')}\n\n`
+        + `Tap to confirm your room (held for the next 30 minutes):\n${shareUrl}`;
+
+      window.open(`https://wa.me/?text=${encodeURIComponent(waText)}`, '_blank');
+      showToast('Quote link created - room held for 30 minutes.', { type: 'success' });
+    } catch (err: any) {
+      showToast(err?.message || 'Network error creating quote', { type: 'error' });
+    } finally {
+      setSendingQuote(false);
     }
   };
 
@@ -1016,6 +1072,33 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 </>
               ) : (
                 <span>{t('save_guest_booking_button', 'Save Guest Booking')}</span>
+              )}
+            </Button>
+
+            {/* "Inquiry -> Instant Quote" (5 Sep 2026) - for a guest who called
+                or messaged, send a WhatsApp link with this exact room/dates
+                already filled in instead of finalizing the booking yourself.
+                Reuses the room/date/guest fields above; type="button" so it
+                never triggers this form's own submit validation, which
+                requires guest name + phone (a quote link can be sent before
+                either is known). */}
+            <Button
+              type="button"
+              color="light"
+              disabled={sendingQuote}
+              onClick={handleSendInstantQuote}
+              className="w-full mt-2 font-semibold flex items-center justify-center gap-2 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+            >
+              {sendingQuote ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                  <span>Creating Quote Link...</span>
+                </>
+              ) : (
+                <>
+                  <MessageCircle className="w-4 h-4 shrink-0" />
+                  <span>Send Instant Quote (WhatsApp) - Holds Room 30 Min</span>
+                </>
               )}
             </Button>
           </form>

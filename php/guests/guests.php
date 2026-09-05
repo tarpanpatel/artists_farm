@@ -690,6 +690,21 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                                 : 'This property already has an active booking for these dates']);
                             break;
                         }
+
+                        // A pending "Inquiry -> Instant Quote" WhatsApp link (booking_holds.php)
+                        // locks the room for its 30-minute window too - without this, a staff
+                        // member could book straight over a quote a guest is actively completing.
+                        if (is_file(__DIR__ . '/../api/booking_holds.php')) {
+                            require_once __DIR__ . '/../api/booking_holds.php';
+                            if (function_exists('getActiveBookingHoldConflict') && getActiveBookingHoldConflict($pdo, $lockTargetId, $newCheckin, $newCheckout)) {
+                                if ($pdo->inTransaction()) {
+                                    $pdo->rollBack();
+                                }
+                                http_response_code(409);
+                                echo json_encode(['status' => 'error', 'message' => 'A WhatsApp quote is pending for this room and these dates - it will free up automatically within 30 minutes if the guest does not confirm']);
+                                break;
+                            }
+                        }
                     }
 
                     // The advisory "this clashes with an external calendar block"
@@ -1023,6 +1038,19 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                                 ? 'Selected room already has an active booking for these dates'
                                 : 'This property already has an active booking for these dates']);
                             break;
+                        }
+
+                        // Same "Inquiry -> Instant Quote" hold check as add_guest above.
+                        if (is_file(__DIR__ . '/../api/booking_holds.php')) {
+                            require_once __DIR__ . '/../api/booking_holds.php';
+                            if (function_exists('getActiveBookingHoldConflict') && getActiveBookingHoldConflict($pdo, $lockTargetId, $newCheckin, $newCheckout)) {
+                                if ($pdo->inTransaction()) {
+                                    $pdo->rollBack();
+                                }
+                                http_response_code(409);
+                                echo json_encode(['status' => 'error', 'message' => 'A WhatsApp quote is pending for this room and these dates - it will free up automatically within 30 minutes if the guest does not confirm']);
+                                break;
+                            }
                         }
                     }
 
