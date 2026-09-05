@@ -1069,6 +1069,69 @@ if (in_array($action, $kitchen_module_actions, true)) {
     requireModule($pdo, 'kitchen', $propertyId);
 }
 
+
+/**
+ * Pull each mapped Airbnb listing's own configuration into the local rooms.
+ *
+ * Deliberately imports NOTHING about price (5 Sep 2026, explicit product
+ * decision). A client's non-price data on an OTA is reliable - they have to
+ * keep capacity, bed counts and descriptions accurate or guests complain - but
+ * the PRICE shown on an OTA is not the owner's base rate: it carries the
+ * channel's commission and taxes on top. Importing it would quietly seed
+ * Ground Code with inflated rates and then push them back out.
+ *
+ * Capacity comes from the listings call, whose `occupancies` array holds every
+ * valid guest count from 1 up to the listing's capacity - so capacity is simply
+ * its maximum. One request covers every listing on the account.
+ *
+ * Only fills a room whose capacity is still unset (0), so a number an owner
+ * typed by hand is never silently overwritten by the OTA. Returns a per-room
+ * report for the caller to surface.
+ */
+function importAirbnbRoomConfig(PDO $pdo, $channelClient, string $channexChannelId, array $roomMappings): array {
+    $report = ['updated' => [], 'skipped' => [], 'unmatched' => []];
+    if (empty($roomMappings)) return $report;
+
+    $res = $channelClient->getChannelListings($channexChannelId);
+    if (empty($res['success'])) {
+        $report['error'] = 'Could not read listings from Airbnb';
+        return $report;
+    }
+    $byId = [];
+    foreach (($res['data']['listing_id_dictionary']['values'] ?? []) as $l) {
+        $occ = array_values(array_filter(array_map('intval', (array)($l['occupancies'] ?? [])), fn($n) => $n > 0));
+        if (!empty($l['id'])) {
+            $byId[(string)$l['id']] = ['capacity' => $occ ? max($occ) : null, 'title' => (string)($l['title'] ?? '')];
+        }
+    }
+
+    foreach ($roomMappings as $m) {
+        $localRoomId = (int)($m['local_room_id'] ?? 0);
+        $listingId = (string)($m['external_room_code'] ?? '');
+        if ($localRoomId <= 0 || $listingId === '' || !isset($byId[$listingId])) {
+            $report['unmatched'][] = $listingId;
+            continue;
+        }
+        $capacity = $byId[$listingId]['capacity'];
+        if (!$capacity || $capacity < 1) { $report['unmatched'][] = $listingId; continue; }
+
+        $cur = $pdo->prepare("SELECT name, max_capacity FROM properties WHERE id = ? AND is_deleted = 0");
+        $cur->execute([$localRoomId]);
+        $row = $cur->fetch(PDO::FETCH_ASSOC);
+        if (!$row) { $report['unmatched'][] = $listingId; continue; }
+
+        if ((int)$row['max_capacity'] > 0) {
+            $report['skipped'][] = ['room' => $row['name'], 'kept' => (int)$row['max_capacity'], 'airbnb' => $capacity];
+            continue;
+        }
+        $upd = $pdo->prepare("UPDATE properties SET max_capacity = ?, updated_at = NOW() WHERE id = ?");
+        $upd->execute([$capacity, $localRoomId]);
+        $report['updated'][] = ['room' => $row['name'], 'capacity' => $capacity];
+    }
+    return $report;
+}
+
+
 switch ($action) {
     // --- CSRF TOKEN ---
     case 'get_csrf_token':
@@ -4262,6 +4325,7 @@ switch ($action) {
     case 'channex_channel_airbnb_connection_link':
     case 'channex_channel_mapping_details':
     case 'channex_airbnb_listing_details':
+    case 'channex_import_airbnb_room_config':
     case 'channex_channel_save_mapping':
     case 'channex_channel_check_readiness':
     case 'channex_channel_activate':
@@ -4557,6 +4621,34 @@ switch ($action) {
                 echo json_encode(['status' => 'success', 'data' => ['url' => $linkRes['data']['attributes']['url']]]);
                 break 2;
 
+            // Re-run the listing-config import for a property whose rooms are
+            // ALREADY mapped - the mapping-save hook only fires when a mapping is
+            // saved, so an existing connection would otherwise never benefit.
+            // Same non-price rules; writes local room data only, pushes nothing.
+            case 'channex_import_airbnb_room_config':
+                $conn = $targetPropertyId > 0 ? getChannexChannelConnection($pdo, $targetPropertyId, 'AirBNB') : null;
+                if (!$conn || empty($conn['channex_channel_id'])) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'No connected Airbnb channel for this property']);
+                    break 2;
+                }
+                $mapStmt = $pdo->prepare("SELECT local_room_id, external_room_code FROM channex_channel_room_mappings WHERE connection_id = ?");
+                $mapStmt->execute([(int)$conn['id']]);
+                $existingMappings = $mapStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+                if (empty($existingMappings)) {
+                    echo json_encode(['status' => 'error', 'message' => 'No room mappings saved for this Airbnb connection yet']);
+                    break 2;
+                }
+                try {
+                    $report = importAirbnbRoomConfig($pdo, $channelClient, (string)$conn['channex_channel_id'], $existingMappings);
+                } catch (Throwable $e) {
+                    http_response_code(502);
+                    echo json_encode(['status' => 'error', 'message' => 'Listing import failed: ' . $e->getMessage()]);
+                    break 2;
+                }
+                echo json_encode(['status' => 'success', 'data' => $report]);
+                break 2;
+
             // Read-only: pulls one Airbnb listing's own configuration (capacity,
             // guests_included, price_per_extra_person, base/weekend price) so it
             // can be imported instead of re-typed. Pushes nothing.
@@ -4760,7 +4852,28 @@ switch ($action) {
                         break 2;
                     }
                     upsertChannexChannelConnection($pdo, $targetPropertyId, $channelCode, ['status' => 'ready_to_activate', 'last_error' => null]);
-                    echo json_encode(['status' => 'success', 'data' => ['channex_channel_id' => $conn['channex_channel_id']]]);
+
+                    // Import each listing's own configuration now that we know which
+                    // Ground Code room maps to which Airbnb listing. This is the
+                    // moment a client "adds their listing", so it is the natural
+                    // place to pull the data they have already kept accurate on the
+                    // OTA rather than ask them to retype it.
+                    //
+                    // Non-price fields only - see importAirbnbRoomConfig()'s own note
+                    // on why OTA prices are deliberately NOT imported. Never fails the
+                    // mapping save: a listing read that goes wrong leaves the mapping
+                    // (the thing actually being saved) intact.
+                    $importReport = null;
+                    try {
+                        $importReport = importAirbnbRoomConfig($pdo, $channelClient, (string)$conn['channex_channel_id'], $localRows);
+                    } catch (Throwable $e) {
+                        $importReport = ['error' => 'Listing import failed: ' . $e->getMessage()];
+                    }
+
+                    echo json_encode(['status' => 'success', 'data' => [
+                        'channex_channel_id' => $conn['channex_channel_id'],
+                        'imported_room_config' => $importReport,
+                    ]]);
                     break 2;
                 }
 
