@@ -13,6 +13,7 @@ import {
   Zap,
 } from './icons/FlowbiteIcons';
 import { apiFetch, API_ROOT_BASE } from '../services/api';
+import { AirbnbConfigImportDrawer } from './AirbnbConfigImportDrawer';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { PageHeader } from './PageHeader';
@@ -93,6 +94,7 @@ export const ChannelManager: React.FC<ChannelManagerProps> = ({ onLogAudit }) =>
   const [retryingId, setRetryingId] = useState<number | null>(null);
 
   const [data, setData] = useState<ChannexStatusData | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   // Date range for ARI push (Defaults to 500 days for Scenario 1 compliance)
   const [dateFrom, setDateFrom] = useState<string>(() => new Date().toISOString().split('T')[0]);
@@ -487,6 +489,39 @@ export const ChannelManager: React.FC<ChannelManagerProps> = ({ onLogAudit }) =>
           </Button>
         </div>
       )}
+
+      {/* Import listing details from the connected Airbnb account.
+          Read-only until the owner confirms - see AirbnbConfigImportDrawer for
+          why this is a review screen rather than a one-click import. */}
+      {!!data?.mappings?.length && (
+        <div className="p-5 sm:p-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <Copy className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                {t('airbnb_import_card_heading', 'Import Details from Airbnb')}
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                {t(
+                  'airbnb_import_card_sub',
+                  'Bring check-in times and address across from your own listings instead of retyping them. You review every value first, and prices are never imported.'
+                )}
+              </p>
+            </div>
+            <Button variant="secondary" onClick={() => setImportOpen(true)}>
+              {t('airbnb_import_card_btn', 'Review Airbnb Details')}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <AirbnbConfigImportDrawer
+        isOpen={importOpen}
+        onClose={() => setImportOpen(false)}
+        propertyId={data?.mappings?.[0]?.property_id || 0}
+        onImported={() => { void fetchStatus(true); }}
+        onLogAudit={onLogAudit}
+      />
 
       {/* Scenario 1: Bulk ARI Push Control Card */}
       <div className="p-5 sm:p-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xs space-y-4">
