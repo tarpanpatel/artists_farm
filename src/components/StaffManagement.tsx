@@ -364,23 +364,21 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const [staffPermissionsPage, setStaffPermissionsPage] = useState(1);
 
   useEffect(() => {
-    setUsers(staff.map((member) => ({
-      id: member.id,
-      fullName: member.name,
-      username: member.phone || member.username || '',
-      role: member.role,
-      passcodePin: member.passcode || '',
-      isFinancialHandler: Boolean(member.isFinancialHandler),
-      accessAllProperties: Boolean(member.accessAllProperties),
-      qrCodeUrl: member.qrCodeUrl,
-      status: member.status,
-      // dailyWage (24 Aug 2026, found live: "updated details but it didn't
-      // save" - was missing from this object literal entirely, so even
-      // after StaffMember itself started carrying it (StaffContext.tsx's
-      // mapStaffRow fix, same date) it still never reached the UserAccount
-      // shape the Edit form's pre-fill (handleEditUser) actually reads from.
-      dailyWage: member.dailyWage,
-    })));
+    setUsers(staff.map((member) => {
+      const isSuperOrRoot = member.role === 'Super Admin' || member.role === 'Root Admin' || member.role === 'root_admin';
+      return {
+        id: member.id,
+        fullName: member.name,
+        username: member.phone || member.username || '',
+        role: member.role,
+        passcodePin: member.passcode || '',
+        isFinancialHandler: isSuperOrRoot ? true : Boolean(member.isFinancialHandler),
+        accessAllProperties: isSuperOrRoot ? true : Boolean(member.accessAllProperties),
+        qrCodeUrl: member.qrCodeUrl,
+        status: member.status,
+        dailyWage: member.dailyWage,
+      };
+    }));
   }, [staff]);
 
 

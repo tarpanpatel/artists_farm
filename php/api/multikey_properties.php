@@ -413,8 +413,8 @@ function createMultiKeyPropertyCore(PDO $pdo, int $tenant_id, string $name, stri
         if (!$check_stmt->fetch()) {
             // Create Super Admin in new property
             $sa_stmt = $pdo->prepare("
-                INSERT INTO staff_users (id, property_id, username, full_name, role, phone, monthly_salary, status, is_financial_handler, passcode, qr_code_url, upi_id)
-                VALUES (?, ?, ?, ?, 'Super Admin', ?, ?, 'Active', ?, ?, ?, ?)
+                INSERT INTO staff_users (id, property_id, username, full_name, role, phone, monthly_salary, status, is_financial_handler, access_all_properties, passcode, qr_code_url, upi_id)
+                VALUES (?, ?, ?, ?, 'Super Admin', ?, ?, 'Active', 1, 1, ?, ?, ?)
             ");
             $sa_stmt->execute([
                 'superadmin_' . $property_id,
@@ -423,7 +423,6 @@ function createMultiKeyPropertyCore(PDO $pdo, int $tenant_id, string $name, stri
                 $superadmin['full_name'],
                 $superadmin['phone'],
                 $superadmin['monthly_salary'],
-                $superadmin['is_financial_handler'],
                 $superadmin['passcode'],
                 $superadmin['qr_code_url'],
                 $superadmin['upi_id']

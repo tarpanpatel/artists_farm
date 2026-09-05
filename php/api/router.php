@@ -473,12 +473,12 @@ if (!function_exists('syncTenantSuperAdminRow')) {
             $existing->execute([$propertyId, $identity['username']]);
             $row = $existing->fetch();
             if ($row) {
-                $pdo->prepare("UPDATE staff_users SET full_name = ?, phone = ?, phone_number = ?, passcode = ?, role = 'Super Admin', status = 'Active' WHERE id = ?")
+                $pdo->prepare("UPDATE staff_users SET full_name = ?, phone = ?, phone_number = ?, passcode = ?, role = 'Super Admin', status = 'Active', is_financial_handler = 1, access_all_properties = 1 WHERE id = ?")
                     ->execute([$identity['full_name'], $identity['phone'], $identity['phone'], $identity['passcode'], $row['id']]);
             } else {
                 $pdo->prepare("
-                    INSERT INTO staff_users (id, property_id, username, full_name, role, phone, phone_number, status, is_financial_handler, passcode)
-                    VALUES (?, ?, ?, ?, 'Super Admin', ?, ?, 'Active', 1, ?)
+                    INSERT INTO staff_users (id, property_id, username, full_name, role, phone, phone_number, status, is_financial_handler, access_all_properties, passcode)
+                    VALUES (?, ?, ?, ?, 'Super Admin', ?, ?, 'Active', 1, 1, ?)
                 ")->execute(["owner-{$propertyId}", $propertyId, $identity['username'], $identity['full_name'], $identity['phone'], $identity['phone'], $identity['passcode']]);
             }
         } catch (Exception $e) {

@@ -136,10 +136,14 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
         case 'get_staff':
         case 'get_users':
             try {
+                // Ensure all Super Admin rows have access_all_properties and is_financial_handler flags set to 1
+                $pdo->prepare("UPDATE staff_users SET access_all_properties = 1, is_financial_handler = 1 WHERE property_id = ? AND role IN ('Super Admin', 'Root Admin')")->execute([$propertyId]);
+
                 $stmt = $pdo->prepare("SELECT id, username, full_name as fullName, role, phone, monthly_salary as monthlySalary, daily_wage as dailyWage, status, is_financial_handler as isFinancialHandler, passcode, qr_code_url as qrCodeUrl, upi_id as upiId, access_all_properties as accessAllProperties FROM staff_users WHERE property_id = ? ORDER BY CAST(id AS UNSIGNED) ASC, id ASC");
                 $stmt->execute([$propertyId]);
                 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 $data = array_map(function($r) {
+                    $isSuperOrRoot = in_array($r['role'], ['Super Admin', 'Root Admin', 'root_admin'], true);
                     return [
                         'id'                 => (string)$r['id'],
                         'username'           => $r['username'],
@@ -150,11 +154,11 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                         'monthlySalary'      => (float)($r['monthlySalary'] ?? 0),
                         'dailyWage'          => (float)($r['dailyWage'] ?? 0),
                         'status'             => $r['status'] ?? 'Active',
-                        'isFinancialHandler' => (bool)$r['isFinancialHandler'],
+                        'isFinancialHandler' => $isSuperOrRoot ? true : (bool)$r['isFinancialHandler'],
                         'passcode'           => $r['passcode'],
                         'qrCodeUrl'          => $r['qrCodeUrl'],
                         'upiId'              => $r['upiId'] ?? '',
-                        'accessAllProperties' => (bool)($r['accessAllProperties'] ?? false),
+                        'accessAllProperties' => $isSuperOrRoot ? true : (bool)($r['accessAllProperties'] ?? false),
                     ];
                 }, $rows);
                 echo json_encode(['status' => 'success', 'data' => $data]);

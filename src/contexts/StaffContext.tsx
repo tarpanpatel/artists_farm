@@ -43,30 +43,23 @@ export const StaffProvider: React.FC<StaffProviderProps> = ({
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [staffLoading, setStaffLoading] = useState(true);
 
-  const mapStaffRow = (u: any): StaffMember => ({
-    id: u.id,
-    name: u.fullName || u.name || u.username,
-    role: u.role || 'Staff',
-    phone: u.phone || u.username || '',
-    monthlySalary: u.monthlySalary || 0,
-    status: u.status || 'Active',
-    passcode: u.passcode,
-    qrCodeUrl: u.qrCodeUrl,
-    isFinancialHandler: u.isFinancialHandler,
-    // Username - the login phone number, distinct from `name`. Was
-    // previously dropped here entirely, leaving every `.username`
-    // read on a StaffMember silently undefined.
-    username: u.username || u.phone || '',
-    // dailyWage/accessAllProperties (24 Aug 2026, found live: "updated
-    // details but it didn't save" - the DB write was always correct, but
-    // both fields were silently dropped right here even though get_users
-    // always returns them, so every consumer of `staff` - including
-    // StaffManagement.tsx's own Edit form - could never see them again
-    // regardless of what was actually saved). See StaffMember's own comment
-    // in types.ts for the fuller writeup.
-    dailyWage: u.dailyWage,
-    accessAllProperties: u.accessAllProperties,
-  });
+  const mapStaffRow = (u: any): StaffMember => {
+    const isSuperOrRoot = u.role === 'Super Admin' || u.role === 'Root Admin' || u.role === 'root_admin';
+    return {
+      id: u.id,
+      name: u.fullName || u.name || u.username,
+      role: u.role || 'Staff',
+      phone: u.phone || u.username || '',
+      monthlySalary: u.monthlySalary || 0,
+      status: u.status || 'Active',
+      passcode: u.passcode,
+      qrCodeUrl: u.qrCodeUrl,
+      isFinancialHandler: isSuperOrRoot ? true : Boolean(u.isFinancialHandler),
+      username: u.username || u.phone || '',
+      dailyWage: u.dailyWage,
+      accessAllProperties: isSuperOrRoot ? true : Boolean(u.accessAllProperties),
+    };
+  };
 
   // BUG (found 13 Aug 2026, alongside the DataLoader nav-menu fix): the very
   // first staff fetch right after a fresh login has been observed to
