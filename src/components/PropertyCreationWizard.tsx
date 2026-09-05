@@ -375,7 +375,7 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
               <li key={step.key} className={`flex items-center ${!isLast ? 'flex-1' : ''}`}>
                 <div className="relative flex items-center justify-center shrink-0">
                   <span
-                    className={`flex items-center justify-center w-8 h-8 rounded-full shrink-0 transition-all ${
+                    className={`wizard-step-btn flex items-center justify-center w-9 h-9 min-w-[36px] max-w-[36px] min-h-[36px] max-h-[36px] aspect-square rounded-full shrink-0 transition-all ${
                       isCurrent
                         ? 'bg-indigo-600 text-white shadow-xs ring-4 ring-indigo-100 dark:ring-indigo-900/60'
                         : isFullyComplete

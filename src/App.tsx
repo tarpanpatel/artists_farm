@@ -697,7 +697,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
     setGuestsLoading(!!preloadedData.guestsFetchPending);
   }, [preloadedData.navItems, preloadedData.initialGuests, preloadedData.guestsFetchPending]);
 
-  // Handle Telegram deep link / URL parameters (booking_id / request_id / focusGuestId)
+  // Handle Telegram deep link / URL parameters (booking_id / request_id / order_id / focusGuestId)
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const parseDeepLink = () => {
@@ -715,8 +715,16 @@ function AppBody({ preloadedData }: AppBodyProps) {
 
       const reqId = urlParams.get('request_id') || hashQuery?.get('request_id');
       if (reqId) {
+        setFocusRequestId(reqId);
         setActiveTab('service_requests');
         setActiveMenuItemKey('service_requests');
+      }
+
+      const orderId = urlParams.get('order_id') || hashQuery?.get('order_id');
+      if (orderId) {
+        setFocusOrderId(orderId);
+        setActiveTab('kitchen');
+        setActiveMenuItemKey('kitchen_orders');
       }
     };
 
@@ -822,6 +830,8 @@ function AppBody({ preloadedData }: AppBodyProps) {
   const [menu, setMenu] = useState<MenuItem[]>(() => preloadedData.initialMenu || []);
   const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>([]);
   const [focusGuestId, setFocusGuestId] = useState<string | null>(null);
+  const [focusRequestId, setFocusRequestId] = useState<string | null>(null);
+  const [focusOrderId, setFocusOrderId] = useState<string | null>(null);
   // Bumped at the start of every guest/menu/audit-log/receipt hydration fetch
   // cycle (see the effect below) so a slower, older in-flight request
   // can detect it's been superseded and skip applying its (possibly
@@ -2550,6 +2560,8 @@ ${itemsStr}
                     initialNewMenuItemName={initialNewMenuItemData?.name}
                     initialNewMenuItemPrice={initialNewMenuItemData?.price}
                     initialNewMenuItemCategory={initialNewMenuItemData?.category}
+                    focusOrderId={focusOrderId}
+                    onClearFocusOrder={() => setFocusOrderId(null)}
                   />
                 </ErrorBoundary>
               )}
@@ -2669,6 +2681,8 @@ ${itemsStr}
                     onDispatchTelegram={dispatchTelegramAlert}
                     initialRoomNumber={initialServiceRequestData?.roomNumber}
                     initialRequestItem={initialServiceRequestData?.item}
+                    focusRequestId={focusRequestId}
+                    onClearFocusRequest={() => setFocusRequestId(null)}
                   />
                 </ErrorBoundary>
               )}

@@ -79,7 +79,11 @@ try {
             'checkin_date' => $guest['checkin_date'],
         ]);
 
-        $result = sendPropertyTelegramMessage($pdo, $guest['property_id'], 'admin', $message, null, 'checkin_verification_reminder');
+        // Explicit booking_id (5 Sep 2026, live report: "Open in App" only ever landed on
+        // the generic Bookings tab) - this template never prints the guest's real numeric
+        // id anywhere in its text (see appendAppUrlToMessage()'s own comment), so the
+        // regex-based id scraping there had nothing to find. Passed explicitly instead.
+        $result = sendPropertyTelegramMessage($pdo, $guest['property_id'], 'admin', $message, null, 'checkin_verification_reminder', ['booking_id' => $guest['id']]);
 
         $pdo->prepare("UPDATE guests SET id_verification_last_reminder_at = NOW() WHERE id = ?")->execute([$guest['id']]);
 

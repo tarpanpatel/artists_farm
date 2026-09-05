@@ -61,7 +61,11 @@ try {
             ['text' => '🚪 Mark Checked-Out', 'callback_data' => "checkout_guest_{$guest['id']}"]
         ]]];
 
-        $result = sendPropertyTelegramMessage($pdo, $guest['property_id'], 'admin', $message, $replyMarkup, 'checkout_day_reminder');
+        // Explicit booking_id (5 Sep 2026, same fix as checkin_verification_reminders.php) -
+        // this template's text has no real numeric id anywhere in it for the regex-based
+        // fallback in appendAppUrlToMessage() to find, so its "Open in App" link was always
+        // landing on the generic Bookings tab instead of this specific guest.
+        $result = sendPropertyTelegramMessage($pdo, $guest['property_id'], 'admin', $message, $replyMarkup, 'checkout_day_reminder', ['booking_id' => $guest['id']]);
 
         $label = "guest #{$guest['id']} ({$guest['guest_name']}, {$guest['room_name']}, property {$guest['property_id']})";
         $decoded = is_string($result) ? json_decode($result, true) : null;

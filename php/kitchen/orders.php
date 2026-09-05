@@ -247,7 +247,12 @@ function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
                             $guestName = $tStmt->fetchColumn() ?: 'Walk-in';
                         }
                         $msg = TelegramTemplates::newKitchenTicket($order_id, $guestName, $itemsPayload, $specialInstructions);
-                        sendPropertyTelegramMessage($pdo, $propertyId, 'kitchen', $msg, null, 'kitchen_new_order');
+                        // Explicit order_id (5 Sep 2026) - the rendered text only ever shows
+                        // "#{order_id}" (e.g. "NEW ORDER #108"), never the literal word "ID", so
+                        // appendAppUrlToMessage()'s regex-based extraction never matched this
+                        // template - the "Open in App" link always landed on the generic Kitchen
+                        // tab with no ticket highlighted.
+                        sendPropertyTelegramMessage($pdo, $propertyId, 'kitchen', $msg, null, 'kitchen_new_order', ['order_id' => $order_id]);
                     } catch (Exception $e) {
                         error_log("kitchen_new_order telegram dispatch failed: " . $e->getMessage());
                     }

@@ -428,7 +428,12 @@ function handleServiceRequestActions($pdo, $request_method, $action, $propertyId
                         ['text' => '✅ Mark Fulfilled', 'callback_data' => "fulfill_request_{$requestId}"]
                     ]]];
 
-                    $sendResult = sendPropertyTelegramMessage($pdo, $propertyId, 'admin', $msg, $replyMarkup, 'service_request_created');
+                    // Explicit request_id (5 Sep 2026, same class of fix as the checkin/checkout
+                    // reminder crons) - this template never prints the request's real numeric id
+                    // anywhere in its text, so appendAppUrlToMessage()'s regex-based extraction had
+                    // nothing to find and the "Open in App" link always landed on the Service
+                    // Requests tab with nothing selected. Passed explicitly instead.
+                    $sendResult = sendPropertyTelegramMessage($pdo, $propertyId, 'admin', $msg, $replyMarkup, 'service_request_created', ['request_id' => $requestId]);
                     $decoded = is_string($sendResult) ? json_decode($sendResult, true) : null;
                     if (!empty($decoded['ok']) && !empty($decoded['result'])) {
                         $pdo->prepare("UPDATE service_requests SET telegram_chat_id = ?, telegram_message_id = ? WHERE id = ?")

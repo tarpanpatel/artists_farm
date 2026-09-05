@@ -58,8 +58,9 @@ body {
   /* B. Touch Target Ergonomics: 44px Minimum Target Height */
   /* .btn-compact-stepper: dense list +/- steppers (e.g. cart rows) that
      deliberately trade height for width instead - see their own explicit
-     sizing at the call site for the compensating wider hit area. */
-  button:not(.inline-link):not(.var-chip):not(.app-toggle-switch):not([role="switch"]):not(.scroll-to-top-button):not(.btn-compact-stepper),
+     sizing at the call site for the compensating wider hit area.
+     .wizard-step-btn, .btn-step-circle: circular step indicator icons that must preserve 1:1 aspect ratio. */
+  button:not(.inline-link):not(.var-chip):not(.app-toggle-switch):not([role="switch"]):not(.scroll-to-top-button):not(.btn-compact-stepper):not(.wizard-step-btn):not(.btn-step-circle):not(.confirm-dialog__close):not(.confirm-dialog__btn),
   .btn,
   .app-input,
   .styled-select__trigger,

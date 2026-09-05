@@ -43,6 +43,11 @@ interface ServiceRequestsManagementProps {
   // reviews and clicks 'Log Request' themselves, this never creates the request on its own.
   initialRoomNumber?: string;
   initialRequestItem?: string;
+  // Telegram "Open in App" deep-link (5 Sep 2026) - jumps to the right tab/page
+  // and highlights the specific request, mirroring GuestManagement.tsx's
+  // focusGuestId pattern for bookings.
+  focusRequestId?: string | number | null;
+  onClearFocusRequest?: () => void;
 }
 
 const REMINDER_THRESHOLD_MINUTES = 15;
@@ -53,6 +58,8 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
   onDispatchTelegram,
   initialRoomNumber,
   initialRequestItem,
+  focusRequestId = null,
+  onClearFocusRequest,
 }) => {
   const { currentUser, isAuthenticated, authChecked } = useAuth();
   const { showToast } = useToast();
@@ -429,6 +436,48 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
     (clampedFulfilledPage + 1) * FULFILLED_PAGE_SIZE
   );
 
+  // Telegram "Open in App" deep-link (5 Sep 2026) - find the specific request,
+  // switch to whichever tab/page actually contains it, then scroll it into
+  // view and briefly highlight it. Mirrors BillingCheckout.tsx's focusGuestId
+  // effect for bookings, adapted for this page's flat card-list + pagination
+  // (no per-request modal exists here, so "open" means "scroll to + glow").
+  const [highlightedRequestId, setHighlightedRequestId] = useState<number | null>(null);
+  useEffect(() => {
+    if (!focusRequestId || requests.length === 0) return;
+    const cleanId = String(focusRequestId).trim().replace(/^#/, '');
+    const target = requests.find((r) => String(r.id) === cleanId);
+    if (!target) return;
+    if (target.status === 'Fulfilled') {
+      setActiveTab('fulfilled');
+      const idx = fulfilled.findIndex((r) => String(r.id) === cleanId);
+      if (idx >= 0) setFulfilledPage(Math.floor(idx / FULFILLED_PAGE_SIZE));
+    } else {
+      setActiveTab('pending');
+    }
+    setHighlightedRequestId(typeof target.id === 'number' ? target.id : parseInt(String(target.id), 10));
+    onClearFocusRequest?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusRequestId, requests]);
+
+  // Scroll after the tab/page switch above has actually rendered the target
+  // row - a short delay instead of doing it in the same effect, since the DOM
+  // node for a just-selected tab/page doesn't exist yet in this same commit.
+  useEffect(() => {
+    if (highlightedRequestId == null) return;
+    const timer = setTimeout(() => {
+      document.getElementById(`service-request-${highlightedRequestId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [highlightedRequestId, activeTab, clampedFulfilledPage]);
+
+  // Auto-clear the highlight glow after a few seconds so it doesn't linger
+  // forever if the staff member never touches the row.
+  useEffect(() => {
+    if (highlightedRequestId == null) return;
+    const timer = setTimeout(() => setHighlightedRequestId(null), 4000);
+    return () => clearTimeout(timer);
+  }, [highlightedRequestId]);
+
   const getRequestTypeLabel = (rawType: string) => {
     if (!rawType) return '';
     const matched = requestTypes.find((rt) => rt.typeId === rawType || rt.typeId.toLowerCase() === rawType.toLowerCase());
@@ -585,7 +634,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 service-requests-management__request-list">
                       {pending.map((r) => (
-                        <div key={r.id} className="flex items-center justify-between gap-3 p-4 bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg service-requests-management__request-item service-requests-management__request-item--pending shadow-sm">
+                        <div key={r.id} id={`service-request-${r.id}`} className={`flex items-center justify-between gap-3 p-4 bg-amber-50/70 dark:bg-amber-950/30 border rounded-lg service-requests-management__request-item service-requests-management__request-item--pending shadow-sm transition-shadow ${highlightedRequestId === r.id ? 'border-blue-500 dark:border-blue-400 ring-2 ring-blue-500/50 dark:ring-blue-400/50' : 'border-amber-200 dark:border-amber-800'}`}>
                           <div className="flex-1 min-w-0 service-requests-management__request-details">
                             <div className="flex items-center gap-2 flex-wrap service-requests-management__request-header">
                               <span className="font-bold text-slate-900 dark:text-white text-sm service-requests-management__request-type">{getRequestTypeLabel(r.requestType)}</span>
@@ -629,7 +678,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                     <>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 service-requests-management__request-list">
                         {paginatedFulfilled.map((r) => (
-                          <div key={r.id} className="flex items-center justify-between gap-3 p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-lg opacity-85 service-requests-management__request-item service-requests-management__request-item--fulfilled shadow-sm">
+                          <div key={r.id} id={`service-request-${r.id}`} className={`flex items-center justify-between gap-3 p-4 bg-slate-50 dark:bg-slate-800/60 border rounded-lg opacity-85 service-requests-management__request-item service-requests-management__request-item--fulfilled shadow-sm transition-shadow ${highlightedRequestId === r.id ? 'border-blue-500 dark:border-blue-400 ring-2 ring-blue-500/50 dark:ring-blue-400/50' : 'border-slate-200 dark:border-slate-700'}`}>
                             <div className="flex-1 min-w-0 service-requests-management__request-details">
                               <div className="flex items-center gap-2 flex-wrap service-requests-management__request-header">
                                 <span className="font-semibold text-slate-900 dark:text-white text-sm service-requests-management__request-type">{getRequestTypeLabel(r.requestType)}</span>

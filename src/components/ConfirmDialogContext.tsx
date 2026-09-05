@@ -124,9 +124,7 @@ export function ConfirmDialogProvider({ children }: { children: React.ReactNode 
         <Modal
           show
           onClose={handleCancel}
-          dismissible
           size="md"
-          popup
           className="z-9999 confirm-dialog"
         >
           <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-t-lg confirm-dialog__header">

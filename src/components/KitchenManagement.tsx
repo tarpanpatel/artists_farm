@@ -121,6 +121,11 @@ interface KitchenManagementProps {
   initialNewMenuItemName?: string;
   initialNewMenuItemPrice?: number;
   initialNewMenuItemCategory?: string;
+  // Telegram "Open in App" deep-link (5 Sep 2026) - jumps to the Live Tickets
+  // (KDS) board and highlights the specific order, mirroring
+  // GuestManagement.tsx's focusGuestId pattern for bookings.
+  focusOrderId?: string | number | null;
+  onClearFocusOrder?: () => void;
 }
 
 // Sentinel dropdown value for the "New Customer" row in the walk-in tab
@@ -148,6 +153,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   initialNewMenuItemName,
   initialNewMenuItemPrice,
   initialNewMenuItemCategory,
+  focusOrderId = null,
+  onClearFocusOrder,
 }) => {
   const { showToast, removeToast } = useToast();
   const { confirm } = useConfirm();
@@ -198,6 +205,41 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     else if (activeMenuItemKey === 'beta_recipe_builder') setActiveTab('beta_recipe_builder');
     else if (activeMenuItemKey === 'kitchen_requisitions') setActiveTab('requisitions');
   }, [activeMenuItemKey, isRestrictedStaffKitchenView]);
+
+  // Telegram "Open in App" deep-link (5 Sep 2026) - find the specific order,
+  // switch to the KDS board, then scroll it into view and briefly highlight
+  // it. Only active/served-pending orders render on this board at all (see
+  // activeOrders below), so a ticket already long past its life on the board
+  // by the time staff tap the link simply finds nothing to highlight - same
+  // defensive no-op as ServiceRequestsManagement.tsx's equivalent effect.
+  const [highlightedOrderId, setHighlightedOrderId] = useState<number | null>(null);
+  useEffect(() => {
+    if (!focusOrderId || orders.length === 0) return;
+    const cleanId = String(focusOrderId).trim().replace(/^#/, '');
+    // Match on orderId (the real numeric orders.id, mapped in fetchOrdersFromDB
+    // and what the Telegram deep-link actually carries) - NOT id, which is the
+    // display ticket string ("KOT-123"), a different value entirely.
+    const target = orders.find((o) => String(o.orderId) === cleanId);
+    if (!target || target.orderId == null) return;
+    setActiveTab('kds');
+    setHighlightedOrderId(target.orderId);
+    onClearFocusOrder?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusOrderId, orders]);
+
+  useEffect(() => {
+    if (highlightedOrderId == null) return;
+    const timer = setTimeout(() => {
+      document.getElementById(`kds-ticket-${highlightedOrderId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [highlightedOrderId, activeTab]);
+
+  useEffect(() => {
+    if (highlightedOrderId == null) return;
+    const timer = setTimeout(() => setHighlightedOrderId(null), 4000);
+    return () => clearTimeout(timer);
+  }, [highlightedOrderId]);
 
   useEffect(() => {
     const handleHash = () => {
@@ -1523,7 +1565,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               return (
               <div
                 key={ord.id}
-                className={`kds-ticket-card bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-3.5 flex flex-col justify-between transition-all duration-500 ${urgencyBorder} ${
+                id={`kds-ticket-${ord.orderId ?? ord.id}`}
+                className={`kds-ticket-card bg-white dark:bg-slate-800 rounded-lg border shadow-md p-3.5 flex flex-col justify-between transition-all duration-500 ${urgencyBorder} ${
+                  highlightedOrderId != null && ord.orderId === highlightedOrderId ? 'border-blue-500 dark:border-blue-400 ring-2 ring-blue-500/50 dark:ring-blue-400/50' : 'border-slate-200 dark:border-slate-700'
+                } ${
                   completionPhase === 'processing' ? 'opacity-40 scale-[0.97]' : ''
                 }`}
               >

@@ -182,8 +182,10 @@ if (!function_exists('handleTelegramCallbackQuery')) {
                 }
 
                 if ($propertyId) {
-                    // Follow the property's routing map (item_served -> kitchen group)
-                    sendPropertyTelegramMessage($pdo, $propertyId, 'kitchen', $new_msg, null, 'item_served');
+                    // Follow the property's routing map (item_served -> kitchen group).
+                    // Explicit order_id (5 Sep 2026, same fix as kitchen_new_order) - this
+                    // template's text never contains the order's real numeric id at all.
+                    sendPropertyTelegramMessage($pdo, $propertyId, 'kitchen', $new_msg, null, 'item_served', ['order_id' => $itemRow['order_id']]);
                 } else {
                     sendAdminTelegramMessage($new_msg);
                 }

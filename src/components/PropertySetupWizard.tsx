@@ -341,7 +341,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
                     disabled={saving || finished}
                     aria-label={`Go to ${step.label} step`}
                     aria-current={isCurrent ? 'step' : undefined}
-                    className={`flex items-center justify-center w-8 h-8 rounded-full shrink-0 transition-all cursor-pointer disabled:cursor-default ${
+                    className={`wizard-step-btn flex items-center justify-center w-9 h-9 min-w-[36px] max-w-[36px] min-h-[36px] max-h-[36px] aspect-square rounded-full shrink-0 transition-all cursor-pointer disabled:cursor-default ${
                       isCurrent
                         ? 'bg-indigo-600 text-white shadow-xs ring-4 ring-indigo-100 dark:ring-indigo-900/60'
                         : isFullyComplete
@@ -516,21 +516,22 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
           Footer Safe Area" rule - this footer is a shrink-0 child pinned to the drawer's
           physical bottom edge, so on a home-indicator device a plain p-4 leaves the primary
           action button with zero breathing room. Mirrors SelfOnboardingWizard.tsx's footer. */}
-      <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] border-t border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2 bg-gray-50 dark:bg-gray-850 shrink-0">
+      <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] border-t border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2 bg-gray-50 dark:bg-gray-850 shrink-0 flex-wrap sm:flex-nowrap">
         <div className="flex items-center gap-2">
-          {stepIndex > 0 && !finished && (
-            <Button type="button" variant="secondary" size="sm" onClick={handleBack} disabled={saving}>
+          {stepIndex > 0 && !finished ? (
+            <Button type="button" variant="secondary" size="sm" onClick={handleBack} disabled={saving} className="whitespace-nowrap flex items-center gap-1">
               <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back</span>
             </Button>
-          )}
+          ) : !finished ? (
+            <Button type="button" variant="ghost" size="sm" onClick={handleDoItLater} disabled={saving} className="whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
+              Do It Later
+            </Button>
+          ) : null}
+
           {stepIndex > 0 && !isLastStep && !finished && (
-            <Button type="button" variant="secondary" size="sm" onClick={handleSaveAndExit} disabled={saving}>
+            <Button type="button" variant="ghost" size="sm" onClick={handleSaveAndExit} disabled={saving} className="whitespace-nowrap text-xs text-gray-600 dark:text-gray-300">
               Save &amp; Exit
-            </Button>
-          )}
-          {!finished && (
-            <Button type="button" variant="link" size="sm" onClick={handleDoItLater} disabled={saving}>
-              Do it later
             </Button>
           )}
         </div>
@@ -538,20 +539,20 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
         {!finished && (
           <div className="flex items-center gap-2">
             {stepIndex > 0 && !isLastStep && (
-              <Button type="button" variant="secondary" size="sm" onClick={handleSkip} disabled={saving}>
+              <Button type="button" variant="secondary" size="sm" onClick={handleSkip} disabled={saving} className="whitespace-nowrap">
                 Skip
               </Button>
             )}
             {isLastStep ? (
-              <Button type="button" variant="primary" size="sm" onClick={handleFinish} disabled={saving}>
+              <Button type="button" variant="primary" size="sm" onClick={handleFinish} disabled={saving} className="whitespace-nowrap flex items-center gap-1.5">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                <span className="ml-1.5">Finish Setup</span>
+                <span>Finish Setup</span>
               </Button>
             ) : (
-              <Button type="button" variant="primary" size="sm" onClick={handleNext} disabled={saving || (stepIndex === 0 && !step0Valid)}>
+              <Button type="button" variant="primary" size="sm" onClick={handleNext} disabled={saving || (stepIndex === 0 && !step0Valid)} className="whitespace-nowrap flex items-center gap-1.5">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                <span className={saving ? 'ml-1.5' : ''}>Next Step: {steps[stepIndex + 1]?.label}</span>
-                <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                <span>Next Step</span>
+                {!saving && <ArrowRight className="w-3.5 h-3.5" />}
               </Button>
             )}
           </div>

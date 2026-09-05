@@ -136,7 +136,7 @@ if (!function_exists('legacyCategoryChatId')) {
  * that haven't been routed to a specific group yet.
  */
 if (!function_exists('appendAppUrlToMessage')) {
-    function appendAppUrlToMessage($pdo, $propertyId, $category, $message) {
+    function appendAppUrlToMessage($pdo, $propertyId, $category, $message, $explicitParams = []) {
         if (strpos($message, 'http://') !== false || strpos($message, 'https://') !== false) {
             return $message;
         }
@@ -186,6 +186,20 @@ if (!function_exists('appendAppUrlToMessage')) {
                             $queryParams['booking_id'] = $m[1];
                         }
                     }
+
+                    // Explicit deep-link params (30 Aug.../5 Sep 2026, live report: an "ID
+                    // Verification Still Pending" reminder's "Open in App" link only ever
+                    // landed on the generic Bookings tab, not that specific guest) - the
+                    // regex scraping above only works when the caller happens to render a
+                    // literal "ID: <number>"/"Booking ID: <number>" INTO the message text,
+                    // which several templates (this reminder included - it only ever prints
+                    // "ID VERIFICATION..."/"Uploaded: 0/1", never the guest's real numeric
+                    // id) never do. A caller that already has the real id in hand (as
+                    // checkin_verification_reminders.php does - $guest['id']) should just
+                    // pass it explicitly via sendPropertyTelegramMessage()'s $deepLinkParams
+                    // instead of relying on text-scraping to rediscover it. Explicit values
+                    // win over anything the regex above already guessed.
+                    $queryParams = array_merge($queryParams, $explicitParams);
 
                     $queryPart = !empty($queryParams) ? '?' . http_build_query($queryParams) : '';
                     $appUrl = "{$scheme}://{$host}/{$row['tenant_slug']}/{$row['prop_slug']}/{$queryPart}#{$hash}";
@@ -241,7 +255,7 @@ if (!function_exists('ensureTelegramWebhookSet')) {
 }
 
 if (!function_exists('sendPropertyTelegramMessage')) {
-    function sendPropertyTelegramMessage($pdo, $propertyId, $category, $message, $replyMarkup = null, $templateKey = null) {
+    function sendPropertyTelegramMessage($pdo, $propertyId, $category, $message, $replyMarkup = null, $templateKey = null, $deepLinkParams = []) {
         $config = getPropertyTelegramConfig($pdo, $propertyId);
         if (!$config['enabled']) {
             return ['skipped' => true, 'reason' => 'Telegram notifications are turned off for this property'];
@@ -249,7 +263,7 @@ if (!function_exists('sendPropertyTelegramMessage')) {
 
         $token = !empty($config['botToken']) ? $config['botToken'] : TELEGRAM_BOT_TOKEN;
         ensureTelegramWebhookSet($pdo, $token);
-        $message = appendAppUrlToMessage($pdo, $propertyId, $category, $message);
+        $message = appendAppUrlToMessage($pdo, $propertyId, $category, $message, $deepLinkParams);
 
         if ($category === 'all') {
             $chatIds = [];
