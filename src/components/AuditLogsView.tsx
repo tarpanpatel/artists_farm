@@ -271,7 +271,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                   <div className="py-1">
                     <span className="font-semibold text-gray-900 dark:text-white block text-xs whitespace-nowrap">{rec.guestName}</span>
                     {rec.roomNumber && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 mt-0.5 rounded-full text-2xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 whitespace-nowrap">
+                      <span className="inline-flex items-center px-2.5 py-0.5 mt-0.5 rounded-md text-2xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 whitespace-nowrap">
                         {rec.roomNumber}
                       </span>
                     )}

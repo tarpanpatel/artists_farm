@@ -354,7 +354,7 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
                   <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                   <span className="text-sm font-bold text-emerald-900 dark:text-emerald-200">30-Day Trial License</span>
                 </div>
-                <span className="px-2.5 py-0.5 text-2xs font-bold uppercase rounded-full bg-emerald-600 text-white border border-emerald-500 shadow-xs">
+                <span className="px-2.5 py-0.5 text-2xs font-bold uppercase rounded-md bg-emerald-600 text-white border border-emerald-500 shadow-xs">
                   ₹0 Free Trial
                 </span>
               </div>

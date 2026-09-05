@@ -495,7 +495,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                       />
                       <span className="ms-3 flex-1 text-left whitespace-nowrap truncate">{item.label}</span>
                       {item.badge && (
-                        <span className="inline-flex items-center justify-center px-2 py-0.5 ms-3 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                        <span className="inline-flex items-center justify-center px-2 py-0.5 ms-3 text-xs font-semibold rounded-md bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                           {item.badge}
                         </span>
                       )}
@@ -560,7 +560,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                     {activeTab === 'billing' && 'Subscription & Billing'}
                   </h1>
                   {activeTab === 'dashboard' && tenantInfo?.subscription_plan && (
-                    <span className={`inline-flex text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full capitalize ${planColor[tenantInfo.subscription_plan] ?? planColor.trial}`}>
+                    <span className={`inline-flex text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-md capitalize ${planColor[tenantInfo.subscription_plan] ?? planColor.trial}`}>
                       {tenantInfo.subscription_plan}
                     </span>
                   )}
@@ -1102,7 +1102,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                       <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
                         {isPlatformAdmin ? 'Root Platform Administrator' : 'Tenant Super Administrator'}
                       </p>
-                      <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                      <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                         Active Account
                       </span>
                     </div>

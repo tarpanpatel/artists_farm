@@ -26,7 +26,7 @@ const dotVariantClasses: Record<BadgeVariant, string> = {
 // branding dropped in favor of one consistent Flowbite look site-wide).
 const badgeTheme = createTheme({
   root: {
-    base: 'app-badge inline-flex items-center gap-1.5 font-semibold rounded-full border shadow-2xs select-none tabular-nums whitespace-nowrap',
+    base: 'app-badge inline-flex items-center gap-1.5 font-semibold rounded-md border shadow-2xs select-none tabular-nums whitespace-nowrap',
     color: {
       success: 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900 dark:text-green-300 dark:border-green-700',
       danger: 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900 dark:text-red-300 dark:border-red-700',

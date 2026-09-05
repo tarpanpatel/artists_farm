@@ -1441,7 +1441,12 @@ export const strings: Record<string, string> = {
   not_logged_in_label: "Not logged in",
 
   // Misc Charges Management
-  misc_charges_heading: "Expense Categories & Items",
+  misc_charges_heading: "Extra Charges & Fees",
+  // Matches the sidebar/nav title for this same page ("Extra Charges & Fees",
+  // set in php/kitchen/menu.php). The heading used to read "Expense Categories
+  // & Items", so the item you clicked and the page you landed on had different
+  // names.
+  misc_charges_desc: "Preset prices for add-on services like laundry, airport transfers, or late check-out, ready to add to a guest bill.",
   misc_charges_description: "Edit or delete any item, including system defaults (marked) - defaults are only ever changed for this property, never for others. Add custom items within any category as needed.",
   add_new_service_button: "Add New Service",
   service_id_column: "Service ID",

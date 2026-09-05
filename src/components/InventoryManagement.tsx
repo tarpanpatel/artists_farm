@@ -1234,7 +1234,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               {selectedCatalogItemIds.length > 0 && (
                 <div className="bulk-category-action-bar bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md animate-in fade-in slide-in-from-top-2 duration-250">
                   <div className="flex items-center gap-2">
-                    <span className="bg-blue-600 text-white font-semibold text-xs px-2.5 py-1 rounded-full shadow-3xs">
+                    <span className="bg-blue-600 text-white font-semibold text-xs px-2.5 py-1 rounded-md shadow-3xs">
                       {selectedCatalogItemIds.length} Selected
                     </span>
                     <span className="text-xs text-blue-700 dark:text-blue-300 font-semibold">
@@ -1885,7 +1885,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             <span className="inline-flex items-center gap-1.5">
               <span>Pending Requests</span>
               {pendingSheetsCount > 0 && (
-                <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-md bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                   {pendingSheetsCount}
                 </span>
               )}
@@ -2426,7 +2426,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   <ShoppingCart className="w-4 h-4 text-slate-700" />
                   <span>{t('supply_basket_header')}</span>
                 </h3>
-                <span className="text-[10px] font-semibold bg-cyan-50 text-cyan-700 px-2 py-0.5 rounded-full border border-cyan-200">
+                <span className="text-[10px] font-semibold bg-cyan-50 text-cyan-700 px-2 py-0.5 rounded-md border border-cyan-200">
                   {totalReqCount} Items
                 </span>
               </div>
@@ -2664,12 +2664,12 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       cell: (item: InventoryItem) => {
         const isLow = item.currentStock <= item.minThreshold;
         return isLow ? (
-          <span className="bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-200 border border-red-300 dark:border-red-800 text-[10px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 w-max">
+          <span className="bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-200 border border-red-300 dark:border-red-800 text-[10px] font-semibold px-2.5 py-1 rounded-md flex items-center gap-1 w-max">
             <AlertTriangle className="w-3 h-3 text-red-600" />
             {t('low_stock_badge').toUpperCase()}
           </span>
         ) : (
-          <span className="bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800 text-[10px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 w-max">
+          <span className="bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800 text-[10px] font-semibold px-2.5 py-1 rounded-md flex items-center gap-1 w-max">
             <CheckCircle2 className="w-3 h-3 text-emerald-600" />
             {t('in_stock_badge')}
           </span>
@@ -2680,12 +2680,12 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       name: t('tracking_column_header', 'Tracking'),
       cell: (item: InventoryItem) => (
         item.source === 'custom' ? (
-          <span className="text-[10px] bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-800 font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 w-max">
+          <span className="text-[10px] bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-800 font-semibold px-2.5 py-1 rounded-md flex items-center gap-1 w-max">
             <Settings className="w-3 h-3" />
             Custom
           </span>
         ) : (
-          <span className="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-600 font-semibold px-2.5 py-1 rounded-full inline-block">
+          <span className="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-600 font-semibold px-2.5 py-1 rounded-md inline-block">
             {t('system_tracked_badge', 'System Default')}
           </span>
         )
@@ -2816,11 +2816,11 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     <h4 className="inventory-management__caption font-semibold text-slate-900 dark:text-white text-sm">{item.name}</h4>
                   </div>
                   {isLow ? (
-                    <span className="bg-red-100 text-red-800 border border-red-200 text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span className="bg-red-100 text-red-800 border border-red-200 text-[10px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1">
                       <AlertTriangle className="w-3 h-3 text-red-600" /> {t('low_stock_badge')}
                     </span>
                   ) : (
-                    <span className="bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span className="bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3 text-emerald-600" /> {t('in_stock_badge')}
                     </span>
                   )}
@@ -2997,7 +2997,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                         type="button"
                         aria-label="Remove Image"
                         onClick={() => setImagePath('')}
-                        className="absolute top-1 right-1 bg-slate-900/80 text-white p-0.5 rounded-full hover:bg-slate-900"
+                        className="absolute top-1 right-1 bg-slate-900/80 text-white p-0.5 rounded-md hover:bg-slate-900"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>

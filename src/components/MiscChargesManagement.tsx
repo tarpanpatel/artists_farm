@@ -338,7 +338,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
       <PageHeader
         title={
           <span className="inline-flex items-center gap-2">
-            {t('misc_charges_heading', 'Expense Categories & Items')}
+            {t('misc_charges_heading', 'Extra Charges & Fees')}
             <Popover
               placement="bottom"
               trigger="click"

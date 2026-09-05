@@ -42,6 +42,24 @@ export function isChunkLoadError(message: string | undefined | null): boolean {
  *      the pre-warming fetch below hangs (slow network, cold server) - so
  *      the never-resolving promise this replaces is bounded, not eternal.
  */
+// In-memory only (a real navigation wipes it - it only needs to survive
+// this one page's lifetime). Closes a real "reload storm" gap found live
+// 5 Sep 2026: this file wraps 25+ lazy components, each with its OWN
+// per-chunk sessionStorage guard below, so if a deploy leaves MORE THAN
+// ONE of them stale at once - very plausible, since a route-level
+// component (e.g. MultiKeyPropertyOverview) and something mounted
+// alongside it near the header (TelegramNotificationModal, LegalDrawer)
+// can both be loading for the first time on the same fresh navigation -
+// EACH failing chunk independently called forceFreshReload(), racing each
+// other with competing cache-busted URLs and interrupting one another's
+// in-flight navigation. Observed live as 3 separate reload cycles within
+// ~20 seconds before the destination property finally landed - much
+// longer than the intended one-reload recovery, and easily read as "still
+// hanging." Only the FIRST chunk to fail actually triggers a reload; every
+// other chunk that fails while one is already in flight just waits on it
+// too, since a single fresh reload fixes every stale chunk at once anyway.
+let reloadClaimed = false;
+
 function forceFreshReload(): void {
   const url = new URL(window.location.href);
   url.searchParams.set('_r', String(Date.now()));
@@ -114,7 +132,13 @@ export function lazyWithRetry<T extends ComponentType<any>>(
       }
 
       if (!alreadyRetried) {
-        forceFreshReload();
+        // Only the first chunk to fail this page load actually reloads -
+        // see reloadClaimed's own doc comment above for why this must be
+        // global, not per-chunk.
+        if (!reloadClaimed) {
+          reloadClaimed = true;
+          forceFreshReload();
+        }
         // The reload is about to tear this whole JS context down anyway -
         // return a promise that never resolves so React doesn't render the
         // error boundary for the brief moment before navigation lands.

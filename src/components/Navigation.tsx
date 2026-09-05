@@ -594,7 +594,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                       />
                       <span className="flex-1 truncate">{child.title}</span>
                       {childBadge && (
-                        <span className={`inline-flex items-center justify-center px-2 py-0.5 ms-3 text-xs font-semibold rounded-full ${childBadge.className}`}>
+                        <span className={`inline-flex items-center justify-center px-2 py-0.5 ms-3 text-xs font-semibold rounded-md ${childBadge.className}`}>
                           {childBadge.text}
                         </span>
                       )}
@@ -635,7 +635,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           <span className="ms-3 flex-1 whitespace-nowrap truncate">{node.title}</span>
           {badge && (
             <span
-              className={`inline-flex items-center justify-center px-2 py-0.5 ms-3 text-xs font-semibold rounded-full ${badge.className}`}
+              className={`inline-flex items-center justify-center px-2 py-0.5 ms-3 text-xs font-semibold rounded-md ${badge.className}`}
             >
               {badge.text}
             </span>

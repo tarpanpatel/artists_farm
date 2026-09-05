@@ -1258,7 +1258,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                     <button
                       type="button"
                       onClick={() => setFoodForm({ ...foodForm, imagePath: '' })}
-                      className="menu-manager__preview-remove absolute top-1 right-1 bg-slate-900/80 text-white p-0.5 rounded-full hover:bg-slate-900 cursor-pointer"
+                      className="menu-manager__preview-remove absolute top-1 right-1 bg-slate-900/80 text-white p-0.5 rounded-md hover:bg-slate-900 cursor-pointer"
                       title={t('remove_image_tooltip', 'Remove Image')}
                     >
                       <X className="w-3.5 h-3.5" />

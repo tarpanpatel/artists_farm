@@ -81,7 +81,7 @@ export const TelegramConnectionStatus: React.FC<TelegramConnectionStatusProps> =
               <div>
                 <div className="text-sm font-semibold text-slate-900 dark:text-white">{label}</div>
                 {connected ? (
-                  <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300">
+                  <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-md text-2xs font-bold uppercase tracking-wider bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300">
                     <CheckCircle2 className="w-3 h-3" />
                     {t('white_glove_managed_label', 'Managed by Support')}
                   </span>

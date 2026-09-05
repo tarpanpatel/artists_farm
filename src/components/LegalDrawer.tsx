@@ -205,7 +205,7 @@ export const LegalDrawer: React.FC<LegalDrawerProps> = ({ activeTab, onClose, te
                   key={cat.id}
                   type="button"
                   onClick={() => setSelectedCategory(cat.id)}
-                  className={`px-3 py-1.5 rounded-full whitespace-nowrap font-medium text-xs border transition-colors cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-lg whitespace-nowrap font-medium text-xs border transition-colors cursor-pointer ${
                     isSelected
                       ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
                       : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
@@ -394,7 +394,7 @@ export const LegalDrawer: React.FC<LegalDrawerProps> = ({ activeTab, onClose, te
                   Operational Manual &amp; FAQs
                 </span>
               </div>
-              <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/60 px-2.5 py-0.5 rounded-full border border-blue-200 dark:border-blue-800">
+              <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/60 px-2.5 py-0.5 rounded-md border border-blue-200 dark:border-blue-800">
                 {filteredItems.length} {filteredItems.length === 1 ? 'guide' : 'guides'}
               </span>
             </div>

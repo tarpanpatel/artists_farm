@@ -912,7 +912,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                               {row.fullName}
                             </span>
                             {isCurrentUser && (
-                              <span className="text-2xs font-semibold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800 shrink-0">
+                              <span className="text-2xs font-semibold px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800 shrink-0">
                                 You
                               </span>
                             )}
@@ -989,7 +989,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     id: 'cash_handling',
                     name: 'Cash Handling',
                     cell: (row: any) => row.isFinancialHandler ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800 whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-2xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800 whitespace-nowrap">
                         <CreditCard className="w-3 h-3 text-emerald-600" /> Cash Handler
                       </span>
                     ) : (
@@ -1000,7 +1000,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     id: 'access_all_properties',
                     name: 'Access All Properties',
                     cell: (row: any) => row.accessAllProperties ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800 whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-2xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800 whitespace-nowrap">
                         <Building2 className="w-3 h-3 text-blue-600" /> All Properties
                       </span>
                     ) : (
@@ -1137,7 +1137,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         <div className="min-w-0 flex-1 flex items-center flex-wrap gap-1.5">
                           <h4 className="font-bold text-slate-900 dark:text-white text-sm m-0">{row.fullName}</h4>
                           {isCurrentUser && (
-                            <span className="text-2xs font-semibold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800 shrink-0">
+                            <span className="text-2xs font-semibold px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800 shrink-0">
                               You
                             </span>
                           )}
@@ -1443,7 +1443,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                             <h4 className="font-semibold text-slate-900 dark:text-white text-xs">{member.name}</h4>
                             <p className="text-[11px] text-slate-500">{member.role} • ₹{dailyRate}/day</p>
                           </div>
-                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
                             {member.status}
                           </span>
                         </div>
@@ -1761,11 +1761,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   <div className="flex items-center justify-between gap-2">
                     <div>
                       <div className="font-bold text-slate-900 dark:text-white text-sm">{s.name}</div>
-                      <span className="text-[10px] font-semibold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full border border-blue-200 dark:border-blue-800 inline-block mt-0.5">
+                      <span className="text-[10px] font-semibold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800 inline-block mt-0.5">
                         {s.role}
                       </span>
                     </div>
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${s.status === 'Active' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-slate-200 text-slate-700'}`}>
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${s.status === 'Active' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-slate-200 text-slate-700'}`}>
                       {s.status}
                     </span>
                   </div>
@@ -1859,7 +1859,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         ]}
                       />
                     ) : (
-                      <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 text-[10px] font-semibold px-2.5 py-0.5 rounded-full">{row.status}</span>
+                      <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 text-[10px] font-semibold px-2.5 py-0.5 rounded-md">{row.status}</span>
                     ),
                   },
                   ...(updateStaff ? [{
@@ -2197,7 +2197,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         </div>
                       }
                     >
-                      <button type="button" aria-label="What does Cash Handling User do?" className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors shrink-0">
+                      <button type="button" aria-label="What does Cash Handling User do?" className="inline-flex items-center justify-center p-0.5 rounded-lg text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors shrink-0">
                         <HelpCircle className="w-3.5 h-3.5" />
                       </button>
                     </Popover>
@@ -2223,7 +2223,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                           </div>
                         }
                       >
-                        <button type="button" aria-label="What does Access All Properties do?" className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors shrink-0">
+                        <button type="button" aria-label="What does Access All Properties do?" className="inline-flex items-center justify-center p-0.5 rounded-lg text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors shrink-0">
                           <HelpCircle className="w-3.5 h-3.5" />
                         </button>
                       </Popover>
@@ -2355,7 +2355,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   <div className="min-w-0 pr-3">
                     <p className="text-xs font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                       <span>Account Status:</span>
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold ${
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-2xs font-bold ${
                         updateStatus === 'Active'
                           ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                           : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
@@ -2403,7 +2403,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                           </div>
                         }
                       >
-                        <button type="button" aria-label="What does Cash Handling User do?" className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors shrink-0">
+                        <button type="button" aria-label="What does Cash Handling User do?" className="inline-flex items-center justify-center p-0.5 rounded-lg text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors shrink-0">
                           <HelpCircle className="w-3.5 h-3.5" />
                         </button>
                       </Popover>
@@ -2429,7 +2429,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                             </div>
                           }
                         >
-                          <button type="button" aria-label="What does Access All Properties do?" className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors shrink-0">
+                          <button type="button" aria-label="What does Access All Properties do?" className="inline-flex items-center justify-center p-0.5 rounded-lg text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors shrink-0">
                             <HelpCircle className="w-3.5 h-3.5" />
                           </button>
                         </Popover>

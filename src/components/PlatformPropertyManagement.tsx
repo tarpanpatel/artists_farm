@@ -986,7 +986,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-semibold text-slate-900 dark:text-white">{req.tenant_name}</span>
-                      <span className={`text-2xs font-bold px-2 py-0.5 rounded-full ${req.request_type === 'delete' ? 'bg-red-100 text-red-700 dark:bg-red-900/60 dark:text-red-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300'}`}>
+                      <span className={`text-2xs font-bold px-2 py-0.5 rounded-md ${req.request_type === 'delete' ? 'bg-red-100 text-red-700 dark:bg-red-900/60 dark:text-red-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300'}`}>
                         {req.request_type === 'delete' ? 'Close Account' : 'Cancel Subscription'}
                       </span>
                     </div>
@@ -1575,12 +1575,12 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
 
                           <div>
                             {creds.mustChangePasscode ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-2xs font-semibold rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-2xs font-semibold rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
                                 <AlertTriangle className="w-3 h-3 text-amber-600" />
                                 Temp passcode - not yet changed by tenant
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-2xs font-semibold rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-2xs font-semibold rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
                                 <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                                 Tenant has set their own passcode
                               </span>

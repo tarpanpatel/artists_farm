@@ -1456,7 +1456,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               <span className="inline-flex items-center gap-1.5">
                 <span>{t('live_active_orders_label', 'Live Tickets')}</span>
                 {pendingOrdersCount > 0 && (
-                  <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                  <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-md bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                     {pendingOrdersCount}
                   </span>
                 )}
@@ -1594,16 +1594,16 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       </p>
                     </div>
                     {completionPhase === 'processing' ? (
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 flex items-center gap-1">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 flex items-center gap-1">
                         <Loader2 className="w-3 h-3 animate-spin" /> {t('processing_label', 'Processing...')}
                       </span>
                     ) : completionPhase === 'completed' ? (
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                         {t('completed_label', 'Completed')}
                       </span>
                     ) : (
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${
                           ord.status === 'Fulfilled'
                             ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
                             : ord.status === 'Preparing'
@@ -1643,7 +1643,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       {/* Amber = walk-in/non-resident (Toast/Cloudbeds standard;
                           slate blended in and was visually identical to the
                           room-service blue pill on dark mode). */}
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                         {t('walk_in_badge', 'Walk-in')}{ord.guestName && ord.guestName !== 'Walk-in' ? ` · ${ord.guestName}` : ''}
                       </span>
                     </div>
@@ -1654,7 +1654,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     // way to see the destination room on the ticket itself
                     // until after it was already served).
                     <div className="mb-2.5 -mt-1">
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                         {ord.roomNumber || t('room_service_badge', 'Room Service')}{ord.guestName ? ` · ${ord.guestName}` : ''}
                       </span>
                     </div>
@@ -1775,7 +1775,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                               // but has nothing to act on until the kitchen marks it
                               // ready (ROLES.md, 24 Aug 2026: "see live orders", not a
                               // kitchen-prep action).
-                              <span className="text-[10px] font-semibold px-2.5 py-1.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 select-none">
+                              <span className="text-[10px] font-semibold px-2.5 py-1.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 select-none">
                                 {t('status_preparing', 'Preparing')}
                               </span>
                             ) : (
@@ -2383,7 +2383,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       <ShoppingCart className="w-4 h-4 text-gray-700 dark:text-gray-400" />
                       <span>{t('order_cart_header')}</span>
                     </h3>
-                    <span className="text-2xs font-semibold bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full border border-blue-200 dark:border-blue-800">
+                    <span className="text-2xs font-semibold bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800">
                       {totalCartCount} Items
                     </span>
                   </div>
@@ -2797,7 +2797,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               {
                 name: t('status_column_header'),
                 cell: (row: Requisition) => (
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${
                     row.status === 'Approved'
                       ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
                       : 'bg-amber-100 text-amber-800 border-amber-300'
@@ -3831,7 +3831,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     <button
                       type="button"
                       onClick={() => setNewItemImagePath('')}
-                      className="absolute top-1 right-1 bg-slate-900/80 text-white p-0.5 rounded-full hover:bg-slate-900 cursor-pointer"
+                      className="absolute top-1 right-1 bg-slate-900/80 text-white p-0.5 rounded-md hover:bg-slate-900 cursor-pointer"
                       title={t('remove_image_tooltip')}
                     >
                       <X className="w-3.5 h-3.5" />
@@ -4062,7 +4062,7 @@ const CurrentGuestServedDishes: React.FC<{ servedLogs: ServedLogEntry[] }> = ({ 
             <h3 className="font-extrabold text-slate-900 dark:text-white text-sm tracking-wide">
               {t('current_guest_served_dishes_heading')}
             </h3>
-            <span className="text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800/60 shrink-0">
+            <span className="text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800/60 shrink-0">
               {servedLogs.length} {t('total_suffix')}
             </span>
           </div>

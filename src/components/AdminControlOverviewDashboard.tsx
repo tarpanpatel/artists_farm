@@ -71,7 +71,13 @@ export const AdminControlOverviewDashboard: React.FC<AdminControlOverviewDashboa
       uniqueKey: 'misc_charges',
       tabKey: 'petty_cash',
       title: t('misc_charges_heading', 'Extra Charges & Fees'),
-      description: t('misc_charges_desc', 'Set preset prices for extra guests, bonfire, laundry, or special services.'),
+      // Reworded 5 Sep 2026. This used to read "Set preset prices for extra
+      // guests, bonfire, laundry, or special services" - but there has never
+      // been any extra-guest pricing in the app (no such field exists anywhere
+      // in src/ or php/), and per-night/occupancy pricing belongs to the rate
+      // system now, not here. What this page actually holds is a catalogue of
+      // add-on charges staff attach to a bill at checkout.
+      description: t('misc_charges_desc', 'Preset prices for add-on services like laundry, airport transfers, or late check-out, ready to add to a guest bill.'),
       buttonLabel: t('manage_fees_btn', 'Manage Fees'),
       icon: Sliders,
       color: 'bg-cyan-50 dark:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400 border-cyan-200 dark:border-cyan-800/60',

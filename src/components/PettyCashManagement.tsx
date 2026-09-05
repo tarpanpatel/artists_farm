@@ -1635,7 +1635,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                   const isAutoSalary = cat === 'Salary (Auto)' || entry.description?.startsWith('Salary (Auto):');
                   return (
                     <div className="py-1">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
                         {isAutoSalary ? 'Salary (Auto)' : cat}
                       </span>
                     </div>
@@ -1785,7 +1785,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                         </div>
 
                         <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100 dark:border-slate-700">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
                             {cat}
                           </span>
                           <span className="font-semibold text-xs text-slate-900 dark:text-white tabular-numbers">

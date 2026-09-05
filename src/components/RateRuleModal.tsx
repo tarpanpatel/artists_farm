@@ -341,7 +341,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
             Prices & Booking Rules
           </h3>
           {rooms.length > 0 && (
-            <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full border ${
+            <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-md border ${
               selectedRoomIds.length === 0
                 ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300'
                 : selectedRoomIds.length === 1
@@ -623,7 +623,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                       <span className="text-2xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-200">
                         Target Unit
                       </span>
-                      <span className={`px-2.5 py-0.5 text-2xs font-semibold rounded-full border ${
+                      <span className={`px-2.5 py-0.5 text-2xs font-semibold rounded-md border ${
                         selectedRoomIds.length === 0
                           ? 'bg-emerald-100 dark:bg-emerald-900/60 border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200'
                           : selectedRoomIds.length === 1
@@ -698,7 +698,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                   <span className="text-2xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-200">
                     Target Unit:
                   </span>
-                  <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-blue-100 dark:bg-blue-900/60 border border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200">
+                  <span className="px-2.5 py-0.5 text-xs font-semibold rounded-md bg-blue-100 dark:bg-blue-900/60 border border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200">
                     🏠 {rooms[0].name}
                   </span>
                 </div>

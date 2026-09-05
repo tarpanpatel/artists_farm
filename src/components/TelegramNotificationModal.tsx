@@ -1060,7 +1060,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
             <div>
               <div className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
                 <span>{t('enable_telegram_notifications_label', 'Enable Telegram Notifications')}</span>
-                <span className={`px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider ${
+                <span className={`px-2 py-0.5 rounded-md text-2xs font-bold uppercase tracking-wider ${
                   tgSettings?.enabled ?? true
                     ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
@@ -1117,7 +1117,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                   <span className="inline-flex items-center gap-1.5">
                     <span>{cat}</span>
                     {count > 0 && (
-                      <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-full bg-sky-100 text-sky-800 dark:bg-sky-900/60 dark:text-sky-300">
+                      <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-md bg-sky-100 text-sky-800 dark:bg-sky-900/60 dark:text-sky-300">
                         {count}
                       </span>
                     )}

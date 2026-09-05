@@ -989,7 +989,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                       <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs">{t('apply_gst_label', 'Apply GST')}</span>
                     </div>
                     {gstEnabled && (
-                      <span className="text-[10px] font-semibold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                      <span className="text-[10px] font-semibold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-md">
                         Acc: {gstAccommodationRate}% | Food: {gstFoodRate}%
                       </span>
                     )}

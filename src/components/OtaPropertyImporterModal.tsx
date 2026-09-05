@@ -478,7 +478,7 @@ export const OtaPropertyImporterModal: React.FC<OtaPropertyImporterModalProps> =
                   <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                   <span className="text-sm font-bold text-gray-900 dark:text-white">Listing Preview Extracted</span>
                 </div>
-                <span className="px-2.5 py-0.5 text-2xs font-semibold uppercase rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                <span className="px-2.5 py-0.5 text-2xs font-semibold uppercase rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
                   {preview.source === 'airbnb' ? 'Airbnb Listing' : 'Booking.com Property'}
                 </span>
               </div>

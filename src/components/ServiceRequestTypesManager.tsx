@@ -149,7 +149,7 @@ export const ServiceRequestTypesManager: React.FC = () => {
               {t('service_request_types_description', 'Global service request types. Changes cascade to all properties instantly.')}
             </p>
           </div>
-          <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 px-3 py-1.5 rounded-full shrink-0">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 px-3 py-1.5 rounded-md shrink-0">
             <Globe className="w-3.5 h-3.5" />
             Global Catalog
           </div>

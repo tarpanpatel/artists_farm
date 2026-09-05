@@ -52,7 +52,7 @@ export const BookingEngineShareModal: React.FC<BookingEngineShareModalProps> = (
             <div>
               <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
                 Direct Booking Engine
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-3xs font-bold bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-3xs font-bold bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                   <Sparkles className="w-2.5 h-2.5" /> 0% Commission
                 </span>
               </h3>
