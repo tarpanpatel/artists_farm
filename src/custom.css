@@ -247,13 +247,34 @@ textarea,
   font-weight: normal;
 }
 
-label,
+/* Deliberately excludes .floating-label (5 Sep 2026). This rule is a blunt
+   type-selector with !important, so it beat the Tailwind `text-sm` on every
+   Flowbite floating label in the app - which is why a correctly-written
+   floating-label fix could be shipped and change nothing on screen.
+
+   A Flowbite floating label only works if, at rest, it is the SAME size as the
+   input's own text: that is what makes it read as placeholder text before it
+   flies up to the border. Pinning it to 10px while inputs render at 14px
+   (desktop) or 16px (mobile, see mobile_screen_fix.css's iOS anti-zoom rule)
+   made that impossible, and shrank the floated state to 7.5px - well under
+   Flowbite's proportions. See https://flowbite.com/docs/forms/floating-label/ */
+label:not(.floating-label),
 .app-label,
 .input__label {
   font-family: inherit !important;
   font-size: 10px !important;
   line-height: 1.3 !important;
   font-weight: 600;
+}
+
+/* Floating labels follow Flowbite exactly: same size as the input's text at
+   rest, then scale-75 handles the floated state (14px -> 10.5px here). The
+   mobile counterpart lives in mobile_screen_fix.css, where inputs are 16px. */
+.floating-label {
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 400;
 }
 
 /* Global Date Input - Click Anywhere to Open Picker */

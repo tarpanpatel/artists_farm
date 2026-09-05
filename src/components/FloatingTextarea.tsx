@@ -88,7 +88,7 @@ export const FloatingTextarea = forwardRef<HTMLTextAreaElement, FloatingTextarea
           <label
             htmlFor={textareaId}
             className={twMerge(
-              'absolute text-sm duration-300 transform origin-[0] px-2 peer-focus:px-2 start-2 pointer-events-none transition-all z-10',
+              'floating-label absolute text-sm duration-300 transform origin-[0] px-2 peer-focus:px-2 start-2 pointer-events-none transition-all z-10',
               labelTransform,
               bgToken,
               disabled ? 'text-gray-400 dark:text-gray-500' : labelColor

@@ -40,6 +40,17 @@ body {
     line-height: 1.4 !important;
   }
 
+  /* Flowbite floating labels must match the 16px above at rest, or they stop
+     reading as placeholder text - the entire point of the pattern. scale-75
+     then gives 12px floated, holding Flowbite's exact proportions at this
+     larger base. Without this they inherit custom.css's 10px label rule and
+     render at 10px resting / 7.5px floated against 16px input text. */
+  .floating-label {
+    font-size: 16px !important;
+    line-height: 1.4 !important;
+    font-weight: 400 !important;
+  }
+
   /* Specific handling for search inputs & date/time pickers on mobile */
   input[type="text"],
   input[type="password"],
