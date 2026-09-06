@@ -1258,9 +1258,15 @@ function proposeAirbnbRoomConfig(PDO $pdo, $channelClient, string $channexChanne
                     'cleaning_fee'       => ['Cleaning fee', 'cleaning_fee', 'money'],
                     'security_deposit'   => ['Security deposit', 'security_deposit', 'money'],
                 ];
+                // These live under `pricing_settings`, NOT at the top level of the
+                // listing (verified against a real listing_details response 6 Sep
+                // 2026 - the first version read them off $L directly, so it found
+                // nothing and silently proposed only the check-in/out times). The
+                // top-level fallback stays in case a future response flattens them.
+                $PS = is_array($L['pricing_settings'] ?? null) ? $L['pricing_settings'] : $L;
                 foreach ($priceable as $col => [$label, $airbnbKey, $kind]) {
-                    if (!array_key_exists($airbnbKey, $L)) continue;
-                    $raw = $L[$airbnbKey];
+                    if (!array_key_exists($airbnbKey, $PS)) continue;
+                    $raw = $PS[$airbnbKey];
                     if ($raw === null || $raw === '' || !is_numeric($raw)) continue;
                     $airbnbVal = ($kind === 'int') ? (int)$raw : round((float)$raw, 2);
                     if ($airbnbVal < 0) continue;
