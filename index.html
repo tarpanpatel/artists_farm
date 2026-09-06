@@ -170,8 +170,30 @@
       // 2.5s timeout guarantees the recovery still fires even if the fetch
       // itself hangs - this can only make the existing recovery faster, never
       // less reliable.
+      //
+      // The guard is keyed PER URL, and cleared once the app boots (see
+      // main.tsx). Both matter, and a single tab-wide one-shot flag was the
+      // reason "switching properties hangs on a spinner forever" survived
+      // every previous attempt at this (6 Sep 2026):
+      //
+      //   - sw.js caches the HTML shell per URL, so every property has its
+      //     OWN independently-aged shell. Switching property is the only
+      //     ordinary action that issues a real navigation, so it's exactly
+      //     where a stale one surfaces - and with N properties there are N
+      //     chances to hit one.
+      //   - sessionStorage survives navigations for the life of the tab (in
+      //     an installed PWA, days). So the FIRST stale shell recovered and
+      //     every later one was silently refused a retry - a permanent
+      //     #initial-loader with React never mounted, so nothing in the app
+      //     could report it. Only a force-quit cleared the flag.
+      //
+      // The caches are also wiped on the way out: a cache-busted URL alone
+      // only dodges the bad entry for this one load, leaving the stale shells
+      // for every OTHER property still sitting there waiting to do it again.
       (function () {
-        var alreadyRetried = sessionStorage.getItem('sw_stale_reload_attempted');
+        var storageKey = 'sw_stale_reload_attempted:' + window.location.pathname;
+        var alreadyRetried = false;
+        try { alreadyRetried = sessionStorage.getItem(storageKey) === '1'; } catch (e) {}
         window.addEventListener('error', function (event) {
           var target = event.target;
           if (
@@ -181,7 +203,8 @@
             target.src.indexOf('/assets/') !== -1 &&
             !alreadyRetried
           ) {
-            sessionStorage.setItem('sw_stale_reload_attempted', '1');
+            alreadyRetried = true;
+            try { sessionStorage.setItem(storageKey, '1'); } catch (e) {}
             var freshUrl = window.location.pathname + window.location.search +
               (window.location.search ? '&' : '?') + '_r=' + Date.now() + window.location.hash;
             var navigated = false;
@@ -190,9 +213,16 @@
               navigated = true;
               window.location.href = freshUrl;
             };
-            fetch(freshUrl, { credentials: 'include', headers: { 'Accept': 'text/html' } })
-              .then(go)
-              .catch(go);
+            var wiped = (window.caches && caches.keys)
+              ? caches.keys()
+                  .then(function (keys) {
+                    return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+                  })
+                  .catch(function () {})
+              : Promise.resolve();
+            wiped.then(function () {
+              return fetch(freshUrl, { credentials: 'include', headers: { 'Accept': 'text/html' } });
+            }).then(go).catch(go);
             setTimeout(go, 2500);
           }
         }, true);

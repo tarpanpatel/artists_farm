@@ -108,6 +108,22 @@ window.addEventListener('click', (e) => {
 // file and 404s through the SPA fallback instead. This app is always served
 // from the domain root (see src/services/api.ts's own comment), so a plain
 // absolute path is correct - not computed per-request.
+// The entry bundle evidently loaded (this file is running), so index.html's
+// one-shot stale-shell recovery for THIS url has done its job and should be
+// handed back for next time. Without this the flag is set once and never
+// cleared, which is what made a second stale shell - a different property's
+// cached shell, reached via the header's property switcher - unrecoverable
+// for the rest of the tab's life. Deliberately NOT clearing lazyWithRetry's
+// own `chunk-reload:*` keys: booting proves the ENTRY bundle is fine, it
+// proves nothing about a lazy chunk, and those guards are what stop a
+// genuinely missing chunk from reload-looping.
+try {
+  sessionStorage.removeItem('sw_stale_reload_attempted:' + window.location.pathname);
+} catch (e) {
+  // storage disabled - nothing to clear, and the guard defaults to "retry
+  // allowed" in that case anyway.
+}
+
 if ('serviceWorker' in navigator) {
   if (import.meta.env.PROD) {
     window.addEventListener('load', () => {

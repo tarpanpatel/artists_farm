@@ -1,10 +1,63 @@
-import { defineConfig } from 'vite';
+import { defineConfig, Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+/**
+ * Stamps sw.js's CACHE_NAME with the built entry bundle's content hash.
+ *
+ * Why this has to be automatic (6 Sep 2026, after "stuck at loading when
+ * switching properties" was reported yet again): a browser only installs a new
+ * service worker when sw.js's BYTES change. sw.js's cache version was bumped by
+ * hand - and by the time this was written it had sat on 'farm-pos-v54' for 84
+ * commits and many deploys. An unchanged sw.js means the old worker never
+ * re-installs, never runs its `activate` handler, and so never wipes its caches
+ * - while it keeps answering every HTML navigation stale-while-revalidate from
+ * a pre-deploy shell. Each deploy `rsync --delete`s dist/assets, so that shell
+ * points at a hashed bundle that no longer exists: the entry <script> 404s,
+ * React never mounts, and index.html's static #initial-loader spins forever.
+ *
+ * Keying the cache name to the entry hash makes the coupling exact - the bundle
+ * changed, therefore sw.js changed, therefore a new worker installs and wipes
+ * every stale cache. Nothing left to remember.
+ *
+ * NOTE: sw.js is served from the repo root (it needs root scope to control
+ * /{tenant}/{property}/ navigations, so it can't live in dist/), and reaches the
+ * server via the deploy's `git checkout` - NOT in the dist tarball. So the
+ * rewrite this makes must be committed for a deploy to actually carry it.
+ */
+function stampServiceWorkerVersion(): Plugin {
+  return {
+    name: 'stamp-service-worker-version',
+    apply: 'build',
+    closeBundle() {
+      const swPath = resolve(__dirname, 'sw.js');
+      const htmlPath = resolve(__dirname, 'dist', 'index.html');
+      if (!existsSync(swPath) || !existsSync(htmlPath)) return;
+
+      const entry = readFileSync(htmlPath, 'utf-8').match(/assets\/(index-[A-Za-z0-9_-]+)\.js/);
+      if (!entry) {
+        this.warn('sw.js version NOT stamped: no entry bundle found in dist/index.html');
+        return;
+      }
+      const version = entry[1].replace(/^index-/, '');
+
+      const sw = readFileSync(swPath, 'utf-8');
+      const stamped = sw.replace(
+        /const CACHE_NAME = '[^']*';/,
+        `const CACHE_NAME = 'farm-pos-${version}';`
+      );
+      if (stamped === sw) return;
+      writeFileSync(swPath, stamped);
+      console.log(`  sw.js CACHE_NAME -> farm-pos-${version}`);
+    },
+  };
+}
 
 export default defineConfig({
   base: './',
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), stampServiceWorkerVersion()],
   build: {
     chunkSizeWarningLimit: 650,
     rollupOptions: {

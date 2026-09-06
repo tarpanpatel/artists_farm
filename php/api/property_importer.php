@@ -16,75 +16,40 @@ class PropertyImporter {
 
     /**
      * Clean and normalize a public listing URL or ID.
+     *
+     * Deliberately narrow (5 Sep 2026, explicit request): Airbnb only accepts a
+     * direct listing link, Booking.com only accepts a numeric property ID - no
+     * host/profile links, no pro-account slugs, no pasted Booking.com URLs. Any
+     * other input comes back as 'invalid' rather than guessed at.
      */
     public static function parseIdentifier(string $channel, string $input): array {
         $input = trim($input);
         $channel = strtolower(trim($channel));
 
-        // Auto-prefix https:// if user pasted www. or bare domain
-        if (!preg_match('/^https?:\/\//i', $input) && (strpos($input, '.') !== false || strpos($input, '/') !== false)) {
-            $normalizedInput = 'https://' . ltrim($input, '/');
-        } else {
-            $normalizedInput = $input;
-        }
-
         if ($channel === 'airbnb' || strpos($input, 'airbnb.') !== false || strpos($input, 'airbnb/') !== false) {
-            $channel = 'airbnb';
-
-            // 1. Airbnb Custom Pro Profile URL (e.g. airbnb.com/p/artistic-sthan, www.airbnb.co.in/p/artistic-sthan, or p/artistic-sthan)
-            if (preg_match('/(?:\/|^)p\/([a-zA-Z0-9\-_]+)/i', $input, $pm)) {
-                $proSlug = $pm[1];
-                $url = "https://www.airbnb.co.in/p/{$proSlug}";
-                return ['channel' => 'airbnb', 'type' => 'host_profile', 'host_id' => $proSlug, 'id' => '', 'url' => $url];
-            }
-
-            // 2. Airbnb Host/User profile URL (e.g. /users/show/34816822 or users/34816822)
-            if (preg_match('/users\/(?:show\/)?(\d+)/i', $input, $um)) {
-                $hostId = $um[1];
-                $url = "https://www.airbnb.co.in/users/show/{$hostId}";
-                return ['channel' => 'airbnb', 'type' => 'host_profile', 'host_id' => $hostId, 'id' => '', 'url' => $url];
-            }
-
-            // 3. Airbnb Custom Single Listing URL (e.g. /h/listing-name or airbnb.com/h/listing-name)
-            if (preg_match('/(?:\/|^)h\/([a-zA-Z0-9\-_]+)/i', $input, $hm)) {
-                $customSlug = $hm[1];
-                $url = "https://www.airbnb.co.in/h/{$customSlug}";
-                return ['channel' => 'airbnb', 'type' => 'listing', 'id' => $customSlug, 'url' => $url];
-            }
-
-            // 4. Extract standard listing ID: /rooms/12345678 or raw numeric 12345678
+            // The one supported form: a link to a specific listing, e.g.
+            // airbnb.com/rooms/12345678 (with or without scheme/query string).
             if (preg_match('/rooms\/(\d+)/i', $input, $m)) {
                 $listingId = $m[1];
                 $url = "https://www.airbnb.co.in/rooms/{$listingId}";
                 return ['channel' => 'airbnb', 'type' => 'listing', 'id' => $listingId, 'url' => $url];
-            } elseif (preg_match('/^\d+$/', $input)) {
-                $listingId = $input;
-                $url = "https://www.airbnb.co.in/rooms/{$listingId}";
-                return ['channel' => 'airbnb', 'type' => 'listing', 'id' => $listingId, 'url' => $url];
-            } else {
-                $listingId = '';
-                $url = filter_var($normalizedInput, FILTER_VALIDATE_URL) ? $normalizedInput : "https://www.airbnb.co.in/p/{$input}";
-                // If it doesn't match a standard pattern, check as pro slug / host profile
-                return ['channel' => 'airbnb', 'type' => 'host_profile', 'host_id' => $input, 'id' => '', 'url' => $url];
             }
+
+            return ['channel' => 'airbnb', 'type' => 'invalid', 'id' => '', 'url' => ''];
         }
 
         if ($channel === 'booking_com' || $channel === 'bookingcom' || strpos($input, 'booking.com') !== false) {
-            $channel = 'booking_com';
-            // Extract hotel ID or slug
-            $hotelId = '';
-            if (preg_match('/hotel\/[a-z]{2}\/([a-zA-Z0-9\-]+)\./i', $input, $m)) {
-                $hotelId = $m[1];
-            } elseif (preg_match('/hotel_id=(\d+)/i', $input, $m)) {
-                $hotelId = $m[1];
-            } elseif (preg_match('/^\d+$/', $input)) {
+            // The one supported form: the bare numeric property ID.
+            if (preg_match('/^\d+$/', $input)) {
                 $hotelId = $input;
+                $url = "https://www.booking.com/hotel/{$hotelId}.html";
+                return ['channel' => 'booking_com', 'id' => $hotelId, 'url' => $url];
             }
-            $url = filter_var($normalizedInput, FILTER_VALIDATE_URL) ? $normalizedInput : "https://www.booking.com/hotel/{$input}.html";
-            return ['channel' => 'booking_com', 'id' => $hotelId, 'url' => $url];
+
+            return ['channel' => 'booking_com', 'id' => '', 'url' => ''];
         }
 
-        return ['channel' => $channel, 'id' => $input, 'url' => $normalizedInput];
+        return ['channel' => $channel, 'id' => $input, 'url' => $input];
     }
 
     /**
@@ -94,82 +59,33 @@ class PropertyImporter {
         $parsed = self::parseIdentifier($channel, $input);
 
         if ($parsed['channel'] === 'airbnb') {
-            if (($parsed['type'] ?? '') === 'host_profile') {
-                $hostId = $parsed['host_id'] ?? '';
-                $urlsToTry = [];
-                if (!empty($parsed['url'])) {
-                    $urlsToTry[] = $parsed['url'];
-                }
-                if (is_numeric($hostId)) {
-                    $urlsToTry[] = "https://www.airbnb.co.in/users/show/{$hostId}";
-                    $urlsToTry[] = "https://www.airbnb.com/users/show/{$hostId}";
-                } else {
-                    $urlsToTry[] = "https://www.airbnb.co.in/p/{$hostId}";
-                    $urlsToTry[] = "https://www.airbnb.com/p/{$hostId}";
-                }
-                $urlsToTry = array_values(array_unique($urlsToTry));
-
-                $html = '';
-                $roomIds = [];
-                foreach ($urlsToTry as $u) {
-                    $candidateHtml = self::fetchHtml($u);
-                    if ($candidateHtml) {
-                        preg_match_all('/\/rooms\/(\d+)/', $candidateHtml, $rMatches);
-                        $foundRooms = array_values(array_unique($rMatches[1] ?? []));
-                        if (!empty($foundRooms)) {
-                            $html = $candidateHtml;
-                            $roomIds = $foundRooms;
-                            break;
-                        }
-                    }
-                }
-
-                if (!empty($roomIds)) {
-                    if (count($roomIds) === 1) {
-                        $parsed['id'] = $roomIds[0];
-                        $parsed['url'] = "https://www.airbnb.co.in/rooms/{$roomIds[0]}";
-                        $roomHtml = self::fetchHtml($parsed['url']);
-                        return self::extractAirbnbMetadata($roomHtml ?: $html, $parsed);
-                    }
-
-                    $listings = [];
-                    foreach ($roomIds as $rId) {
-                        $listings[] = [
-                            'id' => $rId,
-                            'url' => "https://www.airbnb.com/rooms/{$rId}",
-                            'name' => "Airbnb Listing #{$rId}",
-                        ];
-                    }
-
-                    return [
-                        'success' => true,
-                        'is_host_profile' => true,
-                        'host_id' => $hostId,
-                        'listings_count' => count($listings),
-                        'listings' => $listings,
-                        'message' => "Found " . count($listings) . " listings on this Airbnb Profile. Click any listing below to import its details.",
-                    ];
-                }
+            if (($parsed['type'] ?? '') === 'invalid' || empty($parsed['id'])) {
+                return [
+                    'success' => false,
+                    'message' => 'Please paste the full Airbnb listing link, e.g. https://www.airbnb.com/rooms/12345678',
+                ];
             }
 
-            // Single listing or fallback
             $targetUrl = $parsed['url'];
             $html = self::fetchHtml($targetUrl);
-
-            if (!$html && $parsed['id']) {
-                $targetUrl = "https://www.airbnb.co.in/rooms/{$parsed['id']}";
+            if (!$html) {
+                // Same listing, other TLD - Airbnb serves .com and .co.in independently.
+                $targetUrl = "https://www.airbnb.com/rooms/{$parsed['id']}";
                 $html = self::fetchHtml($targetUrl);
-                if (!$html) {
-                    $targetUrl = "https://www.airbnb.com/rooms/{$parsed['id']}";
-                    $html = self::fetchHtml($targetUrl);
-                }
             }
 
             return self::extractAirbnbMetadata($html, $parsed);
-        } else {
-            $html = self::fetchHtml($parsed['url']);
-            return self::extractBookingComMetadata($html, $parsed);
         }
+
+        if (empty($parsed['id'])) {
+            return [
+                'success' => false,
+                'message' => 'Please enter your Booking.com property ID (numbers only), e.g. 123456',
+            ];
+        }
+
+        $html = self::fetchHtml($parsed['url']);
+        return self::extractBookingComMetadata($html, $parsed);
     }
 
     /**
@@ -596,8 +512,38 @@ class PropertyImporter {
         $updates = [];
         $params = [];
 
-        if ($applyAll || in_array('name', $selectedFields)) {
-            if (!empty($importedData['name'])) {
+        // ---- HARD RULE: an OTA import must never rename a MULTI_KEY parent ----
+        //
+        // Reported live 6 Sep 2026. Importing an Airbnb listing onto Patel Colony
+        // (a 7-room MULTI_KEY parent) renamed the entire property to that single
+        // listing's title - "Guest suite in Jaipur" - and it rendered that way on
+        // the PUBLIC booking engine, as the heading guests see above all 7 rooms.
+        //
+        // An OTA listing describes ONE unit. A MULTI_KEY parent is the building
+        // that contains it. They are never the same name, so there is no correct
+        // version of this write - it is refused outright rather than defaulted off.
+        //
+        // Enforced here, not only in the UI, because a checkbox is a suggestion:
+        // this endpoint reads selected_fields straight off the request body, and
+        // an empty list historically meant "apply everything".
+        $isMultiKeyParent = ($prop['property_type'] ?? '') === 'MULTI_KEY';
+        if (!$isMultiKeyParent) {
+            // A property carrying real child rooms is a parent whatever its
+            // property_type column happens to say.
+            $kids = $pdo->prepare("SELECT COUNT(*) FROM properties WHERE parent_property_id = ? AND is_deleted = 0");
+            $kids->execute([$propertyId]);
+            $isMultiKeyParent = (int)$kids->fetchColumn() > 0;
+        }
+        $blockedFields = [];
+
+        // `name` is deliberately NOT part of $applyAll. Renaming is the most
+        // visible thing this endpoint can do - it is the public booking page's
+        // heading - so it only ever happens when a caller asks for it by name,
+        // never as a side effect of an omitted selected_fields list.
+        if (in_array('name', $selectedFields, true)) {
+            if ($isMultiKeyParent) {
+                $blockedFields[] = 'name';
+            } elseif (!empty($importedData['name'])) {
                 $updates[] = "name = ?";
                 $params[] = trim($importedData['name']);
             }
@@ -714,6 +660,9 @@ class PropertyImporter {
             'property_id' => $propertyId,
             'photos_count' => count($existingConfig['photos'] ?? []),
             'amenities_count' => count($existingConfig['amenities'] ?? []),
+            // Reported back so the caller can say what it refused, rather than
+            // silently dropping a field the owner ticked.
+            'blocked_fields' => $blockedFields,
         ];
     }
 }
