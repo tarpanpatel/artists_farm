@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect, useLayoutEffect, useRef } from 'react';
+import type { PropertyGuestInfo } from '../utils/whatsappVoucherTemplate';
 import { ChevronLeft, ChevronRight, Plus, Calendar, LogOut, Bell, User, Globe, DollarSign } from './icons/FlowbiteIcons';
 import { Popover } from './Popover';
 import { useConfirm } from './ConfirmDialogContext';
@@ -47,6 +48,7 @@ interface TodayOverviewProps {
   propertyUpiQrCodeUrl?: string;
   propertyAddress?: string;
   propertyInstructions?: string;
+  propertyGuestInfo?: PropertyGuestInfo;
   propertyCheckinTime?: string;
   propertyCheckoutTime?: string;
   serviceRequests?: any[];
@@ -84,6 +86,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   propertyUpiQrCodeUrl = '',
   propertyAddress = '',
   propertyInstructions = '',
+  propertyGuestInfo,
   propertyCheckinTime = '',
   propertyCheckoutTime = '',
   serviceRequests = [],
@@ -1140,6 +1143,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           propertyUpiQrCodeUrl={propertyUpiQrCodeUrl}
           propertyAddress={propertyAddress}
           propertyInstructions={propertyInstructions}
+          propertyGuestInfo={propertyGuestInfo}
           propertyCheckinTime={propertyCheckinTime}
           propertyCheckoutTime={propertyCheckoutTime}
           onCheckout={onCheckout ? () => { onCheckout(selectedGuest.id); setSelectedGuest(null); } : undefined}

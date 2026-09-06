@@ -2482,6 +2482,11 @@ ${itemsStr}
                         propertyUpiQrCodeUrl={preloadedData.currentProperty?.upi_qr_code_url || ''}
                         propertyAddress={preloadedData.currentProperty?.address || ''}
                         propertyInstructions={preloadedData.currentProperty?.instructions || ''}
+                        propertyGuestInfo={{
+                          wifiNetwork: (preloadedData.currentProperty as any)?.wifi_network || '',
+                          wifiPassword: (preloadedData.currentProperty as any)?.wifi_password || '',
+                          houseManual: (preloadedData.currentProperty as any)?.house_manual || '',
+                        }}
                         propertyCheckinTime={preloadedData.currentProperty?.checkin_time || ''}
                         propertyCheckoutTime={preloadedData.currentProperty?.checkout_time || ''}
                         serviceRequests={serviceRequests}
@@ -2561,6 +2566,11 @@ ${itemsStr}
                         propertyAddress={preloadedData.currentProperty?.address || ''}
                         propertyGoogleMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
                         propertyInstructions={preloadedData.currentProperty?.instructions || ''}
+                        propertyGuestInfo={{
+                          wifiNetwork: (preloadedData.currentProperty as any)?.wifi_network || '',
+                          wifiPassword: (preloadedData.currentProperty as any)?.wifi_password || '',
+                          houseManual: (preloadedData.currentProperty as any)?.house_manual || '',
+                        }}
                         propertyCheckinTime={preloadedData.currentProperty?.checkin_time || ''}
                         propertyCheckoutTime={preloadedData.currentProperty?.checkout_time || ''}
                         onSavePropertyLocation={handleSavePropertyLocation}
@@ -2605,6 +2615,11 @@ ${itemsStr}
                     propertyUpiQrCodeUrl={preloadedData.currentProperty?.upi_qr_code_url || ''}
                     propertyAddress={preloadedData.currentProperty?.address || ''}
                     propertyInstructions={preloadedData.currentProperty?.instructions || ''}
+                        propertyGuestInfo={{
+                          wifiNetwork: (preloadedData.currentProperty as any)?.wifi_network || '',
+                          wifiPassword: (preloadedData.currentProperty as any)?.wifi_password || '',
+                          houseManual: (preloadedData.currentProperty as any)?.house_manual || '',
+                        }}
                     propertyCheckinTime={preloadedData.currentProperty?.checkin_time || ''}
                     propertyCheckoutTime={preloadedData.currentProperty?.checkout_time || ''}
                     onNavigateToBilling={(_guestId) => {

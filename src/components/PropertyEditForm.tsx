@@ -92,6 +92,20 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
   const [address, setAddress] = useState(property.address || '');
   const [mapsLink, setMapsLink] = useState(property.google_maps_link || '');
   const [instructions, setInstructions] = useState(property.instructions || '');
+  // Guest-facing arrival info (6 Sep 2026). NOT gated on !isRoom like the
+  // contact/address block below: in a multi-key property each room is its own
+  // Airbnb listing with its own network and its own house manual, so these are
+  // per-row values, not parent-only ones.
+  const [wifiNetwork, setWifiNetwork] = useState((property as any).wifi_network || '');
+  const [wifiPassword, setWifiPassword] = useState((property as any).wifi_password || '');
+  const [houseManual, setHouseManual] = useState((property as any).house_manual || '');
+  // Listing content (6 Sep 2026) - shown to guests on the public booking page.
+  const [description, setDescription] = useState((property as any).description || '');
+  const [houseRules, setHouseRules] = useState((property as any).house_rules || '');
+  const numOrBlank = (v: any) => (v === null || v === undefined || v === '' ? '' : String(v));
+  const [bedrooms, setBedrooms] = useState(numOrBlank((property as any).bedrooms));
+  const [bedsCount, setBedsCount] = useState(numOrBlank((property as any).beds_count));
+  const [bathrooms, setBathrooms] = useState(numOrBlank((property as any).bathrooms));
   const [checkinTime, setCheckinTime] = useState(property.checkin_time || '14:00');
   const [checkoutTime, setCheckoutTime] = useState(property.checkout_time || '11:00');
   // Only meaningful for SINGLE properties - a MULTI_KEY parent isn't itself
@@ -178,6 +192,9 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
       qr_code: finalQr,
       other_notes: instructions.trim(),
       instructions: instructions.trim(),
+      wifi_network: wifiNetwork.trim(),
+      wifi_password: wifiPassword.trim(),
+      house_manual: houseManual.trim(),
       checkin_time: checkinTime,
       checkout_time: checkoutTime,
     });
@@ -209,6 +226,14 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
         extra_guest_charge: extraGuestCharge,
         cleaning_fee: cleaningFee,
         security_deposit: securityDeposit,
+        wifi_network: wifiNetwork.trim(),
+        wifi_password: wifiPassword.trim(),
+        house_manual: houseManual,
+        description: description,
+        house_rules: houseRules,
+        bedrooms: bedrooms,
+        beds_count: bedsCount,
+        bathrooms: bathrooms,
       };
       if (!isRoom) {
         payload.email = email.trim();
@@ -535,6 +560,94 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
         />
       </div>
       )}
+
+      {/* Listing content (6 Sep 2026). Rendered on the public booking page under
+          the room name - description, the facts line, and amenity chips. Imported
+          from Airbnb when a listing is connected, editable here either way. */}
+      <div className="property-edit-form__field">
+        <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
+          {t('property_description_label', 'Description')}
+        </label>
+        <WhatsAppEditor
+          value={description}
+          onChange={setDescription}
+          placeholder={t('property_description_placeholder', 'What makes this place worth booking - shown to guests on your booking page.')}
+          rows={4}
+        />
+      </div>
+
+      <div className="property-edit-form__field grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Input
+          label={t('bedrooms_label', 'Bedrooms')}
+          type="number"
+          min="0"
+          value={bedrooms}
+          onChange={(e) => setBedrooms(e.target.value)}
+          placeholder={t('bedrooms_placeholder', 'e.g. 1')}
+        />
+        <Input
+          label={t('beds_count_label', 'Beds')}
+          type="number"
+          min="0"
+          value={bedsCount}
+          onChange={(e) => setBedsCount(e.target.value)}
+          placeholder={t('beds_count_placeholder', 'e.g. 2')}
+        />
+        <Input
+          label={t('bathrooms_label', 'Bathrooms')}
+          type="number"
+          min="0"
+          step="0.5"
+          value={bathrooms}
+          onChange={(e) => setBathrooms(e.target.value)}
+          placeholder={t('bathrooms_placeholder', 'e.g. 1.5')}
+          helperText={t('bathrooms_help', 'Half counts as 0.5.')}
+        />
+      </div>
+
+      <div className="property-edit-form__field">
+        <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
+          {t('house_rules_label', 'House Rules')}
+        </label>
+        <WhatsAppEditor
+          value={houseRules}
+          onChange={setHouseRules}
+          placeholder={t('house_rules_placeholder', 'e.g. No smoking indoors, quiet hours after 10pm, no parties…')}
+          rows={3}
+        />
+      </div>
+
+      {/* Guest arrival info (6 Sep 2026). Appears on the WhatsApp booking
+          voucher via {wifi_network}/{wifi_password}/{house_manual}; an empty
+          field drops its whole line, so leaving these blank changes nothing.
+          Imported from Airbnb when a listing is connected. */}
+      <div className="property-edit-form__field grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Input
+          label={t('wifi_network_label', 'WiFi Network')}
+          value={wifiNetwork}
+          onChange={(e) => setWifiNetwork(e.target.value)}
+          placeholder={t('wifi_network_placeholder', 'e.g. Artistic_Sthan_23')}
+          helperText={t('wifi_network_help', 'Shown to the guest on their booking voucher.')}
+        />
+        <Input
+          label={t('wifi_password_label', 'WiFi Password')}
+          value={wifiPassword}
+          onChange={(e) => setWifiPassword(e.target.value)}
+          placeholder={t('wifi_password_placeholder', 'e.g. welcome@123')}
+        />
+      </div>
+
+      <div className="property-edit-form__field">
+        <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
+          {t('house_manual_label', 'House Manual')}
+        </label>
+        <WhatsAppEditor
+          value={houseManual}
+          onChange={setHouseManual}
+          placeholder={t('house_manual_placeholder', 'e.g. How the AC and geyser work, rubbish collection day, what to do if the internet drops…')}
+          rows={4}
+        />
+      </div>
 
       {/* Live WhatsApp voucher preview (26 Aug 2026) - not editable, see this
           file's own top comment for why. Guest/booking fields (name, dates,

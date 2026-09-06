@@ -16,7 +16,7 @@ import { Textarea } from './Textarea';
 import { DateRangePicker } from './DateRangePicker';
 import { CheckinVerificationModal } from './CheckinVerificationModal';
 import { MessageQrPreview } from './MessageQrPreview';
-import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
+import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate, type PropertyGuestInfo } from '../utils/whatsappVoucherTemplate';
 import { shareTextContent } from '../utils/shareText';
 import { parseDateToYMD, formatDateDDMMYYYY } from '../utils/dateUtils';
 import { normalizePhoneNumber } from '../utils/phoneUtils';
@@ -50,6 +50,7 @@ interface BookingDetailsModalProps {
   propertyCheckinTime?: string;
   propertyCheckoutTime?: string;
   propertyInstructions?: string;
+  propertyGuestInfo?: PropertyGuestInfo;
   onOpenIdVerification?: () => void;
   onCheckedIn?: (guestId: string) => void;
   // Fired once the guest's ID has actually been verified through this modal's
@@ -113,6 +114,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   propertyCheckinTime = '',
   propertyCheckoutTime = '',
   propertyInstructions = '',
+  propertyGuestInfo,
   onOpenIdVerification,
   onCheckedIn,
   onIdVerified,
@@ -669,6 +671,12 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
       qr_code: qrVal,
       other_notes: notesVal,
       instructions: notesVal,
+      // Empty values drop their whole line - see renderWhatsappVoucherTemplate's
+      // optionalTokens - so a property with no wifi recorded sends the voucher
+      // exactly as before, with no blank labels.
+      wifi_network: propertyGuestInfo?.wifiNetwork || '',
+      wifi_password: propertyGuestInfo?.wifiPassword || '',
+      house_manual: propertyGuestInfo?.houseManual || '',
     });
   };
 

@@ -203,7 +203,23 @@ try {
         if ($stashed) {
             Write-Step "Restoring stashed changes"
             git stash pop
-            Write-Ok "Restored."
+            # `git stash pop` can fail (a conflict, or an untracked file in the
+            # stash that already exists on disk) and LEAVE the stash in place with
+            # the working tree still clean. This used to print "Restored." anyway,
+            # so a whole session's uncommitted work looked like it had vanished
+            # while sitting safely in `git stash list` - happened 6 Sep 2026, and
+            # the silent success message is exactly why it was not noticed. Report
+            # the real outcome and say how to recover. 6 Sep 2026.
+            if ($LASTEXITCODE -eq 0) {
+                Write-Ok "Restored."
+            } else {
+                Write-Warn "STASH POP FAILED - your uncommitted changes are NOT back in the working tree."
+                Write-Warn "They are safe. Recover with:"
+                Write-Warn "    git stash list          # find '$stashLabel'"
+                Write-Warn "    git stash pop           # resolve any conflict it reports"
+                Write-Warn "If it complains that local changes would be overwritten, back up those"
+                Write-Warn "files, 'git checkout --' them, then pop again."
+            }
         }
     }
 

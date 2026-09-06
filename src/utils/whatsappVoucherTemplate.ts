@@ -23,6 +23,9 @@ export const DEFAULT_WHATSAPP_VOUCHER_TEMPLATE =
 💳 *Pay via UPI:* {upi_id}
 📷 *Payment QR Code:* {upi_qr_code_url}
 📝 *Notes & Instructions:* {other_notes}
+📶 *WiFi:* {wifi_network}
+🔑 *WiFi Password:* {wifi_password}
+🏡 *House Manual:* {house_manual}
 ━━━━━━━━━━━━━━━━━
 We look forward to welcoming you to {property_name}!`;
 
@@ -48,6 +51,12 @@ export function renderWhatsappVoucherTemplate(
     '{property_address}',
     '{other_notes}',
     '{instructions}',
+    // Optional like every other property-level detail: a property with no wifi
+    // recorded drops the whole line rather than sending "WiFi:" with nothing
+    // after it. Added 6 Sep 2026 with the Airbnb guest-info import.
+    '{wifi_network}',
+    '{wifi_password}',
+    '{house_manual}',
   ]
 ): string {
   const lines = template.split('\n');
@@ -62,4 +71,23 @@ export function renderWhatsappVoucherTemplate(
     result = result.split(`{${key}}`).join(val ?? '');
   });
   return result;
+}
+
+/**
+ * Guest-facing arrival details that live on the property row and travel together
+ * to the voucher (added 6 Sep 2026, imported from an Airbnb listing).
+ *
+ * Bundled as ONE prop rather than three, deliberately: `propertyInstructions`
+ * alone already threads through 6 components and ~20 call sites (App.tsx ->
+ * MultiKeyPropertyOverview -> OperationalDashboard/TodayOverview/BillingCheckout
+ * -> GuestManagement -> BookingDetailsModal), and CLAUDE.md's "Props Threading"
+ * note exists precisely because that fan-out is easy to get half-done. Three
+ * separate props would have tripled the churn and the next guest-info field
+ * would repeat it; one bundle costs a single line per call site and the field
+ * after this needs no threading at all.
+ */
+export interface PropertyGuestInfo {
+  wifiNetwork?: string;
+  wifiPassword?: string;
+  houseManual?: string;
 }

@@ -622,7 +622,8 @@ function getMultiKeyProperty($pdo, $propertyId = 0, $currentProperty = []) {
         // checkout_time - just never surfaced here before).
         $stmt = $pdo->prepare("
             SELECT id, name, slug, room_order, is_active, created_at, default_tariff, checkin_time, checkout_time, max_capacity,
-                   included_occupancy, extra_guest_charge, cleaning_fee, security_deposit
+                   included_occupancy, extra_guest_charge, cleaning_fee, security_deposit,
+                   wifi_network, wifi_password, house_manual
             FROM properties
             WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM' AND is_deleted = 0
             ORDER BY room_order ASC

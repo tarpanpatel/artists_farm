@@ -295,6 +295,11 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                   propertyUpiQrCodeUrl={property.upi_qr_code_url || ''}
                   propertyAddress={property.address || ''}
                   propertyInstructions={property.instructions || ''}
+              propertyGuestInfo={{
+                wifiNetwork: (property as any).wifi_network || '',
+                wifiPassword: (property as any).wifi_password || '',
+                houseManual: (property as any).house_manual || '',
+              }}
                   propertyCheckinTime={property.checkin_time || ''}
                   propertyCheckoutTime={property.checkout_time || ''}
                   onUpdateRoomName={async (newName) => {
@@ -345,6 +350,11 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                   propertyUpiQrCodeUrl={property.upi_qr_code_url || ''}
                   propertyAddress={property.address || ''}
                   propertyInstructions={property.instructions || ''}
+              propertyGuestInfo={{
+                wifiNetwork: (property as any).wifi_network || '',
+                wifiPassword: (property as any).wifi_password || '',
+                houseManual: (property as any).house_manual || '',
+              }}
                   propertyCheckinTime={property.checkin_time || ''}
                   propertyCheckoutTime={property.checkout_time || ''}
                 />

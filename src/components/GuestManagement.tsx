@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import type { PropertyGuestInfo } from '../utils/whatsappVoucherTemplate';
 import { Button, Checkbox } from 'flowbite-react';
 import { Badge } from './Badge';
 import {
@@ -88,6 +89,7 @@ interface GuestManagementProps {
   propertyUpiQrCodeUrl?: string;
   propertyAddress?: string;
   propertyInstructions?: string;
+  propertyGuestInfo?: PropertyGuestInfo;
   propertyCheckinTime?: string;
   propertyCheckoutTime?: string;
   isLoading?: boolean;
@@ -153,6 +155,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   propertyUpiQrCodeUrl = '',
   propertyAddress = '',
   propertyInstructions = '',
+  propertyGuestInfo,
   propertyCheckinTime = '',
   propertyCheckoutTime = '',
 }) => {
@@ -1153,6 +1156,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       propertyWhatsappTemplate={propertyWhatsappTemplate}
       propertyAddress={propertyAddress}
       propertyInstructions={propertyInstructions}
+          propertyGuestInfo={propertyGuestInfo}
       propertyCheckinTime={propertyCheckinTime}
       propertyCheckoutTime={propertyCheckoutTime}
       propertyUpiId={propertyUpiId}

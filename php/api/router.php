@@ -414,6 +414,74 @@ if (!isSchemaVerified('schema_properties_pricing_v1')) {
     markSchemaVerified('schema_properties_pricing_v1');
 }
 
+// Guest-facing arrival info (6 Sep 2026). Imported from an Airbnb listing's
+// wifi_network / wifi_password / house_manual, and editable in Edit Property.
+// These are per-ROW, so a multi-key property's rooms each carry their own -
+// correct, since each room is its own listing with its own network.
+if (!isSchemaVerified('schema_properties_guestinfo_v1')) {
+    try {
+        $propGuestCols = $pdo->query("SHOW COLUMNS FROM properties")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('wifi_network', $propGuestCols)) {
+            $pdo->exec("ALTER TABLE properties ADD COLUMN `wifi_network` VARCHAR(190) NULL");
+        }
+        if (!in_array('wifi_password', $propGuestCols)) {
+            $pdo->exec("ALTER TABLE properties ADD COLUMN `wifi_password` VARCHAR(190) NULL");
+        }
+        // TEXT, not VARCHAR - a real house manual runs to paragraphs.
+        if (!in_array('house_manual', $propGuestCols)) {
+            $pdo->exec("ALTER TABLE properties ADD COLUMN `house_manual` TEXT NULL");
+        }
+    } catch (Exception $e) {}
+    markSchemaVerified('schema_properties_guestinfo_v1');
+}
+
+// Listing content (6 Sep 2026). Imported from an Airbnb listing and rendered on
+// the public booking engine, which until now showed a room name, a price and an
+// availability grid and nothing else. Per-row like the guest info above - each
+// room of a multi-key property is its own listing with its own copy.
+if (!isSchemaVerified('schema_properties_content_v1')) {
+    try {
+        $propContentCols = $pdo->query("SHOW COLUMNS FROM properties")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('description', $propContentCols)) {
+            $pdo->exec("ALTER TABLE properties ADD COLUMN `description` TEXT NULL");
+        }
+        if (!in_array('house_rules', $propContentCols)) {
+            $pdo->exec("ALTER TABLE properties ADD COLUMN `house_rules` TEXT NULL");
+        }
+        // JSON-encoded arrays. Stored as TEXT rather than MySQL's JSON type so the
+        // self-heal works identically on the older MySQL/MariaDB builds this app is
+        // deployed to, and so a malformed value degrades to "ignore it" instead of
+        // an INSERT-time error.
+        if (!in_array('amenities', $propContentCols)) {
+            $pdo->exec("ALTER TABLE properties ADD COLUMN `amenities` TEXT NULL");
+        }
+        if (!in_array('bed_configuration', $propContentCols)) {
+            $pdo->exec("ALTER TABLE properties ADD COLUMN `bed_configuration` TEXT NULL");
+        }
+        if (!in_array('bedrooms', $propContentCols)) {
+            $pdo->exec("ALTER TABLE properties ADD COLUMN `bedrooms` INT NULL");
+        }
+        if (!in_array('beds_count', $propContentCols)) {
+            $pdo->exec("ALTER TABLE properties ADD COLUMN `beds_count` INT NULL");
+        }
+        // DECIMAL(3,1) - "1.5 bathrooms" is a real and common value.
+        if (!in_array('bathrooms', $propContentCols)) {
+            $pdo->exec("ALTER TABLE properties ADD COLUMN `bathrooms` DECIMAL(3,1) NULL");
+        }
+        // Stay rules. NULL means "no default set" - deliberately not 0/1, so
+        // nothing downstream can mistake an unset value for a real 1-night
+        // minimum. Imported and editable, but NOT yet wired into the ARI push
+        // (that changes what goes out to OTAs and needs its own sign-off).
+        if (!in_array('default_min_nights', $propContentCols)) {
+            $pdo->exec("ALTER TABLE properties ADD COLUMN `default_min_nights` INT NULL");
+        }
+        if (!in_array('default_max_nights', $propContentCols)) {
+            $pdo->exec("ALTER TABLE properties ADD COLUMN `default_max_nights` INT NULL");
+        }
+    } catch (Exception $e) {}
+    markSchemaVerified('schema_properties_content_v1');
+}
+
 // Self-healing column check for `tenants.subscription_expires_at` and `tenants.plan_type` (26 Aug 2026)
 if (!isSchemaVerified('schema_tenants_table_v2')) {
     try {
@@ -1150,6 +1218,15 @@ function airbnbNormalizeHour($raw): ?string {
 }
 
 /**
+ * "WIRELESS_INTERNET" -> "Wireless Internet", "double_bed" -> "Double Bed".
+ * Airbnb's amenity and bed keys are SCREAMING_SNAKE / snake_case constants; this
+ * is only for display, never for anything stored or compared.
+ */
+function airbnbHumanizeKey(string $key): string {
+    return ucwords(strtolower(str_replace('_', ' ', trim($key))));
+}
+
+/**
  * Read each mapped Airbnb listing and PROPOSE its configuration - writes nothing.
  *
  * Imports everything that maps onto an existing Ground Code column EXCEPT price
@@ -1195,7 +1272,7 @@ function proposeAirbnbRoomConfig(PDO $pdo, $channelClient, string $channexChanne
             if ($listingId !== '') $out['unmatched'][] = $listingId;
             continue;
         }
-        $cur = $pdo->prepare("SELECT name, max_capacity, checkin_time, checkout_time, included_occupancy, extra_guest_charge, cleaning_fee, security_deposit FROM properties WHERE id = ? AND is_deleted = 0");
+        $cur = $pdo->prepare("SELECT name, max_capacity, checkin_time, checkout_time, included_occupancy, extra_guest_charge, cleaning_fee, security_deposit, default_tariff, instructions, house_manual, wifi_network, wifi_password, description, house_rules, amenities, bed_configuration, bedrooms, beds_count, bathrooms, default_min_nights, default_max_nights FROM properties WHERE id = ? AND is_deleted = 0");
         $cur->execute([$localRoomId]);
         $row = $cur->fetch(PDO::FETCH_ASSOC);
         if (!$row) { $out['unmatched'][] = $listingId; continue; }
@@ -1247,16 +1324,37 @@ function proposeAirbnbRoomConfig(PDO $pdo, $channelClient, string $channexChanne
                 // the number on Airbnb may be deliberately not the number they
                 // want quoted directly. The owner decides; the import only offers.
                 //
-                // default_daily_price / weekend_price are deliberately NOT offered
-                // here: a single flat nightly rate belongs to the rate calendar
-                // (room_rate_rules), not to a property-level field, and quietly
-                // overwriting a rate someone has already tuned per-date would be
-                // the availability-reopen mistake in pricing form.
+                // default_daily_price IS offered as of 6 Sep 2026 (owner's explicit
+                // decision), reversing the earlier "never import a price" stance.
+                // The reasoning changed with the product model: Ground Code is now
+                // meant to BE the source of truth - prices are imported once at
+                // setup, then edited here and pushed out to every OTA through
+                // Channex. Under that model refusing to seed the base price just
+                // guarantees the first push overwrites Airbnb with whatever
+                // placeholder happens to be in default_tariff, which is strictly
+                // worse than importing the host's real number.
+                //
+                // It maps to `default_tariff` (the flat per-room base rate), NOT to
+                // room_rate_rules - the rate calendar stays hand-tuned. That also
+                // makes AriDrainWorker::computeCompressedRestrictions()'s fallback
+                // to default_tariff safe rather than dangerous: the value it falls
+                // back to is now the host's own Airbnb price.
+                //
+                // Still PROPOSED, never auto-applied, for the reason the owner gave:
+                // "pricing they might not keep exactly what they want as OTAs take
+                // commission and then there are taxes." An Airbnb price is often
+                // inflated to absorb the channel's cut, so it may not be the number
+                // they want quoted to a direct guest. The owner decides per room.
+                //
+                // weekend_price is still NOT offered: it needs a day-of-week rule in
+                // room_rate_rules (which has `days_of_week`) plus a date span to
+                // apply it over, and there is no sensible default span to invent.
                 $priceable = [
                     'included_occupancy' => ['Guests included in the rate', 'guests_included', 'int'],
                     'extra_guest_charge' => ['Charge per extra guest', 'price_per_extra_person', 'money'],
                     'cleaning_fee'       => ['Cleaning fee', 'cleaning_fee', 'money'],
                     'security_deposit'   => ['Security deposit', 'security_deposit', 'money'],
+                    'default_tariff'     => ['Base nightly price', 'default_daily_price', 'money'],
                 ];
                 // These live under `pricing_settings`, NOT at the top level of the
                 // listing (verified against a real listing_details response 6 Sep
@@ -1264,6 +1362,32 @@ function proposeAirbnbRoomConfig(PDO $pdo, $channelClient, string $channexChanne
                 // nothing and silently proposed only the check-in/out times). The
                 // top-level fallback stays in case a future response flattens them.
                 $PS = is_array($L['pricing_settings'] ?? null) ? $L['pricing_settings'] : $L;
+
+                // Airbnb has TWO homes for a cleaning fee, and the flat one is
+                // often null while the real charge sits in standard_fees[] as a
+                // PASS_THROUGH_CLEANING_FEE entry (verified 6 Sep 2026 - every
+                // listing on this account has `cleaning_fee: null` alongside a
+                // standard_fees entry). Reading only the flat field silently
+                // imports nothing for a property that does charge one, so fall
+                // back to the structured list. Flat-amount entries only: a
+                // percentage fee has no single number to store in a DECIMAL
+                // column, so it is left for the owner to enter by hand.
+                if (!isset($PS['cleaning_fee']) || $PS['cleaning_fee'] === null || $PS['cleaning_fee'] === '') {
+                    foreach ((array)($PS['standard_fees'] ?? []) as $fee) {
+                        if (!is_array($fee)) continue;
+                        if (($fee['fee_type'] ?? '') !== 'PASS_THROUGH_CLEANING_FEE') continue;
+                        if (($fee['amount_type'] ?? 'flat') !== 'flat') continue;
+                        if (!isset($fee['amount']) || !is_numeric($fee['amount'])) continue;
+                        // A zero-amount entry means "no cleaning fee configured",
+                        // which is the same as the null we were falling back from -
+                        // adopting it would propose "Cleaning fee: 0" against a
+                        // stored 0 on every listing, which is pure noise.
+                        if ((float)$fee['amount'] <= 0) continue;
+                        $PS['cleaning_fee'] = $fee['amount'];
+                        break;
+                    }
+                }
+
                 foreach ($priceable as $col => [$label, $airbnbKey, $kind]) {
                     if (!array_key_exists($airbnbKey, $PS)) continue;
                     $raw = $PS[$airbnbKey];
@@ -1281,6 +1405,153 @@ function proposeAirbnbRoomConfig(PDO $pdo, $channelClient, string $channexChanne
                         'is_new' => $currentVal <= 0,
                     ];
                 }
+                // Guest-facing arrival info (6 Sep 2026). Pure retyping otherwise -
+                // the host already wrote all of this on Airbnb.
+                //
+                // `directions` maps to `instructions` because that is what the
+                // field is for here: Edit Property labels it "How to reach,
+                // check-in instructions, parking notes". house_manual is separate
+                // content (how things work once inside), so it gets its own column
+                // rather than being concatenated into the same box.
+                $textual = [
+                    'instructions'  => ['Arrival & directions', 'directions', 20000],
+                    'house_manual'  => ['House manual', 'house_manual', 20000],
+                    'wifi_network'  => ['WiFi network', 'wifi_network', 190],
+                    'wifi_password' => ['WiFi password', 'wifi_password', 190],
+                ];
+                foreach ($textual as $col => [$label, $airbnbKey, $maxLen]) {
+                    if (!array_key_exists($airbnbKey, $L)) continue;
+                    $raw = $L[$airbnbKey];
+                    if (!is_string($raw)) continue;
+                    $airbnbVal = trim($raw);
+                    if ($airbnbVal === '') continue;
+                    if (mb_strlen($airbnbVal) > $maxLen) $airbnbVal = mb_substr($airbnbVal, 0, $maxLen);
+                    $currentVal = trim((string)($row[$col] ?? ''));
+                    $fields[$col] = [
+                        'label' => $label,
+                        'current' => $currentVal !== '' ? $currentVal : null,
+                        'airbnb' => $airbnbVal,
+                        'differs' => $currentVal !== '' && $currentVal !== $airbnbVal,
+                        'is_new' => $currentVal === '',
+                        // Long prose renders badly next to a number; the drawer uses
+                        // this to decide on a stacked, truncated layout.
+                        'multiline' => mb_strlen($airbnbVal) > 60,
+                    ];
+                }
+
+                // --- Listing content (6 Sep 2026) ---------------------------------
+                // Prose. `descriptions` is a nested object on the listing, same
+                // trap as pricing_settings was.
+                $DS = is_array($L['descriptions'] ?? null) ? $L['descriptions'] : [];
+                foreach (['description' => ['Description', 'description'],
+                          'house_rules' => ['House rules', 'house_rules']] as $col => [$label, $key]) {
+                    $raw = $DS[$key] ?? null;
+                    if (!is_string($raw) || trim($raw) === '') continue;
+                    $airbnbVal = mb_substr(trim($raw), 0, 20000);
+                    $currentVal = trim((string)($row[$col] ?? ''));
+                    $fields[$col] = [
+                        'label' => $label,
+                        'current' => $currentVal !== '' ? $currentVal : null,
+                        'airbnb' => $airbnbVal,
+                        'differs' => $currentVal !== '' && $currentVal !== $airbnbVal,
+                        'is_new' => $currentVal === '',
+                        'multiline' => true,
+                    ];
+                }
+
+                // Plain counts.
+                foreach (['bedrooms' => ['Bedrooms', 'bedrooms'],
+                          'beds_count' => ['Beds', 'beds']] as $col => [$label, $key]) {
+                    if (!isset($L[$key]) || !is_numeric($L[$key])) continue;
+                    $airbnbVal = (int)$L[$key];
+                    if ($airbnbVal < 0 || $airbnbVal > 99) continue;
+                    $currentVal = $row[$col] !== null ? (int)$row[$col] : null;
+                    $fields[$col] = ['label' => $label, 'current' => $currentVal, 'airbnb' => $airbnbVal,
+                        'differs' => $currentVal !== null && $currentVal !== $airbnbVal,
+                        'is_new' => $currentVal === null];
+                }
+                if (isset($L['bathrooms']) && is_numeric($L['bathrooms'])) {
+                    $airbnbVal = round((float)$L['bathrooms'], 1);
+                    if ($airbnbVal >= 0 && $airbnbVal <= 99) {
+                        $currentVal = $row['bathrooms'] !== null ? round((float)$row['bathrooms'], 1) : null;
+                        $fields['bathrooms'] = ['label' => 'Bathrooms', 'current' => $currentVal, 'airbnb' => $airbnbVal,
+                            'differs' => $currentVal !== null && abs($currentVal - $airbnbVal) > 0.001,
+                            'is_new' => $currentVal === null];
+                    }
+                }
+
+                // Stay rules, from the listing's own availability_rules. Stored and
+                // editable; NOT yet fed into the ARI push - see the schema comment.
+                $AR = is_array($L['availability_rules'] ?? null) ? $L['availability_rules'] : [];
+                foreach (['default_min_nights' => ['Minimum nights', 'default_min_nights'],
+                          'default_max_nights' => ['Maximum nights', 'default_max_nights']] as $col => [$label, $key]) {
+                    if (!isset($AR[$key]) || !is_numeric($AR[$key])) continue;
+                    $airbnbVal = (int)$AR[$key];
+                    // Airbnb uses -1 for "no limit"; that is an absence, not a value.
+                    if ($airbnbVal < 1 || $airbnbVal > 3650) continue;
+                    $currentVal = $row[$col] !== null ? (int)$row[$col] : null;
+                    $fields[$col] = ['label' => $label, 'current' => $currentVal, 'airbnb' => $airbnbVal,
+                        'differs' => $currentVal !== null && $currentVal !== $airbnbVal,
+                        'is_new' => $currentVal === null];
+                }
+
+                // Amenities and bed layout are structured, so they carry a separate
+                // `value` (the JSON actually written) from `airbnb` (the readable
+                // summary shown in the drawer). Raw JSON in a review screen is
+                // unreadable, and a checkbox nobody can read is a checkbox nobody
+                // should tick.
+                $amenityKeys = [];
+                foreach ((array)($L['amenities'] ?? []) as $aKey => $aVal) {
+                    if (is_array($aVal) && !empty($aVal['is_present'])) $amenityKeys[] = (string)$aKey;
+                }
+                sort($amenityKeys);
+                if ($amenityKeys) {
+                    $storedList = json_decode((string)($row['amenities'] ?? ''), true);
+                    $storedList = is_array($storedList) ? $storedList : [];
+                    sort($storedList);
+                    $fields['amenities'] = [
+                        'label' => 'Amenities',
+                        'current' => $storedList ? (count($storedList) . ' listed') : null,
+                        'airbnb' => count($amenityKeys) . ' listed - ' . implode(', ', array_map('airbnbHumanizeKey', array_slice($amenityKeys, 0, 6)))
+                                    . (count($amenityKeys) > 6 ? ', +' . (count($amenityKeys) - 6) . ' more' : ''),
+                        'value' => json_encode($amenityKeys),
+                        'differs' => $storedList !== [] && $storedList !== $amenityKeys,
+                        'is_new' => $storedList === [],
+                        'multiline' => true,
+                    ];
+                }
+
+                $bedRooms = [];
+                foreach ((array)($L['rooms'] ?? []) as $r) {
+                    if (!is_array($r) || empty($r['beds'])) continue;
+                    $beds = [];
+                    foreach ((array)$r['beds'] as $b) {
+                        if (!is_array($b) || empty($b['type'])) continue;
+                        $beds[] = ['type' => (string)$b['type'], 'quantity' => max(1, (int)($b['quantity'] ?? 1))];
+                    }
+                    if ($beds) $bedRooms[] = ['room_type' => (string)($r['room_type'] ?? 'room'), 'beds' => $beds];
+                }
+                if ($bedRooms) {
+                    $summary = [];
+                    foreach ($bedRooms as $br) {
+                        foreach ($br['beds'] as $b) {
+                            $summary[] = $b['quantity'] . ' ' . airbnbHumanizeKey($b['type'])
+                                       . ($b['quantity'] > 1 ? 's' : '');
+                        }
+                    }
+                    $encoded = json_encode($bedRooms);
+                    $storedRaw = trim((string)($row['bed_configuration'] ?? ''));
+                    $fields['bed_configuration'] = [
+                        'label' => 'Bed configuration',
+                        'current' => $storedRaw !== '' ? 'already set' : null,
+                        'airbnb' => implode(', ', $summary),
+                        'value' => $encoded,
+                        'differs' => $storedRaw !== '' && $storedRaw !== $encoded,
+                        'is_new' => $storedRaw === '',
+                        'multiline' => true,
+                    ];
+                }
+
                 if ($propertyProposal === null) {
                     $addrParts = array_values(array_filter([
                         trim((string)($L['street'] ?? '')),
@@ -1321,11 +1592,32 @@ function proposeAirbnbRoomConfig(PDO $pdo, $channelClient, string $channexChanne
  */
 function applyAirbnbRoomConfig(PDO $pdo, array $confirmed, int $parentPropertyId, ?array $propertyFields = null): array {
     $applied = [];
+    // Rooms whose BASE NIGHTLY PRICE actually changed. Reported back so the caller
+    // can offer an explicit push to the connected channels - never pushed from in
+    // here. A rate push is exactly the kind of wide, outward-facing write that
+    // CHANNEX.md 5.2/5.3 require the owner to consent to in so many words, and an
+    // import silently firing one is how per-date pricing already set on an OTA gets
+    // flattened without anyone deciding to.
+    $pricedRooms = [];
     // Whitelist: only these columns can ever be written by an import, so a crafted
-    // field name cannot reach anything else (price columns included - deliberately
-    // absent, see proposeAirbnbRoomConfig()).
+    // field name cannot reach anything else.
     $allowed = ['max_capacity', 'checkin_time', 'checkout_time',
-                'included_occupancy', 'extra_guest_charge', 'cleaning_fee', 'security_deposit'];
+                'included_occupancy', 'extra_guest_charge', 'cleaning_fee', 'security_deposit',
+                'default_tariff',
+                'instructions', 'house_manual', 'wifi_network', 'wifi_password',
+                'description', 'house_rules', 'amenities', 'bed_configuration',
+                'bedrooms', 'beds_count', 'bathrooms',
+                'default_min_nights', 'default_max_nights'];
+    // Length caps for the free-text columns, matching update_property's own.
+    $textCaps = ['instructions' => 20000, 'house_manual' => 20000,
+                 'wifi_network' => 190, 'wifi_password' => 190,
+                 'description' => 20000, 'house_rules' => 20000];
+    // Whole-number columns, with their accepted range.
+    $intCols = ['bedrooms' => [0, 99], 'beds_count' => [0, 99],
+                'default_min_nights' => [1, 3650], 'default_max_nights' => [1, 3650]];
+    // Columns that must hold a JSON ARRAY. Validated by decoding, never by
+    // trusting the string - this value arrives from the browser.
+    $jsonCols = ['amenities', 'bed_configuration'];
     // A room_id posted in the request body must never reach another tenant's row.
     $check = $pdo->prepare("SELECT name FROM properties WHERE id = ? AND (id = ? OR parent_property_id = ?) AND is_deleted = 0");
 
@@ -1343,12 +1635,38 @@ function applyAirbnbRoomConfig(PDO $pdo, array $confirmed, int $parentPropertyId
             if ($col === 'max_capacity' || $col === 'included_occupancy') {
                 $v = (int)$v;
                 if ($v < 1 || $v > 99) continue;
-            } elseif ($col === 'extra_guest_charge' || $col === 'cleaning_fee' || $col === 'security_deposit') {
+            } elseif ($col === 'extra_guest_charge' || $col === 'cleaning_fee'
+                   || $col === 'security_deposit' || $col === 'default_tariff') {
                 if (!is_numeric($v)) continue;
                 $v = round((float)$v, 2);
                 // Same bound as update_property - an import is not a reason to
                 // accept a number a human would have been stopped from typing.
                 if ($v < 0 || $v > 1000000) continue;
+                // A base rate of 0 would push "free" to every connected OTA.
+                if ($col === 'default_tariff' && $v <= 0) continue;
+            } elseif (isset($textCaps[$col])) {
+                $v = trim((string)$v);
+                // An import fills blanks; it never blanks a field that has content.
+                if ($v === '') continue;
+                if (mb_strlen($v) > $textCaps[$col]) $v = mb_substr($v, 0, $textCaps[$col]);
+            } elseif (isset($intCols[$col])) {
+                if (!is_numeric($v)) continue;
+                $v = (int)$v;
+                if ($v < $intCols[$col][0] || $v > $intCols[$col][1]) continue;
+            } elseif ($col === 'bathrooms') {
+                if (!is_numeric($v)) continue;
+                $v = round((float)$v, 1);
+                if ($v < 0 || $v > 99) continue;
+            } elseif (in_array($col, $jsonCols, true)) {
+                // Re-encode from the decoded value rather than storing the string
+                // as sent: that rejects anything that is not a real JSON array,
+                // and normalises whitespace so a later "differs" comparison is
+                // against a canonical form.
+                $decoded = is_string($v) ? json_decode($v, true) : $v;
+                if (!is_array($decoded) || $decoded === []) continue;
+                if (count($decoded) > 500) continue;
+                $v = json_encode(array_values($decoded));
+                if ($v === false || mb_strlen($v) > 60000) continue;
             } else {
                 $v = trim((string)$v);
                 if (!preg_match('/^([01][0-9]|2[0-3]):[0-5][0-9]$/', $v)) continue;
@@ -1359,6 +1677,9 @@ function applyAirbnbRoomConfig(PDO $pdo, array $confirmed, int $parentPropertyId
         $params[] = $roomId;
         $pdo->prepare("UPDATE properties SET " . implode(', ', $sets) . ", updated_at = NOW() WHERE id = ?")->execute($params);
         $applied[] = ['room' => $row['name'], 'fields' => $names];
+        if (in_array('default_tariff', $names, true)) {
+            $pricedRooms[] = ['room_id' => $roomId, 'room' => $row['name']];
+        }
     }
 
     // Property-level (address / maps link) - same whitelist discipline.
@@ -1377,7 +1698,7 @@ function applyAirbnbRoomConfig(PDO $pdo, array $confirmed, int $parentPropertyId
             $applied[] = ['room' => '(property)', 'fields' => $names];
         }
     }
-    return ['applied' => $applied];
+    return ['applied' => $applied, 'priced_rooms' => $pricedRooms];
 }
 
 
@@ -3231,6 +3552,48 @@ switch ($action) {
             // occupancy pricing reaches Channex, on a live OTA listing. An upper
             // bound is cheap insurance; the ceiling is deliberately generous so a
             // genuinely expensive villa is not blocked by it.
+            // Guest-facing arrival info (6 Sep 2026). Free text, so the only rules
+            // are trim + a length cap; an empty string stores as NULL because
+            // "no wifi password recorded" is genuinely absent, not "".
+            $guestInfoFields = [
+                'wifi_network'  => 190,
+                'wifi_password' => 190,
+                'house_manual'  => 20000,
+                'description'   => 20000,
+                'house_rules'   => 20000,
+            ];
+            foreach ($guestInfoFields as $col => $maxLen) {
+                if (!array_key_exists($col, $input)) continue;
+                $v = trim((string)($input[$col] ?? ''));
+                if (mb_strlen($v) > $maxLen) $v = mb_substr($v, 0, $maxLen);
+                $sets[] = "`{$col}` = ?";
+                $params[] = ($v === '') ? null : $v;
+            }
+
+            // Listing content that is a number rather than text. NULL means "not
+            // set" throughout - an empty box must not become a real 0 bedrooms or
+            // a real 1-night minimum.
+            $contentNumFields = [
+                'bedrooms'           => ['int', 0, 99],
+                'beds_count'         => ['int', 0, 99],
+                'bathrooms'          => ['dec', 0, 99],
+                'default_min_nights' => ['int', 1, 3650],
+                'default_max_nights' => ['int', 1, 3650],
+            ];
+            foreach ($contentNumFields as $col => [$kind, $min, $max]) {
+                if (!array_key_exists($col, $input)) continue;
+                $raw = $input[$col];
+                if ($raw === null || $raw === '' || !is_numeric($raw)) {
+                    $sets[] = "`{$col}` = ?";
+                    $params[] = null;
+                    continue;
+                }
+                $v = ($kind === 'int') ? (int)$raw : round((float)$raw, 1);
+                if ($v < $min || $v > $max) continue;
+                $sets[] = "`{$col}` = ?";
+                $params[] = $v;
+            }
+
             $pricingFields = [
                 'included_occupancy' => ['int', 1, 99, 'Included occupancy must be between 1 and 99'],
                 'extra_guest_charge' => ['money', 0, 1000000, 'Extra guest charge must be between 0 and 1,000,000'],
@@ -5554,7 +5917,11 @@ switch ($action) {
             'data' => [
                 'date_from' => $dateFrom,
                 'date_to' => $dateTo,
-                'enqueued_rows' => [$availOutboxId, $ratesOutboxId],
+                // Was [$availOutboxId, $ratesOutboxId] - two variables that stopped
+                // existing when the single-room push became the per-room loop above
+                // (getChannexPushRoomIds()), so this reported [null, null] for every
+                // push and hid which rows a caller should follow up on. 6 Sep 2026.
+                'enqueued_rows' => $enqueuedIds,
                 'task_rows' => $taskRows,
                 'drain_result' => $drainRes,
             ]

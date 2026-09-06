@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import type { PropertyGuestInfo } from '../utils/whatsappVoucherTemplate';
 import { Card, Drawer, TextInput, Checkbox, Tabs, TabItem, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell } from 'flowbite-react';
 import { Button } from './Button';
 import { TablePagination } from './TablePagination';
@@ -65,6 +66,7 @@ interface BillingCheckoutProps {
   propertyWhatsappTemplate?: string;
   propertyAddress?: string;
   propertyInstructions?: string;
+  propertyGuestInfo?: PropertyGuestInfo;
   propertyCheckinTime?: string;
   propertyCheckoutTime?: string;
   propertyUpiId?: string;
@@ -106,6 +108,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   propertyWhatsappTemplate = '',
   propertyAddress = '',
   propertyInstructions = '',
+  propertyGuestInfo,
   propertyCheckinTime = '',
   propertyCheckoutTime = '',
   propertyUpiId = '',
@@ -1250,6 +1253,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
           propertyWhatsappTemplate={propertyWhatsappTemplate}
           propertyAddress={propertyAddress}
           propertyInstructions={propertyInstructions}
+          propertyGuestInfo={propertyGuestInfo}
           propertyCheckinTime={propertyCheckinTime}
           propertyCheckoutTime={propertyCheckoutTime}
           propertyUpiId={propertyUpiId}

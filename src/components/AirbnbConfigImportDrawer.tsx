@@ -17,8 +17,18 @@ import { t } from '../i18n/en';
  * owner is the only reliable source, so every value is shown next to what is
  * already stored and nothing is written until they tick it.
  *
- * Price is never offered at all: an OTA's displayed price carries that channel's
- * commission and taxes, so it is not the owner's base rate.
+ * The BASE NIGHTLY PRICE is offered as of 6 Sep 2026, reversing the original
+ * "price is never offered" rule. Ground Code is now meant to be the source of
+ * truth - imported once at setup, then edited here and pushed out to every OTA
+ * through Channex - and under that model not seeding the base price just means
+ * the first push overwrites Airbnb with a placeholder. It stays a tick-box like
+ * everything else, because an Airbnb price often carries the host's markup for
+ * that channel's commission and may not be what they want quoted directly.
+ *
+ * Applying a price does NOT push it, and does not offer to. `default_tariff` is
+ * only the fallback for dates with no room_rate_rules row, so on a property whose
+ * rate calendar covers the pushed range the imported value never leaves the
+ * building. Pushing lives in Channel Manager, deliberately.
  */
 
 interface ProposalField {
@@ -26,6 +36,15 @@ interface ProposalField {
   current: string | number | null;
   airbnb: string | number;
   differs: boolean;
+  /** Prose (a house manual, arrival directions) rather than a short value - the
+   *  server sets this so the row stacks and clamps instead of squeezing a
+   *  paragraph onto one line next to a number. */
+  multiline?: boolean;
+  /** What actually gets written, when that differs from what is displayed.
+   *  Structured fields (amenities, bed configuration) show a readable summary
+   *  in `airbnb` and carry the JSON to store here - raw JSON in a review screen
+   *  is unreadable, and nobody should tick a box they cannot read. */
+  value?: string;
 }
 
 interface RoomProposal {
@@ -149,7 +168,8 @@ export const AirbnbConfigImportDrawer: React.FC<AirbnbConfigImportDrawerProps> =
         let any = false;
         Object.entries(p.fields || {}).forEach(([name, f]) => {
           if (selected.has(cellKey(p.room_id, name))) {
-            entry[name] = f.airbnb;
+            // `value` when the stored form differs from the displayed one.
+            entry[name] = f.value ?? f.airbnb;
             any = true;
           }
         });
@@ -184,6 +204,24 @@ export const AirbnbConfigImportDrawer: React.FC<AirbnbConfigImportDrawerProps> =
         { type: 'success' }
       );
       onLogAudit?.(`Imported ${applied} setting group(s) from Airbnb`, { module: 'Channel Manager' });
+
+      // Deliberately NO push prompt here (6 Sep 2026 - the first version had one
+      // and it was wrong). An imported base price does not need pushing:
+      //   - it came FROM the channel, so sending it straight back is a no-op there;
+      //   - `default_tariff` is only ever the FALLBACK for a date with no
+      //     room_rate_rules row, so on any property whose rate calendar covers the
+      //     pushed range it is never sent at all.
+      // Prompting for a wide outward push right after an import invites the owner
+      // to fire one for no gain. Pushing stays where it belongs: Channel Manager,
+      // deliberately, once the rate calendar is actually ready.
+      const priced: Array<{ room: string }> = json.data?.priced_rooms || [];
+      if (priced.length > 0) {
+        onLogAudit?.(
+          `Imported base price from Airbnb for: ${priced.map((r) => r.room).join(', ')}`,
+          { module: 'Channel Manager' }
+        );
+      }
+
       onImported?.();
       onClose();
     } catch (err) {
@@ -206,7 +244,7 @@ export const AirbnbConfigImportDrawer: React.FC<AirbnbConfigImportDrawerProps> =
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
               {t(
                 'airbnb_import_sub',
-                'Your listings already hold this. Tick what you want to bring across - nothing is saved until you apply. Prices are never imported.'
+                'Your listings already hold this. Tick what you want to bring across - nothing is saved until you apply. Check any price carefully: an Airbnb price often includes that channel’s commission.'
               )}
             </p>
           </div>
@@ -259,24 +297,42 @@ export const AirbnbConfigImportDrawer: React.FC<AirbnbConfigImportDrawerProps> =
                     return (
                       <label
                         key={key}
-                        className="flex cursor-pointer items-center justify-between gap-3 rounded-md border border-gray-100 px-3 py-2 hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/60"
+                        className={
+                          'cursor-pointer rounded-md border border-gray-100 px-3 py-2 hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/60 ' +
+                          (f.multiline
+                            ? 'flex flex-col gap-1.5'
+                            : 'flex items-center justify-between gap-3')
+                        }
                       >
                         <span className="flex items-center gap-2.5">
                           <input
                             type="checkbox"
                             checked={on}
                             onChange={() => toggle(key)}
-                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            className="h-4 w-4 shrink-0 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                           />
                           <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{f.label}</span>
+                          {f.multiline && f.differs && (
+                            <Badge variant="warning">{t('airbnb_import_differs', 'differs')}</Badge>
+                          )}
                         </span>
-                        <span className="flex items-center gap-2 text-xs">
-                          <span className="text-gray-400 line-through dark:text-gray-500">
-                            {f.current ?? t('airbnb_import_unset', 'not set')}
+                        {f.multiline ? (
+                          // Prose: show only what Airbnb holds, clamped. The stored
+                          // value is deliberately not shown alongside - two
+                          // paragraphs side by side is unreadable, and "differs"
+                          // above already says there is something to replace.
+                          <span className="whitespace-pre-line wrap-break-word pl-6.5 text-xs leading-relaxed text-gray-600 line-clamp-4 dark:text-gray-400">
+                            {String(f.airbnb)}
                           </span>
-                          <span className="font-semibold text-gray-900 dark:text-white">{f.airbnb}</span>
-                          {f.differs && <Badge variant="warning">{t('airbnb_import_differs', 'differs')}</Badge>}
-                        </span>
+                        ) : (
+                          <span className="flex items-center gap-2 text-xs">
+                            <span className="text-gray-400 line-through dark:text-gray-500">
+                              {f.current ?? t('airbnb_import_unset', 'not set')}
+                            </span>
+                            <span className="font-semibold text-gray-900 dark:text-white">{f.airbnb}</span>
+                            {f.differs && <Badge variant="warning">{t('airbnb_import_differs', 'differs')}</Badge>}
+                          </span>
+                        )}
                       </label>
                     );
                   })}

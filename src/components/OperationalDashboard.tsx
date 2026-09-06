@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import type { PropertyGuestInfo } from '../utils/whatsappVoucherTemplate';
 import { Drawer, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, Datepicker } from 'flowbite-react';
 import { X, ChevronLeft, ChevronRight } from './icons/FlowbiteIcons';
 import { Popover } from './Popover';
@@ -85,6 +86,7 @@ interface OperationalDashboardProps {
   propertyAddress?: string;
   propertyGoogleMapsLink?: string;
   propertyInstructions?: string;
+  propertyGuestInfo?: PropertyGuestInfo;
   propertyCheckinTime?: string;
   propertyCheckoutTime?: string;
   onSavePropertyLocation?: (address: string, googleMapsLink: string, instructions: string) => Promise<boolean>;
@@ -137,6 +139,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   propertyAddress = '',
   propertyGoogleMapsLink = '',
   propertyInstructions = '',
+  propertyGuestInfo,
   propertyCheckinTime = '',
   propertyCheckoutTime = '',
   onSavePropertyLocation: _onSavePropertyLocation,
@@ -1818,6 +1821,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           propertyUpiQrCodeUrl={propertyUpiQrCodeUrl}
           propertyAddress={propertyAddress}
           propertyInstructions={propertyInstructions}
+          propertyGuestInfo={propertyGuestInfo}
           propertyCheckinTime={propertyCheckinTime}
           propertyCheckoutTime={propertyCheckoutTime}
           onOpenIdVerification={() => setShowCheckinVerification(true)}

@@ -26,6 +26,7 @@ function handleGetPublicBookingInfo(PDO $pdo, int $propertyId): void {
 
     $propStmt = $pdo->prepare("
         SELECT id, tenant_id, name, slug, property_type, address, currency, timezone,
+               description, amenities, bed_configuration, bedrooms, beds_count, bathrooms, max_capacity,
                phone, google_maps_link, upi_id, upi_qr_code_url, instructions,
                checkin_time, checkout_time, default_tariff, pricing_mode
         FROM properties
@@ -46,7 +47,8 @@ function handleGetPublicBookingInfo(PDO $pdo, int $propertyId): void {
 
     // Fetch active rooms for multi-key property (stored in properties table)
     $roomsStmt = $pdo->prepare("
-        SELECT id, name, slug, room_order, default_tariff, checkin_time, checkout_time, pricing_mode
+        SELECT id, name, slug, room_order, default_tariff, checkin_time, checkout_time, pricing_mode,
+               description, amenities, bed_configuration, bedrooms, beds_count, bathrooms, max_capacity
         FROM properties
         WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM' AND (is_deleted = 0 OR is_deleted IS NULL) AND is_active = 1
         ORDER BY room_order ASC, name ASC, id ASC
@@ -65,6 +67,15 @@ function handleGetPublicBookingInfo(PDO $pdo, int $propertyId): void {
             'checkin_time' => $property['checkin_time'] ?: '14:00',
             'checkout_time' => $property['checkout_time'] ?: '11:00',
             'pricing_mode' => $propPricingMode,
+            // Content fields, so a single-unit property's booking page is as
+            // rich as a multi-key room's (6 Sep 2026).
+            'description' => $property['description'] ?? null,
+            'amenities' => $property['amenities'] ?? null,
+            'bed_configuration' => $property['bed_configuration'] ?? null,
+            'bedrooms' => $property['bedrooms'] ?? null,
+            'beds_count' => $property['beds_count'] ?? null,
+            'bathrooms' => $property['bathrooms'] ?? null,
+            'max_capacity' => $property['max_capacity'] ?? null,
         ]];
     }
 

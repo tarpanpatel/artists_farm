@@ -28,7 +28,64 @@ interface PublicRoom {
   pricing_mode?: string | null;
   checkin_time?: string | null;
   checkout_time?: string | null;
+  // Listing content (6 Sep 2026). Imported from Airbnb; every field optional,
+  // because a property that has never connected a channel has none of it and the
+  // card must still render exactly as it did before.
+  description?: string | null;
+  amenities?: string | null;
+  bed_configuration?: string | null;
+  bedrooms?: number | null;
+  beds_count?: number | null;
+  bathrooms?: number | null;
+  max_capacity?: number | null;
 }
+
+/** "WIRELESS_INTERNET" -> "Wireless Internet". Display only. */
+const humanizeKey = (k: string) =>
+  k.trim().toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
+const parseJsonArray = (raw?: string | null): any[] => {
+  if (!raw) return [];
+  try {
+    const v = JSON.parse(raw);
+    return Array.isArray(v) ? v : [];
+  } catch {
+    return [];
+  }
+};
+
+/**
+ * The one-line "2 guests · 1 bedroom · 1 double bed · 1.5 baths" summary.
+ * Returns '' when the room carries none of it, so the caller renders nothing
+ * rather than an empty row of separators.
+ */
+const buildRoomFacts = (room: PublicRoom): string => {
+  const parts: string[] = [];
+  if (room.max_capacity && room.max_capacity > 0) {
+    parts.push(`${room.max_capacity} guest${room.max_capacity > 1 ? 's' : ''}`);
+  }
+  if (room.bedrooms && room.bedrooms > 0) {
+    parts.push(`${room.bedrooms} bedroom${room.bedrooms > 1 ? 's' : ''}`);
+  }
+  const bedRooms = parseJsonArray(room.bed_configuration);
+  const bedTally = new Map<string, number>();
+  bedRooms.forEach((br: any) =>
+    (br?.beds || []).forEach((b: any) => {
+      if (!b?.type) return;
+      bedTally.set(b.type, (bedTally.get(b.type) || 0) + (Number(b.quantity) || 1));
+    })
+  );
+  bedTally.forEach((qty, type) => {
+    parts.push(`${qty} ${humanizeKey(type)}${qty > 1 ? 's' : ''}`);
+  });
+  if (!bedTally.size && room.beds_count && room.beds_count > 0) {
+    parts.push(`${room.beds_count} bed${room.beds_count > 1 ? 's' : ''}`);
+  }
+  if (room.bathrooms && room.bathrooms > 0) {
+    parts.push(`${room.bathrooms} bath${room.bathrooms > 1 ? 's' : ''}`);
+  }
+  return parts.join(' · ');
+};
 
 interface OccupiedBlock {
   room_id: number;
@@ -981,6 +1038,48 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                             {formatDateDisplay(checkinDate)} → {formatDateDisplay(checkoutDate)}
                           </p>
+
+                          {/* Listing content (6 Sep 2026). Each block renders only
+                              when the room actually has that field, so a property
+                              with nothing imported looks exactly as it did before. */}
+                          {(() => {
+                            const facts = buildRoomFacts(room);
+                            return facts ? (
+                              <p className="mt-1 text-xs font-medium text-gray-600 dark:text-gray-300">{facts}</p>
+                            ) : null;
+                          })()}
+
+                          {room.description ? (
+                            <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
+                              {room.description}
+                            </p>
+                          ) : null}
+
+                          {(() => {
+                            const amenities = parseJsonArray(room.amenities).filter(
+                              (a): a is string => typeof a === 'string'
+                            );
+                            if (!amenities.length) return null;
+                            const shown = amenities.slice(0, 6);
+                            const rest = amenities.length - shown.length;
+                            return (
+                              <div className="mt-1.5 flex flex-wrap gap-1">
+                                {shown.map((a) => (
+                                  <span
+                                    key={a}
+                                    className="rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-2xs font-medium text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                                  >
+                                    {humanizeKey(a)}
+                                  </span>
+                                ))}
+                                {rest > 0 ? (
+                                  <span className="px-1 py-0.5 text-2xs font-medium text-gray-400 dark:text-gray-500">
+                                    +{rest} more
+                                  </span>
+                                ) : null}
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
 
