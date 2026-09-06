@@ -2485,7 +2485,6 @@ ${itemsStr}
                     instructions={preloadedData.currentProperty?.instructions || ''}
                     rooms={(preloadedData.currentProperty as any)?.rooms || []}
                     onSaved={() => window.location.reload()}
-                    onNavigateToConnectChannels={() => handleNavigateTab('connect_channels')}
                   />
                 </Suspense>
               </ErrorBoundary>

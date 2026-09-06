@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Drawer } from 'flowbite-react';
 import {
   Home, Phone, Wallet, Clock, FileText, Building,
-  CheckCircle2, ArrowRight, ArrowLeft, Loader2, ClipboardList, X, AlertCircle,
+  CheckCircle2, ArrowRight, ArrowLeft, Loader2, ClipboardList, X, AlertCircle, ExternalLink,
 } from './icons/FlowbiteIcons';
 import { Button } from './Button';
 import { Input } from './Input';
@@ -55,11 +55,6 @@ interface PropertySetupWizardProps {
   rooms?: any[];
   /** Called after any step saves successfully - reloads to pick up fresh data everywhere. */
   onSaved: () => void;
-  /** Jumps to the Connect Channels page (7 Sep 2026 - the Rooms step's "Already
-   *  listed on Airbnb?" callout used to just describe where to go, with no way
-   *  to actually get there from this screen). Optional so this component still
-   *  renders standalone if a caller doesn't wire it up. */
-  onNavigateToConnectChannels?: () => void;
 }
 
 type StepKey = 'basics' | 'contact' | 'payments' | 'operations' | 'rooms' | 'notes';
@@ -152,7 +147,6 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
   instructions = '',
   rooms = [],
   onSaved,
-  onNavigateToConnectChannels,
 }) => {
   const isMultiKey = propertyType === 'MULTI_KEY';
 
@@ -607,20 +601,23 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
                     Connect it and import - rates, times, capacity, descriptions and amenities come
                     across for every unit at once.
                   </p>
-                  {onNavigateToConnectChannels && (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="xs"
-                      className="mt-2 whitespace-nowrap"
-                      onClick={() => {
-                        setIsOpen(false);
-                        onNavigateToConnectChannels();
-                      }}
-                    >
-                      Go to Connect Channels
-                    </Button>
-                  )}
+                  {/* Opens in a NEW TAB (7 Sep 2026, explicit correction: "go to
+                      connect shouldnt take me off setup pgage") rather than
+                      navigating this tab and closing the drawer - the user is
+                      still mid-checklist here (unsaved "Number of Tables" etc.
+                      on this same step) and shouldn't lose that just to glance
+                      at Connect Channels. Same window.open(...#hash...) pattern
+                      PlatformPropertyManagement.tsx already uses for this. */}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="xs"
+                    className="mt-2 whitespace-nowrap flex items-center gap-1.5"
+                    onClick={() => window.open(`${window.location.origin}${window.location.pathname}#connect_channels`, '_blank')}
+                  >
+                    <span>Go to Connect Channels</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </Button>
                 </div>
 
               </>

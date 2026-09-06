@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Plug, Loader2, RefreshCw, Plus, Trash2, Send } from './icons/FlowbiteIcons';
+import { Plug, Loader2, RefreshCw, Plus, Trash2, Send, Sparkles } from './icons/FlowbiteIcons';
 import { apiFetch, API_ROOT_BASE } from '../services/api';
 import { PageHeader } from './PageHeader';
 import { Button } from './Button';
 import { Badge } from './Badge';
 import { ChannelConnectWizard } from './ChannelConnectWizard';
+import { AirbnbConfigImportDrawer } from './AirbnbConfigImportDrawer';
 import { useConfirm } from './ConfirmDialogContext';
 import { useToast } from './ToastContext';
 import { t } from '../i18n/en';
@@ -53,6 +54,12 @@ export const ChannelConnectionsPage: React.FC<ChannelConnectionsPageProps> = ({ 
   const [wizardOpen, setWizardOpen] = useState(false);
   const [resumeChannelCode, setResumeChannelCode] = useState<string | null>(null);
   const [removingCode, setRemovingCode] = useState<string | null>(null);
+  // "Push Rates"/"Sync All ARI" above are outbound-only (rates & availability
+  // TO Airbnb) - this is the separate inbound direction (descriptions,
+  // amenities, house rules FROM Airbnb), previously only reachable from Edit
+  // Property. Added here too (7 Sep 2026, explicit report: a user on this
+  // exact page went looking for it and only found the outbound sync button).
+  const [showImporterModal, setShowImporterModal] = useState(false);
   const { confirm } = useConfirm();
   const { showToast } = useToast();
 
@@ -229,12 +236,23 @@ export const ChannelConnectionsPage: React.FC<ChannelConnectionsPageProps> = ({ 
             <RefreshCw className={`w-4 h-4 me-1.5 ${refreshing ? 'animate-spin' : ''}`} />
             {t('refresh_label', 'Refresh')}
           </Button>
+          <Button variant="secondary" size="sm" onClick={() => setShowImporterModal(true)} className="h-10 text-xs font-medium">
+            <Sparkles className="w-4 h-4 me-1.5 text-amber-500" />
+            {t('import_from_airbnb_button', 'Import from Airbnb')}
+          </Button>
           <Button variant="primary" size="sm" onClick={() => handleOpenWizard()} className="h-10 text-xs font-medium">
             <Plus className="w-4 h-4 me-1.5" />
             {t('connect_new_channel_button', 'Connect a Channel')}
           </Button>
         </div>
       </PageHeader>
+
+      <AirbnbConfigImportDrawer
+        isOpen={showImporterModal}
+        onClose={() => setShowImporterModal(false)}
+        propertyId={propertyId}
+        onImported={() => fetchConnections(true)}
+      />
 
       {connections.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 px-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 text-center space-y-3">
@@ -334,7 +352,7 @@ export const ChannelConnectionsPage: React.FC<ChannelConnectionsPageProps> = ({ 
                         className="text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700 h-8 self-start sm:self-auto"
                         leftIcon={isSyncingThis ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                       >
-                        {isSyncingThis ? 'Syncing...' : 'Sync Listing'}
+                        {isSyncingThis ? 'Pushing...' : 'Push Rates'}
                       </Button>
                     </div>
                   );
