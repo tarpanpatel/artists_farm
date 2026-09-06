@@ -366,6 +366,54 @@ if (!isSchemaVerified('schema_properties_table_v6')) {
     markSchemaVerified('schema_properties_table_v6');
 }
 
+// Self-healing columns for occupancy pricing and per-stay fees (6 Sep 2026).
+//
+// Until now a property could only express ONE number - `default_tariff`, a flat
+// nightly rate - so the owner's real pricing had nowhere to live in Ground Code
+// and existed only on the OTAs' own screens. That is the "two sources of price
+// truth" trap the Channex integration guide warns about: staff quote one number,
+// the guest pays another.
+//
+//   included_occupancy  - guests already covered by the nightly rate
+//   extra_guest_charge  - per night, per guest beyond that
+//   cleaning_fee        - once per stay
+//   security_deposit    - once per stay, refundable
+//
+// These four are exactly what Airbnb already returns for a connected listing
+// (guests_included / price_per_extra_person / cleaning_fee / security_deposit -
+// see ChannexChannelClient::getListingDetails), so they can be imported rather
+// than retyped once a channel exists.
+//
+// `max_capacity` is healed here too. It has been read and written by router.php,
+// multikey_properties.php and content_sync.php since 5 Sep 2026 with NO
+// self-heal block anywhere - the exact shape of the checkin_time/checkout_time
+// bug that silently broke Save Changes on Edit Property for an unknown length of
+// time. It happens to exist on the environments used so far; that is luck, not
+// a guarantee, and a fresh install would have failed.
+if (!isSchemaVerified('schema_properties_pricing_v1')) {
+    try {
+        $propPricingCols = $pdo->query("SHOW COLUMNS FROM properties")->fetchAll(PDO::FETCH_COLUMN);
+        // 0 means "not set" rather than "sleeps nobody" - see update_property.
+        if (!in_array('max_capacity', $propPricingCols)) {
+            $pdo->exec("ALTER TABLE properties ADD COLUMN `max_capacity` INT NOT NULL DEFAULT 0");
+        }
+        if (!in_array('included_occupancy', $propPricingCols)) {
+            $pdo->exec("ALTER TABLE properties ADD COLUMN `included_occupancy` INT NOT NULL DEFAULT 2");
+        }
+        // DECIMAL, never FLOAT - these are money and get added to a bill.
+        if (!in_array('extra_guest_charge', $propPricingCols)) {
+            $pdo->exec("ALTER TABLE properties ADD COLUMN `extra_guest_charge` DECIMAL(10,2) NOT NULL DEFAULT 0.00");
+        }
+        if (!in_array('cleaning_fee', $propPricingCols)) {
+            $pdo->exec("ALTER TABLE properties ADD COLUMN `cleaning_fee` DECIMAL(10,2) NOT NULL DEFAULT 0.00");
+        }
+        if (!in_array('security_deposit', $propPricingCols)) {
+            $pdo->exec("ALTER TABLE properties ADD COLUMN `security_deposit` DECIMAL(10,2) NOT NULL DEFAULT 0.00");
+        }
+    } catch (Exception $e) {}
+    markSchemaVerified('schema_properties_pricing_v1');
+}
+
 // Self-healing column check for `tenants.subscription_expires_at` and `tenants.plan_type` (26 Aug 2026)
 if (!isSchemaVerified('schema_tenants_table_v2')) {
     try {
@@ -1147,7 +1195,7 @@ function proposeAirbnbRoomConfig(PDO $pdo, $channelClient, string $channexChanne
             if ($listingId !== '') $out['unmatched'][] = $listingId;
             continue;
         }
-        $cur = $pdo->prepare("SELECT name, max_capacity, checkin_time, checkout_time FROM properties WHERE id = ? AND is_deleted = 0");
+        $cur = $pdo->prepare("SELECT name, max_capacity, checkin_time, checkout_time, included_occupancy, extra_guest_charge, cleaning_fee, security_deposit FROM properties WHERE id = ? AND is_deleted = 0");
         $cur->execute([$localRoomId]);
         $row = $cur->fetch(PDO::FETCH_ASSOC);
         if (!$row) { $out['unmatched'][] = $listingId; continue; }
@@ -1187,6 +1235,46 @@ function proposeAirbnbRoomConfig(PDO $pdo, $channelClient, string $channexChanne
                         'differs' => $row['checkout_time'] && $row['checkout_time'] !== $co];
                 }
 
+                // Occupancy pricing + per-stay fees (6 Sep 2026). These are the
+                // host's OWN settings as typed into Airbnb - not the marked-up
+                // total a guest sees - so unlike the nightly rate they are a
+                // reasonable thing to bring across.
+                //
+                // Still proposed, never auto-applied, for the reason the owner
+                // gave directly: "pricing they might not keep exactly what they
+                // want as OTAs take commission and then there are taxes." A host
+                // routinely inflates an OTA price to absorb the channel's cut, so
+                // the number on Airbnb may be deliberately not the number they
+                // want quoted directly. The owner decides; the import only offers.
+                //
+                // default_daily_price / weekend_price are deliberately NOT offered
+                // here: a single flat nightly rate belongs to the rate calendar
+                // (room_rate_rules), not to a property-level field, and quietly
+                // overwriting a rate someone has already tuned per-date would be
+                // the availability-reopen mistake in pricing form.
+                $priceable = [
+                    'included_occupancy' => ['Guests included in the rate', 'guests_included', 'int'],
+                    'extra_guest_charge' => ['Charge per extra guest', 'price_per_extra_person', 'money'],
+                    'cleaning_fee'       => ['Cleaning fee', 'cleaning_fee', 'money'],
+                    'security_deposit'   => ['Security deposit', 'security_deposit', 'money'],
+                ];
+                foreach ($priceable as $col => [$label, $airbnbKey, $kind]) {
+                    if (!array_key_exists($airbnbKey, $L)) continue;
+                    $raw = $L[$airbnbKey];
+                    if ($raw === null || $raw === '' || !is_numeric($raw)) continue;
+                    $airbnbVal = ($kind === 'int') ? (int)$raw : round((float)$raw, 2);
+                    if ($airbnbVal < 0) continue;
+                    $currentVal = ($kind === 'int') ? (int)$row[$col] : round((float)$row[$col], 2);
+                    $fields[$col] = [
+                        'label' => $label,
+                        'current' => $currentVal,
+                        'airbnb' => $airbnbVal,
+                        // "differs" only counts once something is actually stored -
+                        // a still-default 0 is a blank to fill, not a disagreement.
+                        'differs' => $currentVal > 0 && $currentVal !== $airbnbVal,
+                        'is_new' => $currentVal <= 0,
+                    ];
+                }
                 if ($propertyProposal === null) {
                     $addrParts = array_values(array_filter([
                         trim((string)($L['street'] ?? '')),
@@ -1230,7 +1318,8 @@ function applyAirbnbRoomConfig(PDO $pdo, array $confirmed, int $parentPropertyId
     // Whitelist: only these columns can ever be written by an import, so a crafted
     // field name cannot reach anything else (price columns included - deliberately
     // absent, see proposeAirbnbRoomConfig()).
-    $allowed = ['max_capacity', 'checkin_time', 'checkout_time'];
+    $allowed = ['max_capacity', 'checkin_time', 'checkout_time',
+                'included_occupancy', 'extra_guest_charge', 'cleaning_fee', 'security_deposit'];
     // A room_id posted in the request body must never reach another tenant's row.
     $check = $pdo->prepare("SELECT name FROM properties WHERE id = ? AND (id = ? OR parent_property_id = ?) AND is_deleted = 0");
 
@@ -1245,9 +1334,15 @@ function applyAirbnbRoomConfig(PDO $pdo, array $confirmed, int $parentPropertyId
         foreach ($allowed as $col) {
             if (!array_key_exists($col, $c)) continue;
             $v = $c[$col];
-            if ($col === 'max_capacity') {
+            if ($col === 'max_capacity' || $col === 'included_occupancy') {
                 $v = (int)$v;
                 if ($v < 1 || $v > 99) continue;
+            } elseif ($col === 'extra_guest_charge' || $col === 'cleaning_fee' || $col === 'security_deposit') {
+                if (!is_numeric($v)) continue;
+                $v = round((float)$v, 2);
+                // Same bound as update_property - an import is not a reason to
+                // accept a number a human would have been stopped from typing.
+                if ($v < 0 || $v > 1000000) continue;
             } else {
                 $v = trim((string)$v);
                 if (!preg_match('/^([01][0-9]|2[0-3]):[0-5][0-9]$/', $v)) continue;
@@ -3120,6 +3215,45 @@ switch ($action) {
                 }
                 $sets[] = 'max_capacity = ?';
                 $params[] = $capacity;
+            }
+            // Occupancy pricing + per-stay fees (6 Sep 2026). Validated as a group
+            // because they only make sense together: a rate that covers N guests,
+            // a charge for each guest past N, and two once-per-stay amounts.
+            //
+            // Money fields are bounded rather than merely numeric - a stray keypress
+            // turning 950 into 950000 lands on a real guest bill and, once
+            // occupancy pricing reaches Channex, on a live OTA listing. An upper
+            // bound is cheap insurance; the ceiling is deliberately generous so a
+            // genuinely expensive villa is not blocked by it.
+            $pricingFields = [
+                'included_occupancy' => ['int', 1, 99, 'Included occupancy must be between 1 and 99'],
+                'extra_guest_charge' => ['money', 0, 1000000, 'Extra guest charge must be between 0 and 1,000,000'],
+                'cleaning_fee'       => ['money', 0, 1000000, 'Cleaning fee must be between 0 and 1,000,000'],
+                'security_deposit'   => ['money', 0, 1000000, 'Security deposit must be between 0 and 1,000,000'],
+            ];
+            foreach ($pricingFields as $col => [$kind, $min, $max, $msg]) {
+                if (!array_key_exists($col, $input)) continue;
+                $raw = $input[$col];
+                if ($raw !== null && $raw !== '' && !is_numeric($raw)) {
+                    http_response_code(400);
+                    echo json_encode(['success' => false, 'message' => $msg]);
+                    exit;
+                }
+                // An empty field means "leave it at the column default" rather than
+                // NULL - these columns are NOT NULL so the bill maths never has to
+                // null-check before adding.
+                if ($raw === null || $raw === '') {
+                    $value = ($col === 'included_occupancy') ? 2 : 0;
+                } else {
+                    $value = ($kind === 'int') ? (int)$raw : round((float)$raw, 2);
+                }
+                if ($value < $min || $value > $max) {
+                    http_response_code(400);
+                    echo json_encode(['success' => false, 'message' => $msg]);
+                    exit;
+                }
+                $sets[] = "`{$col}` = ?";
+                $params[] = $value;
             }
             if (array_key_exists('whatsapp_voucher_template', $input)) {
                 // Empty string means "reset to the built-in default" - stored as NULL,

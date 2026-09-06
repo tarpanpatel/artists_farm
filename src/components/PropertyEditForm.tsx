@@ -42,6 +42,10 @@ interface PropertyEditFormProps {
     property_type?: string;
     default_tariff?: number | null;
     max_capacity?: number | null;
+    included_occupancy?: number | null;
+    extra_guest_charge?: number | null;
+    cleaning_fee?: number | null;
+    security_deposit?: number | null;
     checkin_time?: string | null;
     checkout_time?: string | null;
   };
@@ -101,6 +105,37 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
   const [maxCapacity, setMaxCapacity] = useState(
     property.max_capacity ? String(property.max_capacity) : ''
   );
+  // Occupancy pricing (6 Sep 2026). includedOccupancy defaults to 2 rather than
+  // blank because that is the column default and the near-universal real answer -
+  // a blank here would read as "nobody is included".
+  const [includedOccupancy, setIncludedOccupancy] = useState(
+    property.included_occupancy != null ? String(property.included_occupancy) : '2'
+  );
+  const [extraGuestCharge, setExtraGuestCharge] = useState(
+    property.extra_guest_charge ? String(property.extra_guest_charge) : ''
+  );
+  const [cleaningFee, setCleaningFee] = useState(
+    property.cleaning_fee ? String(property.cleaning_fee) : ''
+  );
+  const [securityDeposit, setSecurityDeposit] = useState(
+    property.security_deposit ? String(property.security_deposit) : ''
+  );
+
+  // Live validation, same shape as the UPI/passcode fields (see CLAUDE.md's
+  // "Real-Time Form Validation"): gated on .length > 0 so an untouched field
+  // never shows red, and it does not replace the submit-time guard.
+  const isBadMoney = (v: string) =>
+    v.length > 0 && (!/^\d+(\.\d{1,2})?$/.test(v) || Number(v) > 1000000);
+  const includedOccupancyInvalid =
+    includedOccupancy.length > 0 &&
+    (!/^\d+$/.test(includedOccupancy) || Number(includedOccupancy) < 1 || Number(includedOccupancy) > 99);
+  // A charge that can never apply is a silent no-op rather than an error - worth
+  // saying out loud, because it looks like it is working right up until a bill
+  // comes out wrong.
+  const extraGuestUnreachable =
+    Number(extraGuestCharge) > 0 &&
+    Number(maxCapacity) > 0 &&
+    Number(includedOccupancy) >= Number(maxCapacity);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -170,6 +205,10 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
         checkout_time: checkoutTime,
         default_tariff: defaultTariff,
         max_capacity: maxCapacity,
+        included_occupancy: includedOccupancy,
+        extra_guest_charge: extraGuestCharge,
+        cleaning_fee: cleaningFee,
+        security_deposit: securityDeposit,
       };
       if (!isRoom) {
         payload.email = email.trim();
@@ -383,6 +422,69 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
             helperText={isRoom
               ? t('max_capacity_help_room', "How many guests this room sleeps. Published to Airbnb and Booking.com.")
               : t('max_capacity_help', 'How many guests this property sleeps. Published to Airbnb and Booking.com.')}
+          />
+        </div>
+
+        {/* Occupancy pricing (6 Sep 2026). Before this a property could express
+            exactly one number - a flat nightly rate - so a real "first N guests
+            included, then X per head" structure had nowhere to live and survived
+            only on the OTAs' own pricing screens. That is the two-sources-of-truth
+            problem the Channex guide warns about: staff quote one number and the
+            guest pays another. Airbnb already returns both halves for a connected
+            listing (guests_included / price_per_extra_person), so these can be
+            imported rather than retyped. */}
+        <div className="property-edit-form__field">
+          <Input
+            type="number"
+            label={t('included_occupancy_label', 'Guests Included in the Rate')}
+            value={includedOccupancy}
+            onChange={(e) => setIncludedOccupancy(e.target.value)}
+            placeholder={t('included_occupancy_placeholder', 'e.g. 2')}
+            error={includedOccupancyInvalid
+              ? t('included_occupancy_invalid', 'Enter a whole number of guests between 1 and 99.')
+              : undefined}
+            helperText={t('included_occupancy_help', 'How many guests the nightly rate already covers. Extra guests are charged below.')}
+          />
+        </div>
+        <div className="property-edit-form__field">
+          <Input
+            type="number"
+            label={t('extra_guest_charge_label', 'Extra Guest Charge / Night')}
+            value={extraGuestCharge}
+            onChange={(e) => setExtraGuestCharge(e.target.value)}
+            placeholder={t('extra_guest_charge_placeholder', 'e.g. 950')}
+            error={isBadMoney(extraGuestCharge)
+              ? t('extra_guest_charge_invalid', 'Enter an amount up to 1,000,000 with at most 2 decimals.')
+              : undefined}
+            helperText={extraGuestUnreachable
+              ? t('extra_guest_charge_unreachable', 'This never applies - the included guests already fill the room, so nobody can be an extra guest.')
+              : t('extra_guest_charge_help', 'Charged per night for each guest beyond the included count.')}
+          />
+        </div>
+        <div className="property-edit-form__field">
+          <Input
+            type="number"
+            label={t('cleaning_fee_label', 'Cleaning Fee (once per stay)')}
+            value={cleaningFee}
+            onChange={(e) => setCleaningFee(e.target.value)}
+            placeholder={t('cleaning_fee_placeholder', 'e.g. 500')}
+            error={isBadMoney(cleaningFee)
+              ? t('cleaning_fee_invalid', 'Enter an amount up to 1,000,000 with at most 2 decimals.')
+              : undefined}
+            helperText={t('cleaning_fee_help', 'Added once to the bill, not per night. Leave blank if you do not charge one.')}
+          />
+        </div>
+        <div className="property-edit-form__field">
+          <Input
+            type="number"
+            label={t('security_deposit_label', 'Security Deposit (refundable)')}
+            value={securityDeposit}
+            onChange={(e) => setSecurityDeposit(e.target.value)}
+            placeholder={t('security_deposit_placeholder', 'e.g. 2000')}
+            error={isBadMoney(securityDeposit)
+              ? t('security_deposit_invalid', 'Enter an amount up to 1,000,000 with at most 2 decimals.')
+              : undefined}
+            helperText={t('security_deposit_help', 'Held against damage and returned at checkout. Not revenue.')}
           />
         </div>
         <div className="property-edit-form__field">

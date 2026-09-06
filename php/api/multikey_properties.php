@@ -621,7 +621,8 @@ function getMultiKeyProperty($pdo, $propertyId = 0, $currentProperty = []) {
         // row already carries its own values - see properties.checkin_time/
         // checkout_time - just never surfaced here before).
         $stmt = $pdo->prepare("
-            SELECT id, name, slug, room_order, is_active, created_at, default_tariff, checkin_time, checkout_time, max_capacity
+            SELECT id, name, slug, room_order, is_active, created_at, default_tariff, checkin_time, checkout_time, max_capacity,
+                   included_occupancy, extra_guest_charge, cleaning_fee, security_deposit
             FROM properties
             WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM' AND is_deleted = 0
             ORDER BY room_order ASC
@@ -630,6 +631,13 @@ function getMultiKeyProperty($pdo, $propertyId = 0, $currentProperty = []) {
         $rooms = $stmt->fetchAll();
         foreach ($rooms as &$room) {
             $room['default_tariff'] = $room['default_tariff'] !== null ? (float)$room['default_tariff'] : null;
+            // Same treatment for the occupancy-pricing columns - PDO hands DECIMAL
+            // back as a string, which reaches the UI as "950.00" and silently
+            // string-concatenates in any total that forgets to coerce it.
+            $room['included_occupancy'] = (int)($room['included_occupancy'] ?? 2);
+            $room['extra_guest_charge'] = (float)($room['extra_guest_charge'] ?? 0);
+            $room['cleaning_fee'] = (float)($room['cleaning_fee'] ?? 0);
+            $room['security_deposit'] = (float)($room['security_deposit'] ?? 0);
         }
         unset($room);
 
