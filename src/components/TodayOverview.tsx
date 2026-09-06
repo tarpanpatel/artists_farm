@@ -118,6 +118,22 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   const [calMode, setCalMode] = useState<'booking' | 'pricing'>('booking');
   // Room the "Change Prices" range click landed on, passed to RateRuleModal.
   const [rateModalRoomIds, setRateModalRoomIds] = useState<number[] | undefined>(undefined);
+  // Pending "open the pricing modal for a completed range" timer (6 Sep 2026).
+  //
+  // Double-click was reported as not working, and this is why: if a range was
+  // already half-selected (a stray earlier click leaves a highlighted cell that
+  // is easy to miss), the FIRST click of the double-click completed that range
+  // and opened the modal - and the modal's own overlay then swallowed the
+  // second click, so the dblclick never reached the calendar at all. The user
+  // saw a two-night range appear instead of the single night they double-clicked.
+  //
+  // Completing a range therefore waits a moment before opening, and a dblclick
+  // arriving in that window cancels it and prices the single night instead. The
+  // delay is only on the range path, so it never slows the double-click itself.
+  const pendingRangeOpenRef = useRef<number | null>(null);
+  useEffect(() => () => {
+    if (pendingRangeOpenRef.current !== null) window.clearTimeout(pendingRangeOpenRef.current);
+  }, []);
 
   const formatDateStr = (d: Date): string =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -138,34 +154,18 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
    */
   const handleCellDoubleClick = (roomId: number, dateStr: string, isUnavailable: boolean) => {
     if (calMode !== 'pricing' || isUnavailable) return;
+    // Beat the range-completion this same gesture's first click may have
+    // started - see pendingRangeOpenRef.
+    if (pendingRangeOpenRef.current !== null) {
+      window.clearTimeout(pendingRangeOpenRef.current);
+      pendingRangeOpenRef.current = null;
+    }
     setPendingSelection(null);
     setPendingColumn(null);
     setRateRuleStartDate(dateStr);
     setRateRuleEndDate(dateStr);
     setRateModalRoomIds([roomId]);
     setShowRateRuleModal(true);
-  };
-
-  /**
-   * Leaving the pricing modal for the booking flow with the same room and
-   * dates already chosen - the other half of the wrong-mode escape hatch the
-   * Add Booking confirmation below offers. A price range's last date is the
-   * last NIGHT, while a booking's checkout is the morning after, so the
-   * checkout handed on is one day later.
-   */
-  const handleSwitchToBooking = () => {
-    const roomId = rateModalRoomIds && rateModalRoomIds.length === 1 ? rateModalRoomIds[0] : undefined;
-    const room = (rooms || []).find((r) => r.id === roomId);
-    const start = rateRuleStartDate;
-    const end = rateRuleEndDate;
-    setShowRateRuleModal(false);
-    setRateModalRoomIds(undefined);
-    setRateRuleStartDate(undefined);
-    setRateRuleEndDate(undefined);
-    setCalMode('booking');
-    if (!room || !start || !end) return;
-    const checkout = formatDateStr(new Date(new Date(end + 'T00:00:00').getTime() + 86400000));
-    onAddBooking?.({ roomName: room.name, checkin: start, checkout });
   };
 
   const handleRangeCellClick = async (
@@ -209,10 +209,15 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
       // the booking flow's checkout-exclusive reading, which is what "price
       // these dates" means.
       const priceEndStr = formatDateStr(new Date(new Date(dateStr + 'T00:00:00').getTime() - 86400000));
-      setRateRuleStartDate(startStr);
-      setRateRuleEndDate(priceEndStr < startStr ? startStr : priceEndStr);
-      setRateModalRoomIds([roomId]);
-      setShowRateRuleModal(true);
+      // Deferred so a double-click can overrule it - see pendingRangeOpenRef.
+      if (pendingRangeOpenRef.current !== null) window.clearTimeout(pendingRangeOpenRef.current);
+      pendingRangeOpenRef.current = window.setTimeout(() => {
+        pendingRangeOpenRef.current = null;
+        setRateRuleStartDate(startStr);
+        setRateRuleEndDate(priceEndStr < startStr ? startStr : priceEndStr);
+        setRateModalRoomIds([roomId]);
+        setShowRateRuleModal(true);
+      }, 260);
       return;
     }
 
@@ -1247,11 +1252,6 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           initialStartDate={rateRuleStartDate}
           initialEndDate={rateRuleEndDate}
           initialRoomIds={rateModalRoomIds}
-          onSwitchToBooking={
-            rateModalRoomIds && rateModalRoomIds.length === 1 && rateRuleStartDate && rateRuleEndDate
-              ? handleSwitchToBooking
-              : undefined
-          }
         />
       )}
     </div>

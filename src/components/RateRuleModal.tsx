@@ -44,12 +44,6 @@ interface RateRuleModalProps {
   // Only applied on the isOpen rising edge so the user can still change them.
   initialRoomIds?: number[];
   initialRatePerNight?: string;
-  // "You're in the wrong mode" escape hatch (6 Sep 2026). The calendar has a
-  // Change Prices / Add Booking toggle that is easy to forget, and landing in
-  // the wrong one means cancelling, flipping the toggle and re-picking the
-  // same dates. When the calendar opens this modal it passes a callback that
-  // switches to booking mode with the same room and dates already chosen.
-  onSwitchToBooking?: () => void;
 }
 
 export const RateRuleModal: React.FC<RateRuleModalProps> = ({
@@ -65,7 +59,6 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
   initialEndDate,
   initialRoomIds,
   initialRatePerNight,
-  onSwitchToBooking,
 }) => {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
@@ -757,20 +750,6 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                   </span>
                 </div>
               ) : null}
-
-              {/* Wrong-mode escape hatch (6 Sep 2026) - see onSwitchToBooking's
-                  note on the props interface. Only rendered when the calendar
-                  supplied the callback, so opening this modal from anywhere
-                  else looks exactly as it did before. */}
-              {onSwitchToBooking && (
-                <button
-                  type="button"
-                  onClick={onSwitchToBooking}
-                  className="w-full text-left px-3 py-2 rounded-lg border border-dashed border-blue-300 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/30 text-2xs text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-colors cursor-pointer"
-                >
-                  Wanted to <span className="font-semibold">book</span> these dates instead of pricing them? Switch to Add Booking &rarr;
-                </button>
-              )}
 
               {/* Date range row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
