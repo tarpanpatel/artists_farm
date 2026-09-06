@@ -1246,7 +1246,7 @@ function airbnbHumanizeKey(string $key): string {
  * count from 1 up to capacity, so capacity is its maximum) in ONE request for the
  * whole account; the remaining fields need a per-listing detail call.
  */
-function proposeAirbnbRoomConfig(PDO $pdo, $channelClient, string $channexChannelId, array $roomMappings, bool $withDetails = true): array {
+function proposeAirbnbRoomConfig(PDO $pdo, $channelClient, string $channexChannelId, array $roomMappings, bool $withDetails = true, ?int $singleUnitPropertyId = null): array {
     $out = ['proposals' => [], 'property' => null, 'capacity_context' => [], 'unmatched' => []];
     if (empty($roomMappings)) return $out;
 
@@ -1266,7 +1266,17 @@ function proposeAirbnbRoomConfig(PDO $pdo, $channelClient, string $channexChanne
     $propertyProposal = null;
 
     foreach ($roomMappings as $m) {
-        $localRoomId = (int)($m['local_room_id'] ?? 0);
+        // A SINGLE property's one unit is stored with local_room_id NULL (the
+        // property row IS the unit - see channex_channel_save_mapping, which
+        // writes null there deliberately). Casting that to 0 and skipping it
+        // meant the importer silently returned NOTHING for every single-unit
+        // property - the most common shape for a new client - while working
+        // fine for multi-key ones. Found 6 Sep 2026 auditing whether property
+        // setup was actually ready end to end.
+        $rawRoomId = $m['local_room_id'] ?? null;
+        $localRoomId = ($rawRoomId === null || $rawRoomId === '')
+            ? (int)$singleUnitPropertyId
+            : (int)$rawRoomId;
         $listingId = (string)($m['external_room_code'] ?? '');
         if ($localRoomId <= 0 || $listingId === '' || !isset($byId[$listingId])) {
             if ($listingId !== '') $out['unmatched'][] = $listingId;
@@ -5307,7 +5317,7 @@ switch ($action) {
                     break 2;
                 }
                 try {
-                    $report = proposeAirbnbRoomConfig($pdo, $channelClient, (string)$conn['channex_channel_id'], $existingMappings);
+                    $report = proposeAirbnbRoomConfig($pdo, $channelClient, (string)$conn['channex_channel_id'], $existingMappings, true, $targetPropertyId);
                 } catch (Throwable $e) {
                     http_response_code(502);
                     echo json_encode(['status' => 'error', 'message' => 'Listing import failed: ' . $e->getMessage()]);
@@ -5533,7 +5543,7 @@ switch ($action) {
                     // intact.
                     $importReport = null;
                     try {
-                        $importReport = proposeAirbnbRoomConfig($pdo, $channelClient, (string)$conn['channex_channel_id'], $localRows);
+                        $importReport = proposeAirbnbRoomConfig($pdo, $channelClient, (string)$conn['channex_channel_id'], $localRows, true, $targetPropertyId);
                     } catch (Throwable $e) {
                         $importReport = ['error' => 'Listing import failed: ' . $e->getMessage()];
                     }

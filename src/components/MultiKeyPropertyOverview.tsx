@@ -240,6 +240,12 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
 
   // If a room is selected, show that room's dashboard/content
   if (selectedRoomSlug) {
+    // Guest-facing values below are read ROOM first, with the parent only as a
+    // fallback (6 Sep 2026). Each room of a multi-key property is its own Airbnb
+    // listing with its own wifi and its own check-in time - Patel Colony's seven
+    // rooms have seven different networks, and its parent row has NULL times
+    // while every room holds real ones. Reading the parent put the wrong network
+    // (or none at all) on the guest's voucher.
     const selectedRoom = property.rooms.find((r: any) => r.slug === selectedRoomSlug);
 
     if (!selectedRoom) {
@@ -295,13 +301,13 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                   propertyUpiQrCodeUrl={property.upi_qr_code_url || ''}
                   propertyAddress={property.address || ''}
                   propertyInstructions={property.instructions || ''}
-              propertyGuestInfo={{
-                wifiNetwork: (property as any).wifi_network || '',
-                wifiPassword: (property as any).wifi_password || '',
-                houseManual: (property as any).house_manual || '',
-              }}
-                  propertyCheckinTime={property.checkin_time || ''}
-                  propertyCheckoutTime={property.checkout_time || ''}
+                  propertyGuestInfo={{
+                    wifiNetwork: (selectedRoom as any)?.wifi_network || (property as any).wifi_network || '',
+                    wifiPassword: (selectedRoom as any)?.wifi_password || (property as any).wifi_password || '',
+                    houseManual: (selectedRoom as any)?.house_manual || (property as any).house_manual || '',
+                  }}
+                  propertyCheckinTime={(selectedRoom as any)?.checkin_time || property.checkin_time || ''}
+                  propertyCheckoutTime={(selectedRoom as any)?.checkout_time || property.checkout_time || ''}
                   onUpdateRoomName={async (newName) => {
                     try {
                       const response = await fetch('/php/api/router.php?action=update_room_name', {
@@ -350,13 +356,13 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                   propertyUpiQrCodeUrl={property.upi_qr_code_url || ''}
                   propertyAddress={property.address || ''}
                   propertyInstructions={property.instructions || ''}
-              propertyGuestInfo={{
-                wifiNetwork: (property as any).wifi_network || '',
-                wifiPassword: (property as any).wifi_password || '',
-                houseManual: (property as any).house_manual || '',
-              }}
-                  propertyCheckinTime={property.checkin_time || ''}
-                  propertyCheckoutTime={property.checkout_time || ''}
+                  propertyGuestInfo={{
+                    wifiNetwork: (selectedRoom as any)?.wifi_network || (property as any).wifi_network || '',
+                    wifiPassword: (selectedRoom as any)?.wifi_password || (property as any).wifi_password || '',
+                    houseManual: (selectedRoom as any)?.house_manual || (property as any).house_manual || '',
+                  }}
+                  propertyCheckinTime={(selectedRoom as any)?.checkin_time || property.checkin_time || ''}
+                  propertyCheckoutTime={(selectedRoom as any)?.checkout_time || property.checkout_time || ''}
                 />
               )}
 

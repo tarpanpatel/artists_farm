@@ -198,6 +198,9 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
     nights: number;
     totalTariff: number;
     avgNightlyRate: number;
+    /** The room's real capacity, so the guest picker can stop at it (6 Sep
+     *  2026). 0/undefined = never set, which falls back to the old 1-5 list. */
+    maxCapacity?: number | null;
   } | null>(null);
 
   // Booking Form Fields
@@ -487,7 +490,13 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
       nights: Math.max(1, nights),
       totalTariff: total,
       avgNightlyRate: nights > 0 ? Math.round(total / nights) : total,
+      maxCapacity: room.max_capacity ?? null,
     });
+    // numGuests defaults to 2 and persists between drawer opens, so without this
+    // a 1-guest room would open showing "2 Guests" with no such option in the
+    // list - and submit a booking for more people than the room holds.
+    const cap = Number(room.max_capacity) || 0;
+    if (cap > 0) setNumGuests((n) => Math.min(n, cap));
     setFormError(null);
   };
 
@@ -1408,13 +1417,17 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                     label="Number of Guests"
                     value={numGuests}
                     onChange={(e) => setNumGuests(Number(e.target.value))}
-                    options={[
-                      { value: 1, label: '1 Guest' },
-                      { value: 2, label: '2 Guests' },
-                      { value: 3, label: '3 Guests' },
-                      { value: 4, label: '4 Guests' },
-                      { value: 5, label: '5+ Guests' },
-                    ]}
+                    // Was a hardcoded 1-5 list, which both let a 2-person studio
+                    // be booked for "5+ Guests" and stopped a 6-person villa from
+                    // taking 6. Now derived from the room's own capacity; a room
+                    // that has never had one set keeps the old 1-5 range. The old
+                    // "5+" label was also wrong for pricing - extra-guest charges
+                    // compute off this exact number, so it has to mean 5, not "5
+                    // or more". 6 Sep 2026.
+                    options={Array.from(
+                      { length: Math.max(1, Number(bookingDrawerRoom.maxCapacity) || 5) },
+                      (_, i) => ({ value: i + 1, label: `${i + 1} Guest${i > 0 ? 's' : ''}` })
+                    )}
                   />
 
                   <div>
