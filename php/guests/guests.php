@@ -23,6 +23,38 @@ if (!function_exists('convertSnakeToCamel')) {
 }
 
 require_once __DIR__ . '/../config/schema_cache.php';
+
+// A conflict message that names the booking actually standing in the way.
+// "This property already has an active booking for these dates" is true but
+// unhelpful: staff cannot tell whether they have collided with somebody
+// else's reservation, or with a booking they created moments ago and simply
+// cannot see yet (the client's guest list can predate it - found live
+// 6 Sep 2026, where a real Booked stay was invisible in the tab that kept
+// getting rejected by it). Naming the guest and the exact nights turns a
+// dead end into something the user can act on.
+//
+// STAFF-FACING ONLY. Never reuse this on a guest-facing endpoint
+// (booking_holds.php, public_booking.php) - a public visitor must never be
+// told the name of the guest occupying a room.
+if (!function_exists('guestOverlapConflictMessage')) {
+    function guestOverlapConflictMessage(array $conflict, bool $roomScoped): string {
+        $subject = $roomScoped ? 'Selected room' : 'This property';
+        $name = trim((string)($conflict['guest_name'] ?? ''));
+        $from = substr((string)($conflict['checkin_date'] ?? ''), 0, 10);
+        $to   = substr((string)($conflict['expected_checkout'] ?? ''), 0, 10);
+        if ($name === '' || $from === '' || $to === '') {
+            return $subject . ' already has an active booking for these dates';
+        }
+        // DD/MM/YYYY - the app's display format everywhere (see CLAUDE.md).
+        $fmt = function (string $d): string {
+            $t = strtotime($d);
+            return $t ? date('d/m/Y', $t) : $d;
+        };
+        $ref = isset($conflict['id']) ? ' (#' . $conflict['id'] . ')' : '';
+        return $subject . ' is already booked: ' . $name . $ref . ', '
+            . $fmt($from) . ' to ' . $fmt($to) . '.';
+    }
+}
 require_once __DIR__ . '/../config/guest_status.php';
 require_once __DIR__ . '/../security/input_validator.php';
 // Self-guarding (every function inside wrapped in function_exists checks), so
@@ -673,21 +705,20 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         $pdo->prepare("SELECT id FROM properties WHERE id = ? FOR UPDATE")->execute([$lockTargetId]);
 
                         if ($roomId !== null) {
-                            $roomConflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id = ? AND property_id = ? AND status IN (?, ?, ?) AND checkin_date < DATE(?) AND DATE(expected_checkout) > DATE(?) LIMIT 1 FOR UPDATE");
+                            $roomConflictStmt = $pdo->prepare("SELECT id, guest_name, checkin_date, expected_checkout FROM guests WHERE room_id = ? AND property_id = ? AND status IN (?, ?, ?) AND checkin_date < DATE(?) AND DATE(expected_checkout) > DATE(?) LIMIT 1 FOR UPDATE");
                             $roomConflictStmt->execute([$roomId, $propertyId, GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_IN, GUEST_STATUS_BOOKED, $newCheckout, $newCheckin]);
                         } else {
-                            $roomConflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id IS NULL AND property_id = ? AND status IN (?, ?, ?) AND checkin_date < DATE(?) AND DATE(expected_checkout) > DATE(?) LIMIT 1 FOR UPDATE");
+                            $roomConflictStmt = $pdo->prepare("SELECT id, guest_name, checkin_date, expected_checkout FROM guests WHERE room_id IS NULL AND property_id = ? AND status IN (?, ?, ?) AND checkin_date < DATE(?) AND DATE(expected_checkout) > DATE(?) LIMIT 1 FOR UPDATE");
                             $roomConflictStmt->execute([$propertyId, GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_IN, GUEST_STATUS_BOOKED, $newCheckout, $newCheckin]);
                         }
 
-                        if ($roomConflictStmt->fetch()) {
+                        $overlapConflict = $roomConflictStmt->fetch(PDO::FETCH_ASSOC);
+                        if ($overlapConflict) {
                             if ($pdo->inTransaction()) {
                                 $pdo->rollBack();
                             }
                             http_response_code(409);
-                            echo json_encode(['status' => 'error', 'message' => $roomId !== null
-                                ? 'Selected room already has an active booking for these dates'
-                                : 'This property already has an active booking for these dates']);
+                            echo json_encode(['status' => 'error', 'message' => guestOverlapConflictMessage($overlapConflict, $roomId !== null)]);
                             break;
                         }
 
@@ -1023,20 +1054,19 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         // silently excluded (found + fixed alongside add_guest's
                         // missing check, 20 Aug 2026).
                         if ($roomId !== null) {
-                            $conflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id = ? AND status IN (?, ?, ?) AND id != ? AND property_id = ? AND checkin_date < DATE(?) AND DATE(expected_checkout) > DATE(?) LIMIT 1 FOR UPDATE");
+                            $conflictStmt = $pdo->prepare("SELECT id, guest_name, checkin_date, expected_checkout FROM guests WHERE room_id = ? AND status IN (?, ?, ?) AND id != ? AND property_id = ? AND checkin_date < DATE(?) AND DATE(expected_checkout) > DATE(?) LIMIT 1 FOR UPDATE");
                             $conflictStmt->execute([$roomId, GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_IN, GUEST_STATUS_BOOKED, $guestId, $propertyId, $newCheckout, $newCheckin]);
                         } else {
-                            $conflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id IS NULL AND status IN (?, ?, ?) AND id != ? AND property_id = ? AND checkin_date < DATE(?) AND DATE(expected_checkout) > DATE(?) LIMIT 1 FOR UPDATE");
+                            $conflictStmt = $pdo->prepare("SELECT id, guest_name, checkin_date, expected_checkout FROM guests WHERE room_id IS NULL AND status IN (?, ?, ?) AND id != ? AND property_id = ? AND checkin_date < DATE(?) AND DATE(expected_checkout) > DATE(?) LIMIT 1 FOR UPDATE");
                             $conflictStmt->execute([GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_IN, GUEST_STATUS_BOOKED, $guestId, $propertyId, $newCheckout, $newCheckin]);
                         }
-                        if ($conflictStmt->fetch()) {
+                        $overlapConflict = $conflictStmt->fetch(PDO::FETCH_ASSOC);
+                        if ($overlapConflict) {
                             if ($pdo->inTransaction()) {
                                 $pdo->rollBack();
                             }
                             http_response_code(409);
-                            echo json_encode(['status' => 'error', 'message' => $roomId !== null
-                                ? 'Selected room already has an active booking for these dates'
-                                : 'This property already has an active booking for these dates']);
+                            echo json_encode(['status' => 'error', 'message' => guestOverlapConflictMessage($overlapConflict, $roomId !== null)]);
                             break;
                         }
 

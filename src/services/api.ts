@@ -1139,7 +1139,12 @@ export async function addGuestToDB(guest: {
   if (!json || json.status !== 'success') {
     const message = json?.message || `Failed to save booking (HTTP ${res.status})`;
     console.error('Failed to add guest to DB:', message);
-    throw new Error(message);
+    // Carry the HTTP status so callers can tell a date conflict (409) apart from
+    // a validation failure - App.tsx refreshes the guest list on a conflict, since
+    // the booking standing in the way is by definition one the client does not have.
+    const err = new Error(message) as Error & { status?: number };
+    err.status = res.status;
+    throw err;
   }
   return { id: json.id || null, overlapWarning: json.overlap_warning || undefined };
 }
@@ -1178,7 +1183,10 @@ export async function updateGuestInDB(guest: {
   });
   const json = await res.json().catch(() => null);
   if (!json || json.status !== 'success') {
-    throw new Error(json?.message || 'Failed to update booking');
+    // Same status-carrying error as addGuestToDB above, for the same reason.
+    const err = new Error(json?.message || 'Failed to update booking') as Error & { status?: number };
+    err.status = res.status;
+    throw err;
   }
   return true;
 }

@@ -903,6 +903,11 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // can detect it's been superseded and skip applying its (possibly
   // wrong-property) result once it resolves.
   const hydrationTokenRef = useRef(0);
+  // Timestamp of the last guest refetch, used to throttle the
+  // tab-came-back-to-the-foreground refresh below. Seeded to "now" so the
+  // focus event that follows an ordinary page load doesn't immediately
+  // re-fetch what hydration is already fetching.
+  const lastGuestRefreshRef = useRef(Date.now());
   // DataLoader.tsx already fetched fresh guests/receipts for this exact
   // property before this component ever mounted (see preloadedData.initialGuests/
   // initialReceipts seeding the state above) - re-fetching them again on that
@@ -1254,6 +1259,43 @@ function AppBody({ preloadedData }: AppBodyProps) {
       fetchServiceRequestsFromDB().then((data) => setServiceRequests(data || []));
     }
   }, [activeTab, isAuthenticated, authChecked]);
+
+  // A tab that simply stays open drifts out of date. Guests are fetched on
+  // mount, on property switch, and when the Dashboard tab is re-selected -
+  // but nothing refreshes a tab left sitting on one screen. That quietly
+  // breaks the two things which depend on knowing about EVERY booking: the
+  // calendar, and the date picker's blocked-nights. So a booking made
+  // anywhere else (another tab, another staff member, an inbound OTA
+  // reservation) stays invisible here until someone reloads by hand.
+  //
+  // Found live 6 Sep 2026: a booking saved at 19:16 was still missing from a
+  // tab twelve minutes later, so that tab both offered its nights as free AND
+  // rejected them as taken - the rejection looked simply wrong, because the
+  // booking it named was one the screen could not show.
+  //
+  // Refetching when the tab returns to the foreground is the cheap fix for
+  // the whole class. Throttled, so ordinary alt-tabbing doesn't hammer the
+  // API, and only applied to guests - the other datasets don't gate a write
+  // the way this one does.
+  useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
+    const MIN_REFRESH_GAP_MS = 60_000;
+    const refreshIfStale = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - lastGuestRefreshRef.current < MIN_REFRESH_GAP_MS) return;
+      lastGuestRefreshRef.current = Date.now();
+      // Keep the existing list on an empty/failed response rather than
+      // blanking the calendar - fetchGuestsFromDB() resolves to [] on a
+      // backend error instead of rejecting (see its note in api.ts).
+      fetchGuestsFromDB().then((fresh) => { if (fresh.length) setGuests(fresh); }).catch(() => {});
+    };
+    document.addEventListener('visibilitychange', refreshIfStale);
+    window.addEventListener('focus', refreshIfStale);
+    return () => {
+      document.removeEventListener('visibilitychange', refreshIfStale);
+      window.removeEventListener('focus', refreshIfStale);
+    };
+  }, [isAuthenticated, authChecked]);
 
   // Helper to check if a route key is allowed for current activeRole
   const isRouteAllowed = (key: string, role: string, items: NavMenuItem[]) => {
@@ -1839,6 +1881,15 @@ function AppBody({ preloadedData }: AppBodyProps) {
       // the database. Re-throw so GuestManagement.tsx's onSubmit can show
       // the real reason instead of its own hardcoded success toast.
       setGuests((prev) => prev.filter((g) => g.id !== newGuest.id));
+      // A 409 means an existing booking blocks these dates - and the client
+      // cannot already be showing it, or the date picker would have greyed
+      // those nights out before this was ever submitted. Pull a fresh list so
+      // the calendar and the Bookings tabs actually show the booking the error
+      // is about (6 Sep 2026: a real Booked stay was invisible in the very tab
+      // that kept being rejected by it, so the message read as simply wrong).
+      if ((err as { status?: number } | null)?.status === 409) {
+        fetchGuestsFromDB().then((fresh) => { if (fresh.length) setGuests(fresh); }).catch(() => {});
+      }
       throw err;
     }
     if (dbId) {
@@ -1886,6 +1937,15 @@ function AppBody({ preloadedData }: AppBodyProps) {
         guests.find((existing) => existing.id === updatedGuest.id)?.updatedAt ??
         updatedGuest.updatedAt ??
         null,
+    }).catch((err) => {
+      // A rejected save with 409 means another booking blocks these dates, and
+      // the client cannot already be showing it - see handleAddGuest above for
+      // the full reasoning. Pull fresh data so the calendar shows what the
+      // error is talking about.
+      if ((err as { status?: number } | null)?.status === 409) {
+        fetchGuestsFromDB().then((fresh) => { if (fresh.length) setGuests(fresh); }).catch(() => {});
+      }
+      throw err;
     });
     if (!ok) throw new Error('Failed to update booking');
     // Refetch rather than merging blindly: the local row's updatedAt token is
