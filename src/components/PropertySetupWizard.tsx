@@ -341,7 +341,9 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
       >
         <span className="flex items-center gap-2 text-xs font-semibold text-amber-900 dark:text-amber-200">
           <ClipboardList className="w-4 h-4 shrink-0" />
-          {t('finish_setup_property_heading', 'Finish Setting Up This Property')}
+          {isMultiKey
+            ? t('finish_setup_parent_property_heading', 'Finish Setting Up Parent Property')
+            : t('finish_setup_property_heading', 'Finish Setting Up This Property')}
           <span className="font-normal text-amber-700 dark:text-amber-400">
             ({stepsDone} {t('setup_steps_done_of_prefix', 'of')} {totalSteps} {t('setup_steps_done_suffix', 'steps done')})
           </span>
@@ -367,7 +369,9 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
           </div>
           <div>
             <h2 className="property-setup-wizard__title text-base font-semibold text-gray-900 dark:text-white m-0">
-              {t('finish_setup_property_heading', 'Finish Setting Up This Property')}
+              {isMultiKey
+                ? t('finish_setup_parent_property_heading', 'Finish Setting Up Parent Property')
+                : t('finish_setup_property_heading', 'Finish Setting Up This Property')}
             </h2>
             <p className="text-2xs text-slate-500 dark:text-slate-400 m-0">
               {stepsDone} {t('setup_steps_done_of_prefix', 'of')} {totalSteps} {t('setup_steps_done_suffix', 'steps done')}

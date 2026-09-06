@@ -1374,7 +1374,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
           {checkinDate && checkoutDate && checkinDate < checkoutDate && (
             <div className="pt-3 border-t border-gray-200 dark:border-gray-700 space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                <h3 className="text-xs font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   Available Options for {formatDateDisplay(checkinDate)} → {formatDateDisplay(checkoutDate)}
                 </h3>

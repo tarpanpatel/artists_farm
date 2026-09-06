@@ -1740,6 +1740,10 @@ export const strings: Record<string, string> = {
 
   // Property Setup Wizard
   finish_setup_property_heading: "Finish Setting Up This Property",
+  // A MULTI_KEY parent is the building, not a sellable unit - its own setup
+  // (address, GSTIN, UPI, rooms) is a different job from a room's, so it says
+  // which one it means (7 Sep 2026).
+  finish_setup_parent_property_heading: "Finish Setting Up Parent Property",
   setup_steps_done_suffix: "steps done",
   setup_steps_done_of_prefix: "of",
   add_property_address_heading: "Add the property address",
