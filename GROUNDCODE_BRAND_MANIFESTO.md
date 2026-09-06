@@ -1,7 +1,8 @@
 # GroundCode — Brand Manifesto
-> **Philosophy: 1** Operations-First Property App  
+> **Philosophy: 1** First ever app which covers every aspect of hosptailty most importantly operations, which is dififcult and it is ground relaity India.  
 > **Philosophy: 2** Cash is King, but its hard to save and track cash, our app does that for you  
-> **Audience:** Homestay, Vacation Rental & Guesthouse Hosts (1–15 rooms)  
+> **Philosophy: 3** simplicity, no complex app, if no app for ground staff then telegram for the cleaner, watchman, room service, waiter.
+> **Clients:** Homestay, Vacation Rental & Guesthouse Hosts (1–18 rooms) also professional hosts who have liek 80 properties but at differenttypes and diifferent places, but not hotels.
 > **Core Driver:** Operations Ease & Daily Peace of Mind  
 > **Design Rule 1:** Maximum visuals, images, icons — least words.  
 > **Design Rule 2:** No line longer than 10 words.
@@ -16,8 +17,8 @@
 
 - Homestays, vacation rentals, and boutique guesthouses.
 - People running homestays in their own homes.
-- Simple, friendly tools that bring peace of mind.
-- No corporate jargon. No confusing business presentations.
+- Simple, friendly tools that bring "ease" of mind.
+
 
 ---
 
@@ -76,9 +77,9 @@
    - No more guesses, you know what is draining your profits.
    - Staff snaps photos of receipts and bills.
 
-6. **Instant Guest ID Alerts:**
-   - Clear alerts if photo ID is missing.
-   - Keeps your homestay safe and compliant.
+6. **Instant Guest ID, C form Alerts:**
+   - Clear alerts if photo ID and c form submission is missing.
+   - Keeps your homestay leagl and compliant.
 
 7. **Kitchen Wastage is Recorded (Pull Maximum Profit Out of F&B):**
    - Cook confirms food and logs kitchen wastage with one tap.
@@ -93,7 +94,7 @@
 9. **Turn Every Call Into an Instant Quote:**
    - Send a ready-made booking link over WhatsApp.
    - Room details, dates, and price already filled in.
-   - Room stays held for 30 minutes, no double-booking.
+   - Room stays held for X minutes/hours, no double-booking.
    - Never lose a guest to "let me check and call back."
 
 10. **Never Miss a License Renewal:**
@@ -115,6 +116,7 @@
 - Never lecture about *"money leakage"* or *"pennywise profit"*.
   - Small business owners care most about operations ease.
   - Smooth operations naturally eliminate confusion and loss.
+  - No corporate jargon. No confusing "business presentations".
 
 ---
 
