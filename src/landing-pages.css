@@ -17,6 +17,8 @@
 @source "../home.html";
 @source "../home-eli.html";
 @source "../index3.html";
+@source "../competitor.html";
+@source "../competitor.hml";
 
 @theme {
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
