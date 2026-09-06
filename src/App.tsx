@@ -73,6 +73,7 @@ const LegalDrawer = lazyWithRetry(() => import('./components/LegalDrawer').then(
 const SelfOnboardingWizard = lazyWithRetry(() => import('./components/SelfOnboardingWizard').then(m => ({ default: m.SelfOnboardingWizard })), 'SelfOnboardingWizard');
 const PropertySetupWizard = lazyWithRetry(() => import('./components/PropertySetupWizard').then(m => ({ default: m.PropertySetupWizard })), 'PropertySetupWizard');
 const PublicBookingEngine = lazyWithRetry(() => import('./components/PublicBookingEngine').then(m => ({ default: m.PublicBookingEngine })), 'PublicBookingEngine');
+const PublicVoucherPage = lazyWithRetry(() => import('./components/PublicVoucherPage').then(m => ({ default: m.PublicVoucherPage })), 'PublicVoucherPage');
 
 // Is this URL the PUBLIC booking engine (a guest booking a room), rather than
 // the internal app? Shared by the two guards below so they cannot drift apart.
@@ -84,6 +85,26 @@ const PublicBookingEngine = lazyWithRetry(() => import('./components/PublicBooki
 // bookmarking #bookings replaced the entire authenticated app with the public
 // guest-facing booking engine. The prefix must end at a real boundary: end of
 // string, '/', or '?'.
+/**
+ * The guest-facing booking voucher (#voucher?token=...), added 7 Sep 2026.
+ * Checked before every other route, and before authentication, because a guest
+ * following this link has no account and must never be shown a login page.
+ * Same boundary rule as isPublicBookingUrl below - the prefix must end at end of
+ * string, '/' or '?' so a future '#vouchers' internal route cannot be swallowed.
+ */
+const isPublicVoucherUrl = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const hash = window.location.hash;
+  return (
+    hash === '#voucher' ||
+    hash.startsWith('#voucher/') ||
+    hash.startsWith('#voucher?') ||
+    hash === '#/voucher' ||
+    hash.startsWith('#/voucher/') ||
+    hash.startsWith('#/voucher?')
+  );
+};
+
 const isPublicBookingUrl = (): boolean => {
   if (typeof window === 'undefined') return false;
   const hash = window.location.hash;
@@ -3320,6 +3341,20 @@ export function App() {
   }, []);
 
   const propertySlug = getPropertySlug();
+  // A voucher link belongs to a guest with no account, so this is resolved
+  // before authentication and before the booking engine.
+  if (isPublicVoucherUrl()) {
+    return (
+      <ToastProvider>
+        <ErrorBoundary section="Public Voucher">
+          <Suspense fallback={<LoadingScreen message="Loading your booking..." />}>
+            <PublicVoucherPage />
+          </Suspense>
+        </ErrorBoundary>
+      </ToastProvider>
+    );
+  }
+
   const isPublicBookingPage = isPublicBookingUrl();
 
   if (isPublicBookingPage) {

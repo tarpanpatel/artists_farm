@@ -19,7 +19,10 @@ import { PropertyTelegramConfig } from '../types';
 // the CSRF token fetch specifically, a silently-empty token that made every
 // write from that page fail with "CSRF token missing" instead).
 const _base = (typeof window !== 'undefined' && window.location.pathname.startsWith('/artists_farm')) ? '/artists_farm' : '';
-const API_BASE = `${_base}/php/api/router.php`;
+// Exported 7 Sep 2026 so the public voucher page can call the one
+// unauthenticated endpoint it needs without duplicating this base-path
+// derivation (which handles the /artists_farm/... sub-path deployments).
+export const API_BASE = `${_base}/php/api/router.php`;
 const UPLOAD_BASE = `${_base}/php/uploads/upload_image.php`;
 const DOCUMENT_UPLOAD_BASE = `${_base}/php/uploads/upload_document.php`;
 // Shared, route-independent base path for anything under /php/ (e.g. telescopeLogger's
@@ -3171,6 +3174,23 @@ export interface BookingPayment {
   received_by_name: string;
   received_at: string;
   note: string | null;
+}
+
+/**
+ * Mint (or fetch) this booking's public voucher token, so the link can go into a
+ * WhatsApp message. Staff-only: following a voucher link needs no session, but
+ * ISSUING one does - otherwise anybody could ask the server to hand them a
+ * permanent public URL for any booking id.
+ */
+export async function fetchBookingVoucherTokenDB(bookingId: number | string): Promise<string> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=get_booking_voucher_link&booking_id=${encodeURIComponent(String(bookingId))}`);
+    const json = await res.json();
+    return json.status === 'success' && json.token ? String(json.token) : '';
+  } catch (err) {
+    console.error('Failed to get voucher link:', err);
+    return '';
+  }
 }
 
 export async function fetchBookingPaymentsDB(bookingId: number | string): Promise<BookingPayment[]> {

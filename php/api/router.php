@@ -449,6 +449,14 @@ if (!isSchemaVerified('schema_properties_content_v1')) {
         if (!in_array('house_rules', $propContentCols)) {
             $pdo->exec("ALTER TABLE properties ADD COLUMN `house_rules` TEXT NULL");
         }
+        // Cancellation terms (7 Sep 2026). Separate from house_rules on purpose:
+        // house rules govern behaviour during a stay, cancellation governs money
+        // before one, and a guest disputing a refund needs to be able to point at
+        // the exact text that applied - not hunt for it inside a list about
+        // smoking and quiet hours. Both are shown on the public voucher.
+        if (!in_array('cancellation_policy', $propContentCols)) {
+            $pdo->exec("ALTER TABLE properties ADD COLUMN `cancellation_policy` TEXT NULL");
+        }
         // JSON-encoded arrays. Stored as TEXT rather than MySQL's JSON type so the
         // self-heal works identically on the older MySQL/MariaDB builds this app is
         // deployed to, and so a malformed value degrades to "ignore it" instead of
@@ -812,7 +820,7 @@ $provided_key = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
 // non-sensitive branding/config columns (name, slug, type, currency,
 // colors, ...) - no guest, financial, or staff data - so this is exactly
 // the same "safe to read before login" class as the settings above.
-$public_actions = ['login_user', 'verify_admin_passcode', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token', 'check_session', 'logout', 'get_tenant_by_slug', 'get_demo_login_credentials', 'get_system_settings', 'get_theme_settings', 'get_current_property', 'register_tenant_trial', 'channex_webhook', 'channex_airbnb_oauth_landing', 'get_public_booking_info', 'create_public_booking', 'get_booking_hold', 'confirm_booking_hold'];
+$public_actions = ['login_user', 'verify_admin_passcode', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token', 'check_session', 'logout', 'get_tenant_by_slug', 'get_demo_login_credentials', 'get_system_settings', 'get_theme_settings', 'get_current_property', 'register_tenant_trial', 'channex_webhook', 'channex_airbnb_oauth_landing', 'get_public_booking_info', 'create_public_booking', 'get_booking_hold', 'confirm_booking_hold', 'get_public_voucher'];
 
 
 $request_method = $_SERVER['REQUEST_METHOD'];
@@ -1325,7 +1333,7 @@ function proposeAirbnbRoomConfig(PDO $pdo, $channelClient, string $channexChanne
             continue;
         }
         [$localRoomId, $listingId] = $resolved;
-        $cur = $pdo->prepare("SELECT name, max_capacity, checkin_time, checkout_time, included_occupancy, extra_guest_charge, cleaning_fee, security_deposit, default_tariff, instructions, house_manual, wifi_network, wifi_password, description, house_rules, amenities, bed_configuration, bedrooms, beds_count, bathrooms, default_min_nights, default_max_nights FROM properties WHERE id = ? AND is_deleted = 0");
+        $cur = $pdo->prepare("SELECT name, max_capacity, checkin_time, checkout_time, included_occupancy, extra_guest_charge, cleaning_fee, security_deposit, default_tariff, instructions, house_manual, wifi_network, wifi_password, description, house_rules, cancellation_policy, amenities, bed_configuration, bedrooms, beds_count, bathrooms, default_min_nights, default_max_nights FROM properties WHERE id = ? AND is_deleted = 0");
         $cur->execute([$localRoomId]);
         $row = $cur->fetch(PDO::FETCH_ASSOC);
         if (!$row) { $out['unmatched'][] = $listingId; continue; }
@@ -1683,13 +1691,13 @@ function applyAirbnbRoomConfig(PDO $pdo, array $confirmed, int $parentPropertyId
                 'included_occupancy', 'extra_guest_charge', 'cleaning_fee', 'security_deposit',
                 'default_tariff',
                 'instructions', 'house_manual', 'wifi_network', 'wifi_password',
-                'description', 'house_rules', 'amenities', 'bed_configuration',
+                'description', 'house_rules', 'cancellation_policy', 'amenities', 'bed_configuration',
                 'bedrooms', 'beds_count', 'bathrooms',
                 'default_min_nights', 'default_max_nights'];
     // Length caps for the free-text columns, matching update_property's own.
     $textCaps = ['instructions' => 20000, 'house_manual' => 20000,
                  'wifi_network' => 190, 'wifi_password' => 190,
-                 'description' => 20000, 'house_rules' => 20000];
+                 'description' => 20000, 'house_rules' => 20000, 'cancellation_policy' => 20000];
     // Whole-number columns, with their accepted range.
     $intCols = ['bedrooms' => [0, 99], 'beds_count' => [0, 99],
                 'default_min_nights' => [1, 3650], 'default_max_nights' => [1, 3650]];
@@ -3639,6 +3647,7 @@ switch ($action) {
                 'house_manual'  => 20000,
                 'description'   => 20000,
                 'house_rules'   => 20000,
+                'cancellation_policy' => 20000,
             ];
             foreach ($guestInfoFields as $col => $maxLen) {
                 if (!array_key_exists($col, $input)) continue;
@@ -6126,6 +6135,32 @@ switch ($action) {
         require_once __DIR__ . '/public_booking.php';
         handleCreatePublicBooking($pdo);
         break;
+
+    // --- PUBLIC BOOKING VOUCHER (7 Sep 2026) -------------------------------
+    // Intentionally unauthenticated, exactly like get_booking_hold above: the
+    // 20-byte voucher_token IS the credential. See public_voucher.php's header
+    // for what the payload deliberately withholds.
+    case 'get_public_voucher':
+        require_once __DIR__ . '/public_voucher.php';
+        handleGetPublicVoucher($pdo, (string)($_GET['token'] ?? ''));
+        break;
+
+    // Staff-only: mint (or fetch) the token for a booking this property owns, so
+    // the voucher link can be put into a WhatsApp message. Separate from the
+    // public read above precisely so that issuing a link requires a session
+    // while following one does not.
+    case 'get_booking_voucher_link': {
+        require_once __DIR__ . '/public_voucher.php';
+        $bookingId = (int)($_GET['booking_id'] ?? $_POST['booking_id'] ?? 0);
+        $token = $bookingId ? getOrCreateVoucherToken($pdo, (int)$propertyId, $bookingId) : null;
+        if (!$token) {
+            http_response_code(404);
+            echo json_encode(['status' => 'error', 'message' => 'Booking not found for this property.']);
+            break;
+        }
+        echo json_encode(['status' => 'success', 'token' => $token]);
+        break;
+    }
 
     // "Inquiry -> Instant Quote" WhatsApp booking links (see booking_holds.php's
     // own doc comment). create_booking_hold is staff-only (uses the session's

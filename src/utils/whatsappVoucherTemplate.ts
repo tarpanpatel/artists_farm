@@ -33,6 +33,7 @@ export const DEFAULT_WHATSAPP_VOUCHER_TEMPLATE =
 📶 *WiFi:* {wifi_network}
 🔑 *WiFi Password:* {wifi_password}
 🏡 *House Manual:* {house_manual}
+🔗 *Your booking online:* {voucher_link}
 ━━━━━━━━━━━━━━━━━
 We look forward to welcoming you to {property_name}!`;
 
@@ -74,6 +75,10 @@ export function renderWhatsappVoucherTemplate(
     '{wifi_network}',
     '{wifi_password}',
     '{house_manual}',
+    // Only present once a link has actually been minted for this booking - see
+    // get_booking_voucher_link. A template keeping this line still sends fine
+    // for a booking whose link was never generated.
+    '{voucher_link}',
     // Booking-level money and identity (7 Sep 2026). All optional for the same
     // reason as the property fields above - a fully-paid booking should not
     // send "Balance Due: ₹0.00", and a property with no deposit configured

@@ -18,7 +18,7 @@ import { DateRangePicker } from './DateRangePicker';
 import { CheckinVerificationModal } from './CheckinVerificationModal';
 import { MessageQrPreview } from './MessageQrPreview';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate, type PropertyGuestInfo } from '../utils/whatsappVoucherTemplate';
-import { fetchBookingPaymentsDB, addBookingPaymentDB, deleteBookingPaymentDB, type BookingPayment } from '../services/api';
+import { fetchBookingPaymentsDB, addBookingPaymentDB, deleteBookingPaymentDB, fetchBookingVoucherTokenDB, type BookingPayment } from '../services/api';
 import { shareTextContent } from '../utils/shareText';
 import { parseDateToYMD, formatDateDDMMYYYY } from '../utils/dateUtils';
 import { normalizePhoneNumber, isValidPhoneNumber } from '../utils/phoneUtils';
@@ -492,6 +492,18 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
 
   useEffect(() => { loadPayments(); }, [loadPayments]);
 
+  // Public voucher link (7 Sep 2026). Minted on demand so a booking only gets a
+  // permanent public URL once somebody actually opens it here - and left empty
+  // on failure, which drops the whole line from the message rather than sending
+  // a broken link.
+  const [voucherToken, setVoucherToken] = useState('');
+  useEffect(() => {
+    if (!guest?.id) return;
+    let cancelled = false;
+    fetchBookingVoucherTokenDB(guest.id).then((tok) => { if (!cancelled) setVoucherToken(tok); });
+    return () => { cancelled = true; };
+  }, [guest?.id]);
+
   const handleAddPayment = async () => {
     const amt = parseFloat(payAmount);
     if (isNaN(amt) || amt <= 0) {
@@ -794,6 +806,11 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
 
     return renderWhatsappVoucherTemplate(activeTemplate, {
       booking_id: String(guest.id ?? ''),
+      // Absolute, and pointing at the public route - a relative '#voucher?...'
+      // is meaningless once it has been pasted into WhatsApp.
+      voucher_link: voucherToken
+        ? `${window.location.origin}${window.location.pathname}#voucher?token=${voucherToken}`
+        : '',
       // Empty unless children were actually recorded on this booking - see the
       // optionalTokens note in whatsappVoucherTemplate.ts.
       // "5,000 on 15/07/2026 (Cash)" per payment - the thing that was

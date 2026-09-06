@@ -115,6 +115,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
   // Listing content (6 Sep 2026) - shown to guests on the public booking page.
   const [description, setDescription] = useState((property as any).description || '');
   const [houseRules, setHouseRules] = useState((property as any).house_rules || '');
+  const [cancellationPolicy, setCancellationPolicy] = useState((property as any).cancellation_policy || '');
   const numOrBlank = (v: any) => (v === null || v === undefined || v === '' ? '' : String(v));
   const [bedrooms, setBedrooms] = useState(numOrBlank((property as any).bedrooms));
   const [bedsCount, setBedsCount] = useState(numOrBlank((property as any).beds_count));
@@ -261,6 +262,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
     advance_paid: '2,000.00',
     balance_due: '2,500.00',
     payments_list: '\n  • ₹1,000 on 15/07/2026 (UPI)\n  • ₹1,000 on 25/07/2026 (Cash)',
+    voucher_link: 'https://your-property.example/#voucher?token=...',
   };
 
   // Same template + substitution logic BookingDetailsModal.tsx's real "Share
@@ -329,6 +331,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
         house_manual: houseManual,
         description: description,
         house_rules: houseRules,
+        cancellation_policy: cancellationPolicy,
         bedrooms: bedrooms,
         beds_count: bedsCount,
         bathrooms: bathrooms,
@@ -801,6 +804,26 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
           placeholder={t('house_rules_placeholder', 'e.g. No smoking indoors, quiet hours after 10pm, no parties…')}
           rows={3}
         />
+      </div>
+
+      {/* Kept separate from House Rules on purpose (7 Sep 2026): house rules
+          govern behaviour during a stay, cancellation governs money before one.
+          A guest disputing a refund has to be able to point at the exact terms
+          that applied, not search for them inside a list about smoking and quiet
+          hours. Both appear on the public booking voucher. */}
+      <div className="property-edit-form__field">
+        <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
+          {t('cancellation_policy_label', 'Cancellation Policy')}
+        </label>
+        <WhatsAppEditor
+          value={cancellationPolicy}
+          onChange={setCancellationPolicy}
+          placeholder={t('cancellation_policy_placeholder', 'e.g. Free cancellation up to 7 days before check-in. After that, the advance is not refundable.')}
+          rows={3}
+        />
+        <p className="text-2xs text-slate-500 dark:text-slate-400 mt-1">
+          {t('cancellation_policy_help', 'Shown to the guest on their booking voucher.')}
+        </p>
       </div>
 
       {/* Amenities (7 Sep 2026) - shown to guests as chips under the room
