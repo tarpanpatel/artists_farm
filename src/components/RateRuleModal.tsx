@@ -255,6 +255,26 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
       return;
     }
 
+    // An empty selection used to save a property-wide rule (room_id NULL). On a
+    // multi-key property that rule CANNOT SYNC: channex_mappings is per-room once
+    // real units exist, so nothing matches (propertyId, NULL) and the outbox rows
+    // are unsendable. This is not hypothetical - Patel Colony's rule 29 ("Design",
+    // 9-11 Sep, Rs 4500) produced 23 outbox rows that failed 32 times each with
+    // "room_id NULL on MULTI_KEY, no mapping exists", so that price never reached
+    // Airbnb or Booking.com and nothing said so outside the outbox table.
+    //
+    // Worse, the badge rendered "All Units (7)" for BOTH zero-selected and
+    // all-selected, so the two were indistinguishable while saving completely
+    // differently - one row that syncs nowhere, versus one row per room that syncs.
+    //
+    // A single-unit property is the opposite case and still needs [null]: it has
+    // no room rows at all, and its channex_mappings row is keyed room_id IS NULL.
+    // So the rule is "empty means empty" only where there are units to pick from.
+    if (rooms.length > 0 && selectedRoomIds.length === 0) {
+      showToast('Select at least one unit for this rule to apply to.', { type: 'error' });
+      return;
+    }
+
     setIsSaving(true);
     try {
       const payload = {
@@ -262,7 +282,10 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
         end_date: endDate,
         rate_per_night: rateNum,
         rule_name: ruleName.trim() || undefined,
-        room_ids: selectedRoomIds.length > 0 ? selectedRoomIds : [null],
+        // [null] means "the property itself" and is ONLY valid for a
+        // single-unit property, which has no room rows. With units present the
+        // guard above has already required a real selection.
+        room_ids: rooms.length === 0 ? [null] : selectedRoomIds,
         min_stay_arrival: minStayType === 'arrival' ? minStayNum : null,
         min_stay_through: minStayType === 'through' ? minStayNum : null,
         max_stay: maxStayNum,
@@ -347,13 +370,16 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
           {rooms.length > 0 && (
             <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-md border ${
               selectedRoomIds.length === 0
-                ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300'
+                ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300'
                 : selectedRoomIds.length === 1
                 ? 'bg-blue-100 dark:bg-blue-900/60 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200'
                 : 'bg-purple-50 dark:bg-purple-950/60 border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300'
             }`}>
+              {/* Zero selected read "All Units" in GREEN here - the most
+                  reassuring possible label for the one state that saved a rule
+                  which could never sync. Now it reads as the warning it is. */}
               {selectedRoomIds.length === 0
-                ? '🌐 All Units'
+                ? 'No units selected'
                 : selectedRoomIds.length === 1
                 ? `🏠 ${rooms.find((r) => r.id === selectedRoomIds[0])?.name || '1 Unit'}`
                 : `${selectedRoomIds.length} Units`}
@@ -627,13 +653,17 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                       Target Unit
                     </span>
                     <span className={`px-2.5 py-0.5 text-2xs font-semibold rounded-md border ${
-                      selectedRoomIds.length === rooms.length || selectedRoomIds.length === 0
+                      selectedRoomIds.length > 0 && selectedRoomIds.length === rooms.length
                         ? 'bg-emerald-100 dark:bg-emerald-900/60 border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200'
+                        : selectedRoomIds.length === 0
+                        ? 'bg-amber-100 dark:bg-amber-900/60 border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200'
                         : selectedRoomIds.length === 1
                         ? 'bg-blue-100 dark:bg-blue-900/60 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200 font-bold'
                         : 'bg-purple-100 dark:bg-purple-900/60 border-purple-300 dark:border-purple-700 text-purple-800 dark:text-purple-200'
                     }`}>
-                      {selectedRoomIds.length === rooms.length || selectedRoomIds.length === 0
+                      {selectedRoomIds.length === 0
+                        ? 'No units selected'
+                        : selectedRoomIds.length === rooms.length
                         ? `All Units (${rooms.length})`
                         : selectedRoomIds.length === 1
                         ? `🏠 ${rooms.find((r) => r.id === selectedRoomIds[0])?.name || '1 Unit'}`
