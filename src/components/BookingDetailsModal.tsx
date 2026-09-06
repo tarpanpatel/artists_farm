@@ -525,6 +525,14 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         return;
       }
       setPayments(res.payments);
+      // The Advance Paid box is bound to its own edit-state string, seeded once
+      // from the booking prop - so without this it keeps showing the pre-payment
+      // figure while the list right below it shows the new payment (found on
+      // staging, 7 Sep 2026). Synced from the rows the server just returned, not
+      // from a local guess.
+      setEditAdvance(
+        String(res.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0))
+      );
       setPayAmount('');
       setPayReceivedBy('');
       setShowAddPayment(false);
@@ -546,7 +554,11 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
       showToast(res.message || 'Could not remove the payment.', { type: 'error' });
       return;
     }
-    await loadPayments();
+    const remaining = await fetchBookingPaymentsDB(guest.id);
+    setPayments(remaining);
+    // Same reason as the record path above - the Advance Paid box holds its own
+    // state and would keep showing the deleted payment's total otherwise.
+    setEditAdvance(String(remaining.reduce((sum, p) => sum + Number(p.amount || 0), 0)));
     showToast('Payment removed.', { type: 'info' });
   };
 
@@ -558,7 +570,13 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   // back to the scalar keeps every pre-existing booking (and any row written
   // before this table landed) displaying exactly as it did before.
   const paymentsTotal = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
-  const advancePaid = payments.length > 0 ? paymentsTotal : (g.advance_paid ?? g.advanceAmount ?? 0);
+  // The advance as this booking's row still holds it. Kept separate from the
+  // derived total below because extrasBaked has to be measured against the same
+  // advance that storedPending was computed from - mixing the fresh total with
+  // the stale pending makes the two cancel out, and the Pending field then does
+  // not move when a payment is recorded (found on staging, 7 Sep 2026).
+  const propAdvancePaid = g.advance_paid ?? g.advanceAmount ?? 0;
+  const advancePaid = payments.length > 0 ? paymentsTotal : propAdvancePaid;
   // OTA (Airbnb/Booking.com/etc via Channex) bookings arrive pre-paid by the
   // channel itself - front desk never actually collects or hands off the
   // advance/pending amount, so tracking "who received it" doesn't apply and
@@ -569,7 +587,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   
   const storedPending = g.pending_amount ?? g.pendingAmount;
   const extrasBaked = typeof storedPending === 'number'
-    ? Math.max(0, storedPending - Math.max(0, roomRent - advancePaid))
+    ? Math.max(0, storedPending - Math.max(0, roomRent - propAdvancePaid))
     : 0;
   const pendingDisplay = isEditing
     ? Math.max(0, (parseFloat(editRoomRent) || 0) - (parseFloat(editAdvance) || 0) + extrasBaked)
