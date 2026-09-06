@@ -1,7 +1,7 @@
 import React, { forwardRef } from 'react';
 import { twMerge } from 'tailwind-merge';
 import { AlertTriangle, CheckCircle2 } from './icons/FlowbiteIcons';
-import { FloatingInput } from './FloatingInput';
+import { FloatingInput, FloatingBgMode } from './FloatingInput';
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -13,7 +13,7 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   rightIcon?: React.ReactNode;
   fullWidth?: boolean;
   variant?: 'standard' | 'floating';
-  bgMode?: 'modal' | 'page' | 'drawer' | 'card';
+  bgMode?: FloatingBgMode;
   color?: string;
 }
 
@@ -137,8 +137,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 
 Input.displayName = 'Input';
 
-export { FloatingInput } from './FloatingInput';
-export type { FloatingInputProps } from './FloatingInput';
+export { FloatingInput, getBgToken } from './FloatingInput';
+export type { FloatingInputProps, FloatingBgMode } from './FloatingInput';
 export { FloatingSelect } from './FloatingSelect';
 export type { FloatingSelectProps } from './FloatingSelect';
 export { FloatingTextarea } from './FloatingTextarea';

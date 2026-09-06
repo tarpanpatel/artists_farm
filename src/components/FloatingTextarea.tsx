@@ -1,13 +1,14 @@
 import React, { forwardRef } from 'react';
 import { twMerge } from 'tailwind-merge';
 import { AlertTriangle, CheckCircle2 } from './icons/FlowbiteIcons';
+import { FloatingBgMode, getBgToken } from './FloatingInput';
 
 export interface FloatingTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label: string;
   error?: string | boolean;
   success?: string | boolean;
   helperText?: string;
-  bgMode?: 'modal' | 'page' | 'drawer' | 'card';
+  bgMode?: FloatingBgMode;
   containerClassName?: string;
 }
 
@@ -37,12 +38,7 @@ export const FloatingTextarea = forwardRef<HTMLTextAreaElement, FloatingTextarea
     const hasSuccess = !hasError && Boolean(success);
     const successMessage = typeof success === 'string' ? success : undefined;
 
-    const bgToken =
-      bgMode === 'page'
-        ? 'bg-white dark:bg-gray-900'
-        : bgMode === 'card'
-        ? 'bg-gray-50 dark:bg-gray-800'
-        : 'bg-white dark:bg-gray-800';
+    const bgToken = getBgToken(bgMode);
 
     const borderAndFocusColor = hasError
       ? 'border-red-600 dark:border-red-500 focus:border-red-600 dark:focus:border-red-500 text-red-900 dark:text-white'
@@ -63,8 +59,8 @@ export const FloatingTextarea = forwardRef<HTMLTextAreaElement, FloatingTextarea
     const hasExplicitValue = value !== undefined && value !== '' && value !== null;
 
     const labelTransform = hasExplicitValue
-      ? '-translate-y-4 scale-75 top-2'
-      : '-translate-y-4 scale-75 top-2 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-3 peer-placeholder-shown:top-0 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4';
+      ? '-translate-y-3 scale-75 top-1'
+      : '-translate-y-3 scale-75 top-1 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-2.5 peer-placeholder-shown:top-0 peer-focus:top-1 peer-focus:scale-75 peer-focus:-translate-y-3';
 
     return (
       <div className={twMerge('w-full min-w-0', containerClassName)}>
@@ -78,7 +74,7 @@ export const FloatingTextarea = forwardRef<HTMLTextAreaElement, FloatingTextarea
             defaultValue={defaultValue}
             rows={rows}
             className={twMerge(
-              'block px-2.5 pb-2.5 pt-4 w-full text-sm bg-transparent rounded-lg border appearance-none focus:outline-none focus:ring-0 peer transition-all duration-200 resize-y',
+              'block px-2.5 pb-1.5 pt-3 w-full text-sm bg-transparent rounded-lg border appearance-none focus:outline-none focus:ring-0 peer transition-all duration-200 resize-y',
               borderAndFocusColor,
               disabledClasses,
               className
@@ -88,7 +84,7 @@ export const FloatingTextarea = forwardRef<HTMLTextAreaElement, FloatingTextarea
           <label
             htmlFor={textareaId}
             className={twMerge(
-              'floating-label absolute whitespace-nowrap text-sm duration-300 transform origin-[0] px-2 peer-focus:px-2 start-2 pointer-events-none transition-all z-10',
+              'floating-label absolute whitespace-nowrap text-sm duration-300 transform origin-[0] px-2 peer-focus:px-2 start-1 pointer-events-none transition-all z-10',
               labelTransform,
               disabled ? 'bg-gray-100 dark:bg-gray-700' : bgToken,
               disabled ? 'text-gray-500 dark:text-gray-400 font-medium' : labelColor

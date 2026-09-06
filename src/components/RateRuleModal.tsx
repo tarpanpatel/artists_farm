@@ -816,12 +816,14 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                     placeholder=" "
                     value={minStay}
                     onChange={(e) => setMinStay(e.target.value)}
+                    bgMode="card"
                   />
 
                   <FloatingSelect
                     label="Who does that apply to?"
                     value={minStayType}
                     onChange={(e) => setMinStayType(e.target.value as 'arrival' | 'through')}
+                    bgMode="card"
                     options={[
                       { value: 'arrival', label: 'Guests arriving on these dates' },
                       { value: 'through', label: 'Anyone staying over these dates' },
@@ -835,6 +837,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                     placeholder=" "
                     value={maxStay}
                     onChange={(e) => setMaxStay(e.target.value)}
+                    bgMode="card"
                   />
                 </div>
               </div>

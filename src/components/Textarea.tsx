@@ -2,6 +2,7 @@ import React, { forwardRef } from 'react';
 import { AlertTriangle } from './icons/FlowbiteIcons';
 import { Textarea as FlowbiteTextarea, Label as FlowbiteLabel } from 'flowbite-react';
 import { FloatingTextarea } from './FloatingTextarea';
+import { FloatingBgMode } from './FloatingInput';
 
 export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string;
@@ -10,7 +11,7 @@ export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextArea
   helperText?: string;
   fullWidth?: boolean;
   variant?: 'standard' | 'floating';
-  bgMode?: 'modal' | 'page' | 'drawer' | 'card';
+  bgMode?: FloatingBgMode;
 }
 
 const textareaTheme = {

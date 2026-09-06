@@ -2,12 +2,31 @@ import React, { forwardRef } from 'react';
 import { twMerge } from 'tailwind-merge';
 import { AlertTriangle, CheckCircle2 } from './icons/FlowbiteIcons';
 
+export type FloatingBgMode = 'modal' | 'page' | 'drawer' | 'card' | (string & {});
+
+export const getBgToken = (bgMode: FloatingBgMode = 'modal'): string => {
+  if (typeof bgMode === 'string' && bgMode.startsWith('bg-')) {
+    return bgMode;
+  }
+  switch (bgMode) {
+    case 'page':
+      return 'bg-white dark:bg-gray-900';
+    case 'card':
+      return 'bg-gray-50 dark:bg-gray-900';
+    case 'drawer':
+      return 'bg-white dark:bg-gray-800';
+    case 'modal':
+    default:
+      return 'bg-white dark:bg-gray-800';
+  }
+};
+
 export interface FloatingInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
   error?: string | boolean;
   success?: string | boolean;
   helperText?: string;
-  bgMode?: 'modal' | 'page' | 'drawer' | 'card';
+  bgMode?: FloatingBgMode;
   containerClassName?: string;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
@@ -55,12 +74,7 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
     // renders every field disabled until you hit Edit, so that was most of the
     // screen.
     // Background token for label cutout to seamlessly match parent surface
-    const bgToken =
-      bgMode === 'page'
-        ? 'bg-white dark:bg-gray-900'
-        : bgMode === 'card'
-        ? 'bg-gray-50 dark:bg-gray-800'
-        : 'bg-white dark:bg-gray-800';
+    const bgToken = getBgToken(bgMode);
 
     // State colors per Flowbite Floating Label documentation
     const borderAndFocusColor = hasError
@@ -85,8 +99,8 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
     const hasExplicitValue = value !== undefined && value !== '' && value !== null;
 
     const labelTransform = (isAlwaysFloatingType || hasExplicitValue)
-      ? '-translate-y-4 scale-75 top-2'
-      : '-translate-y-4 scale-75 top-2 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4';
+      ? '-translate-y-3 scale-75 top-1'
+      : '-translate-y-3 scale-75 top-1 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-1 peer-focus:scale-75 peer-focus:-translate-y-3';
 
     return (
       <div className={twMerge('w-full min-w-0', containerClassName)}>
@@ -107,7 +121,7 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
             value={value}
             defaultValue={defaultValue}
             className={twMerge(
-              'block px-2.5 pb-2.5 pt-4 w-full text-sm bg-transparent rounded-lg border appearance-none focus:outline-none focus:ring-0 peer transition-all duration-200',
+              'block px-2.5 pb-1.5 pt-3 w-full text-sm bg-transparent rounded-lg border appearance-none focus:outline-none focus:ring-0 peer transition-all duration-200',
               borderAndFocusColor,
               disabledClasses,
               leftIcon ? 'ps-10' : '',
@@ -119,11 +133,11 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
           <label
             htmlFor={inputId}
             className={twMerge(
-              'floating-label absolute whitespace-nowrap text-sm duration-300 transform origin-[0] px-2 peer-focus:px-2 start-2 pointer-events-none transition-all z-10',
+              'floating-label absolute whitespace-nowrap text-sm duration-300 transform origin-[0] px-2 peer-focus:px-2 start-1 pointer-events-none transition-all z-10',
               labelTransform,
               disabled ? 'bg-gray-100 dark:bg-gray-700' : bgToken,
               disabled ? 'text-gray-500 dark:text-gray-400 font-medium' : labelColor,
-              leftIcon ? 'peer-placeholder-shown:start-8 peer-focus:start-2' : 'start-2'
+              leftIcon ? 'peer-placeholder-shown:start-8 peer-focus:start-1' : 'start-1'
             )}
           >
             {label}

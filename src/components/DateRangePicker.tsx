@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import FlowbiteDateRangePicker from 'flowbite-datepicker/DateRangePicker';
 import { twMerge } from 'tailwind-merge';
 import { AlertTriangle } from './icons/FlowbiteIcons';
+import { FloatingBgMode, getBgToken } from './FloatingInput';
 
 interface DateRangePickerProps {
   checkinDate: string;
@@ -23,7 +24,7 @@ interface DateRangePickerProps {
   description?: string;
   fromLabel?: string;
   toLabel?: string;
-  bgMode?: 'modal' | 'page' | 'drawer' | 'card';
+  bgMode?: FloatingBgMode;
 }
 
 const CalendarIcon: React.FC = () => (
@@ -172,12 +173,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   blockedDates,
   bgMode = 'modal',
 }) => {
-  const bgToken =
-    bgMode === 'page'
-      ? 'bg-white dark:bg-gray-900'
-      : bgMode === 'card'
-      ? 'bg-gray-50 dark:bg-gray-800'
-      : 'bg-white dark:bg-gray-800';
+  const bgToken = getBgToken(bgMode);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const startInputRef = useRef<HTMLInputElement>(null);
@@ -918,7 +914,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
             readOnly
             inputMode="none"
             disabled={disabled}
-            className={`block px-2.5 pb-2.5 pt-4 ps-10 w-full text-sm bg-transparent rounded-lg border appearance-none focus:outline-none focus:ring-0 peer transition-all duration-200 cursor-pointer ${
+            className={`block px-2.5 pb-1.5 pt-3 ps-10 w-full text-sm bg-transparent rounded-lg border appearance-none focus:outline-none focus:ring-0 peer transition-all duration-200 cursor-pointer ${
               hasError
                 ? 'border-red-600 dark:border-red-500 text-red-900 dark:text-white'
                 : 'border-gray-300 dark:border-gray-600 focus:border-blue-600 dark:focus:border-blue-500 text-gray-900 dark:text-white'
@@ -932,7 +928,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           <label
             htmlFor="daterange-start-input"
             className={twMerge(
-              'floating-label absolute whitespace-nowrap text-sm duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] px-2 start-2 pointer-events-none transition-all',
+              'floating-label absolute whitespace-nowrap text-sm duration-300 transform -translate-y-3 scale-75 top-1 z-10 origin-[0] px-2 start-1 pointer-events-none transition-all',
               disabled
                 ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-medium'
                 : hasError
@@ -956,7 +952,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
             readOnly
             inputMode="none"
             disabled={disabled}
-            className={`block px-2.5 pb-2.5 pt-4 ps-10 w-full text-sm bg-transparent rounded-lg border appearance-none focus:outline-none focus:ring-0 peer transition-all duration-200 cursor-pointer ${
+            className={`block px-2.5 pb-1.5 pt-3 ps-10 w-full text-sm bg-transparent rounded-lg border appearance-none focus:outline-none focus:ring-0 peer transition-all duration-200 cursor-pointer ${
               hasError
                 ? 'border-red-600 dark:border-red-500 text-red-900 dark:text-white'
                 : 'border-gray-300 dark:border-gray-600 focus:border-blue-600 dark:focus:border-blue-500 text-gray-900 dark:text-white'
@@ -970,7 +966,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           <label
             htmlFor="daterange-end-input"
             className={twMerge(
-              'floating-label absolute whitespace-nowrap text-sm duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] px-2 start-2 pointer-events-none transition-all',
+              'floating-label absolute whitespace-nowrap text-sm duration-300 transform -translate-y-3 scale-75 top-1 z-10 origin-[0] px-2 start-1 pointer-events-none transition-all',
               disabled
                 ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-medium'
                 : hasError

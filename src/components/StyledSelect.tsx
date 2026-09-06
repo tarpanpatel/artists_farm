@@ -3,6 +3,7 @@ import { twMerge } from 'tailwind-merge';
 import { Check, ChevronDown, Search, AlertTriangle } from './icons/FlowbiteIcons';
 import { Dropdown, DropdownItem, DropdownHeader } from 'flowbite-react';
 import { t } from '../i18n/en';
+import { FloatingBgMode, getBgToken } from './FloatingInput';
 
 export interface StyledSelectOption {
   value: string;
@@ -25,7 +26,7 @@ export interface StyledSelectProps {
   searchable?: boolean;
   id?: string;
   variant?: 'standard' | 'floating';
-  bgMode?: 'modal' | 'page' | 'drawer' | 'card';
+  bgMode?: FloatingBgMode;
 }
 
 const SelectSearchBox: React.FC<{ onSearch: (value: string) => void }> = ({ onSearch }) => {
@@ -83,12 +84,7 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
 
   const isFloating = Boolean(label) && variant === 'floating';
 
-  const bgToken =
-    bgMode === 'page'
-      ? 'bg-white dark:bg-gray-900'
-      : bgMode === 'card'
-      ? 'bg-gray-50 dark:bg-gray-800'
-      : 'bg-white dark:bg-gray-800';
+  const bgToken = getBgToken(bgMode);
 
   return (
     <div className={`app-select-wrapper ${className} styled-select relative w-full min-w-0`}>
@@ -117,7 +113,7 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
             disabled={disabled}
             className={twMerge(
               'app-select-button peer group w-full flex items-center justify-between gap-2 px-2.5 border rounded-lg transition-colors outline-none',
-              isFloating ? 'pb-2.5 pt-4 text-sm' : 'h-10 text-xs px-3',
+              isFloating ? 'pb-1.5 pt-3 text-sm' : 'h-10 text-xs px-3',
               disabled
                 ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-300 border-gray-300 dark:border-gray-600 cursor-not-allowed'
                 : error
@@ -178,7 +174,7 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
         <label
           htmlFor={id}
           className={twMerge(
-            'floating-label absolute whitespace-nowrap text-sm duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] px-2 start-2 pointer-events-none transition-all',
+            'floating-label absolute whitespace-nowrap text-sm duration-300 transform -translate-y-3 scale-75 top-1 z-10 origin-[0] px-2 start-1 pointer-events-none transition-all',
             disabled
               ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-medium'
               : `${bgToken} ${error ? 'text-red-600 dark:text-red-500' : 'text-gray-500 dark:text-gray-400'}`

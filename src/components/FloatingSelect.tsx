@@ -1,12 +1,13 @@
 import React, { forwardRef } from 'react';
 import { twMerge } from 'tailwind-merge';
 import { AlertTriangle, ChevronDown } from './icons/FlowbiteIcons';
+import { FloatingBgMode, getBgToken } from './FloatingInput';
 
 export interface FloatingSelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label: string;
   error?: string | boolean;
   helperText?: string;
-  bgMode?: 'modal' | 'page' | 'drawer' | 'card';
+  bgMode?: FloatingBgMode;
   containerClassName?: string;
   options?: Array<{ value: string | number; label: string; disabled?: boolean }>;
   children?: React.ReactNode;
@@ -35,12 +36,7 @@ export const FloatingSelect = forwardRef<HTMLSelectElement, FloatingSelectProps>
     const hasError = Boolean(error);
     const errorMessage = typeof error === 'string' ? error : undefined;
 
-    const bgToken =
-      bgMode === 'page'
-        ? 'bg-white dark:bg-gray-900'
-        : bgMode === 'card'
-        ? 'bg-gray-50 dark:bg-gray-800'
-        : 'bg-white dark:bg-gray-800';
+    const bgToken = getBgToken(bgMode);
 
     const borderAndFocusColor = hasError
       ? 'border-red-600 dark:border-red-500 focus:border-red-600 dark:focus:border-red-500 text-red-900 dark:text-white'
@@ -64,7 +60,7 @@ export const FloatingSelect = forwardRef<HTMLSelectElement, FloatingSelectProps>
             value={value}
             defaultValue={defaultValue}
             className={twMerge(
-              'block px-2.5 pb-2.5 pt-4 pe-8 w-full text-sm bg-transparent rounded-lg border appearance-none focus:outline-none focus:ring-0 peer transition-all duration-200 cursor-pointer',
+              'block px-2.5 pb-1.5 pt-3 pe-8 w-full text-sm bg-transparent rounded-lg border appearance-none focus:outline-none focus:ring-0 peer transition-all duration-200 cursor-pointer',
               borderAndFocusColor,
               disabledClasses,
               className
@@ -82,7 +78,7 @@ export const FloatingSelect = forwardRef<HTMLSelectElement, FloatingSelectProps>
           <label
             htmlFor={selectId}
             className={twMerge(
-              'floating-label absolute whitespace-nowrap text-sm duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] px-2 start-2 pointer-events-none transition-all',
+              'floating-label absolute whitespace-nowrap text-sm duration-300 transform -translate-y-3 scale-75 top-1 z-10 origin-[0] px-2 start-1 pointer-events-none transition-all',
               disabled ? 'bg-gray-100 dark:bg-gray-700' : bgToken,
               disabled ? 'text-gray-500 dark:text-gray-400 font-medium' : labelColor
             )}
