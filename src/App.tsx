@@ -158,6 +158,21 @@ function AppBody({ preloadedData }: AppBodyProps) {
   const [selectedRoomForGuestRegistration, setSelectedRoomForGuestRegistration] = useState<string | null>(null);
   const selectedRoomSlugOverrideRef = useRef<string | null>(null);
   const multiKeyRoomsRef = useRef<any[]>([]);
+  // Set immediately before handleNavigateTab writes `#edit_property` to the
+  // address bar itself (see that function), consumed once by Guard Effect 2's
+  // handleUrlChange below. Exists because event.type alone cannot tell "the
+  // user clicked a nav link" apart from "the user pressed the browser's own
+  // Back/Forward button" - confirmed live (6 Sep 2026) that this exact
+  // Chromium build fires a real 'popstate' event for a plain in-app
+  // `window.location.hash = ...` assignment, not only for genuine history
+  // traversal. handleUrlChange's own `isRealHistoryNavigation` check used to
+  // assume 'popstate' only ever meant real Back/Forward, so every ordinary
+  // click on "Edit Property" while viewing a room was misread as the user
+  // pressing Back and immediately cleared selectedRoomSlugOverride - landing
+  // on the property's generic Edit Property page instead of that room's own
+  // Edit Room form, and breaking "Go Back" from a page that could never
+  // actually be reached to begin with.
+  const internalNavRef = useRef(false);
   useEffect(() => {
     selectedRoomSlugOverrideRef.current = selectedRoomSlugOverride;
   }, [selectedRoomSlugOverride]);
@@ -459,23 +474,25 @@ function AppBody({ preloadedData }: AppBodyProps) {
     sessionStorage.setItem('artists_farm_active_menu_key', activeMenuItemKey);
   }, [activeTab, activeMenuItemKey]);
 
-  // Listen to browser Back/Forward navigation (hashchange & popstate)
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const handleHashOrPopStateChange = () => {
-      const activeState = getInitialActiveState();
-      setActiveTab(activeState.tab);
-      setActiveMenuItemKey(activeState.key);
-    };
-
-    window.addEventListener('hashchange', handleHashOrPopStateChange);
-    window.addEventListener('popstate', handleHashOrPopStateChange);
-    return () => {
-      window.removeEventListener('hashchange', handleHashOrPopStateChange);
-      window.removeEventListener('popstate', handleHashOrPopStateChange);
-    };
-  }, []);
+  // Browser Back/Forward navigation (hashchange & popstate) is handled by
+  // "Guard Effect 2" (handleUrlChange, further below) - a SECOND listener
+  // used to be registered here too, using getInitialActiveState() (a plain
+  // hash->{tab,key} lookup with zero room/RBAC awareness). Both fired on the
+  // very same event, and since this one was registered first (mounted with
+  // an empty dependency array, earlier in the component body), it always ran
+  // BEFORE handleUrlChange - unconditionally overwriting activeMenuItemKey
+  // the instant any hash changed. handleUrlChange's own "stillViewingRoom"
+  // check (see its comment) then read that ALREADY-clobbered value and,
+  // believing it was still the room slug, decided nothing needed restoring -
+  // silently losing room context on every hash change. This is why clicking
+  // "Edit Property" from inside a room's own dashboard landed on the
+  // property's generic Edit Property page instead of that room's Edit Room
+  // form (reported 6 Sep 2026 as "Go Back" from Edit Room "never really
+  // working" - confirmed live: the bug was actually one step earlier, in how
+  // the room's Edit Room page was never correctly reached to begin with).
+  // Removed rather than patched around - handleUrlChange already reimplements
+  // everything this one did (plus the room/RBAC nuance it lacked), so keeping
+  // both was the redundant, actively-conflicting half of this race.
 
   // Auto-scroll page & container to top whenever user hops between tabs, menu items, rooms, or properties
   useEffect(() => {
@@ -631,6 +648,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
     const targetKey = menuItemKey || defaults[tab] || tab;
     setActiveMenuItemKey(targetKey);
     if (typeof window !== 'undefined') {
+      internalNavRef.current = true;
       window.location.hash = `#${targetKey}`;
     }
   };
@@ -1469,7 +1487,14 @@ function AppBody({ preloadedData }: AppBodyProps) {
       // 'hashchange' - so on popstate specifically, 'edit_property' clears
       // room override same as every other reserved key, letting Back
       // actually leave the room instead of silently re-showing it.
-      const isRealHistoryNavigation = event?.type === 'popstate';
+      // event.type alone cannot distinguish a real Back/Forward press from the
+      // app's own `window.location.hash = ...` writes - see internalNavRef's
+      // own comment for why (confirmed live: this Chromium build fires a real
+      // 'popstate' for a plain in-app hash assignment too). Consuming the flag
+      // here, once, is what actually makes this distinction reliable.
+      const wasInternalNav = internalNavRef.current;
+      internalNavRef.current = false;
+      const isRealHistoryNavigation = event?.type === 'popstate' && !wasInternalNav;
       const shouldClearRoomOverride = reserved.has(hash) || (hash === 'edit_property' && isRealHistoryNavigation);
       if (shouldClearRoomOverride && selectedRoomSlugOverrideRef.current) {
         setSelectedRoomSlugOverride(null);
