@@ -24,7 +24,7 @@
          (mirrors the old inline tailwind.config's fontFamily/brand-color
          extension via Tailwind v4 @theme). Regenerate after editing classes
          here via `npm run build:landing`. -->
-    <link rel="stylesheet" href="./assets/css/landing.css?v=20260906-2156">
+    <link rel="stylesheet" href="./assets/css/landing.css?v=20260906-2206">
 
     <!-- Google Fonts (non-render-blocking, 25 Aug 2026 - see index.html for
          the full writeup: a plain stylesheet <link> here would hold this
@@ -408,7 +408,7 @@
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
                     
                     <!-- Left Card: Flowbite Range Sliders Form Card -->
-                    <div class="lg:col-span-6 p-6 sm:p-8 bg-gray-50 border border-gray-200 rounded-lg dark:bg-gray-800 dark:border-gray-700 flex flex-col justify-between space-y-5">
+                    <div class="lg:col-span-6 p-6 sm:p-8 bg-white border border-gray-200 rounded-lg dark:bg-gray-800 dark:border-gray-700 shadow-sm flex flex-col justify-between space-y-5">
                         <h4 class="text-lg font-bold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-3">
                             Your property
                         </h4>
@@ -1064,83 +1064,38 @@
                 </div>
             </div>
 
-            <!-- SCREEN 4: Cash Drawer, Petty Cash & Staff Advances (Text Left, Screenshot Right) -->
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center scroll-mt-24" id="cash-is-king">
+            <!-- SCREEN 4: Staff Attendance & Salary Advances (Text Left, Screenshot Right) -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
                 <!-- Text Column -->
                 <div class="lg:col-span-5 order-2 lg:order-1 space-y-4">
                     <h3 class="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-white leading-tight">
-                        Every single rupee accounted for
+                        Daily staff attendance &amp; easy payroll
                     </h3>
                     <p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 leading-relaxed font-normal">
-                        Know who collected cash.<br>
-                        Staff snaps bill photo.
+                        Mark attendance in seconds.<br>
+                        Advances deducted on payday.
                     </p>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
                         <div class="flex items-center gap-2 text-xs font-medium text-gray-700 dark:text-gray-300">
-                            <svg class="w-4 h-4 text-green-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="8" cy="8" r="6"/><path stroke-linecap="round" stroke-linejoin="round" d="M18.09 10.37A6 6 0 1 1 10.34 18M7 6h1v4M16.7 13.8l.3.2"/></svg>
-                            <span>Shift Cash Matched in 2m</span>
+                            <svg class="w-4 h-4 text-purple-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><path stroke-linecap="round" stroke-linejoin="round" d="m9 16 2 2 4-4"/></svg>
+                            <span>One-Tap Daily Attendance</span>
                         </div>
                         <div class="flex items-center gap-2 text-xs font-medium text-gray-700 dark:text-gray-300">
-                            <svg class="w-4 h-4 text-green-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 15h2a2 2 0 1 0 0-4h-3c-.6 0-1.1.2-1.4.6L3 17"/><path stroke-linecap="round" stroke-linejoin="round" d="m7 21 1.6-1.4c.3-.4.8-.6 1.4-.6h4c1.1 0 2.1-.4 2.8-1.2l4.6-4.4a2 2 0 0 0-2.75-2.91l-4.2 3.9"/><circle cx="18" cy="6" r="3"/></svg>
-                            <span>Salary Advance Logs</span>
+                            <svg class="w-4 h-4 text-purple-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01M12 10h.01M8 10h.01M12 14h.01M8 14h.01M12 18h.01M8 18h.01"/></svg>
+                            <span>Auto Salary Calculation</span>
                         </div>
                         <div class="flex items-center gap-2 text-xs font-medium text-gray-700 dark:text-gray-300">
-                            <svg class="w-4 h-4 text-green-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
-                            <span>Photo Proof For Every Slip</span>
+                            <svg class="w-4 h-4 text-purple-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+                            <span>Advance Photo Proof</span>
                         </div>
                         <div class="flex items-center gap-2 text-xs font-medium text-gray-700 dark:text-gray-300">
-                            <svg class="w-4 h-4 text-green-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path stroke-linecap="round" stroke-linejoin="round" d="m9 12 2 2 4-4"/></svg>
-                            <span>Zero Doubt on Who Spent What</span>
+                            <svg class="w-4 h-4 text-purple-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" stroke-linejoin="round" d="m9 12 2 2 4-4"/></svg>
+                            <span>Zero Payday Disputes</span>
                         </div>
                     </div>
                 </div>
                 <!-- Screenshot Mockup Column -->
                 <div class="lg:col-span-7 order-1 lg:order-2">
-                    <div class="bg-white dark:bg-gray-800 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm font-sans text-xs">
-                        <div class="bg-gray-100 dark:bg-gray-700 px-3 py-2 border-b border-gray-200 dark:border-gray-600 flex items-center justify-between">
-                            <div class="flex items-center gap-1.5">
-                                <div class="w-2.5 h-2.5 rounded-full bg-red-400"></div>
-                                <div class="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
-                                <div class="w-2.5 h-2.5 rounded-full bg-green-400"></div>
-                            </div>
-                            <span class="text-xs text-green-800 font-medium bg-green-100 dark:bg-green-900 dark:text-green-300 px-2.5 py-0.5 rounded-sm border border-green-300 dark:border-green-800">
-                                Drawer Matched
-                            </span>
-                        </div>
-                        <div class="p-4 bg-gray-50 dark:bg-gray-800/50 space-y-3">
-                            <div class="grid grid-cols-3 gap-2 text-center">
-                                <div class="bg-white dark:bg-gray-800 p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-xs">
-                                    <div class="text-[10px] text-gray-500 dark:text-gray-400">Opening Balance</div>
-                                    <div class="font-bold text-gray-900 dark:text-white tabular-nums text-xs sm:text-sm">₹5,000.00</div>
-                                </div>
-                                <div class="bg-white dark:bg-gray-800 p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-xs">
-                                    <div class="text-[10px] text-gray-500 dark:text-gray-400">Cash Collected</div>
-                                    <div class="font-bold text-green-600 dark:text-green-400 tabular-nums text-xs sm:text-sm">+₹14,500.00</div>
-                                </div>
-                                <div class="bg-white dark:bg-gray-800 p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-xs">
-                                    <div class="text-[10px] text-gray-500 dark:text-gray-400">Advances / Out</div>
-                                    <div class="font-bold text-red-600 dark:text-red-400 tabular-nums text-xs sm:text-sm">-₹1,050.00</div>
-                                </div>
-                            </div>
-                            <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-2 text-xs">
-                                <div class="flex items-center justify-between">
-                                    <span class="text-gray-700 dark:text-gray-300 font-medium">🟢 Room 101 Cash Settlement</span>
-                                    <span class="font-bold text-gray-900 dark:text-white tabular-nums">+₹4,200.00</span>
-                                </div>
-                                <div class="flex items-center justify-between text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-2">
-                                    <span class="font-medium">🔴 Staff Advance: Ramesh (Housekeeping)</span>
-                                    <span class="font-bold text-red-600 dark:text-red-400 tabular-nums">-₹800.00</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- SCREEN 5: Staff Attendance & Salary Advances (Screenshot Left, Text Right) -->
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
-                <!-- Screenshot Mockup Column -->
-                <div class="lg:col-span-7">
                     <div class="bg-white dark:bg-gray-800 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm font-sans text-xs">
                         <div class="bg-gray-100 dark:bg-gray-700 px-3 py-2 border-b border-gray-200 dark:border-gray-600 flex items-center justify-between">
                             <div class="flex items-center gap-1.5">
@@ -1210,34 +1165,6 @@
                                     <span class="font-bold text-gray-900 dark:text-white tabular-nums ml-1">₹13,200</span>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- Text Column -->
-                <div class="lg:col-span-5 space-y-4">
-                    <h3 class="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-white leading-tight">
-                        Daily staff attendance &amp; easy payroll
-                    </h3>
-                    <p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 leading-relaxed font-normal">
-                        Mark attendance in seconds.<br>
-                        Advances deducted on payday.
-                    </p>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
-                        <div class="flex items-center gap-2 text-xs font-medium text-gray-700 dark:text-gray-300">
-                            <svg class="w-4 h-4 text-purple-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><path stroke-linecap="round" stroke-linejoin="round" d="m9 16 2 2 4-4"/></svg>
-                            <span>One-Tap Daily Attendance</span>
-                        </div>
-                        <div class="flex items-center gap-2 text-xs font-medium text-gray-700 dark:text-gray-300">
-                            <svg class="w-4 h-4 text-purple-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01M12 10h.01M8 10h.01M12 14h.01M8 14h.01M12 18h.01M8 18h.01"/></svg>
-                            <span>Auto Salary Calculation</span>
-                        </div>
-                        <div class="flex items-center gap-2 text-xs font-medium text-gray-700 dark:text-gray-300">
-                            <svg class="w-4 h-4 text-purple-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
-                            <span>Advance Photo Proof</span>
-                        </div>
-                        <div class="flex items-center gap-2 text-xs font-medium text-gray-700 dark:text-gray-300">
-                            <svg class="w-4 h-4 text-purple-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" stroke-linejoin="round" d="m9 12 2 2 4-4"/></svg>
-                            <span>Zero Payday Disputes</span>
                         </div>
                     </div>
                 </div>
@@ -1694,8 +1621,8 @@
                     </div>
                 </div>
 
-                <!-- Integrated Room Expansion Box -->
-                <div class="my-6 p-4 sm:p-5 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-4">
+                <!-- Integrated Room Expansion Row (Unboxed) -->
+                <div class="my-5 pt-5 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div class="flex items-start gap-3">
                         <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 flex items-center justify-center shrink-0 mt-0.5 border border-blue-200 dark:border-blue-800">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5m0 0v-5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v5m-4 0h4"/></svg>
@@ -1708,7 +1635,7 @@
                         </div>
                     </div>
                     <div class="shrink-0 w-full sm:w-auto">
-                        <span class="inline-flex items-center justify-center px-3.5 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-xs font-semibold text-gray-900 dark:text-white shadow-xs whitespace-nowrap">
+                        <span class="inline-flex items-center justify-center px-3.5 py-2 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 rounded-lg text-xs font-semibold text-blue-700 dark:text-blue-300 whitespace-nowrap">
                             +₹350 / extra room / mo
                         </span>
                     </div>
