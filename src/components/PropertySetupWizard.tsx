@@ -55,6 +55,11 @@ interface PropertySetupWizardProps {
   rooms?: any[];
   /** Called after any step saves successfully - reloads to pick up fresh data everywhere. */
   onSaved: () => void;
+  /** Jumps to the Connect Channels page (7 Sep 2026 - the Rooms step's "Already
+   *  listed on Airbnb?" callout used to just describe where to go, with no way
+   *  to actually get there from this screen). Optional so this component still
+   *  renders standalone if a caller doesn't wire it up. */
+  onNavigateToConnectChannels?: () => void;
 }
 
 type StepKey = 'basics' | 'contact' | 'payments' | 'operations' | 'rooms' | 'notes';
@@ -147,6 +152,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
   instructions = '',
   rooms = [],
   onSaved,
+  onNavigateToConnectChannels,
 }) => {
   const isMultiKey = propertyType === 'MULTI_KEY';
 
@@ -599,8 +605,22 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
                   </p>
                   <p className="mt-0.5 text-2xs text-blue-800 dark:text-blue-300">
                     Connect it and import - rates, times, capacity, descriptions and amenities come
-                    across for every unit at once. Channel Manager → Connect Channels.
+                    across for every unit at once.
                   </p>
+                  {onNavigateToConnectChannels && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="xs"
+                      className="mt-2 whitespace-nowrap"
+                      onClick={() => {
+                        setIsOpen(false);
+                        onNavigateToConnectChannels();
+                      }}
+                    >
+                      Go to Connect Channels
+                    </Button>
+                  )}
                 </div>
 
               </>
