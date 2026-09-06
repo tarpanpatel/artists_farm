@@ -1651,7 +1651,23 @@ function AppBody({ preloadedData }: AppBodyProps) {
             const resolvedSubTab: TabType | null = (tabPart && ['dashboard', 'guests', 'edit_property'].includes(tabPart) ? (tabPart as TabType) : null)
               || (tabPart && routeMap[tabPart]?.tab)
               || null;
-            setActiveTab((prev) => (resolvedSubTab || (['dashboard', 'guests', 'edit_property'].includes(prev) ? prev : 'dashboard')));
+            // No subtab in the hash is ambiguous on its own - it's both what an
+            // in-app write to a bare room hash produces (handleNavigateToRoom
+            // already sets activeTab to 'dashboard' itself right before that
+            // write, so preserving `prev` there is a no-op) AND what the
+            // browser's real Back button produces when leaving a subtab
+            // (e.g. #edit_property -> #room-101-290230), where the whole point
+            // is that the subtab was left behind. Confirmed live (6 Sep 2026):
+            // pressing real Back from a room's Edit Room page correctly moved
+            // the hash back to the bare room slug, but the page stayed on the
+            // Edit Room form, because this fallback just kept `prev` on
+            // 'edit_property' - it had no way to tell "you left this tab" apart
+            // from "you're still deep-linked into it". isRealHistoryNavigation
+            // (computed above, same flag the in-app-write/internalNavRef fix
+            // uses) is that signal: only fall back to `prev` when this ISN'T a
+            // real Back/Forward - a bare hash reached via real history
+            // navigation always resets to the room's default 'dashboard' tab.
+            setActiveTab((prev) => (resolvedSubTab || (!isRealHistoryNavigation && ['dashboard', 'guests', 'edit_property'].includes(prev) ? prev : 'dashboard')));
             setActiveMenuItemKey(targetRoomSlug);
             setSelectedRoomSlugOverride(targetRoomSlug);
           } else {
