@@ -70,6 +70,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
   isRoom = false,
 }) => {
   const { showToast } = useToast();
+  const isMultiKeyParent = !isRoom && property.property_type === 'MULTI_KEY';
   const [name, setName] = useState(property.name || '');
   // Live "required" feedback (26 Aug 2026, CLAUDE.md's "Real-Time Form Validation" sweep) -
   // gated on `nameTouched` (set on blur) rather than length alone, since an EMPTY required
@@ -306,7 +307,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
         <div className="property-edit-form__field">
           <Input
-            label={isRoom ? t('room_name_label', 'Room Name') : t('tenant_property_name_label', 'Property Name')}
+            label={isRoom ? t('room_name_label', 'Room Name') : isMultiKeyParent ? t('tenant_property_name_label_parent', 'Parent Property Name') : t('tenant_property_name_label', 'Property Name')}
             value={name}
             onChange={(e) => setName(e.target.value)}
             onBlur={() => setNameTouched(true)}
@@ -343,7 +344,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
           <div className="property-edit-form__field">
             <Input
               type="tel"
-              label={t('tenant_contact_phone_label', 'Contact number of property')}
+              label={isMultiKeyParent ? t('tenant_contact_phone_label_parent', 'Parent Property Phone Number') : t('tenant_contact_phone_label', 'Contact number of property')}
               value={phone}
               // No maxLength - see GuestManagement.tsx's onChange comment (23 Aug 2026): it
               // truncates raw typed characters before digit-stripping runs, silently dropping

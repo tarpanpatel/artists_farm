@@ -495,7 +495,7 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
             )}
 
             <Input
-              label="Property Name"
+              label={propertyType === 'MULTI_KEY' ? 'Parent Property Name' : 'Property Name'}
               value={name}
               onChange={(e) => setName(e.target.value)}
               onBlur={() => setNameTouched(true)}
@@ -564,7 +564,7 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
             <Input type="email" label="Email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="info@example.com" />
             <Input
               type="tel"
-              label="Property Phone Number"
+              label={propertyType === 'MULTI_KEY' ? 'Parent Property Phone Number' : 'Property Phone Number'}
               value={phone}
               onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
               placeholder="Enter 10-digit mobile number"

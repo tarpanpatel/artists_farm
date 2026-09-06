@@ -466,7 +466,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
         {activeStep.key === 'basics' && (
           <div className="space-y-4">
             <Input
-              label="Property Name"
+              label={isMultiKey ? 'Parent Property Name' : 'Property Name'}
               value={name}
               disabled
               helperText="Can't be renamed here - use Edit Property in the sidebar instead."
@@ -489,7 +489,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
             <Input type="email" label="Email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="info@example.com" />
             <Input
               type="tel"
-              label="Property Phone Number"
+              label={isMultiKey ? 'Parent Property Phone Number' : 'Property Phone Number'}
               value={editPhone}
               onChange={(e) => setEditPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
               placeholder="Enter 10-digit mobile number"
