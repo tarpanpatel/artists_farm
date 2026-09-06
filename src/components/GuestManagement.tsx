@@ -1111,7 +1111,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             </div>
             <Button
               type="button"
-              color="success"
+              color="green"
               disabled={sendingQuote}
               onClick={handleSendInstantQuote}
               className="w-full mt-2 font-semibold flex items-center justify-center gap-2"
