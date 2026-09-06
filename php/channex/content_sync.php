@@ -200,30 +200,61 @@ class ChannexContentSyncer {
             // what Channex was actually rejecting: "invalid option, rate and
             // is_primary is required fields".
             $nightlyRate = round((float)$unit['default_tariff'], 2);
+
+            // Occupancy pricing (6 Sep 2026). A property that charges per extra
+            // guest needs a sell_mode:"per_person" plan with one option per
+            // bookable occupancy - Channex rejects the per-occupancy `rates` array
+            // the ARI worker sends if the plan is per_room, and a per_room plan
+            // would sell every occupancy at the two-person price anyway.
+            //
+            // Opt-in per property: no extra-guest charge (or no room above the
+            // included count) keeps the per_room plan this has always created.
+            require_once __DIR__ . '/../rates/occupancy_pricing.php';
+            $ppCfg = getOccupancyPricingConfig($this->pdo, $roomId ?: $propertyId);
+            $ppIncluded = max(1, (int)$ppCfg['included_occupancy']);
+            $ppCapacity = (int)$ppCfg['max_capacity'];
+            $usePerPerson = ((float)$ppCfg['extra_guest_charge'] > 0 && $ppCapacity > $ppIncluded);
+
+            if ($usePerPerson) {
+                $options = [];
+                for ($occ = 1; $occ <= $ppCapacity; $occ++) {
+                    $extra = max(0, $occ - $ppIncluded);
+                    $options[] = [
+                        'occupancy' => $occ,
+                        // The primary option is the occupancy the headline rate is
+                        // quoted for - the included count, not always 1 or 2.
+                        'is_primary' => ($occ === $ppIncluded),
+                        'rate' => number_format($nightlyRate + ($extra * (float)$ppCfg['extra_guest_charge']), 2, '.', ''),
+                    ];
+                }
+            } else {
+                $options = [[
+                    'occupancy' => 2,
+                    'is_primary' => true,
+                    'rate' => number_format($nightlyRate, 2, '.', ''),
+                ]];
+            }
+
             $ratePayload = [
                 'rate_plan' => [
                     'property_id' => $channexPropertyId,
                     'room_type_id' => $channexRoomTypeId,
                     'title' => 'Standard Rate',
                     'currency' => $currency,
-                    'sell_mode' => 'per_room',
+                    'sell_mode' => $usePerPerson ? 'per_person' : 'per_room',
                     'rate_mode' => 'manual',
-                    'options' => [
-                        [
-                            'occupancy' => 2,
-                            'is_primary' => true,
-                            'rate' => number_format($nightlyRate, 2, '.', ''),
-                        ]
-                    ]
+                    'options' => $options,
                 ]
             ];
             $channexRatePlanId = null;
+            $existingSellMode = null;
             $remoteRates = $this->client->get('rate_plans', ['filter[property_id]' => $channexPropertyId]);
             if (!empty($remoteRates['data'])) {
                 foreach ($remoteRates['data'] as $rp) {
                     $rpRoomTypeId = $rp['relationships']['room_type']['data']['id'] ?? ($rp['attributes']['room_type_id'] ?? '');
                     if ($rpRoomTypeId === $channexRoomTypeId) {
                         $channexRatePlanId = $rp['id'];
+                        $existingSellMode = $rp['attributes']['sell_mode'] ?? null;
                         break;
                     }
                 }
@@ -235,6 +266,18 @@ class ChannexContentSyncer {
                     throw new RuntimeException("Failed to create Channex rate plan for '{$unit['name']}': " . json_encode($rateRes['error'] ?? 'Unknown error'));
                 }
                 $channexRatePlanId = $rateRes['data']['id'];
+            } elseif ($existingSellMode !== null && $existingSellMode !== $ratePayload['rate_plan']['sell_mode']) {
+                // An already-existing plan is matched by room type and reused, and
+                // until now was never updated - the same gap that left every room
+                // type stuck on a hardcoded capacity of 6 for months. Without this
+                // PUT, turning on occupancy pricing would change nothing on a
+                // property that already had a plan, and the ARI worker's per-
+                // occupancy `rates` array would then be rejected by a plan still
+                // declaring per_room.
+                $updateRes = $this->client->put('rate_plans/' . $channexRatePlanId, $ratePayload);
+                if (empty($updateRes['success'])) {
+                    throw new RuntimeException("Failed to switch rate plan for '{$unit['name']}' to {$ratePayload['rate_plan']['sell_mode']}: " . json_encode($updateRes['error'] ?? 'Unknown error'));
+                }
             }
 
             // Save mapping with NULL-safe deduplication

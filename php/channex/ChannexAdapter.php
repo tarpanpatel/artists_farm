@@ -107,6 +107,23 @@ class ChannexAdapter implements ChannelManagerAdapter {
             if (array_key_exists('rate', $r)) {
                 $item['rate'] = $r['rate'] !== null ? (int)round($r['rate'] * 100) : null; // minor units
             }
+            // Occupancy-based pricing (6 Sep 2026). A sell_mode:"per_person" rate
+            // plan takes a `rates` ARRAY of {occupancy, rate} instead of the scalar
+            // `rate` above - not an object keyed by occupancy, and not both keys at
+            // once. Same minor-unit convention per entry.
+            //
+            // computeCompressedRestrictions() emits exactly one of the two keys, so
+            // a per_room property is completely unaffected by this branch existing.
+            if (array_key_exists('rates', $r) && is_array($r['rates'])) {
+                $item['rates'] = [];
+                foreach ($r['rates'] as $entry) {
+                    if (!isset($entry['occupancy'])) continue;
+                    $item['rates'][] = [
+                        'occupancy' => (int)$entry['occupancy'],
+                        'rate' => isset($entry['rate']) ? (int)round((float)$entry['rate'] * 100) : null,
+                    ];
+                }
+            }
             if (array_key_exists('min_stay_arrival', $r)) {
                 $item['min_stay_arrival'] = $r['min_stay_arrival'] !== null ? (int)$r['min_stay_arrival'] : null;
             }

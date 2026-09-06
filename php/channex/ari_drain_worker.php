@@ -386,6 +386,30 @@ class AriDrainWorker {
             $baseTariff = (float)($propStmt->fetchColumn() ?: 3500);
         }
 
+        // Occupancy pricing (6 Sep 2026). A property that charges per extra guest
+        // must push a rate PER OCCUPANCY, or the OTA sells every occupancy at the
+        // two-person price and the extra-guest money is simply never collected on
+        // channel bookings - which is exactly the split between what Ground Code
+        // bills directly and what an OTA guest pays.
+        //
+        // Opt-in per property, deliberately: a property with no extra-guest charge
+        // keeps the scalar `rate` it has always pushed. This is a SaaS product, so
+        // a capability one tenant configures must not silently change how every
+        // other tenant's channel prices (see CLAUDE.md's note on exactly this).
+        $occPricing = null;
+        if ($includeRate) {
+            require_once __DIR__ . '/../rates/occupancy_pricing.php';
+            $cfg = getOccupancyPricingConfig($this->pdo, $scopeId);
+            $capacity = (int)$cfg['max_capacity'];
+            $included = max(1, (int)$cfg['included_occupancy']);
+            // Needs a real charge AND room above the included count for the extra
+            // occupancies to mean anything - otherwise per_person is just per_room
+            // with extra rows.
+            if ((float)$cfg['extra_guest_charge'] > 0 && $capacity > $included) {
+                $occPricing = ['included' => $included, 'charge' => (float)$cfg['extra_guest_charge'], 'capacity' => $capacity];
+            }
+        }
+
         // Fetch rules - only while this scope is actually in Dynamic Rules
         // mode. "Flat Base Rate" means every day below falls through to the
         // base tariff with no restrictions, same as if no rule existed.
@@ -437,7 +461,22 @@ class AriDrainWorker {
             $rule = $rulesByDate[$dStr] ?? null;
             $state = [];
             if ($includeRate) {
-                $state['rate'] = $rule && $rule['rate_per_night'] !== null ? (float)$rule['rate_per_night'] : $baseTariff;
+                $dayRate = $rule && $rule['rate_per_night'] !== null ? (float)$rule['rate_per_night'] : $baseTariff;
+                if ($occPricing) {
+                    // One entry per bookable occupancy, 1..capacity. Same formula
+                    // the direct booking engine bills with (see computeStayCharges)
+                    // so a guest is quoted the same number whichever way they book.
+                    $state['rates'] = [];
+                    for ($occ = 1; $occ <= $occPricing['capacity']; $occ++) {
+                        $extra = max(0, $occ - $occPricing['included']);
+                        $state['rates'][] = [
+                            'occupancy' => $occ,
+                            'rate' => round($dayRate + ($extra * $occPricing['charge']), 2),
+                        ];
+                    }
+                } else {
+                    $state['rate'] = $dayRate;
+                }
             }
             // Channex's restrictions endpoint rejects an included min_stay_arrival/
             // min_stay_through/max_stay key that's null ("should be a non null
