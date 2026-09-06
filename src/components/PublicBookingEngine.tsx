@@ -14,6 +14,7 @@ import {
   Check,
   Upload,
   MessageCircle,
+  Calendar,
 } from './icons/FlowbiteIcons';
 import { useToast } from './ToastContext';
 import { StyledSelect } from './StyledSelect';
@@ -234,8 +235,9 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
   const [checkoutDate, setCheckoutDate] = useState<string>(() => urlDates.checkout);
   const [filterRoomId, setFilterRoomId] = useState<number | 'all'>('all');
 
-  // Calendar click range selection
-  const [pendingStart, setPendingStart] = useState<{ roomId: number; roomName: string; dateStr: string } | null>(null);
+  // Real-time hover preview date (Airbnb 2-click & hover track model)
+  const [hoverDate, setHoverDate] = useState<string | null>(null);
+
   const [bookingDrawerRoom, setBookingDrawerRoom] = useState<{
     roomId: number;
     roomName: string;
@@ -582,6 +584,25 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
     });
   };
 
+  // Airbnb-style Date Range Highlighting & Preview Calculations
+  const effectiveEndDate = checkoutDate || (hoverDate && checkinDate && hoverDate > checkinDate ? hoverDate : '');
+  const isRangeTentative = Boolean(checkinDate && !checkoutDate && hoverDate && hoverDate > checkinDate);
+
+  const previewNights = useMemo(() => {
+    if (!checkinDate || !effectiveEndDate || effectiveEndDate <= checkinDate) return 0;
+    const a = new Date(checkinDate + 'T00:00:00').getTime();
+    const b = new Date(effectiveEndDate + 'T00:00:00').getTime();
+    return Math.round((b - a) / 86400000);
+  }, [checkinDate, effectiveEndDate]);
+
+  const getRangeStatus = (dStr: string) => {
+    const isStart = checkinDate === dStr;
+    const isEnd = effectiveEndDate === dStr;
+    const isInRange = Boolean(checkinDate && effectiveEndDate && dStr > checkinDate && dStr < effectiveEndDate);
+    const isSingleDayPick = isStart && !effectiveEndDate;
+    return { isStart, isEnd, isInRange, isSingleDayPick, isTentative: isRangeTentative };
+  };
+
   // Real-Time Available Rooms Calculation for selected Check-in & Check-out dates
   const availableRoomResults = useMemo(() => {
     if (!checkinDate || !checkoutDate || checkinDate >= checkoutDate) {
@@ -684,61 +705,66 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
     setFormError(null);
   };
 
-  // Cell click on calendar table (2-click range selection)
-  const handleCellClick = (room: PublicRoom, dateStr: string, occupied: boolean, past: boolean) => {
-    if (occupied || past) return;
+  // Unified Airbnb-Style Date Selection Handler
+  const handleDateSelection = (dateStr: string, room?: PublicRoom) => {
+    if (dateStr < todayStr) return;
 
-    if (!pendingStart || pendingStart.roomId !== room.id || dateStr <= pendingStart.dateStr) {
-      setPendingStart({ roomId: room.id, roomName: room.name, dateStr });
-      setCheckinDate(dateStr);
-      // Auto-set checkout to next day if empty or invalid
-      const nextDay = new Date(dateStr + 'T00:00:00');
-      nextDay.setDate(nextDay.getDate() + 1);
-      const nextDayStr = formatDateISO(nextDay);
-      if (!isRoomOccupied(room.id, nextDayStr)) {
-        setCheckoutDate(nextDayStr);
-      }
+    // Fast-track: If range is already selected and user clicks directly on a room cell within that selected range, open drawer for that room
+    if (checkinDate && checkoutDate && dateStr >= checkinDate && dateStr < checkoutDate && room) {
+      handleOpenBookingDrawer(room, checkinDate, checkoutDate);
       return;
     }
 
-    // Finished 2nd click: pendingStart.dateStr -> dateStr
-    const cur = new Date(pendingStart.dateStr + 'T00:00:00');
-    const end = new Date(dateStr + 'T00:00:00');
-    let hasConflict = false;
-
-    while (cur < end) {
-      const curStr = formatDateISO(cur);
-      if (isRoomOccupied(room.id, curStr)) {
-        hasConflict = true;
-        break;
-      }
-      cur.setDate(cur.getDate() + 1);
-    }
-
-    if (hasConflict) {
-      setPendingStart({ roomId: room.id, roomName: room.name, dateStr });
-      setCheckinDate(dateStr);
-      return;
-    }
-
-    setCheckinDate(pendingStart.dateStr);
-    setCheckoutDate(dateStr);
-    handleOpenBookingDrawer(room, pendingStart.dateStr, dateStr);
-    setPendingStart(null);
-  };
-
-  // Top row date header click (1st click checkin, 2nd click checkout)
-  const handleTopRowDateClick = (dateStr: string, past: boolean) => {
-    if (past) return;
-
+    // Fresh selection: no checkin set yet, or both already set, or clicked date is <= current checkin
     if (!checkinDate || (checkinDate && checkoutDate) || dateStr <= checkinDate) {
       setCheckinDate(dateStr);
       setCheckoutDate('');
-      setPendingStart(null);
-    } else {
-      setCheckoutDate(dateStr);
-      setPendingStart(null);
+      setHoverDate(null);
+      return;
     }
+
+    // Second click: dateStr > checkinDate (Check-out selected)
+    // If a specific room was clicked, verify whether that room has any occupied night in the range
+    if (room) {
+      const cur = new Date(checkinDate + 'T00:00:00');
+      const end = new Date(dateStr + 'T00:00:00');
+      let hasConflict = false;
+      while (cur < end) {
+        const curStr = formatDateISO(cur);
+        if (isRoomOccupied(room.id, curStr)) {
+          hasConflict = true;
+          break;
+        }
+        cur.setDate(cur.getDate() + 1);
+      }
+      if (hasConflict) {
+        // Room has occupied nights in between; treat this click as a new check-in date
+        setCheckinDate(dateStr);
+        setCheckoutDate('');
+        setHoverDate(null);
+        return;
+      }
+    }
+
+    // Valid range selected!
+    setCheckoutDate(dateStr);
+    setHoverDate(null);
+
+    // Smoothly scroll to Available Options below so guest sees rates & room options
+    setTimeout(() => {
+      availableOptionsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 150);
+  };
+
+  const handleCellClick = (room: PublicRoom, dateStr: string, occupied: boolean, past: boolean) => {
+    if (occupied || past) return;
+    handleDateSelection(dateStr, room);
+  };
+
+  // Top row date header click (Airbnb 2-click date range)
+  const handleTopRowDateClick = (dateStr: string, past: boolean) => {
+    if (past) return;
+    handleDateSelection(dateStr);
   };
 
   // Submit direct reservation
@@ -1405,14 +1431,14 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                   checkoutDate={checkoutDate}
                   onCheckinChange={(d) => {
                     setCheckinDate(d);
+                    setHoverDate(null);
                     if (checkoutDate && d >= checkoutDate) {
-                      const next = new Date(d + 'T00:00:00');
-                      next.setDate(next.getDate() + 1);
-                      setCheckoutDate(formatDateISO(next));
+                      setCheckoutDate('');
                     }
                   }}
                   onCheckoutChange={(d) => {
                     setCheckoutDate(d);
+                    setHoverDate(null);
                   }}
                   disablePastDates
                   fromPlaceholder="Check-in date"
@@ -1445,7 +1471,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                   onClick={() => {
                     setCheckinDate('');
                     setCheckoutDate('');
-                    setPendingStart(null);
+                    setHoverDate(null);
                   }}
                   className="text-xs text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 font-medium px-2"
                 >
@@ -1466,6 +1492,29 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
               </div>
             </div>
           </div>
+
+          {/* Airbnb-style Active Check-in / Prompt for Check-out Banner */}
+          {checkinDate && !checkoutDate && (
+            <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800/60 rounded-lg px-3.5 py-2 text-xs text-blue-700 dark:text-blue-300 animate-fade-in">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                <span>
+                  Check-in: <strong className="font-semibold text-blue-900 dark:text-white">{formatDateDisplay(checkinDate)}</strong> — Select your check-out date on the calendar
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="xs"
+                onClick={() => {
+                  setCheckinDate('');
+                  setHoverDate(null);
+                }}
+                className="text-2xs text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40"
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
 
           {/* REAL-TIME AVAILABLE ROOM CARDS SECTION (Horizontal Space-Saving Layout per DESIGN.md) */}
           {checkinDate && checkoutDate && checkinDate < checkoutDate && (
@@ -1623,7 +1672,10 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
 
           {/* MULTI-KEY TABLE VIEW (Matches availability.php Layout) */}
           {displayedRooms.length > 1 ? (
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+            <div
+              className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden"
+              onMouseLeave={() => setHoverDate(null)}
+            >
               <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
                 <table
                   className="w-full border-collapse text-center text-xs"
@@ -1640,22 +1692,29 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                         const dayInitial = dayDate.toLocaleDateString('default', { weekday: 'narrow' });
                         const isToday = dStr === todayStr;
                         const isPast = dStr < todayStr;
-                        const isSelected = checkinDate && checkoutDate && dStr >= checkinDate && dStr < checkoutDate;
-                        const isStart = dStr === checkinDate;
-                        const isEnd = dStr === checkoutDate;
+                        const { isStart, isEnd, isInRange, isSingleDayPick, isTentative } = getRangeStatus(dStr);
 
                         return (
                           <th
                             key={d}
                             onClick={() => handleTopRowDateClick(dStr, isPast)}
+                            onMouseEnter={() => {
+                              if (checkinDate && !checkoutDate && !isPast) {
+                                setHoverDate(dStr);
+                              }
+                            }}
                             title={isPast ? 'Past date' : `Click to select ${dStr}`}
                             className={`p-1.5 font-semibold text-2xs border-r border-gray-200 dark:border-gray-700 min-w-[34px] select-none transition-colors ${
                               isPast
                                 ? 'opacity-40 cursor-not-allowed bg-gray-100/50 dark:bg-gray-900/50 text-gray-400 dark:text-gray-600'
-                                : isStart || isSelected
-                                ? 'bg-blue-600 text-white font-bold cursor-pointer'
+                                : isSingleDayPick
+                                ? 'bg-blue-600 text-white font-bold cursor-pointer rounded-t-md'
+                                : isStart
+                                ? 'bg-blue-600 text-white font-bold cursor-pointer rounded-tl-md'
                                 : isEnd
-                                ? 'bg-blue-500 text-white font-bold cursor-pointer'
+                                ? `${isTentative ? 'bg-blue-500/90' : 'bg-blue-600'} text-white font-bold cursor-pointer rounded-tr-md`
+                                : isInRange
+                                ? 'bg-blue-100 dark:bg-blue-900/60 text-blue-900 dark:text-blue-100 cursor-pointer font-bold'
                                 : isToday
                                 ? 'bg-blue-100/70 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400 cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-900/60'
                                 : 'cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/40 hover:text-blue-600 dark:hover:text-blue-300'
@@ -1681,8 +1740,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                             const isPast = dStr < todayStr;
                             const occupied = isRoomOccupied(room.id, dStr);
                             const rate = getRoomDailyPrice(room, dStr);
-                            const isSelected = checkinDate && checkoutDate && dStr >= checkinDate && dStr < checkoutDate;
-                            const isPendingStart = pendingStart?.roomId === room.id && pendingStart?.dateStr === dStr;
+                            const { isStart, isEnd, isInRange, isSingleDayPick, isTentative } = getRangeStatus(dStr);
 
                             // Dynamic restriction badges
                             const roomRestrictions = dailyRestrictionsMap[room.id] || {};
@@ -1692,13 +1750,24 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                               <td
                                 key={dStr}
                                 onClick={() => handleCellClick(room, dStr, occupied, isPast)}
-                                className={`p-1 h-12 border-r border-gray-200 dark:border-gray-800 text-center transition-all ${
+                                onMouseEnter={() => {
+                                  if (checkinDate && !checkoutDate && !isPast && !occupied) {
+                                    setHoverDate(dStr);
+                                  }
+                                }}
+                                className={`p-1 h-12 border-r border-gray-200 dark:border-gray-800 text-center transition-all select-none ${
                                   isPast
                                     ? 'bg-gray-100/50 dark:bg-gray-900/50 text-gray-400 dark:text-gray-600 cursor-not-allowed'
                                     : occupied
                                     ? 'bg-[#fef2f2] dark:bg-red-950/20 text-[#b91c1c] dark:text-red-400 cursor-not-allowed'
-                                    : isPendingStart || isSelected
+                                    : isSingleDayPick
                                     ? 'bg-blue-600 text-white cursor-pointer ring-1 ring-blue-600 font-bold'
+                                    : isStart
+                                    ? 'bg-blue-600 text-white cursor-pointer ring-1 ring-blue-600 font-bold'
+                                    : isEnd
+                                    ? `${isTentative ? 'bg-blue-500/90' : 'bg-blue-600'} text-white cursor-pointer ring-1 ring-blue-600 font-bold`
+                                    : isInRange
+                                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100 cursor-pointer font-bold'
                                     : 'bg-[#f0fdf4] dark:bg-emerald-950/20 text-[#15803d] dark:text-emerald-400 hover:bg-[#dcfce7] dark:hover:bg-emerald-900/40 cursor-pointer font-bold'
                                 }`}
                               >
@@ -1709,7 +1778,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                                 ) : (
                                   <div className="flex flex-col items-center justify-center">
                                     {rate > 0 && (
-                                      <span className={`text-2xs font-bold leading-none ${isPendingStart || isSelected ? 'text-white' : ''}`}>
+                                      <span className={`text-2xs font-bold leading-none ${isSingleDayPick || isStart || isEnd ? 'text-white' : isInRange ? 'text-blue-900 dark:text-blue-100' : ''}`}>
                                         {rate.toLocaleString('en-IN')}
                                       </span>
                                     )}
@@ -1737,7 +1806,11 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
             /* SINGLE-KEY / SINGLE-ROOM 7-DAY GRID (Matches availability.php Single Grid) */
             displayedRooms.map((room) => {
               return (
-                <div key={room.id} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                <div
+                  key={room.id}
+                  className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden"
+                  onMouseLeave={() => setHoverDate(null)}
+                >
                   <div className="grid grid-cols-7 gap-px bg-gray-200 dark:bg-gray-700 text-center">
                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((dw) => (
                       <div key={dw} className="bg-gray-50 dark:bg-gray-800 py-2 text-2xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
@@ -1757,36 +1830,51 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                       const occupied = isRoomOccupied(room.id, dStr);
                       const rate = getRoomDailyPrice(room, dStr);
                       const isToday = dStr === todayStr;
-                      const isSelected = checkinDate && checkoutDate && dStr >= checkinDate && dStr < checkoutDate;
-                      const isPendingStart = pendingStart?.roomId === room.id && pendingStart?.dateStr === dStr;
+                      const { isStart, isEnd, isInRange, isSingleDayPick, isTentative } = getRangeStatus(dStr);
 
                       return (
                         <div
                           key={dStr}
                           onClick={() => handleCellClick(room, dStr, occupied, isPast)}
-                          className={`bg-white dark:bg-gray-800 p-2 min-h-[4.5rem] flex flex-col justify-between transition-all ${
+                          onMouseEnter={() => {
+                            if (checkinDate && !checkoutDate && !isPast && !occupied) {
+                              setHoverDate(dStr);
+                            }
+                          }}
+                          className={`relative p-2 min-h-[4.5rem] flex flex-col justify-between transition-all select-none ${
                             isPast
                               ? 'bg-gray-50 dark:bg-gray-800/40 opacity-40 cursor-not-allowed'
                               : occupied
                               ? 'bg-[#fef2f2] dark:bg-red-950/20 text-[#b91c1c] dark:text-red-400 cursor-not-allowed'
-                              : isPendingStart || isSelected
-                              ? 'bg-blue-600 text-white cursor-pointer ring-2 ring-blue-600'
+                              : isSingleDayPick
+                              ? 'bg-blue-600 text-white cursor-pointer rounded-lg ring-2 ring-blue-500 shadow-md font-bold z-10'
+                              : isStart
+                              ? 'bg-blue-600 text-white cursor-pointer rounded-l-lg ring-1 ring-blue-600 shadow-md font-bold z-10'
+                              : isEnd
+                              ? `${isTentative ? 'bg-blue-500/90 text-white' : 'bg-blue-600 text-white'} cursor-pointer rounded-r-lg ring-1 ring-blue-500 shadow-md font-bold z-10`
+                              : isInRange
+                              ? 'bg-blue-100/90 dark:bg-blue-900/40 text-blue-900 dark:text-blue-100 cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-900/60 font-semibold'
                               : 'bg-[#f0fdf4] dark:bg-emerald-950/20 hover:bg-[#dcfce7] dark:hover:bg-emerald-900/40 cursor-pointer'
                           }`}
                         >
                           <div className="flex items-center justify-between">
-                            <span className={`text-xs font-bold ${isToday ? 'text-blue-600 dark:text-blue-400 font-extrabold' : ''}`}>
+                            <span className={`text-xs font-bold ${isSingleDayPick || isStart || isEnd ? 'text-white' : isToday ? 'text-blue-600 dark:text-blue-400 font-extrabold' : ''}`}>
                               {d}
                             </span>
-                            {isToday && (
+                            {isToday && !isStart && !isEnd && !isSingleDayPick && (
                               <span className="text-3xs uppercase font-bold text-blue-600 dark:text-blue-400">Today</span>
+                            )}
+                            {isEnd && previewNights > 0 && (
+                              <span className="text-3xs px-1.5 py-0.5 rounded-full bg-white/20 text-white font-medium border border-white/30 backdrop-blur-xs">
+                                {previewNights}N
+                              </span>
                             )}
                           </div>
 
                           {!isPast && !occupied && (
                             <div className="mt-auto text-right">
                               {rate > 0 && (
-                                <span className={`text-xs font-bold block ${isPendingStart || isSelected ? 'text-white' : 'text-emerald-700 dark:text-emerald-300'}`}>
+                                <span className={`text-xs font-bold block ${isSingleDayPick || isStart || isEnd ? 'text-white' : isInRange ? 'text-blue-900 dark:text-blue-100' : 'text-emerald-700 dark:text-emerald-300'}`}>
                                   {rate.toLocaleString('en-IN')}
                                 </span>
                               )}

@@ -156,7 +156,17 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     moved: boolean;
     longPressTimer: number | null;
     columnMode: boolean;
-  }>({ armed: false, pointerType: 'mouse', startX: 0, startY: 0, moved: false, longPressTimer: null, columnMode: false });
+    isClickSelecting: boolean;
+  }>({
+    armed: false,
+    pointerType: 'mouse',
+    startX: 0,
+    startY: 0,
+    moved: false,
+    longPressTimer: null,
+    columnMode: false,
+    isClickSelecting: false,
+  });
   const [isDragArmed, setIsDragArmed] = useState(false);
 
   const formatDateStr = (d: Date): string =>
@@ -178,10 +188,24 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   }, []);
 
   const clearSelection = () => {
+    dragRef.current.isClickSelecting = false;
     setSelAnchor(null);
     setSelFocus(null);
     setIsPanelOpen(false);
   };
+
+  // Escape key cancels active click-selection or closes editor panel
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (dragRef.current.isClickSelecting || isPanelOpen) {
+          clearSelection();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isPanelOpen]);
 
   /**
    * Resolve whichever grid cell is under a pointer. Used instead of
@@ -219,6 +243,12 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     d.moved = false;
     d.columnMode = false;
 
+    // If currently in 2-click selection mode, this click is Click 2!
+    if (d.isClickSelecting && selAnchor) {
+      setSelFocus({ roomIdx, dateIdx });
+      return;
+    }
+
     setSelAnchor({ roomIdx, dateIdx });
     setSelFocus({ roomIdx, dateIdx });
     setIsPanelOpen(false);
@@ -240,6 +270,16 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     const d = dragRef.current;
     if (!selAnchor) return;
 
+    // Mode A: Hovering during 2-click selection mode (mouse moving freely across grid)
+    if (d.isClickSelecting) {
+      const hit = cellFromPoint(e.clientX, e.clientY);
+      if (hit && hit.roomIdx >= 0) {
+        setSelFocus(hit);
+      }
+      return;
+    }
+
+    // Mode B: Pointer drag (mouse held down or long-pressed touch)
     if (!d.armed) {
       // A finger that has already travelled before the long-press fired is
       // scrolling, not selecting - stand down and let the scroller have it.
@@ -252,7 +292,11 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
       return;
     }
 
-    d.moved = true;
+    const dist = Math.hypot(e.clientX - d.startX, e.clientY - d.startY);
+    if (dist > 5) {
+      d.moved = true;
+    }
+
     // Once armed on touch the gesture belongs to the grid, not the scroller.
     if (e.pointerType !== 'mouse') e.preventDefault();
 
@@ -270,9 +314,29 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   };
 
   const handleGridPointerUp = () => {
+    const d = dragRef.current;
     if (!selAnchor) { endDrag(); return; }
+
+    // If pointer actually dragged across cells (distance > 5px)
+    if (d.moved) {
+      d.isClickSelecting = false;
+      endDrag();
+      setIsPanelOpen(true);
+      return;
+    }
+
+    // If click 2 in 2-click selection mode
+    if (d.isClickSelecting) {
+      d.isClickSelecting = false;
+      endDrag();
+      setIsPanelOpen(true);
+      return;
+    }
+
+    // Click 1: enter 2-click selection mode (highlight anchor cell, wait for 2nd click/hover)
+    d.isClickSelecting = true;
     endDrag();
-    setIsPanelOpen(true);
+    setIsPanelOpen(false);
   };
 
   // A drag can end anywhere - over the sticky room-name column, past the last
@@ -305,6 +369,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     d.moved = false;
     d.columnMode = true;
     d.armed = true;
+    d.isClickSelecting = false;
     setIsDragArmed(true);
     setSelAnchor({ roomIdx: 0, dateIdx });
     setSelFocus({ roomIdx: gridRooms.length - 1, dateIdx });
