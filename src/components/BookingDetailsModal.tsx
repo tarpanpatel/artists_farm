@@ -18,6 +18,7 @@ import { DateRangePicker } from './DateRangePicker';
 import { CheckinVerificationModal } from './CheckinVerificationModal';
 import { MessageQrPreview } from './MessageQrPreview';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate, type PropertyGuestInfo } from '../utils/whatsappVoucherTemplate';
+import { fetchBookingPaymentsDB, addBookingPaymentDB, deleteBookingPaymentDB, type BookingPayment } from '../services/api';
 import { shareTextContent } from '../utils/shareText';
 import { parseDateToYMD, formatDateDDMMYYYY } from '../utils/dateUtils';
 import { normalizePhoneNumber, isValidPhoneNumber } from '../utils/phoneUtils';
@@ -473,9 +474,79 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   // button's `disabled`) and to keep flagging an ALREADY-saved record like this one instead
   // of quietly showing a clean green "Filed" with nothing to back it up.
   const cFormMissingProof = isCFormFiled && !cFormNumberState.trim() && !cFormFile;
+  // Payment history (7 Sep 2026). The advance_paid / advance_received_by
+  // scalars below are a roll-up of these rows now - see
+  // php/finance/booking_payments.php for why a booking needs more than one.
+  const [payments, setPayments] = useState<BookingPayment[]>([]);
+  const [showAddPayment, setShowAddPayment] = useState(false);
+  const [payAmount, setPayAmount] = useState('');
+  const [payMethod, setPayMethod] = useState('Cash');
+  const [payReceivedBy, setPayReceivedBy] = useState('');
+  const [payDate, setPayDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [isSavingPayment, setIsSavingPayment] = useState(false);
+
+  const loadPayments = React.useCallback(async () => {
+    if (!guest?.id) return;
+    setPayments(await fetchBookingPaymentsDB(guest.id));
+  }, [guest?.id]);
+
+  useEffect(() => { loadPayments(); }, [loadPayments]);
+
+  const handleAddPayment = async () => {
+    const amt = parseFloat(payAmount);
+    if (isNaN(amt) || amt <= 0) {
+      showToast('Enter an amount greater than zero.', { type: 'error' });
+      return;
+    }
+    setIsSavingPayment(true);
+    try {
+      const res = await addBookingPaymentDB({
+        booking_id: guest.id,
+        amount: amt,
+        method: payMethod,
+        received_by_name: payReceivedBy,
+        received_at: payDate,
+        kind: 'payment',
+      });
+      if (!res.success) {
+        showToast(res.message || 'Could not record the payment.', { type: 'error' });
+        return;
+      }
+      setPayments(res.payments);
+      setPayAmount('');
+      setPayReceivedBy('');
+      setShowAddPayment(false);
+      showToast(`Recorded ₹${amt.toLocaleString('en-IN')}.`, { type: 'success' });
+      // Deliberately NOT calling onSave here: onSave is the real update_guest
+      // write path, so using it as a "please re-read" hook would push this
+      // modal's stale local copy back over the totals the server just
+      // recomputed. The payments list is the source of truth for what is paid
+      // (see advancePaid below), so this screen is already correct; the rest of
+      // the app picks the new totals up on its next guests fetch.
+    } finally {
+      setIsSavingPayment(false);
+    }
+  };
+
+  const handleDeletePayment = async (paymentId: number) => {
+    const res = await deleteBookingPaymentDB(paymentId);
+    if (!res.success) {
+      showToast(res.message || 'Could not remove the payment.', { type: 'error' });
+      return;
+    }
+    await loadPayments();
+    showToast('Payment removed.', { type: 'info' });
+  };
+
+
   const noOfGuests = g.no_of_guests ?? g.numberOfGuests ?? 1;
   const roomRent = g.base_room_rent ?? g.roomRate ?? 0;
-  const advancePaid = g.advance_paid ?? g.advanceAmount ?? 0;
+  // Paid-so-far comes from the payment rows whenever any exist - they are the
+  // record, and guests.advance_paid is the scalar they roll up into. Falling
+  // back to the scalar keeps every pre-existing booking (and any row written
+  // before this table landed) displaying exactly as it did before.
+  const paymentsTotal = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+  const advancePaid = payments.length > 0 ? paymentsTotal : (g.advance_paid ?? g.advanceAmount ?? 0);
   // OTA (Airbnb/Booking.com/etc via Channex) bookings arrive pre-paid by the
   // channel itself - front desk never actually collects or hands off the
   // advance/pending amount, so tracking "who received it" doesn't apply and
@@ -725,6 +796,16 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
       booking_id: String(guest.id ?? ''),
       // Empty unless children were actually recorded on this booking - see the
       // optionalTokens note in whatsappVoucherTemplate.ts.
+      // "5,000 on 15/07/2026 (Cash)" per payment - the thing that was
+      // impossible before, because no date was stored anywhere. Suppressed for
+      // a single payment: the Advance Paid line above already states that
+      // amount, and repeating it under a "Payments" heading reads as two
+      // separate collections.
+      payments_list: payments.length > 1
+        ? '\n' + payments
+            .map((p) => `  • ₹${Number(p.amount).toLocaleString('en-IN')} on ${formatDate(String(p.received_at).split(' ')[0])}${p.method ? ` (${p.method})` : ''}`)
+            .join('\n')
+        : '',
       guest_breakdown: (() => {
         const kids = Number((guest as any).children ?? 0);
         if (kids <= 0) return '';
@@ -1221,6 +1302,109 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                     options={availableHandlers}
                     className={highlightReceiverFields && !editPendingReceivedBy && ((guest.status as string) === 'Checked Out' || (g.status as string) === 'Checked Out') ? 'ring-2 ring-red-400 rounded-lg' : ''}
                   />
+                </div>
+              )}
+            </div>
+
+            {/* Payment history (7 Sep 2026). Sits directly under the advance /
+                pending pair those rows now summarise, so it reads as the detail
+                behind them rather than an unrelated feature. */}
+            <div className="rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+              <div className="flex items-center justify-between px-3 py-2 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700">
+                <span className="text-2xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                  {t('payments_heading', 'Payments received')}
+                </span>
+                {!isOtaBooking && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAddPayment((prev) => !prev)}
+                    className="text-2xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                  >
+                    {showAddPayment ? t('cancel_button', 'Cancel') : t('record_payment_button', '+ Record a payment')}
+                  </button>
+                )}
+              </div>
+
+              {payments.length === 0 ? (
+                <p className="px-3 py-2.5 text-2xs text-slate-500 dark:text-slate-400">
+                  {t('payments_empty', 'Nothing recorded yet.')}
+                </p>
+              ) : (
+                <ul className="divide-y divide-slate-100 dark:divide-slate-700/60">
+                  {payments.map((p) => (
+                    <li key={p.id} className="flex items-center justify-between gap-2 px-3 py-2">
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold text-slate-900 dark:text-white">
+                          ₹{Number(p.amount).toLocaleString('en-IN')}
+                          <span className="font-normal text-slate-500 dark:text-slate-400">
+                            {' '}on {formatDate(String(p.received_at).split(' ')[0])}
+                          </span>
+                        </div>
+                        <div className="text-2xs text-slate-500 dark:text-slate-400 truncate">
+                          {p.method}
+                          {p.received_by_name ? ` · ${t('received_by_prefix', 'received by')} ${p.received_by_name}` : ''}
+                          {p.note ? ` · ${p.note}` : ''}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDeletePayment(p.id)}
+                        aria-label={t('delete_button', 'Delete')}
+                        className="p-1.5 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 cursor-pointer shrink-0"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {showAddPayment && (
+                <div className="p-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      label={t('amount_label', 'Amount (₹)')}
+                      type="number"
+                      min="0"
+                      value={payAmount}
+                      onChange={(e) => setPayAmount(e.target.value)}
+                    />
+                    <Input
+                      label={t('payment_date_label', 'Received on')}
+                      type="date"
+                      value={payDate}
+                      onChange={(e) => setPayDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <StyledSelect
+                      label={t('payment_method_label', 'Method')}
+                      value={payMethod}
+                      onChange={setPayMethod}
+                      options={[
+                        { value: 'Cash', label: 'Cash' },
+                        { value: 'UPI', label: 'UPI' },
+                        { value: 'Bank Transfer', label: 'Bank Transfer' },
+                        { value: 'Card', label: 'Card' },
+                      ]}
+                    />
+                    <StyledSelect
+                      label={t('received_by_label', 'Received by')}
+                      value={payReceivedBy}
+                      onChange={setPayReceivedBy}
+                      placeholder="-- Select Staff/User --"
+                      options={availableHandlers}
+                    />
+                  </div>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    block
+                    onClick={handleAddPayment}
+                    disabled={isSavingPayment}
+                  >
+                    {isSavingPayment ? t('saving_label', 'Saving...') : t('record_payment_button_confirm', 'Record payment')}
+                  </Button>
                 </div>
               )}
             </div>

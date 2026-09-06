@@ -21,6 +21,7 @@ export const DEFAULT_WHATSAPP_VOUCHER_TEMPLATE =
 👨‍👩‍👧 *Party:* {guest_breakdown}
 💰 *Room Tariff:* ₹{room_tariff}
 💰 *Advance Paid:* ₹{advance_paid}
+🧾 *Payments:* {payments_list}
 💰 *Balance Due:* ₹{balance_due}
 🔐 *Security Deposit (refundable):* ₹{security_deposit}
 📍 *Address:* {address}
@@ -81,6 +82,9 @@ export function renderWhatsappVoucherTemplate(
     // Only rendered when children were actually recorded - "3 adults, 0
     // children" is noise, and a booking that never captured a split has
     // nothing honest to say here at all.
+    // A booking whose payments were never itemised has nothing to list, and
+    // a one-payment booking already said the amount on the Advance Paid line.
+    '{payments_list}',
     '{guest_breakdown}',
     '{guest_phone}',
     '{balance_due}',

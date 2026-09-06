@@ -260,6 +260,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
     room_tariff: '4,500.00',
     advance_paid: '2,000.00',
     balance_due: '2,500.00',
+    payments_list: '\n  • ₹1,000 on 15/07/2026 (UPI)\n  • ₹1,000 on 25/07/2026 (Cash)',
   };
 
   // Same template + substitution logic BookingDetailsModal.tsx's real "Share
