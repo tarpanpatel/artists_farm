@@ -1062,6 +1062,7 @@ export async function fetchGuestsFromDB(): Promise<any[]> {
           foodBill: Number(g.totalFood || g.total_food || 0),
           totalAmount: Number(g.totalCharge || g.total_charge || 0),
           paymentStatus: g.paymentStatus || g.payment_status || g.status || 'Pending',
+          paymentProofUrl: g.paymentProofUrl || g.payment_proof_url || null,
           idVerificationStatus: g.idVerificationStatus || g.id_verification_status || 'Pending',
           isForeignGuest: !!(g.isForeignGuest ?? g.is_foreign_guest),
           cFormFiledAt: g.cFormFiledAt || g.c_form_filed_at || null,
@@ -2338,6 +2339,26 @@ export interface BookingHoldDetails {
   nights?: number;
   total_tariff?: number;
   expires_in_seconds?: number;
+  payment_proof_url?: string;
+  converted_booking?: {
+    booking_id: number;
+    reference_number: string;
+    property_name: string;
+    property_slug?: string;
+    room_name: string;
+    guest_name: string;
+    phone: string;
+    checkin_date: string;
+    checkout_date: string;
+    nights: number;
+    total_tariff: number;
+    payment_status: string;
+    payment_proof_url?: string;
+    checkin_time?: string;
+    checkout_time?: string;
+    address?: string;
+    currency?: string;
+  };
 }
 
 export async function getBookingHoldDB(token: string): Promise<{ success: boolean; data?: BookingHoldDetails; message?: string }> {
@@ -2360,6 +2381,8 @@ export async function confirmBookingHoldDB(payload: {
   email?: string;
   num_guests?: number;
   special_requests?: string;
+  payment_proof_base64?: string;
+  payment_screenshot_base64?: string;
 }): Promise<{ success: boolean; data?: any; message?: string }> {
   try {
     const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=confirm_booking_hold`, {
@@ -2374,6 +2397,23 @@ export async function confirmBookingHoldDB(payload: {
     return { success: true, data: json.data };
   } catch (err: any) {
     return { success: false, message: err?.message || 'Network error confirming booking' };
+  }
+}
+
+export async function verifyBookingPaymentDB(guestId: string | number, action: 'confirm' | 'reject' = 'confirm'): Promise<{ success: boolean; data?: any; message?: string }> {
+  try {
+    const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=verify_booking_payment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ guest_id: Number(guestId), action }),
+    });
+    const json = await res.json();
+    if (json.status !== 'success') {
+      return { success: false, message: json.message || 'Failed to verify payment' };
+    }
+    return { success: true, data: json.data, message: json.message };
+  } catch (err: any) {
+    return { success: false, message: err?.message || 'Network error verifying payment' };
   }
 }
 

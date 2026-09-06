@@ -11,13 +11,18 @@ import {
   X,
   Building,
   AlertCircle,
+  Copy,
+  Check,
+  Upload,
 } from './icons/FlowbiteIcons';
 import { Dropdown, DropdownItem } from 'flowbite-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { Button } from './Button';
 import { Badge } from './Badge';
 import { DateRangePicker } from './DateRangePicker';
 import { FloatingInput } from './FloatingInput';
 import { FloatingSelect } from './FloatingSelect';
+import { buildUpiPaymentLink } from '../utils/upiQrCode';
 import { apiFetch, API_ROOT_BASE, getBookingHoldDB, confirmBookingHoldDB, BookingHoldDetails } from '../services/api';
 
 interface PublicRoom {
@@ -238,6 +243,74 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
   const [quoteSubmitting, setQuoteSubmitting] = useState(false);
   const [quoteFormError, setQuoteFormError] = useState<string | null>(null);
 
+  // Converted persistent voucher booking info
+  const [convertedBooking, setConvertedBooking] = useState<any | null>(null);
+
+  // Payment proof screenshot state
+  const [paymentScreenshotFile, setPaymentScreenshotFile] = useState<File | null>(null);
+  const [paymentScreenshotBase64, setPaymentScreenshotBase64] = useState<string>('');
+  const [paymentScreenshotPreview, setPaymentScreenshotPreview] = useState<string>('');
+  const [paymentScreenshotError, setPaymentScreenshotError] = useState<string | null>(null);
+  const [copiedUpi, setCopiedUpi] = useState(false);
+
+  const handleCopyUpi = (upiId: string) => {
+    if (!upiId) return;
+    navigator.clipboard.writeText(upiId).then(() => {
+      setCopiedUpi(true);
+      setTimeout(() => setCopiedUpi(false), 2500);
+    }).catch(() => {});
+  };
+
+  const handleScreenshotChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setPaymentScreenshotError('Please select an image file (JPEG, PNG, WebP).');
+      return;
+    }
+
+    setPaymentScreenshotError(null);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const maxDim = 1200;
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          if (width >= height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressed = canvas.toDataURL('image/jpeg', 0.82);
+          setPaymentScreenshotBase64(compressed);
+          setPaymentScreenshotPreview(compressed);
+          setPaymentScreenshotFile(file);
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveScreenshot = () => {
+    setPaymentScreenshotFile(null);
+    setPaymentScreenshotBase64('');
+    setPaymentScreenshotPreview('');
+    setPaymentScreenshotError(null);
+  };
+
   useEffect(() => {
     if (!quoteToken) return;
     let cancelled = false;
@@ -246,6 +319,13 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
       if (cancelled) return;
       if (!result.success || !result.data) {
         setQuoteState('notfound');
+        return;
+      }
+      if (result.data.hold_status === 'converted') {
+        if (result.data.converted_booking) {
+          setConvertedBooking(result.data.converted_booking);
+        }
+        setQuoteState('converted');
         return;
       }
       if (result.data.hold_status !== 'active') {
@@ -287,6 +367,11 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
       return;
     }
 
+    if (!paymentScreenshotBase64) {
+      setQuoteFormError('Please upload your payment screenshot before confirming.');
+      return;
+    }
+
     setQuoteSubmitting(true);
     setQuoteFormError(null);
     try {
@@ -297,10 +382,13 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
         email: quoteEmail.trim() || undefined,
         num_guests: quoteNumGuests,
         special_requests: quoteSpecialRequests.trim() || undefined,
+        payment_proof_base64: paymentScreenshotBase64,
       });
 
       if (result.success && result.data) {
         setConfirmation(result.data);
+        setConvertedBooking(result.data);
+        setQuoteState('converted');
       } else if ((result.message || '').toLowerCase().includes('expired')) {
         setQuoteState('expired');
       } else {
@@ -626,7 +714,14 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
           <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-2">
             <span className="text-gray-500">Total Tariff</span>
             <span className="font-black text-emerald-600 dark:text-emerald-400 text-sm">
-              {currencySym}{confirmation.total_tariff.toLocaleString('en-IN')} (Pay on Arrival)
+              {currencySym}{confirmation.total_tariff.toLocaleString('en-IN')}
+            </span>
+          </div>
+          <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-2">
+            <span className="text-gray-500">Payment Status</span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-2xs font-semibold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+              <AlertCircle className="w-3 h-3" />
+              Pending Admin Verification
             </span>
           </div>
           {confirmation.address && (
@@ -656,6 +751,9 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
             onClick={() => {
               setConfirmation(null);
               setBookingDrawerRoom(null);
+              if (quoteToken) {
+                setQuoteState('converted');
+              }
             }}
             className="h-10 text-xs font-semibold justify-center"
           >
@@ -680,6 +778,131 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
     }
 
     if (quoteState !== 'ready') {
+      if (quoteState === 'converted') {
+        const booking = convertedBooking || confirmation;
+        return (
+          <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4 flex flex-col items-center">
+            <div className="w-full max-w-lg bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+              <div className="bg-emerald-600 text-white p-5 text-center space-y-1.5">
+                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-2">
+                  <CheckCircle2 className="w-7 h-7 text-white" />
+                </div>
+                <h2 className="text-base sm:text-lg font-black tracking-tight">Reservation Confirmed & Dates Locked!</h2>
+                <p className="text-xs text-emerald-100">
+                  Your reservation is registered in our management system.
+                </p>
+                {booking?.reference_number && (
+                  <div className="inline-block mt-1 px-3 py-1 bg-black/20 rounded-lg text-xs font-mono font-bold text-white">
+                    Ref: {booking.reference_number}
+                  </div>
+                )}
+              </div>
+
+              <div className="p-4 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800/60 flex items-start gap-3 text-xs text-amber-800 dark:text-amber-200">
+                <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold block">Status: Payment Pending Verification</span>
+                  <span className="text-2xs text-amber-700 dark:text-amber-300">
+                    Your payment screenshot has been uploaded. Property staff will verify the transaction and confirm your booking.
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-5 space-y-3 text-xs">
+                <div className="flex justify-between items-center border-b border-gray-100 dark:border-gray-700 pb-2">
+                  <span className="text-gray-500 dark:text-gray-400">Property</span>
+                  <span className="font-bold text-gray-900 dark:text-white text-right">
+                    {booking?.property_name || quoteHold?.property_name}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center border-b border-gray-100 dark:border-gray-700 pb-2">
+                  <span className="text-gray-500 dark:text-gray-400">Room</span>
+                  <span className="font-bold text-blue-600 dark:text-blue-400 text-right">
+                    {booking?.room_name || quoteHold?.room_name}
+                  </span>
+                </div>
+                {(booking?.guest_name || quoteGuestName) && (
+                  <div className="flex justify-between items-center border-b border-gray-100 dark:border-gray-700 pb-2">
+                    <span className="text-gray-500 dark:text-gray-400">Guest</span>
+                    <span className="font-semibold text-gray-900 dark:text-white">
+                      {booking?.guest_name || quoteGuestName} {booking?.phone || quotePhone ? `(${booking?.phone || quotePhone})` : ''}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center border-b border-gray-100 dark:border-gray-700 pb-2">
+                  <span className="text-gray-500 dark:text-gray-400">Dates</span>
+                  <span className="font-semibold text-gray-900 dark:text-white">
+                    {formatDateDisplay(booking?.checkin_date || quoteHold?.checkin_date || '')} → {formatDateDisplay(booking?.checkout_date || quoteHold?.checkout_date || '')} ({booking?.nights || quoteHold?.nights}N)
+                  </span>
+                </div>
+                <div className="flex justify-between items-center border-b border-gray-100 dark:border-gray-700 pb-2">
+                  <span className="text-gray-500 dark:text-gray-400">Total Payable</span>
+                  <span className="font-black text-emerald-600 dark:text-emerald-400 text-sm">
+                    {currencySym}{(booking?.total_tariff || quoteHold?.total_tariff || 0).toLocaleString('en-IN')}
+                  </span>
+                </div>
+
+                {(booking?.payment_proof_url || paymentScreenshotPreview) && (
+                  <div className="pt-2">
+                    <span className="text-2xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-1.5">
+                      Uploaded Payment Proof
+                    </span>
+                    <a
+                      href={booking?.payment_proof_url ? `${API_ROOT_BASE}${booking.payment_proof_url}` : paymentScreenshotPreview}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2.5 p-2 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 transition-colors"
+                    >
+                      <img
+                        src={booking?.payment_proof_url ? `${API_ROOT_BASE}${booking.payment_proof_url}` : paymentScreenshotPreview}
+                        alt="Payment Proof"
+                        className="w-12 h-12 object-cover rounded border border-gray-200 dark:border-gray-600"
+                      />
+                      <div className="text-left">
+                        <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 block">
+                          View Screenshot Proof
+                        </span>
+                        <span className="text-3xs text-gray-400 block">Click to open full size</span>
+                      </div>
+                    </a>
+                  </div>
+                )}
+
+                {(booking?.address || quoteHold?.address) && (
+                  <div className="pt-1 text-2xs text-gray-500 dark:text-gray-400">
+                    <span className="font-semibold text-gray-700 dark:text-gray-300">Property Address:</span> {booking?.address || quoteHold?.address}
+                  </div>
+                )}
+              </div>
+
+              <div className="p-5 bg-gray-50 dark:bg-gray-750 border-t border-gray-200 dark:border-gray-700 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(`🏨 Booking Confirmation (${booking?.property_name || quoteHold?.property_name})\nRef: ${booking?.reference_number}\nRoom: ${booking?.room_name || quoteHold?.room_name}\nDates: ${formatDateDisplay(booking?.checkin_date || '')} to ${formatDateDisplay(booking?.checkout_date || '')}\nTotal: ${currencySym}${booking?.total_tariff}\nGuest: ${booking?.guest_name || quoteGuestName}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-3 py-2 rounded-lg flex items-center justify-center h-10 cursor-pointer text-center"
+                >
+                  Share on WhatsApp
+                </a>
+                <Button
+                  variant="secondary"
+                  size="md"
+                  onClick={() => window.print()}
+                  className="h-10 text-xs font-semibold justify-center"
+                >
+                  Print Voucher
+                </Button>
+              </div>
+
+              <div className="p-3 bg-gray-100 dark:bg-gray-850 text-center text-3xs text-gray-500 dark:text-gray-400">
+                🔒 This quote has been finalized. The booking form is closed for this quote.
+              </div>
+            </div>
+            {confirmationModal}
+          </div>
+        );
+      }
+
       const copy: Record<string, { title: string; body: string }> = {
         expired: {
           title: 'This Quote Has Expired',
@@ -760,7 +983,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
               </div>
             </div>
             <div className="pt-2 border-t border-blue-200/60 dark:border-blue-800/60 flex items-center justify-between">
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Total Payable on Arrival:</span>
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Total Payable:</span>
               <span className="text-base font-black text-blue-700 dark:text-blue-300">
                 {currencySym}{(quote.total_tariff || 0).toLocaleString('en-IN')}
               </span>
@@ -768,7 +991,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
           </div>
 
           {/* Guest Details Form */}
-          <form onSubmit={handleConfirmQuoteBooking} className="space-y-3">
+          <form onSubmit={handleConfirmQuoteBooking} className="space-y-3.5">
             {quoteFormError && (
               <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-lg text-xs text-red-700 dark:text-red-300 flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -826,23 +1049,161 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
               />
             </div>
 
-            {quote.upi_id && (
-              <p className="text-2xs text-gray-500 dark:text-gray-400">
-                💡 Advance UPI: <span className="font-mono font-bold text-gray-700 dark:text-gray-300">{quote.upi_id}</span>
-              </p>
-            )}
+            {/* UPI Payment Card with QR Code and 1-Click Copy */}
+            <div className="bg-gradient-to-br from-blue-50/90 to-indigo-50/90 dark:from-gray-800 dark:to-gray-800/90 rounded-xl p-4 border border-blue-200 dark:border-blue-900/60 space-y-3.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-2xs">
+                    UPI
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-900 dark:text-white">Pay via UPI / QR</h4>
+                    <p className="text-2xs text-gray-500 dark:text-gray-400">Scan QR or copy UPI ID to transfer</p>
+                  </div>
+                </div>
+                <span className="text-xs font-black text-blue-700 dark:text-blue-300">
+                  {currencySym}{(quote.total_tariff || 0).toLocaleString('en-IN')}
+                </span>
+              </div>
+
+              {/* QR Code + UPI ID Display */}
+              <div className="flex flex-col sm:flex-row items-center gap-4 bg-white dark:bg-gray-750 p-3.5 rounded-lg border border-blue-100 dark:border-gray-700">
+                <div className="bg-white p-2 rounded-lg border border-gray-200 dark:border-gray-600 shadow-2xs shrink-0 flex items-center justify-center">
+                  {quote.upi_qr_code_url ? (
+                    <img
+                      src={quote.upi_qr_code_url}
+                      alt="UPI QR Code"
+                      className="w-32 h-32 object-contain"
+                    />
+                  ) : (
+                    <QRCodeSVG
+                      value={buildUpiPaymentLink({
+                        upiId: quote.upi_id || 'tarpan.a.patel@gmail',
+                        payeeName: quote.property_name || 'Ground Code Resort',
+                        amount: quote.total_tariff,
+                        note: `Booking ${quote.room_name || ''}`.trim(),
+                      })}
+                      size={128}
+                      level="M"
+                    />
+                  )}
+                </div>
+
+                <div className="flex-1 w-full space-y-2 text-center sm:text-left">
+                  <div className="space-y-0.5">
+                    <span className="text-2xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider block">
+                      Property UPI ID
+                    </span>
+                    <div className="inline-flex items-center gap-2 px-2.5 py-1.5 bg-gray-50 dark:bg-gray-700/60 rounded-md border border-gray-200 dark:border-gray-600 font-mono text-xs font-bold text-gray-900 dark:text-white max-w-full break-all">
+                      <span>{quote.upi_id || 'tarpan.a.patel@gmail'}</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Button
+                      type="button"
+                      variant={copiedUpi ? 'secondary' : 'primary'}
+                      size="sm"
+                      onClick={() => handleCopyUpi(quote.upi_id || 'tarpan.a.patel@gmail')}
+                      className="w-full sm:w-auto h-8 text-xs font-semibold gap-1.5 justify-center"
+                    >
+                      {copiedUpi ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>Copy UPI ID</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-3xs text-gray-400 dark:text-gray-500">
+                    Open GPay, PhonePe, Paytm, or your banking app and transfer the amount.
+                  </p>
+                </div>
+              </div>
+
+              {/* Payment Screenshot Upload Section */}
+              <div className="space-y-2 pt-1 border-t border-blue-200/50 dark:border-gray-700">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                    <Upload className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                    <span>Upload Payment Screenshot *</span>
+                  </label>
+                  <span className="text-3xs font-semibold text-rose-500 bg-rose-50 dark:bg-rose-950/40 px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-800">
+                    Required to Confirm
+                  </span>
+                </div>
+
+                {paymentScreenshotPreview ? (
+                  <div className="flex items-center justify-between p-2.5 bg-white dark:bg-gray-750 border border-emerald-300 dark:border-emerald-700/60 rounded-lg">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <img
+                        src={paymentScreenshotPreview}
+                        alt="Payment proof preview"
+                        className="w-12 h-12 rounded object-cover border border-gray-200 dark:border-gray-600 shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-gray-900 dark:text-white truncate">
+                          {paymentScreenshotFile?.name || 'payment_screenshot.jpg'}
+                        </p>
+                        <p className="text-2xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-medium">
+                          <CheckCircle2 className="w-3 h-3" />
+                          Ready ({Math.round((paymentScreenshotBase64.length * 0.75) / 1024)} KB)
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleRemoveScreenshot}
+                      className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 text-xs shrink-0"
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-blue-300 dark:border-blue-800 hover:border-blue-500 dark:hover:border-blue-600 bg-white/70 dark:bg-gray-750/70 rounded-lg cursor-pointer transition-colors group">
+                    <Upload className="w-6 h-6 text-blue-500 dark:text-blue-400 mb-1 group-hover:scale-110 transition-transform" />
+                    <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">
+                      Choose or Capture Screenshot
+                    </span>
+                    <span className="text-3xs text-gray-400 dark:text-gray-500 mt-0.5">
+                      PNG, JPG, or WebP photo of transfer receipt
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleScreenshotChange}
+                    />
+                  </label>
+                )}
+
+                {paymentScreenshotError && (
+                  <p className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{paymentScreenshotError}</span>
+                  </p>
+                )}
+              </div>
+            </div>
 
             <Button
               type="submit"
               variant="primary"
               size="md"
-              disabled={quoteSubmitting}
-              className="w-full h-11 text-xs font-bold"
+              disabled={quoteSubmitting || !paymentScreenshotBase64}
+              className="w-full h-11 text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed justify-center"
             >
               {quoteSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 me-2 animate-spin" />
-                  Locking...
+                  Locking Room & Confirming...
                 </>
               ) : (
                 <>
@@ -851,6 +1212,13 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                 </>
               )}
             </Button>
+
+            {!paymentScreenshotBase64 && (
+              <p className="text-2xs text-center text-amber-600 dark:text-amber-400 flex items-center justify-center gap-1">
+                <AlertCircle className="w-3 h-3 shrink-0" />
+                <span>Upload payment screenshot to enable the Confirm Booking button.</span>
+              </p>
+            )}
           </form>
         </div>
 
@@ -1373,7 +1741,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                     </div>
                   </div>
                   <div className="pt-2 border-t border-blue-200/60 dark:border-blue-800/60 flex items-center justify-between">
-                    <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Total Payable on Arrival:</span>
+                    <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Total Payable:</span>
                     <span className="text-base font-black text-blue-700 dark:text-blue-300">
                       {currencySym}{bookingDrawerRoom.totalTariff.toLocaleString('en-IN')}
                     </span>

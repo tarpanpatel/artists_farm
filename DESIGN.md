@@ -35,6 +35,22 @@ one - it gives every future change a plausible-looking but wrong thing to match 
   is in progress, not done: as of 21 Aug 2026 `lucide-react` is still a dependency and still imported
   in ~76 files across `src/`. Replace icons screen-by-screen as you touch a file - don't do a mass
   find-replace sweep unless explicitly asked for one.
+- **Typography & Font Discipline Rule (Strict Limit)**:
+  - **Font Families (Maximum 2)**: Never have more than 2 font families across the entire application or landing pages (Primary body/UI font: `Inter, sans-serif`; optional monospace/code font: `monospace` only where strictly required for technical IDs/code snippets, otherwise 1 universal clean font).
+  - **Font Sizes (Maximum 3 per view/screen)**: Never have more than 3 distinct font sizes on any given screen, card, or component layout. Standardize strictly on:
+    1. **Heading / Stat Size**: `text-lg` (or `text-xl`/`text-base` for primary card/section titles).
+    2. **Standard Body / Action Size**: `text-xs` (for UI labels, buttons, list items, paragraphs, table cells).
+    3. **Micro / Tag / Metadata Size**: `text-2xs` (for badges, sub-labels, timestamps, pill chips).
+- **GroundCode Brand Manifesto Rule (Strict Compliance)**: Always strictly adhere to `GROUNDCODE_BRAND_MANIFESTO.md` across all marketing copy, landing pages, competitive comparisons, UI labels, and user communication:
+  - **No line longer than 10 words**: Keep all lines, bullets, and sentences punchy, short, and scannable.
+  - **Maximum visuals, images, and icons — least words**: Favor diagrams, icon tiles, and interactive elements over heavy paragraphs.
+  - **Friendly Homestay Host Tone**: Write like talking to a friendly homestay host, never like an academic whitepaper or corporate slide deck.
+  - **No corporate jargon or lectures**: Never lecture about "money leakage" or "pennywise profit". Small business owners care most about operations ease; smooth operations naturally eliminate loss.
+  - **Never show fake URLs**: (e.g. `domain.com/path`) in screenshots or examples.
+  - **Never mention tablets**: Clients must feel their mobile phone is completely sufficient.
+  - **Telegram strictly for staff operations**: Cleaners, caretakers, guards, cooks use Telegram with zero apps to install.
+  - **WhatsApp strictly for guests**: Direct booking vouchers, checkout bills, folios, and fast quotes only.
+  - **Product Scope Honesty**: GroundCode actually has nearly everything a complete hotel PMS should have, ready for wide testing, but we deliberately start with smaller properties first for stability.
 - **Fonts**: Flowbite's default fonts everywhere.
 - **Component library**: `flowbite-react` (+ the `flowbite` Tailwind plugin and the official markup
   patterns linked above) is the standard for all new, rebuilt, or updated components, modals, forms,

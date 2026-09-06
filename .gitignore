@@ -101,6 +101,10 @@ php/uploads/images/id_documents/
 php/uploads/documents/*/
 !php/uploads/documents/.htaccess
 
+# Uploaded guest payment proof screenshots
+php/uploads/payment_proofs/*
+!php/uploads/payment_proofs/.gitkeep
+
 php/database/log.txt
 
 # Runtime file-lock guards (dispatcher.php/worker_runner.php's flock() overlap

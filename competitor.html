@@ -1,0 +1,1916 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GroundCode — Product Architecture, Competitive Intelligence & Unit Economics Report</title>
+    <meta name="description" content="An executive research paper analyzing the hospitality software landscape for homestays and boutique resorts in India. Comparative breakdown of GroundCode, Doorloom, StayBind, and MyHomestay.ai.">
+    
+    <!-- Open Graph / Meta -->
+    <meta property="og:title" content="GroundCode — Hospitality SaaS Research & Competitive Benchmark">
+    <meta property="og:description" content="Product Architecture, Competitive Intelligence & Unit Economics Report for Investors and Stakeholders.">
+    <meta property="og:type" content="article">
+    <meta name="theme-color" content="#1E3A8A">
+
+    <!-- Custom Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231E3A8A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17 7V4h-3v2' /%3E%3Cpath d='M2 11l10-8 10 8' /%3E%3Cpath d='M4 10v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10' /%3E%3Cpath d='M10 22v-4a2 2 0 0 1 4 0v4' /%3E%3Cpolyline points='8 14 5.5 16 8 18' /%3E%3Cpolyline points='16 14 18.5 16 16 18' /%3E%3C/svg%3E">
+
+    <!-- Tailwind CSS (compiled build) -->
+    <link rel="stylesheet" href="./assets/css/landing.css?v=20260906-research">
+
+    <!-- Google Fonts Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- ApexCharts (Local node_modules with CDN fallback) -->
+    <script src="./node_modules/apexcharts/dist/apexcharts.min.js"></script>
+    <script>
+        if (typeof ApexCharts === 'undefined') {
+            document.write('<script src="https://cdn.jsdelivr.net/npm/apexcharts"><\/script>');
+        }
+    </script>
+
+    <style>
+        /* Strict Monospace Eradication Rule: All typography uses Inter sans-serif */
+        *, *::before, *::after, code, pre, kbd, samp, .font-mono, [class*="font-mono"] {
+            font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+        }
+
+        /* Clean Modern Range Slider Styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 6px;
+            background: #E2E8F0;
+            border-radius: 9999px;
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #1E3A8A;
+            cursor: pointer;
+            border: 2px solid #FFFFFF;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+            transition: transform 0.1s ease-in-out;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+        input[type=range]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #1E3A8A;
+            cursor: pointer;
+            border: 2px solid #FFFFFF;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased selection:bg-blue-100 selection:text-blue-900">
+
+    <!-- Executive Document Top Meta Bar -->
+    <div class="bg-slate-900 text-slate-300 text-xs py-2.5 px-4 border-b border-slate-800">
+        <div class="max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+                <span class="inline-block w-2 h-2 rounded-full bg-blue-400"></span>
+                <span class="font-semibold text-white tracking-wide uppercase">Industry Research Brief & Investor Memorandum</span>
+                <span class="text-slate-500">•</span>
+                <span>Doc Ref: GC-WP-2026-09</span>
+            </div>
+            <div class="flex items-center gap-4 text-slate-400 text-xs">
+                <span>Target: Boutique Homestays & Resorts</span>
+                <span class="hidden md:inline text-slate-600">|</span>
+                <span class="hidden md:inline">Last Verified: September 2026</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Editorial Header Navigation -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 py-3.5 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <img src="assets/images/icon-source.png" onerror="this.onerror=null; this.src='dist/app-icons/icon-source.png';" alt="GroundCode Logo" class="w-8 h-8 rounded-lg object-contain">
+                <div>
+                    <span class="text-lg font-bold text-slate-900 tracking-tight block">GroundCode</span>
+                    <span class="text-xs text-slate-500 font-medium block -mt-1">Product Research & Intelligence</span>
+                </div>
+            </div>
+
+            <!-- Table of Contents Quick Tabs -->
+            <nav id="header-nav" class="hidden lg:flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+                <a href="#thesis" class="nav-tab px-3 py-1.5 rounded-lg text-slate-600 hover:text-blue-700 hover:bg-slate-100 transition">1. 10% vs 90%</a>
+                <a href="#competitors" class="nav-tab px-3 py-1.5 rounded-lg text-slate-600 hover:text-blue-700 hover:bg-slate-100 transition">2. Competitors</a>
+                <a href="#simulation" class="nav-tab px-3 py-1.5 rounded-lg text-slate-600 hover:text-blue-700 hover:bg-slate-100 transition">3. Simulator</a>
+                <a href="#matrix" class="nav-tab px-3 py-1.5 rounded-lg text-slate-600 hover:text-blue-700 hover:bg-slate-100 transition">4. Specs</a>
+                <a href="#unit-economics" class="nav-tab px-3 py-1.5 rounded-lg text-slate-600 hover:text-blue-700 hover:bg-slate-100 transition">5. Economics</a>
+                <a href="#limitations" class="nav-tab px-3 py-1.5 rounded-lg text-red-600 hover:text-red-700 hover:bg-red-50 transition">6. Limitations</a>
+            </nav>
+
+            <div class="flex items-center gap-2">
+                <a href="home.html" class="px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition">
+                    View Live App
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Editorial Document Container -->
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+
+        <!-- Research Paper Title Block -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-10 mb-10 shadow-xs">
+            <div class="flex flex-wrap items-center gap-2 mb-4">
+                <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-800 border border-blue-200">
+                    Product Whitepaper
+                </span>
+                <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                    Hospitality Technology (SaaS)
+                </span>
+                <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    100% Verified Public Pricing
+                </span>
+            </div>
+
+            <h1 class="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">
+                Real Ground Operations for Indian Homestays: Where Daily Peace of Mind Happens
+            </h1>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 my-5 text-xs">
+                <div class="p-3.5 rounded-xl bg-blue-50 border border-blue-200">
+                    <span class="font-bold text-blue-900 block mb-1">🏡 For Homestay Hosts</span>
+                    <span class="text-2xs text-blue-700 block">1–18 rooms & boutique stays.</span>
+                    <span class="text-2xs text-blue-700 block">Zero corporate hotel bloat.</span>
+                </div>
+                <div class="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200">
+                    <span class="font-bold text-emerald-900 block mb-1">📱 Zero Staff Apps</span>
+                    <span class="text-2xs text-emerald-700 block">Staff uses only Telegram.</span>
+                    <span class="text-2xs text-emerald-700 block">Zero new apps to learn.</span>
+                </div>
+                <div class="p-3.5 rounded-xl bg-purple-50 border border-purple-200">
+                    <span class="font-bold text-purple-900 block mb-1">💬 Direct Guest Share</span>
+                    <span class="text-2xs text-purple-700 block">Instant WhatsApp bills & vouchers.</span>
+                    <span class="text-2xs text-purple-700 block">Fast 1-click booking links.</span>
+                </div>
+                <div class="p-3.5 rounded-xl bg-amber-50 border border-amber-200">
+                    <span class="font-bold text-amber-900 block mb-1">⚡ Hotel-Grade Core</span>
+                    <span class="text-2xs text-amber-700 block">Complete PMS ready inside.</span>
+                    <span class="text-2xs text-amber-700 block">Starting on boutique stays first.</span>
+                </div>
+            </div>
+
+            <div class="mt-4 pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-500">
+                <div class="flex items-center gap-4">
+                    <span><strong>Built for:</strong> Homestays, Estates & Vacation Rentals</span>
+                    <span>•</span>
+                    <span><strong>Core Driver:</strong> Operations Ease & Daily Peace of Mind</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span>Strictly Month-to-Month • Zero Lock-in</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 1: THE CORE THESIS -->
+        <section id="thesis" class="mb-12 scroll-mt-20">
+            <div class="flex items-center gap-2 text-xs font-bold text-blue-700 uppercase tracking-wider mb-2">
+                <span>Section 01</span>
+                <span>•</span>
+                <span>The Core Operating Thesis</span>
+            </div>
+            <h2 class="text-xl sm:text-2xl font-bold text-slate-900 mb-4">
+                The 10% vs. 90% Reality of Running a Homestay
+            </h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- The 10% Card (Graphical) -->
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                            <div class="flex items-center gap-2">
+                                <div class="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-xs">
+                                    10%
+                                </div>
+                                <h3 class="text-base font-bold text-slate-900">The Pre-Booking Window</h3>
+                            </div>
+                            <span class="text-2xs font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 uppercase tracking-wider">
+                                What Market Sells
+                            </span>
+                        </div>
+                        <div class="text-xs text-slate-600 space-y-1 mb-4">
+                            <p>Pre-stay tools only get guests to the gate.</p>
+                            <p>They sell basic chatbots and simple calendars.</p>
+                        </div>
+
+                        <!-- Graphical Feature Tiles -->
+                        <div class="space-y-2 mb-4">
+                            <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-600 flex items-center justify-center shrink-0">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                                </div>
+                                <div class="min-w-0">
+                                    <h4 class="text-xs font-bold text-slate-900">WhatsApp Inquiry Chatbots</h4>
+                                    <p class="text-2xs text-slate-500">Automated replies answering "Is villa available this weekend?"</p>
+                                </div>
+                            </div>
+                            <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-600 flex items-center justify-center shrink-0">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                                </div>
+                                <div class="min-w-0">
+                                    <h4 class="text-xs font-bold text-slate-900">Direct Booking Website with UPI</h4>
+                                    <p class="text-2xs text-slate-500">Fast booking page to collect guest advances.</p>
+                                </div>
+                            </div>
+                            <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-600 flex items-center justify-center shrink-0">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                </div>
+                                <div class="min-w-0">
+                                    <h4 class="text-xs font-bold text-slate-900">Basic Calendar Availability Sync</h4>
+                                    <p class="text-2xs text-slate-500">Syncs calendar dates with Airbnb and OTAs.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-3 rounded-xl bg-amber-50/70 border border-amber-200 text-2xs text-amber-900">
+                        <strong class="block mb-1">The Operational Bottleneck:</strong>
+                        <span>Gets guests to your front gate only.</span><br>
+                        <span>Solves zero daily headaches once guests arrive.</span>
+                    </div>
+                </div>
+
+                <!-- The 90% Card (Graphical) -->
+                <div class="bg-white border-2 border-blue-600 rounded-2xl p-6 shadow-sm flex flex-col justify-between ring-2 ring-blue-500/10">
+                    <div>
+                        <div class="flex items-center justify-between pb-3 border-b border-blue-100 mb-4">
+                            <div class="flex items-center gap-2">
+                                <div class="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                                    90%
+                                </div>
+                                <h3 class="text-base font-bold text-blue-950">The On-Ground Reality</h3>
+                            </div>
+                            <span class="text-2xs font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800 border border-blue-300 uppercase tracking-wider">
+                                What GroundCode Solves
+                            </span>
+                        </div>
+                        <div class="text-xs text-slate-600 space-y-1 mb-4">
+                            <p>Real hospitality begins when the guest arrives.</p>
+                            <p>Check-ins, extra beds, meals, and shifts.</p>
+                            <p>Where hosts spend 90% of daily time.</p>
+                        </div>
+
+                        <!-- Graphical Feature Tiles -->
+                        <div class="space-y-2 mb-4">
+                            <div class="p-2.5 rounded-xl bg-blue-50/50 border border-blue-200 flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                                </div>
+                                <div class="min-w-0">
+                                    <h4 class="text-xs font-bold text-blue-950">Telegram Staff Bot + Mobile Screens</h4>
+                                    <p class="text-2xs text-slate-600">Cleaners use Telegram with photo proofs. Zero apps.</p>
+                                </div>
+                            </div>
+                            <div class="p-2.5 rounded-xl bg-blue-50/50 border border-blue-200 flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                                </div>
+                                <div class="min-w-0">
+                                    <h4 class="text-xs font-bold text-blue-950">Live Kitchen Orders & Auto-Billing</h4>
+                                    <p class="text-2xs text-slate-600">Cook confirms chai. Automatically added to room bill.</p>
+                                </div>
+                            </div>
+                            <div class="p-2.5 rounded-xl bg-blue-50/50 border border-blue-200 flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                                </div>
+                                <div class="min-w-0">
+                                    <h4 class="text-xs font-bold text-blue-950">Petty Cash Drawer & Receipt Khata</h4>
+                                    <p class="text-2xs text-slate-600">Staff snaps receipt photo before shift ends.</p>
+                                </div>
+                            </div>
+                            <div class="p-2.5 rounded-xl bg-blue-50/50 border border-blue-200 flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"/></svg>
+                                </div>
+                                <div class="min-w-0">
+                                    <h4 class="text-xs font-bold text-blue-950">10-Second Attendance & ID Collection</h4>
+                                    <p class="text-2xs text-slate-600">10-second attendance + quick guest ID photo capture.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200 text-2xs text-emerald-900 font-medium flex items-center justify-between">
+                        <span>Zero checkout arguments. Every rupee recorded.</span>
+                        <span class="font-bold text-emerald-700">100% Tracked</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- INTERACTIVE SIMULATOR: LIVE GROUND-OPS EXECUTION LOOP -->
+            <div class="mt-6 bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-xs">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-100">
+                    <div>
+                        <span class="text-2xs font-bold uppercase tracking-wider text-blue-700">Interactive Execution Loop</span>
+                        <h3 class="text-base font-bold text-slate-900">Simulate Real Ground Operations: Daily Peace of Mind</h3>
+                    </div>
+                    <span class="text-2xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 w-fit">
+                        ● Live Interactive Engine
+                    </span>
+                </div>
+
+                <!-- Scenario Selector Tabs -->
+                <div class="flex flex-wrap gap-2 mb-5">
+                    <button type="button" class="sim-scenario-btn active px-3 py-2 rounded-lg text-xs font-bold bg-blue-600 text-white border border-blue-600 shadow-xs transition flex items-center gap-1.5" data-scenario="kds">
+                        <span>🍳</span>
+                        <span>Guest Orders Chai & Parathas</span>
+                    </button>
+                    <button type="button" class="sim-scenario-btn px-3 py-2 rounded-lg text-xs font-medium bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 transition flex items-center gap-1.5" data-scenario="cash">
+                        <span>💵</span>
+                        <span>Caretaker Takes ₹1,500 Cash for Gas</span>
+                    </button>
+                    <button type="button" class="sim-scenario-btn px-3 py-2 rounded-lg text-xs font-medium bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 transition flex items-center gap-1.5" data-scenario="cleaning">
+                        <span>🧹</span>
+                        <span>Cleaner Turns Over Villa 2</span>
+                    </button>
+                    <button type="button" class="sim-scenario-btn px-3 py-2 rounded-lg text-xs font-medium bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 transition flex items-center gap-1.5" data-scenario="idcheck">
+                        <span>🪪</span>
+                        <span>Guest Arrives at Gate (ID Check)</span>
+                    </button>
+                </div>
+
+                <!-- 3-Stage Pipeline Diagram -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Stage 1 -->
+                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between text-2xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                                <span>Stage 1: Ground Event</span>
+                                <span class="px-2 py-0.5 rounded bg-white text-slate-600 border border-slate-200 font-semibold" id="sim-s1-badge">Guest Request</span>
+                            </div>
+                            <h4 class="text-xs font-bold text-slate-900 mb-1" id="sim-s1-title">Room 3 Orders Breakfast</h4>
+                            <p class="text-xs text-slate-600 leading-relaxed" id="sim-s1-desc">Guest calls caretaker for chai and parathas.</p>
+                        </div>
+                        <div class="mt-3 pt-2.5 border-t border-slate-200 text-2xs text-red-700 font-medium" id="sim-s1-risk">
+                            ❌ Market Risk: Cook forgets slip. Bill missed.
+                        </div>
+                    </div>
+
+                    <!-- Stage 2 -->
+                    <div class="p-4 rounded-xl bg-blue-50/60 border-2 border-blue-600 shadow-xs flex flex-col justify-between relative ring-2 ring-blue-500/10">
+                        <div>
+                            <div class="flex items-center justify-between text-2xs font-bold uppercase tracking-wider text-blue-700 mb-2">
+                                <span>Stage 2: Staff Execution</span>
+                                <span class="px-2 py-0.5 rounded bg-blue-600 text-white font-bold" id="sim-s2-badge">Mobile Web Screen</span>
+                            </div>
+                            <h4 class="text-xs font-bold text-blue-950 mb-1" id="sim-s2-title">Cook Phone Chimes Live Ticket</h4>
+                            <p class="text-xs text-slate-700 leading-relaxed" id="sim-s2-desc">Cook taps Accept on phone. Zero paper.</p>
+                        </div>
+                        <div class="mt-3 pt-2.5 border-t border-blue-200 text-2xs text-blue-900 font-bold" id="sim-s2-tech">
+                            ⚡ Mobile browser screen: Zero apps to install.
+                        </div>
+                    </div>
+
+                    <!-- Stage 3 -->
+                    <div class="p-4 rounded-xl bg-emerald-50/60 border border-emerald-300 flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between text-2xs font-bold uppercase tracking-wider text-emerald-700 mb-2">
+                                <span>Stage 3: Verified Result</span>
+                                <span class="px-2 py-0.5 rounded bg-emerald-600 text-white font-bold" id="sim-s3-badge">Instant Room Folio</span>
+                            </div>
+                            <h4 class="text-xs font-bold text-emerald-950 mb-1" id="sim-s3-title">₹340 Auto-Billed to Room 3</h4>
+                            <p class="text-xs text-slate-700 leading-relaxed" id="sim-s3-desc">Bill updates instantly. 1-tap WhatsApp bill ready.</p>
+                        </div>
+                        <div class="mt-3 pt-2.5 border-t border-emerald-200 text-2xs text-emerald-900 font-bold" id="sim-s3-outcome">
+                            ✅ Result: 0 missed meals. 0 checkout arguments.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Workload Reality Donut Chart Card -->
+            <div class="mt-6 bg-white border border-slate-200 rounded-xl p-5 sm:p-6 shadow-xs">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-100">
+                    <div>
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Workload & Time Distribution</span>
+                        <h4 class="text-sm font-bold text-slate-900">Where an Operator's Daily Time Actually Goes (The 10% vs 90%)</h4>
+                    </div>
+                    <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                        Operational Burden Split
+                    </span>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                    <div class="lg:col-span-5 flex justify-center">
+                        <div id="chart-workload" class="w-full max-w-80 min-h-65"></div>
+                    </div>
+                    <div class="lg:col-span-7 space-y-2 text-xs text-slate-600">
+                        <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between">
+                            <span class="font-semibold text-slate-800 flex items-center gap-2">
+                                <span class="w-3 h-3 rounded-full bg-slate-400"></span>
+                                Pre-Booking Inquiries & OTAs (10%)
+                            </span>
+                            <span class="text-slate-500 font-medium">What most software sells</span>
+                        </div>
+                        <div class="p-2.5 rounded-lg bg-blue-50/50 border border-blue-200 flex items-center justify-between text-blue-950">
+                            <span class="font-bold flex items-center gap-2">
+                                <span class="w-3 h-3 rounded-full bg-blue-800"></span>
+                                Caretakers & Cleaners on Telegram (30%)
+                            </span>
+                            <span class="font-semibold text-blue-700">Turnaround photo proofs</span>
+                        </div>
+                        <div class="p-2.5 rounded-lg bg-blue-50/50 border border-blue-200 flex items-center justify-between text-blue-950">
+                            <span class="font-bold flex items-center gap-2">
+                                <span class="w-3 h-3 rounded-full bg-indigo-600"></span>
+                                Kitchen Orders & F&B Room Folios (25%)
+                            </span>
+                            <span class="font-semibold text-indigo-700">Cook confirmation tickets</span>
+                        </div>
+                        <div class="p-2.5 rounded-lg bg-blue-50/50 border border-blue-200 flex items-center justify-between text-blue-950">
+                            <span class="font-bold flex items-center gap-2">
+                                <span class="w-3 h-3 rounded-full bg-emerald-600"></span>
+                                Petty Cash Khata & Receipt Proofs (20%)
+                            </span>
+                            <span class="font-semibold text-emerald-700">Daily cash balancing</span>
+                        </div>
+                        <div class="p-2.5 rounded-lg bg-blue-50/50 border border-blue-200 flex items-center justify-between text-blue-950">
+                            <span class="font-bold flex items-center gap-2">
+                                <span class="w-3 h-3 rounded-full bg-amber-600"></span>
+                                Guest ID Collection & Staff Attendance (15%)
+                            </span>
+                            <span class="font-semibold text-amber-700">ID photo capture & 1-tap salaries</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: REVERSE-ENGINEERED COMPETITOR AUDIT -->
+        <section id="competitors" class="mb-12 scroll-mt-20">
+            <div class="flex items-center gap-2 text-xs font-bold text-blue-700 uppercase tracking-wider mb-2">
+                <span>Section 02</span>
+                <span>•</span>
+                <span>Market Audit</span>
+            </div>
+            <h2 class="text-xl sm:text-2xl font-bold text-slate-900 mb-4">
+                Detailed Competitor Pricing & Commercial Models
+            </h2>
+            <p class="text-xs text-slate-600 mb-6 max-w-3xl">
+                A granular breakdown of publicly advertised entry pricing versus the real monthly invoice for an operator managing 3 properties and 10 rooms (e.g., 7 rooms at Location A, 2 rooms at Location B, and 1 standalone farmhouse).
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                <!-- GroundCode Pro (Benchmark) -->
+                <div class="bg-white border-2 border-blue-600 rounded-2xl overflow-hidden shadow-sm flex flex-col justify-between ring-2 ring-blue-500/10">
+                    <div>
+                        <!-- Card Top Bar -->
+                        <div class="bg-blue-50/80 border-b border-blue-100 px-4 py-2.5 flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-2">
+                                <div class="w-6 h-6 rounded-md bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                                    G
+                                </div>
+                                <span class="text-xs font-bold uppercase tracking-wider text-blue-950 whitespace-nowrap">GroundCode Pro</span>
+                            </div>
+                            <span class="text-2xs font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-600 text-white shadow-2xs whitespace-nowrap">
+                                Benchmark
+                            </span>
+                        </div>
+
+                        <div class="p-4 sm:p-5">
+                            <div class="inline-flex items-center gap-1.5 text-2xs font-semibold text-blue-800 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 mb-3 w-full">
+                                <span class="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                                <span>Flat Key-Based Model (₹0 Property Fee)</span>
+                            </div>
+
+                            <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2">Pricing Architecture</h4>
+                            <ul class="text-xs text-slate-600 space-y-1.5 mb-4">
+                                <li class="flex items-start gap-1.5">
+                                    <span class="text-blue-600 font-bold">✓</span>
+                                    <span><strong>₹1,499 base / mo</strong> (Includes 1st key)</span>
+                                </li>
+                                <li class="flex items-start gap-1.5">
+                                    <span class="text-blue-600 font-bold">✓</span>
+                                    <span><strong>₹200 / extra key / mo</strong></span>
+                                </li>
+                                <li class="flex items-start gap-1.5">
+                                    <span class="text-blue-600 font-bold">✓</span>
+                                    <span><strong>₹0 property surcharge</strong> (Keys only)</span>
+                                </li>
+                                <li class="flex items-start gap-1.5">
+                                    <span class="text-blue-600 font-bold">✓</span>
+                                    <span><strong>Channex 2-way OTA pipe</strong> included</span>
+                                </li>
+                            </ul>
+
+                            <div class="p-3 bg-blue-50/70 border border-blue-200 rounded-lg mb-4 text-xs">
+                                <div class="text-2xs text-blue-900 font-medium">Effective Cost (3 Props, 10 Keys):</div>
+                                <div class="text-base font-extrabold text-blue-900 mt-0.5">₹3,299 / month</div>
+                                <div class="text-emerald-700 font-bold mt-1 flex items-center gap-1 text-2xs">
+                                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                    <span>Strictly 100% Month-to-Month</span>
+                                </div>
+                            </div>
+
+                            <h5 class="text-xs font-bold text-slate-800 mb-1.5">Operational Advantage:</h5>
+                            <ul class="text-xs text-slate-600 space-y-1">
+                                <li>• Staff uses Telegram with zero new apps.</li>
+                                <li>• Fast guest ID and document capture.</li>
+                                <li>• Cash Khata balances every single rupee.</li>
+                                <li>• Share instant bills directly on WhatsApp.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Doorloom -->
+                <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs flex flex-col justify-between">
+                    <div>
+                        <!-- Card Top Bar -->
+                        <div class="bg-slate-50 border-b border-slate-100 px-4 py-2.5 flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-2">
+                                <div class="w-6 h-6 rounded-md bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-xs shrink-0 border border-orange-200">
+                                    D
+                                </div>
+                                <span class="text-xs font-bold uppercase tracking-wider text-slate-900 whitespace-nowrap">Doorloom</span>
+                            </div>
+                            <span class="text-2xs font-semibold px-2 py-0.5 rounded bg-white text-slate-500 border border-slate-200 whitespace-nowrap">
+                                Competitor
+                            </span>
+                        </div>
+
+                        <div class="p-4 sm:p-5">
+                            <div class="inline-flex items-center gap-1.5 text-2xs font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 mb-3 w-full">
+                                <span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+                                <span>Modular Add-on Model</span>
+                            </div>
+
+                            <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2">Pricing Architecture</h4>
+                            <ul class="text-xs text-slate-600 space-y-1 mb-4">
+                                <li>• Base Account Fee: ₹300/mo</li>
+                                <li>• Property Surcharge: ₹300/prop/mo</li>
+                                <li>• Extra Unit Fee: ₹100/extra unit/mo</li>
+                                <li>• Channel Manager: ₹100/room/mo</li>
+                            </ul>
+
+                            <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg mb-4 text-xs">
+                                <div class="text-2xs text-slate-500">Effective Cost (3 Props, 10 Keys):</div>
+                                <div class="text-base font-bold text-slate-900 mt-0.5">₹2,900 / month</div>
+                                <div class="text-amber-700 font-semibold mt-1 text-2xs">⚠️ Strict 3-Mo Lock-in (₹8,700 upfront)</div>
+                            </div>
+
+                            <h5 class="text-xs font-bold text-slate-800 mb-1.5">Floor Reality Gaps:</h5>
+                            <ul class="text-xs text-slate-500 space-y-1">
+                                <li>• No staff Telegram bot for cleaners.</li>
+                                <li>• No live kitchen order screen.</li>
+                                <li>• No cash Khata for grocery runs.</li>
+                                <li>• Basic calendar only; zero ground operations.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- StayBind -->
+                <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs flex flex-col justify-between">
+                    <div>
+                        <!-- Card Top Bar -->
+                        <div class="bg-slate-50 border-b border-slate-100 px-4 py-2.5 flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-2">
+                                <div class="w-6 h-6 rounded-md bg-purple-100 text-purple-600 flex items-center justify-center font-bold text-xs shrink-0 border border-purple-200">
+                                    S
+                                </div>
+                                <span class="text-xs font-bold uppercase tracking-wider text-slate-900 whitespace-nowrap">StayBind</span>
+                            </div>
+                            <span class="text-2xs font-semibold px-2 py-0.5 rounded bg-white text-slate-500 border border-slate-200 whitespace-nowrap">
+                                Competitor
+                            </span>
+                        </div>
+
+                        <div class="p-4 sm:p-5">
+                            <div class="inline-flex items-center gap-1.5 text-2xs font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 mb-3 w-full">
+                                <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                                <span>Location Base Penalty Model</span>
+                            </div>
+
+                            <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2">Pricing Architecture</h4>
+                            <ul class="text-xs text-slate-600 space-y-1 mb-4">
+                                <li>• Starter: ₹999/prop (≤2 props)</li>
+                                <li>• Growth: ₹1,999/prop (≥3 props)</li>
+                                <li>• WhatsApp Module: ₹499/prop add-on</li>
+                                <li>• Extra Units: ₹199/unit add-on</li>
+                            </ul>
+
+                            <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg mb-4 text-xs">
+                                <div class="text-2xs text-slate-500">Effective Cost (3 Props, 10 Keys):</div>
+                                <div class="text-base font-bold text-slate-900 mt-0.5">₹9,782 / month</div>
+                                <div class="text-red-700 font-semibold mt-1 text-2xs">⚠️ Includes 18% Mandatory GST (+₹1,492/mo)</div>
+                            </div>
+
+                            <h5 class="text-xs font-bold text-slate-800 mb-1.5">Floor Reality Gaps:</h5>
+                            <ul class="text-xs text-slate-500 space-y-1">
+                                <li>• Penalizes multi-property hosts heavily.</li>
+                                <li>• Base fee multiplies per physical gate.</li>
+                                <li>• No live kitchen order screen.</li>
+                                <li>• No staff Telegram bot for cleaners.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MyHomestay.ai -->
+                <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs flex flex-col justify-between">
+                    <div>
+                        <!-- Card Top Bar -->
+                        <div class="bg-slate-50 border-b border-slate-100 px-4 py-2.5 flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-2">
+                                <div class="w-6 h-6 rounded-md bg-teal-100 text-teal-600 flex items-center justify-center font-bold text-xs shrink-0 border border-teal-200">
+                                    M
+                                </div>
+                                <span class="text-xs font-bold uppercase tracking-wider text-slate-900 whitespace-nowrap">MyHomestay.ai</span>
+                            </div>
+                            <span class="text-2xs font-semibold px-2 py-0.5 rounded bg-white text-slate-500 border border-slate-200 whitespace-nowrap">
+                                Competitor
+                            </span>
+                        </div>
+
+                        <div class="p-4 sm:p-5">
+                            <div class="inline-flex items-center gap-1.5 text-2xs font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 mb-3 w-full">
+                                <span class="w-1.5 h-1.5 rounded-full bg-teal-500"></span>
+                                <span>Annual Sales Lock-in Model</span>
+                            </div>
+
+                            <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2">Pricing Architecture</h4>
+                            <ul class="text-xs text-slate-600 space-y-1 mb-4">
+                                <li>• Minimum Contract: Annual lock-in</li>
+                                <li>• Quoted: ₹26,000 – ₹35,000/yr</li>
+                                <li>• Sign-up: Closed (Waitlist only)</li>
+                                <li>• Channel Manager: "Coming Soon"</li>
+                            </ul>
+
+                            <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg mb-4 text-xs">
+                                <div class="text-2xs text-slate-500">Effective Cost (3 Props, 10 Keys):</div>
+                                <div class="text-base font-bold text-slate-900 mt-0.5">~₹2,800 / month</div>
+                                <div class="text-slate-600 font-medium mt-1 text-2xs">*Billed annually as ~₹33,600 contract</div>
+                            </div>
+
+                            <h5 class="text-xs font-bold text-slate-800 mb-1.5">Floor Reality Gaps:</h5>
+                            <ul class="text-xs text-slate-500 space-y-1">
+                                <li>• WhatsApp inquiry responder only.</li>
+                                <li>• Heavy annual upfront lock-in required.</li>
+                                <li>• No 2-way OTA channel connection.</li>
+                                <li>• Solves zero daily ground operations.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 3: INTERACTIVE PORTFOLIO FINANCIAL SIMULATOR -->
+        <section id="simulation" class="mb-12 scroll-mt-20">
+            <div class="flex items-center gap-2 text-xs font-bold text-blue-700 uppercase tracking-wider mb-2">
+                <span>Section 03</span>
+                <span>•</span>
+                <span>Financial Simulation</span>
+            </div>
+            <h2 class="text-xl sm:text-2xl font-bold text-slate-900 mb-4">
+                Interactive Portfolio Cost & Invoice Simulator
+            </h2>
+            <div class="text-xs text-slate-600 mb-6 max-w-3xl space-y-1">
+                <p>Model your software cost across rooms and locations.</p>
+                <p>Zero annual lock-in. Strictly month-to-month.</p>
+            </div>
+
+            <!-- Simulator Card -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-xs">
+                <!-- Quick Preset Selector (Without 'Load Preset Profile:' text) -->
+                <div class="flex flex-wrap items-center gap-2 mb-6 pb-5 border-b border-slate-100">
+                    <button id="preset-user" type="button" class="preset-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600 text-white border border-blue-600 shadow-xs transition whitespace-nowrap">
+                        Portfolio Case: 3 Props, 10 Keys (User Setup)
+                    </button>
+                    <button id="preset-single" type="button" class="preset-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 transition whitespace-nowrap">
+                        Single Boutique: 1 Prop, 4 Keys
+                    </button>
+                    <button id="preset-estate" type="button" class="preset-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 transition whitespace-nowrap">
+                        Estate & Cottages: 2 Props, 8 Keys
+                    </button>
+                    <button id="preset-cluster" type="button" class="preset-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 transition whitespace-nowrap">
+                        Resort Cluster: 4 Props, 18 Keys
+                    </button>
+                </div>
+
+                <!-- Sliders -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <label for="property-slider" class="text-xs font-bold text-slate-700 uppercase tracking-wide">
+                                Physical Properties / Locations
+                            </label>
+                            <span class="text-xs font-bold text-blue-800 bg-blue-100 px-2 py-0.5 rounded border border-blue-200 tabular-nums">
+                                <span id="property-display">3</span> properties
+                            </span>
+                        </div>
+                        <input id="property-slider" type="range" min="1" max="10" value="3" step="1" aria-label="Properties">
+                        <div class="flex justify-between text-xs text-slate-400 mt-1 font-medium">
+                            <span>1 Location</span>
+                            <span>5 Locations</span>
+                            <span>10 Locations</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <label for="key-slider" class="text-xs font-bold text-slate-700 uppercase tracking-wide">
+                                Total Inventory (Keys / Rooms)
+                            </label>
+                            <span class="text-xs font-bold text-blue-800 bg-blue-100 px-2 py-0.5 rounded border border-blue-200 tabular-nums">
+                                <span id="key-display">10</span> rooms
+                            </span>
+                        </div>
+                        <input id="key-slider" type="range" min="1" max="40" value="10" step="1" aria-label="Keys">
+                        <div class="flex justify-between text-xs text-slate-400 mt-1 font-medium">
+                            <span>1 Room</span>
+                            <span>20 Rooms</span>
+                            <span>40 Rooms</span>
+                        </div>
+                    </div>
+                <!-- Live Dynamic Cost Comparison Chart -->
+                <div class="mb-6 p-4 sm:p-5 bg-slate-50 border border-slate-200 rounded-xl">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                        <div>
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Interactive Simulation Chart</span>
+                            <h4 class="text-sm font-bold text-slate-900">Monthly Invoiced SaaS Cost Comparison</h4>
+                        </div>
+                        <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200 w-fit">
+                            Updates dynamically on slider input
+                        </span>
+                    </div>
+                    <div id="chart-cost-comparison" class="w-full min-h-70"></div>
+                </div>
+
+                <!-- Results Output Table -->
+                <div class="border border-slate-200 rounded-xl overflow-hidden mb-6">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="bg-slate-100/80 border-b border-slate-200 text-slate-700 font-bold">
+                                <th class="p-3">Platform</th>
+                                <th class="p-3">Monthly Cost</th>
+                                <th class="p-3">Upfront Cash Outlay</th>
+                                <th class="p-3">Contract Commitment</th>
+                                <th class="p-3">Ground Operations Included</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200">
+                            <!-- GroundCode -->
+                            <tr class="bg-blue-50/40 font-semibold">
+                                <td class="p-3 text-blue-900 font-bold flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-blue-600"></span>
+                                    GroundCode Pro
+                                </td>
+                                <td class="p-3 text-blue-900 font-extrabold text-sm tabular-nums">
+                                    ₹<span id="res-gc-price">3,299</span> / mo
+                                </td>
+                                <td class="p-3 text-emerald-800 tabular-nums font-semibold" id="res-gc-outlay">
+                                    ₹3,299 (Billed monthly)
+                                </td>
+                                <td class="p-3 text-emerald-800 font-semibold">
+                                    Strictly 100% Month-to-Month
+                                </td>
+                                <td class="p-3 text-blue-900">
+                                    ✓ Telegram Bot, Kitchen KDS, Cash Khata, Guest ID Collection
+                                </td>
+                            </tr>
+                            <!-- Doorloom -->
+                            <tr>
+                                <td class="p-3 font-semibold text-slate-800">Doorloom</td>
+                                <td class="p-3 text-slate-900 font-bold tabular-nums">
+                                    ₹<span id="res-dl-price">2,900</span> / mo
+                                </td>
+                                <td class="p-3 text-amber-800 font-medium tabular-nums" id="res-dl-outlay">
+                                    ₹8,700 (Strict 3-Mo Quarterly Lock-in)
+                                </td>
+                                <td class="p-3 text-amber-800">
+                                    Quarterly Billing Only
+                                </td>
+                                <td class="p-3 text-slate-400">
+                                    ✗ None (Calendar only)
+                                </td>
+                            </tr>
+                            <!-- StayBind -->
+                            <tr>
+                                <td class="p-3 font-semibold text-slate-800">StayBind</td>
+                                <td class="p-3 text-slate-900 font-bold tabular-nums">
+                                    ₹<span id="res-sb-price">9,782</span> / mo
+                                </td>
+                                <td class="p-3 text-red-800 font-medium tabular-nums" id="res-sb-outlay">
+                                    ₹9,782 (Includes 18% Mandatory GST)
+                                </td>
+                                <td class="p-3 text-slate-600">
+                                    Monthly or Annual
+                                </td>
+                                <td class="p-3 text-slate-400">
+                                    ✗ None (WhatsApp bot only)
+                                </td>
+                            </tr>
+                            <!-- MyHomestay.ai -->
+                            <tr>
+                                <td class="p-3 font-semibold text-slate-800">MyHomestay.ai</td>
+                                <td class="p-3 text-slate-900 font-bold tabular-nums">
+                                    ~₹<span id="res-mh-price">2,800</span> / mo
+                                </td>
+                                <td class="p-3 text-slate-700 font-medium tabular-nums" id="res-mh-outlay">
+                                    ~₹33,600 (Annual contract only)
+                                </td>
+                                <td class="p-3 text-slate-600">
+                                    Annual Contract
+                                </td>
+                                <td class="p-3 text-slate-400">
+                                    ✗ None (AI pre-booking chat only)
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Simulation Insight Box -->
+                <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
+                    <strong class="text-slate-900 block mb-1.5">Our Pricing Philosophy: We Care About Keys, Not Locations</strong>
+                    <div class="space-y-1">
+                        <p>Split 10 rooms across 3 different locations?</p>
+                        <p>GroundCode charges strictly for the 10 keys.</p>
+                        <p class="text-slate-900 font-bold">₹1,499 base + 9 × ₹200 = ₹3,299/month.</p>
+                        <p class="text-slate-500">Other software multiplies base fees per gate.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 4: FEATURE ARCHITECTURE MATRIX -->
+        <section id="matrix" class="mb-12 scroll-mt-20">
+            <div class="flex items-center gap-2 text-xs font-bold text-blue-700 uppercase tracking-wider mb-2">
+                <span>Section 04</span>
+                <span>•</span>
+                <span>Technical Specifications</span>
+            </div>
+            <h2 class="text-xl sm:text-2xl font-bold text-slate-900 mb-4">
+                Platform Architecture & Capability Matrix
+            </h2>
+
+            <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="bg-slate-100 border-b border-slate-200 text-slate-800 font-bold">
+                                <th class="p-3.5 min-w-55">Capability / Architecture</th>
+                                <th class="p-3.5 bg-blue-50/80 text-blue-900 min-w-40">GroundCode Pro</th>
+                                <th class="p-3.5 min-w-35">Doorloom</th>
+                                <th class="p-3.5 min-w-35">StayBind</th>
+                                <th class="p-3.5 min-w-35">MyHomestay.ai</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200">
+                            <!-- Multi-Tenancy -->
+                            <tr>
+                                <td class="p-3.5 font-semibold text-slate-900">
+                                    Multi-Property Single Login
+                                    <span class="block text-slate-500 font-normal">Switch between locations without multiple logins</span>
+                                </td>
+                                <td class="p-3.5 bg-blue-50/40 text-emerald-800 font-bold">✓ Native Master Switcher</td>
+                                <td class="p-3.5 text-slate-600">✓ Supported (+₹300/prop fee)</td>
+                                <td class="p-3.5 text-amber-800">⚠️ Forces ₹1,999/prop Growth Tier</td>
+                                <td class="p-3.5 text-slate-600">✓ Custom Quote</td>
+                            </tr>
+                            <!-- 2-Way OTA Pipe -->
+                            <tr>
+                                <td class="p-3.5 font-semibold text-slate-900">
+                                    Certified 2-Way OTA Channel Manager
+                                    <span class="block text-slate-500 font-normal">Airbnb, Booking.com, Agoda, MakeMyTrip API</span>
+                                </td>
+                                <td class="p-3.5 bg-blue-50/40 text-emerald-800 font-bold">✓ Official Channex Pipe (Included)</td>
+                                <td class="p-3.5 text-slate-600">✓ Supported (+₹100/room add-on)</td>
+                                <td class="p-3.5 text-slate-600">✓ Supported in Growth Plan</td>
+                                <td class="p-3.5 text-red-600 font-bold">✗ NOT LIVE ("Coming Soon")</td>
+                            </tr>
+                            <!-- Staff Telegram -->
+                            <tr>
+                                <td class="p-3.5 font-semibold text-slate-900">
+                                    Staff Telegram Execution Bot
+                                    <span class="block text-slate-500 font-normal">Zero app onboarding for caretakers and housekeepers</span>
+                                </td>
+                                <td class="p-3.5 bg-blue-50/40 text-emerald-800 font-bold">✓ Native 1-Tap Telegram Bot</td>
+                                <td class="p-3.5 text-slate-400">✗ No Telegram Integration</td>
+                                <td class="p-3.5 text-slate-400">✗ No Telegram Integration</td>
+                                <td class="p-3.5 text-slate-400">✗ No Telegram Integration</td>
+                            </tr>
+                            <!-- Kitchen KDS -->
+                            <tr>
+                                <td class="p-3.5 font-semibold text-slate-900">
+                                    Kitchen KDS & Meal Tracking
+                                    <span class="block text-slate-500 font-normal">Live mobile screen for cook + auto room-folio billing</span>
+                                </td>
+                                <td class="p-3.5 bg-blue-50/40 text-emerald-800 font-bold">✓ Native Kitchen Order Screen</td>
+                                <td class="p-3.5 text-slate-400">✗ Not Supported</td>
+                                <td class="p-3.5 text-slate-400">✗ Not Supported</td>
+                                <td class="p-3.5 text-slate-400">✗ Not Supported</td>
+                            </tr>
+                            <!-- Petty Cash -->
+                            <tr>
+                                <td class="p-3.5 font-semibold text-slate-900">
+                                    Petty Cash Drawer & Receipt Khata
+                                    <span class="block text-slate-500 font-normal">Staff grocery expense logging with receipt photos</span>
+                                </td>
+                                <td class="p-3.5 bg-blue-50/40 text-emerald-800 font-bold">✓ Daily Shift Cash Balancing</td>
+                                <td class="p-3.5 text-slate-400">✗ Not Supported</td>
+                                <td class="p-3.5 text-slate-400">✗ Not Supported</td>
+                                <td class="p-3.5 text-slate-400">✗ Not Supported</td>
+                            </tr>
+                            <!-- Attendance & Salary -->
+                            <tr>
+                                <td class="p-3.5 font-semibold text-slate-900">
+                                    Staff Attendance & 1-Tap Salaries
+                                    <span class="block text-slate-500 font-normal">10-second check-in with advance tracking</span>
+                                </td>
+                                <td class="p-3.5 bg-blue-50/40 text-emerald-800 font-bold">✓ Integrated Salary Calculation</td>
+                                <td class="p-3.5 text-slate-400">✗ Not Supported</td>
+                                <td class="p-3.5 text-slate-400">✗ Not Supported</td>
+                                <td class="p-3.5 text-slate-400">✗ Not Supported</td>
+                            </tr>
+                            <!-- Guest ID Collection -->
+                            <tr>
+                                <td class="p-3.5 font-semibold text-slate-900">
+                                    Guest ID Collection & Document Storage
+                                    <span class="block text-slate-500 font-normal">Digital Aadhaar/Passport photo capture without physical photocopies</span>
+                                </td>
+                                <td class="p-3.5 bg-blue-50/40 text-emerald-800 font-bold">✓ Instant Digital ID Capture & Storage</td>
+                                <td class="p-3.5 text-slate-500">⚠️ Manual photo upload</td>
+                                <td class="p-3.5 text-slate-500">⚠️ Basic attachment</td>
+                                <td class="p-3.5 text-slate-500">⚠️ Guest WhatsApp upload</td>
+                            </tr>
+                            <!-- Commercial Lock-in -->
+                            <tr>
+                                <td class="p-3.5 font-semibold text-slate-900">
+                                    Commercial Terms
+                                    <span class="block text-slate-500 font-normal">Contractual billing commitment</span>
+                                </td>
+                                <td class="p-3.5 bg-blue-50/40 text-emerald-800 font-bold">Strictly Month-to-Month</td>
+                                <td class="p-3.5 text-amber-800 font-semibold">Strict Quarterly Upfront</td>
+                                <td class="p-3.5 text-slate-700">Monthly or Annual</td>
+                                <td class="p-3.5 text-amber-800 font-semibold">Strict Annual Contract</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Architectural Reality & Testing Readiness Callout -->
+            <div class="mt-6 p-5 sm:p-6 rounded-2xl bg-blue-50/60 border border-blue-200 shadow-xs">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-blue-200/70 mb-4">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-bold text-blue-950">Architectural Reality: Nearly Everything a Hotel PMS Needs</h4>
+                            <p class="text-2xs text-blue-800 font-medium">Ready to be tested for a wider audience — starting with smaller properties first</p>
+                        </div>
+                    </div>
+                    <span class="text-2xs font-bold px-3 py-1 rounded-full bg-white text-blue-900 border border-blue-300 w-fit shrink-0">
+                        Full Hotel-Grade Subsystems
+                    </span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs text-slate-700 leading-relaxed">
+                    <div class="space-y-2">
+                        <p>
+                            GroundCode is not a superficial booking calendar. Under the hood, <strong>we actually have nearly everything a complete property management system should have, even for a hotel</strong>:
+                        </p>
+                        <ul class="space-y-1.5 text-slate-600">
+                            <li class="flex items-start gap-1.5">
+                                <span class="text-blue-600 font-bold">•</span>
+                                <span>Multi-room reservation rack & live housekeeping states</span>
+                            </li>
+                            <li class="flex items-start gap-1.5">
+                                <span class="text-blue-600 font-bold">•</span>
+                                <span>Split guest folios, kitchen KDS & automated meal billing</span>
+                            </li>
+                            <li class="flex items-start gap-1.5">
+                                <span class="text-blue-600 font-bold">•</span>
+                                <span>Shift petty cash balancing with photo receipts & staff khata</span>
+                            </li>
+                            <li class="flex items-start gap-1.5">
+                                <span class="text-blue-600 font-bold">•</span>
+                                <span>Staff daily attendance, advance tracking & automated payroll</span>
+                            </li>
+                            <li class="flex items-start gap-1.5">
+                                <span class="text-blue-600 font-bold">•</span>
+                                <span>2-way OTA channel sync (Channex), WhatsApp vouchers & digital guest ID capture</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="space-y-2">
+                        <p>
+                            <strong>Ready to Be Tested for a Much Wider Audience:</strong> In other words, the core product architecture is functionally ready to be tested and deployed for much larger hospitality operations, including boutique hotels.
+                        </p>
+                        <p>
+                            <strong>Why We Are Starting With Smaller Properties:</strong> Of course, it has <em>not yet been tested at large enterprise scale</em>.
+                        </p>
+                        <div class="p-3.5 bg-white rounded-xl border border-blue-200 text-blue-950 font-medium">
+                            Starting exclusively with smaller properties (homestays, private estates, and boutique resorts under 25 keys) is our intentional strategy. It ensures we directly supervise every live workflow, catch subtle ground edge cases, and guarantee 100% operational reliability before expanding outwards.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 5: GROUNDCODE UNIT ECONOMICS & BREAKEVEN (INVESTOR GRADE) -->
+        <section id="unit-economics" class="mb-12 scroll-mt-20">
+            <div class="flex items-center gap-2 text-xs font-bold text-blue-700 uppercase tracking-wider mb-2">
+                <span>Section 05</span>
+                <span>•</span>
+                <span>Financial Sustainability</span>
+            </div>
+            <h2 class="text-xl sm:text-2xl font-bold text-slate-900 mb-4">
+                GroundCode Unit Economics & Breakeven Modeling
+            </h2>
+            <p class="text-xs text-slate-600 mb-6 max-w-3xl">
+                Unlike venture-subsidized tools offering unsustainably cheap teaser rates before shutting down or hiking prices, GroundCode operates on rock-solid unit economics that fully fund engineering, infrastructure, and human support.
+            </p>
+
+            <!-- Burn Table -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <!-- Fixed Monthly Operational Burn -->
+                <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
+                    <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
+                        Fixed Monthly Operational Burn (India Cost Base)
+                    </h3>
+                    <div class="space-y-3 text-xs">
+                        <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+                            <span class="text-slate-700 font-semibold">1 Full-Time Dedicated Senior Engineer</span>
+                            <span class="font-bold text-slate-900 tabular-nums">₹70,000 / mo</span>
+                        </div>
+                        <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+                            <span class="text-slate-700 font-semibold">On-Call Support & Onboarding Specialist</span>
+                            <span class="font-bold text-slate-900 tabular-nums">₹20,000 / mo</span>
+                        </div>
+                        <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+                            <span class="text-slate-700 font-semibold">NVMe VPS Servers & Automated Daily Backups</span>
+                            <span class="font-bold text-slate-900 tabular-nums">₹6,000 / mo</span>
+                        </div>
+                        <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+                            <span class="text-slate-700 font-semibold">WhatsApp Cloud API & Verification</span>
+                            <span class="font-bold text-slate-900 tabular-nums">₹1,500 / mo</span>
+                        </div>
+                        <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+                            <span class="text-slate-700 font-semibold">Telegram Bot API (Official Infrastructure)</span>
+                            <span class="font-bold text-emerald-700 tabular-nums">₹0 (Free Protocol)</span>
+                        </div>
+                        <div class="flex justify-between items-center pt-2 text-sm font-extrabold text-blue-900">
+                            <span>Total Fixed Monthly Burn:</span>
+                            <span class="tabular-nums">₹97,500 / mo</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Variable Economics & Margins -->
+                <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
+                    <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
+                        Variable Costs & Gross Margins
+                    </h3>
+                    <div class="space-y-3 text-xs">
+                        <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+                            <span class="text-slate-700 font-semibold">Channex 2-Way OTA Pipe Fee</span>
+                            <span class="font-bold text-slate-900 tabular-nums">~$1.20 / room / mo (~₹100)</span>
+                        </div>
+                        <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+                            <span class="text-slate-700 font-semibold">GroundCode Flat Pricing Model</span>
+                            <span class="font-bold text-slate-900 tabular-nums">₹1,499 base (1st key) + ₹200 / extra key</span>
+                        </div>
+                        <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+                            <span class="text-slate-700 font-semibold">Net Contribution Margin per Extra Key</span>
+                            <span class="font-bold text-emerald-700 tabular-nums">100% Markup over Channex (₹100 net profit / key)</span>
+                        </div>
+                        <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+                            <span class="text-slate-700 font-semibold">Average Revenue Per User (ARPU)</span>
+                            <span class="font-bold text-slate-900 tabular-nums">₹2,800 – ₹3,400 / mo</span>
+                        </div>
+                        <div class="flex justify-between items-center pt-2 text-sm font-extrabold text-emerald-800">
+                            <span>Breakeven Threshold:</span>
+                            <span class="tabular-nums">35–40 Properties</span>
+                        </div>
+                    </div>
+                </div>
+            <!-- Breakeven & Cash Flow Trajectory Chart -->
+            <div class="mb-8 bg-white border border-slate-200 rounded-xl p-5 sm:p-6 shadow-xs">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-100">
+                    <div>
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Capital-Efficiency Model</span>
+                        <h4 class="text-sm font-bold text-slate-900">GroundCode Revenue, Operating Burn & Cash Flow Trajectory</h4>
+                    </div>
+                    <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300 w-fit">
+                        Breakeven Crossover at ~35 Properties
+                    </span>
+                </div>
+                <div id="chart-breakeven" class="w-full min-h-75"></div>
+                <div class="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500 flex flex-wrap item            <!-- Path to Profitability Callout -->
+            <div class="bg-slate-900 text-white rounded-xl p-6 sm:p-8">
+                <div class="max-w-3xl">
+                    <h3 class="text-base font-bold mb-2">Sustainable SaaS Economics</h3>
+                    <div class="text-xs text-slate-300 space-y-1 mb-4">
+                        <p>Low fixed monthly overhead of ~₹97,500.</p>
+                        <p><strong>Breakeven with just 35 active boutique properties.</strong></p>
+                        <p>At 100 properties: ~₹3,10,000 monthly revenue.</p>
+                        <p>High cash flow margin with zero debt.</p>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-800 text-xs">
+                        <div>
+                            <span class="text-slate-400 block">Current Stage:</span>
+                            <span class="font-bold text-white">Live Production Deployment</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block">Customer Retention:</span>
+                            <span class="font-bold text-emerald-400">High (Daily Staff Habit)</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block">Host Onboarding:</span>
+                            <span class="font-bold text-white">Zero Lock-in Freedom</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 6: HONEST PRODUCT LIMITATIONS & TRADE-OFFS -->
+        <section id="limitations" class="mb-12 scroll-mt-20">
+            <div class="flex items-center gap-2 text-xs font-bold text-red-600 uppercase tracking-wider mb-2">
+                <span>Section 06</span>
+                <span>•</span>
+                <span>Product Boundaries & Deliberate Trade-Offs</span>
+            </div>
+            <h2 class="text-xl sm:text-2xl font-bold text-slate-900 mb-4">
+                Honest Boundaries: Where GroundCode Deliberately Stops
+            </h2>
+            <div class="text-xs text-slate-600 mb-6 max-w-3xl space-y-1">
+                <p>We keep GroundCode exceptionally lightweight and reliable.</p>
+                <p>We reject complex enterprise features that cause confusion.</p>
+                <p>Here is an honest breakdown of our boundaries.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
+                <!-- 1. Full PMS Scope (Starting With Smaller Properties) -->
+                <div class="bg-white border border-blue-200 rounded-xl p-5 shadow-xs flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center gap-2 text-blue-800 text-xs font-bold uppercase mb-2">
+                            <svg class="w-4 h-4 shrink-0 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                            <span>1. Full Hotel PMS Scope (Starting Small)</span>
+                        </div>
+                        <div class="text-xs text-slate-600 space-y-1">
+                            <p>We built nearly everything a hotel PMS needs.</p>
+                            <p>Timeline racks, kitchen screens, folios, cash Khata.</p>
+                            <p>Ready to be tested for wider properties.</p>
+                            <p class="pt-1.5 text-slate-800 font-semibold">Not yet tested for big hotels.</p>
+                            <p>We deliberately start on smaller homestays first.</p>
+                            <p>Validating daily ground stability on the floor.</p>
+                        </div>
+                    </div>
+                    <div class="mt-3 text-2xs text-blue-900 font-semibold pt-2 border-t border-blue-100 flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                        <span>Full PMS engine — starting small for perfection.</span>
+                    </div>
+                </div>
+
+                <!-- 2. No Conversational AI Guest Chatbot -->
+                <div class="bg-white border border-red-200 rounded-xl p-5 shadow-xs flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center gap-2 text-red-700 text-xs font-bold uppercase mb-2">
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                            <span>2. Zero "AI Chatbots" on WhatsApp</span>
+                        </div>
+                        <div class="text-xs text-slate-600 space-y-1">
+                            <p>No AI chatbots bargaining discounts with guests.</p>
+                            <p>WhatsApp is strictly for guest vouchers and bills.</p>
+                            <p>Nobody checks emails these days.</p>
+                            <p>Direct WhatsApp quotes convert repeat guests fast.</p>
+                        </div>
+                    </div>
+                    <div class="mt-3 text-2xs text-red-800 font-semibold pt-2 border-t border-red-100">
+                        ❌ Want chatbots bargaining discounts? Not for you.
+                    </div>
+                </div>
+
+                <!-- 3. No Dynamic Yield Revenue Engine -->
+                <div class="bg-white border border-red-200 rounded-xl p-5 shadow-xs flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center gap-2 text-red-700 text-xs font-bold uppercase mb-2">
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                            <span>3. No Algorithmic Surge Pricing</span>
+                        </div>
+                        <div class="text-xs text-slate-600 space-y-1">
+                            <p>Supports static price markups on OTAs.</p>
+                            <p>Save 15–25% OTA fees on direct bookings.</p>
+                            <p>No unpredictable surge pricing algorithms.</p>
+                            <p>You control your seasonal room tariffs directly.</p>
+                        </div>
+                    </div>
+                    <div class="mt-3 text-2xs text-slate-700 font-semibold pt-2 border-t border-slate-100">
+                        ✓ Simple seasonal rate cards you control.
+                    </div>
+                </div>
+
+                <!-- 4. Zero Native Mobile Apps (Could be a drawback) -->
+                <div class="bg-white border border-amber-200 rounded-xl p-5 shadow-xs flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center gap-2 text-amber-700 text-xs font-bold uppercase mb-2">
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                            <span>4. No Native Apps (Could Be a Drawback)</span>
+                        </div>
+                        <div class="text-xs text-slate-600 space-y-1">
+                            <p>Zero apps to install from any store.</p>
+                            <p>Runs smoothly in mobile browser.</p>
+                            <p>Staff uses Telegram with zero new apps.</p>
+                            <p class="pt-1.5 text-amber-800 font-medium">Could be a drawback—we are not sure.</p>
+                            <p>Some hosts specifically expect an app store icon.</p>
+                        </div>
+                    </div>
+                    <div class="mt-3 text-2xs text-amber-800 font-semibold pt-2 border-t border-amber-100">
+                        ⚠️ Need App Store binaries? We don't have that.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ground Operations Omnichannel Architecture Note -->
+            <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div class="flex items-center gap-2 font-bold text-slate-900">
+                    <svg class="w-4 h-4 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                    <span>Staff Execution Options:</span>
+                </div>
+                <div class="text-slate-600 space-y-0.5">
+                    <p>Cleaners and guards use 1-tap Telegram prompts.</p>
+                    <p>Cooks and supervisors use mobile web screens.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 7: STRATEGIC POSITIONING & CONCLUSION -->
+        <section class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-10 mb-12 shadow-xs">
+            <div class="flex items-center gap-2 text-xs font-bold text-blue-700 uppercase tracking-wider mb-2">
+                <span>Section 07</span>
+                <span>•</span>
+                <span>Our Strategic Strength</span>
+            </div>
+            <h3 class="text-lg font-bold text-slate-900 mb-3">Why Zero Annual Lock-in is Our Core Moat</h3>
+            <div class="text-xs text-slate-600 space-y-1 mb-5">
+                <p>Other software locks hosts into annual contracts.</p>
+                <p>GroundCode offers complete month-to-month freedom.</p>
+                <p>Effortless daily operations earn trust every day.</p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs text-slate-700 mb-6">
+                <div class="p-4 rounded-xl bg-blue-50/50 border border-blue-200">
+                    <div class="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold mb-2">
+                        1
+                    </div>
+                    <strong class="text-blue-900 block mb-1">Zero Commitment Anxiety:</strong>
+                    <div class="space-y-1 text-slate-600">
+                        <p>Hosts feel zero contract anxiety.</p>
+                        <p>No annual advance or quarterly deposits.</p>
+                        <p>Start managing your stay in minutes.</p>
+                    </div>
+                </div>
+                <div class="p-4 rounded-xl bg-emerald-50/50 border border-emerald-200">
+                    <div class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold mb-2">
+                        2
+                    </div>
+                    <strong class="text-emerald-900 block mb-1">Daily Operational Trust:</strong>
+                    <div class="space-y-1 text-slate-600">
+                        <p>Clients can leave at any moment.</p>
+                        <p>We must deliver peace of mind daily.</p>
+                        <p>What took hours now takes minutes.</p>
+                    </div>
+                </div>
+                <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                    <div class="w-7 h-7 rounded-lg bg-slate-200 text-slate-700 flex items-center justify-center font-bold mb-2">
+                        3
+                    </div>
+                    <strong class="text-slate-900 block mb-1">Mutual Freedom & Respect:</strong>
+                    <div class="space-y-1 text-slate-600">
+                        <p>Both host and platform stay free.</p>
+                        <p>Total clarity on daily floor operations.</p>
+                        <p>Sustained by genuine performance.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="p-3.5 rounded-lg bg-slate-900 text-slate-300 text-xs space-y-1">
+                <p class="font-bold text-white">Our Promise to Homestay Hosts:</p>
+                <p>Replaces paper slips, missed meals, and chaos.</p>
+                <p>Zero lock-in is our ultimate commitment to quality.</p>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Document Footer -->
+    <footer class="bg-slate-900 text-slate-400 text-xs py-8 border-t border-slate-800">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-2">
+                <span class="font-bold text-white">GroundCode</span>
+                <span>— Research Memorandum & Technical Architecture</span>
+            </div>
+            <div class="flex items-center gap-4 text-slate-400">
+                <a href="home.html" class="hover:text-white transition">Product Tour</a>
+                <a href="features.html" class="hover:text-white transition">Features</a>
+                <a href="DESIGN.md" class="hover:text-white transition">Design Tokens</a>
+            </div>
+            <div class="text-slate-500 text-xs">
+                &copy; 2026 GroundCode. All competitor figures cited from public documentation.
+            </div>
+        </div>
+    </footer>
+
+    <!-- Interactive Simulator & Charts Script -->
+    <script>
+        (function() {
+            let properties = 3;
+            let keys = 10;
+
+            const propSlider = document.getElementById('property-slider');
+            const keySlider = document.getElementById('key-slider');
+            const propDisplay = document.getElementById('property-display');
+            const keyDisplay = document.getElementById('key-display');
+
+            const resGcPrice = document.getElementById('res-gc-price');
+            const resGcOutlay = document.getElementById('res-gc-outlay');
+
+            const resDlPrice = document.getElementById('res-dl-price');
+            const resDlOutlay = document.getElementById('res-dl-outlay');
+
+            const resSbPrice = document.getElementById('res-sb-price');
+            const resSbOutlay = document.getElementById('res-sb-outlay');
+
+            const resMhPrice = document.getElementById('res-mh-price');
+            const resMhOutlay = document.getElementById('res-mh-outlay');
+
+            const simSavings = document.getElementById('sim-savings');
+            const propBadges = document.querySelectorAll('.gc-prop-count');
+            const keyBadges = document.querySelectorAll('.gc-key-count');
+
+            let costComparisonChart = null;
+
+            const presetConfigs = {
+                'preset-user': { props: 3, keys: 10 },
+                'preset-single': { props: 1, keys: 4 },
+                'preset-estate': { props: 2, keys: 8 },
+                'preset-cluster': { props: 4, keys: 18 }
+            };
+
+            function setActivePreset(activeId) {
+                Object.keys(presetConfigs).forEach(id => {
+                    const btn = document.getElementById(id);
+                    if (!btn) return;
+                    if (id === activeId) {
+                        btn.className = "preset-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600 text-white border border-blue-600 shadow-xs transition whitespace-nowrap";
+                    } else {
+                        btn.className = "preset-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 transition whitespace-nowrap";
+                    }
+                });
+            }
+
+            function checkPresetMatch() {
+                let matchedId = null;
+                Object.entries(presetConfigs).forEach(([id, cfg]) => {
+                    if (properties === cfg.props && keys === cfg.keys) {
+                        matchedId = id;
+                    }
+                });
+                setActivePreset(matchedId);
+            }
+
+            function formatINR(val) {
+                return Math.round(val).toLocaleString('en-IN');
+            }
+
+            function updateSimulator() {
+                if (keys < properties) {
+                    keys = properties;
+                    keySlider.value = keys;
+                }
+
+                propDisplay.textContent = properties;
+                keyDisplay.textContent = keys;
+
+                propBadges.forEach(el => el.textContent = properties);
+                keyBadges.forEach(el => el.textContent = keys);
+
+                // 1. GroundCode Pro: Strictly Key-Based (₹1,499 1st key + ₹200 per extra key)
+                let gc = 1499;
+                if (keys > 1) {
+                    gc += (keys - 1) * 200;
+                }
+
+                resGcPrice.textContent = formatINR(gc);
+                resGcOutlay.textContent = `₹${formatINR(gc)} (Billed monthly)`;
+
+                // 2. Doorloom
+                let dl = 300 + (properties * 300);
+                dl += Math.max(0, keys - properties) * 100;
+                dl += (keys * 100); // channel manager
+                resDlPrice.textContent = formatINR(dl);
+                resDlOutlay.textContent = `₹${formatINR(dl * 3)} (Strict 3-Mo Quarterly Lock-in)`;
+
+                // 3. StayBind
+                let sbBase = (properties <= 2) ? 999 : 1999;
+                let sb = (properties * sbBase);
+                sb += Math.max(0, keys - (properties * 2)) * 199;
+                sb += (properties * 499); // WhatsApp
+                let sbGst = sb * 1.18;
+                resSbPrice.textContent = formatINR(sbGst);
+                resSbOutlay.textContent = `₹${formatINR(sbGst)} (Includes 18% Mandatory GST)`;
+
+                // 4. MyHomestay.ai
+                let mh = 26400 + (Math.max(0, keys - 4) * 1200);
+                let mhMonthly = Math.round(mh / 12);
+                resMhPrice.textContent = formatINR(mhMonthly);
+                resMhOutlay.textContent = `~₹${formatINR(mh)} (Annual contract only)`;
+
+                // Annual savings vs StayBind
+                let annDiff = Math.max(0, (sbGst * 12) - (gc * 12));
+                simSavings.textContent = `₹${formatINR(annDiff)} per year`;
+
+                // Update Chart 2 Series in real-time
+                if (costComparisonChart && typeof costComparisonChart.updateSeries === 'function') {
+                    costComparisonChart.updateSeries([{
+                        name: 'Monthly SaaS Invoiced Cost (₹)',
+                        data: [gc, dl, Math.round(sbGst), mhMonthly]
+                    }], true);
+                }
+            }
+
+            propSlider.addEventListener('input', function(e) {
+                properties = parseInt(e.target.value, 10);
+                checkPresetMatch();
+                updateSimulator();
+            });
+
+            keySlider.addEventListener('input', function(e) {
+                keys = parseInt(e.target.value, 10);
+                checkPresetMatch();
+                updateSimulator();
+            });
+
+            // Bind preset buttons
+            Object.entries(presetConfigs).forEach(([id, cfg]) => {
+                const btn = document.getElementById(id);
+                if (!btn) return;
+                btn.addEventListener('click', function() {
+                    properties = cfg.props;
+                    keys = cfg.keys;
+                    propSlider.value = properties;
+                    keySlider.value = keys;
+                    setActivePreset(id);
+                    updateSimulator();
+                });
+            });
+
+            // Initialize Charts after DOM content is loaded
+            function initCharts() {
+                if (typeof ApexCharts === 'undefined') {
+                    console.warn('ApexCharts library not yet loaded. Retrying in 250ms...');
+                    setTimeout(initCharts, 250);
+                    return;
+                }
+
+                // --- 1. Workload Reality Donut Chart ---
+                const workloadEl = document.getElementById('chart-workload');
+                if (workloadEl) {
+                    const workloadOptions = {
+                        chart: {
+                            type: 'donut',
+                            height: 280,
+                            fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif'
+                        },
+                        series: [10, 30, 25, 20, 15],
+                        labels: [
+                            'Pre-Booking Inquiries & OTAs',
+                            'Caretakers & Cleaners on Telegram',
+                            'Kitchen Orders & F&B Folios',
+                            'Petty Cash Khata & Receipts',
+                            'Guest ID Collection & Attendance'
+                        ],
+                        colors: ['#94A3B8', '#1E40AF', '#4F46E5', '#059669', '#D97706'],
+                        legend: { show: false },
+                        stroke: { width: 2, colors: ['#ffffff'] },
+                        dataLabels: {
+                            enabled: true,
+                            formatter: function (val) {
+                                return Math.round(val) + '%';
+                            },
+                            style: {
+                                fontSize: '11px',
+                                fontWeight: 700
+                            },
+                            dropShadow: { enabled: false }
+                        },
+                        plotOptions: {
+                            pie: {
+                                donut: {
+                                    size: '68%',
+                                    labels: {
+                                        show: true,
+                                        name: {
+                                            show: true,
+                                            fontSize: '11px',
+                                            fontWeight: 600,
+                                            color: '#64748B'
+                                        },
+                                        value: {
+                                            show: true,
+                                            fontSize: '18px',
+                                            fontWeight: 800,
+                                            color: '#0F172A',
+                                            formatter: function (val) {
+                                                return val + '%';
+                                            }
+                                        },
+                                        total: {
+                                            show: true,
+                                            label: 'Operations',
+                                            color: '#1E40AF',
+                                            formatter: function () {
+                                                return '90% Ground';
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        tooltip: {
+                            y: {
+                                formatter: function (val) {
+                                    return val + '% of Daily Operational Burden';
+                                }
+                            }
+                        }
+                    };
+                    const workloadChart = new ApexCharts(workloadEl, workloadOptions);
+                    workloadChart.render();
+                }
+
+                // --- 2. Live Dynamic Cost Comparison Column Bar Chart ---
+                const costEl = document.getElementById('chart-cost-comparison');
+                if (costEl) {
+                    // Compute initial data
+                    const initialGc = 1499 + (Math.max(0, keys - 1) * 200);
+                    const initialDl = 300 + (properties * 300) + (Math.max(0, keys - properties) * 100) + (keys * 100);
+                    const initialSbBase = (properties <= 2) ? 999 : 1999;
+                    const initialSbGst = Math.round(((properties * initialSbBase) + (Math.max(0, keys - (properties * 2)) * 199) + (properties * 499)) * 1.18);
+                    const initialMh = Math.round((26400 + (Math.max(0, keys - 4) * 1200)) / 12);
+
+                    const costOptions = {
+                        chart: {
+                            type: 'bar',
+                            height: 310,
+                            fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif',
+                            toolbar: { show: false }
+                        },
+                        plotOptions: {
+                            bar: {
+                                columnWidth: '46%',
+                                distributed: true,
+                                borderRadius: 6,
+                                dataLabels: {
+                                    position: 'top'
+                                }
+                            }
+                        },
+                        colors: ['#1E3A8A', '#EA580C', '#9333EA', '#0D9488'],
+                        series: [{
+                            name: 'Monthly SaaS Invoiced Cost (₹)',
+                            data: [initialGc, initialDl, initialSbGst, initialMh]
+                        }],
+                        xaxis: {
+                            categories: ['GroundCode Pro', 'Doorloom', 'StayBind', 'MyHomestay.ai'],
+                            labels: {
+                                show: true,
+                                rotate: 0,
+                                rotateAlways: false,
+                                hideOverlappingLabels: false,
+                                trim: false,
+                                style: {
+                                    fontSize: '11px',
+                                    fontWeight: 700,
+                                    colors: ['#1E3A8A', '#EA580C', '#9333EA', '#0D9488']
+                                }
+                            },
+                            axisBorder: { show: false },
+                            axisTicks: { show: false }
+                        },
+                        yaxis: {
+                            labels: {
+                                formatter: function (val) {
+                                    return '₹' + Math.round(val).toLocaleString('en-IN');
+                                },
+                                style: {
+                                    fontSize: '11px',
+                                    fontWeight: 500,
+                                    colors: '#64748B'
+                                }
+                            }
+                        },
+                        dataLabels: {
+                            enabled: true,
+                            offsetY: -22,
+                            style: {
+                                fontSize: '11px',
+                                fontWeight: 800,
+                                colors: ['#1E3A8A', '#EA580C', '#9333EA', '#0D9488']
+                            },
+                            formatter: function (val) {
+                                return '₹' + Math.round(val).toLocaleString('en-IN');
+                            }
+                        },
+                        legend: { show: false },
+                        grid: {
+                            borderColor: '#F1F5F9',
+                            strokeDashArray: 3
+                        },
+                        tooltip: {
+                            y: {
+                                formatter: function (val) {
+                                    return '₹' + Math.round(val).toLocaleString('en-IN') + ' / mo';
+                                }
+                            }
+                        }
+                    };
+                    costComparisonChart = new ApexCharts(costEl, costOptions);
+                    costComparisonChart.render();
+                }
+
+                // --- 3. Breakeven & Cash Flow Trajectory Chart ---
+                const breakevenEl = document.getElementById('chart-breakeven');
+                if (breakevenEl) {
+                    const breakevenOptions = {
+                        chart: {
+                            type: 'area',
+                            height: 330,
+                            fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif',
+                            toolbar: { show: false }
+                        },
+                        colors: ['#1E3A8A', '#DC2626', '#059669'],
+                        series: [
+                            {
+                                name: 'Monthly Recurring Revenue (MRR)',
+                                data: [14000, 28000, 56000, 98000, 140000, 210000, 280000]
+                            },
+                            {
+                                name: 'Operating Burn (Fixed + Channex)',
+                                data: [101000, 104500, 111500, 122000, 132500, 150000, 167500]
+                            },
+                            {
+                                name: 'Net Operating Cash Flow',
+                                data: [-87000, -76500, -55500, -24000, 7500, 60000, 112500]
+                            }
+                        ],
+                        xaxis: {
+                            categories: [
+                                '5 Props (35 keys)',
+                                '10 Props (70 keys)',
+                                '20 Props (140 keys)',
+                                '35 Props (245 keys)',
+                                '50 Props (350 keys)',
+                                '75 Props (525 keys)',
+                                '100 Props (700 keys)'
+                            ],
+                            labels: {
+                                style: {
+                                    fontSize: '11px',
+                                    fontWeight: 600,
+                                    colors: '#64748B'
+                                }
+                            }
+                        },
+                        yaxis: {
+                            labels: {
+                                formatter: function (val) {
+                                    if (val === 0) return '₹0';
+                                    const sign = val < 0 ? '-' : '+';
+                                    return sign + '₹' + Math.abs(Math.round(val / 1000)) + 'k';
+                                },
+                                style: {
+                                    fontSize: '11px',
+                                    colors: '#64748B'
+                                }
+                            }
+                        },
+                        stroke: {
+                            curve: 'smooth',
+                            width: [3, 2, 2.5]
+                        },
+                        fill: {
+                            type: 'gradient',
+                            gradient: {
+                                shade: 'light',
+                                type: 'vertical',
+                                opacityFrom: 0.35,
+                                opacityTo: 0.03
+                            }
+                        },
+                        dataLabels: { enabled: false },
+                        legend: {
+                            position: 'top',
+                            horizontalAlign: 'right',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            labels: {
+                                colors: '#475569'
+                            },
+                            markers: {
+                                width: 9,
+                                height: 9,
+                                radius: 9
+                            }
+                        },
+                        annotations: {
+                            xaxis: [
+                                {
+                                    x: '35 Props (245 keys)',
+                                    strokeDashArray: 4,
+                                    borderColor: '#059669',
+                                    label: {
+                                        borderColor: '#059669',
+                                        orientation: 'horizontal',
+                                        style: {
+                                            color: '#ffffff',
+                                            background: '#059669',
+                                            fontSize: '10px',
+                                            fontWeight: 700,
+                                            padding: { left: 6, right: 6, top: 2, bottom: 2 }
+                                        },
+                                        text: 'Breakeven Crossover (~35 Properties)'
+                                    }
+                                }
+                            ]
+                        },
+                        grid: {
+                            borderColor: '#F1F5F9',
+                            strokeDashArray: 3
+                        },
+                        tooltip: {
+                            y: {
+                                formatter: function (val) {
+                                    const sign = val < 0 ? '-' : '';
+                                    return sign + '₹' + Math.abs(Math.round(val)).toLocaleString('en-IN') + ' / mo';
+                                }
+                            }
+                        }
+                    };
+                    const breakevenChart = new ApexCharts(breakevenEl, breakevenOptions);
+                    breakevenChart.render();
+                }
+
+                // Initial simulator sync
+                updateSimulator();
+            }
+
+            // Interactive Ground-Operations Simulator
+            function setupOperationsSimulator() {
+                const buttons = document.querySelectorAll('.sim-scenario-btn');
+                const s1Badge = document.getElementById('sim-s1-badge');
+                const s1Title = document.getElementById('sim-s1-title');
+                const s1Desc = document.getElementById('sim-s1-desc');
+                const s1Risk = document.getElementById('sim-s1-risk');
+
+                const s2Badge = document.getElementById('sim-s2-badge');
+                const s2Title = document.getElementById('sim-s2-title');
+                const s2Desc = document.getElementById('sim-s2-desc');
+                const s2Tech = document.getElementById('sim-s2-tech');
+
+                const s3Badge = document.getElementById('sim-s3-badge');
+                const s3Title = document.getElementById('sim-s3-title');
+                const s3Desc = document.getElementById('sim-s3-desc');
+                const s3Outcome = document.getElementById('sim-s3-outcome');
+
+                if (!buttons.length || !s1Title) return;
+
+                const scenarios = {
+                    kds: {
+                        s1: { badge: 'Guest Request', title: 'Room 3 Orders Breakfast', desc: 'Guest asks caretaker for 2x Masala Chai and 2x Aloo Parathas via phone call.', risk: '❌ Market Software Risk: Cook forgets to write paper slip; ₹340 loss.' },
+                        s2: { badge: 'Mobile Web KDS', title: 'Cook Phone Chimes Live Ticket', desc: 'Cook\'s phone rings with order. Cook taps "Accept" then "Mark Ready". Zero paper tickets.', tech: '⚡ Zero App Store friction: Runs directly in mobile browser.' },
+                        s3: { badge: 'Live Folio Sync', title: '₹340 Auto-Billed to Room 3', desc: 'Guest bill updates instantly. 1-click WhatsApp PDF bill ready upon checkout.', outcome: '✅ Result: 0 missed meals, 0 arguments at front gate.' }
+                    },
+                    cash: {
+                        s1: { badge: 'Cash Outflow', title: 'Caretaker Takes ₹1,500 Grocery Advance', desc: 'Caretaker withdraws ₹1,500 cash from physical drawer for dairy, vegetables, and gas cylinder.', risk: '❌ Market Software Risk: Hand-written notes lost; ₹1,500 deficit at month-end.' },
+                        s2: { badge: 'Digital Khata Proof', title: 'Mandatory Photo Receipt Upload', desc: 'Before evening shift closes, caretaker takes a 2-second snapshot of physical shop receipts.', tech: '⚡ Direct Telegram upload or Mobile Khata camera capture.' },
+                        s3: { badge: 'Reconciled Register', title: 'Morning & Evening Register Matches ₹0 Deficit', desc: 'Physical drawer balance perfectly matches the digital ledger without stressful arguments.', outcome: '✅ Result: Every single rupee accounted for; zero staff mistrust.' }
+                    },
+                    cleaning: {
+                        s1: { badge: 'Turnaround Alert', title: 'Guest Checks Out of Villa 2', desc: 'Villa 2 marked dirty at 11:00 AM. Next check-in arriving in 90 minutes. Cleaning required.', risk: '❌ Market Software Risk: Host calls cleaner 5 times; room is dirty when guest arrives.' },
+                        s2: { badge: 'Telegram Staff Bot', title: '1-Tap Prompt with Mandatory Photo Proof', desc: 'Housekeeper receives task on Telegram. Snaps photo of made bed and taps "Finished Cleaning".', tech: '⚡ 1-Tap Telegram Bot: Zero app store downloads or staff account logins.' },
+                        s3: { badge: 'Inspected & Ready', title: 'Timeline Rack Instantly Turns Emerald Green', desc: 'Supervisor & front desk see real-time inspected room rack with photo proof attached.', outcome: '✅ Result: Permanent elimination of "I didn\'t know" excuses.' }
+                    },
+                    idcheck: {
+                        s1: { badge: 'Guest Arrival', title: 'Guest Arrives at Driveway Gate', desc: 'Vehicle enters property at 8:00 PM. Host needs guest IDs for police and state compliance.', risk: '❌ Market Software Risk: Physical paper photocopies, lost IDs, non-compliant register.' },
+                        s2: { badge: 'Digital ID Capture', title: '15-Second Aadhaar & C-Form Scanner', desc: 'Staff points phone camera at guest document. Auto-cropped and stored in secure cloud.', tech: '⚡ Mobile Document Scanner: Works directly on any smartphone.' },
+                        s3: { badge: 'Compliant Folio', title: 'Encrypted Digital Guest Ledger Archived', desc: 'Attendance and ID docs tied to room assignment with C-form submission alerts.', outcome: '✅ Result: 100% legal compliance with zero physical paperwork.' }
+                    }
+                };
+
+                buttons.forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        buttons.forEach(b => {
+                            b.className = 'sim-scenario-btn px-3 py-2 rounded-lg text-xs font-medium bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 transition flex items-center gap-1.5';
+                        });
+                        this.className = 'sim-scenario-btn active px-3 py-2 rounded-lg text-xs font-bold bg-blue-600 text-white border border-blue-600 shadow-xs transition flex items-center gap-1.5';
+
+                        const scKey = this.dataset.scenario;
+                        const data = scenarios[scKey];
+                        if (!data) return;
+
+                        s1Badge.textContent = data.s1.badge;
+                        s1Title.textContent = data.s1.title;
+                        s1Desc.textContent = data.s1.desc;
+                        s1Risk.textContent = data.s1.risk;
+
+                        s2Badge.textContent = data.s2.badge;
+                        s2Title.textContent = data.s2.title;
+                        s2Desc.textContent = data.s2.desc;
+                        s2Tech.textContent = data.s2.tech;
+
+                        s3Badge.textContent = data.s3.badge;
+                        s3Title.textContent = data.s3.title;
+                        s3Desc.textContent = data.s3.desc;
+                        s3Outcome.textContent = data.s3.outcome;
+                    });
+                });
+            }
+
+            // Top navigation active tab scrollspy
+            function setupScrollSpy() {
+                const navLinks = document.querySelectorAll('#header-nav .nav-tab');
+                const sections = [
+                    document.getElementById('thesis'),
+                    document.getElementById('competitors'),
+                    document.getElementById('simulation'),
+                    document.getElementById('matrix'),
+                    document.getElementById('unit-economics'),
+                    document.getElementById('limitations')
+                ].filter(Boolean);
+
+                function onScroll() {
+                    const scrollY = window.pageYOffset + 120;
+                    let currentSectionId = '';
+
+                    sections.forEach(sec => {
+                        const top = sec.offsetTop;
+                        const height = sec.offsetHeight;
+                        if (scrollY >= top && scrollY < top + height) {
+                            currentSectionId = sec.id;
+                        }
+                    });
+
+                    navLinks.forEach(link => {
+                        const href = link.getAttribute('href');
+                        const isLimitations = href === '#limitations';
+                        if (href === '#' + currentSectionId) {
+                            if (isLimitations) {
+                                link.className = 'nav-tab px-3 py-1.5 rounded-lg text-red-700 bg-red-50 font-bold border border-red-200 shadow-2xs transition';
+                            } else {
+                                link.className = 'nav-tab px-3 py-1.5 rounded-lg text-blue-800 bg-blue-50 font-bold border border-blue-200 shadow-2xs transition';
+                            }
+                        } else {
+                            if (isLimitations) {
+                                link.className = 'nav-tab px-3 py-1.5 rounded-lg text-red-600 hover:text-red-700 hover:bg-red-50 transition';
+                            } else {
+                                link.className = 'nav-tab px-3 py-1.5 rounded-lg text-slate-600 hover:text-blue-700 hover:bg-slate-100 transition';
+                            }
+                        }
+                    });
+                }
+
+                window.addEventListener('scroll', onScroll, { passive: true });
+                onScroll();
+            }
+
+            // Fire on load
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() {
+                    initCharts();
+                    setupOperationsSimulator();
+                    setupScrollSpy();
+                });
+            } else {
+                initCharts();
+                setupOperationsSimulator();
+                setupScrollSpy();
+            }
+        })();
+    </script>
+</body>
+</html>

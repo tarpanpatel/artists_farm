@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2, Share2, LogOut, Upload, CreditCard, Globe, AlertTriangle, X, ScanLine } from './icons/FlowbiteIcons';
+import { Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2, Share2, LogOut, Upload, CreditCard, Globe, AlertTriangle, X, ScanLine, Clock, ExternalLink } from './icons/FlowbiteIcons';
 import { Drawer as FlowbiteDrawer, DrawerItems, Checkbox, Modal } from 'flowbite-react';
+import { Button } from './Button';
 import { Badge } from './Badge';
 import { Guest } from '../types';
-import { markCFormFiled, checkinGuestInDB, uploadDocumentDB } from '../services/api';
+import { markCFormFiled, checkinGuestInDB, uploadDocumentDB, verifyBookingPaymentDB, API_ROOT_BASE } from '../services/api';
 import { scanApplicantIdFromFile } from '../utils/cFormBarcodeScanner';
 import { useStaff } from '../contexts/StaffContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -211,6 +212,32 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const [sharePreviewMessage, setSharePreviewMessage] = useState('');
   const [isEditingSharePreview, setIsEditingSharePreview] = useState(false);
   const [editableSharePreview, setEditableSharePreview] = useState('');
+
+  const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
+  const [paymentProofModalOpen, setPaymentProofModalOpen] = useState(false);
+  const [localPaymentStatus, setLocalPaymentStatus] = useState<string>(guest.paymentStatus || (guest as any).payment_status || 'Pending');
+
+  const paymentProofUrl = guest.paymentProofUrl || (guest as any).payment_proof_url || null;
+
+  const handleConfirmBookingPayment = async () => {
+    setIsVerifyingPayment(true);
+    try {
+      const res = await verifyBookingPaymentDB(guest.id, 'confirm');
+      if (res.success) {
+        setLocalPaymentStatus('Paid');
+        showToast('Booking payment verified & confirmed!', { type: 'success' });
+        if (onSave) {
+          await onSave({ ...guest, ...(res.data || {}), paymentStatus: 'Paid' });
+        }
+      } else {
+        showToast(res.message || 'Failed to verify payment', { type: 'error' });
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Error verifying payment', { type: 'error' });
+    } finally {
+      setIsVerifyingPayment(false);
+    }
+  };
 
   const handleOpenId = () => {
     if (onOpenIdVerification) {
@@ -860,6 +887,55 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               </button>
             )}
           </div>
+
+          {/* Action Banner 1.2: UPI Payment Proof Verification */}
+          {(localPaymentStatus === 'Pending Verification' || (paymentProofUrl && localPaymentStatus !== 'Paid' && localPaymentStatus !== 'Confirmed')) && (
+            <div className="w-full mb-3 px-3.5 py-2.5 rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-2xs">
+              <div className="flex items-center gap-2 text-xs font-semibold text-amber-900 dark:text-amber-200">
+                <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                <div>
+                  <span className="font-bold">Payment Pending Confirmation</span>
+                  <span className="text-2xs font-normal text-amber-700 dark:text-amber-300 block">
+                    Guest uploaded UPI payment screenshot during instant quote booking.
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {paymentProofUrl && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setPaymentProofModalOpen(true)}
+                    className="h-8 text-xs font-semibold gap-1 justify-center"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    View Screenshot
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  disabled={isVerifyingPayment}
+                  onClick={handleConfirmBookingPayment}
+                  className="h-8 text-xs font-bold gap-1 justify-center bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  {isVerifyingPayment ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      Confirming...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      Confirm Booking & Payment
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Action Banner 1.5: Foreign Guest C-Form Warning */}
           {guest.isForeignGuest && !isCFormFiled && canActOnBooking && (
@@ -1581,6 +1657,72 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 <Share2 className="w-4 h-4 shrink-0" />
                 <span>{t('share_preview_send_button', 'Send')}</span>
               </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Payment Proof Lightbox Modal */}
+      {paymentProofModalOpen && paymentProofUrl && (
+        <Modal
+          show={paymentProofModalOpen}
+          onClose={() => setPaymentProofModalOpen(false)}
+          size="md"
+        >
+          <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-xl border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white">UPI Payment Screenshot</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPaymentProofModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 bg-gray-50 dark:bg-gray-900 flex items-center justify-center max-h-[70vh] overflow-auto">
+              <img
+                src={paymentProofUrl.startsWith('http') ? paymentProofUrl : `${API_ROOT_BASE}${paymentProofUrl}`}
+                alt="Payment Proof Screenshot"
+                className="max-h-[60vh] max-w-full rounded-lg object-contain border border-gray-200 dark:border-gray-700 shadow-sm"
+              />
+            </div>
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between gap-3">
+              <a
+                href={paymentProofUrl.startsWith('http') ? paymentProofUrl : `${API_ROOT_BASE}${paymentProofUrl}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                Open original
+              </a>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setPaymentProofModalOpen(false)}
+                >
+                  Close
+                </Button>
+                {localPaymentStatus !== 'Paid' && localPaymentStatus !== 'Confirmed' && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    disabled={isVerifyingPayment}
+                    onClick={async () => {
+                      await handleConfirmBookingPayment();
+                      setPaymentProofModalOpen(false);
+                    }}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    {isVerifyingPayment ? 'Confirming...' : 'Confirm Payment'}
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </Modal>

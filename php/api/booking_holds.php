@@ -56,6 +56,7 @@ function ensureBookingHoldsSchema(PDO $pdo): void {
             status ENUM('active','converted','expired','cancelled') NOT NULL DEFAULT 'active',
             created_by VARCHAR(191) NULL,
             converted_guest_id INT NULL,
+            payment_proof_url VARCHAR(255) NULL,
             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
             expires_at DATETIME NOT NULL,
             UNIQUE KEY uq_quote_token (quote_token),
@@ -63,6 +64,56 @@ function ensureBookingHoldsSchema(PDO $pdo): void {
             INDEX idx_property (property_id)
         )
     ");
+    try {
+        $pdo->exec("ALTER TABLE booking_holds ADD COLUMN payment_proof_url VARCHAR(255) NULL AFTER converted_guest_id");
+    } catch (Exception $e) {}
+    try {
+        $pdo->exec("ALTER TABLE guests ADD COLUMN payment_proof_url VARCHAR(255) NULL");
+    } catch (Exception $e) {}
+}
+
+/**
+ * Safely decodes and writes a base64-encoded payment screenshot to php/uploads/payment_proofs/.
+ * Returns the web-accessible relative URL (e.g. /php/uploads/payment_proofs/proof_...).
+ */
+function savePaymentProofImage(string $base64Data, string $prefix = 'proof'): ?string {
+    if (empty($base64Data)) return null;
+
+    if (preg_match('/^data:image\/(\w+);base64,(.+)$/is', $base64Data, $matches)) {
+        $binary = base64_decode($matches[2]);
+    } else {
+        $binary = base64_decode($base64Data);
+    }
+
+    if (!$binary || strlen($binary) < 16) {
+        return null;
+    }
+
+    $ext = 'jpg';
+    $imgInfo = @getimagesizefromstring($binary);
+    if ($imgInfo && !empty($imgInfo['mime'])) {
+        $mimeMap = [
+            'image/jpeg' => 'jpg',
+            'image/png'  => 'png',
+            'image/webp' => 'webp',
+            'image/gif'  => 'gif',
+        ];
+        $ext = $mimeMap[$imgInfo['mime']] ?? 'jpg';
+    }
+
+    $uploadDir = __DIR__ . '/../uploads/payment_proofs';
+    if (!is_dir($uploadDir)) {
+        @mkdir($uploadDir, 0755, true);
+    }
+
+    $filename = $prefix . '_' . date('Ymd_His') . '_' . bin2hex(random_bytes(6)) . '.' . $ext;
+    $filepath = $uploadDir . '/' . $filename;
+
+    if (file_put_contents($filepath, $binary) === false) {
+        return null;
+    }
+
+    return '/php/uploads/payment_proofs/' . $filename;
 }
 
 /**
@@ -335,6 +386,57 @@ function handleGetBookingHold(PDO $pdo): void {
         $hold['status'] = 'expired';
     }
 
+    if ($hold['status'] === 'converted') {
+        $guest = null;
+        if (!empty($hold['converted_guest_id'])) {
+            $gStmt = $pdo->prepare("SELECT id, guest_name, phone_number, checkin_date, expected_checkout, total_charge, payment_status, payment_proof_url, notes FROM guests WHERE id = ? LIMIT 1");
+            $gStmt->execute([$hold['converted_guest_id']]);
+            $guest = $gStmt->fetch(PDO::FETCH_ASSOC);
+        }
+        $propStmt = $pdo->prepare("SELECT id, slug, name, currency, address, checkin_time, checkout_time FROM properties WHERE id = ? LIMIT 1");
+        $propStmt->execute([$hold['property_id']]);
+        $prop = $propStmt->fetch(PDO::FETCH_ASSOC);
+
+        $roomStmt = $pdo->prepare("SELECT name FROM properties WHERE id = ? LIMIT 1");
+        $roomStmt->execute([$hold['room_id']]);
+        $room = $roomStmt->fetch(PDO::FETCH_ASSOC);
+
+        $refNumber = '';
+        if ($guest && !empty($guest['notes']) && preg_match('/Ref:\s*([A-Z0-9\-]+)/i', $guest['notes'], $m)) {
+            $refNumber = $m[1];
+        }
+        if (!$refNumber) {
+            $refNumber = 'GC-' . date('ymd', strtotime($hold['created_at'])) . '-' . strtoupper(substr(md5((string)$hold['id']), 0, 4));
+        }
+
+        echo json_encode([
+            'status' => 'success',
+            'data' => [
+                'hold_status' => 'converted',
+                'converted_booking' => [
+                    'booking_id' => $guest ? (int)$guest['id'] : (int)$hold['converted_guest_id'],
+                    'reference_number' => $refNumber,
+                    'property_name' => $prop['name'] ?? '',
+                    'property_slug' => $prop['slug'] ?? '',
+                    'room_name' => $room['name'] ?? '',
+                    'guest_name' => $guest['guest_name'] ?? $hold['guest_name'] ?? '',
+                    'phone' => $guest['phone_number'] ?? $hold['phone'] ?? '',
+                    'checkin_date' => $guest['checkin_date'] ?? $hold['checkin_date'],
+                    'checkout_date' => !empty($guest['expected_checkout']) ? explode(' ', trim($guest['expected_checkout']))[0] : $hold['checkout_date'],
+                    'nights' => (int)$hold['nights'],
+                    'total_tariff' => (float)($guest['total_charge'] ?? $hold['total_tariff']),
+                    'payment_status' => $guest['payment_status'] ?? 'Pending Verification',
+                    'payment_proof_url' => $guest['payment_proof_url'] ?? $hold['payment_proof_url'] ?? null,
+                    'checkin_time' => $prop['checkin_time'] ?: '14:00',
+                    'checkout_time' => $prop['checkout_time'] ?: '11:00',
+                    'address' => $prop['address'] ?? '',
+                    'currency' => $prop['currency'] ?? 'INR',
+                ],
+            ],
+        ]);
+        return;
+    }
+
     if ($hold['status'] !== 'active') {
         echo json_encode(['status' => 'success', 'data' => ['hold_status' => $hold['status']]]);
         return;
@@ -373,7 +475,7 @@ function handleGetBookingHold(PDO $pdo): void {
     ]);
 }
 
-/** Public, unauthenticated - converts an active hold into a real guests row. */
+/** Public, unauthenticated - converts an active hold into a real guests row with payment proof. */
 function handleConfirmBookingHold(PDO $pdo): void {
     ensureBookingHoldsSchema($pdo);
     $data = json_decode(file_get_contents('php://input'), true) ?: [];
@@ -383,10 +485,24 @@ function handleConfirmBookingHold(PDO $pdo): void {
     $email = trim((string)($data['email'] ?? ''));
     $numGuests = max(1, (int)($data['num_guests'] ?? 2));
     $specialRequests = trim((string)($data['special_requests'] ?? ''));
+    $paymentProofBase64 = trim((string)($data['payment_proof_base64'] ?? $data['payment_screenshot_base64'] ?? ''));
 
     if (empty($token) || empty($guestName) || empty($phone)) {
         http_response_code(400);
         echo json_encode(['status' => 'error', 'message' => 'Guest name and phone number are required']);
+        return;
+    }
+
+    if (empty($paymentProofBase64)) {
+        http_response_code(400);
+        echo json_encode(['status' => 'error', 'message' => 'Payment screenshot is required to confirm booking.']);
+        return;
+    }
+
+    $proofUrl = savePaymentProofImage($paymentProofBase64, 'quote_proof');
+    if (!$proofUrl) {
+        http_response_code(400);
+        echo json_encode(['status' => 'error', 'message' => 'Invalid or unreadable payment screenshot. Please choose an image file (JPEG, PNG, WebP).']);
         return;
     }
 
@@ -441,7 +557,7 @@ function handleConfirmBookingHold(PDO $pdo): void {
             return;
         }
 
-        $propStmt = $pdo->prepare("SELECT name, upi_id, address, checkin_time, checkout_time FROM properties WHERE id = ? LIMIT 1");
+        $propStmt = $pdo->prepare("SELECT name, slug, email, upi_id, address, checkin_time, checkout_time FROM properties WHERE id = ? LIMIT 1");
         $propStmt->execute([$propertyId]);
         $prop = $propStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -450,7 +566,7 @@ function handleConfirmBookingHold(PDO $pdo): void {
         $room = $roomStmt->fetch(PDO::FETCH_ASSOC);
 
         $refNumber = 'GC-' . date('ymd') . '-' . strtoupper(substr(md5(uniqid((string)mt_rand(), true)), 0, 4));
-        $notes = "Ref: {$refNumber}\nPayment Method: Pay on Arrival (Cash / UPI / Card)\nSource: WhatsApp Instant Quote";
+        $notes = "Ref: {$refNumber}\nPayment Method: UPI Transfer\nPayment Status: Pending Verification\nSource: WhatsApp Instant Quote";
         if (!empty($email)) $notes .= "\nEmail: " . $email;
         if (!empty($specialRequests)) $notes .= "\nSpecial Requests: " . $specialRequests;
 
@@ -461,25 +577,26 @@ function handleConfirmBookingHold(PDO $pdo): void {
         $insertStmt = $pdo->prepare("
             INSERT INTO guests (
                 guest_name, phone_number, checkin_date, expected_checkout,
-                status, advance_paid, total_charge, pending_amount,
+                status, payment_status, payment_proof_url, advance_paid, total_charge, pending_amount,
                 base_room_rent, notes, booking_source, no_of_guests,
                 property_id, room_id
             ) VALUES (
                 ?, ?, ?, ?,
-                'Booked', 0, ?, ?,
+                'Booked', 'Pending Verification', ?, 0, ?, ?,
                 ?, ?, 'WhatsApp Quote', ?,
                 ?, ?
             )
         ");
         $insertStmt->execute([
             $guestName, $phone, $checkinDate, $checkoutDate,
-            $totalTariff, $totalTariff, $avgNightlyRate, $notes, $numGuests,
+            $proofUrl, $totalTariff, $totalTariff,
+            $avgNightlyRate, $notes, $numGuests,
             $propertyId, $roomId,
         ]);
         $bookingId = (int)$pdo->lastInsertId();
 
-        $pdo->prepare("UPDATE booking_holds SET status = 'converted', converted_guest_id = ? WHERE id = ?")
-            ->execute([$bookingId, $hold['id']]);
+        $pdo->prepare("UPDATE booking_holds SET status = 'converted', converted_guest_id = ?, payment_proof_url = ? WHERE id = ?")
+            ->execute([$bookingId, $proofUrl, $hold['id']]);
 
         if (is_file(__DIR__ . '/../channex/outbox.php')) {
             require_once __DIR__ . '/../channex/outbox.php';
@@ -501,28 +618,63 @@ function handleConfirmBookingHold(PDO $pdo): void {
             }
         }
 
-        // Real, working Telegram send (not the create_public_booking's
-        // dispatchTelegramEvent()/php/api/telegram/dispatch.php - that file
-        // does not exist, so that alert has been silently inert; unrelated
-        // pre-existing gap, not touched here). deepLinkParams so "Open in App"
-        // lands on this exact booking, not a generic tab.
+        // Build absolute URL for payment proof
+        $host = $_SERVER['HTTP_HOST'] ?? 'ground-code.com';
+        $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $fullProofUrl = "{$proto}://{$host}{$proofUrl}";
+
+        // Telegram alert to admin group with deepLinkParams to booking
         try {
             if (is_file(__DIR__ . '/../telegram/sender.php')) {
                 require_once __DIR__ . '/../telegram/sender.php';
                 if (function_exists('sendPropertyTelegramMessage')) {
-                    $tgMsg = "🎉 <b>WHATSAPP QUOTE CONFIRMED</b>\n\n"
+                    $tgMsg = "🎉 <b>WHATSAPP QUOTE CONFIRMED (Awaiting Verification)</b>\n\n"
                            . "🏨 <b>Property:</b> " . ($prop['name'] ?? '') . "\n"
                            . "🚪 <b>Room:</b> " . ($room['name'] ?? '') . "\n"
                            . "👤 <b>Guest:</b> {$guestName}\n"
                            . "📞 <b>Phone:</b> {$phone}\n"
                            . "📅 <b>Dates:</b> {$checkinDate} to {$checkoutDate} ({$nights} night" . ($nights > 1 ? 's' : '') . ")\n"
                            . "💰 <b>Total:</b> ₹" . number_format($totalTariff, 0) . "\n"
-                           . "🔖 <b>Ref:</b> {$refNumber}";
+                           . "🔖 <b>Ref:</b> {$refNumber}\n"
+                           . "⚠️ <b>Payment:</b> Screenshot Uploaded (Pending Admin Verification)\n"
+                           . "📸 <b>Payment Screenshot:</b> <a href=\"{$fullProofUrl}\">View Proof</a>";
                     sendPropertyTelegramMessage($pdo, $propertyId, 'admin', $tgMsg, null, null, ['booking_id' => $bookingId]);
                 }
             }
         } catch (Exception $tgErr) {
             // Non-blocking - the booking itself already committed above.
+        }
+
+        // Email notification to property / tenant admin
+        try {
+            if (is_file(__DIR__ . '/../utils/mailer.php')) {
+                require_once __DIR__ . '/../utils/mailer.php';
+                $recipientEmail = null;
+                if (!empty($prop['email'])) {
+                    $recipientEmail = $prop['email'];
+                } else {
+                    $tStmt = $pdo->prepare("SELECT t.email FROM properties p JOIN tenants t ON p.tenant_id = t.id WHERE p.id = ? LIMIT 1");
+                    $tStmt->execute([$propertyId]);
+                    $recipientEmail = $tStmt->fetchColumn();
+                }
+                if ($recipientEmail && function_exists('sendSmtpEmail')) {
+                    $emailSubject = "New Direct Booking (Ref: {$refNumber}) - Payment Verification Required";
+                    $emailBody = "<h2>New Direct Booking Pending Verification</h2>"
+                        . "<p>A guest has confirmed their WhatsApp quote and uploaded payment proof.</p>"
+                        . "<ul>"
+                        . "<li><strong>Property:</strong> " . htmlspecialchars($prop['name'] ?? '') . "</li>"
+                        . "<li><strong>Room:</strong> " . htmlspecialchars($room['name'] ?? '') . "</li>"
+                        . "<li><strong>Guest:</strong> " . htmlspecialchars($guestName) . " (" . htmlspecialchars($phone) . ")</li>"
+                        . "<li><strong>Dates:</strong> {$checkinDate} to {$checkoutDate} ({$nights} nights)</li>"
+                        . "<li><strong>Total Tariff:</strong> ₹" . number_format($totalTariff, 0) . "</li>"
+                        . "<li><strong>Reference:</strong> {$refNumber}</li>"
+                        . "</ul>"
+                        . "<p><a href=\"{$fullProofUrl}\" style=\"display:inline-block;padding:10px 16px;background:#2563eb;color:#fff;text-decoration:none;border-radius:6px;\">View Payment Screenshot</a></p>";
+                    sendSmtpEmail($pdo, $recipientEmail, $emailSubject, $emailBody);
+                }
+            }
+        } catch (Exception $mailErr) {
+            // Non-blocking
         }
 
         echo json_encode([
@@ -538,8 +690,9 @@ function handleConfirmBookingHold(PDO $pdo): void {
                 'checkout_date' => $checkoutDate,
                 'nights' => $nights,
                 'total_tariff' => $totalTariff,
-                'payment_method' => 'Pay on Arrival (Cash / UPI / Card)',
-                'payment_status' => 'Pending (Pay on Arrival)',
+                'payment_method' => 'UPI Transfer',
+                'payment_status' => 'Pending Verification',
+                'payment_proof_url' => $proofUrl,
                 'upi_id' => $prop['upi_id'] ?? null,
                 'checkin_time' => $prop['checkin_time'] ?: '14:00',
                 'checkout_time' => $prop['checkout_time'] ?: '11:00',
@@ -550,5 +703,88 @@ function handleConfirmBookingHold(PDO $pdo): void {
         if ($pdo->inTransaction()) $pdo->rollBack();
         http_response_code(500);
         echo json_encode(['status' => 'error', 'message' => 'Failed to confirm booking: ' . $e->getMessage()]);
+    }
+}
+
+/** Staff/Admin authenticated endpoint to verify quote booking payment proof. */
+function handleVerifyBookingPayment(PDO $pdo, int $propertyId, string $verifiedBy): void {
+    ensureBookingHoldsSchema($pdo);
+    $data = json_decode(file_get_contents('php://input'), true) ?: [];
+    $guestId = intval($data['guest_id'] ?? 0);
+    $action = trim((string)($data['action'] ?? 'confirm'));
+
+    if ($guestId <= 0) {
+        http_response_code(400);
+        echo json_encode(['status' => 'error', 'message' => 'Invalid guest ID']);
+        return;
+    }
+
+    $stmt = $pdo->prepare("SELECT * FROM guests WHERE id = ? AND property_id = ? LIMIT 1");
+    $stmt->execute([$guestId, $propertyId]);
+    $guest = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$guest) {
+        http_response_code(404);
+        echo json_encode(['status' => 'error', 'message' => 'Booking not found']);
+        return;
+    }
+
+    $totalCharge = (float)$guest['total_charge'];
+    $advancePaid = (float)$guest['advance_paid'];
+    $notes = (string)($guest['notes'] ?? '');
+
+    if ($action === 'confirm') {
+        $verificationNote = "\n[Payment Verified by {$verifiedBy} on " . date('d M Y H:i') . "]";
+        $newNotes = $notes . $verificationNote;
+
+        if ($advancePaid <= 0) {
+            $advancePaid = $totalCharge;
+            $pendingAmount = 0.0;
+            $advanceReceivedBy = $guest['advance_received_by'] ?: $verifiedBy;
+        } else {
+            $pendingAmount = max(0.0, $totalCharge - $advancePaid);
+            $advanceReceivedBy = $guest['advance_received_by'] ?: $verifiedBy;
+        }
+
+        $upd = $pdo->prepare("
+            UPDATE guests
+            SET payment_status = 'Paid',
+                advance_paid = ?,
+                pending_amount = ?,
+                advance_received_by = ?,
+                notes = ?
+            WHERE id = ? AND property_id = ?
+        ");
+        $upd->execute([$advancePaid, $pendingAmount, $advanceReceivedBy, $newNotes, $guestId, $propertyId]);
+
+        $fetchStmt = $pdo->prepare("SELECT * FROM guests WHERE id = ? LIMIT 1");
+        $fetchStmt->execute([$guestId]);
+        $updated = $fetchStmt->fetch(PDO::FETCH_ASSOC);
+
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'Payment verified and confirmed',
+            'data' => $updated,
+        ]);
+    } else {
+        $rejectionNote = "\n[Payment Proof Rejected by {$verifiedBy} on " . date('d M Y H:i') . "]";
+        $newNotes = $notes . $rejectionNote;
+        $upd = $pdo->prepare("
+            UPDATE guests
+            SET payment_status = 'Payment Rejected',
+                notes = ?
+            WHERE id = ? AND property_id = ?
+        ");
+        $upd->execute([$newNotes, $guestId, $propertyId]);
+
+        $fetchStmt = $pdo->prepare("SELECT * FROM guests WHERE id = ? LIMIT 1");
+        $fetchStmt->execute([$guestId]);
+        $updated = $fetchStmt->fetch(PDO::FETCH_ASSOC);
+
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'Payment marked as rejected',
+            'data' => $updated,
+        ]);
     }
 }

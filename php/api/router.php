@@ -6034,6 +6034,11 @@ switch ($action) {
         handleConfirmBookingHold($pdo);
         break;
 
+    case 'verify_booking_payment':
+        require_once __DIR__ . '/booking_holds.php';
+        handleVerifyBookingPayment($pdo, $propertyId, $_SESSION['username'] ?? 'Staff');
+        break;
+
     // fetch_ota_listing_preview / apply_ota_listing_to_property removed 6 Sep
     // 2026 along with php/api/property_importer.php. They scraped the public
     // Airbnb/Booking.com page (og:title, og:description, JSON-LD) - which is how

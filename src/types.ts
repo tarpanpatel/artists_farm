@@ -18,6 +18,8 @@ export interface Guest {
   foodBill?: number;
   totalAmount?: number;
   paymentStatus?: string;
+  paymentProofUrl?: string | null;
+  payment_proof_url?: string | null;
   idVerificationStatus?: 'Pending' | 'Complete';
   isForeignGuest?: boolean;
   cFormFiledAt?: string | null;
