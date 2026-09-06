@@ -3672,6 +3672,33 @@ switch ($action) {
                 $params[] = $v;
             }
 
+            // Amenities / Bed configuration (7 Sep 2026) - these already
+            // round-trip through the Airbnb importer's own JSON columns (see
+            // applyAirbnbRoomConfig()'s $jsonCols), and PublicBookingEngine.tsx
+            // already reads and displays both to guests, but there was no
+            // manual editor anywhere in the app for either - a property with
+            // no Airbnb connection had no way to fill these in at all.
+            // Validated as a JSON array here; malformed input degrades to
+            // "nothing saved" for this one field rather than rejecting an
+            // otherwise-valid property save outright.
+            $jsonListFields = ['amenities', 'bed_configuration'];
+            foreach ($jsonListFields as $col) {
+                if (!array_key_exists($col, $input)) continue;
+                $raw = $input[$col];
+                $decoded = is_string($raw) ? json_decode($raw, true) : $raw;
+                if (!is_array($decoded) || empty($decoded)) {
+                    $sets[] = "`{$col}` = ?";
+                    $params[] = null;
+                    continue;
+                }
+                $encoded = json_encode(array_values($decoded), JSON_UNESCAPED_SLASHES);
+                // Sane cap matching the other free-text listing fields above -
+                // guards against a runaway payload, not a realistic real one.
+                if ($encoded === false || mb_strlen($encoded) > 20000) $encoded = null;
+                $sets[] = "`{$col}` = ?";
+                $params[] = $encoded;
+            }
+
             $pricingFields = [
                 'included_occupancy' => ['int', 1, 99, 'Included occupancy must be between 1 and 99'],
                 'extra_guest_charge' => ['money', 0, 1000000, 'Extra guest charge must be between 0 and 1,000,000'],

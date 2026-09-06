@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useToast } from './ToastContext';
-import { Loader2, CheckCircle2, AlertCircle, MessageCircle } from './icons/FlowbiteIcons';
+import { Loader2, CheckCircle2, AlertCircle, MessageCircle, Plus, Trash2, X } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';
 import { Button } from './Button';
 import { Input } from './Input';
@@ -119,6 +119,81 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
   const [bedrooms, setBedrooms] = useState(numOrBlank((property as any).bedrooms));
   const [bedsCount, setBedsCount] = useState(numOrBlank((property as any).beds_count));
   const [bathrooms, setBathrooms] = useState(numOrBlank((property as any).bathrooms));
+
+  // Amenities + Bed Configuration (7 Sep 2026) - both already round-trip
+  // through the Airbnb importer's own JSON columns, and PublicBookingEngine.tsx
+  // already reads and displays both to guests (see its own humanizeKey/
+  // parseJsonArray helpers), but until now there was no manual editor for
+  // either anywhere in the app - a property with no Airbnb connection (or one
+  // whose owner just wants to add something Airbnb doesn't know about) had no
+  // way to fill these in at all. Stored as plain human-readable strings
+  // (not Airbnb's snake_case keys) - PublicBookingEngine's humanizeKey() only
+  // lowercases+title-cases, so a manually-typed "Air Conditioning" renders
+  // identically to an imported "air_conditioning" without needing to match
+  // Airbnb's own vocabulary.
+  const parseJsonArraySafe = (raw: any): any[] => {
+    if (Array.isArray(raw)) return raw;
+    if (typeof raw !== 'string' || !raw.trim()) return [];
+    try {
+      const v = JSON.parse(raw);
+      return Array.isArray(v) ? v : [];
+    } catch {
+      return [];
+    }
+  };
+  const [amenities, setAmenities] = useState<string[]>(() =>
+    parseJsonArraySafe((property as any).amenities).filter((a): a is string => typeof a === 'string')
+  );
+  const [newAmenity, setNewAmenity] = useState('');
+  const addAmenity = () => {
+    const v = newAmenity.trim();
+    if (!v) return;
+    if (amenities.some((a) => a.toLowerCase() === v.toLowerCase())) {
+      setNewAmenity('');
+      return;
+    }
+    setAmenities((prev) => [...prev, v]);
+    setNewAmenity('');
+  };
+  const removeAmenity = (idx: number) => setAmenities((prev) => prev.filter((_, i) => i !== idx));
+
+  interface BedRoomEntry {
+    room_type: string;
+    beds: { type: string; quantity: number }[];
+  }
+  const [bedConfig, setBedConfig] = useState<BedRoomEntry[]>(() =>
+    parseJsonArraySafe((property as any).bed_configuration).map((r: any) => ({
+      room_type: typeof r?.room_type === 'string' ? r.room_type : '',
+      beds: Array.isArray(r?.beds)
+        ? r.beds.map((b: any) => ({ type: typeof b?.type === 'string' ? b.type : '', quantity: Number(b?.quantity) || 1 }))
+        : [],
+    }))
+  );
+  const addBedRoom = () =>
+    setBedConfig((prev) => [...prev, { room_type: `Room ${prev.length + 1}`, beds: [{ type: '', quantity: 1 }] }]);
+  const removeBedRoom = (idx: number) => setBedConfig((prev) => prev.filter((_, i) => i !== idx));
+  const updateBedRoomName = (idx: number, value: string) =>
+    setBedConfig((prev) => prev.map((r, i) => (i === idx ? { ...r, room_type: value } : r)));
+  const addBed = (roomIdx: number) =>
+    setBedConfig((prev) => prev.map((r, i) => (i === roomIdx ? { ...r, beds: [...r.beds, { type: '', quantity: 1 }] } : r)));
+  const removeBed = (roomIdx: number, bedIdx: number) =>
+    setBedConfig((prev) =>
+      prev.map((r, i) => (i === roomIdx ? { ...r, beds: r.beds.filter((_, bi) => bi !== bedIdx) } : r))
+    );
+  const updateBedType = (roomIdx: number, bedIdx: number, value: string) =>
+    setBedConfig((prev) =>
+      prev.map((r, i) =>
+        i !== roomIdx ? r : { ...r, beds: r.beds.map((b, bi) => (bi !== bedIdx ? b : { ...b, type: value })) }
+      )
+    );
+  const updateBedQuantity = (roomIdx: number, bedIdx: number, value: string) =>
+    setBedConfig((prev) =>
+      prev.map((r, i) =>
+        i !== roomIdx
+          ? r
+          : { ...r, beds: r.beds.map((b, bi) => (bi !== bedIdx ? b : { ...b, quantity: Math.max(1, Number(value) || 1) })) }
+      )
+    );
   const [checkinTime, setCheckinTime] = useState(property.checkin_time || '14:00');
   const [checkoutTime, setCheckoutTime] = useState(property.checkout_time || '11:00');
   // Only meaningful for SINGLE properties - a MULTI_KEY parent isn't itself
@@ -256,6 +331,17 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
         bedrooms: bedrooms,
         beds_count: bedsCount,
         bathrooms: bathrooms,
+        amenities: JSON.stringify(amenities),
+        bed_configuration: JSON.stringify(
+          bedConfig
+            .map((r) => ({
+              room_type: r.room_type.trim(),
+              beds: r.beds
+                .filter((b) => b.type.trim())
+                .map((b) => ({ type: b.type.trim(), quantity: Math.max(1, Number(b.quantity) || 1) })),
+            }))
+            .filter((r) => r.beds.length > 0)
+        ),
       };
       if (!isRoom) {
         // '' clears the override and returns the property to the inherited
@@ -630,6 +716,80 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
         />
       </div>
 
+      {/* Bed configuration (7 Sep 2026) - the detailed per-room bed breakdown
+          behind the "Beds" count above (e.g. "1 Queen Bed, 1 Sofa Bed" instead
+          of just "2"). Shown to guests in PublicBookingEngine's room-facts
+          line. Imported from Airbnb when connected, editable here either way -
+          bed type is free text (not a fixed picker) so it renders correctly
+          either way, since PublicBookingEngine's humanizeKey() just title-cases
+          whatever string is stored. */}
+      <div className="property-edit-form__field space-y-2">
+        <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200">
+          {t('bed_configuration_label', 'Bed Configuration')}
+        </label>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          {t('bed_configuration_help', 'Shown to guests as part of the room facts (e.g. "1 Queen Bed"). Optional.')}
+        </p>
+        <div className="space-y-3">
+          {bedConfig.map((room, roomIdx) => (
+            <div key={roomIdx} className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 space-y-2.5">
+              <div className="flex items-center gap-2">
+                <Input
+                  value={room.room_type}
+                  onChange={(e) => updateBedRoomName(roomIdx, e.target.value)}
+                  placeholder={t('bed_room_name_placeholder', 'e.g. Bedroom 1, Living Room')}
+                  fullWidth
+                />
+                <button
+                  type="button"
+                  onClick={() => removeBedRoom(roomIdx)}
+                  aria-label={t('remove_room_label', 'Remove room')}
+                  className="shrink-0 p-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="space-y-2">
+                {room.beds.map((bed, bedIdx) => (
+                  <div key={bedIdx} className="flex items-center gap-2 pl-2">
+                    <Input
+                      value={bed.type}
+                      onChange={(e) => updateBedType(roomIdx, bedIdx, e.target.value)}
+                      placeholder={t('bed_type_placeholder', 'e.g. Queen bed, Sofa bed')}
+                      fullWidth
+                    />
+                    <Input
+                      type="number"
+                      min="1"
+                      value={String(bed.quantity)}
+                      onChange={(e) => updateBedQuantity(roomIdx, bedIdx, e.target.value)}
+                      className="w-20 shrink-0"
+                      fullWidth={false}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeBed(roomIdx, bedIdx)}
+                      aria-label={t('remove_bed_label', 'Remove bed')}
+                      className="shrink-0 p-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <Button type="button" variant="secondary" size="xs" onClick={() => addBed(roomIdx)} className="flex items-center gap-1">
+                <Plus className="w-3.5 h-3.5" />
+                <span>{t('add_bed_button', 'Add Bed')}</span>
+              </Button>
+            </div>
+          ))}
+        </div>
+        <Button type="button" variant="secondary" size="sm" onClick={addBedRoom} className="flex items-center gap-1.5">
+          <Plus className="w-4 h-4" />
+          <span>{t('add_room_button', 'Add Room')}</span>
+        </Button>
+      </div>
+
       <div className="property-edit-form__field">
         <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
           {t('house_rules_label', 'House Rules')}
@@ -640,6 +800,57 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
           placeholder={t('house_rules_placeholder', 'e.g. No smoking indoors, quiet hours after 10pm, no parties…')}
           rows={3}
         />
+      </div>
+
+      {/* Amenities (7 Sep 2026) - shown to guests as chips under the room
+          description on the public booking page (PublicBookingEngine.tsx).
+          Free text, not a fixed checklist - Airbnb's own amenity vocabulary
+          keeps growing and this needs to cover anything a property actually
+          has, imported or not. Stored as plain human-readable strings; a
+          duplicate (case-insensitive) is silently ignored rather than added
+          twice. */}
+      <div className="property-edit-form__field space-y-2">
+        <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200">
+          {t('amenities_label', 'Amenities')}
+        </label>
+        {amenities.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {amenities.map((a, idx) => (
+              <span
+                key={idx}
+                className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-medium pl-3 pr-1.5 py-1"
+              >
+                {a}
+                <button
+                  type="button"
+                  onClick={() => removeAmenity(idx)}
+                  aria-label={t('remove_amenity_label', 'Remove amenity')}
+                  className="p-0.5 rounded-full text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          <Input
+            value={newAmenity}
+            onChange={(e) => setNewAmenity(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                addAmenity();
+              }
+            }}
+            placeholder={t('amenity_placeholder', 'e.g. Air Conditioning, Free Parking, Kitchen')}
+            fullWidth
+          />
+          <Button type="button" variant="secondary" size="sm" onClick={addAmenity} className="shrink-0 flex items-center gap-1.5">
+            <Plus className="w-4 h-4" />
+            <span>{t('add_amenity_button', 'Add')}</span>
+          </Button>
+        </div>
       </div>
 
       {/* Guest arrival info (6 Sep 2026). Appears on the WhatsApp booking
